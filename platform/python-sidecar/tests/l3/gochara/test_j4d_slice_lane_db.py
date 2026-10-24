@@ -14,13 +14,16 @@ from __future__ import annotations
 
 import json
 import re
+from pathlib import Path
 
 import pytest
 
 from scripts.kala_gochara_cutover import j4d_slice_qualify as q
+from pipeline.orchestrator.writers import ka_gochara_v5 as writer_mod
 from services.gochara_kernel import contact_certify as cc
 from services.gochara_kernel import measuring_capture as mc
 from services.gochara_kernel import near_miss as nm
+from services.gochara_kernel import rule_registry as rr
 
 from .conftest import EPHE_PATH
 from .test_a53_inventory import CHART_ID
@@ -42,7 +45,35 @@ def _lane_guard_is_proven_elsewhere():
         assert re.fullmatch(r"a53t_[a-z0-9_]+", conn.execute("SELECT current_database()").fetchone()[0])
     with pytest.MonkeyPatch.context() as patch:
         patch.setattr(q, "require_lane", disposable_only)
+        # SR-OD1 V1: the doctrine rows (P1/P3/P4@1.3.0, P2@1.1.0) change every scored cell under the final rules, leaving no
+        # "unchanged" cell for this equality-with-the-golden scenario; it runs on the pre-doctrine final profile (ND-H / ND-P2 /
+        # parental suppression only), exactly like kala_db/test_j4d_slice_qualification.py. The TRIAL gates the doctrine rows.
+        patch.setattr(rr, "FINAL_SELECTED_PATH_REFS", rr.SELECTED_PATH_REFS)
+        patch.setattr(rr, "FINAL_ONLY_PATH_REFS", rr.ND_H_PATH_REFS)
+        # The REAL writer plans every row `bound_path_refs()` binds, and refuses ("neither the selected, nor superseded by an included
+        # successor") a bound 1.3.0 / P2@1.1.0 row the selection does not run; the catalogue reads these two tuples, so the profile
+        # is made consistent by emptying them too (selection and catalogue both pre-doctrine).
+        patch.setattr(rr, "DOCTRINE_PATH_REFS", ())
+        patch.setattr(rr, "VEDHA_PATH_REFS", ())
+        # ...and the vedha overlay is unbound with them: under the final profile `ka_gochara_v5.vedha_source()` falls back to FINAL_VEDHA_SOURCE (SR-OD1 D3),
+        # which belongs with P2@1.3.0, a row this profile does not run; left bound, the P2 window substep of the near-miss scenario fails its window semantic verification.
+        patch.setattr(writer_mod, "FINAL_VEDHA_SOURCE", None)
         yield
+
+
+MIGRATIONS = Path(__file__).resolve().parents[4] / "migrations"
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _p1_l0_reference_tables(template):                                                                                   # noqa: F811
+    """The final profile's ND-H class overrides run P1@1.2.0, whose soft factors declare the owner's Form B table, so the manifest binds the three P1 L0
+    reference tables (`ka_gochara_v5._l0_consumed`, `input_vector.l0_identities`) and refuses a world that cannot read them ("bg_combustion_orbs is not
+    readable"). They are seeded into the template, from the REAL migrations 250 and 1401 (the seed `test_od1_l0verify.py` binds), so every clone carries them."""
+    import psycopg
+    _admin, _name, dsn = template
+    with psycopg.connect(dsn, autocommit=True, connect_timeout=3) as conn:
+        for number in ("250_bg_dignity_reference.sql", "1401_l0_node_dignity_friendship.sql"):
+            conn.execute((MIGRATIONS / number).read_text(encoding="utf-8"))
 
 
 @pytest.fixture(scope="module")

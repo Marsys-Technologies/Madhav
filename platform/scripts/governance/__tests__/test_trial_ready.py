@@ -14,13 +14,20 @@ ready (N.7.6)"; "a check reads true only from its detector's run" (§N.8); "TR1/
   C9 `json_field_eq` (TR-BIND: a record outside the repository -- T21 verdict, T24 readiness) reads true only when every field holds, false when a field is
      present and differs (a record made for another head, 1 for true), null when the record, a field or a value is absent.
   C10 `db_migrations` with `mode: "all"` (T25) reads false when the ledger lacks ANY file the commit lists, null when the commit lists none.
-  C11 a `pytest` part passes `env` with `{repo}` expanded and `--deselect` for each named node id (T14); a part whose every test is deselected is null;
+  C11 a `pytest` part passes `env` with `{repo}` expanded and (the mechanism only; the shipped registry may not use it, C18) `--deselect` for each named node id; a part whose every test is deselected is null;
      a relative scratch directory is resolved first (the part runs in another cwd, so its junit file would otherwise be written elsewhere and read null).
   C12 the trial harness landed under fleet/trial_harness is the accepted v3.1 + B4 overlay the trial runs (content digest pinned), not a later or edited copy.
   C13 (PR #3874 review B-1) T24 reads true only from the amd64_slice run's OWN evidence (report, pinned runtime, EQUIVALENCE_RECORD) at this head -- never from a
      readiness record, which only says the inputs are named.
-  C14 (review B-2) T20's a53 DB-suite part deselects the one test that skips by design, so the part can read true.
+  C14 (review B-2; reworked by SR-NO-DESELECT) T20's a53 DB-suite part runs the one test that used to skip by design (the sky-convention content digest) as a real, unskipped test.
   C15 (review N-2) T21 also matches the verdict's patch_id to a patch-id recomputed from the repository; N-3/N-4 T10 part 2 pins its locale, T20 names the geometry-pin rule.
+  C16 (SR-EVALUATOR-SKIP-IS-NULL, DECISIONS_SURROGATE) a `pytest` part reads true only if EVERY bound test PASSED: a skip or xfail beside passes, or a bound file none of whose tests ran, is null;
+     a skip is tolerated only when the part's `optional_skips` names that exact test WITH a reason.
+  C17 (SR-T24-NATIVE) T24 reads the native VM run's OWN EQUIVALENCE_RECORD (named by TRIAL_READY_EQ_RECORD, with the eq_pinned_inputs.json beside it): true only when the record is
+     complete, a qualifying_run of THIS head, its arch read inside the run as linux/amd64 and not emulated; null when the record is not named or not there; the Docker amd64 slice
+     stays a documented fallback alternative (`any_of`: any true alternative qualifies, no evidence never does).
+  C18 (SR-NO-DESELECT, DECISIONS_SURROGATE) the shipped registry carries no `deselect` key anywhere: a test that cannot run at a head is fixed or named in `optional_skips`
+     with a reason, never excluded by name (an excluded node is a claim nothing measures).
 Every test builds a throw-away git repository; none touches the shared repository or a database (the database answer is replaced where the claim is
 about how the evaluator READS it).
 """
@@ -309,8 +316,9 @@ def test_c7_exit_code_follows_ready_and_a_stale_file_never_survives_a_failed_run
 
 # ── C8 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
-# the checks whose detector is another job's (TR_GAPS B1 NDH, B2 SELECT-130, B7 DASH-READBACK, B6 LANE-LEDGER); binding one removes it from this set, a new unbound check fails
-STILL_UNBOUND = {"T11", "T12", "T13", "T22"}
+# TR-BIND (SR madhav-44, 2026-10-23): "an unbound check is a TR auto-arm blocker" -- T11 NDH, T12 SELECT-130, T13 DASH readback and T22 lane ledger are bound to their lanes' oracles
+# (a part that cannot run reads null, never true); no check may be unbound, so a new `unbound` part fails
+STILL_UNBOUND: set = set()
 
 
 def test_c8_the_shipped_registry_names_the_25_checks_and_points_only_at_real_oracles():
@@ -335,7 +343,7 @@ def test_c8_the_shipped_registry_names_the_25_checks_and_points_only_at_real_ora
                 assert p.get("mode") == "all" or p.get("prefixes"), (c["id"], p)
 
 
-def test_c8_only_the_four_checks_that_wait_for_another_job_are_unbound():
+def test_c8_no_check_of_the_shipped_registry_is_unbound():
     doc = json.loads((REPO_ROOT / tr.DEFAULT_REGISTRY).read_text(encoding="utf-8"))
     unbound = {c["id"] for c in doc["checks"] if any(p["kind"] == "unbound" for p in c["parts"])}
     assert unbound <= STILL_UNBOUND, sorted(unbound - STILL_UNBOUND)
@@ -347,7 +355,7 @@ def test_c8_a_check_with_no_bound_detector_cannot_read_true_from_the_shipped_reg
     repo, _ = make(tmp_path, doc)
     v = values(run(repo, tmp_path))
     unbound_only = [c["id"] for c in doc["checks"] if all(p["kind"] == "unbound" for p in c["parts"])]
-    assert unbound_only and all(v[i] is None for i in unbound_only)
+    assert all(v[i] is None for i in unbound_only)
     assert not tr.is_ready(run(repo, tmp_path)["checks"])
 
 
@@ -494,7 +502,19 @@ HARNESS_DIR = "00_ARCHITECTURE/briefs/kalayantra/fleet/trial_harness"
 # TRIAL_COLLECT=1) lets a diagnostic run continue past a class's first defect, failing the class at the END with the full list (tests/test_harness_33.py, mutants_h33.py)
 # AMD64-DOCKER (item amd64-docker; previous pin 55c3a775...418d; ruling SR-T24-AMD64-DOCKER): the one amd64 slice runs in a linux/amd64 Docker container (Rosetta/QEMU emulation) against a PG 15 locale-C
 # sibling container; the arch is read by an in-container probe, the emulation is recorded (platform_notes), G-5 reads NOT_EVALUATED for such a run (tests/test_amd64_docker.py, mutants_amd64.py)
-HARNESS_V31_DIGEST = "4822bcf0fcf710a00e004852573e64997ba703870bc9a6a0327015145d74fa7a"
+# G6-P1-CROSSCHECK (item g6-p1; previous pin 4822bcf0...fa7a; ruling SR-NEARMISS-DOMAIN-TAIL-AMEND-1, G-6): the cross-check rebuilds a P1 window through the builder's own
+# per-instant agent_nature channel (draft_windows' has_channel_fn path), never record_channel's P1 refusal (job X-20261023T111950Z-g6-p1-crosscheck; tests/test_harness_32.py test_h_a3)
+# SR-BASELINE-OVERLAY-SKIP (harness-only change; previous pin f4cffcd8...0cc6; job X-20261023T121013Z-baseline-overlay-skip): in BASELINE mode only (make_baseline.sh -> TRIAL_BASELINE_MODE=1, default policy,
+# label baseline) a mandatory overlay migration the checkout lacks is skipped BY NAME and recorded in baseline_12.json when the checkout also lacks the code that requires it; a trial run still refuses
+# (trial_slice.py plan_overlay/requiring_code, run_trial.sh, make_baseline.sh, tests/test_baseline_overlay_skip.py)
+# SR-BASELINE-OVERLAY-SKIP review close (previous pin a1b81add...e800242; job X-20261023T124421Z-g-fix): the requiring-code probe's tests exclusion reads the path relative to the code root (a checkout
+# under a directory named tests is no longer skipped); new oracles: stored mode governs setup_lane, a resume under another mode is refused, an absent code root refuses
+# BASELINE-12-SNAPSHOT (cockpit 2026-10-23; previous pin 20c54873...2999): baseline_12.json re-made WITH the noninterference snapshot on linux/amd64 (default policy, main c23cda8ab, harness 6816b4572; 4,509 windows; 1402 skipped by name, SR-BASELINE-OVERLAY-SKIP) so G-7 reads a real value
+# TR-READY-FIXES (cockpit 2026-10-23; previous pin 9ad94476...fb6c; SR-T14-FIX-NOT-EXCLUDE, harness TEST-only change; job X-20261023T134421Z-tr-ready-fixes): tests/test_driver.py states the solver-probe claim for a
+# solver-carrying head (present + counts at the real window_solver; absent + counts nothing at a package copy with none) instead of asserting the pre-solver export; tests/test_g5_cpu.py test_c2 judges the
+# CPU growth against the wall GROWTH of the same experiment and retries an attempt in which the hogs did not starve the builder; test_c4 judges the wall/CPU agreement
+# normalised by a same-process calibrated reference (a pure burn's wall per CPU second), so an ambient load cannot fail either
+HARNESS_V31_DIGEST = "204ff29f1036293d6a2866cb36f1187cc0bacd09592385429fcb0f2744dabe66"
 
 
 def harness_digest(root):
@@ -577,33 +597,22 @@ def test_c13_t24_is_null_without_the_slice_run(tmp_path):
     assert t24_value(tmp_path, "none", lambda d, sha: None) is None
 
 
-T20_SKIP_NODE = "tests/l3/gochara/test_a53_input_vector.py::test_the_sky_convention_content_digest_moves_when_the_stored_content_does_with_the_same_id"
+T20_SKY_NODE = "tests/l3/gochara/test_a53_input_vector.py::test_the_sky_convention_content_digest_moves_when_the_stored_content_does_with_the_same_id"
 
 
-def test_c14_t20_deselects_the_one_test_that_skips_by_design_and_says_why():
-    """Review B-2. Source: platform/migrations/1153_gochara_sky_event_substrate.sql:609-611 (insert-only trigger on ka_gochara_sky_convention)."""
-    part = shipped_check("T20")["parts"][1]
-    assert part["deselect"] == [T20_SKIP_NODE]
-    why = part["deselect_why"][T20_SKIP_NODE]
-    assert "1153_gochara_sky_event_substrate.sql:609-611" in why and "insert-only" in why
+def test_c14_t20_runs_the_sky_convention_content_digest_test_instead_of_excluding_or_skipping_it():
+    """SR-NO-DESELECT. The claim "the sky convention's content digest moves when the stored content does, with the same id" is measured by this test at T20, not
+    excluded: the node is bound by file (no name-level deselect, no optional_skips), and its body stages the edit by switching off the insert-only trigger
+    (platform/migrations/1153_gochara_sky_event_substrate.sql:609-611, ka_gochara_sky_convention_immutable) in the per-test database, with no `pytest.skip` left to hide it.
+    Reversion: restore the `except Exception: pytest.skip(...)` -> this test fails."""
+    parts = [p for p in shipped_check("T20")["parts"] if p["kind"] == "pytest" and T20_SKY_NODE.split("::")[0] in p["tests"]]
+    assert len(parts) == 1 and "deselect" not in parts[0] and "optional_skips" not in parts[0]
     mig = (REPO_ROOT / "platform/migrations/1153_gochara_sky_event_substrate.sql").read_text(encoding="utf-8").splitlines()[608:611]
-    assert any("ka_gochara_sky_convention_immutable" in l for l in mig) and any("BEFORE UPDATE OR DELETE" in l for l in mig) and any("ka_gochara_insert_only" in l for l in mig)
-    src = (REPO_ROOT / "platform/python-sidecar" / T20_SKIP_NODE.split("::")[0]).read_text(encoding="utf-8")
-    assert "def " + T20_SKIP_NODE.split("::")[1] + "(" in src and "refuses an in-place edit" in src
-
-
-def test_c14_with_that_node_deselected_a_part_whose_only_skip_it_is_reads_true(tmp_path):
-    """The shipped T20 part 2 deselect applied to a stand-in file with the same node id (one skip-by-design test, one passing test).
-    Reversion: drop the deselect -> the skip makes the part null forever."""
-    rel = T20_SKIP_NODE.split("::")[0]
-    body = "import pytest\n\ndef %s():\n    pytest.skip('the convention table refuses an in-place edit here')\n\ndef test_other():\n    assert True\n" % T20_SKIP_NODE.split("::")[1]
-    part = {k: v for k, v in shipped_check("T20")["parts"][1].items() if k not in ("env", "tests")}
-    part["tests"] = [rel]
-    repo, _ = make(tmp_path, registry({"T20": [part]}), files={"platform/python-sidecar/" + rel: body})
-    assert values(run(repo, tmp_path))["T20"] is True
-    part.pop("deselect")
-    repo, _ = make(tmp_path, registry({"T20": [part]}), files={"platform/python-sidecar/" + rel: body}, name="nodeselect")
-    assert values(run(repo, tmp_path))["T20"] is None
+    assert any("ka_gochara_sky_convention_immutable" in l for l in mig) and any("BEFORE UPDATE OR DELETE" in l for l in mig)
+    src = (REPO_ROOT / "platform/python-sidecar" / T20_SKY_NODE.split("::")[0]).read_text(encoding="utf-8")
+    start = src.index("def " + T20_SKY_NODE.split("::")[1] + "(")
+    body = src[start:src.index("\ndef ", start + 1)]
+    assert "pytest.skip" not in body and "DISABLE TRIGGER ka_gochara_sky_convention_immutable" in body and "ENABLE TRIGGER ka_gochara_sky_convention_immutable" in body
 
 
 def test_c14_t20_claim_states_the_pin_once_rule_in_full():
@@ -647,3 +656,252 @@ def test_c15_an_unresolvable_base_makes_the_patch_id_field_null(tmp_path):
     git(repo, "update-ref", "-d", "refs/remotes/origin/main")
     (tmp_path / "RVINT_VERDICT.json").write_text(json.dumps({"proposed_verdict": {"verdict": "ACCEPTED", "head": head, "patch_id": "a" * 40}}))
     assert values(run(repo, tmp_path))["T21"] is None
+
+
+# ── C16 lane_ledger (TR-BIND: T22) ───────────────────────────────────────────────────────────────────────────────────────────────────────
+
+STUB_CHECKER = "import json, sys\na = sys.argv\nout = a[a.index('--json-out') + 1]\nopen(out, 'w').write(json.dumps({'value': %s}))\nsys.exit(%d)\n"
+
+
+def _ledger_repo(tmp_path, exit_code, value, name="ll"):
+    """A repo whose T22 part runs a STAND-IN checker at the commit (the shipped checker's own proof is test_lane_ledger_selftest.py)."""
+    part = {"kind": "lane_ledger", "ledger_env": "TR_TEST_LEDGER", "checker": "stub_checker.py"}
+    repo, _ = make(tmp_path, registry({"T22": [part]}), {"stub_checker.py": STUB_CHECKER % (value, exit_code)}, name=name)
+    return repo
+
+
+def test_c16_the_checker_exit_and_reading_map_to_true_false_and_null(tmp_path, monkeypatch):
+    (tmp_path / "ledger.json").write_text("{}")
+    monkeypatch.setenv("TR_TEST_LEDGER", str(tmp_path / "ledger.json"))
+    assert values(run(_ledger_repo(tmp_path, 0, "True", "a"), tmp_path))["T22"] is True
+    assert values(run(_ledger_repo(tmp_path, 1, "False", "b"), tmp_path))["T22"] is False
+    assert values(run(_ledger_repo(tmp_path, 2, "None", "c"), tmp_path))["T22"] is None                 # exit 2: the checker could not run -> null
+    assert values(run(_ledger_repo(tmp_path, 0, "False", "d"), tmp_path))["T22"] is None                # exit 0 but a false reading: they disagree -> no evidence
+    assert values(run(_ledger_repo(tmp_path, 1, "True", "e"), tmp_path))["T22"] is None
+
+
+def test_c16_no_ledger_a_missing_checker_and_a_dirty_tree_read_null(tmp_path, monkeypatch):
+    monkeypatch.delenv("TR_TEST_LEDGER", raising=False)
+    assert values(run(_ledger_repo(tmp_path, 0, "True", "a"), tmp_path))["T22"] is None                 # no ledger rebuilt at this commit
+    monkeypatch.setenv("TR_TEST_LEDGER", str(tmp_path / "ledger.json"))
+    part = {"kind": "lane_ledger", "ledger_env": "TR_TEST_LEDGER", "checker": "nowhere.py"}
+    repo, _ = make(tmp_path, registry({"T22": [part]}), name="b")
+    assert values(run(repo, tmp_path))["T22"] is None
+    repo = _ledger_repo(tmp_path, 0, "True", "c")
+    (repo / "stub_checker.py").write_text("# edited after the commit\n")
+    assert values(run(repo, tmp_path))["T22"] is None
+
+
+def test_c16_the_shipped_checker_reads_false_for_a_ledger_built_at_another_head_and_null_for_one_it_cannot_read(tmp_path, monkeypatch):
+    """The real checker, run by the real part, at a throwaway commit: an empty ledger names no lane (every required lane is missing) and was built at no head -> FALSE; garbage -> null."""
+    shipped = (REPO_ROOT / "platform/scripts/governance/lane_ledger_check.py").read_text(encoding="utf-8")
+    part = {"kind": "lane_ledger", "ledger_env": "TR_TEST_LEDGER"}
+    repo, _ = make(tmp_path, registry({"T22": [part]}), {"platform/scripts/governance/lane_ledger_check.py": shipped})
+    ledger = tmp_path / "ledger.json"
+    monkeypatch.setenv("TR_TEST_LEDGER", str(ledger))
+    ledger.write_text(json.dumps({"schema": "ky.lane_ledger/1", "integration_head": "0" * 40, "lanes": []}))
+    assert values(run(repo, tmp_path))["T22"] is False
+    ledger.write_text("not json")
+    assert values(run(repo, tmp_path))["T22"] is None
+
+
+def test_c16_the_shipped_t22_has_a_recomputing_detector_and_names_its_missing_input():
+    t22 = shipped_check("T22")
+    assert {p["kind"] for p in t22["parts"]} == {"pytest", "lane_ledger"}
+    assert (REPO_ROOT / "platform/scripts/governance/lane_ledger_check.py").is_file() and "LANE_LEDGER.json rebuilt at this commit" in t22["note"]
+    assert all(p["kind"] != "unbound" for c in json.loads((REPO_ROOT / tr.DEFAULT_REGISTRY).read_text(encoding="utf-8"))["checks"] for p in c["parts"])
+
+
+# ── C16 skip / xfail / not-run is null unless declared optional (SR-EVALUATOR-SKIP-IS-NULL; N.8) ───────────────────────────────────────
+
+MIXED = "import pytest\n\ndef test_ok():\n    assert True\n\ndef test_needs_db():\n    pytest.skip('no database')\n"
+XFAILING = "import pytest\n\ndef test_ok():\n    assert True\n\n@pytest.mark.xfail(reason='known')\ndef test_known_bad():\n    assert False\n"
+OPT = "t_mixed.py::test_needs_db"
+
+
+def _c16(tmp_path, part, files, name="repo"):
+    repo, _ = make(tmp_path, registry({"T04": [part]}), files, name=name)
+    return values(run(repo, tmp_path))["T04"]
+
+
+def test_c16_a_skip_beside_passing_tests_makes_the_part_null(tmp_path):
+    """Ruling: any SKIP of a bound test makes the part null. Reversion: count only failures -> the part reads true."""
+    assert _c16(tmp_path, {"kind": "pytest", "tests": ["t_mixed.py"]}, {"t_mixed.py": MIXED}) is None
+
+
+def test_c16_an_xfail_beside_passing_tests_makes_the_part_null(tmp_path):
+    """Ruling: xfail is not a pass. Reversion: treat xfail as passed -> true."""
+    assert _c16(tmp_path, {"kind": "pytest", "tests": ["t_xf.py"]}, {"t_xf.py": XFAILING}) is None
+
+
+def test_c16_a_declared_optional_skip_with_a_reason_keeps_the_part_true(tmp_path):
+    """Ruling: unless that test's skip is explicitly declared optional with a reason. Reversion: ignore optional_skips -> null."""
+    part = {"kind": "pytest", "tests": ["t_mixed.py"], "optional_skips": [{"test": OPT, "reason": "needs a database the lane does not have"}]}
+    assert _c16(tmp_path, part, {"t_mixed.py": MIXED}) is True
+
+
+def test_c16_an_optional_declaration_without_a_reason_or_for_another_test_declares_nothing(tmp_path):
+    """Reversion: accept an empty reason / match any skip -> true."""
+    for i, decl in enumerate(({"test": OPT, "reason": "  "}, {"test": OPT}, {"test": "t_mixed.py::test_other", "reason": "x"})):
+        part = {"kind": "pytest", "tests": ["t_mixed.py"], "optional_skips": [decl]}
+        assert _c16(tmp_path, part, {"t_mixed.py": MIXED}, name="r%d" % i) is None
+
+
+def test_c16_a_declared_optional_skip_is_no_substitute_for_a_pass_of_the_bound_file(tmp_path):
+    """Every bound test must have a passing case: a file whose only test is a declared-optional skip was not run. Reversion: true when nothing failed or skipped undeclared."""
+    only = "import pytest\n\ndef test_needs_db():\n    pytest.skip('no database')\n"
+    part = {"kind": "pytest", "tests": ["t_only.py"], "optional_skips": [{"test": "t_only.py::test_needs_db", "reason": "no database"}]}
+    assert _c16(tmp_path, part, {"t_only.py": only}) is None
+
+
+def test_c16_a_bound_file_none_of_whose_tests_ran_is_null_not_true(tmp_path):
+    """Not-run of a bound test: file b's only test is deselected, file a passes and pytest exits 0 -- the old reader said true. Reversion: drop the bound-test check."""
+    files = {"t_a.py": PASSING, "t_b.py": "def test_b():\n    assert True\n"}
+    part = {"kind": "pytest", "tests": ["t_a.py", "t_b.py"], "deselect": ["t_b.py::test_b"]}
+    assert _c16(tmp_path, part, files) is None
+    assert _c16(tmp_path, {"kind": "pytest", "tests": ["t_a.py", "t_b.py"]}, files, name="all_run") is True
+
+
+def test_c16_the_shipped_registry_declares_no_optional_skip_without_a_reason():
+    for c in json.loads((REPO_ROOT / tr.DEFAULT_REGISTRY).read_text(encoding="utf-8"))["checks"]:
+        for part in c["parts"]:
+            for e in part.get("optional_skips", []):
+                assert e["test"].count("::") >= 1 and e["reason"].strip(), (c["id"], e)
+# ── C17 T24 bound to the native VM run's own record (SR-T24-NATIVE) ──────────────────────────────────────────────────────────────────────
+
+EQ_ENV = "TRIAL_READY_EQ_RECORD"
+
+
+@pytest.fixture(autouse=True)
+def _no_ambient_eq_record(monkeypatch):
+    """The cockpit sets TRIAL_READY_EQ_RECORD for the real evaluation; no test may read it from the ambient environment."""
+    monkeypatch.delenv(EQ_ENV, raising=False)
+VM_READ = "vm_probe (os.uname on the VM)"
+
+
+def vm_records(eq_dir, sha, *, complete=True, kind="qualifying_run", commit=None, emulated=False, read_from=VM_READ, pin_kind="qualifying_run", arch="linux/amd64"):
+    """What the VM's TR leaves under <out>/s5/tr/equivalence/ (vmkit stages/s5_tr.sh + lib/vm_probe.py + equivalence_record.py): the record, whose E6 copies the pinned
+    provenance verbatim, and the pinned inputs, whose runtime block the VM probe read on the machine."""
+    d = Path(eq_dir)
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "equivalence_record.json").write_text(json.dumps({"complete": complete, "runtime_kind": kind, "E6": {"commit": commit or sha, "platform_notes": {"native_vm": {
+        "emulated": emulated, "arch_read_from": read_from, "vm_type": "c3-standard-8"}}}}))
+    (d / "eq_pinned_inputs.json").write_text(json.dumps({"runtime": {"kind": pin_kind, "arch": arch}}))
+    return d / "equivalence_record.json"
+
+
+def vm_t24(tmp_path, monkeypatch, name, write, *, env=True, fallback=None):
+    """The SHIPPED T24 (both alternatives); the Docker slice directory is moved under a scratch directory that holds a slice run only when `fallback` writes one."""
+    run_dir = tmp_path / (name + "_run")
+    repo, sha = make(tmp_path, registry({"T24": retarget(shipped_check("T24"), run_dir)["parts"]}), name=name)
+    rec = write(tmp_path / (name + "_eq") / "equivalence", sha)
+    if fallback:
+        fallback(run_dir, sha)
+    if env and rec is not None:
+        monkeypatch.setenv(EQ_ENV, str(rec))
+    elif env:
+        monkeypatch.setenv(EQ_ENV, str(tmp_path / (name + "_eq") / "equivalence" / "equivalence_record.json"))
+    else:
+        monkeypatch.delenv(EQ_ENV, raising=False)
+    return values(run(repo, tmp_path))["T24"]
+
+
+def test_c17_t24_reads_true_from_the_complete_native_qualifying_record_of_this_head(tmp_path, monkeypatch):
+    assert vm_t24(tmp_path, monkeypatch, "ok", lambda d, sha: vm_records(d, sha)) is True
+
+
+@pytest.mark.parametrize("name,over", [
+    ("incomplete", {"complete": False}),                                   # record.complete == true
+    ("rolling_record", {"kind": "rolling_diagnostic"}),                      # record.runtime_kind == qualifying_run
+    ("other_head", {"commit": "3" * 40}),                                    # record E6.commit == the evaluated head
+    ("emulated", {"emulated": True}),                                        # native, not emulated
+    ("arch_not_read_in_run", {"read_from": "asserted by a file"}),           # the arch was read inside the run
+    ("rolling_pinned", {"pin_kind": "rolling_diagnostic"}),                  # pinned runtime.kind == qualifying_run
+    ("arm64", {"arch": "linux/arm64"}),                                      # pinned runtime.arch == linux/amd64
+])
+def test_c17_each_field_of_the_native_claim_is_measured_and_reads_false(tmp_path, monkeypatch, name, over):
+    assert vm_t24(tmp_path, monkeypatch, name, lambda d, sha: vm_records(d, sha, **over)) is False
+
+
+def test_c17_t24_is_null_when_no_record_is_named_or_the_named_one_is_absent(tmp_path, monkeypatch):
+    assert vm_t24(tmp_path, monkeypatch, "noenv", lambda d, sha: vm_records(d, sha), env=False) is None            # the record exists, but nothing names it for this run
+    assert vm_t24(tmp_path, monkeypatch, "nofile", lambda d, sha: None) is None                                      # named, not there
+    monkeypatch.setenv(EQ_ENV, "")
+    repo, _ = make(tmp_path, registry({"T24": retarget(shipped_check("T24"), tmp_path / "e_run")["parts"]}), name="empty_env")
+    assert values(run(repo, tmp_path))["T24"] is None                                                               # an empty value names nothing
+
+
+def test_c17_a_pinned_inputs_file_missing_beside_the_record_is_null_not_true(tmp_path, monkeypatch):
+    def only_record(d, sha):
+        rec = vm_records(d, sha)
+        (d / "eq_pinned_inputs.json").unlink()
+        return rec
+    assert vm_t24(tmp_path, monkeypatch, "nopin", only_record) is None
+
+
+def test_c17_the_docker_slice_stays_a_fallback_alternative(tmp_path, monkeypatch):
+    nothing = lambda d, sha: None
+    assert vm_t24(tmp_path, monkeypatch, "fb_ok", nothing, env=False, fallback=lambda d, sha: slice_records(d, sha)) is True        # no VM record: the complete Docker slice qualifies
+    assert vm_t24(tmp_path, monkeypatch, "fb_bad", nothing, env=False, fallback=lambda d, sha: slice_records(d, sha, arch="linux/arm64")) is False
+    assert vm_t24(tmp_path, monkeypatch, "fb_none", nothing, env=False) is None                                                   # no evidence of either kind
+
+
+def test_c17_a_failed_native_record_does_not_hide_a_qualifying_fallback_but_never_rescues_itself(tmp_path, monkeypatch):
+    assert vm_t24(tmp_path, monkeypatch, "both", lambda d, sha: vm_records(d, sha, emulated=True), fallback=lambda d, sha: slice_records(d, sha)) is True
+    assert vm_t24(tmp_path, monkeypatch, "vmbad", lambda d, sha: vm_records(d, sha, emulated=True)) is False
+
+
+@pytest.mark.parametrize("alts,want", [([[GOOD], [{"kind": "unbound"}]], True), ([[{"kind": "unbound"}], [{"kind": "unbound"}]], None),
+                                       ([[{"kind": "unbound"}], [{"kind": "git_file", "path": "evidence.txt", "contains": ["red"]}]], False),
+                                       ([[{"kind": "git_file", "path": "evidence.txt", "contains": ["red"]}], [GOOD]], True),
+                                       ([[GOOD, {"kind": "unbound"}]], None), ([], None), ([[]], None)])
+def test_c17_any_of_is_true_for_a_true_alternative_false_for_a_failed_one_and_never_true_from_no_evidence(tmp_path, alts, want):
+    repo, _ = make(tmp_path, registry({"T24": [{"kind": "any_of", "alternatives": alts}]}))
+    assert values(run(repo, tmp_path))["T24"] is want
+
+
+def test_c17_the_shipped_t24_names_the_native_record_first_and_the_docker_slice_as_fallback():
+    t24 = shipped_check("T24")
+    assert [p["kind"] for p in t24["parts"]] == ["any_of"]
+    native, fallback = t24["parts"][0]["alternatives"]
+    assert all(p["kind"] == "json_field_eq" and p["path_env"] == EQ_ENV for p in native)
+    assert all("path" in p and "path_env" not in p for p in fallback) and "amd64_slice" in json.dumps(fallback)
+    assert "SR-T24-NATIVE" in t24["note"] and "fallback" in t24["note"]
+
+
+# ── C18 no name-level deselect in the shipped registry (SR-NO-DESELECT) ──────────────────────────────────────────────────────────────────
+
+def deselect_paths(node, path="$"):
+    """Every JSON path whose key mentions `deselect`, at any depth (a nested part, an `any_of` alternative, a `deselect_why` left behind)."""
+    found = []
+    if isinstance(node, dict):
+        for k, v in node.items():
+            if "deselect" in k.lower():
+                found.append(f"{path}.{k}")
+            found += deselect_paths(v, f"{path}.{k}")
+    elif isinstance(node, list):
+        for i, v in enumerate(node):
+            found += deselect_paths(v, f"{path}[{i}]")
+    return found
+
+
+def test_c18_the_shipped_registry_carries_no_deselect_anywhere():
+    """Reads the registry file as shipped (not through the evaluator). Reversion: put back a `deselect` on any part, at any depth -> this test fails (next test)."""
+    doc = json.loads((REPO_ROOT / tr.DEFAULT_REGISTRY).read_text(encoding="utf-8"))
+    assert deselect_paths(doc) == []
+
+
+def test_c18_the_guard_reads_a_planted_deselect_at_any_depth_as_a_failure():
+    doc = json.loads((REPO_ROOT / tr.DEFAULT_REGISTRY).read_text(encoding="utf-8"))
+    assert deselect_paths(doc) == []
+    top = json.loads(json.dumps(doc))
+    next(p for p in shipped_check_in(top, "T14")["parts"] if p["kind"] == "pytest")["deselect"] = ["tests/test_driver.py::test_x"]
+    assert len(deselect_paths(top)) == 1
+    nested = json.loads(json.dumps(doc))
+    t24 = shipped_check_in(nested, "T24")["parts"][0]["alternatives"][0][0]
+    t24["deselect_why"] = "left behind"
+    assert deselect_paths(nested) and deselect_paths(nested)[0].endswith(".deselect_why")
+
+
+def shipped_check_in(doc, cid):
+    return next(c for c in doc["checks"] if c["id"] == cid)

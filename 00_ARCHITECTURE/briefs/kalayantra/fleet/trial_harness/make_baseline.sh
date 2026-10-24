@@ -15,7 +15,7 @@ chunks=0
 while :; do
   chunks=$((chunks + 1))
   rc=0
-  TRIAL_POLICY=default TRIAL_CODE_HEAD="$HEAD_SHA" TRIAL_BUDGET_S="${TRIAL_BUDGET_S:-330}" TRIAL_LABEL=baseline TRIAL_BASELINE="$HERE/baseline_report_4class.json" \
+  TRIAL_BASELINE_MODE=1 TRIAL_POLICY=default TRIAL_CODE_HEAD="$HEAD_SHA" TRIAL_BUDGET_S="${TRIAL_BUDGET_S:-330}" TRIAL_LABEL=baseline TRIAL_BASELINE="$HERE/baseline_report_4class.json" \
     "$HERE/run_trial.sh" "$CHECKOUT" "$OUT" || rc=$?
   if [ "$rc" -eq 75 ]; then
     if [ "$chunks" -ge "${BASELINE_MAX_CHUNKS:-40}" ]; then echo "chunk limit reached"; exit 3; fi

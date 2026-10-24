@@ -42,9 +42,11 @@ import dataclasses
 
 import math
 from dataclasses import dataclass, field
+from fractions import Fraction
 from datetime import datetime, timedelta, timezone
-from typing import Callable, Iterable
+from typing import Callable, Iterable, Mapping, Sequence
 
+from . import window_solver as _solver
 from .result_policy import ALL_NULL_REASON, POLICY_ALL_NULL, POLICY_QUALIFICATION, RESULT_POLICIES
 from .substrate import DB_BODY
 
@@ -93,6 +95,34 @@ class SweepRefusal(RuntimeError):
 
 
 @dataclass(frozen=True)
+class OperandSource:
+    """What the store supplies for ONE factor of a record (W0, SR-OD1 plan §2.7): the factor's change instants and their
+    completeness are PER FACTOR, so a record carrying a dṛṣṭi offset, a vedha overlay and a P1 state is not made complete
+    by whichever one of them happens to have a provider.
+
+      boundaries     the instants inside `[lo, hi)` at which THIS factor's operand state changes (None = no provider)
+      complete       the store asserts that list is complete over every support of the record
+      value_at       the factor's value in [0,1] at t (None = undeterminable). Read ONLY for a categorical factor the
+                     sweep cannot derive itself; dṛṣṭi / activity_kernel / vedha values stay the sweep's own
+      channel_at     the channel this factor assigns the record at t (`CHANNEL_FOR` / `CHANNEL_AGAINST`; None =
+                     undeterminable) — P1's agent_nature decides the side per instant (Q3(a)); absent ⇒ the record's
+                     channel is the static one `record_channel` gives
+      unknown_reason the named reason this factor's operand is undeterminable at t (None = it is not this factor's
+                     operand that is unknown); passed through to the window's reason instead of the generic
+                     `objective_unknown_over_component`
+      not_applicable the factor is DECLARED not applicable to this record (P1 combustion of a node / the Sun: L1 M-19,
+                     BPHS 7.28-29 translator's note PG99:C1) — it takes no part in the product (`na`), which is not the
+                     same statement as "contributes 1.0"
+    """
+    boundaries: Callable[[datetime, datetime], list[datetime]] | None = None
+    complete: bool = False
+    value_at: Callable[[datetime], float | None] | None = None
+    channel_at: Callable[[datetime], str | None] | None = None
+    unknown_reason: Callable[[datetime], str | None] | None = None
+    not_applicable: bool = False
+
+
+@dataclass(frozen=True)
 class SweepRecord:
     record_id: str
     root_id: str                       # contact_id on transit rows (§2.1 amendment 2)
@@ -117,6 +147,10 @@ class SweepRecord:
     # factor is evaluated) and, when the store has a position probe, whether the contact geometry
     # actually places the target inside/under the body's ray at t (None = not determinable).
     canonical_target: str | None = None
+    # P1 only (migration 1233): the period lord whose strength the P1 factors judge. It is the TRANSITING `agent` for the lord's own
+    # transit and a different graha for the AM-21 delivery forms (Sun / Jupiter through another lord's exaltation or debility
+    # sign), so the factor sources read the ANCHOR's sky, never the agent's (`record_store._anchor`: anchor or agent). Lowercase token.
+    period_anchor_lord: str | None = None
     # R7 [7]: instants INSIDE the support at which an operand's STATE changes (a dṛṣṭi source sign
     # ingress, a vedha interval edge): the objective is solved piecewise between them. And the instants
     # at which a smooth kernel is exactly maximal (a point contact's exact instant).
@@ -127,6 +161,14 @@ class SweepRecord:
     # gap that a piece would bridge, or an island that would score 0.
     state_boundaries_complete: bool = False
     peak_hints: Callable[[datetime, datetime], list[datetime]] | None = None
+    # S3 (the solver's seams): the body's longitude AND its longitudinal speed (degrees, degrees per DAY — the Swiss speed output) from ONE ephemeris call, and the
+    # Swiss station instants of the body (the stored, ephemeris-refined `t_exact`s: extra cuts, S0 K-2). Absent ⇒ the speed is a centred
+    # difference of `longitude_at` and no station is listed (the solver then proves monotonicity from the velocity sign alone).
+    longitude_speed_at: Callable[[datetime], tuple] | None = field(default=None, compare=False)
+    station_instants: Callable[[], list] | None = field(default=None, compare=False)
+    # W0: per-factor operand sources, keyed by factor_id. `state_boundaries` / `state_boundaries_complete` above are the
+    # record-wide DEFAULT a state-valued factor (dṛṣṭi, vedha) falls back to when it has no source of its own here.
+    operand_sources: dict = field(default_factory=dict, compare=False)
 
 
 # ── R4: the boundary adapters and the geometry contract ──────────────────────
@@ -190,6 +232,15 @@ class Outcome:
     null_state: str | None = None
     reason: str | None = None
     factor: str | None = None
+    # W0: a STATE-valued factor (a step function of the sky) is solved piecewise between its change instants, which
+    # must be known completely; they are carried PER FACTOR, with the other `OperandSource` hooks.
+    state_valued: bool = False
+    boundaries: Callable[[datetime, datetime], list[datetime]] | None = None
+    boundaries_complete: bool = False
+    channel_at: Callable[[datetime], str | None] | None = None
+    unknown_reason: Callable[[datetime], str | None] | None = None
+    # S3: a POINT kernel's geometry for the solver — (target longitude, ratified orb) in degrees; the value is `max(0, 1 − d/orb)` along each directed ray
+    tent: tuple | None = None
 
 
 def _check_unit(value, what: str) -> float:
@@ -219,6 +270,40 @@ def _kernel_value_at(rec: SweepRecord, ref: tuple, t: datetime) -> float | None:
         if r["value"] is not None:
             best = r["value"] if best is None else max(best, r["value"])
     return best
+
+
+_JD_UNIX_EPOCH = 2440587.5       # the same JD <-> datetime convention the store writes boundaries under (record_store._JD_UNIX_EPOCH)
+
+
+def jd_ulp_tolerance(t: datetime) -> timedelta:
+    """ONE JD-ulp at `t`: the spacing of the double that carries the instant's Julian Day (≈ 4.7e-10 d ≈ 40 µs at JD 2.46e6), rounded UP to the
+    datetime's microsecond, plus that one microsecond (the stored edge and the probe instant are each a whole-µs datetime). The substrate stores a contact boundary as a Julian-Day double that Swiss bisected to 1e-9 d (`swiss_bisect_tol_1e-9d`)
+    and `record_store` converts to a datetime; a stored edge therefore sits at most one JD-ulp from the sign / orb edge it names (measured 19–22 µs
+    on the real sky, AR_DIAG §2). This is the only slack the support/geometry check grants; a 1 s disagreement is 25,000 times larger."""
+    jd = t.timestamp() / 86400.0 + _JD_UNIX_EPOCH
+    return timedelta(microseconds=math.ceil(math.ulp(jd) * 86400.0 * 1e6) + 1)
+
+
+def sliver_resolution_s(t: datetime) -> float:
+    """SR-P1-SLIVER-D2: the stored-edge resolution at `t`, in seconds — the spacing of the JD double that carries the instant (≈ 40.2 µs at JD 2.46e6), COMPUTED, never a literal.
+    A piece shorter than this is not a sky configuration: its two edges are one sky event read on two paths, which land at most one ulp apart (N.7.6)."""
+    return math.ulp(t.timestamp() / 86400.0 + _JD_UNIX_EPOCH) * 86400.0
+
+
+def _geometry_at_edge(check, instant: datetime, side: str, lo: datetime, hi: datetime) -> bool | None:
+    """The geometry check at one END of a stored support `[lo, hi)` (the record's own, which holds the piece the end belongs to), under the boundary convention of the platform (half-open: a change instant is the
+    FIRST microsecond of the NEW state, which owns it — p1_operands.py BOUNDARIES, p1_operands_check.py NAMED LIMITS; SR-OD1 R-2 / SR-H2-1S).
+    A stored edge is exact only to one JD-ulp (`jd_ulp_tolerance`), so a `False` AT the edge is accepted iff the target is inside at the first
+    instant one ulp INSIDE the support (`start`:`instant + ulp`; `end`: `instant - ulp`), i.e. the true edge lies within one ulp of the stored one.
+    Never looser: a `False` there too (the edge is further than one ulp off), or an undeterminable probe, keeps the `False`; a `True` or `None`
+    at the edge itself is returned unchanged. The probe never leaves the support (clamped to its midpoint when the support is shorter than 2 ulp)."""
+    g = check(instant)
+    if g is not False:
+        return g
+    tol = jd_ulp_tolerance(instant)
+    mid = lo + (hi - lo) / 2
+    probe = min(instant + tol, mid) if side == "start" else max(instant - tol, mid)
+    return check(probe) is True
 
 
 def activity_kernel(row: dict, rec: SweepRecord) -> Outcome:
@@ -257,7 +342,8 @@ def activity_kernel(row: dict, rec: SweepRecord) -> Outcome:
     if probe["reason"] == "orb_not_ratified":
         return _missing(row, "orb_not_ratified")
     return Outcome("fn", fn=lambda t, _ref=ref: _kernel_value_at(rec, _ref, t),
-                   null_state=row["null_state"], factor=row["factor_id"])
+                   null_state=row["null_state"], factor=row["factor_id"],
+                   tent=(float(parsed[1]), float(ap["angular"]["orb_deg"])))
 
 
 def graduated_drishti(row: dict, rec: SweepRecord,
@@ -284,29 +370,90 @@ def graduated_drishti(row: dict, rec: SweepRecord,
         v = drishti(_a, off, _ref)         # None = an operand the source cannot classify (unqualified)
         return None if v is None else _check_unit(v, "graduated_drishti")
 
-    return Outcome("fn", fn=_fn, null_state=row["null_state"], factor=row["factor_id"])
+    # SR-D6-OBJECTIVE-UNKNOWN: the source's OWN reason for a None value (`drishti.reason`, optional) is passed through as the
+    # factor's `unknown_reason` (W0), so an undeterminable dṛṣṭi read is NAMED, never the generic code
+    reason_of = getattr(drishti, "reason", None)
+
+    def _why(t: datetime, _o=off_at, _a=rec.agent, _ref=ref):
+        off = _o(t)
+        return None if off is None or reason_of is None else reason_of(_a, off, _ref)
+
+    return Outcome("fn", fn=_fn, null_state=row["null_state"], factor=row["factor_id"],
+                   unknown_reason=None if reason_of is None else _why)
 
 
 def vedha_attenuation(row: dict, rec: SweepRecord,
                       vedha: Callable[[SweepRecord, datetime], float | None] | None) -> Outcome:
-    """The vedha operand is the state of the overlay interval at t (§5). The overlay is NOT this
-    writer's substrate: until a source is bound (ruling pending: kala_vedha_gochara vs. derived) and
-    the registry carries the state→value mapping, the operand is a named missing input — never 1.0."""
+    """The vedha operand is the state of the overlay interval at t (§5). Two sources are understood:
+
+      * a STRUCTURED source (`vedha.overlay(rec, factor_ref)` — `vedha_source.VedhaProvider`, SR-OD1 C1): the factor is
+        declared not-applicable (`na`: adverse residence, an uncited pair, a node as the transiting body) or a step function
+        over the record's supports whose own change instants are COMPLETE and whose undeterminable stretches carry their named
+        reason (`obstructor_residence_unknown`, `node_residence_unknown`). Each segment's value must equal the row's declared
+        state→value mapping — a source that disagrees with the registry is refused, never trusted;
+      * a plain `(rec, t) -> float` callable (the pre-C1 contract, kept for the sweep's own tests): value only; its boundaries come
+        from the record-wide list or a per-factor `OperandSource`.
+
+    With no source bound the operand is a named missing input — never 1.0."""
     if vedha is None:
         return _missing(row, "vedha_overlay_not_bound")
-    return Outcome("fn", fn=lambda t, _r=rec: vedha(_r, t), null_state=row["null_state"],
-                   factor=row["factor_id"])
+    overlay_of = getattr(vedha, "overlay", None)
+    if overlay_of is None:
+        return Outcome("fn", fn=lambda t, _r=rec: vedha(_r, t), null_state=row["null_state"],
+                       factor=row["factor_id"])
+    ap = row.get("applicability")
+    if not ap:                    # the 1.0.0 row declares no mapping: there is nothing to apply a derived state to
+        return _missing(row, "applicability_undeclared")
+    mapping = ap["mapping"]
+    ov = overlay_of(rec, (row["factor_id"], row["rule_version"]))
+    if not ov.applicable:
+        return Outcome("na", factor=row["factor_id"], reason=ov.not_applicable_reason)
+    for seg in ov.segments:
+        if seg.state in mapping and seg.value != float(mapping[seg.state]):
+            raise SweepRefusal(f"record {rec.record_id}: the vedha source valued a {seg.state!r} stretch {seg.value!r}, but "
+                               f"{row['factor_id']}@{row['rule_version']} maps {seg.state!r} to {mapping[seg.state]!r}")
+        if seg.value is not None and seg.state not in mapping:
+            raise SweepRefusal(f"record {rec.record_id}: the vedha source valued a {seg.state!r} stretch, which the row does not map")
+    return Outcome("fn", fn=ov.value_at, null_state=row["null_state"], factor=row["factor_id"], state_valued=True,
+                   boundaries=ov.boundaries, boundaries_complete=ov.complete, unknown_reason=ov.unknown_reason_at)
 
 
-def categorical_factor(row: dict) -> Outcome:
+def categorical_factor(row: dict, rec: SweepRecord | None = None) -> Outcome:
     """A categorical/step factor with no declared value mapping cannot yield a number in [0,1]:
     the operand is a named missing input (`value_mapping_undeclared`), never a default. A row that
-    DOES declare a `value_mapping` has a shape this sweep cannot interpret yet — refused by name."""
+    DOES declare a `value_mapping` has a shape this sweep cannot interpret yet — refused by name.
+    W0: a record whose store supplies an `OperandSource` WITH a `value_at` for this factor gets a function-valued
+    outcome — the source (not the sweep) applied the factor's value rule; the sweep never maps a category itself."""
     if row.get("value_mapping"):
         raise SweepRefusal(
             f"factor {row['factor_id']!r} declares a value_mapping; the sweep has no reader for it yet "
             "— refused, never ignored")
+    src = None if rec is None else rec.operand_sources.get(row["factor_id"])
+    if src is not None and src.not_applicable:
+        return Outcome("na", factor=row["factor_id"], reason="not_applicable_by_declaration")
+    if src is not None and src.value_at is not None:
+        return _stateful(Outcome("fn", fn=src.value_at, null_state=row["null_state"], factor=row["factor_id"]), rec)
     return _missing(row, "value_mapping_undeclared")
+
+
+def _stateful(out: Outcome, rec: SweepRecord) -> Outcome:
+    """Attach the factor's own boundaries / completeness / channel / reason hooks to its function-valued outcome. A factor
+    with an `OperandSource` uses it; a state-valued factor without one inherits the record-wide `state_boundaries` (the
+    pre-W0 behaviour, unchanged)."""
+    if out.kind != "fn" or out.boundaries is not None:     # an outcome that brings its own boundaries (C1 vedha) keeps them
+        return out
+    src = rec.operand_sources.get(out.factor)
+    if src is not None:
+        b, done = src.boundaries, src.complete
+    else:
+        b, done = rec.state_boundaries, rec.state_boundaries_complete
+    # dṛṣṭi / vedha are state-valued by name; a categorical factor is so by having a source that supplies its values
+    return dataclasses.replace(
+        out, state_valued=out.factor in STATE_VALUED_FACTORS or (src is not None and src.value_at is not None),
+        boundaries=b, boundaries_complete=bool(done and b is not None),
+        channel_at=None if src is None else src.channel_at,
+        # a source's reason wins; else the outcome's OWN (dṛṣṭi's: the rule authority's name, SR-D6-OBJECTIVE-UNKNOWN) is kept, never erased
+        unknown_reason=out.unknown_reason if src is None or src.unknown_reason is None else src.unknown_reason)
 
 
 def evaluate_factors(rec: SweepRecord, factor_rows: list[dict], *,
@@ -320,11 +467,11 @@ def evaluate_factors(rec: SweepRecord, factor_rows: list[dict], *,
         if fid == "activity_kernel":
             out.append(activity_kernel(row, rec))
         elif fid == "graduated_drishti":
-            out.append(graduated_drishti(row, rec, drishti))
+            out.append(_stateful(graduated_drishti(row, rec, drishti), rec))
         elif fid == "vedha_attenuation":
-            out.append(vedha_attenuation(row, rec, vedha))
+            out.append(_stateful(vedha_attenuation(row, rec, vedha), rec))
         elif fid in CATEGORICAL_FACTORS:
-            out.append(categorical_factor(row))
+            out.append(categorical_factor(row, rec))
         else:
             raise SweepRefusal(
                 f"path {rec.path_id}: factor {fid!r} has no sweep evaluator yet "
@@ -342,6 +489,35 @@ class RecordProgram:
     reasons: list                       # [(factor_id, reason)] of every missing operand
     outcomes: list = field(default_factory=list)
     channel: str = CHANNEL_FOR
+
+    @property
+    def has_channel_fn(self) -> bool:
+        """True iff one of this record's factors assigns the side PER INSTANT (P1 agent_nature, Q3(a))."""
+        return any(o.channel_at is not None for o in self.outcomes)
+
+    def channel_at(self, t: datetime) -> str | None:
+        """The record's channel at t: its deciding factor's per-instant side when it has one (None = undeterminable at
+        t), else the static channel. A value that is not a channel is refused, never coerced."""
+        for o in self.outcomes:
+            if o.channel_at is not None:
+                c = o.channel_at(t)
+                if c is not None and c not in (CHANNEL_FOR, CHANNEL_AGAINST):
+                    raise SweepRefusal(f"{o.factor}: channel {c!r} at {t.isoformat()} is neither the for nor the "
+                                       "against channel")
+                return c
+        return self.channel
+
+    def undeterminable_at(self, t: datetime) -> bool:
+        return self.value_at(t) is None or self.channel_at(t) is None
+
+    def unknown_reason_at(self, t: datetime) -> str | None:
+        """The named reason a factor of this record gives for being undeterminable at t (None = no factor names one)."""
+        for o in self.outcomes:
+            if o.unknown_reason is not None:
+                r = o.unknown_reason(t)
+                if r is not None:
+                    return r
+        return None
 
     @property
     def checks(self) -> list:
@@ -446,8 +622,13 @@ def build_program(rec: SweepRecord, factor_rows: list[dict], *,
                 qualified = False
             # an OMITTED operand (a rank factor, K-A) takes no part in the product and breaks no qualification:
             # it is not an unresolved reason of the member (`unresolved` classifies unqualified members only)
-    if qualified and any(o.kind == "fn" and o.factor in STATE_VALUED_FACTORS for o in outcomes) \
-            and not (rec.state_boundaries is not None and rec.state_boundaries_complete):
+    if sum(1 for o in outcomes if o.channel_at is not None) > 1:
+        raise SweepRefusal(f"record {rec.record_id}: more than one factor assigns the channel — the side is "
+                           "decided by exactly one factor")
+    # W0: completeness is judged PER FACTOR — every state-valued function-valued factor (a channel-deciding one is
+    # state-valued) must carry its own complete boundary list; one factor's provider never vouches for another's
+    if qualified and any(o.state_valued and o.kind == "fn"
+                         and not (o.boundaries is not None and o.boundaries_complete) for o in outcomes):
         null_states.add(UNQUALIFIED)
         reasons.append(("state_boundaries", STATE_BOUNDARIES_REASON))
         qualified = False
@@ -602,20 +783,198 @@ class WindowDraft:
     objective_value: float | None = None   # that function's value at the peak — distinct from `score`
     affected_channels: tuple = ()          # the channels an UNQUALIFIED member feeds (an unknown channel feeds both)
     policy: str = "window_qualification/1"  # the result policy this window was drafted under (R9-1; the manifest's)
+    #: R4 (SR-Q6-L1-AMEND): the identity of the combustion authority a P1 grain's states were derived from — the `bg_combustion_orbs` row ids and
+    #: content digest, and the L1 combustion module's digest (`p1_operands.P1Operands.combustion_inheritance`). None for every other grain.
+    combustion_inheritance: dict | None = None
+    solver_certificate: dict | None = None  # R-7: the solver's piece tree (`window_solver.stored_certificate`) — numbered, or a budget-exhausted blank
+    #: SR-P1-SLIVER-D2: how many elementary pieces shorter than one JD ulp (`sliver_resolution_s`) were left out of this window's maximum; None for a blank (no maximum was taken)
+    sliver_pieces_excluded: int | None = None
 
     def qualification(self) -> dict:
-        """The structured provenance persisted with the window (1240 `qualification`; closed keys)."""
-        return {"policy": self.policy, "unqualified_reason": self.unqualified_reason, "unresolved": dict(sorted(self.unresolved.items())),
-                "affected_channels": sorted(self.affected_channels), "members": self.members,
-                "qualified_members": self.qualified_members}
+        """The structured provenance persisted with the window (1240 `qualification`; closed keys, plus `combustion_inheritance` for a P1 grain bound
+        to the Form B operands and `solver_certificate` for a solved or budget-exhausted window — both admitted by migration 1402)."""
+        q = {"policy": self.policy, "unqualified_reason": self.unqualified_reason, "unresolved": dict(sorted(self.unresolved.items())),
+             "affected_channels": sorted(self.affected_channels), "members": self.members,
+             "qualified_members": self.qualified_members}
+        if self.combustion_inheritance is not None:
+            q["combustion_inheritance"] = self.combustion_inheritance
+        if self.solver_certificate is not None:
+            q["solver_certificate"] = self.solver_certificate
+        if self.sliver_pieces_excluded:
+            q["certificate"] = {"sliver_pieces_excluded": self.sliver_pieces_excluded}      # the generic extension member migration 1402 admits; absent = none excluded
+        return q
 
 
-#: R8-4/R8-6: until a solver with a stated global-maximum guarantee exists for function-valued factors
-#: (a point kernel with a ratified orb, a dṛṣṭi source, a vedha overlay), EVERY window with a qualified
-#: function-valued member is unqualified — peak, score and evidence NULL — under this named reason. It is a
-#: switch, not a limit: `draft_windows(allow_dynamic=True)` exists for the solver's own tests and is never
-#: passed by the writer.
+#: R8-4/R8-6 (RETIRED for the writer by S3): a window with a qualified function-valued member used to be unqualified under this named reason
+#: until a solver with a stated global-maximum guarantee existed. The writer now passes `solver=PRODUCTION_SOLVER` and the window is SOLVED (a
+#: certified number) or blank under one of the solver's named reasons (`window_qualification_table/2`, rule 2). The switch still answers a caller
+#: that supplies NEITHER `solver` nor `allow_dynamic` (so a stale caller blanks rather than numbers), and `allow_dynamic=True` stays as the LEGACY
+#: SAMPLER (`maximise_earliest`) that the solver's tests use as a weak oracle; the writer never passes it.
 DYNAMIC_SWITCH_REASON = "dynamic_objective_solver_guarantee_not_available"
+
+#: the audited minimum spacing of two consecutive Swiss stations of one body (Mercury, 19.7585 d: S0 §2.3, `window_verifier._junction_problem`), rounded DOWN —
+#: the premise of the solver's H1 (a hidden reversal pair cannot fit between samples taken at most 5 d apart)
+AUDITED_MIN_STATION_SPACING_S = 19.75 * 86400.0
+
+
+@dataclass(frozen=True)
+class SolverConfig:
+    """How the sweep calls the window solver. The budget is PER WINDOW only (R-6: no grain-level budget, so no order dependence)."""
+    max_evals: int = _solver.MAX_EVALS_WINDOW
+    min_station_spacing_s: float = AUDITED_MIN_STATION_SPACING_S
+    fd_half_seconds: float = 30.0          # the centred-difference half-width of the speed when the record carries no speed seam
+
+
+PRODUCTION_SOLVER = SolverConfig()
+
+
+def _wrap180(x: float) -> float:
+    return (x + 180.0) % 360.0 - 180.0
+
+
+#: the Julian-Day double the ephemeris seam reads on (`ka_gochara_v5.speed_at`: `jd = t.timestamp() / 86400 + 2440587.5`). A JD near 2.46e6 is a double on a grid of
+#: 2^-31 d = 40.2 µs, so a seam read is a STEP function of time with that step (a stored/probed instant is exact only to one JD-ulp: D-2/D-3/D-12).
+_JD_UNIX_EPOCH = 2440587.5
+_UNIX_EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
+_US = timedelta(microseconds=1)
+
+
+def _jd_to_datetime(jd: float) -> datetime:
+    """The µs-quantised instant of a JD double. The seam maps it back to the SAME double (the µs error is ≤ 0.5 µs against a half-grid of 20 µs)."""
+    return _UNIX_EPOCH + timedelta(microseconds=round((jd - _JD_UNIX_EPOCH) * 86_400_000_000.0))
+
+
+def _split_jd(origin: datetime) -> tuple:
+    """The JD of `origin` as a double-double `(hi, lo)`: `hi` its nearest JD double (the seam's own grid), `lo` the remainder (|lo| ≤ 2.3e-10 d). Positioning an instant
+    by `hi` alone would lose up to 20 µs — half a JD-ulp — of the true time."""
+    exact = Fraction((origin - _UNIX_EPOCH) // _US, 86_400_000_000) + Fraction(_JD_UNIX_EPOCH)
+    hi = float(exact)
+    return hi, float(exact - Fraction(hi))
+
+
+def _kinematics(rec: "SweepRecord", origin: datetime, cfg: SolverConfig):
+    """`s (seconds from origin) -> (longitude deg, speed deg/s)` for the record's body: the record's speed seam (deg/day) read CONTINUOUSLY in `s`, else a centred difference of
+    `longitude_at`. The last few instants are memoised so the solver's offset and velocity reads of one instant cost one evaluation.
+
+    H3 (`window_solver`): `Tent.offset` is a deterministic CONTINUOUS function. The seam is not: it reads the ephemeris at a JD double, a step function of time (steps of one
+    JD-ulp, 40.2 µs), so the tent kernel jumped by up to |speed|/orb × 40 µs at every step — more than the solver's 1e-11 tolerances at a sliver where a support ends within one ulp
+    of its own orb crossing (DIAG_P34 clusters A + D: 51 of 55 first failures on major_loss P3/P4). The offset and the speed are therefore the LINEAR INTERPOLATION, at the exact
+    float time, between the seam's reads at the two JD doubles that bracket it (the longitude interpolated wrap-safe), which keeps the solver's stated limits (`MONO_TOL`, `EPS_M`)."""
+    cache: dict = {}
+    if rec.longitude_speed_at is not None:
+        # the origin's JD as a double-double (hi, lo): the position of s on the JD axis is then exact to ~1 ns, not to the 20 µs the rounded JD alone would lose
+        base, base_lo = _split_jd(origin)
+        seam = rec.longitude_speed_at
+
+        def _read(jd: float):
+            t = _jd_to_datetime(jd)
+            lon, per_day = seam(t)
+            if lon is None or per_day is None:
+                raise SweepRefusal(f"record {rec.record_id}: the ephemeris seam returned no longitude/speed at {t.isoformat()} — refused, never defaulted")
+            return float(lon), float(per_day)
+
+    def at(s: float):
+        got = cache.get(s)
+        if got is None:
+            if rec.longitude_speed_at is not None:
+                x = s / 86400.0
+                j0 = base + x
+                f0 = (base - j0) + base_lo + x                    # the true JD minus j0, days (exact to ~1e-14 d)
+                if f0 < 0.0:
+                    j0 = math.nextafter(j0, -math.inf)
+                    f0 = (base - j0) + base_lo + x
+                j1 = math.nextafter(j0, math.inf)
+                step = j1 - j0
+                frac = f0 / step                                  # in [0, 1)
+                l0, v0 = _read(j0)
+                l1, v1 = _read(j1)
+                lon = (l0 + frac * _wrap180(l1 - l0)) % 360.0
+                spd = (v0 + frac * (v1 - v0)) / 86400.0
+            else:
+                t = origin + timedelta(seconds=s)
+                h = timedelta(seconds=cfg.fd_half_seconds)
+                lon = rec.longitude_at(t)
+                a, b = rec.longitude_at(t - h), rec.longitude_at(t + h)
+                spd = None if a is None or b is None else _wrap180(float(b) - float(a)) / (2.0 * cfg.fd_half_seconds)
+                if lon is None or spd is None:
+                    raise SweepRefusal(f"record {rec.record_id}: the ephemeris seam returned no longitude/speed at {t.isoformat()} — refused, never defaulted")
+            if len(cache) > 16:
+                cache.clear()
+            got = cache[s] = (float(lon), float(spd))
+        return got
+    return at
+
+
+def _solver_steps(p: "RecordProgram", origin: datetime) -> list:
+    """The record's non-tent factors as solver steps: constants, state-valued functions (their own change instants, completeness and named reasons), and the
+    per-instant channel as a 1/0 multiplier (a record on the against side adds nothing to the for-sum)."""
+    def at(s: float) -> datetime:
+        return origin + timedelta(seconds=s)
+
+    def secs(t: datetime) -> float:
+        return (t - origin).total_seconds()
+
+    steps: list = []
+    for o in p.outcomes:
+        if o.kind == "na":
+            continue
+        if o.kind == "missing":
+            if o.null_state == OMIT:
+                continue
+            raise SweepRefusal(f"record {p.rec.record_id}: a qualified record carries a missing operand {o.factor!r} (null_state {o.null_state!r}) — refused")
+        if o.kind == "const":
+            steps.append(_solver.constant_step(o.value))
+            continue
+        if o.tent is not None:
+            continue
+        steps.append(_solver.Step(
+            value_at=lambda s, _o=o: _o.fn(at(s)),
+            boundaries=None if o.boundaries is None else (lambda lo_s, hi_s, _o=o: [secs(c) for c in _o.boundaries(at(lo_s), at(hi_s))]),
+            complete=bool(o.boundaries_complete),
+            unknown_reason=None if o.unknown_reason is None else (lambda s, _o=o: _o.unknown_reason(at(s)))))
+    decider = next((o for o in p.outcomes if o.channel_at is not None), None)
+    if decider is not None:
+        steps.append(_solver.Step(
+            value_at=lambda s: (lambda c: None if c is None else (1.0 if c == CHANNEL_FOR else 0.0))(p.channel_at(at(s))),
+            boundaries=None if decider.boundaries is None else (lambda lo_s, hi_s, _o=decider: [secs(c) for c in _o.boundaries(at(lo_s), at(hi_s))]),
+            complete=bool(decider.boundaries_complete),
+            unknown_reason=None if decider.unknown_reason is None else (lambda s, _o=decider: _o.unknown_reason(at(s)))))
+    return steps
+
+
+def solver_problem(path_id: str, programs: list, lo: datetime, hi: datetime, cfg: SolverConfig):
+    """The `window_solver.Problem` for ONE window: the qualified members' factors, time in seconds from `lo`. A point-kernel record becomes one tent member per
+    directed ray (the kernel is the best ray: a max inside the record's root/agent group); a record on the against channel is not a member of a for-channel
+    objective. Pure: the only ephemeris contact is through the records' own seams."""
+    origin = lo
+    L = (hi - lo).total_seconds()
+    members: list = []
+    for p in programs:
+        rec = p.rec
+        if not p.has_channel_fn and p.channel == CHANNEL_AGAINST:
+            continue
+        steps = tuple(_solver_steps(p, origin))
+        supports = tuple(((a - origin).total_seconds(), (b - origin).total_seconds()) for a, b in rec.supports)
+        group = rec.agent if path_id == "P4" else rec.root_id
+        tent_o = next((o for o in p.outcomes if o.tent is not None), None)
+        if tent_o is None:
+            members.append(_solver.Member(key=rec.record_id, group=group, supports=supports, steps=steps))
+            continue
+        level, orb = tent_o.tent
+        at = _kinematics(rec, origin, cfg)
+        # a station just OUTSIDE the window still leaves its noise comb in the window's end (SR-NEAR-STATION-TIE): listed within NEAR_STATION_S of it
+        # (the solver cuts only at the ones inside; the others only mark a zone)
+        stations = () if rec.station_instants is None else tuple(sorted((t - origin).total_seconds() for t in rec.station_instants()
+                                                                        if -_solver.NEAR_STATION_S <= (t - origin).total_seconds() <= L + _solver.NEAR_STATION_S))
+        for k, ray in enumerate(rec.aspect_rays or (None,)):
+            shift = 0.0 if ray is None else float(ray)
+            members.append(_solver.Member(
+                key=f"{rec.record_id}#{k}", group=group, supports=supports, steps=steps,
+                tent=_solver.Tent(offset=lambda s, _a=at, _sh=shift, _lv=level: _wrap180(_a(s)[0] + _sh - _lv), orb=orb,
+                                  velocity=lambda s, _a=at: _a(s)[1], stations=stations,
+                                  min_station_spacing=cfg.min_station_spacing_s)))
+    return _solver.Problem(lo=0.0, hi=L, objective=_solver.OBJECTIVE_MINMAX if path_id == "P4" else _solver.OBJECTIVE_SUM, members=tuple(members),
+                           origin_jd=_split_jd(origin)[0])
 
 OBJECTIVE_P4 = "max_min_agent_activity"          # S:321-323, O-RP-3
 OBJECTIVE_EVIDENCE = "evidence_for_per_root_sum"  # Σ over roots of the per-root max, for-channel
@@ -648,6 +1007,18 @@ def _known_nowhere(prog: "RecordProgram", a: datetime, b: datetime, samples: int
     return all(prog.value_at(a + timedelta(seconds=span * k / samples)) is None for k in range(samples))
 
 
+def _named_reason_everywhere(prog: "RecordProgram", supports, samples: int = 24) -> str | None:
+    """The ONE reason the record's factors name for the operand being undeterminable at every sampled instant of `supports` (P1a: a node
+    in a sign the verse reserves, `node_dignity_unclassified`; a Mercury / Venus without stored stations); None when no factor names one or
+    the names differ — the generic reason then stands, a reason is never picked among several."""
+    seen: set = set()
+    for a, b in supports:
+        span = (b - a).total_seconds()
+        for k in range(samples):
+            seen.add(prog.unknown_reason_at(a + timedelta(seconds=span * k / samples)))
+    return next(iter(seen)) if len(seen) == 1 and None not in seen else None
+
+
 def _pieces(lo: datetime, hi: datetime, progs: list[RecordProgram]):
     """Elementary pieces of [lo, hi): between consecutive support endpoints the live set is constant."""
     cuts = {lo, hi}
@@ -656,9 +1027,12 @@ def _pieces(lo: datetime, hi: datetime, progs: list[RecordProgram]):
             if a < hi and b > lo:
                 cuts.add(max(a, lo))
                 cuts.add(min(b, hi))
-                # R7 [7]: the EXACT instants at which an operand's state changes inside the support
-                if p.rec.state_boundaries is not None:
-                    cuts.update(c for c in p.rec.state_boundaries(max(a, lo), min(b, hi)) if lo < c < hi)
+                # R7 [7]: the EXACT instants at which an operand's state changes inside the support — the record-wide
+                # list and, W0, each factor's own
+                providers = ([] if p.rec.state_boundaries is None else [p.rec.state_boundaries]) + \
+                    [o.boundaries for o in p.outcomes if o.boundaries is not None]
+                for provider in providers:
+                    cuts.update(c for c in provider(max(a, lo), min(b, hi)) if lo < c < hi)
     ordered = sorted(cuts)
     return [(a, b, [p for p in progs if _contains(p.rec.supports, a)])
             for a, b in zip(ordered, ordered[1:])]
@@ -675,13 +1049,15 @@ def reduce_at(progs: list[RecordProgram], t: datetime, event_class: str) -> dict
     evals: dict[str, dict] = {}
     for p in progs:
         v = p.value_at(t) if p.qualified else None
-        if p.qualified and v is not None:
-            evals[p.rec.record_id] = {c: (v if c == p.channel else 0.0) for c in _score.CHANNELS}
+        ch = p.channel_at(t)               # W0: per instant when a factor decides the side, else the static channel
+        if p.qualified and v is not None and ch in _score.CHANNELS:
+            evals[p.rec.record_id] = {c: (v if c == ch else 0.0) for c in _score.CHANNELS}
         else:
             ev = {"unqualified": True,
-                  "unqualified_reasons": [r for _f, r in p.reasons] or ["operand_undeterminable_at_instant"]}
-            if p.channel in _score.CHANNELS:
-                ev["unqualified_channel"] = p.channel
+                  "unqualified_reasons": [r for _f, r in p.reasons]
+                  or [p.unknown_reason_at(t) or "operand_undeterminable_at_instant"]}
+            if ch in _score.CHANNELS:
+                ev["unqualified_channel"] = ch
             evals[p.rec.record_id] = ev
     return _score.path_channel_scores([p.rec for p in progs], event_class, evals)
 
@@ -694,6 +1070,20 @@ def _agent_activity(live: list[RecordProgram], agent: str, t: datetime) -> float
     if not vals or any(v is None for v in vals):
         return None          # R8-6: an unknown record is never dropped before the max — the true maximum may be ITS value
     return max(vals)
+
+
+UNKNOWN_OVER_COMPONENT = "objective_unknown_over_component"
+
+
+def _noting_unknown(f, live: list[RecordProgram], seen: set):
+    """`f` unchanged, plus: whenever it is undeterminable at t, the named reasons the live records' factors give for t are
+    added to `seen` (W0 reason pass-through). It adds no evaluation of `f` and changes none of its values."""
+    def noted(t):
+        v = f(t)
+        if v is None:
+            seen.update(r for p in live if p.undeterminable_at(t) for r in [p.unknown_reason_at(t)] if r is not None)
+        return v
+    return noted
 
 
 def _objective_fn(path_id: str, live: list[RecordProgram], event_class: str):
@@ -713,7 +1103,10 @@ def draft_windows(event_class: str, records: list[SweepRecord],
                   vedha: Callable[[SweepRecord, datetime], float | None] | None = None,
                   compute_valence: Callable | None = None,
                   allow_dynamic: bool = False,
-                  policy: str = POLICY_QUALIFICATION) -> tuple[list[WindowDraft], dict]:
+                  solver: SolverConfig | None = None,
+                  policy: str = POLICY_QUALIFICATION,
+                  combustion_inheritance: dict | None = None,
+                  window_solver: Callable[[dict], object] | None = None) -> tuple[list[WindowDraft], dict]:
     """The grain's windows (one path-version) and an exclusion ledger — every record accounted.
 
     Window construction (Codex round 6, R3): ONE window per MAXIMAL CONNECTED COMPONENT of the
@@ -739,8 +1132,9 @@ def draft_windows(event_class: str, records: list[SweepRecord],
     (for / against / unknown) and is qualified or not:
       1. an UNQUALIFIED member whose channel is `for` or unknown ⇒ the objective is unqualified: peak, score,
          evidence_for and evidence_against are NULL (reason = the first unresolved reason, sorted);
-      2. else, a QUALIFIED FUNCTION-VALUED member ⇒ unqualified under `dynamic_objective_solver_guarantee_not_
-         available` (the named switch; `allow_dynamic` lifts it for the solver's own tests only);
+      2. else, a QUALIFIED FUNCTION-VALUED member ⇒ the window is SOLVED by the certified solver (`solver=`, `window_qualification_table/2`):
+         a proven global maximum and its earliest tie instant, or no number and a named solver reason (`window_solver` reasons). A caller that passes
+         neither `solver` nor the legacy sampler (`allow_dynamic`) is answered with the retired switch `dynamic_objective_solver_guarantee_not_available`;
       3. else the objective Σ-over-roots-of-the-per-root-max FOR-channel value is determined — a population with
          no for-channel member (against-only) has the identically-zero objective, whose earliest maximum is the
          component start — and `peak`, `evidence_for` are stored;
@@ -748,11 +1142,21 @@ def draft_windows(event_class: str, records: list[SweepRecord],
          max-min value); NULL when a live member at the peak is unqualified (its product is unknown);
       5. `evidence_against` is the per-instant against reduction at the peak: NULL iff the path cannot
          evaluate it, or a live unqualified against/unknown-channel member could feed it.
-    Admission and admitted support are unchanged; known partial subtotals are never stored as complete."""
+    Admission and admitted support are unchanged; known partial subtotals are never stored as complete.
+
+    SOLVER SEAM (R-6/R-7). `window_solver`, when given, solves a component that has a function-valued qualified member INSTEAD of the piece
+    sampler and lifts the dynamic switch for it. It is called with {path_id, lo, hi, objective, members (the qualified programs), event_class}
+    and returns an object with `.status` ('solved' | 'blank'), `.value`, `.instant` (an aware datetime), `.reason` and `.certificate` (the JSON
+    object `window_solver.stored_certificate` builds, or None). The budget is the callable's and is PER WINDOW: nothing is shared between
+    components, so an exhausted window never blanks the next. A blank outcome is a named blank (reason, `unresolved[reason] = 1`, unqualified
+    valence) that carries its certificate; a solved one flows through the common tail below with its certificate attached. The adapter that
+    turns programs into the solver's problem is the integration's (S3)."""
     from services.gochara_rules import valence as _valence_mod
     valence_fn = compute_valence or _valence_mod.compute_valence
     if policy not in RESULT_POLICIES:
         raise SweepRefusal(f"result policy {policy!r} is not one of {RESULT_POLICIES}")
+    if sum(x for x in (solver is not None, allow_dynamic, window_solver is not None)) > 1:
+        raise SweepRefusal("`solver`, `allow_dynamic` (the legacy sampler) and `window_solver` (the callable seam) are mutually exclusive — a window is numbered by exactly one engine")
 
     excluded = {"not_admitted": 0, "admission_unqualified": 0, "testimony": 0, "no_support": 0}
     members: list[SweepRecord] = []
@@ -780,7 +1184,12 @@ def draft_windows(event_class: str, records: list[SweepRecord],
     # The against channel is EVALUATED when the path assigns a direction per record (P2), or when
     # its registry row declares no against-channel operand at all (empty sum = 0.0). A declared or
     # ambiguous row leaves it NULL — derived from the row, never from the path's name.
-    against_evaluated = path_id in DIRECTIONAL_PATHS or against_channel_state(factor_rows) == "none_declared"
+    # P1B: P1's rows DECLARE the operand (agent_nature: benefic → favourable channel, malefic → adverse) and the sweep now places
+    # every qualified P1 record in a channel per instant (`record_channel` refuses a P1 record no factor places), so a declared
+    # operand on a categorical path is EVALUATED; an unqualified member whose side is unknown still makes the sum unqualified
+    # (`against_unq`). An ambiguous row stays NULL.
+    against_evaluated = (path_id in DIRECTIONAL_PATHS or against_channel_state(factor_rows) == "none_declared"
+                         or (path_id in CATEGORICAL_PATHS and against_channel_state(factor_rows) == "declared"))
     programs = {r.record_id: build_program(r, factor_rows, drishti=drishti, vedha=vedha)
                 for r in members}
     # A record whose operand is undeterminable over its WHOLE support is unqualified — never a 0.0
@@ -790,9 +1199,11 @@ def draft_windows(event_class: str, records: list[SweepRecord],
             if all(_known_nowhere(prog, a, b) for a, b in prog.rec.supports):
                 prog.qualified = False
                 prog.null_states.add(UNQUALIFIED)
-                prog.reasons.append(("operand", "operand_undeterminable_over_support"))
+                prog.reasons.append(("operand", _named_reason_everywhere(prog, prog.rec.supports) or "operand_undeterminable_over_support"))
     for prog in programs.values():
-        prog.channel = _program_channel(event_class, prog.rec, prog.qualified)
+        # W0: a record whose side is decided per instant by a factor has no static channel (None = both, for an
+        # unqualified one); every other record's channel is the static `record_channel`
+        prog.channel = None if prog.has_channel_fn else _program_channel(event_class, prog.rec, prog.qualified)
 
     if path_id == "P4":
         by_agent: dict[str, list] = {}
@@ -847,7 +1258,8 @@ def draft_windows(event_class: str, records: list[SweepRecord],
             continue
 
         qualified = [p for p in in_win if p.qualified]
-        if not allow_dynamic and any(p.constant is None for p in qualified):
+        use_solver = solver is not None and any(p.constant is None for p in qualified)
+        if not allow_dynamic and solver is None and window_solver is None and any(p.constant is None for p in qualified):
             n_dyn = sum(1 for p in qualified if p.constant is None)
             unresolved[DYNAMIC_SWITCH_REASON] = n_dyn
             base["unresolved"] = unresolved
@@ -859,12 +1271,38 @@ def draft_windows(event_class: str, records: list[SweepRecord],
             continue
         cands: list[tuple[float, datetime]] = []
         unknown_pieces = 0
-        for a, b, live in _pieces(lo, hi, qualified):
+        reason_pieces: dict[str, int] = {}     # W0: unknown pieces per NAMED reason a factor passed through
+        unnamed_pieces = 0                     # unknown pieces no factor gave a reason for
+        solver_certificate = None
+        solved_by_solver = False
+        if window_solver is not None and any(p.constant is None for p in qualified):
+            out = window_solver({"path_id": path_id, "lo": lo, "hi": hi, "objective": objective_name, "members": qualified,
+                                 "event_class": event_class})
+            solver_certificate = out.certificate
+            if out.status != "solved":
+                if not out.reason:
+                    raise SweepRefusal("the window solver returned a blank without a reason")
+                base["unresolved"] = {**unresolved, out.reason: 1}
+                val = valence_fn(event_class, 0.0, 0.0, out.reason)
+                drafts.append(WindowDraft(
+                    peak_instant=None, score=None, evidence_for=None, evidence_against=None,
+                    outcome_valence_for_native=val.outcome_valence_for_native,
+                    unqualified_reason=out.reason, solver_certificate=solver_certificate, **base))
+                continue
+            cands.append((out.value, out.instant))
+            solved_by_solver = True
+        piece_slivers = 0                      # SR-P1-SLIVER-D2: pieces shorter than one JD ulp left out of the maximum on this (non-solver) path
+        for a, b, live in (() if solved_by_solver else _pieces(lo, hi, qualified)):
+            sliver = (b - a).total_seconds() < sliver_resolution_s(a)
             if path_id == "P4":
                 if {p.rec.agent for p in live} != {"jupiter", "saturn"}:
                     continue               # outside the joint support within this piece: not a candidate
             elif not live:
-                cands.append((0.0, a))     # no for-channel contributor: the objective is identically 0 here
+                if not use_solver:
+                    if sliver:
+                        piece_slivers += 1
+                    else:
+                        cands.append((0.0, a))     # no for-channel contributor: the objective is identically 0 here (the solver models it the same way)
                 continue
             # membership comes from the CONTACT GEOMETRY across the whole component, not only at the
             # chosen peak (R7 [8]): at every piece start, and just inside its end, a live member's
@@ -872,9 +1310,13 @@ def draft_windows(event_class: str, records: list[SweepRecord],
             # geometry makes the piece unknown (never affirmative membership)
             geometry_unknown = False
             for p in live:
+                # the probe is bounded by the record's OWN stored support holding this piece, never by the piece: a neighbour's edge one JD-ulp away
+                # (Rahu / Ketu cross a sign 180 deg apart, their stored edges differ by an ulp) cuts a sliver piece shorter than 2 ulp, and a clamp to
+                # ITS midpoint stops the probe short of the true edge (OD1-EARLY D-B)
+                s_lo, s_hi = next((s, e) for s, e in p.rec.supports if s <= a < e)
                 for check in p.checks:
-                    for instant in (a, b - timedelta(microseconds=1)):
-                        g = check(instant)
+                    for instant, side in ((a, "start"), (b - timedelta(microseconds=1), "end")):
+                        g = _geometry_at_edge(check, instant, side, s_lo, s_hi)
                         if g is False:
                             raise SweepRefusal(
                                 f"record {p.rec.record_id}: its stored support contains {instant.isoformat()} "
@@ -883,9 +1325,22 @@ def draft_windows(event_class: str, records: list[SweepRecord],
                             geometry_unknown = True
             if geometry_unknown:
                 unknown_pieces += 1
+                unnamed_pieces += 1
                 continue
             f = _objective_fn(path_id, live, event_class)
-            if all(p.constant is not None for p in live):
+            seen: set = set()
+            if any(o.unknown_reason is not None for p in live for o in p.outcomes):
+                # W0 reason pass-through: at every instant the objective is unknown, ask the live factors why
+                f = _noting_unknown(f, live, seen)
+            if use_solver:
+                # S3: the objective's MAXIMUM over the whole component is the solver's; this loop keeps the geometry checks above and the legacy
+                # per-piece UNKNOWN classification (an operand undeterminable at a piece's start, with the factor's own named reasons), so a
+                # blank window's reasons and counts are exactly what the independent verifier derives
+                v = f(a)
+                got = None if v is None else (v, a)
+                if got is not None:
+                    continue
+            elif all(p.constant is not None for p in live):
                 v = f(a)
                 got = None if v is None else (v, a)
             else:
@@ -893,22 +1348,58 @@ def draft_windows(event_class: str, records: list[SweepRecord],
                 got = maximise_earliest(f, a, b, hints=hints)
             if got is None:
                 unknown_pieces += 1
+                if seen:
+                    for reason in seen:
+                        reason_pieces[reason] = reason_pieces.get(reason, 0) + 1
+                else:
+                    unnamed_pieces += 1
+            elif sliver:
+                piece_slivers += 1             # one sky event on two paths: the piece is no sky configuration, never a candidate for the maximum
             else:
                 cands.append(got)
-        if unknown_pieces or not cands:
+        solved = None
+        if use_solver and not unknown_pieces:
+            problem = solver_problem(path_id, qualified, lo, hi, solver)
+            try:
+                res = _solver.solve(problem, max_evals=solver.max_evals)
+            except _solver.SolverRefusal as exc:
+                raise SweepRefusal(f"window {lo.isoformat()}: {exc}") from exc
+            # R-7 (the one engine): the certificate is the piece tree of THIS solve, named by the solver's own objective (the migration admits `sum_of_group_max` /
+            # `min_of_group_max`, not the sweep's `objective_name`); None for a blank that has no tree (only budget exhaustion keeps one)
+            solver_certificate = _solver.stored_certificate(res, objective=problem.objective, t0_iso=lo.isoformat(), max_evals=solver.max_evals)
+            if res.status == _solver.BLANK:
+                unknown_pieces, unnamed_pieces = 1, 0
+                reason_pieces = {res.reason: 1}
+            else:
+                solved = (res.value, lo + timedelta(seconds=res.instant))
+                piece_slivers = res.certificate["sliver_pieces_excluded"]
+                if not lo <= solved[1] < hi:
+                    raise SweepRefusal(f"window {lo.isoformat()}: the solver's instant {solved[1].isoformat()} lies outside the window")
+        if unknown_pieces or (solved is None and not cands):
             # R7 [1]: a peak is qualified only when the objective's maximum AND its earliest maximising
             # instant are established over the ENTIRE component — an unknown portion is never dropped
-            first = "objective_unknown_over_component" if unknown_pieces else "objective_undeterminable"
-            unresolved[first] = unknown_pieces or 1
+            if reason_pieces:
+                # W0: the factors' own reasons are carried through; the generic one stays only for pieces none named
+                for reason, n in reason_pieces.items():
+                    unresolved[reason] = unresolved.get(reason, 0) + n
+                if unnamed_pieces:
+                    unresolved[UNKNOWN_OVER_COMPONENT] = unnamed_pieces
+                first = sorted(reason_pieces)[0]
+            else:
+                first = UNKNOWN_OVER_COMPONENT if unknown_pieces else "objective_undeterminable"
+                unresolved[first] = unknown_pieces or 1
             base["unresolved"] = unresolved
             val = valence_fn(event_class, 0.0, 0.0, first)
             drafts.append(WindowDraft(
                 peak_instant=None, score=None, evidence_for=None, evidence_against=None,
                 outcome_valence_for_native=val.outcome_valence_for_native,
-                unqualified_reason=first, **base))
+                unqualified_reason=first, solver_certificate=solver_certificate, **base))
             continue
-        best = max(v for v, _ in cands)
-        peak = min(t for v, t in cands if v >= best - _TIE)
+        if solved is not None:
+            best, peak = solved
+        else:
+            best = max(v for v, _ in cands)
+            peak = min(t for v, t in cands if v >= best - _TIE)
         live_at_peak = [p for p in in_win if _contains(p.rec.supports, peak)]
         red = reduce_at(live_at_peak, peak, event_class)
         ev_for = red[CHANNEL_FOR]
@@ -930,9 +1421,35 @@ def draft_windows(event_class: str, records: list[SweepRecord],
                              else "evidence_against_channel_unqualified")
         drafts.append(WindowDraft(
             peak_instant=peak, score=score, evidence_for=ev_for, evidence_against=ev_against,
-            outcome_valence_for_native=val.outcome_valence_for_native, objective_value=best, **base))
+            outcome_valence_for_native=val.outcome_valence_for_native, objective_value=best,
+            solver_certificate=solver_certificate, sliver_pieces_excluded=piece_slivers, **base))
     drafts = [d if d.policy == policy else dataclasses.replace(d, policy=policy) for d in drafts]
+    if combustion_inheritance is not None:        # R4: every window of the grain carries the identity of the combustion authority it consumed
+        drafts = [dataclasses.replace(d, combustion_inheritance=combustion_inheritance) for d in drafts]
     return drafts, excluded
+
+
+#: SR-NEAR-STATION-TIE (madhav-44): the share of ALL windows that may be blanked by the station-zone tie rule before the run must stop and tell the surrogate:
+#: 0.5 %, compared in integers (`blanked × 1000 > windows × 5`) like the gate's INCONCLUSIVE cap. The harness-side refusal is the cockpit's; this is its number.
+NEAR_STATION_TIE_CAP_PER_MILLE = 5
+NEAR_STATION_TIE_SCHEMA = "near_station_tie_blanked/1"
+
+
+def near_station_tie_report(drafts_by_class: Mapping[str, Sequence[WindowDraft]]) -> dict:
+    """SR-NEAR-STATION-TIE: how many windows the builder blanked under `tie_isolation_unresolved` (the solver's station-zone rule), per class and in all.
+    `drafts_by_class` maps a class label (the caller's: event class, path-version…) to the drafts `draft_windows` returned for it. The count is READ FROM THE
+    DRAFTS' OWN `unqualified_reason` — the stored rows themselves, not a side counter — so it reads false when no window carries the reason. The named field
+    is `near_station_tie_blanked`; `cap_exceeded` is the 0.5 % test over all the windows given (a numbered window the VERIFIER later demotes under the same
+    reason is counted by the gate's `demoted`, not here)."""
+    per_class = {}
+    for cls in sorted(drafts_by_class):
+        ds = list(drafts_by_class[cls])
+        per_class[cls] = {"windows": len(ds), "blanked": sum(1 for d in ds if d.unqualified_reason == _solver.REASON_TIE_ISOLATION)}
+    windows = sum(v["windows"] for v in per_class.values())
+    blanked = sum(v["blanked"] for v in per_class.values())
+    return {"schema": NEAR_STATION_TIE_SCHEMA, "rule": "SR-NEAR-STATION-TIE", "near_station_tie_blanked": blanked, "windows": windows,
+            "per_class": per_class, "cap_per_mille": NEAR_STATION_TIE_CAP_PER_MILLE,
+            "cap_exceeded": blanked * 1000 > windows * NEAR_STATION_TIE_CAP_PER_MILLE}
 
 
 def registry_factor_rows(path_id: str, rule_version: str) -> list[dict]:
@@ -953,8 +1470,8 @@ __all__ = [
     "CHANNEL_AGAINST", "CHANNEL_FOR", "DIRECTIONAL_PATHS", "ALL_NULL_REASON", "POLICY_ALL_NULL", "POLICY_QUALIFICATION", "STATE_BOUNDARIES_REASON", "STATE_VALUED_FACTORS", "FOR_ONLY_PATHS", "Outcome",
     "RecordProgram", "SWEEP_PATHS", "SweepRecord", "SweepRefusal", "WindowDraft",
     "activity_kernel", "against_channel_state", "build_program", "draft_windows",
-    "CATEGORICAL_PATHS", "DYNAMIC_SWITCH_REASON", "GRAHA_TITLE", "KIND_TARGET_FORM", "categorical_factor", "graha_title",
+    "CATEGORICAL_PATHS", "DYNAMIC_SWITCH_REASON", "GRAHA_TITLE", "KIND_TARGET_FORM", "OperandSource", "UNKNOWN_OVER_COMPONENT", "categorical_factor", "graha_title",
     "validate_geometry", "p2_direction", "record_channel", "vedha_attenuation",
     "evaluate_factors", "graduated_drishti", "intersect_components", "maximise_earliest",
-    "reduce_at", "registry_factor_rows", "union_components",
+    "reduce_at", "registry_factor_rows", "union_components", "near_station_tie_report", "NEAR_STATION_TIE_CAP_PER_MILLE", "NEAR_STATION_TIE_SCHEMA",
 ]

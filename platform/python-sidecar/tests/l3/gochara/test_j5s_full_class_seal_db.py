@@ -141,6 +141,8 @@ def test_full_class_builder_denial_corruption_and_manifest_job_bound_seal(candid
     # Invoke the actual independent job entry point, with only its own LOGIN DSN.
     with login(w, 'gochara_verifier'):
         monkeypatch.setenv(entry.ENV_URL, make_conninfo(w.dsn, user='gochara_verifier', password=PASSWORD))
+        monkeypatch.setenv('GOCHARA_RUNNER_IMAGE_DIGEST', 'sha256:' + 'b' * 64)        # SR-OD1 R8: the persisting launch names its producer first
+        monkeypatch.setenv('CLOUD_RUN_EXECUTION', 'executions/test-exec-1')
         assert entry.main(['--chart', CHART_ID, '--generation', GEN]) == 0
         report = json.loads(capsys.readouterr().out.splitlines()[-1])
     assert report['status'] == 'VERIFIED' and report['gate'] == []

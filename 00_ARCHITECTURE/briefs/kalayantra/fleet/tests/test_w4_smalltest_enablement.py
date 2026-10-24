@@ -224,10 +224,13 @@ def test_measuring_requests_reach_the_reviewed_measuring_policy_not_the_enableme
 
 
 # ───────────── J-4b: the verification kinds (SR-PREBUILD-ALL; SR-TEARDOWN-AUTHORITY-GATE item 2: every enabled kind has its dry-run sibling) ─────────────
-@pytest.mark.parametrize("kind", live(VERIFICATION))
+# SR-OD1 R8 / pin shard J-4b-r8: both verification kinds are re-bound (allowed_args gains `shard`). These three tests run over EVERY verification
+# kind, each judged against its CURRENT binding (the shard's when one re-binds it, else the frozen BASE literal), so a re-bind never turns them into an
+# empty, silently skipped set (N.8; madhav-44 2026-10-23).
+@pytest.mark.parametrize("kind", sorted(VERIFICATION))
 def test_verification_exact_script_capability_and_argv(table, kind):
     op = table[kind]
-    needs, script, fixed, allowed, production, timeout = VERIFICATION[kind]
+    needs, script, fixed, allowed, production, timeout = SHARD_BINDINGS.get(kind, VERIFICATION[kind])
     assert op["enabled"] is True and next(iter(op)) == "enabled" and op["enabled_by"] == "J-4b"
     assert op["needs"] == needs and op["script"] == script and (FLEET.parents[3] / script).is_file()   # never TO_BE_SET
     assert op["fixed_args"] == fixed and op["allowed_args"] == allowed and op["production"] is production and op["timeout_s"] == timeout
@@ -240,12 +243,12 @@ def test_the_verification_dry_run_sibling_runs_the_same_script_as_the_launch(tab
     assert table["verification_job_dryrun"]["allowed_args"] == table["verification_job"]["allowed_args"]
 
 
-@pytest.mark.parametrize("kind", live(VERIFICATION))
+@pytest.mark.parametrize("kind", sorted(VERIFICATION))
 def test_verification_missing_the_gcloud_capability_is_refused(table, executor, kind):
     assert executor.validate(request(executor, kind, {"generation": "5.0"}), table, {**caps(), "gcloud": False}) == "capability_missing: gcloud"
 
 
-@pytest.mark.parametrize("kind", live(VERIFICATION))
+@pytest.mark.parametrize("kind", sorted(VERIFICATION))
 def test_verification_validate_refuses_every_argument_but_generation(table, executor, kind):
     for name in ["brief", "sealing-commit", "report-only", "final-rules", "chart", "class", "run", "classes", "execution", "sql"]:
         assert executor.validate(request(executor, kind, {name: "fixture"}), table, caps()) == f"disallowed args ['{name}']"

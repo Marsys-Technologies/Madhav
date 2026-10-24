@@ -539,7 +539,7 @@ def test_a_drishti_step_inside_one_aspect_record_peaks_at_the_offset_change():
 
 def test_a_drishti_source_returning_none_makes_that_instant_undeterminable():
     rec = _rec("a", relation="aspect", supports=((0, 10),), aspect_offset_at=lambda t: 6)
-    (w,), _ = _draft([rec], _rows_declared, drishti=lambda a, o, r: None)   # e.g. 'no_aspect_at_this_offset'
+    (w,), _ = _draft([rec], _rows_declared, drishti=lambda a, o, r: None)   # e.g. 'no_aspect_rule_defined_at_offset'
     assert w.score is None and w.unresolved == {"operand_undeterminable_over_support": 1}
     assert w.qualified_members == 0
 
@@ -667,6 +667,10 @@ def test_window_unresolved_omits_the_omitted_karaka_rank_factor_and_equals_the_v
     from services.gochara_kernel import window_verifier as wv
     rows = ws.registry_factor_rows(path, reg.ND_H_VERSION)
     assert {r["factor_id"]: r["null_state"] for r in rows}["karaka_agent"] == "omit"
+    # SR-OD1 V1: the 1.2.0 rows are re-derived onto activity_kernel@1.3.0, which DECLARES its applicability (AM-13). The
+    # claim under test — an omitted rank factor adds no unresolved reason — is independent of that, so the scenario it
+    # needs (a kernel row with no applicability) is built here from the declared row, not read from the registry.
+    rows = [dict(r, applicability=None) if r["factor_id"] == "activity_kernel" else r for r in rows]
     assert not next(r for r in rows if r["factor_id"] == "activity_kernel").get("applicability")
     recs = [_rec("a", path=path, agent="jupiter", root="RJ", version=reg.ND_H_VERSION, supports=((0, 10),))]
     if path == "P4":

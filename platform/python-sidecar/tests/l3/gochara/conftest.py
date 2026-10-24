@@ -219,7 +219,10 @@ G8_OPT_OUT_ALLOWLIST = frozenset({
     "test_a53_r11_seal_brief.py", "test_a53_r12_boundary.py", "test_a53_r12_persisted_brief.py", "test_a53_r12_seal_job.py",
     "test_a53_r15_amendments.py", "test_a53_r10_complete_records.py", "test_a53_r10_boundary_contract.py", "test_a53_r11_generation_wide.py", "test_a53_r11_p1_independence.py",
     "test_a53_r13_own_checkout.py", "test_a53_r13_producer.py", "test_a53_r13_sealed_boundary.py", "test_a53_r13_timeouts.py",
-    "test_a53_r14_sealed_contacts.py", "test_a53_r16_amendments.py", "test_c46_slice_round2.py", "test_p09_real_seal.py"})
+    "test_a53_r14_sealed_contacts.py", "test_a53_r16_amendments.py", "test_c46_slice_round2.py", "test_p09_real_seal.py",
+    # SR-OD1 R8X: the pinned-universe / G-6 / wall-rule claims and the overlap harness on the one-class world. (The R8 shard-stamp suite, test_od1_r8_sharded_aggregate.py, is on the
+    # job-census-only list below since RV-INT part 1: the aggregate's own coverage check is under test there, so it must not use this full opt-out.)
+    "test_od1_r8x_aggregate.py", "test_od1_r8x_overlap.py"})
 
 
 @pytest.fixture()
@@ -239,6 +242,51 @@ def g8_census_opt_out(request, monkeypatch):
     # the job's refusal AND the candidate adapter (the brief / end-of-run gate) both judge the census through the one function: set both aside, for this suite only
     monkeypatch.setattr(_vj, "_enforce_class_census", lambda *a, **k: None)
     monkeypatch.setattr(_vj, "class_census_violations", lambda *a, **k: [])
+    # SR-OD1 R8: the generation-wide AGGREGATE judges coverage against the same pinned list, so the one-class worlds set it aside too. Where the aggregate's universe comes from is the
+    # suite's declaration `G8_AGGREGATE_UNIVERSE`: "pins" (default) = the classes actually pinned; "manifest" = the list the suite narrows in the manifest vector (the R8 shard mechanics);
+    # "pinned" = the verifier's REAL pinned universe, nothing set aside (R8X's T16 — the suite then patches the aggregate seam itself where a test needs it)
+    from services.gochara_kernel import numerical_window_gate as _nwg
+    universe = getattr(request.module, "G8_AGGREGATE_UNIVERSE", "pins")
+    if universe not in ("pins", "manifest", "pinned"):
+        raise pytest.UsageError(f"{rel}: G8_AGGREGATE_UNIVERSE must be 'pins', 'manifest' or 'pinned', not {universe!r}")
+    if universe == "pins":
+        monkeypatch.setattr(_nwg, "expected_classes", lambda conn, chart_id, generation, vector: sorted({r[0] if not isinstance(r, dict) else next(iter(r.values())) for r in conn.execute(
+            "SELECT DISTINCT event_class FROM public.ka_gochara_search_path_pin WHERE chart_id = %s AND generation = %s", (chart_id, generation)).fetchall()}))
+        # SR-OD1 R8X: …and the manifest-versus-pinned-universe comparison with it (these worlds' manifests pin the 26 classes while only the built ones are the universe)
+        monkeypatch.setattr(_nwg, "manifest_vs_universe", lambda vector, universe: [])
+    elif universe == "manifest":
+        monkeypatch.setattr(_nwg, "expected_classes", lambda conn, chart_id, generation, vector: vector.get("scored_classes"))
+
+
+# G8 (RV-INT part 1, B4): a suite that tests the generation-wide AGGREGATE's coverage needs the JOB's census set aside but the aggregate's coverage check ON, which
+# `g8_census_opt_out` cannot give (it sets both aside). Same closed-list + stated-reason discipline: a module-level `G8_JOB_CENSUS_ONLY_REASON` string and
+# `pytestmark = pytest.mark.usefixtures("g8_job_census_only")`; test_g8_class_census.py enforces that the tree matches this list and that this fixture touches nothing but the job's census.
+G8_JOB_CENSUS_ONLY_ALLOWLIST = frozenset({"test_od1_r8_sharded_aggregate.py"})
+
+
+@pytest.fixture()
+def g8_job_census_only(request, monkeypatch):
+    here = Path(__file__).resolve().parent
+    try:
+        rel = Path(request.module.__file__).resolve().relative_to(here).as_posix()
+    except ValueError:
+        rel = str(request.module.__file__)
+    if rel not in G8_JOB_CENSUS_ONLY_ALLOWLIST:
+        raise pytest.UsageError(f"{rel} is not on the G8 job-census-only allowlist (conftest.G8_JOB_CENSUS_ONLY_ALLOWLIST); adding a suite there is a reviewed decision")
+    reason = getattr(request.module, "G8_JOB_CENSUS_ONLY_REASON", None)
+    if not isinstance(reason, str) or len(reason.strip()) < 20:
+        raise pytest.UsageError(f"{rel} sets the job's G8 class census aside without a stated reason (G8_JOB_CENSUS_ONLY_REASON, at least 20 characters)")
+    from services.gochara_kernel import verification_job as _vj
+    monkeypatch.setattr(_vj, "_enforce_class_census", lambda *a, **k: None)
+    monkeypatch.setattr(_vj, "class_census_violations", lambda *a, **k: [])
+    # SR-OD1 R8X (merge-back wave 3c-a): the aggregate's universe is the verifier's real pinned one unless the suite declares `G8_AGGREGATE_UNIVERSE = "manifest"`, i.e. the list IT narrows in the
+    # manifest vector; the built-versus-listed coverage check is not set aside either way (only the list it is judged against moves, and only for a suite that says so).
+    universe = getattr(request.module, "G8_AGGREGATE_UNIVERSE", "pinned")
+    if universe not in ("pinned", "manifest"):
+        raise pytest.UsageError(f"{rel}: G8_AGGREGATE_UNIVERSE must be 'pinned' or 'manifest' for a job-census-only suite, not {universe!r}")
+    if universe == "manifest":
+        from services.gochara_kernel import numerical_window_gate as _nwg
+        monkeypatch.setattr(_nwg, "expected_classes", lambda conn, chart_id, generation, vector: vector.get("scored_classes"))
 
 
 @pytest.fixture(autouse=True, scope="module")

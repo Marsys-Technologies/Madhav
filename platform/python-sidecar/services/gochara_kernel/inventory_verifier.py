@@ -462,6 +462,12 @@ def derive_path_pin(event_class: str, chart: Mapping[str, Any], path_id: str,
             and selected_versions is not None and selected_versions.get(p) != rule_version):
         return {"path": p, "version": rule_version, "disposition": "excluded",
                 "reason": "not_applicable_to_class", "ruling": "", "basis": "ruling:ND-H-20261005", "obligations": []}
+    # SR-OD1 V1: a class that runs the path at its ND-H / ND-P2 row (1.2.0) does not search the 1.3.0 doctrine row
+    if (rule_version == "1.3.0" and p in _H_DEPENDENT and selected_versions is not None
+            and selected_versions.get(p) == "1.2.0"):
+        ruling = "ND-P2-20261005" if event_class == "bereavement" else "ND-H-20261005"
+        return {"path": p, "version": rule_version, "disposition": "excluded",
+                "reason": "not_applicable_to_class", "ruling": "", "basis": f"ruling:{ruling}", "obligations": []}
     if p in _H_DEPENDENT and event_class in _UNKNOWN_H and not (rule_version == "1.2.0" and event_class in _ndh_EIGHT):
         if h_unknown_exclusion is None:
             raise Unverifiable(f"{event_class}/{p}: H is unknown and the verifier was given no "
@@ -511,13 +517,25 @@ def inventory_preimage(*, convention_id: str, horizon: tuple[str, str], input_di
 #: The verifier's OWN copy of the approved supersessions (R8-2): `(path, older) -> successor`. Not imported from
 #: the builder's inventory module or the registry — it is told what the amendments approved (AM-13: P3/P4/P5;
 #: AM-18: P2) independently of the code it checks.
-_SUPERSEDED = {("p2", "1.0.0"): "1.1.0", ("p3", "1.0.0"): "1.1.0",
+#: SR-OD1 D2: P1 1.0.0 -> 1.3.0 is the owner's Form B rule version (P1-MAPPING-DECISION).
+_SUPERSEDED = {("p1", "1.0.0"): "1.3.0", ("p2", "1.0.0"): "1.1.0", ("p3", "1.0.0"): "1.1.0",
                ("p4", "1.0.0"): "1.1.0", ("p5", "1.0.0"): "1.1.0"}
+
+#: SR-OD1 V1 — the verifier's OWN copy of the owner-confirmed doctrine chain (1.3.0): `(path, older) -> successor`, and
+#: the owner ruling each successor stands on (the basis of the `superseded_by_version` pin). Told what the owner
+#: decided (P1-MAPPING-DECISION: P1; VEDHA-SOURCE: P2, SR-OD1 D3; AM-13-RATIFIED: P3/P4), not imported from the builder or the registry.
+_DOCTRINE_SUPERSEDED = {("p1", "1.0.0"): "1.3.0", ("p2", "1.0.0"): "1.3.0", ("p2", "1.1.0"): "1.3.0",
+                        ("p3", "1.0.0"): "1.3.0", ("p3", "1.1.0"): "1.3.0", ("p4", "1.0.0"): "1.3.0", ("p4", "1.1.0"): "1.3.0"}
+_DOCTRINE_RULING = {"p1": "P1-MAPPING-DECISION", "p2": "VEDHA-SOURCE", "p3": "AM-13-RATIFIED", "p4": "AM-13-RATIFIED"}
 
 
 def _supersession_basis(path: str, old: str, new: str, event_class=None) -> str:
+    if new == "1.3.0":
+        return f"ruling:{_DOCTRINE_RULING[path]}"
     if new == "1.2.0":
         return "ruling:ND-P2-20261005" if event_class == "bereavement" else "ruling:ND-H-20261005"
+    if (path, new) == ("p1", "1.3.0"):                        # SR-OD1 D2: the owner's Form B rule version (a ruling, not an amendment)
+        return "ruling:P1-MAPPING-DECISION"
     anchor = "AM-18" if path == "p2" else "AM-13"
     return f"spec:GOCHARA_SPECS_V1_5_AMENDMENTS@1.5#{anchor}-{path}-{old}-superseded-by-{new}"
 
@@ -568,7 +586,7 @@ def derive_class_pins(event_class: str, chart: Mapping[str, Any], sealed_paths: 
                        "basis": _supersession_basis(path, v, chosen, event_class), "obligations": []}
             if v != chosen and pin["disposition"] == "included":
                 if pins[chosen]["disposition"] == "included" and (
-                        _SUPERSEDED.get((path, v)) == chosen or
+                        _SUPERSEDED.get((path, v)) == chosen or _DOCTRINE_SUPERSEDED.get((path, v)) == chosen or
                         (chosen == "1.2.0" and v == "1.0.0" and path in ("p1", "p3", "p4"))):
                     pin = {"path": path, "version": v, "disposition": "excluded",
                            "reason": "superseded_by_version", "ruling": "",
@@ -1282,12 +1300,15 @@ runs AS (
   SELECT lord, level_n, range_agg(tstzrange(s, e, '[)')) AS m
   FROM src WHERE level_n IN (1, 2, 3)
   GROUP BY 1, 2),
+cover AS (                                                    -- where the stored table ENDS at each level (every lord): N-8 / T13
+  SELECT level_n, max(e) AS cend FROM src WHERE level_n IN (1, 2, 3) GROUP BY 1),
 @@HELD@@rec AS (
   SELECT r.record_id, r.period_anchor_lord AS lord,
          CASE r.period_anchor_level WHEN 'md' THEN 1 WHEN 'ad' THEN 2 WHEN 'pd' THEN 3 END AS level_n,
          r.temporal_support_state AS state,
          COALESCE((SELECT range_agg(x) FROM unnest(r.temporal_support_intervals) x), '{}'::tstzmultirange) AS stored,
          tstzrange(c.t_in, COALESCE(c.t_out, upper(cov.completed_horizon)), '[)')::tstzmultirange AS contact,
+         COALESCE(c.t_out, upper(cov.completed_horizon)) AS contact_end,
          (SELECT p.result FROM public.ka_gochara_record_prerequisite p
            WHERE p.record_id = r.record_id AND p.predicate_id = 'period_running_at') AS result
   FROM public.ka_gochara_relationship_record r
@@ -1299,12 +1320,13 @@ runs AS (
   WHERE r.chart_id = %(chart)s AND r.generation = %(gen)s AND r.event_class = %(cls)s
     AND r.path_id = 'P1' AND r.contact_id IS NOT NULL)
 SELECT rec.record_id::text, rec.stored::text,
-       (CASE WHEN held.lord IS NULL THEN rec.contact ELSE rec.contact * COALESCE(runs.m, '{}'::tstzmultirange) END)::text AS expected_text,
-       rec.stored = (CASE WHEN held.lord IS NULL THEN rec.contact ELSE rec.contact * COALESCE(runs.m, '{}'::tstzmultirange) END) AS equal,
-       isempty(CASE WHEN held.lord IS NULL THEN rec.contact ELSE rec.contact * COALESCE(runs.m, '{}'::tstzmultirange) END) AS expected_empty,
-       rec.result, held.lord IS NOT NULL AS has_rows
+       (CASE WHEN @@UNRESTRICTED@@ THEN rec.contact ELSE rec.contact * COALESCE(runs.m, '{}'::tstzmultirange) END)::text AS expected_text,
+       rec.stored = (CASE WHEN @@UNRESTRICTED@@ THEN rec.contact ELSE rec.contact * COALESCE(runs.m, '{}'::tstzmultirange) END) AS equal,
+       isempty(CASE WHEN @@UNRESTRICTED@@ THEN rec.contact ELSE rec.contact * COALESCE(runs.m, '{}'::tstzmultirange) END) AS expected_empty,
+       rec.result, NOT (@@UNRESTRICTED@@) AS has_rows
 FROM rec LEFT JOIN held ON (held.lord, held.level_n) = (rec.lord, rec.level_n)
          LEFT JOIN runs ON (runs.lord, runs.level_n) = (rec.lord, rec.level_n)
+         LEFT JOIN cover ON cover.level_n = rec.level_n
 """
 
 # A snapshot WITH a copy (1305, G12) is read from the copy ALONE: the statement must not even NAME the live relation (so it runs with live L1 gone, and
@@ -1330,5 +1352,9 @@ RECORD_SUPPORT_HELD_COPY = """held AS (
   FROM snap, jsonb_array_elements(snap.held_rec) AS e(value)
   WHERE jsonb_typeof(snap.held_rec) = 'array'),
 """
+# "unrestricted + unknown" for a record: the build holds no row for its anchor (lord, level) ANYWHERE, OR the stored table ENDS before the contact does
+# (the part past the table's end is unmeasured: never a `false` — N-8 / T13, §N.7.6). The verifier's OWN statement of it, shared with nothing in the builder.
+RECORD_SUPPORT_UNRESTRICTED = "(held.lord IS NULL OR cover.cend IS NULL OR rec.contact_end > cover.cend)"
+RECORD_SUPPORT_SQL_TEMPLATE = RECORD_SUPPORT_SQL_TEMPLATE.replace("@@UNRESTRICTED@@", RECORD_SUPPORT_UNRESTRICTED)
 RECORD_SUPPORT_SQL_COPY = RECORD_SUPPORT_SQL_TEMPLATE.replace("@@LEGACY_ARM@@", "").replace("@@HELD@@", RECORD_SUPPORT_HELD_COPY)
 RECORD_SUPPORT_SQL = RECORD_SUPPORT_SQL_TEMPLATE.replace("@@LEGACY_ARM@@", RECORD_SUPPORT_LEGACY_ARM).replace("@@HELD@@", RECORD_SUPPORT_HELD_LIVE)

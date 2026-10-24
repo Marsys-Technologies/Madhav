@@ -36,26 +36,21 @@ def state_at(t: str, primary: str, primary_house: int, *, moon_sign: int, reside
     v_house = pairs[key]
     when = _t(t)
     house_of = lambda sign: (sign - moon_sign) % 12 + 1
-    active, unknown = [], []
-    for g in _STORED:
+    active, unknown, node_missing = [], [], False
+    for g in _STORED + _NODES:                  # ND-NODE-VEDHA (i): the nodes obstruct like any graha
         if g == primary or exception_for(primary, g) != "none":
             continue
         sign = _sign_at(residence.get(g, []), when)
         if sign is None:
-            unknown.append(g)
+            if g in _NODES:
+                node_missing = True
+            else:
+                unknown.append(g)
         elif house_of(sign) == v_house:
             active.append(g)
-    node_in, node_missing = False, False
-    for n in _NODES:
-        sign = _sign_at(residence.get(n, []), when)
-        if sign is None:
-            node_missing = True
-        elif house_of(sign) == v_house:
-            node_in = True
     if active:
         return {"state": "active", "value": 0.0, "reason": None, "scope": None, "obstructors": sorted(active), "unknown_obstructors": []}
-    reasons = (["obstructor_residence_unknown"] if unknown else []) + (["node_obstruction_undecided"] if node_in else []) \
-        + (["node_residence_unknown"] if node_missing else [])
+    reasons = (["obstructor_residence_unknown"] if unknown else []) + (["node_residence_unknown"] if node_missing else [])
     if reasons:
         return {"state": "unqualified", "value": None, "reason": reasons[0], "scope": None, "obstructors": [], "unknown_obstructors": sorted(unknown)}
     return {"state": "inactive", "value": 1.0, "reason": None,

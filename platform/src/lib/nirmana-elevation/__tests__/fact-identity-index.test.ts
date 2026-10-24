@@ -141,7 +141,7 @@ describe('the retained `noWriterIndex` mechanism (generic; exercised over an INJ
     })
 
     it('the staged rows beside it keep EXACTLY their rule objects (no noWriterIndex key)', () => {
-      expect(NIRMANA_STAGED_INERT_CANDIDATE_RULES.get(V5)).toEqual({ declaredDependsOn: ['ga_dashas', 'ga_positions'], emptyDependsOnAllowed: true, testTriggers: ['gochara-v5-small-test'], evidenceCutoff: null, dependents: 'none', reason: 'unsealed test candidate', decision: 'N-137' })
+      expect(NIRMANA_STAGED_INERT_CANDIDATE_RULES.get(V5)).toEqual({ declaredDependsOn: ['bg_dignity_reference', 'bg_transit_rules', 'ga_dashas', 'ga_positions'], emptyDependsOnAllowed: true, testTriggers: ['gochara-v5-small-test'], evidenceCutoff: null, dependents: 'none', reason: 'unsealed test candidate', decision: 'N-137' })
       expect(NIRMANA_STAGED_INERT_CANDIDATE_RULES.get(V41)).toEqual({ declaredDependsOn: [], emptyDependsOnAllowed: true, testTriggers: [], evidenceCutoff: null, dependents: 'none', reason: 'staged inert candidate', decision: 'PRAVAHA-2996 (migration 1243)' })
       expect(Object.keys(NIRMANA_STAGED_INERT_CANDIDATE_RULES.get(V3)!).sort()).toEqual(['declaredDependsOn', 'decision', 'dependents', 'emptyDependsOnAllowed', 'evidenceCutoff', 'reason', 'testTriggers'].sort())
     })

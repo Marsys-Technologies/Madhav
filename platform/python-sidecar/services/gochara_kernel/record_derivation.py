@@ -36,6 +36,11 @@ UNQUALIFIED = "unqualified"
 RULING_PADMIT = "D-PADMIT"
 RULING_P1_PD = "ST-P1-PD-TESTIMONY-20261002"
 
+#: D-RQ5 adverse residence (rule_registry `house_from_moon`, AM-11 pin (c)): Saturn/Sun/Mars/Jupiter in 12/8/1 from the Moon —
+#: the verifier's OWN literals; the adverse-class search plan (`inventory_verifier._ADVERSE`) is a different, wider table
+_D_RQ5_BODIES = frozenset({"saturn", "sun", "mars", "jupiter"})
+_D_RQ5_ADVERSE_HOUSES = (12, 8, 1)
+
 _OBLIGATION_FIELDS = ("event_class", "path", "version", "agent", "relation", "role", "target", "frame", "person")
 
 
@@ -121,7 +126,7 @@ def derive_path_records(conn, *, chart_id: str, generation: str, event_class: st
                         ) -> list[dict]:
     """The records path `path_id` (P2/P3/P4) MUST hold: one per (obligation × stored contact of its
     (agent, relation, target)) for a transit obligation, one per natal-fact obligation."""
-    from .inventory_verifier import _ADVERSE, _FAVOURABLE, _POLARITY
+    from .inventory_verifier import _FAVOURABLE, _POLARITY
     path = path_id.lower()
     declared = declared_predicates(conn, path_id, rule_version)
     sealed = sealed_path_provenance(conn, path_id, rule_version)
@@ -166,7 +171,10 @@ def derive_path_records(conn, *, chart_id: str, generation: str, event_class: st
     for rec in expected:
         for pid in declared:
             if pid == "house_from_moon":
-                cited = set(_FAVOURABLE.get(rec["agent"], ())) | set(_ADVERSE.get(rec["agent"], ()))
+                # the sealed CITED set (AM-11 pin (c)): favourable ∪ the D-RQ5 adverse 12/8/1 — NOT the adverse SEARCH plan
+                # (`_ADVERSE`), which also searches Saturn's 2nd (the Sade-Sati phase-3 testimony row): searched ≠ cited
+                cited = set(_FAVOURABLE.get(rec["agent"], ())) | (set(_D_RQ5_ADVERSE_HOUSES) if rec["agent"] in _D_RQ5_BODIES
+                                                                  else set())
                 rec["results"][pid] = ("unknown" if rec["frame"] != "moon" or rec["house"] is None
                                        else ("true" if rec["house"] in cited else "false"))
             elif pid == "p3_contact_house_or_lord":
@@ -191,7 +199,8 @@ def stored_path_records(conn, *, chart_id: str, generation: str, event_class: st
             "SELECT r.record_id::text, r.agent, r.relation, r.object_role, o.canonical_target, r.contact_id::text,"
             " r.operator_role, r.provenance, r.ruling_ref, r.admission_state, r.house_from_frame, r.frame_kind,"
             " r.frame_arg, r.affected_person, r.temporal_support_state, r.temporal_support_intervals,"
-            " r.evidence_for_occurrence, r.evidence_against_occurrence, r.severity, r.outcome_valence_for_native"
+            " r.evidence_for_occurrence::float8, r.evidence_against_occurrence::float8, r.severity::float8,"
+            " r.outcome_valence_for_native"
             " FROM public.ka_gochara_relationship_record r JOIN public.ka_gochara_physical_object o"
             "   ON o.physical_object_id = r.object_id"
             " WHERE r.chart_id = %s AND r.generation = %s AND r.event_class = %s AND r.path_id = %s"

@@ -452,7 +452,12 @@ def test_the_modules_that_entered_the_implementation_identity_are_named():
         # the ND-P2 near-miss module (#3516) and P06b's independent near-miss verifier enter the geometry identity beside the stretch sink
         "geometry": ("services.gochara_kernel.near_miss", "services.gochara_kernel.near_miss_verifier", "services.gochara_kernel.stretch_sink"),
         # PR #3604 (J4C-B) binds the independent ND-H verifier tables too.
-        "evaluation": ("services.gochara_kernel.rehearsal_settlement", "services.gochara_kernel.horizon", "services.gochara_kernel.nd_h_tables"),
+        # OD-1 P1C binds the P1 verifier-side input derivations (`p1_inputs`) too.
+        # OD-1 P1A binds the P1 operand sources (`p1_operands`) and the L1 rule functions P1 calls by name (`ga_condition_writer`); P1B's
+        # nature operands (`p1_nature_operands`) and the Form B valence (`p1_valence`) enter with the D2 binding that wires them into the build.
+        "evaluation": ("services.gochara_kernel.rehearsal_settlement", "services.gochara_kernel.horizon", "services.gochara_kernel.nd_h_tables",
+                       "services.gochara_kernel.p1_nature_operands", "services.gochara_kernel.p1_operands", "ga_writers.ga_condition_writer",
+                       "services.gochara_rules.p1_inputs", "services.gochara_rules.p1_valence"),
     }, "the modules that ENTERED the identity"
     assert all(m in cur[st] for st in MAIN_IMPLEMENTATION_MODULES for m in MAIN_IMPLEMENTATION_MODULES[st]), "nothing LEFT it"
 

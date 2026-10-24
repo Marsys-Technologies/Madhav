@@ -412,6 +412,8 @@ def test_verification_job_refuses_final_metadata_before_window_verification(monk
             return self
         def fetchone(self):
             return (['snapshot-fact'],)
+        def fetchall(self):              # merge-back wave 3c-a: the geometry stage now reconciles near-misses (the stub's truthy fetchone says the layer exists) and reads the stored rows: none here
+            return []
     with pytest.raises(job.VerificationDisagrees, match='karaka_agent_mismatch'):
         job._verify_class(Conn(), chart_id='chart', generation='candidate', event_class='business_launch',
             position_at=None, configured_selection={'P3': '1.2.0'}, path_rulings={}, h_unknown={},
@@ -425,6 +427,9 @@ def test_verification_cli_uses_the_same_explicit_candidate_profile(final, monkey
     from pipeline.orchestrator import verification_job as cli
     from services.gochara_kernel import rule_registry as rr
     monkeypatch.setenv(cli.ENV_URL, 'postgresql://postgres@127.0.0.1:55433/postgres')
+    monkeypatch.setenv('GOCHARA_RUNNER_IMAGE_DIGEST', 'sha256:' + '1' * 64)      # SR-OD1 R8: a persisting launch names its image and execution
+    monkeypatch.setenv('CLOUD_RUN_EXECUTION', 'projects/p/locations/l/jobs/gochara-verification-job/executions/e1')
+    monkeypatch.setenv('GOCHARA_RUNNER_COMMIT', 'a' * 40)      # window_gate.runner_identity names the commit from here, else the repo HEAD: a git-less tree copy (the mutation harness) has none
     monkeypatch.setattr(cli, '_moon_scope_available', lambda conn: False)
     closed, observed = [], []
     class Conn:

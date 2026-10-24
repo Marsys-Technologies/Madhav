@@ -437,8 +437,8 @@ def test_seed_row_is_inactive_and_cites_both_planner_predicates():
     assert "is_active: false" in block
     assert "is_active: true" not in block
     # K8-REG / migration 1392 also declares the direct rule-registry read.
-    # This dependency correction does not activate the staged writer.
-    assert "depends_on: ['ga_positions', 'ga_dashas', 'bg_transit_rules']" in block
+    # This dependency correction does not activate the staged writer. SR-K8-EDGE-1403 adds the L0 dignity producer (migration 1403).
+    assert "depends_on: ['ga_positions', 'ga_dashas', 'bg_transit_rules', 'bg_dignity_reference']" in block
     # the inertness comment cites both planner predicates
     assert "runPreparation" in block and "recalibrationEnqueue" in block
 
@@ -502,7 +502,7 @@ def test_the_p2_suppression_is_parental_event_only_and_lifts_with_the_selection(
                         {k: v for k, v in rr.CLASS_SELECTION_OVERRIDES.items() if k[0] != "parental_event"})
     w.run_substep(_final_ctx(), SubStep(key="record:parental_event:P2", label=""))
     edges = _record_phase_fakes["grain"][-1]["edges"]
-    assert edges and {(e.path_id, e.rule_version, e.affected_person) for e in edges} == {("P2", "1.0.0", "native")}
+    assert edges and {(e.path_id, e.rule_version, e.affected_person) for e in edges} == {("P2", "1.3.0", "native")}
 
 
 def test_final_rules_are_opt_in_and_do_not_change_the_default_writer(_record_phase_fakes):

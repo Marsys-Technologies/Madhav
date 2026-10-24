@@ -100,10 +100,20 @@ const rowOf = (id: string) => tuples.find(r => r.asset_id === id)
 // rows rather than changing applied migrations or dropping any column checks.
 const K8_SQL = fs.readFileSync(path.resolve(__dirname, '../../../migrations/1392_k8_registry_truth.sql'), 'utf8')
 const K8_ROWS = JSON.parse(K8_SQL.split('$k8_rows$')[1]) as Record<string, Cell>[]
+// SR-K8-EDGE-1403: the later one-element depends_on edge of ka_gochara_v5, replayed over the 1392 rows. Its file is placed under migrations/ by the cockpit;
+// KALA_MIGRATION_1403 may name it before that.
+const K8_EDGE = (() => {
+  const dir = path.resolve(__dirname, '../../../migrations')
+  const file = process.env.KALA_MIGRATION_1403 ?? path.join(dir, fs.readdirSync(dir).filter(f => /^1403_.*\.sql$/.test(f)).sort()[0] ?? '1403_MISSING.sql')
+  return JSON.parse(fs.readFileSync(file, 'utf8').split('$k8_edge$')[1]) as { asset_id: string; from: string[]; to: string[] }
+})()
 function afterK8(id: string, row: Record<string, Cell>): Record<string, Cell> {
   const correction = K8_ROWS.find(r => r.asset_id === id)
   expect(correction, `1387 correction for ${id}`).toBeDefined()
-  return { ...row, ...correction }
+  const corrected = { ...row, ...correction }
+  if (id !== K8_EDGE.asset_id) return corrected
+  expect(corrected.depends_on, '1403 starts from the 1392 array').toEqual(K8_EDGE.from)
+  return { ...corrected, depends_on: K8_EDGE.to }
 }
 
 /** The seed upsert's own INSERT column list — the migration must follow it exactly (names and order). */
@@ -170,7 +180,7 @@ describe('migration 1243 — the two inert Gochara registry rows (static contrac
     target_table: v1304(/target_table = '([^']+)'/),
   }
 
-  it.runIf(SEED_HAS_V5)('every column of ka_gochara_v5 equals the seed entry once migrations 1304, 1395 and K8-REG 1392 have been applied over the 1243 row', () => {
+  it.runIf(SEED_HAS_V5)('every column of ka_gochara_v5 equals the seed entry once migrations 1304, 1395, K8-REG 1392 and the 1403 edge have been applied over the 1243 row', () => {
     expect(afterK8('ka_gochara_v5', { ...rowOf('ka_gochara_v5'), ...V5_AFTER_1304 })).toEqual(seedValues('ka_gochara_v5'))
     expect(V5_AFTER_1304.writer_timeout_seconds).toBe(72000)
     expect(Number(v1304(/writer_timeout_seconds = (\d+),/))).toBe(28800)

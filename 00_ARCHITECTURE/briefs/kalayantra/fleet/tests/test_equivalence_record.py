@@ -580,6 +580,28 @@ def test_eq10_an_input_vector_with_unknown_or_missing_keys_refuses(tmp_path, bas
             eqr.load_pinned(path)
 
 
+def test_eq10b_scored_until_is_a_known_optional_input_vector_key_and_an_unknown_key_still_refuses(tmp_path, base):
+    # scored_until: services/gochara_kernel/input_vector.py SCORED_UNTIL_KEY (D-FLIP F-10) - serialised by the generation, so the pinned vector may carry it.
+    v = variant(tmp_path, base, "vsu", mutate=lambda p: p["input_vector"].update(scored_until="2050-01-01T00:00:00+00:00"))
+    path = tmp_path / "su.json"
+    path.write_text(json.dumps(v.pinned))
+    assert eqr.load_pinned(path)["input_vector"]["scored_until"] == "2050-01-01T00:00:00+00:00"
+    w = variant(tmp_path, base, "vsu2", mutate=lambda p: p["input_vector"].update(scored_until="2050-01-01T00:00:00+00:00", surprise=1))
+    path2 = tmp_path / "su2.json"
+    path2.write_text(json.dumps(w.pinned))
+    with pytest.raises(eqr.EqrRefusal, match=r"unknown \['surprise'\]"):
+        eqr.load_pinned(path2)
+
+
+def test_eq10c_the_constant_reader_joins_a_literal_over_a_constant_list_and_still_refuses_anything_else():
+    # result_policy.QUALIFICATION_TABLE rule 2 is `"... " + ", ".join(SOLVER_BLANK_REASONS) + "..."` (platform/python-sidecar/services/gochara_kernel/result_policy.py)
+    env = eqr.ConstEnv('R = ("a", "b")\nT = "x: " + ", ".join(R) + "; y"\nBAD = ", ".join(open("f"))\nBAD2 = "".join([1, 2])\n', "m.py")
+    assert env.get("T") == "x: a, b; y"
+    for bad in ("BAD", "BAD2"):
+        with pytest.raises(eqr.Unreadable):
+            env.get(bad)
+
+
 # ── EQ-11 ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 def test_eq11_an_unreadable_source_makes_the_category_null_and_the_decision_never_EQUAL(tmp_path, base):

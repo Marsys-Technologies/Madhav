@@ -346,7 +346,7 @@ def test_the_independent_input_check_binds_the_frozen_qualification_table_to_the
     named in `derived`); a different digest, a missing component, or a table beside the all-NULL policy DISAGREES. (revert: drop the verifier's comparison — the
     three refusals below pass silently)"""
     stored = _vector(db, ephe, result_policy="window_qualification/1")
-    assert stored["qualification_table"] == {"schema": "window_qualification_table/1", "digest": ivv.QUALIFICATION_TABLE_BINDING["digest"]}
+    assert stored["qualification_table"] == {"schema": "window_qualification_table/2", "digest": ivv.QUALIFICATION_TABLE_BINDING["digest"]}
     assert "qualification_table" in _ivv(db, stored, ephe)["derived"]
     other = {**stored, "qualification_table": {**stored["qualification_table"], "digest": "0" * 64}}
     with pytest.raises(RuntimeError, match="qualification_table"):
@@ -663,11 +663,16 @@ def test_editing_a_rules_module_moves_the_evaluation_digest(tmp_path, monkeypatc
 def test_the_sky_convention_content_digest_moves_when_the_stored_content_does_with_the_same_id(db, ephe):
     base = _vector(db, ephe)
     cid = base["sky_convention"]["id"]
+    # The table carries the insert-only trigger ka_gochara_sky_convention_immutable (1153:609-611) in every chain-built
+    # database, so the edit this claim is about ("stored content moved, same id") can only be staged by switching that
+    # trigger off in THIS per-test throwaway database (the fixture's connection owns the table). A refused edit is a
+    # failure here, never a skip: a skip would read as a null signal for a claim nothing measured.
+    db.execute("ALTER TABLE public.ka_gochara_sky_convention DISABLE TRIGGER ka_gochara_sky_convention_immutable")
     try:
         db.execute("UPDATE public.ka_gochara_sky_convention SET method_version = 'tampered' WHERE convention_id = %s",
                    (cid,))
-    except Exception:                                    # an immutable ledger refuses the edit — equally fine
-        pytest.skip("the convention table refuses an in-place edit here")
+    finally:
+        db.execute("ALTER TABLE public.ka_gochara_sky_convention ENABLE TRIGGER ka_gochara_sky_convention_immutable")
     changed = iv.build_input_vector(db, sky_convention_id=cid, ephe_path=ephe, path_refs=REFS,
                                     rulings=RULINGS, files_probe=_dir_probe, series_probe=lambda ephe: "ab" * 32)
     assert iv.diff_vectors(base, changed) == ["sky_convention.content_digest"]      # the id label did not move

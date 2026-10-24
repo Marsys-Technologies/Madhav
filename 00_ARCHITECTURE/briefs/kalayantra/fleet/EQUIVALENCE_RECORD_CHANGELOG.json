@@ -1,0 +1,677 @@
+{
+ "schema": "ky.equivalence_changelog/1",
+ "entries": [
+  {
+   "id": "GEOM-PIN-ONCE",
+   "rulings": [
+    "SR-GEOMETRY-PIN-ONCE",
+    "SR-GEOMETRY-PIN-ONCE amend-1",
+    "SR-NEARMISS-BISECT",
+    "SR-REASON-ONE-NAME",
+    "SR-EPHE-PATH-ONCE",
+    "SR-EPHE-PATH-ONCE-AMEND-1 (= GEOMETRY-PIN-ONCE amend-3)",
+    "SR-GEOMETRY-PIN-ONCE-AMEND-4"
+   ],
+   "category": "E1",
+   "part": "implementation.geometry",
+   "base_commit": "a1d10c536c9807c31008620b5738654f85302c92",
+   "derived_at_head": "90126292d5daddd0c9d0feca55bbc3926c442a64",
+   "recipe": "input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES)['geometry'] over the 16 modules of IMPLEMENTATION_MODULES['geometry']; derived once by the production function, never hand-typed",
+   "geometry_before": "a8cb08f07fa867e010109d8a236422e39ebf0b57cf9a149eae64e42c7547a3ff",
+   "geometry_after": "27edba25a624504f7543c7d40267e5b6b9d724373136e71a34393de9758b54d7",
+   "modules": {
+    "arcs": {
+     "before_sha256": "c180826d15f7ce7a6b1430d49f42622dab5fe8b77d052c1f1fe43ffd4dafccc2",
+     "after_sha256": "c180826d15f7ce7a6b1430d49f42622dab5fe8b77d052c1f1fe43ffd4dafccc2",
+     "changed": false
+    },
+    "boundary_match": {
+     "before_sha256": "173c40200c119e1f4d50e8616f46e5a06b661cadea6089fcfa81977f6642f997",
+     "after_sha256": "173c40200c119e1f4d50e8616f46e5a06b661cadea6089fcfa81977f6642f997",
+     "changed": false
+    },
+    "contact_certify": {
+     "before_sha256": "b67b87fc64044817a25b6bf5b5f441f4067cc42927122815d77d30e7b2327b90",
+     "after_sha256": "91fc8351df8f09fa072164e84d980e24e66dd26243a25e71c0ee0070be24d5b5",
+     "changed": true
+    },
+    "contact_reconstruct": {
+     "before_sha256": "e380e484fbd6ec5d72571ac704598ba5229aa4f65bf2c3a5577c3ced75dc2734",
+     "after_sha256": "3f2289e11be2326d6e4e7ab2265676389242a5fca240cdcf11377276740c3d58",
+     "changed": true
+    },
+    "contacts": {
+     "before_sha256": "bfd3cc83ade75deb4c2a1b41543f78a4e666c6f018568ebfd3f192f1f5100dd0",
+     "after_sha256": "bfd3cc83ade75deb4c2a1b41543f78a4e666c6f018568ebfd3f192f1f5100dd0",
+     "changed": false
+    },
+    "convention": {
+     "before_sha256": "4b11c31d677e7f2054c4b05aa792c276b4f7eda2262979762c874ecb7875cd6b",
+     "after_sha256": "4b11c31d677e7f2054c4b05aa792c276b4f7eda2262979762c874ecb7875cd6b",
+     "changed": false
+    },
+    "episodes": {
+     "before_sha256": "0a466ae4c7571b17a595d982e32943a515405db443afccac6a43d39224f3f668",
+     "after_sha256": "0a466ae4c7571b17a595d982e32943a515405db443afccac6a43d39224f3f668",
+     "changed": false
+    },
+    "ids": {
+     "before_sha256": "2b1966e445a7db2b12ccff53a94270bd911015c7b52141344df97593550a8a00",
+     "after_sha256": "2b1966e445a7db2b12ccff53a94270bd911015c7b52141344df97593550a8a00",
+     "changed": false
+    },
+    "knots": {
+     "before_sha256": "03d05197a185a11aa9e3840f34707cc3ebf5052024cbfbbefee651579fc9eada",
+     "after_sha256": "6ee9cf99fc618251de9f88d25089a367d6cd6e6214ad6cb976762a4d34b7f3ac",
+     "changed": true
+    },
+    "materialise": {
+     "before_sha256": "12ed530d4d50192449015a86af289786207667d9d95ca1d09c2dca307e8cadda",
+     "after_sha256": "12ed530d4d50192449015a86af289786207667d9d95ca1d09c2dca307e8cadda",
+     "changed": false
+    },
+    "near_miss": {
+     "before_sha256": "59a08de264db011b42ce4162c669aacb3798eb5a49d304136d591c9f7a5e6a90",
+     "after_sha256": "054d53e95649fa8b70c71935c728414f01f314252756129587c4d595c21ad426",
+     "changed": true
+    },
+    "near_miss_verifier": {
+     "before_sha256": "100df6e7cba9b5a6a0d014ac81e0311dc564b03468ee5629ecbbf813c57c06c3",
+     "after_sha256": "766197bb1a4952fc907e0bd205e29732d367abc43b7f476868a8e52c1b909360",
+     "changed": true
+    },
+    "record_store": {
+     "before_sha256": "92aee2af631e8bd39024dcbe496260a8ff85f27496245d7fd499f1ed3f673cae",
+     "after_sha256": "9b0da8bc8bc568fc080c875d460b27d637edadff6925d9e9c3f4977ad7c9d597",
+     "changed": true
+    },
+    "stretch_sink": {
+     "before_sha256": "e8ca2e4f64fe735e4f14175e03497d2a781c9b00bb1df280096e9c0557638d75",
+     "after_sha256": "e8ca2e4f64fe735e4f14175e03497d2a781c9b00bb1df280096e9c0557638d75",
+     "changed": false
+    },
+    "substrate": {
+     "before_sha256": "9fef75cb3befb28afd830535ae8bbc353d62c17026a1372dc752dfd04a17b7c3",
+     "after_sha256": "9fef75cb3befb28afd830535ae8bbc353d62c17026a1372dc752dfd04a17b7c3",
+     "changed": false
+    },
+    "targets": {
+     "before_sha256": "614a5620749f971433a0d7aae32f834fce0ecddced21645d6fb673142a662886",
+     "after_sha256": "614a5620749f971433a0d7aae32f834fce0ecddced21645d6fb673142a662886",
+     "changed": false
+    }
+   },
+   "causes": [
+    {
+     "id": "R2",
+     "ruling": "SR-GEOMETRY-PIN-ONCE condition 1 (SR-H2-1S)",
+     "modules": [
+      "contact_reconstruct"
+     ],
+     "commit": "3f405ddd4",
+     "why_needed": "SR-H2-1S scoped the 1 s floor to the P1 STATE providers only. The keyword has to live where `_core` lives: contact_reconstruct gains STATE_MIN_EXCURSION_SECONDS (:34), STATE_NAMED_LIMIT (:41) and the keyword-only `min_excursion_seconds` on `_core` (:68-69, floor test :100). Contact geometry keeps the 60 s default: its two callers (:137, :167) pass no keyword. Callers that pass the 1 s floor are all outside geometry: p1_operands.py:537, p1_nature_operands.py:144,:169, p1_operands_check.py:298, vedha_source.py:114.",
+     "code_path": "contact_reconstruct._core(min_excursion_seconds=) <- p1_operands / p1_nature_operands / p1_operands_check / vedha_source (state boundaries only)",
+     "rows": {
+      "contacts_added": 0,
+      "contacts_removed": 0,
+      "contacts_changed": 0,
+      "records_changed": 0,
+      "prerequisites_changed": 0,
+      "windows_changed": 0,
+      "memberships_changed": 0,
+      "near_miss_rows_changed": 0,
+      "result": "no row of any table moves on the 4-class slice when R2 is switched off (leave-one-out build: head vs head without R2)"
+     }
+    },
+    {
+     "id": "DASH",
+     "ruling": "SR-GEOMETRY-PIN-ONCE amend-1 (T13)",
+     "modules": [
+      "record_store"
+     ],
+     "commit": "4b4f07e72",
+     "why_needed": "T13: the blank is a per-record-support decision (`support[1] > table end`) taken where the P1 record is minted; the injected reader `dasha_rows_for(lord, level)` is key-level and cached per key, and the grain-count key is written inside record_store, so the arm cannot live outside a geometry module without blanking whole keys (coarser than the straddling rule). record_store imports the reason constant BY NAME from dasha_read (:73), so SR-REASON-ONE-NAME cannot move the geometry pin.",
+     "code_path": "record_store._p1_running_support arm (:1344-1348) and _table_ends_before (:1355); reason = dasha_read.PERIOD_TABLE_ENDS_REASON = 'dasha_horizon_exhausted'",
+     "rows": {
+      "contacts_added": 0,
+      "contacts_removed": 0,
+      "contacts_changed": 0,
+      "records_changed": 0,
+      "prerequisites_changed": 0,
+      "windows_changed": 0,
+      "memberships_changed": 0,
+      "near_miss_rows_changed": 0,
+      "period_running_at_records": 14270,
+      "records_with_period_running_at_unknown": 0,
+      "records_with_temporal_support_state_unrestricted": 0,
+      "result": "data delta zero on the pinned system (the stored daśā table runs past every support on the slice): the arm never fires; head vs head without DASH identical in every table"
+     }
+    },
+    {
+     "id": "NEARMISS",
+     "ruling": "SR-NEARMISS-BISECT",
+     "modules": [
+      "near_miss"
+     ],
+     "commit": "851e81672",
+     "why_needed": "band-edge instants are bracketed to 1e-6 d (EDGE_BRACKET_DAYS near_miss.py:58, _bisect :139-150) with no early exit; the verifier tolerance (600 s, near_miss_verifier.py:857) is unchanged.",
+     "code_path": "near_miss._bisect -> ka_gochara_near_miss.t_in/t_out (and the dependent t_closest, clearance_deg, proximity, delta_t)",
+     "rows": {
+      "contacts_added": 0,
+      "contacts_removed": 0,
+      "contacts_changed": 0,
+      "records_changed": 0,
+      "prerequisites_changed": 0,
+      "windows_changed": 0,
+      "memberships_changed": 0,
+      "near_miss_rows_changed": 40,
+      "endpoints_moved": 80,
+      "max_abs_endpoint_delta_s": 603.192,
+      "max_abs_t_closest_delta_s": 13.421,
+      "max_abs_clearance_or_proximity_delta_deg": 1.0585097243165364e-09,
+      "delta_t_changed_rows": 30,
+      "result": "the same 40 near-miss rows move in head vs head-without-NEARMISS and in head vs all-causes-off; every other table identical"
+     }
+    },
+    {
+     "id": "EPHE_ONCE",
+     "ruling": "SR-EPHE-PATH-ONCE-AMEND-1 (amend-3)",
+     "modules": [
+      "knots",
+      "near_miss_verifier"
+     ],
+     "commit": "89aca2a9b",
+     "why_needed": "swisseph.set_ephe_path closed the library's open files on every probe (~75 us against ~0.24 us for the probe). knots._ensure_ephe_path (:145-156) sets it once per thread with a memo invalidated by the process-wide ephe_path_generation counter; calc_sidereal_lon / calc_sidereal_lon_speed call it (:191, :215). near_miss_verifier keeps its own memo (:677-686): each side its own code. set_sid_mode is still set on every probe.",
+     "code_path": "knots._ensure_ephe_path (builder side); near_miss_verifier._ephemeris_position.at memo (verifier side; hunk 1 of 2 in that module)",
+     "rows": {
+      "contacts_added": 0,
+      "contacts_removed": 0,
+      "contacts_changed": 0,
+      "records_changed": 0,
+      "prerequisites_changed": 0,
+      "windows_changed": 0,
+      "memberships_changed": 0,
+      "near_miss_rows_changed": 0,
+      "result": "no row of any table moves on the 4-class slice when the memo is switched off (head vs head without EPHE_ONCE; all 4 classes completed on both sides)"
+     },
+     "honest_gap": "In the lane's own byte-identity check against the pre-fix head, 2 of the 4 slice classes did not finish on the pre-fix side within the 2-h box; 105,012 direct Swiss values were sha-identical and 2 full classes were byte-identical, and the 12-class TR plus the independent verifier on every window is the end-to-end check (SR-EPHE-PATH-ONCE-AMEND-1). This job's own leave-one-out build (head with the memo vs head without it, all 4 classes, every table) completed on both sides and found zero differing rows: a second, complete 4-class observation, not a replacement for the 12-class TR."
+    },
+    {
+     "id": "F4_READ_CASTS",
+     "ruling": "SR-GEOMETRY-PIN-ONCE-AMEND-4",
+     "modules": [
+      "contact_certify",
+      "near_miss_verifier"
+     ],
+     "commit": "6951053a2",
+     "why_needed": "SR-F4-STORE-EXACT amend-1: every verifier/gate/served reader of a stored REAL column reads it ::float8. Two of those read lines sit in geometry-stage modules: contact_certify.py:417 (c.delta_lambda::float8) and near_miss_verifier.py:830 (delta_t::float8 AS delta_t; hunk 2 of 2 in that module). They are READ precision only: no builder, no geometry computation.",
+     "code_path": "contact_certify.certify_contact_geometry ledger SELECT; near_miss_verifier.verify_generation stored-row SELECT",
+     "rows": {
+      "contacts_added": 0,
+      "contacts_removed": 0,
+      "contacts_changed": 0,
+      "records_changed": 0,
+      "prerequisites_changed": 0,
+      "windows_changed": 0,
+      "memberships_changed": 0,
+      "near_miss_rows_changed": 0,
+      "result": "condition of amend-4 met: builder-side outputs (contacts, records, windows, near-miss endpoints) are byte-identical with and without the two cast lines (head vs head without the casts: zero differing rows in every table); the near-miss verifier returns VERIFIED over 76 objects with and without the cast on the slice, so the cast changes no outcome there."
+     },
+     "replay_cited": "Wave 3c-e replay of the stored major_loss P3/P4 windows (fast/jobs/X-20261022T210411Z-mergeback-3ce): P3 0 problems (55 windows reproduced), P4 0 problems (109 reproduced) after f4-exact's ::float8 reads. The 'where there were 3' before-figure is in the ruling text, not in that job's notes: cited, not re-measured here."
+    }
+   ],
+   "slice": {
+    "classes": [
+     "bereavement",
+     "chronic_onset",
+     "illness_acute",
+     "major_loss"
+    ],
+    "policy": "window_qualification/1",
+    "totals_identical_in_every_leave_one_out_build": {
+     "contacts": 10644,
+     "relationship_records": 37693,
+     "record_prerequisites": 66233,
+     "windows": 1672,
+     "window_memberships": 24380,
+     "near_miss_rows": 40,
+     "near_miss_endpoints": 80
+    },
+    "method": "controlled leave-one-out builds of the exported head tree (head; head with all five causes switched off; head with each cause switched off alone); every public table fingerprinted and deep-diffed by primary key; verdict from tests/l3/gochara/_geompin_attribution.attribute",
+    "verdict": "ATTRIBUTED",
+    "rows_differing_head_vs_all_off": 31174,
+    "unattributed_rows": 0,
+    "doubly_attributed_rows": 0,
+    "rows_out_of_cause_reach": 0
+   },
+   "pin_consumers": {
+    "ka_gochara_search_input_snapshot": 1,
+    "ka_gochara_search_interval": 31128,
+    "ka_gochara_search_inventory": 4,
+    "kala_gochara_publication": 1
+   },
+   "pin_consumers_note": "rows that differ only in digest/manifest columns because ANY geometry-pin move changes the input vector; counted per table, never attributed to one cause",
+   "intermediate_pins_not_qualified": {
+    "a8cb08f0": "a8cb08f07fa867e010109d8a236422e39ebf0b57cf9a149eae64e42c7547a3ff",
+    "0186cc07": "0186cc0713d64905a8d9e31a39d05e4dc02e37af10f550960ae30161933d709c",
+    "3c129bd3": "3c129bd32603839412510625eb0431d07edb121fe8dfc15e1f788948d75c147c",
+    "6cd5a41b": "6cd5a41b705cc1d0681aa6c4c0fc4a66568dc3f08248225957a48e0903955674",
+    "7a841aa4": "7a841aa422ae49f3e2b2ec93948cb0f69bbf7227eb91c8fe67e072f56cd169a2",
+    "1a821723": "1a82172371326f2d20b93c772503152447e8286707a834aca716a4673bf84d9e"
+   },
+   "intermediate_pins_note": "a8cb08f0 is the pin before this entry (geometry_before); the others are per-wave test bookkeeping literals. Only geometry_after is the qualified pin.",
+   "interpretations": [
+    "near_miss_verifier is edited by two causes (EPHE_ONCE hunk and F4_READ_CASTS hunk, disjoint; a 3-way merge of the two cause commits over the base reproduces the bytes). The amend-3 text expected only knots.py to move for ephe-once, but SR-EPHE-PATH-ONCE itself says 'and in the verifier path if it does the same, each side its own code'.",
+    "NEARMISS dependent columns (t_closest, clearance_deg, proximity, delta_t) are attributed to NEARMISS together with t_in/t_out."
+   ],
+   "closed": true,
+   "further_geometry_change": "REFUSE"
+  },
+  {
+   "id": "I1-ADDENDUM",
+   "rulings": [
+    "SR-I1-ADDENDUM",
+    "SR-TRBIND-3"
+   ],
+   "category": "E1",
+   "part": "main merge (second) + golden fixture",
+   "base_commit": "625d8dea2136cd893e6d27ce6fabea17e46c53eb",
+   "derived_at_head": "4c7c845e89802ddaf5805f267fea6277155a31ce",
+   "statement": "I1-ADDENDUM (SR-I1-ADDENDUM): second main merge 4c7c845e8 (#3899 + #3898), 31 files, 0 in gochara_kernel/gochara_grammar/migrations; IMPLEMENTATION_MODULES digests measured unchanged (geometry 27edba25…, evaluation 8168cbfc…, window 75c3fd11…); trial-harness digest 55c3a775→4822bcf0 by #3898 AMD64-DOCKER (pinned on main)",
+   "implementation_digests_unchanged": {
+    "geometry": "27edba25a624504f7543c7d40267e5b6b9d724373136e71a34393de9758b54d7",
+    "evaluation": "8168cbfc2edf022868dc72b25b0ec5643b23cbcbf5f6578ce9f1ae5099a53c2c",
+    "window": "75c3fd11e0a5035977897d53de470081173ff5d3dffdb1b4d253b39b8d5b0058"
+   },
+   "trial_harness_digest": {
+    "before": "55c3a7753e61fe4ebde79d0f3d7bf43febc9d8cce25ba1193c67f4f26213418d",
+    "after": "4822bcf0fcf710a00e004852573e64997ba703870bc9a6a0327015145d74fa7a",
+    "cause": "#3898 AMD64-DOCKER (pinned on main by test_trial_ready.py::test_c12_*)"
+   },
+   "golden_pins_moved": {
+    "note": "test_mb_ordinary_golden.py, SR-TRBIND-3 (3). No implementation digest moved. Each pin below moved for the one cause named; the accepted P06 golden fixture is not re-captured; the test asserts the golden's old value exactly, then compares the head strictly at the new value. Counts and the rules note are derived from the declared catalogue (rule_registry.factor_rows()/soft_factor_rows()), the literals were re-derived by script from the test's own capture ($MB_GOLDEN_OUT on the seeded template).",
+    "cause": "SR-NDH-INPLACE (SR-OD1 V1/D2): the eight ND-H classes' P1@1.2.0 row was re-derived in place to carry the owner's Form B factors; the manifest binds the three P1 L0 reference tables and the Form B orb activity",
+    "pins": [
+     {
+      "pin": "ka_gochara_factor rows (every substep)",
+      "from": 12,
+      "to": 18
+     },
+     {
+      "pin": "ka_gochara_rule_path_soft_factor rows (every substep)",
+      "from": 19,
+      "to": 18
+     },
+     {
+      "pin": "rules substep: reused rows in the outcome note",
+      "from": 67,
+      "to": 72
+     },
+     {
+      "pin": "rules substep: statement count",
+      "from": 67,
+      "to": 72
+     },
+     {
+      "pin": "rules substep: per-factor read shape count",
+      "from": 12,
+      "to": 18
+     },
+     {
+      "pin": "rules substep: soft-factor read shape count",
+      "from": 19,
+      "to": 18
+     },
+     {
+      "pin": "rules substep: statement order hash (sequence_sha256)",
+      "from": "033a468ae62bbbcb151cd0af72d9afe3ceeaeda85511dbd9fe85bd8d61c361f9",
+      "to": "87100ca17af37d832e060cc3ea6f71396b928fb9572bf34118f894cbfc0e2878"
+     },
+     {
+      "pin": "manifest registry.digest",
+      "from": "decadef6289d4113a01b4179522ba26d14eb1833bb73d424e9ba9700f36e778d",
+      "to": "38806d8f4ae8e4a7bcd86ef57edab2372b2d54fee3818f7ab3c03f636ed30295"
+     },
+     {
+      "pin": "manifest l0.bg_combustion_orbs",
+      "from": "(absent)",
+      "to": "754dc5ff539e954b7ae20b2311c6a3130aa101f93acd6c058c333a82cf8047d4"
+     },
+     {
+      "pin": "manifest l0.bg_dignity_reference",
+      "from": "(absent)",
+      "to": "2635a7f1f311ffc884dc1416baecc5a8cb44212c308cb386fac5423afcda4456"
+     },
+     {
+      "pin": "manifest l0.bg_graha_naisargika_friendship",
+      "from": "(absent)",
+      "to": "6fe29171b27e7934271823a38ef36efd12300838fe240ee551b660d46b000c1f"
+     },
+     {
+      "pin": "manifest orb_policy.activity['1.3.0']",
+      "from": "(absent)",
+      "to": {
+       "orb_decision_ref": "nd_orb_scale",
+       "orb_deg": 1.0
+      }
+     }
+    ],
+    "fixture_changes": [
+     "the a55 template of the golden now seeds bg_combustion_orbs, bg_dignity_reference and bg_graha_naisargika_friendship from migrations 250 + 1401 (the template stubs L1 only); CI's 'Gochara measuring build' runs the same file, so it reads the same seeded fixture",
+     "the template is built on the pre-doctrine final profile (the doctrine rows P1/P3/P4@1.3.0, P2@1.1.0 joined the final catalogue after the P06 capture), as test_j4d_slice_lane_db.py",
+     "three P1 L0 digest SELECTs per manifest-reading substep are counted separately (exact text, once each)",
+     "read-shape follows: SR-F4-STORE-EXACT float8 casts (3 reads), the scored-support read's NULL::text column; the two older factor/grain read blocks that duplicated _follow_od1_reads were removed",
+     "the Swiss library artifact hash is host-bound for another build on the same platform string; version and probe digest are still compared"
+    ]
+   },
+   "interpretations": [
+    {
+     "choice": "pre-doctrine final profile for the golden's template",
+     "alternative": "re-capture the P06 golden on the full final profile (rejected: the golden is the accepted baseline and is not re-captured)"
+    },
+    {
+     "choice": "library_sha256 host-bound when the platform string matches but the build differs",
+     "alternative": "compare it whenever the platform string matches (fails on any machine whose pyswisseph build is not the capture machine's)"
+    }
+   ],
+   "closed": true
+  },
+  {
+   "id": "PIN-COMMENT-REPIN",
+   "rulings": [
+    "SR-PIN-COMMENT-REPIN",
+    "SR-GOLDEN-LIB-STRICT"
+   ],
+   "category": "E1",
+   "part": "implementation.evaluation + implementation.window (golden pins)",
+   "base_commit": "4c7c845e89802ddaf5805f267fea6277155a31ce",
+   "derived_at_head": "b911607f514bc9caa26e42dc7ef96b3635250fe4",
+   "statement": "PIN-COMMENT-REPIN (SR-PIN-COMMENT-REPIN): the last re-derivation before the TR. Cause: e4a5d661e's comment/docstring-only rewording, forced by test_w2_serving_route (comments naming the read-side module). input_vector.py: comments only, the AST is identical; numerical_window_gate.py: docstring-only. Both are IMPLEMENTATION_MODULES files, so their byte digests moved while no behaviour did. Geometry unchanged. This supersedes the I1-ADDENDUM statement 'IMPLEMENTATION_MODULES digests measured unchanged', which was true at 4c7c845e8 and is false at the landing head.",
+   "implementation_digests": {
+    "geometry": {
+     "before": "27edba25a624504f7543c7d40267e5b6b9d724373136e71a34393de9758b54d7",
+     "after": "27edba25a624504f7543c7d40267e5b6b9d724373136e71a34393de9758b54d7"
+    },
+    "evaluation": {
+     "before": "8168cbfc2edf022868dc72b25b0ec5643b23cbcbf5f6578ce9f1ae5099a53c2c",
+     "after": "dc911db8c033c56a6022f79714947acc694a564d496388d1b99d917caaf8fb0b"
+    },
+    "window": {
+     "before": "75c3fd11e0a5035977897d53de470081173ff5d3dffdb1b4d253b39b8d5b0058",
+     "after": "789430e0c9f73f6e3f1f9d24fe1f63e3b07e3ad0245a536c5994eab8482db307"
+    }
+   },
+   "recipe": "input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) on the final tree, equal to input_vector.implementation_digests(); the pins in test_mb_ordinary_golden.py were replaced by script by a job script, no golden component re-captured.",
+   "withdrawn_interpretations": [
+    {
+     "entry": "I1-ADDENDUM",
+     "choice": "library_sha256 host-bound when the platform string matches but the build differs",
+     "withdrawn_by": "SR-GOLDEN-LIB-STRICT: the library artifact hash stays strictly compared on the golden's own platform; the golden is fed by CI's capture-equivalent image (T20)"
+    }
+   ],
+   "interpretations": [],
+   "closed": true
+  },
+  {
+   "id": "GEOM-PIN-ONCE-AMEND-5",
+   "amends": "GEOM-PIN-ONCE",
+   "rulings": [
+    "SR-NEARMISS-DOMAIN-TAIL",
+    "SR-NEARMISS-DOMAIN-TAIL amend-1",
+    "SR-NEARMISS-DOMAIN-TAIL amend-2",
+    "GEOMETRY-PIN-ONCE amend-5 (reopened for exactly this cause)"
+   ],
+   "category": "E1",
+   "part": "implementation.geometry",
+   "base_commit": "87320fbf2",
+   "derived_at_head": "69155d9f08a882c594d69bcdbd9d748b720b004e",
+   "recipe": "input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES)['geometry'] on the final tree, equal to input_vector.implementation_digests(); derived by script, never hand-typed. The geometry digest at 87320fbf2 (27edba25...) was re-measured by the same recipe over `git archive 87320fbf2`.",
+   "geometry_before": "27edba25a624504f7543c7d40267e5b6b9d724373136e71a34393de9758b54d7",
+   "geometry_after": "77cde807a5e0bf6a3733bea3f48270774920acd7434f37f2c2eb73fe781d3616",
+   "modules": {
+    "near_miss_verifier": {
+     "before_sha256": "766197bb1a4952fc907e0bd205e29732d367abc43b7f476868a8e52c1b909360",
+     "after_sha256": "6308b3c29802376cd2aae0493bff325f3a7e106205198d9c8f2d5b305d98d5f2",
+     "changed": true
+    }
+   },
+   "cause": {
+    "id": "NEARMISS_DOMAIN_TAIL",
+    "ruling": "SR-NEARMISS-DOMAIN-TAIL (+amend-1, +amend-2)",
+    "modules": [
+     "near_miss_verifier"
+    ],
+    "commit": "cbd7d2e86",
+    "why_needed": "Qualifying TR on linux/amd64 (87320fbf2): every class's verification refused with near_miss_unresolved rootless_stretch_crosses_identity_domain. A stretch that crosses into the identity domain with its station OUTSIDE it is invisible to the builder's arc index (it forms stretches only around in-domain stations), so the verifier's refusal could never agree with any stored row. near_miss_verifier now discloses it by name (identity_domain_tails, identity_domain_tail_count; reason name unchanged, SR-REASON-ONE-NAME) instead of refusing; a crossing stretch WITH an in-domain station stays refused.",
+    "code_path": "near_miss_verifier._follow_domain_edge / _station_in_span / split_identity_domain_tails / tail_record / tail_disclosure <- verify_generation (verifier side only; near_miss.py, the builder, is untouched)",
+    "rows": {
+     "result": "no stored row/id/window/score/contact changes; near-miss layer not on the scored path",
+     "measured_by_this_job": false,
+     "grounding": "the cause commit changes near_miss_verifier.py and its test only (git show --stat cbd7d2e86); no other geometry-stage module differs from 87320fbf2 (re-measured here module by module); this job ran no leave-one-out build."
+    }
+   },
+   "last_re_derivation_before_the_tr": true,
+   "statement": "GEOM-PIN-ONCE amend-5: the geometry implementation digest moves once more, 27edba25 -> 77cde807, for exactly one cause (cbd7d2e86, SR-NEARMISS-DOMAIN-TAIL +amend-1/-2); one module, near_miss_verifier. Last re-derivation before the TR. Any other geometry change still refuses (test_a53_geometry_pin_once).",
+   "interpretations": [
+    "(I) The amendment is a separate changelog entry chained to GEOM-PIN-ONCE (its geometry_before must equal GEOM-PIN-ONCE.geometry_after and its module before_sha256 must equal the entry's after_sha256), rather than an edit of the closed GEOM-PIN-ONCE entry; alternative: rewrite GEOM-PIN-ONCE in place."
+   ],
+   "closed": true,
+   "further_geometry_change": "REFUSE"
+  },
+  {
+   "id": "P2-ADMISSION",
+   "rulings": [
+    "SR-P2-ADMISSION-VERIFIER-FIX"
+   ],
+   "category": "E1",
+   "part": "implementation.evaluation (golden pin)",
+   "base_commit": "87320fbf2",
+   "derived_at_head": "69155d9f08a882c594d69bcdbd9d748b720b004e",
+   "statement": "P2-ADMISSION (SR-P2-ADMISSION-VERIFIER-FIX): the P2 record verifier re-derives house_from_moon from the sealed CITED set (favourable U the D-RQ5 adverse 12/8/1), not the adverse search plan. Cause commit 66560932b changes record_derivation.py only (an evaluation-stage module). Verifier-only; builder unchanged; no rebuild needed. Last re-derivation before the TR.",
+   "cause": {
+    "commit": "66560932b",
+    "modules": [
+     "record_derivation"
+    ]
+   },
+   "implementation_digests": {
+    "geometry": {
+     "before": "77cde807a5e0bf6a3733bea3f48270774920acd7434f37f2c2eb73fe781d3616",
+     "after": "77cde807a5e0bf6a3733bea3f48270774920acd7434f37f2c2eb73fe781d3616",
+     "note": "moved by GEOM-PIN-ONCE-AMEND-5, not by this entry"
+    },
+    "evaluation": {
+     "before": "dc911db8c033c56a6022f79714947acc694a564d496388d1b99d917caaf8fb0b",
+     "after": "16c4a5243711fd95e045dee3b9e47c5242fca07b7569d2c7a24bdf79ba7cd6cc"
+    },
+    "window": {
+     "before": "789430e0c9f73f6e3f1f9d24fe1f63e3b07e3ad0245a536c5994eab8482db307",
+     "after": "789430e0c9f73f6e3f1f9d24fe1f63e3b07e3ad0245a536c5994eab8482db307"
+    }
+   },
+   "recipe": "input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) on the final tree, equal to input_vector.implementation_digests(); the golden pins in test_mb_ordinary_golden.py were replaced by script (job script, AST-located literals); no golden component re-captured.",
+   "interpretations": [],
+   "closed": true
+  },
+  {
+   "id": "P1-SLIVER-D2",
+   "rulings": [
+    "SR-P1-SLIVER-D2"
+   ],
+   "category": "E1",
+   "part": "implementation.window (golden pin) + implementation_digest.lock.json + century_contract.json image.writer_source_digest",
+   "base_commit": "90cba08db",
+   "derived_at_head": "604963d43b6f186aa0c6353ed56cae2b88b8aa09",
+   "statement": "P1-SLIVER-D2 (SR-P1-SLIVER-D2, madhav-44): the builder and, independently in its own code, the verifier each exclude from a window's MAXIMUM any piece shorter than the stored-edge resolution at that instant = one JD-double ulp, COMPUTED (math.ulp(jd) * 86400 s, never a literal). A record's stored support end and the lord's sign change are the same sky event computed on two paths <= 21 us apart; a maximum that exists only on such a piece is not a sky configuration (N.7.6). The excluded pieces are counted per window (qualification.certificate.sliver_pieces_excluded, the generic member migration 1402 admits; absent = none excluded) and listed as kind 'sliver' in the solver certificate's geometry. A window whose only positive piece was a sliver is numbered by the pieces that remain (possibly 0.0). Cause commit 604963d43 changes window_solver, window_sweep, window_solver_check and window_verifier only (window-stage modules). Geometry and evaluation are unchanged. Measured on harness-built records (chronic_onset 10 of 138 P1 windows change value, illness_acute 10 of 138, major_loss 9 of 63, parental_event 15 of 149; no P2/P3/P4 window changes value). Last re-derivation before the TR. Derived pins carried by this entry: the window golden pin (test_mb_ordinary_golden.py); services/gochara_kernel/implementation_digest.lock.json regenerated with its own --write (it was already stale at the base head, registering the pre-amend-5 digests 5721a21c / geometry 5ec80159, so test_the_committed_lock_is_current_for_the_code_in_this_checkout could not pass there); century_contract.json image.writer_source_digest 48f50d1c -> e4433b5f (--check said the image differed; equal after).",
+   "cause": {
+    "commit": "604963d43",
+    "modules": [
+     "window_solver",
+     "window_sweep",
+     "window_solver_check",
+     "window_verifier"
+    ]
+   },
+   "excluded_piece_rule": "a piece [a, b) of a window's elementary pieces with (b - a) in seconds < math.ulp(JD(a)) * 86400, JD(a) the Julian Day double of its start, is no candidate for the maximum; the pieces on either side keep their own values and edges; a 10 ms piece (a different rung) is never excluded",
+   "implementation_digests": {
+    "geometry": {
+     "before": "77cde807a5e0bf6a3733bea3f48270774920acd7434f37f2c2eb73fe781d3616",
+     "after": "77cde807a5e0bf6a3733bea3f48270774920acd7434f37f2c2eb73fe781d3616"
+    },
+    "evaluation": {
+     "before": "16c4a5243711fd95e045dee3b9e47c5242fca07b7569d2c7a24bdf79ba7cd6cc",
+     "after": "16c4a5243711fd95e045dee3b9e47c5242fca07b7569d2c7a24bdf79ba7cd6cc"
+    },
+    "window": {
+     "before": "789430e0c9f73f6e3f1f9d24fe1f63e3b07e3ad0245a536c5994eab8482db307",
+     "after": "b94365dd0cfff70763f922fb3dc58598b7c05a70f97b7f288aeea4ee19fd5035"
+    }
+   },
+   "recipe": "input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) on the final tree, equal to input_vector.implementation_digests(); the golden pin in test_mb_ordinary_golden.py was replaced by script (AST-located literal); no golden component re-captured.",
+   "interpretations": [],
+   "closed": true
+  },
+  {
+   "id": "TR2-DEFECTS-AB",
+   "rulings": [
+    "SR-NEARMISS-DOMAIN-TAIL",
+    "SR-UCERT-CAP-WATCH"
+   ],
+   "category": "E1",
+   "part": "implementation.window (golden pin) + century_contract.json image.writer_source_digest",
+   "base_commit": "3d9b65c68",
+   "derived_at_head": "2e3c6b341",
+   "statement": "THE ONE RE-PIN after the VM TR diagnostic 20261023T1655ZT (NO_DISPATCH). Defect A (od1-tr2-nearmiss e34a116ea + 2ffbaab1b, reviewed ACCEPTED in round 2): the geometry-stage near-miss reconciliation (verification_job.near_miss_reconcile_problems) excludes exactly the disclosed identity-domain tails, recomputed with the verifier's own functions and matched by object id one-for-one; any other reported-but-unstored graze still fails; a duplicate tail object key is refused. Defect B (od1-tr2-certbound 4e39b711d, ACCEPTED): a bound the verifier cannot push under M + tol with no point above it is INCONCLUSIVE (named blank solver_certificate_incomplete, counted against the R-6 0.5 % cap by origin: only builder-numbered windows), not DISAGREEMENT; a witnessed exceedance still disagrees; no tolerance changed. Defects C/D (od1-tr2-g6g7 838b1373e + d916c7dfa, ACCEPTED) are trial-harness only and move no implementation digest. All changed implementation modules are window-stage; geometry and evaluation are unchanged.",
+   "cause": {
+    "commit": "2e3c6b341",
+    "modules": [
+     "verification_job",
+     "window_cert_check",
+     "numerical_window_gate"
+    ]
+   },
+   "implementation_digests": {
+    "geometry": {
+     "before": "77cde807a5e0bf6a3733bea3f48270774920acd7434f37f2c2eb73fe781d3616",
+     "after": "77cde807a5e0bf6a3733bea3f48270774920acd7434f37f2c2eb73fe781d3616"
+    },
+    "evaluation": {
+     "before": "16c4a5243711fd95e045dee3b9e47c5242fca07b7569d2c7a24bdf79ba7cd6cc",
+     "after": "16c4a5243711fd95e045dee3b9e47c5242fca07b7569d2c7a24bdf79ba7cd6cc"
+    },
+    "window": {
+     "before": "b94365dd0cfff70763f922fb3dc58598b7c05a70f97b7f288aeea4ee19fd5035",
+     "after": "e38160c13a39ac3223dc52b928f2a7c73e4dd9b821e57fb0ef2c86a1cd8dd1e1"
+    }
+   },
+   "recipe": "input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) on the merged tree, equal to input_vector.implementation_digests(); the golden window pin in test_mb_ordinary_golden.py replaced by exact-string substitution of the old digest; century_contract.json image.writer_source_digest e4433b5f -> 9706eed5 from get_writer_source_hash('ka_gochara_v5'), century_contract.py --check equal (partial: no --pack). implementation_digest.lock.json is NOT touched (CI-generated output).",
+   "interpretations": [],
+   "closed": true
+  },
+  {
+   "id": "TR3-DEFECT-E-UCERT",
+   "rulings": [
+    "SR-TR3-SECOND-REPIN",
+    "SR-UCERT-SUBDIV",
+    "SR-UCERT-CAP-WATCH"
+   ],
+   "category": "E1",
+   "part": "implementation.window (golden pin) + century_contract.json image.writer_source_digest",
+   "base_commit": "e01557e44",
+   "derived_at_head": "287093002",
+   "statement": "THE SECOND RE-PIN (SR-TR3-SECOND-REPIN), after final TR #1 20261023T2010ZF (12/12 VERIFIED, 0 DISAGREE, NO_DISPATCH on the R-6 cap: 31 of 4509 windows demoted; 28 verifier_budget_exhausted on P4, 2 solver_certificate_incomplete, 1 tie_ambiguous). Defect E (od1-tr3-p4budget 08c6f899e + 94ae4548e, reviewed ACCEPTED in round 2): the verifier's tie scan takes a certified-constant stretch of a max-min piece as one plateau (_flat: reduce(member minima) <= F <= reduce(member maxima) on a piece where every member is monotone; agreement within the existing PLATEAU_EPS; P4 only; never inside a station zone); the bound, budget and every tolerance unchanged. U_CERT (od1-tr2-ucert-subdiv 0e636104e + 0fe92f427, ACCEPTED): the verifier bisects below the 1 ms floor to 1e-5 s within a 2000-bisection allowance before raising U_CERT, with a per-window allowance counter. Both are verifier-only window-stage changes: window_solver_check (E and U_CERT) and window_verifier (U_CERT, 0fe92f427: the per-window deep-split allowance counter carried in the re-derivation output); geometry and evaluation unchanged. (Record corrected after review X-20261024T014608Z-review-repin3 under SR-RECORD-ONLY-DELTA: the first version named window_solver_check only.)",
+   "cause": {
+    "commit": "287093002",
+    "modules": [
+     "window_solver_check",
+     "window_verifier"
+    ]
+   },
+   "implementation_digests": {
+    "geometry": {
+     "before": "77cde807a5e0bf6a3733bea3f48270774920acd7434f37f2c2eb73fe781d3616",
+     "after": "77cde807a5e0bf6a3733bea3f48270774920acd7434f37f2c2eb73fe781d3616"
+    },
+    "evaluation": {
+     "before": "16c4a5243711fd95e045dee3b9e47c5242fca07b7569d2c7a24bdf79ba7cd6cc",
+     "after": "16c4a5243711fd95e045dee3b9e47c5242fca07b7569d2c7a24bdf79ba7cd6cc"
+    },
+    "window": {
+     "before": "e38160c13a39ac3223dc52b928f2a7c73e4dd9b821e57fb0ef2c86a1cd8dd1e1",
+     "after": "25c5badbe01dc8634948295a661d107927c609c6042c060faee89895c8850661"
+    }
+   },
+   "recipe": "input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) on the merged tree, equal to input_vector.implementation_digests(); the golden window pin in test_mb_ordinary_golden.py replaced by exact-string substitution; century_contract.json image.writer_source_digest 9706eed5 -> e5ebcfde from get_writer_source_hash('ka_gochara_v5'), century_contract.py --check equal (partial: no --pack). Harness digest unchanged (no trial_harness file moved). implementation_digest.lock.json not touched.",
+   "interpretations": [],
+   "closed": true
+  },
+  {
+   "id": "DISPATCH-HEAD-DELTA-4",
+   "rulings": [
+    "SR-DISPATCH-HEAD-DELTA-4",
+    "SR-RECORD-ONLY-DELTA",
+    "SR-TR2-QUALIFY-PATH"
+   ],
+   "category": "E1",
+   "part": "trial-harness digest + record/governance files; NO implementation digest",
+   "base_commit": "6ebe04f576e2188f7f845a272fa6dfc5f032a580",
+   "derived_at_head": "(this commit)",
+   "statement": "Delta from the final-TR-#2 head 6ebe04f57 to the dispatch head, EXACTLY the four admitted parts: (1) record-only: EQUIVALENCE_RECORD_CHANGELOG TR3-DEFECT-E-UCERT names window_verifier; test_mb_ordinary_golden.py pin-history comment (7cb28e6e6); (2) platform/scripts/governance/no_local_aspect_dict_allowlist.json window_verifier _ASPECT_ANGLES line 1066 -> 1094 (6a341f4ce; RV-INT D01A-ALLOWLIST-LINE); (3) trial_harness gates.py + trial_slice.py: G-4 recount matches the R-6 demotions by window_id, with tests test_gates.py, test_t1b_fix.py (365e9c165, reviewed ACCEPTED); (4) fleet/equivalence_record.py knows the input_vector key scored_until, with fleet/tests/test_equivalence_record.py (365e9c165). Plus the harness-digest re-pin it implies (test_trial_ready.py, TRIAL_HARNESS_LANDED.md) and this entry. No IMPLEMENTATION_MODULES, century-writer, migration, registry, century-config or dispatch-pack file moves.",
+   "implementation_digests": {
+    "geometry": {
+     "before": "77cde807a5e0bf6a3733bea3f48270774920acd7434f37f2c2eb73fe781d3616",
+     "after": "77cde807a5e0bf6a3733bea3f48270774920acd7434f37f2c2eb73fe781d3616"
+    },
+    "evaluation": {
+     "before": "16c4a5243711fd95e045dee3b9e47c5242fca07b7569d2c7a24bdf79ba7cd6cc",
+     "after": "16c4a5243711fd95e045dee3b9e47c5242fca07b7569d2c7a24bdf79ba7cd6cc"
+    },
+    "window": {
+     "before": "25c5badbe01dc8634948295a661d107927c609c6042c060faee89895c8850661",
+     "after": "25c5badbe01dc8634948295a661d107927c609c6042c060faee89895c8850661"
+    }
+   },
+   "harness_digest": {
+    "before": "04b1d1d28cf98cb12fd6de7b3870eef9168daead34d33a7cbea35f8330abaa19",
+    "after": "204ff29f1036293d6a2866cb36f1187cc0bacd09592385429fcb0f2744dabe66"
+   },
+   "recipe": "implementation digests by input_vector_verifier.module_digests(IMPLEMENTATION_MODULES) at both heads (equal); harness digest by test_trial_ready.harness_digest() of the tree.",
+   "interpretations": [
+    {
+     "choice": "(I) the harness-digest re-pin files (test_trial_ready.py, TRIAL_HARNESS_LANDED.md) and this changelog entry are part of part 3 / condition 'harness digest delta recorded'",
+     "alternative": "treat them as a fifth part (which would void the ruling)"
+    }
+   ],
+   "closed": true
+  },
+  {
+   "id": "DISPATCH-HEAD-DELTA-5",
+   "rulings": [
+    "SR-DISPATCH-HEAD-DELTA-5",
+    "SR-DISPATCH-HEAD-DELTA-5-AMEND-1"
+   ],
+   "category": "E1",
+   "part": "executor pin shards only (test-side pins); NO implementation, harness or century-writer digest",
+   "base_commit": "a58f2069b2f1",
+   "derived_at_head": "(this commit)",
+   "statement": "fleet/tests/executor_pin_shards/J-4b-r8.json named plan item 'J-4b-r8', which is not in plan_model.json (test_merged_shards_load_and_name_real_plan_items failed; already failing at 06ce0e0ba). Its only content, w4_bindings for verification_job and verification_job_dryrun, is moved byte-identically into J-4b.json as one new key (J-4b.json's existing keys unchanged; its entries for both kinds already agree with the bindings, as load_shards validates) and J-4b-r8.json is deleted. Nothing is added to plan_model.json (owner: do not add to the tracker). The executor's fully resolved operation table and every shard-resolved pin (runtime executor_ops.json sha, assert_table_matches_pin expectations, w4 bindings, classes, production set, function hashes) are byte-identical before and after (dump sha 3705bd58c075c9ad both). Shard + w4 tests 95/95 (94 + 1 failed before).",
+   "implementation_digests": {
+    "geometry": {
+     "before": "77cde807a5e0bf6a3733bea3f48270774920acd7434f37f2c2eb73fe781d3616",
+     "after": "77cde807a5e0bf6a3733bea3f48270774920acd7434f37f2c2eb73fe781d3616"
+    },
+    "evaluation": {
+     "before": "16c4a5243711fd95e045dee3b9e47c5242fca07b7569d2c7a24bdf79ba7cd6cc",
+     "after": "16c4a5243711fd95e045dee3b9e47c5242fca07b7569d2c7a24bdf79ba7cd6cc"
+    },
+    "window": {
+     "before": "25c5badbe01dc8634948295a661d107927c609c6042c060faee89895c8850661",
+     "after": "25c5badbe01dc8634948295a661d107927c609c6042c060faee89895c8850661"
+    }
+   },
+   "recipe": "fast/delta5/resolved_dump.py run in the fleet directory before and after; cmp equal.",
+   "interpretations": [],
+   "closed": true
+  }
+ ]
+}

@@ -150,14 +150,19 @@ def qual_gate(**over):
     """A PASSED numerical-window gate verdict whose counts the attestations below agree with: 5 windows, 3 numbered, 2 blank with a reason (OD-1, SR-OD1-DESIGN)."""
     g = {"schema": "numerical_window_gate/1", "status": "PASSED", "policy": bc.POLICY_QUALIFICATION, "table": BOUND, "grains": 2, "windows": 5, "numbered_windows": 3,
          "numbered_without_score": 0, "blank_windows": 2, "valence_of_numbered": {"favourable": 3}, "by_path": {}, "problems": [],
-         "honest_nulls": [{"path_id": "P1", "group": "categorical_factor_unmapped", "reason": "value_mapping_undeclared", "windows": 2}]}
+         "demoted_windows": 0, "demoted_by_reason": {}, "unconfirmed_blank_windows": 0, "inconclusive_cap_per_mille": 5,
+         "honest_nulls": [{"path_id": "P1", "group": "categorical_factor_unmapped", "reason": "value_mapping_undeclared", "windows": 2}],
+         # SR-OD1 S3: the same blanks counted per GRAIN (class x path x version), which the approval check requires to account for every blank window
+         "honest_nulls_by_grain": [{"event_class": "marriage", "path_id": "P1", "rule_version": "1.0.0", "group": "categorical_factor_unmapped",
+                                    "reason": "value_mapping_undeclared", "windows": 2}]}
     g.update(over)
     return g
 
 
-def qual_attestations(*pairs):
+def qual_attestations(*pairs, demoted=None):
     return {"ka_gochara_eval_window_verification": [json.dumps({"runner_identity": {"commit": "c", "numerical_window_gate": {
-        "status": "PASSED", "table": BOUND, "windows": w, "numbered": n}}}) for w, n in pairs]}
+        "status": "PASSED", "table": BOUND, "windows": w, "numbered": n, **({"demoted": demoted} if demoted and i == 0 else {})}}})
+        for i, (w, n) in enumerate(pairs)]}
 
 
 def qual_payload(**over):
@@ -206,6 +211,43 @@ def test_a_numerical_brief_is_refused_unless_its_gate_passed_and_every_blank_has
             p[k] = v
     with pytest.raises(bc.Refused, match=needle):
         check(*pair(p))
+
+
+def demoted_payload(demoted, windows=1000, reason="verifier_budget_exhausted", attested=None):
+    """R-6: `windows` windows in two grains, `demoted` of them demoted to the named blank `reason`; 2 honest blanks besides, the rest numbered."""
+    blank = 2 + demoted
+    gate = qual_gate(windows=windows, numbered_windows=windows - blank, blank_windows=blank, demoted_windows=demoted,
+                     demoted_by_reason={reason: demoted} if demoted else {}, valence_of_numbered={"favourable": windows - blank},
+                     honest_nulls=[{"path_id": "P1", "group": "categorical_factor_unmapped", "reason": "value_mapping_undeclared", "windows": 2}]
+                     + ([{"path_id": "P1", "group": "solver_certificate", "reason": reason, "windows": demoted}] if demoted else []),
+                     # S3: the same blanks per GRAIN — the demoted windows are blanks too, so they are counted
+                     honest_nulls_by_grain=[{"event_class": "marriage", "path_id": "P1", "rule_version": "1.0.0", "group": "categorical_factor_unmapped",
+                                             "reason": "value_mapping_undeclared", "windows": 2}]
+                     + ([{"event_class": "marriage", "path_id": "P1", "rule_version": "1.0.0", "group": "solver_certificate", "reason": reason, "windows": demoted}]
+                        if demoted else []))
+    # grain 1: windows - 3 windows, of which 2 are the honest blanks and `demoted` are demoted; grain 2: 3 numbered windows
+    atts = qual_attestations((windows - 3, windows - 3 - 2 - demoted), (3, 3), demoted={reason: demoted if attested is None else attested} if demoted else None)
+    return qual_payload(numerical_window_gate=gate, attestations=atts)
+
+
+def test_the_demoted_share_is_capped_at_half_a_percent_and_must_agree_between_summary_and_attestations():
+    """R-6 (SR-PLAN-REVIEW-RECONCILED): windows the verifier could not settle are demoted to a named blank; the share is at most 0.5 % of all windows (5 of 1,000 passes, 6
+    is refused), the gate summary and the persisted attestations must count the same demotions, and every demoted reason is disclosed among the honest nulls. (revert: drop
+    the cap comparison — the 6-of-1,000 case passes silently)"""
+    assert check(*pair(demoted_payload(5)))
+    with pytest.raises(bc.Refused, match="above the 0.5 % cap"):
+        check(*pair(demoted_payload(6)))
+    with pytest.raises(bc.Refused, match="attestations count"):
+        check(*pair(demoted_payload(5, attested=4)))
+    p = demoted_payload(5)
+    p["numerical_window_gate"]["honest_nulls"] = p["numerical_window_gate"]["honest_nulls"][:1]
+    with pytest.raises(bc.Refused):
+        check(*pair(p))
+
+
+def test_the_numerical_gate_and_the_brief_check_hold_the_same_cap():
+    from services.gochara_kernel import numerical_window_gate as nwg
+    assert bc.INCONCLUSIVE_CAP_PER_MILLE == nwg.INCONCLUSIVE_SHARE_CAP_PER_MILLE == 5
 
 
 def test_an_all_null_brief_carries_no_numerical_verdict():

@@ -7,8 +7,13 @@ from pathlib import Path
 
 import pytest
 
-from services.gochara_rules.vedha_derive import derive_vedha, pairs_from_rows
+from services.gochara_rules.vedha_derive import NODES_UNDECIDED, derive_vedha as _derive_vedha, pairs_from_rows
 from services.kala_core.sky.coverage import coverage_of
+
+# SR-OD1 C1: this asset's sweep has not adopted ND-NODE-VEDHA (a node in the vedha house obstructs); its cross-check derivation keeps
+# the pre-ruling reading until the asset is re-elevated, so every oracle call below asks for it by name
+def derive_vedha(*a, **k):
+    return _derive_vedha(*a, nodes=NODES_UNDECIDED, **k)
 
 ROWS = json.loads((Path(__file__).parents[1] / 'gochara_rules/fixtures/l0_vedha_rows_2026_10_02.json').read_text())
 A, B, C, D = [f'2025-01-{day:02d}T00:00:00+00:00' for day in (1, 3, 5, 7)]

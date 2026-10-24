@@ -91,6 +91,49 @@ def sql_l0_digest(conn) -> str:
     return digest
 
 
+#: P1's three L0 authorities (SR-OD1 plan §3.3, P1a), each the verifier's OWN statement of what the build consumes: the row
+#: normalisation (an array per row, in a total order under the C collation) and the NUMERIC rendering (`trim_scale(x)::text`, so
+#: `15.0` and `15` are one value). Surrogate ids, citations and notes are not consumed. Nothing is imported from the builder.
+_P1_L0_SQL = {
+    "bg_dignity_reference": (
+        "jsonb_build_array(graha, exaltation_sign, debilitation_sign, moolatrikona_sign,"
+        " trim_scale(moolatrikona_from)::text, trim_scale(moolatrikona_to)::text,"
+        " COALESCE(to_jsonb(own_signs), '[]'::jsonb))",
+        'graha COLLATE "C"'),
+    "bg_combustion_orbs": (
+        "jsonb_build_array(graha, trim_scale(orb_degrees)::text, trim_scale(deep_orb_degrees)::text)",
+        'graha COLLATE "C"'),
+    "bg_graha_naisargika_friendship": (
+        "jsonb_build_array(graha, other_graha, relation)",
+        'graha COLLATE "C", other_graha COLLATE "C"'),
+}
+
+
+def sql_p1_l0_digest(conn, asset: str) -> str:
+    """The identity of one of P1's three L0 reference tables, derived entirely in Postgres through the database's canonical JSON
+    + sha256 over the verifier's own normalisation of the rows it reads. Equals `p1_operands.L0Table.content_digest`; an empty
+    table is refused (nothing to derive an identity from)."""
+    if asset not in _P1_L0_SQL:
+        raise RuntimeError(f"l0: {asset!r} is not one of P1's L0 authorities {sorted(_P1_L0_SQL)}")
+    expr, order = _P1_L0_SQL[asset]
+    row = conn.execute(
+        f"SELECT public.ka_gochara_sha256_hex(public.ka_gochara_canonical_json(COALESCE(jsonb_agg({expr} ORDER BY {order}),"
+        f" '[]'::jsonb))), count(*) FROM public.{asset}").fetchone()
+    digest, n = tuple(row.values()) if isinstance(row, dict) else (row[0], row[1])
+    if not n:
+        raise RuntimeError(f"l0: {asset} has no rows — nothing to derive an identity from")
+    return digest
+
+
+def sql_l0_asset_digest(conn, asset: str) -> str:
+    """The independent digest of a consumed L0 authority, or a refusal naming the authority that has no derivation."""
+    if asset == "bg_transit_rules":
+        return sql_l0_digest(conn)
+    if asset in _P1_L0_SQL:
+        return sql_p1_l0_digest(conn, asset)
+    raise RuntimeError(f"l0.{asset}: no independent derivation exists for this authority")
+
+
 def sql_sky_convention_digest(conn, convention_id: str) -> str:
     row = conn.execute(
         "SELECT public.ka_gochara_sha256_hex(public.ka_gochara_canonical_json(to_jsonb(t) - %s::text[]))"
@@ -169,8 +212,8 @@ _KNOWN_SCOPES = ("stored_non_moon",)
 _KNOWN_POLICIES = ("all_null_candidate/1", "window_qualification/1")
 #: OD-1 (SR-OD1-NUMERICAL): this verifier's OWN literal of the frozen `window_qualification/1` table binding (nothing imported from the builder's
 #: `result_policy`; a test asserts the two equal). The vector must carry exactly this component under that policy and none under the all-NULL one.
-QUALIFICATION_TABLE_BINDING = {"schema": "window_qualification_table/1",
-                               "digest": "5bbc65bb5fc98547bf0bea5d1ff90c76965155f3166a7042a11ab34772e6a80f"}
+QUALIFICATION_TABLE_BINDING = {"schema": "window_qualification_table/2",
+                               "digest": "f2c831a46c32ddb534cb07443e798f6c0fdce448c1b191570565f698ff5de3a9"}
 #: G8: the verifier's OWN scored-class universe (nothing imported from the builder): the 26 scored event classes of the evaluation
 #: protocol's fixed 27-class table (EVALUATION_PROTOCOL_v2_3 §2; gochara_eval.registry.CLASSES_27) minus `birth_anchor`, which is an
 #: unscored annotation — the evaluator refuses to enumerate it by design (O-CF-N6: zero rows). A drift test pins this tuple equal to both
@@ -182,6 +225,16 @@ SCORED_CLASS_UNIVERSE = (
     "psychological_arc", "relocation", "romantic_start", "separation", "spiritual_turn", "surgery", "travel_event",
 )
 ANNOTATION_ONLY_CLASSES = ("birth_anchor",)
+
+
+def derive_scored_until() -> str:
+    """OD-1 / D-FLIP F-10: this verifier's OWN derivation of the scored edge the manifest must pin (nothing imported from the builder): the evaluation
+    protocol's observation-mask end `gochara_eval.registry.H1` is an INCLUSIVE IST calendar date (protocol v2.3 §1/§3), so the exclusive edge is the
+    IST midnight that follows it. Read from the registry at call time, never restated (CLAUDE.md §N.7.3)."""
+    import datetime as dt
+    from services.gochara_eval.registry import H1
+    ist = dt.timezone(dt.timedelta(hours=5, minutes=30))
+    return (dt.datetime(H1.year, H1.month, H1.day, tzinfo=ist) + dt.timedelta(days=1)).isoformat()
 
 
 def derive_opened_file_census(ephe_path: str, jd_lo: float, jd_hi: float, *, bodies=None) -> dict:
@@ -280,7 +333,7 @@ NOT_INDEPENDENTLY_DERIVED = ("orb_policy", "rulings_digest", "consumed_range", "
 
 def verify_inputs(conn, stored: dict, *, ephe_path: str, modules: dict, path_refs=None, census=None,
                   jd_range=None, census_probe=None, series_probe=None, backend_probe=None, absolute_probe=None,
-                  require_scored_classes: bool = False) -> dict:
+                  require_scored_classes: bool = False, require_scored_until: bool = False, scored_until_probe=None) -> dict:
     """Independently re-derive every component of the stored vector that CAN be derived without the builder's
     code, and refuse any disagreement by name. Returns {"derived": [...components], "not_derived": [...]}.
     `census` (replay) restates the original sealed-version census for the registry component."""
@@ -296,10 +349,10 @@ def verify_inputs(conn, stored: dict, *, ephe_path: str, modules: dict, path_ref
         derived.append("registry")
     # L0: ONLY the authorities the manifest says it consumes (an unconsumed authority is not an input)
     for asset in sorted(stored.get("l0", {})):
-        if asset != "bg_transit_rules":
+        if asset != "bg_transit_rules" and asset not in _P1_L0_SQL:
             problems.append(f"l0.{asset}: no independent derivation exists for this authority")
             continue
-        check(f"l0.{asset}", sql_l0_digest(conn), stored["l0"][asset])
+        check(f"l0.{asset}", sql_l0_asset_digest(conn, asset), stored["l0"][asset])
     derived.append("l0")
     check("sky_convention.content_digest", sql_sky_convention_digest(conn, stored["sky_convention"]["id"]),
           stored["sky_convention"]["content_digest"])
@@ -364,6 +417,15 @@ def verify_inputs(conn, stored: dict, *, ephe_path: str, modules: dict, path_ref
         else:
             check("scored_classes", sorted(SCORED_CLASS_UNIVERSE), stored["scored_classes"])
         derived.append("scored_classes")
+    # D-FLIP F-10: the scored edge the manifest pins (the instant past which the served surface marks windows unscored) must equal the edge this verifier
+    # derives from the protocol's observation-mask end. REQUIRED for a real candidate (same two callers as the class census); a vector that predates the
+    # key is judged only when it carries one. A pin that is not a string, or that differs in any character (a shifted day, a zone dropped), is refused.
+    if require_scored_until or "scored_until" in stored:
+        if "scored_until" not in stored:
+            problems.append("scored_until: the vector pins no scored edge (a candidate must pin the exclusive end of the scored horizon)")
+        else:
+            check("scored_until", (scored_until_probe or derive_scored_until)(), stored["scored_until"])
+        derived.append("scored_until")
     if "near_miss_layer_version" in stored:
         if type(stored["near_miss_layer_version"]) is not int or stored["near_miss_layer_version"] != 1:
             problems.append("near_miss_layer_version: unsupported layer version")
@@ -378,6 +440,6 @@ def verify_inputs(conn, stored: dict, *, ephe_path: str, modules: dict, path_ref
 
 
 __all__ = ["ABSOLUTE_PROBE_JD", "ABSOLUTE_PROBE_SUN_LAHIRI_DEG", "ABSOLUTE_PROBE_TOLERANCE_DEG", "derive_absolute_probe",
-           "NOT_INDEPENDENTLY_DERIVED", "derive_backend_and_version", "derive_opened_file_census",
-           "derive_series_probe_digest", "module_digests", "runtime_library_digest", "runtime_platform", "sql_l0_digest",
+           "NOT_INDEPENDENTLY_DERIVED", "derive_backend_and_version", "derive_opened_file_census", "derive_scored_until",
+           "derive_series_probe_digest", "module_digests", "runtime_library_digest", "runtime_platform", "sql_l0_digest", "sql_l0_asset_digest", "sql_p1_l0_digest",
            "sql_registry_digest", "sql_sky_convention_digest", "verify_inputs", "verify_registry_digest"]

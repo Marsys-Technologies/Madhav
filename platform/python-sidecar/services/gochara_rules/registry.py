@@ -430,7 +430,8 @@ KERNEL_VERSION = "1.1.0"
 SPAN_OBJECT_KINDS = ("sign_span", "house_span", "star")                  # 1155 kgrr_object_kind_ck
 ANGULAR_OBJECT_KINDS = ("degree_point", "derived_point", "saham", "house_lord")
 from .flat_selector import (  # noqa: E402  (declared at the point of use: the AM-13 block below)
-    ORB_UNRATIFIED, decode_drishti, decode_kernel, encode_drishti, encode_kernel, flat_problems,
+    ORB_RATIFIED, ORB_UNRATIFIED, decode_drishti, decode_kernel, encode_drishti, encode_kernel, flat_problems,
+    kernel_flat_problems,
 )
 
 # The FLAT form is the source of truth (Codex R5): `ka_gochara_factor.operand_selector` admits only a flat
@@ -913,6 +914,189 @@ SUPERSEDED_PATHS[composite_ref("P2", RULE_VERSION)] = {
 del _p2_old
 
 
+# ══ SR-OD1 V1 — the owner-confirmed doctrine batch, rule_version 1.3.0 ═══════════════════════════════
+# Owner decisions OWNER-DOCTRINE-CONFIRMED-20261021 (ND-ORB-ADMISSION, ND-ORB-SCALE, P1-MAPPING-DECISION (Form B),
+# AM-13-RATIFIED) in /Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl; full text fast/owner-doctrine-answers/
+# ANSWERS.md v2.1. NEW immutable rows, never an edit of a sealed one:
+#   * activity_kernel@1.3.0   — the 1.1.0 applicability declaration plus a RATIFIED-orb slot (ORB_DECISION_1_3_0).
+#   * dignity_of_transit_sign@1.3.0 / combustion@1.3.0 / agent_nature@1.3.0 — the P1 factors in the Form-B shape
+#     (seven dignity rungs; combustion read from the L1 state; nature = the default side). STRUCTURE ONLY: the
+#     category mapping is data and arrives with D2 — an unmapped factor blanks its window (O-P1-ALL), never 1.
+#   * maitri_compound is RETIRED from P1 (Q7 b): P1@1.3.0 simply does not name it; the 1.0.0 row stays as authored.
+#   * P1/P3/P4@1.3.0 — same prerequisites as 1.0.0, soft factors moved to the rows above (+ graduated_drishti@1.1.0
+#     for P3). P2 is NOT re-versioned: P2@1.1.0 / vedha_attenuation@1.1.0 (AM-18) are bound by selection.
+# The value of the orb enters this file in ONE place, `ORB_DECISION_1_3_0` (SR-OD1 D1: ND-ORB-SCALE, ND-ORB-ADMISSION,
+# AM-13-RATIFIED — owner confirmation 2026-10-21T12:37:41Z, DECISIONS_SURROGATE.jsonl). None would ship the unratified
+# shape (windows blank `orb_not_ratified`); never a placeholder.
+DOCTRINE_VERSION = "1.3.0"
+#: the owner rulings each 1.3.0 path version stands on (the basis of its `superseded_by_version` pin)
+DOCTRINE_PATH_RULINGS = {"P1": "P1-MAPPING-DECISION", "P2": "VEDHA-SOURCE", "P3": "AM-13-RATIFIED", "P4": "AM-13-RATIFIED"}
+#: SR-OD1 D3 (owner-confirmed 2026-10-21; DECISIONS_SURROGATE.jsonl): the three rulings the vedha rows (P2 and vedha_attenuation
+#: @1.3.0) stand on — the ledger ids B.3 requires. `DOCTRINE_PATH_RULINGS["P2"]` is the one the supersession pin cites.
+VEDHA_RULINGS = ("VEDHA-SOURCE", "ND-NODE-VEDHA", "ND-VIPAREETA")
+#: what each ruling is, as the persisted free-text `score_rule` states it (the registry digest covers that column)
+DOCTRINE_RULING_TEXT = {
+    "P1-MAPPING-DECISION": "P1-MAPPING-DECISION (owner, 2026-10-21: Q3-Q7 as one package, Form B; maitri_compound retired)",
+    "AM-13-RATIFIED": "AM-13-RATIFIED (owner, 2026-10-21: GOCHARA_SPECS_V1_5_AMENDMENTS_DRAFT §AM-13 bindings K-1..K-6, "
+                      "varga_position unclassified, nodes cast no dṛṣṭi)",
+    "VEDHA-SOURCE": "VEDHA-SOURCE (owner, 2026-10-21: Phaladīpikā XXVI.3-8 house-vedha only, Sarvatobhadra / lattā never folded in; "
+                    "Moon on-demand obstruction excluded and labelled); ND-NODE-VEDHA (owner, 2026-10-21: Rāhu / Ketu in a vedha house "
+                    "obstruct the seven planets like any graha; a transiting node carries no vedha factor of its own); "
+                    "ND-VIPAREETA (owner, 2026-10-21: no vipāreeta cancellation in this version)",
+}
+DOCTRINE_PATHS = tuple(DOCTRINE_PATH_RULINGS)
+
+#: The ledger ids the orb stands on (B.3): ND-ORB-SCALE is the scoring orb (strength = 1 − |Δλ|/orb, spec §7.2 inv 3);
+#: ND-ORB-ADMISSION is the contact admission band, which the built convention (`ORB_TABLE orb_conj_slow` /
+#: `orb_drishti_slow`) and the verifier's `_POINT_ORB_DEG` already state at the same 1.0° (no code change for it).
+ND_ORB_SCALE_LEDGER_ID = "ND-ORB-SCALE"
+ND_ORB_ADMISSION_LEDGER_ID = "ND-ORB-ADMISSION"
+AM13_LEDGER_ID = "AM-13-RATIFIED"
+#: D1's slot: {"orb_deg": <finite, > 0>, "orb_decision_ref": <selector token of the ledger id>}. None ⇒ unratified.
+#: (Token grammar `^[a-z][a-z0-9_]*…` — the ledger id ND-ORB-SCALE is written `nd_orb_scale` in a selector.)
+#: 1.0° = Q2 (a), equal to the admission band; one value for conjunction and aspect (per-graha orbs would be invented, B.10).
+ORB_DECISION_1_3_0: dict | None = {"orb_deg": 1.0, "orb_decision_ref": ND_ORB_SCALE_LEDGER_ID.lower().replace("-", "_")}
+
+
+def kernel_flat_1_3_0(orb_decision: dict | None) -> dict:
+    """The 1.3.0 activity_kernel selector: the 1.1.0 declaration unchanged (AM-13 span/point dispatch) with the orb
+    ratified iff `orb_decision` names a value AND its ledger-id token (the invariant of `kernel_flat_problems`)."""
+    flat = dict(_KERNEL_FLAT)
+    if orb_decision is not None:
+        flat.update(orb_state=ORB_RATIFIED, orb_deg=orb_decision["orb_deg"],
+                    orb_decision_ref=orb_decision["orb_decision_ref"])
+    problems = kernel_flat_problems(flat)
+    if problems:
+        raise ValueError("activity_kernel@1.3.0 selector refused: " + "; ".join(problems))
+    return flat
+
+
+_KERNEL_FLAT_1_3_0 = kernel_flat_1_3_0(ORB_DECISION_1_3_0)
+_factor("activity_kernel",
+        rule_version=DOCTRINE_VERSION,
+        operand="object kind + (extent: inside-the-extent membership of the validated contact geometry | "
+                "point: seam-safe angular distance |Δλ| along the directed aspect ray, if any)",
+        function="piecewise_step_linear", range=[0.0, 1.0], units="unitless",
+        direction="higher = stronger", null_state="unqualified",
+        operand_selector=_KERNEL_FLAT_1_3_0, applicability=decode_kernel(_KERNEL_FLAT_1_3_0),
+        effect="as activity_kernel@1.1.0 (AM-13: extent targets take the membership step, true point targets "
+               "1 − |Δλ|/orb), with the point orb a RATIFIED decision: scoring orb 1.0° "
+               "(ND-ORB-SCALE, owner 2026-10-21, uncalibrated_default; one value for conjunction and aspect), equal to the "
+               "1.0° contact admission band (ND-ORB-ADMISSION, owner 2026-10-21). Applicability bindings K-1..K-6 "
+               "ratified by AM-13-RATIFIED (owner 2026-10-21): object kinds in neither group (varga_position) stay "
+               "unqualified, never 1; nodes cast no dṛṣṭi. Basis: ANSWERS.md v2.1 Part A + AM-13")
+
+#: Form B (P1-MAPPING-DECISION; ANSWERS.md §B.2): precedence COMB > EX > MT > OWN > DEB > FR/NEU/INI. Combustion
+#: is its own factor row (the L1 state), so the dignity row carries the seven rungs it can take.
+DIGNITY_RUNGS_1_3_0 = ["exaltation", "mulatrikona", "own", "friendly", "neutral", "inimical", "debility"]
+# MERGE-BACK (SR-MERGEBACK-UNBLOCK): V1 declared dignity_of_transit_sign@1.3.0 / combustion@1.3.0 / agent_nature@1.3.0 as STRUCTURE ONLY
+# ("the category mapping is data and arrives with D2"). D2 is on this branch, so the three rows are authored ONCE, with the Form B mapping,
+# in the "OD-1 D2" block below (`_factor(...)` keyed by (factor_id, 1.3.0) would otherwise be registered twice, the later silently winning).
+SUPERSEDED_FACTORS[composite_ref("dignity_of_transit_sign", RULE_VERSION)] = {
+    "superseded_by": composite_ref("dignity_of_transit_sign", DOCTRINE_VERSION),
+    "reason": "1.0.0 carries a six-rung virupa anchor and no side rule; Form B has seven rungs with a two-sided "
+              "mapping (P1-MAPPING-DECISION)",
+    "source": "P1-MAPPING-DECISION (OWNER-DOCTRINE-CONFIRMED-20261021)"}
+SUPERSEDED_FACTORS[composite_ref("combustion", RULE_VERSION)] = {
+    "superseded_by": composite_ref("combustion", DOCTRINE_VERSION),
+    "reason": "1.0.0 names no source for the state; 1.3.0 inherits the L1 state by fact id (SR-Q6-L1)",
+    "source": "SR-Q6-L1; P1-MAPPING-DECISION"}
+SUPERSEDED_FACTORS[composite_ref("agent_nature", RULE_VERSION)] = {
+    "superseded_by": composite_ref("agent_nature", DOCTRINE_VERSION),
+    "reason": "1.0.0 binds benefic → favourable / malefic → adverse unconditionally; Form B lets dignity and "
+              "combustion override the side at the extremes (Q3 c)",
+    "source": "P1-MAPPING-DECISION"}
+SUPERSEDED_FACTORS[composite_ref("activity_kernel", KERNEL_VERSION)] = {
+    "superseded_by": composite_ref("activity_kernel", DOCTRINE_VERSION),
+    "reason": "1.1.0 is the unratified-orb shape (ND-ORB open); 1.3.0 is the shape that carries the ratified orb",
+    "source": "ND-ORB-SCALE; ND-ORB-ADMISSION"}
+#: a factor RETIRED from a path with no successor (never an edit of the row, which stays for the paths that name it)
+RETIRED_FACTORS: dict[tuple[str, str], dict] = {
+    composite_ref("maitri_compound", RULE_VERSION): {
+        "retired_from": composite_ref("P1", DOCTRINE_VERSION),
+        "reason": "its only cited content (the friendliness of the transited sign) is the friendly / neutral / "
+                  "inimical rungs of dignity_of_transit_sign@1.3.0; the compound relation needs the temporary "
+                  "component, which no served text defines for a transit (Q7 b)",
+        "source": "P1-MAPPING-DECISION"}}
+
+#: SR-OD1 D3 — vedha_attenuation@1.3.0: the owner-confirmed vedha declaration (VEDHA-SOURCE, ND-NODE-VEDHA, ND-VIPAREETA). The 1.1.0
+#: row (AM-18) stays as authored; this row differs from it in exactly the three rulings: the nodes are obstructors, so
+#: `node_obstruction_undecided` is no longer a state the row can promise; a transiting node carries no vedha factor; vipāreeta
+#: cancellation is not produced. The ruling ids ride in the flat selector (token form, B.3 ledger refs) and in the P2@1.3.0 row.
+_VEDHA_FLAT_1_3_0 = {
+    "operand": "state:vedha_interval_derived_from_residence",
+    "applicable_records": "favourable_residence_cited_pairs_only",
+    "map_active": 0, "map_inactive": 1,
+    "active_qualification": "vedha_active",
+    "unqualified_reasons": ["obstructor_residence_unknown", "node_residence_unknown"],
+    "inactive_scope": "excluding_on_demand_moon_obstruction",
+    "scope_exempt_primaries": ["mercury"],            # Phaladīpikā XXVI.6: the Moon never obstructs Mercury
+    "vedha_source": "phaladeepika_xxvi_3_8_house_vedha_only",
+    "node_as_obstructor": "obstructs_like_any_graha",
+    "node_as_transiting_body": "no_vedha_factor",
+    "vipareeta_state": "not_produced_owner_ruled",
+    "ruling_refs": [r.lower().replace("-", "_") for r in VEDHA_RULINGS],
+}
+assert not flat_problems(_VEDHA_FLAT_1_3_0), flat_problems(_VEDHA_FLAT_1_3_0)
+_factor("vedha_attenuation",
+        rule_version=DOCTRINE_VERSION,
+        operand="vedha state at t, derived from stored residence spans (vedha_derive.derive_vedha); the obstructors are the "
+                "stored seven plus Rāhu/Ketu (ND-NODE-VEDHA i)",
+        function="step", range=[0.0, 1.0], units="unitless",
+        direction="higher = stronger", null_state="unqualified",
+        operand_selector=_VEDHA_FLAT_1_3_0, applicability=decode_vedha(_VEDHA_FLAT_1_3_0),
+        effect="as vedha_attenuation@1.1.0 (Phaladīpikā XXVI.3-8 house-vedha only — VEDHA-SOURCE): active obstruction nullifies "
+               "the favourable-residence record's contribution (0.0; admission is never changed — qualification vedha_active); "
+               "ESTABLISHED inactivity is 1.0 with the scope 'excluding_on_demand_moon_obstruction' (Mercury excepted); an "
+               "obstructor residence not established over the span is unqualified (obstructor_residence_unknown, "
+               "node_residence_unknown). A Rāhu/Ketu in the vedha house obstructs like any graha (ND-NODE-VEDHA i; no stated "
+               "exception applies to the nodes); a transiting Rāhu/Ketu record carries NO vedha factor, declared not-applicable "
+               "(ND-NODE-VEDHA ii); no vipāreeta cancellation (ND-VIPAREETA). Adverse-residence and uncited (graha, house) "
+               "records: declared not-applicable; nothing graded")
+SUPERSEDED_FACTORS[composite_ref("vedha_attenuation", KERNEL_VERSION)] = {
+    "superseded_by": composite_ref("vedha_attenuation", DOCTRINE_VERSION),
+    "reason": "1.1.0 still promises node_obstruction_undecided and an unruled vipāreeta state; the owner's rulings make the "
+              "nodes obstructors, give a transiting node no vedha factor and produce no cancellation",
+    "source": "VEDHA-SOURCE; ND-NODE-VEDHA; ND-VIPAREETA (OWNER-DOCTRINE-CONFIRMED-20261021)"}
+
+_VIPAREETA_NOTE = "vipareeta cancellation per §5"
+_SOFT_FACTORS_1_3_0 = {
+    "P1": [composite_ref("dignity_of_transit_sign", DOCTRINE_VERSION),
+           composite_ref("combustion", DOCTRINE_VERSION),
+           composite_ref("agent_nature", DOCTRINE_VERSION)],
+    "P2": [composite_ref("vedha_attenuation", DOCTRINE_VERSION)],
+    "P3": [composite_ref("activity_kernel", DOCTRINE_VERSION),
+           composite_ref("graduated_drishti", KERNEL_VERSION)],
+    "P4": [composite_ref("activity_kernel", DOCTRINE_VERSION)],
+}
+#: the doctrine chain (kept apart from SUPERSEDED_PATHS, which stays the AM-13/AM-18 table as authored): every
+#: older version of a path that 1.3.0 supersedes. The planner and the verifier each carry their own copy of it.
+DOCTRINE_SUPERSEDED_PATHS: dict[tuple[str, str], dict] = {}
+for _pid in DOCTRINE_PATHS:
+    _old = RULE_PATHS[composite_ref(_pid, RULE_VERSION)]
+    _ruling = DOCTRINE_PATH_RULINGS[_pid]
+    _old_note = _old.get("note") or ""
+    if _pid == "P2":       # SR-OD1 D3: the 1.0.0 note promises "vipareeta cancellation per §5"; ND-VIPAREETA rules it out
+        assert _VIPAREETA_NOTE in _old_note, "P2@1.0.0 note changed: re-check the vipāreeta clause against ND-VIPAREETA"
+        _old_note = _old_note.replace(_VIPAREETA_NOTE, "NO vipāreeta cancellation in this version (ND-VIPAREETA); a node in a "
+                                      "vedha house obstructs like any graha, an uncited_extension (ND-NODE-VEDHA i)")
+    RULE_PATHS[composite_ref(_pid, DOCTRINE_VERSION)] = {
+        **_old, "rule_version": DOCTRINE_VERSION,
+        "soft_factors": list(_SOFT_FACTORS_1_3_0[_pid]),
+        "note": f"{_ruling} (owner, OWNER-DOCTRINE-CONFIRMED-20261021): soft factors moved to the 1.3.0 doctrine "
+                f"rows" + ("; maitri_compound retired (Q7 b)" if _pid == "P1" else "")
+                + (f"; {_old_note}" if _old_note else ""),
+        # the persisted free-text column of the path row (`score_rule`) names the ruling, so the registry digest
+        # pins it; the H table is added once `h_table_sha256` exists (below the ND-H block)
+        "score_rule": f"{_old['score_rule']}; {DOCTRINE_RULING_TEXT[_ruling]}",
+    }
+    for _older in ((RULE_VERSION,) if _pid == "P1" else (RULE_VERSION, KERNEL_VERSION)):
+        DOCTRINE_SUPERSEDED_PATHS[composite_ref(_pid, _older)] = {
+            "superseded_by": composite_ref(_pid, DOCTRINE_VERSION), "ruling_ref": _ruling,
+            "reason": "soft factors moved to the owner-confirmed 1.3.0 doctrine rows"}
+del _pid, _old, _old_note, _ruling, _older
+
+
 # ══ ND-H-20261005 — the eight classes: three tiers and kārakas, rule_version 1.2.0 ══════════════════
 # Sealed decision by delegate (decisions/ND-H-20261005_DECISION_BY_DELEGATE.md, incl. ERRATA 1). It
 # supersedes ST-H-UNKNOWN-20261002 for the eight classes AT THIS VERSION ONLY: the 1.0.0 / 1.1.0 rows
@@ -1072,7 +1256,10 @@ ND_P2_KB_TARGETS: dict[str, tuple[dict, ...]] = {
 ND_P2_KB_PATHS = ("P3", "P4")
 
 #: FB-44: which H table each rule_version reads. 1.0.0 and 1.1.0 share the spec §2.2 truth table.
+#: 1.3.0 reads the same cited truth table as 1.0.0 for every class that runs it; the eight ND-H classes are NOT read
+#: at 1.3.0 (they run P1/P3/P4 at 1.2.0, re-derived in place — `signature_houses` there is None, never a fallback).
 H_TABLE_VERSIONS: dict[str, str] = {RULE_VERSION: "spec_2_2", KERNEL_VERSION: "spec_2_2",
+                                    DOCTRINE_VERSION: "spec_2_2",
                                     ND_H_VERSION: "spec_2_2+nd_h_20261005+nd_p2_20261005"}
 #: the versions at which the ND-H / ND-P2 rows are read
 ND_VERSIONS = frozenset({ND_H_VERSION})
@@ -1311,9 +1498,12 @@ _factor("karaka_agent",
                "is uncalibrated_default and rank-only, omitted from the within-path product")
 
 # ── P1 / P3 / P4 at rule_version 1.2.0 ───────────────────────────────────────────────────────────
-# NEW rows; the 1.0.0 and 1.1.0 rows are not edited and 1.1.0 stays unbound (FB-30), so the 1.2.0 rows
-# derive from the BOUND 1.0.0 rows: same prerequisites, same soft factors + karaka_agent@1.2.0. They are
-# selected per class (the binder's CLASS_SELECTION_OVERRIDES), never globally. Each row carries the H
+# NEW rows; the 1.0.0 and 1.1.0 rows are not edited and 1.1.0 stays unbound (FB-30). Same prerequisites and
+# score rule as the 1.0.0 rows; the SOFT FACTORS are re-derived IN PLACE (SR-SOLVER-PLAN-1, SR-OD1 V1) from the
+# owner-confirmed 1.3.0 rows (+ karaka_agent@1.2.0): the 1.2.0 rows are decision-pending rules that no sealed
+# generation references (measured: `scripts/kala_gochara_cutover/od1_nd_h_in_place_check.py`), so they take the doctrine's soft factors
+# instead of forking a 1.4.0 (the AM-13 bindings K-4/K-5/K-6 for the 8 ND-H classes + bereavement P3/P4 land here).
+# They are selected per class (the binder's CLASS_SELECTION_OVERRIDES), never globally. Each row carries the H
 # table it reads and that table's digest in `score_rule` — the one free-text column of
 # ka_gochara_rule_path the registry digest covers — so a generation's registry digest pins its H.
 #: class-scoped supersession (FB-32): for an ND-H class the 1.0.0 row is searched no more.
@@ -1322,7 +1512,7 @@ for _pid in ("P1", "P3", "P4"):
     _old = RULE_PATHS[composite_ref(_pid, RULE_VERSION)]
     RULE_PATHS[composite_ref(_pid, ND_H_VERSION)] = {
         **_old, "rule_version": ND_H_VERSION, **ND_H_STAMP,
-        "soft_factors": [*_old["soft_factors"], composite_ref("karaka_agent", ND_H_VERSION)],
+        "soft_factors": [*_SOFT_FACTORS_1_3_0[_pid], composite_ref("karaka_agent", ND_H_VERSION)],
         "source_text": f"ruling {ND_H_RULING} (derived event rules; premise loci on each class row)",
         "source_page": None,
         "h_table_version": ND_H_VERSION, "h_table_sha256": h_table_sha256(ND_H_VERSION),
@@ -1344,3 +1534,110 @@ for _cls in sorted(ND_P2_KB_TARGETS):
             "superseded_by": composite_ref(_pid, ND_H_VERSION), "ruling_ref": ND_P2_RULING,
             "reason": "natal Sun as a derived target for father-bereavement (ND-P2-20261005 rule 3)"}
 del _pid, _cls
+
+# ══ OD-1 D2 — P1 period-lord strength, Form B, rule_version 1.3.0 (owner-confirmed 2026-10-21) ═══════════
+# The owner confirmed the reviewed doctrine answers (OWNER-DOCTRINE-CONFIRMED-20261021; ANSWERS.md v2.1) and chose Form B
+# (P1-MAPPING-DECISION): Q3 c — the natural nature sets the default side, dignity and combustion override it at the extremes the texts
+# name (a badly placed lord turns harmful, a well-placed malefic gives good); Q4 list confirmed (Rāhu/Ketu natural malefics, BPHS 3.11;
+# "joined" = same sign; node windows numbered partly); Q5 c — seven rungs + combustion, precedence COMB > EX > MT > OWN > DEB > FR/NEU/INI,
+# friendship = the PERIOD LORD's own table toward the lord of the sign it occupies; Q6 mapping only (SR-Q6-L1): the L1 state "combust" =
+# the depression rung, adverse 1.0, the nodes not applicable; Q7 b — `maitri_compound` retired from P1.
+# New immutable rows under SR-SOLVER-PLAN-1 (new rule versions for everything that changes semantics); the 1.0.0 rows are NOT edited.
+# NOT bound here: like AM-13's 1.1.0 rows these exist in the registry and are bound only by a deliberate edit of `BOUND_PATH_REFS` /
+# `SELECTED_PATH_REFS` / `BOUND_FACTOR_REFS` in `K/rule_registry.py` after the P1 review gate — and the eight ND-H classes (P1 at 1.2.0)
+# need their own decision (plan I-5).
+#
+# Every cell is ONE declared value (CLAUDE.md §N.7.3) and carries its evidence tag (ANSWERS.md §B.3):
+#   V   a served verse states both the side and the value for this nature      Vs  a verse states the side, the value is the owner-table's
+#   B   the value is borrowed from a served strength table (Uttara Kālāmṛta)   I   a construction with no verse behind it
+# calibration_status = uncalibrated_default on every cell; the first calibration set is the windows where Form A and Form B put the lord on
+# opposite sides (a benefic in an inimical sign, in debility or combust; a malefic in exaltation, mūlatrikoṇa or own sign).
+P1_FORM_B_VERSION = DOCTRINE_VERSION          # one 1.3.0: V1's doctrine version and D2's Form B version are the same release
+P1_FORM_B_RULING = "P1-MAPPING-DECISION"
+P1_FORM_B_RULINGS = ("OWNER-DOCTRINE-CONFIRMED-20261021", "P1-MAPPING-DECISION", "SR-Q6-L1", "SR-SOLVER-PLAN-1")
+P1_NATURES = ("benefic", "malefic")
+P1_DIGNITY_RUNGS = ("EX", "MT", "OWN", "FR", "NEU", "INI", "DEB")
+#: {(natural nature, rung): (side, value, evidence tag)}; COMB is the combustion row's `combust` cell, not a dignity cell
+P1_FORM_B_CELLS: dict[tuple[str, str], tuple[str, float, str]] = {
+    ("benefic", "EX"): ("favourable", 1.0, "V"), ("malefic", "EX"): ("favourable", 1.0, "V"),
+    ("benefic", "MT"): ("favourable", 0.75, "V"), ("malefic", "MT"): ("favourable", 0.75, "I"),
+    ("benefic", "OWN"): ("favourable", 0.5, "V"), ("malefic", "OWN"): ("favourable", 0.5, "I"),
+    ("benefic", "FR"): ("favourable", 0.25, "V"), ("malefic", "FR"): ("adverse", 0.5, "Vs/I"),
+    ("benefic", "NEU"): ("favourable", 0.125, "B"), ("malefic", "NEU"): ("adverse", 0.625, "I"),
+    ("benefic", "INI"): ("adverse", 0.75, "Vs/I"), ("malefic", "INI"): ("adverse", 0.75, "V"),
+    ("benefic", "DEB"): ("adverse", 1.0, "V"), ("malefic", "DEB"): ("adverse", 1.0, "V"),
+}
+P1_FORM_B_COMBUST = ("adverse", 1.0, "V")           # the L1 state "combust" = the depression rung (XX.30 tail; SR-Q6-L1)
+P1_FORM_B_NATURE_SIDE = {"benefic": "favourable", "malefic": "adverse"}   # the default side; magnitude 1 by declaration (ANSWERS §B.2)
+assert set(P1_FORM_B_CELLS) == {(n, r) for n in P1_NATURES for r in P1_DIGNITY_RUNGS}
+
+
+def _p1_cell(side: str, value: float, tag: str | None = None) -> dict:
+    return {"side": side, "value": value} if tag is None else {"side": side, "value": value, "evidence": tag}
+
+
+def _p1_form_b_evidence() -> str:
+    return "; ".join(f"{n}/{r} {s} {v:g} [{t}]" for (n, r), (s, v, t) in P1_FORM_B_CELLS.items())
+
+
+_P1_FORM_B_COMMON = dict(
+    rule_version=P1_FORM_B_VERSION, ruling_ref=P1_FORM_B_RULING, calibration_status="uncalibrated_default",
+    range=[0.0, 1.0], units="unitless", null_state="unqualified")
+_factor("dignity_of_transit_sign",
+        **_P1_FORM_B_COMMON,
+        operand="effective rung of the period lord at t: COMB > EX > MT > OWN > DEB > FR/NEU/INI, friendship = the period lord's own "
+                "natural-friendship row toward the lord of the sign it occupies (bg_graha_naisargika_friendship WHERE graha = period lord)",
+        function="categorical_ordered",
+        categories=list(DIGNITY_RUNGS_1_3_0),          # V1's seven rung names (the doctrine ordering is keyed by them); the mapping below is keyed "nature/RUNG"
+        category_mapping={f"{n}/{r}": _p1_cell(*P1_FORM_B_CELLS[(n, r)]) for n in P1_NATURES for r in P1_DIGNITY_RUNGS},
+        direction="Form B two-sided: the cell names the SIDE (spec §3.1: favourable feeds the channel a benefic lord feeds) and the "
+                  "value in (0, 1]; precedence COMB > EX > MT > OWN > DEB > FR/NEU/INI",
+        effect=f"{'/'.join(P1_FORM_B_RULINGS)}: ANSWERS.md v2.1 §B.3 Form B cells, each tagged V (verse: side and value), Vs (verse: "
+               f"side; value the owner-table's), B (value borrowed from a served strength table), I (construction): {_p1_form_b_evidence()}. "
+               "Combustion is a rung (the combustion row's `combust` cell); this row contributes nothing of its own there")
+_factor("combustion",
+        **_P1_FORM_B_COMMON,
+        operand="L1 combustion state of the period lord (bg_combustion_orbs + the L1 computation, inherited by fact, never recomputed: "
+                "SR-Q6-L1); the Sun and the nodes are declared not applicable",
+        function="step",
+        category_mapping={"combust": _p1_cell(*P1_FORM_B_COMBUST), "not_combust": {"value": 1.0}},
+        direction="lower = stronger",
+        effect="SR-Q6-L1 + P1-MAPPING-DECISION (Q6, mapping only): the L1 state combust = the depression rung, side adverse, value 1.0 "
+               "[V: XX.30 tail 'similar to that in depression', BJ XX.11, XX.37, Saravali 27]; not combust = the neutral element 1.0 and the "
+               "dignity rung decides; Rāhu/Ketu and the Sun: not applicable (BPHS 7.28-29 translator's note PG99:C1, L1 M-19); the orbs and "
+               "the Saturn 16-vs-15 disagreement (ANSWERS §H-3) are L1's, not this row's")
+_factor("agent_nature",
+        **_P1_FORM_B_COMMON,
+        operand="natural nature of the period lord at t (BPHS 3.11: Sun, Mars, Saturn, waning Moon, Rāhu, Ketu malefic; Mercury malefic iff "
+                "in the same sign as a malefic)",
+        function="categorical_ordered",
+        categories=list(P1_NATURES),
+        category_mapping={n: _p1_cell(P1_FORM_B_NATURE_SIDE[n], 1.0) for n in P1_NATURES},
+        direction="benefic → favourable channel; malefic → adverse channel (the default), class-relative per spec §3.1; magnitude 1 by "
+                  "declaration — the dignity rung or combustion overrides the SIDE per instant (Form B)",
+        effect="P1-MAPPING-DECISION Q3 c / Q4: the nature sets the default side and carries no magnitude of its own [V: BPHS 3.11, "
+               "bphs:PG26:C1; Phaladīpikā gochara chapter phaladeepika:PG347:C1]; 'joined' = same sign (Q4 x); the Moon's pakṣa flips at "
+               "the Sun-Moon elongation 0/180 degrees")
+# the 1.0.0 -> 1.3.0 supersession of dignity_of_transit_sign / combustion / agent_nature, the P1@1.3.0 path row and the H-table entry are
+# V1's (`SUPERSEDED_FACTORS`, `RULE_PATHS`, `H_TABLE_VERSIONS`, above); the P1 1.0.0 -> 1.3.0 supersession is recorded in BOTH tables: V1's
+# doctrine chain (`DOCTRINE_SUPERSEDED_PATHS`) and D2's one-step table (`SUPERSEDED_PATHS`, which the planner reads for a version it selects)
+SUPERSEDED_PATHS[composite_ref("P1", RULE_VERSION)] = {
+    "superseded_by": composite_ref("P1", P1_FORM_B_VERSION),
+    "reason": "soft factors moved to the Form B rows (dignity_of_transit_sign / combustion / agent_nature @1.3.0); maitri_compound retired",
+    "source": f"{P1_FORM_B_RULING} (OWNER-DOCTRINE-CONFIRMED-20261021)"}
+SUPERSEDED_FACTORS[composite_ref("maitri_compound", RULE_VERSION)] = {
+    "superseded_by": None,
+    "reason": "RETIRED from P1 (Q7 b): its only cited content, the friendship of the sign lord, is the FR/NEU/INI rungs of the dignity "
+              "factor; the pañcadhā relation needs a temporary-friendship component no served text applies to a transit",
+    "source": f"{P1_FORM_B_RULING} (Q7 b)"}
+
+# ── the 1.3.0 path rows pin the H table they read (as the 1.2.0 rows do), now that `h_table_sha256` exists ──
+for _pid in DOCTRINE_PATHS:
+    if _pid == "P2":       # P2 (the Moon-frame residence path) reads no H table — nothing to pin
+        continue
+    _row = RULE_PATHS[composite_ref(_pid, DOCTRINE_VERSION)]
+    _row["h_table_version"] = DOCTRINE_VERSION
+    _row["h_table_sha256"] = h_table_sha256(DOCTRINE_VERSION)
+    _row["score_rule"] = (f"{_row['score_rule']}; H table {H_TABLE_VERSIONS[DOCTRINE_VERSION]}@{DOCTRINE_VERSION} "
+                          f"sha256:{h_table_sha256(DOCTRINE_VERSION)}")
+del _pid, _row

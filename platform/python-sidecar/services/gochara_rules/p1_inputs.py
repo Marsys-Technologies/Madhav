@@ -46,10 +46,19 @@ class StrictInputError(ValueError):
         self.detail = detail
 
 
+L1_RULE_MODULE = "ga_writers.ga_condition_writer"
+
+
 def _l1():
-    """L1's pure rule module (lazy: it pulls psycopg and the engine adapter; this module must stay importable without them)."""
-    import ga_writers.ga_condition_writer as l1
-    return l1
+    """L1's pure rule module (lazy: it pulls psycopg and the engine adapter; this module must stay importable without them).
+
+    Imported BY NAME, not by an `import` statement, on purpose: L1's condition writer is a full writer (its imports open connections), and
+    the gochara writer's executable-closure hasher and the static no-commit / no-connect conformance scan
+    (`tests/l3/gochara/test_a53_writerbase_conformance.py`) walk `import` statements — they would pull the whole L1 writer closure into
+    `ka_gochara_v5`. The dependency is not hidden: `L1_RULE_MODULE` is listed in the input vector's `evaluation` implementation modules
+    (`input_vector.IMPLEMENTATION_MODULES`), so a change to an L1 rule this module calls changes the manifest's implementation identity."""
+    import importlib
+    return importlib.import_module(L1_RULE_MODULE)
 
 
 def _row(r) -> dict:
@@ -186,7 +195,18 @@ def validated_dignity_row(rows: Iterable, graha: str) -> dict:
         raise StrictInputError("dignity_own_signs_invalid", f"{graha}: {own!r}")
     ref = {"exaltation_sign": r["exaltation_sign"], "debilitation_sign": r["debilitation_sign"], "own_signs": list(own)}
     if graha in ("Rahu", "Ketu"):
-        ref["moolatrikona_sign"] = None
+        # A node's mūlatrikoṇa is a WHOLE SIGN (BPHS 47.34-39: Rāhu Gemini, Ketu Sagittarius — no degree range is given for it): migration 1401
+        # (PR #3840) stores the sign with NULL from/to, and owner doctrine ANSWERS.md v2.1 §B.5 / SR-1401-VERIFIED reads it as MT over 0..30.
+        # No stored sign (a pre-1401 DB) stays None: the node's rung there is the honest null `node_dignity_unclassified`, never a guess.
+        mt = r.get("moolatrikona_sign")
+        if mt is None:
+            ref["moolatrikona_sign"] = None
+            return ref
+        if mt not in SIGNS:
+            raise StrictInputError("dignity_moolatrikona_sign_invalid", f"{graha}: {mt!r}")
+        if r.get("moolatrikona_from") is not None or r.get("moolatrikona_to") is not None:
+            raise StrictInputError("dignity_node_moolatrikona_range_not_whole_sign", f"{graha}: {r.get('moolatrikona_from')!r}..{r.get('moolatrikona_to')!r}")
+        ref.update({"moolatrikona_sign": mt, "moolatrikona_from": 0.0, "moolatrikona_to": 30.0})
         return ref
     if not own:
         raise StrictInputError("dignity_own_signs_empty", graha)
@@ -204,9 +224,9 @@ def dignity_boundaries(graha: str, dignity_rows: Iterable) -> dict | None:
     """The in-sign dignity boundary degrees of `graha` — (mūlatrikoṇa sign, from, to) — for Stream A's crossing schedule, returned
     ONLY when L0's `moolatrikona_from/to` EQUAL the range L1's classifier actually uses (`_MOOLATRIKONA_RANGE`). A divergence is
     refused (`dignity_boundary_authority_divergence`): the schedule and the classification must come from one effective authority.
-    None for a graha with no mūlatrikoṇa range (the nodes)."""
+    None for a graha with no mūlatrikoṇa DEGREE range (the nodes: theirs is the whole sign, so its edges are the sign ingresses)."""
     ref = validated_dignity_row(dignity_rows, graha)
-    if ref.get("moolatrikona_sign") is None:
+    if ref.get("moolatrikona_sign") is None or graha in ("Rahu", "Ketu"):
         return None
     l1 = _l1()
     eff = l1._MOOLATRIKONA_RANGE.get(graha)
@@ -225,4 +245,6 @@ def dignity_category(graha: str, sign: str, degree_in_sign, dignity_rows: Iterab
         raise StrictInputError("sign_unknown", repr(sign))
     deg = _num(degree_in_sign, "degree_in_sign", lo=0.0, hi=30.0, hi_open=True)
     dignity_boundaries(graha, dignity_rows)                       # raises on authority divergence; None for the nodes
+    if graha in ("Rahu", "Ketu") and ref.get("moolatrikona_sign") == sign:
+        return "moolatrikona"                                     # the whole-sign node mūlatrikoṇa; L1's classifier holds no range for a node
     return _l1().dignity_d1_from_sign(graha, sign, deg, ref)

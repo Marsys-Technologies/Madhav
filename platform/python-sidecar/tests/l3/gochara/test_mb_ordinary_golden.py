@@ -48,6 +48,7 @@ import hashlib
 import json
 import os
 import re
+from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
@@ -59,6 +60,7 @@ from .conftest import EPHE_PATH
 from .test_a53_inventory import CHART_ID
 from .test_a55_replace_chain import SHORT, _World, template as _a55_template
 
+MIGRATIONS = Path(__file__).resolve().parents[4] / "migrations"
 J4P_GOLDEN = Path(__file__).resolve().parent / "fixtures" / "mb_ordinary_golden_j4p.json"
 GOLDEN = J4P_GOLDEN.with_name("mb_ordinary_golden_p06.json")
 GOLDEN_COMMIT = "adc6b81ea"
@@ -81,9 +83,43 @@ def template():
     """The a55 template (real migrations + sky-event substrate), seeded with the FINAL-rule registry: the capture below is the final-rule build, so its
     rule-registry rows (8 paths, the 1.2.0 factors) must be present in the template exactly as in the accepted P06 capture. The template's own seed runs
     outside any writer substep, so the explicit profile is what selects them."""
+    with _pre_doctrine_final_profile():
+        built = _a55_template.__wrapped__()
+        try:
+            admin, name, dsn = next(built)
+            _seed_p1_l0_reference_tables(dsn)
+            yield admin, name, dsn
+        finally:
+            built.close()                                                  # the a55 template's own teardown drops the database
+
+
+@contextmanager
+def _pre_doctrine_final_profile():
+    """SR-OD1 V1 / SR-TRBIND-3 (3): the accepted P06 capture is the PRE-doctrine final profile (5 bound paths + the 3 ND-H paths = 8). The doctrine rows (P1/P3/P4@1.3.0, P2@1.1.0 and the
+    owner-confirmed vedha overlay) joined the final catalogue after it, so the template is built on the same pre-doctrine final profile `test_j4d_slice_lane_db.py` runs on (its comment gives
+    the reasons): selection and catalogue both pre-doctrine, the vedha overlay unbound with them. The doctrine rows are gated by the TRIAL (T12 / test_od1_select_130.py), not by this
+    ordinary-run equivalence; nothing here relaxes a comparison."""
     from services.gochara_kernel import rule_registry
-    with rule_registry.rule_profile(final_rules=True):
-        yield from _a55_template.__wrapped__()
+    with rule_registry.rule_profile(final_rules=True), pytest.MonkeyPatch.context() as patch:
+        patch.setattr(rule_registry, "FINAL_SELECTED_PATH_REFS", rule_registry.SELECTED_PATH_REFS)
+        patch.setattr(rule_registry, "FINAL_ONLY_PATH_REFS", rule_registry.ND_H_PATH_REFS)
+        patch.setattr(rule_registry, "DOCTRINE_PATH_REFS", ())
+        patch.setattr(rule_registry, "VEDHA_PATH_REFS", ())
+        patch.setattr(writer_mod, "FINAL_VEDHA_SOURCE", None)
+        yield
+
+
+def _seed_p1_l0_reference_tables(dsn):
+    """TR-BIND finding / SR-TRBIND-3 (3): the final profile's ND-H class overrides run P1@1.2.0, whose soft factors declare the owner's Form B table, so the
+    manifest binds the three P1 L0 reference tables (`ka_gochara_v5._l0_consumed`, `input_vector.l0_identities`) and refuses a world that cannot read them
+    ("bg_combustion_orbs is not readable"). `create_am5_database` stubs the L1 tables only, so the a55 template lacks `bg_combustion_orbs`, `bg_dignity_reference` and
+    `bg_graha_naisargika_friendship`. They are seeded here, once, into the template from the REAL migrations 250 (the tables and their rows) and 1401 (the post-1401
+    node dignity and friendship rows), the same seed `test_j4d_slice_lane_db.py` and `test_od1_l0verify.py` use; every clone carries them. CI's 'Gochara measuring
+    build' runs this same file, so it reads the same seeded fixture (no separate seed path)."""
+    import psycopg
+    with psycopg.connect(dsn, autocommit=True, connect_timeout=3) as conn:
+        for number in ("250_bg_dignity_reference.sql", "1401_l0_node_dignity_friendship.sql"):
+            conn.execute((MIGRATIONS / number).read_text(encoding="utf-8"))
 
 
 # the REAL runner's birth parameters shape (birth_params._to_birth_params): main ignores them, an ordinary HEAD build must too
@@ -121,6 +157,16 @@ PERIOD_GUARD_SELECT = " ".join("""
     SELECT dasha_row_id, start_iso, end_iso FROM governed_chart_dashas
     WHERE start_iso IS NULL OR end_iso IS NULL OR end_iso <= start_iso LIMIT 1
 """.split())
+
+
+# SR-NDH-INPLACE / D2: the manifest vector binds the three P1 L0 reference tables (input_vector.l0_identities), so every substep that reads the manifest issues one digest SELECT per table; they are
+# checked separately (exact text, no parameter, exactly once per such substep, never in rules / convention / body) and excluded from the statement summary before it is compared with the golden.
+L0_DIGEST_SELECTS = (
+    'SELECT public.ka_gochara_sha256_hex(public.ka_gochara_canonical_json(COALESCE(jsonb_agg(jsonb_build_array(graha, exaltation_sign, debilitation_sign, moolatrikona_sign, trim_scale(moolatrikona_from)::text, trim_scale(moolatrikona_to)::text, COALESCE(to_jsonb(own_signs), \'[]\'::jsonb)) ORDER BY graha COLLATE "C"), \'[]\'::jsonb))), count(*) FROM public.bg_dignity_reference',
+    'SELECT public.ka_gochara_sha256_hex(public.ka_gochara_canonical_json(COALESCE(jsonb_agg(jsonb_build_array(graha, other_graha, relation) ORDER BY graha COLLATE "C", other_graha COLLATE "C"), \'[]\'::jsonb))), count(*) FROM public.bg_graha_naisargika_friendship',
+    'SELECT public.ka_gochara_sha256_hex(public.ka_gochara_canonical_json(COALESCE(jsonb_agg(jsonb_build_array(graha, trim_scale(orb_degrees)::text, trim_scale(deep_orb_degrees)::text) ORDER BY graha COLLATE "C"), \'[]\'::jsonb))), count(*) FROM public.bg_combustion_orbs',
+)
+L0_FREE_SUBSTEP_KINDS = ("rules", "convention", "body")
 
 
 class _Rec:
@@ -259,6 +305,97 @@ def _follow_p1_ledger(golden: dict) -> dict:
     return json.loads(text.replace(GOLDEN_SNAPSHOT_DASHA_ROWS, P1L_SNAPSHOT_DASHA_ROWS))
 
 
+# SR-NDH-INPLACE (SR-OD1 V1): the eight ND-H classes' P1@1.2.0 row was re-derived IN PLACE to carry the owner's Form B factors, so the final-rule registry the template is seeded with is no longer
+# the one the accepted P06 capture saw. Each pin below moved for that one cause (the declared catalogue changed; no code path of the ordinary run did); each is asserted on the golden
+# EXACTLY as it was captured (never silent or vacuous) and compared strictly at its new value. The row counts and the rules note are DERIVED here from the declared catalogue
+# (`rule_registry.factor_rows()` / `soft_factor_rows()` under the pre-doctrine final profile), never restated; the three manifest literals were re-derived BY SCRIPT from the
+# test's own capture (`test_capture_the_markerless_run` with $MB_GOLDEN_OUT, run on the seeded template) and are not hand-edited.
+GOLDEN_FACTOR_ROWS, GOLDEN_SOFT_FACTOR_ROWS, GOLDEN_RULES_REUSED = 12, 19, 67
+GOLDEN_RULES_SEQUENCE_SHA256 = "033a468ae62bbbcb151cd0af72d9afe3ceeaeda85511dbd9fe85bd8d61c361f9"
+# the rules substep's ordered statement transcript is one read per declared row, so its hash moves with the catalogue; re-derived by the script above (the shapes and count are derived, only the order hash is a literal)
+NDH_RULES_SEQUENCE_SHA256 = "87100ca17af37d832e060cc3ea6f71396b928fb9572bf34118f894cbfc0e2878"
+GOLDEN_REGISTRY_DIGEST = "decadef6289d4113a01b4179522ba26d14eb1833bb73d424e9ba9700f36e778d"
+NDH_REGISTRY_DIGEST = "38806d8f4ae8e4a7bcd86ef57edab2372b2d54fee3818f7ab3c03f636ed30295"
+# the sha256 canonical-JSON digest of each P1 L0 reference table as migrations 250 + 1401 leave it (SR-DOCTRINE-H node rows included); the golden predates the manifest's `l0` component
+NDH_L0_DIGESTS = {
+    "bg_combustion_orbs": "754dc5ff539e954b7ae20b2311c6a3130aa101f93acd6c058c333a82cf8047d4",
+    "bg_dignity_reference": "2635a7f1f311ffc884dc1416baecc5a8cb44212c308cb386fac5423afcda4456",
+    "bg_graha_naisargika_friendship": "6fe29171b27e7934271823a38ef36efd12300838fe240ee551b660d46b000c1f",
+}
+# the Form B orb activity (P1@1.3.0 is REGISTERED, not selected) joined the orb policy's activity map after the golden
+NDH_ORB_ACTIVITY_130 = {"orb_decision_ref": "nd_orb_scale", "orb_deg": 1.0}
+
+
+def _follow_ndh_in_place_rows(golden: dict) -> dict:
+    """The golden with the registry row counts and the rules note moved to the declared catalogue (SR-NDH-INPLACE)."""
+    from services.gochara_kernel import rule_registry
+    with _pre_doctrine_final_profile():
+        factors, softs = len(rule_registry.factor_rows()), len(rule_registry.soft_factor_rows())
+    reused = GOLDEN_RULES_REUSED - GOLDEN_FACTOR_ROWS - GOLDEN_SOFT_FACTOR_ROWS + factors + softs
+    assert (factors, softs) != (GOLDEN_FACTOR_ROWS, GOLDEN_SOFT_FACTOR_ROWS), "the catalogue did not move: this adaptation would be vacuous"
+    out = json.loads(json.dumps(golden))
+    for sub in out["substeps"]:
+        assert (sub["counts"]["ka_gochara_factor"], sub["counts"]["ka_gochara_rule_path_soft_factor"]) == (GOLDEN_FACTOR_ROWS, GOLDEN_SOFT_FACTOR_ROWS), sub["key"]
+        sub["counts"]["ka_gochara_factor"], sub["counts"]["ka_gochara_rule_path_soft_factor"] = factors, softs
+    rules = next(sub for sub in out["substeps"] if sub["key"] == "rules")["statements"]
+    assert rules["count"] == GOLDEN_RULES_REUSED and rules["sequence_sha256"] == GOLDEN_RULES_SEQUENCE_SHA256, "the golden names the rules substep's statement transcript"
+    factor_shape = next(k for k in rules["shapes"] if k.startswith("2|SELECT factor_id, rule_version, operand_selector") and k.endswith("FROM public.ka_gochara_factor WHERE factor_id = %s AND rule_version = %s"))
+    soft_shape = next(k for k in rules["shapes"] if k.startswith("4|SELECT path_id, rule_version, factor_id, factor_rule_version FROM public.ka_gochara_rule_path_soft_factor"))
+    assert (rules["shapes"][factor_shape], rules["shapes"][soft_shape]) == (GOLDEN_FACTOR_ROWS, GOLDEN_SOFT_FACTOR_ROWS)
+    rules["count"], rules["sequence_sha256"] = reused, NDH_RULES_SEQUENCE_SHA256
+    rules["shapes"][factor_shape], rules["shapes"][soft_shape] = factors, softs
+    text = json.dumps(out, sort_keys=True, ensure_ascii=False)
+    old_note = f"{GOLDEN_RULES_REUSED} reused (idempotent)"
+    assert text.count(old_note) >= 1, "the golden names the rules note's reused count"
+    return json.loads(text.replace(old_note, f"{reused} reused (idempotent)"))
+
+
+def _follow_ndh_in_place_manifest(vector: dict) -> dict:
+    """The golden's manifest vector with the three components SR-NDH-INPLACE moved: the registry digest, the P1 L0 reference digests, the orb activity map."""
+    out = json.loads(json.dumps(vector))
+    assert out["registry"]["digest"] == GOLDEN_REGISTRY_DIGEST and out["l0"] == {} and set(out["orb_policy"]["activity"]) == {"1.0.0"}
+    out["registry"]["digest"] = NDH_REGISTRY_DIGEST
+    out["l0"] = dict(NDH_L0_DIGESTS)
+    out["orb_policy"]["activity"]["1.3.0"] = dict(NDH_ORB_ACTIVITY_130)
+    return out
+
+
+# SR-OD1 I1 (OD-1 D2 / P1a): two READ shapes of the window and rule-registry stages gained one selected column each, and (SR-F4-STORE-EXACT) three of the window stage's reads gained float8 casts. The accepted P06 capture predates both, so its two
+# shapes are compared through this adaptation and nothing else is relaxed: each pair below is (the golden's fragment, the head's fragment); every statement is otherwise
+# byte-compared, in order, with the same parameter counts, and the head must issue the new fragment EXACTLY as often as the golden issued the old one (never silently or vacuously).
+#   * RuleRegistryStore.persisted_factors reads the authored `category_mapping` back (rule_registry.py), so the persisted Form B value table is checked against the declaration.
+#   * WindowStore.read_grain selects the P1 period-anchor column, `NULL::text` for every path except a P1 grain with P1 operand sources bound (window_store.py).
+OD1_READ_ADAPTATIONS = (
+    (" direction FROM public.ka_gochara_factor WHERE factor_id = %s",
+     " direction, category_mapping FROM public.ka_gochara_factor WHERE factor_id = %s"),
+    ("c.t_exact, c.convention_id FROM public.ka_gochara_relationship_record r JOIN",
+     "c.t_exact, c.convention_id, NULL::text FROM public.ka_gochara_relationship_record r JOIN"),
+    # SR-OD1 I1 (window_store, P1 period anchor): the scored-support read of the same stage carries the same constant `NULL::text` column for every non-P1 path.
+    ("lower(s.x), upper(s.x) FROM public.ka_gochara_relationship_record r CROSS JOIN LATERAL",
+     "lower(s.x), upper(s.x), NULL::text FROM public.ka_gochara_relationship_record r CROSS JOIN LATERAL"),
+    # SR-F4-STORE-EXACT (od1-f4-exact): the window stage's READ statements cast the stored REAL columns they read to float8 so the verifier compares exact values (the contact's
+    # `delta_lambda`, in the two selects that read it, and the eval-window row's numeric columns). Read casts only; no SQL write, join or filter moved.
+    (" c.t_out, c.delta_lambda FROM public.ka_gochara_contact c",
+     " c.t_out, c.delta_lambda::float8 FROM public.ka_gochara_contact c"),
+    ("upper(cov.completed_horizon), c.delta_lambda FROM",
+     "upper(cov.completed_horizon), c.delta_lambda::float8 FROM"),
+    ("peak_instant, score, evidence_for, evidence_against, severity, null_states_used, outcome_valence_for_native, objective, objective_value, qualification FROM public.ka_gochara_eval_window",
+     "peak_instant, score::float8, evidence_for::float8, evidence_against::float8, severity::float8, null_states_used, outcome_valence_for_native, objective, objective_value::float8, qualification FROM public.ka_gochara_eval_window"),
+)
+
+
+def _follow_od1_reads(rest: list, golden_shapes: dict, key: str, seen: list) -> list:
+    """`rest` with the head's OD-1 read shapes mapped back to the golden's, after proving the golden carried each old shape exactly as often as the head issues the new one."""
+    for i, (old, new) in enumerate(OD1_READ_ADAPTATIONS):
+        golden_n = sum(n for shape, n in golden_shapes.items() if old in shape.split("|", 1)[1])
+        head_n = sum(1 for sql, _ in rest if new in sql)
+        assert head_n == golden_n, f"{key}: the head issues the OD-1 read shape {i} {head_n} times, the golden's old shape {golden_n}"
+        assert not any(old in sql for sql, _ in rest), f"{key}: the old read shape {i} must not survive at the head"
+        rest = [[sql.replace(new, old), n] if new in sql else [sql, n] for sql, n in rest]
+        seen[i] += golden_n
+    return rest
+
+
 def test_b4_baseline_preserves_final_main_settlement_amendments():
     """Keep final J-4p's outcomes and transcript alongside B4's baseline.
 
@@ -306,8 +443,9 @@ def head(template):
 
 def test_every_substep_kind_of_a_markerless_run_equals_mains_except_the_one_read_only_state_guard_select(head):
     got, raw = head
-    want = _follow_p1_ledger(_follow_settlement(_load()))
+    want = _follow_ndh_in_place_rows(_follow_p1_ledger(_follow_settlement(_load())))
     assert [s["key"] for s in got["substeps"]] == [s["key"] for s in want["substeps"]]
+    adapted = [0] * len(OD1_READ_ADAPTATIONS)
     kinds = {s["key"].split(":")[0].split(" ")[0] for s in want["substeps"]}
     assert kinds >= {"rules", "convention", "body", "manifest", "snapshot", "inventory", "coverage", "record", "window", "verify"}, kinds
     for g, m in zip(got["substeps"], want["substeps"]):
@@ -329,6 +467,11 @@ def test_every_substep_kind_of_a_markerless_run_equals_mains_except_the_one_read
             rest.remove([P1_GATE_SELECT, 1])
             assert rest.count([COPY_PROBE_SELECT, 0]) == 3, f"{key}: expected the G12 copy probe exactly three times (before the ledger decision, inside the insert, and after it)"
             rest.remove([COPY_PROBE_SELECT, 0])
+        for l0_select in L0_DIGEST_SELECTS:
+            want_n = 0 if key.split(":")[0].split(" ")[0] in L0_FREE_SUBSTEP_KINDS else 1
+            assert rest.count([l0_select, 0]) == want_n, f"{key}: expected the P1 L0 digest SELECT exactly {want_n} time(s), saw {rest.count([l0_select, 0])}"
+            if want_n:
+                rest.remove([l0_select, 0])
         assert len(guard) == (0 if "[dry_run]" in key else 1), f"{key}: expected exactly one state-guard SELECT per non-dry-run substep, saw {len(guard)}"
         if key == "inventory:marriage":
             old_shapes = m["statements"]["shapes"]
@@ -338,6 +481,8 @@ def test_every_substep_kind_of_a_markerless_run_equals_mains_except_the_one_read
             new = old[0].replace("AND start_iso < end_iso AND", "AND")
             assert rest.count([new, 13]) == 1
             rest = [[old[0], n] if sql == new else [sql, n] for sql, n in rest]
+        # (the head's two OD-1 read shapes - the per-factor read's `category_mapping` column and the grain read's `NULL::text` period-anchor column - are followed below by `_follow_od1_reads`, once each.
+        # An earlier pair of explicit blocks here did the same restoration first and left `_follow_od1_reads` counting zero head occurrences of statements already restored, so it never could pass.)
         if key.startswith("record:"):
             # J-4c F-LEANNESS (C5, test_a53_j4c_leanness_pipeline.py): the P1 anchor-column catalogue probe is read ONCE per store, no longer once per
             # record. The accepted capture ran it before every relationship-record INSERT; this build runs it once (before the first) plus the substep's
@@ -352,7 +497,9 @@ def test_every_substep_kind_of_a_markerless_run_equals_mains_except_the_one_read
                         expanded.append([P1_GATE_SELECT, 1])
                 expanded.append([sql, n])
             rest = expanded
+        rest = _follow_od1_reads(rest, m["statements"]["shapes"], key, adapted)
         assert _summarise(rest) == m["statements"], f"{key}: statements other than the explicitly counted guards and layer probe differ from the accepted P06 baseline"
+    assert all(adapted), f"every OD-1 read adaptation must have been exercised by the run (never vacuous): {adapted}"
 
 
 def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the_implementation_identity(head):
@@ -360,10 +507,15 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
 
     No `horizon_basis` or `test_slice` component may appear in an ordinary run.
     """
-    got, want = head[0]["manifest_vector"], _load()["manifest_vector"]
+    got, want = head[0]["manifest_vector"], _follow_ndh_in_place_manifest(_load()["manifest_vector"])
     assert "horizon_basis" not in got and "test_slice" not in got
+    # OD-1 / D-FLIP F-10: the ONE component added since the golden was captured — the scored edge, derived from the protocol's H1 (2026-04-17, inclusive IST) → the next IST midnight.
+    # It is asserted here by value and set aside below; every other component is still compared to the accepted baseline unchanged.
+    assert got["scored_until"] == "2026-04-18T00:00:00+05:30" and "scored_until" not in want
+    got = {k: v for k, v in got.items() if k != "scored_until"}
 
     same_host = got["ephemeris"]["platform"] == want["ephemeris"]["platform"]
+    # SR-GOLDEN-LIB-STRICT: on the golden's own platform nothing is host-bound - the library artifact hash (library_sha256) stays strictly compared with the probe digest.
     host_bound = () if same_host else ("platform", "library_sha256", "probe_digest")
     # the golden was generated on `want['ephemeris']['platform']`: the host library's own identity (its artifact hash, platform string and numerical probe digest) is a
     # property of the MACHINE, not of the repository's code, so on another host those three are not compared; every other component is, exactly
@@ -395,19 +547,99 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # Evaluation re-pinned for OD-1 (SR-OD1-NUMERICAL): the ka_gochara_v5 writer's century config now carries result_policy (schema /2) and refuses a final-rules run with no
     # explicit policy, and input_vector binds the qualification table. Re-derived from the merged tree's real bytes the same way (main alone gives f065569b...); no golden
     # component is re-captured (this fixture's run names result_policy all_null_candidate/1, the accepted all-NULL build).
+    # Evaluation re-pinned for SR-OD1 W0 (kalayantra/od1-w0-interface, #3832): the ka_gochara_v5 writer's reason pass-through and input_vector (solver_check switch) changed. Re-derived
+    # from the merged tree's real bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin e5fae125... is the pre-W0 merge); geometry
+    # is asserted unchanged below and no golden component is re-captured.
+    # Evaluation re-pinned ONCE for the SR-OD1 I1 union (S1/S2/P1a/P1b/P1c/C2 on one branch) and the D2 binding of the owner's Form B table: the writer (per-version P1 operands,
+    # the verifier self-check), input_vector (p1_nature_operands / p1_operands / p1_valence / the P1 L0 consumption), rule_registry (the authored category_mapping read back and
+    # persisted), inventory / inventory_verifier (P1 1.0.0 -> 1.3.0 supersession) and gochara_rules.registry (the P1@1.3.0 rows) changed. Re-derived from the merged tree's real bytes with
+    # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin 906763ec... is the pre-union W0 merge); no golden component is re-captured.
+    # Evaluation re-pinned ONCE for SR-OD1 R9c-A10-1 (G-8): input_vector.py itself is an evaluation module and gained the comment/list entry that puts window_solver and
+    # window_solver_check into the window stage, so its bytes (hence this digest) moved; no evaluation behaviour changed. Re-derived with
+    # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin 26e70004... is the I1 union before this change); no golden component is re-captured.
+    # Evaluation and window re-pinned ONCE more at the SR-OD1 merge-back (R1, R3, R5, R4, Q3C, D1 incl. V1, C1, implmods on one head): the evaluation stage moved by the
+    # lanes' kernel/rules edits (R4/R5/Q3C p1_operands*, p1_valence, p1_inputs, rule_registry, V1 registry rows, inventory(+_verifier), D1/V1 input_vector) and by `vedha_source`
+    # joining the window stage (implmods review, "Answer to check (2)"); geometry is asserted unchanged (a8cb08f0...). Re-derived with
+    # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) from the merged tree's real bytes; no golden component is re-captured.
+    # Evaluation re-pinned for SR-OD1 R2 (SR-H2-1S): p1_operands and p1_nature_operands search the P1 state boundaries at the 1 s STATE floor and publish the state named limit.
+    # Re-pinned ONCE more at the SR-OD1 merge-back wave 2 (R2 on the wave-1 head): the R2 edits and the wave-1 evaluation edits are on one tree; re-derived with
+    # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) from the merged tree's real bytes (the prior pin bc169218... is the wave-1 head); no golden component is re-captured.
+    # Evaluation re-pinned at the SR-OD1 merge-back wave 2 (D3): D3 owner-confirmed vedha: rule_registry, inventory_verifier, vedha_source and the registry rows moved. Re-derived from the merged tree's real bytes with
+    # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin ec5ef7a9... is the head before this merge); no golden component is re-captured.
+    # Evaluation re-pinned for SR-OD1 S3 (the solver wired end to end): ka_gochara_v5 (the writer asks the solver, carries its named reasons) and input_vector (the solver and its
+    # prover join the identity) changed. Re-derived the same way (the prior pin 26e70004... is the I1 union); geometry is asserted unchanged below and no golden component is re-captured.
+    # Evaluation re-pinned at the SR-OD1 merge-back wave 2 (S3 on R2+D3+R8): S3 solver wiring (ka_gochara_v5, input_vector) joins the R2/D3 evaluation edits on one tree. Re-derived from the merged tree's real bytes with
+    # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin b66b5847... is the head before this merge); no golden component is re-captured.
+    # Evaluation re-pinned at the SR-OD1 merge-back wave 3a (R67, l0verify on the wave-2 head): input_vector (window_cert_check joins the window stage list) and input_vector_verifier (P1's L0
+    # authorities get an independent digest) are evaluation-stage modules. Re-derived from the merged tree's real bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES)
+    # (the prior pin 65ba9ca9... is the wave-2 head); geometry is unchanged; no golden component is re-captured.
+    # Evaluation re-pinned at the SR-OD1 merge-back wave 3b (DASH, R8X): dasha_read (table_coverage_end / coverage_end), inventory_verifier (the table-end arm of the record-support statement),
+    # record_verifier, ka_gochara_v5 (the table-end note) and input_vector (g6_plan joins the window stage list) are evaluation-stage modules. Re-derived from the merged tree's real bytes with
+    # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin 3fe1142e... is the wave-3a head); no golden component is re-captured.
+    # Evaluation re-pinned at the SR-OD1 merge-back wave 3c-b (vedha-residence + ndh + g6-resolver + nearmiss on the wave-3c-a head): ka_gochara_v5 (vedha-residence: the writer binds the pinned
+    # ephemeris path to the vedha source) and rule_registry (ndh: changelog 1.2.0 hook) are evaluation-stage modules. Re-derived ONCE from the final merged tree's real bytes with
+    # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin 1f37c1f0... is the wave-3c-a head); no golden component is re-captured.
+    # Evaluation re-pinned for OD-1 / D-FLIP F-10 (kalayantra/od1-scored-until): input_vector pins `scored_until` (derived from gochara_eval.registry.H1), input_vector_verifier re-derives it
+    # and the ka_gochara_v5 writer supplies it and requires it. Re-derived from the real bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin
+    # 3fe1142e... is the wave-3a head); geometry is unchanged; no golden component is re-captured (the one new vector key is asserted separately above).
+    # Evaluation re-pinned at the SR-OD1 merge-back wave 3c-c (seam + station-cut + scored-until on the wave-3c-b head): only scored-until touches an evaluation-stage module (input_vector, input_vector_verifier,
+    # ka_gochara_v5: the manifest pins `scored_until`). Re-derived ONCE from the final merged tree's real bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin
+    # cdcefd54... is the wave-3c-b head; the lane's own pin ce9ffedd... was derived on the wave-3a tree and is superseded); geometry is unchanged; no golden component is re-captured.
+    # Evaluation re-pinned at the P1 self-check fix (od1-p1-boundary): p1_nature_operands (the lord's nature-change instants are located to the first microsecond) is an evaluation-stage module. Re-derived from the
+    # tree's real bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin 3fe1142e... is the wave-3a head); geometry is unchanged; no golden component is re-captured.
+    # Evaluation re-pinned at the SR-OD1 merge-back wave 3c-d (p1-boundary + plateau-tie + drishti-reasons on the wave-3c-c head): p1_nature_operands (p1-boundary) and the drishti-reasons edits to the evaluation-stage
+    # modules (evaluator, inventory, ka_gochara_v5, gochara_rules.drishti) move the evaluation identity. Re-derived ONCE from the final merged tree's real bytes with
+    # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin 453a55be... is the wave-3c-c head; the p1-boundary lane's own pin daa9b514... was derived on the wave-3a tree and is
+    # superseded; the intermediate merge steps carried the wave-3c-c pins and are not final); geometry is unchanged; no golden component is re-captured.
+    # Evaluation re-pinned at the SR-OD1 merge-back wave 3c-e (f4-exact + reason-one-name + early-defects on the wave-3c-d head): record_derivation, record_verifier and scope_response (f4-exact: the stored REAL columns they read
+    # are read ::float8) and dasha_read (reason-one-name: PERIOD_TABLE_ENDS_REASON is the one name dasha_horizon_exhausted) are evaluation-stage modules. Re-derived ONCE from the final merged tree's real bytes with
+    # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin daff3567... is the wave-3c-d head; the same script reproduces that pin on the wave-3c-d tree); no golden component is re-captured.
     # Evaluation re-pinned for SR-W56-S3 (honest-null for Tajika mudda boundary overlaps, #3850): gochara_kernel.dasha_read changed (the boundary-overlap honest null). Re-derived
     # from the merged tree's real bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (main alone gives e5fae125...); geometry is unchanged
     # and no golden component is re-captured (this fixture's chart has no consecutive-boundary overlap).
     # Evaluation re-pinned for SR-DASHA-SINGLE-TIER (#3883): gochara_kernel.dasha_read and gochara_grammar.read_tier_policy changed (the governed dasha reader admits tier
     # single for five systems into flagging consumers only). Re-derived from the merged tree's real bytes with
     # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (main alone gives 91aabdc8...); geometry and window are unchanged and no golden component is re-captured.
-    assert got["implementation"]["evaluation"] == "16cea5f44ba816b06fb20be5844c611b796263499123868c21431d38ea58ad9b"
+    # Evaluation re-pinned ONCE at I1-FINAL (origin/main merged into the integration branch after GEOMETRY-PIN-ONCE): main's #3850 (mudda-overlap honest null) and #3883 (single-tier dasha read) change dasha_read,
+    # the only evaluation-stage modules main touched, and the integration branch has its own (DASH table-end, reason-one-name) edits to the same file. Re-derived ONCE from the merged tree's real bytes with
+    # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin b3baf81f... is the pre-merge head; main's own pin 16cea5f4... is on main's tree); geometry is unchanged (27edba25...); no golden component is re-captured.
+    # Evaluation re-pinned ONCE more, the last re-derivation before the TR (SR-PIN-COMMENT-REPIN): e4a5d661e's comment/docstring-only rewording (forced by test_w2_serving_route) moved the evaluation stage's byte digest (8168cbfc... -> dc911db8...); geometry is unchanged. Re-derived by script from the final tree's real bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (equal to input_vector.implementation_digests()); no golden component is re-captured. EQUIVALENCE_RECORD_CHANGELOG.json entry PIN-COMMENT-REPIN.
+    # Evaluation re-pinned ONCE more, the LAST re-derivation before the TR (SR-P2-ADMISSION-VERIFIER-FIX): 66560932b makes the P2 record verifier (record_derivation, an evaluation-stage module) re-derive
+    # house_from_moon from the sealed CITED set, not the adverse search plan (dc911db8... -> 16c4a524...). Verifier-only; the builder is unchanged, so no rebuild is needed. Re-derived by script from the final tree's real
+    # bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (equal to input_vector.implementation_digests()); no golden component is re-captured. EQUIVALENCE_RECORD_CHANGELOG.json entry P2-ADMISSION.
+    assert got["implementation"]["evaluation"] == "16c4a5243711fd95e045dee3b9e47c5242fca07b7569d2c7a24bdf79ba7cd6cc"
     # J-4c (main, #3770): the geometry stage also moved by the Swiss-polished in-orb span edges in record_store._in_orb_span_around_root. With P06b's near_miss_verifier in the
     # geometry identity, the merged-tree digest below is re-derived the same way (main alone gives 4479243d...; evaluation and window are unchanged by J-4c itself; J-4c F-LEANNESS (d96b3bfb0) then moved record_store again, anchor-column probe once per store). No golden component is
     # re-captured: this capture's SQL shapes, counts and outcomes do not depend on the span edges' last arcsec.
     # Geometry re-pinned again for F-1305-INVENTED-SUPPORT (#3774): record_store's period-rows cache now carries the held-presence flag; the digest below is re-derived on the
     # merged tree (main's bytes give 0ecc897c...).
-    assert got["implementation"]["geometry"] == "a8cb08f07fa867e010109d8a236422e39ebf0b57cf9a149eae64e42c7547a3ff"
+    # Geometry re-pinned for SR-OD1 R2 (SR-H2-1S): contact_reconstruct gains the STATE floor / STATE_NAMED_LIMIT and `_core`'s `min_excursion_seconds` keyword (default unchanged, so the
+    # contact geometry's own behaviour and 60 s named limit are untouched). Re-derived the same way (the prior pin a8cb08f0... is the I1 union).
+    # Geometry re-pinned at the SR-OD1 merge-back wave 3b (DASH, T13): record_store gains the table-end blank (a P1 support that reaches past the end of the stored daśā table stays the contact span with
+    # `unknown`, reason dasha_horizon_exhausted, the one name per SR-REASON-ONE-NAME). Re-derived from the merged tree's real bytes the same way (the prior pin 0186cc07... is the wave-3a head); the near-miss / contact geometry
+    # is untouched and no golden component is re-captured: this capture's SQL shapes, counts and outcomes do not depend on the table-end arm. (Geometry has now moved once after R2: recorded for T20.)
+    # Geometry re-pinned for SR-NEARMISS-BISECT (od1-nearmiss): near_miss._bisect narrows the band-edge instants to a 1e-6-day time bracket with no |f| early exit (near_miss.py
+    # EDGE_BRACKET_DAYS). Re-derived by the script (never hand-edited) with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES); the prior pin a8cb08f0... is
+    # the union head. evaluation and window are unchanged by it, and no golden component is re-captured.
+    # Geometry re-pinned at the SR-OD1 merge-back wave 3c-b: near_miss (nearmiss lane, SR-NEARMISS-BISECT) is the only geometry-stage module the four lanes touch. Re-derived ONCE from the final merged tree's
+    # real bytes the same way (the prior pin 3c129bd3... is the wave-3c-a head; the lane's own pin 6cd5a41b... was derived on a tree ~52 commits behind and is superseded; the GEOMETRY-PIN-ONCE prep
+    # prediction 7a841aa4... is matched).
+    # Geometry re-pinned at the SR-OD1 merge-back wave 3c-e (the pin 7a841aa4... was expected to hold; it does not): f4-exact (SR-F4-STORE-EXACT amend-1) touches two geometry-stage modules, both VERIFIER read paths -
+    # contact_certify (`c.delta_lambda::float8`) and near_miss_verifier (`delta_t::float8 AS delta_t`); neither builder nor any geometry computation moves. Re-derived ONCE from the final merged tree's real bytes the same way
+    # (the prior pin 7a841aa4... is the wave-3c-d head, reproduced by the same script on that tree); no golden component is re-captured: this capture's SQL shapes, counts and outcomes do not depend on the verifiers' read casts.
+    # Geometry re-pinned at the SR-OD1 merge-back wave 3c-f (ephe-once, SR-EPHE-PATH-ONCE under ruling SR-EPHE-PATH-ONCE-AMEND-1; GEOMETRY-PIN-ONCE cause amend-3): knots (the Swiss ephemeris path is set once per thread, not once per probe)
+    # and near_miss_verifier (its probes go through the once-per-thread path) are the only geometry-stage modules that move; no other lane in this wave touches a geometry module. Re-derived ONCE from the final merged tree's real bytes
+    # with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin 1a821723... is the wave-3c-e head, reproduced by the same script on that tree); no golden component is re-captured.
+    # GEOMETRY RE-PINNED ONCE (SR-GEOMETRY-PIN-ONCE + amend-1 + amend-3 + amend-4; the qualified pin, recorded with all its causes in
+    # 00_ARCHITECTURE/briefs/kalayantra/fleet/EQUIVALENCE_RECORD_CHANGELOG.json entry GEOM-PIN-ONCE; test_a53_geometry_pin_once.py refuses any further geometry change):
+    # causes R2 (contact_reconstruct), DASH (record_store), NEARMISS (near_miss), EPHE_ONCE (knots, and near_miss_verifier's own memo) and F4_READ_CASTS (contact_certify, and near_miss_verifier's
+    # delta_t read). Every row that moved on the 4-class slice is the near-miss rows of NEARMISS (40 rows) plus pin-consumer digest columns; R2, DASH, EPHE_ONCE and F4_READ_CASTS move no row.
+    # The intermediate literals a8cb08f0 (I1 union), 0186cc07, 3c129bd3, 6cd5a41b, 7a841aa4 and 1a821723 above were per-wave bookkeeping, not the qualified pin.
+    # GEOMETRY RE-PINNED ONCE MORE, the LAST re-derivation before the TR (GEOMETRY-PIN-ONCE reopened as amend-5 for exactly this cause: SR-NEARMISS-DOMAIN-TAIL + amend-1 + amend-2): cbd7d2e86 makes
+    # near_miss_verifier disclose a stretch that crosses into the identity domain with its station outside it (identity_domain_tails), instead of refusing it (27edba25... -> 77cde807...). near_miss_verifier is the only
+    # geometry-stage module that moved; no stored row/id/window/score/contact changes (the near-miss layer is not on the scored path). Re-derived by script from the final tree's real bytes the same way; no golden
+    # component is re-captured. EQUIVALENCE_RECORD_CHANGELOG.json entry GEOM-PIN-ONCE-AMEND-5; test_a53_geometry_pin_once.py accepts this pin only with that entry and refuses any other geometry change.
+    assert got["implementation"]["geometry"] == "77cde807a5e0bf6a3733bea3f48270774920acd7434f37f2c2eb73fe781d3616"
     # Window re-pinned for PR #3773 (F1): window_verifier derives karaka_agent (the omitted rank factor) as the sweep does. With P06b's window-stage changes the merged-tree
     # digest below is re-derived the same way (main alone gives 6c981eb8...; J-4c F-LEANNESS also changed window_store); evaluation and geometry are untouched by this change, and no golden component is re-captured.
     # Window re-pinned for the W3W4 strict-slice window-qualification fix: window_sweep.build_program no longer lists an OMITTED operand (karaka_agent, null_state omit)
@@ -415,6 +647,76 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # (main alone gives 41d28f76...); evaluation and geometry are untouched by this change and equal main's, and no golden component is re-captured.
     # Window re-pinned for OD-1 (SR-OD1-NUMERICAL): numerical_window_gate joins the window stage, and seal_brief / seal_flow / verification_job / seal_job changed. Re-derived the
     # same way from the merged tree's real bytes (main alone gives e0aea2fa...); no golden component is re-captured.
+    # Window re-pinned for SR-OD1 W0 (#3832): window_sweep (per-factor boundaries, per-instant channel hook), window_verifier and window_store changed. Re-derived the same way from
+    # the merged tree's real bytes (the prior pin 7dc92acc... is the pre-W0 merge); geometry is unchanged by W0 and no golden component is re-captured.
+    # Window re-pinned ONCE for the SR-OD1 I1 union: vedha_verifier (C2), p1_operands_check (P1c) join the window stage and window_sweep / window_store /
+    # window_verifier / verification_job changed (S1, S2, P1a-c, C2, D2). Geometry is UNCHANGED by the union (P1a's `RecordStore.fetch_stations` read moved to
+    # `WindowStore._fetch_stations` precisely so that it stays a8cb08f0...). Re-derived the same way (the prior pin 873236f3... is the pre-union W0 merge).
+    # Window re-pinned ONCE for SR-OD1 R9c-A10-1 (G-8): window_solver (S1) and window_solver_check (S2) join the window stage (they were in no stage list; nothing imports
+    # them until the sweep calls the solver, so the import-closure test could not see them). Geometry is asserted unchanged above (a8cb08f0...). Re-derived the same way
+    # (the prior pin fc0e7500... is the I1 union before this change); no golden component is re-captured.
+    # Window re-pinned for SR-OD1 R2 (SR-H2-1S): p1_operands_check searches at the STATE floor. Re-derived the same way on the wave-2 merged tree (the prior pin e9e05bae... is the wave-1 head);
+    # geometry is asserted unchanged by the merge (R2's own geometry pin 0186cc07... carries over); no golden component is re-captured.
+    # Window re-pinned at the SR-OD1 merge-back wave 2 (D3): D3 vedha_source/vedha_verifier/input_vector stage moves with the same edits. Re-derived from the merged tree's real bytes with
+    # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin 875d5eec... is the head before this merge); no golden component is re-captured.
+    # Window re-pinned at the SR-OD1 merge-back wave 2 (R8): R8 sharded aggregate: verification_job / numerical_window_gate (window stage) changed; evaluation and geometry are unchanged. Re-derived from the merged tree's real bytes with
+    # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin 51971966... is the head before this merge); no golden component is re-captured.
+    # Window re-pinned for SR-OD1 S3: window_sweep (the builder calls window_solver), window_verifier (the prover re-derives and compares), window_store, window_solver_check,
+    # numerical_window_gate and result_policy (table /2) changed. Re-derived the same way (the prior pin fc0e7500... is the I1 union); geometry is unchanged by S3.
+    # Window re-pinned at the SR-OD1 merge-back wave 2 (S3 on R2+D3+R8): S3 window_sweep/window_verifier/window_store/numerical_window_gate on top of R8/D3/R2; geometry unchanged. Re-derived from the merged tree's real bytes with
+    # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin 0c0ae8a9... is the head before this merge); no golden component is re-captured.
+    # Window re-pinned at the SR-OD1 merge-back wave 3a (R67): window_cert_check joins the window stage; window_sweep (the production solver path stores the certificate), window_verifier (the
+    # certificate check and the demotion path), window_solver (stored_certificate), window_solver_check and numerical_window_gate (demotions, the cap) changed. Re-derived from the merged tree's
+    # real bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin bb608cda... is the wave-2 head); geometry is unchanged; no golden component is re-captured.
+    # Window re-pinned at the SR-OD1 merge-back wave 3b (R8X on R67+S3+D3+R2+R8): g6_plan joins the window stage and numerical_window_gate / verification_job changed (aggregate T16 universe, T18 G-6
+    # plan, B4 wall rule); geometry is unchanged. Re-derived from the merged tree's real bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin
+    # ba0588e6... is the wave-3a head); R8X's own lane pin 0e4f173d... was derived without R67's window_cert_check and is superseded; no golden component is re-captured.
+    # Window re-pinned for SR-OD1 achievement_recognition (2): window_sweep's support/geometry check honours the half-open boundary convention at JD-ulp precision. Re-derived from the tree's real bytes with
+    # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin a7d18689... is the wave-3b head; the lane's own pin 67aac6d5... was derived on the wave-3a tree and is superseded); evaluation and geometry are unchanged; no golden component is re-captured.
+    # Window re-pinned for RV-INT part 1 (B3): pipeline/orchestrator/verification_job.py prints the R8 producer-identity refusal through seal_brief.canonical_json (the ONE serializer, as the brief
+    # refusals above it do) instead of json.dumps. Re-derived from the tree's real bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin a7d18689... is
+    # the wave-3b head).
+    # Window re-pinned at the SR-OD1 merge-back wave 3c-a (ar-sweep + drishti-edge + ar-verifier + rvint1-fix on the wave-3b head): window_sweep, window_store (drishti-edge), window_verifier / vedha_verifier / verification_job
+    # (ar-verifier) and pipeline/orchestrator/verification_job (RV-INT B3) all move the window stage. The final pin is re-derived from the merged tree's real bytes with input_vector_verifier.module_digests(
+    # input_vector.IMPLEMENTATION_MODULES); the lanes' own pins (ar-sweep 67aac6d5..., rvint1-fix 74056e90...) were derived on the wave-3a tree and are superseded, and the intermediate merge steps' pins
+    # (17d93221..., 40f65b7c...) are not the final one; evaluation and geometry are unchanged by all four lanes; no golden component is re-captured.
+    # Window re-pinned for SR-OD1 R8X review S-1 (od1-g6-resolver): window_verifier gains `resolve_inputs` and the production `g6_resolver`, verification_job binds it per grain, g6_plan's
+    # "who resolves" text changed. Evaluation and geometry are asserted unchanged above. Re-derived from the tree's real bytes with
+    # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin a7d18689... is the wave-3b head); no golden component is re-captured.
+    # Window re-pinned again for the od1-g6-resolver review fix B-1: window_verifier derives a P1 Form-B record's G-6 inputs from the verifier's own P1 binding (a P1 `StepFactor`) and a factor with
+    # no derivation is a named refusal (`NoSolverDerivation`, G-6 answers None). Evaluation and geometry unchanged; re-derived from the real bytes (the prior pin 2e7a0b6a... is the lane's first head).
+    # Window re-pinned at the SR-OD1 merge-back wave 3c-b (vedha-residence + ndh + g6-resolver + nearmiss): vedha_source / vedha_verifier / window_verifier (vedha-residence, g6-resolver), verification_job and g6_plan
+    # (g6-resolver) move the window stage. Re-derived ONCE from the final merged tree's real bytes the same way (the prior pin 75887439... is the wave-3c-a head; the lanes' own pins (g6-resolver 3d346c27...)
+    # were derived on earlier trees and are superseded; the intermediate merge steps carried the wave-3c-a pin and are not final); no golden component is re-captured.
+    # Window re-pinned for OD-1 / D-FLIP F-10: verification_job asks the independent verifier to REQUIRE the scored-edge pin (the prior pin ba0588e6... is the wave-3a head); re-derived the same way.
+    # Window re-pinned at the SR-OD1 merge-back wave 3c-c (seam + station-cut + scored-until): window_sweep (seam: tent offset and speed read continuously), window_solver (station-cut: the <=120 s
+    # station-neighbourhood cut) and verification_job (scored-until: the independent verifier REQUIRES the scored-edge pin) move the window stage. Re-derived ONCE from the final merged tree's real bytes the
+    # same way (the prior pin b6568936... is the wave-3c-b head; the lane's own scored-until pin 9fd794af... was derived on the wave-3a tree and is superseded; the intermediate merge steps carried the 3c-b pins and are not final); geometry is unchanged.
+    # Window re-pinned at the P1 self-check fix (od1-p1-boundary): p1_operands_check (the verifier's change instants are located to the first microsecond) is a window-stage module. Re-derived from the tree's real
+    # bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin ba0588e6... is the wave-3a head); geometry is unchanged; no golden component is re-captured.
+    # Window re-pinned at the SR-OD1 merge-back wave 3c-d (p1-boundary + plateau-tie + drishti-reasons): p1_operands_check (p1-boundary), window_solver / window_solver_check / window_sweep / window_verifier (plateau-tie,
+    # drishti-reasons) move the window stage. Re-derived ONCE from the final merged tree's real bytes the same way (the prior pin e9b44092... is the wave-3c-c head; the p1-boundary lane's own pin a8b438a3... was
+    # derived on the wave-3a tree and is superseded; the intermediate merge steps carried the wave-3c-c pins and are not final); geometry is unchanged (7a841aa4...).
+    # Window re-pinned at the SR-OD1 merge-back wave 3c-e (f4-exact + early-defects): window_verifier (f4-exact: the stored REAL window columns are read ::float8) and window_sweep (early-defects D-B: the support/geometry ulp
+    # probe is bounded by the record's own support) move the window stage. Re-derived ONCE from the final merged tree's real bytes the same way (the prior pin c869027f... is the wave-3c-d head; the intermediate merge steps
+    # carried other digests and are not final); geometry moved only by f4-exact (see above).
+    # Window re-pinned at the SR-OD1 merge-back wave 3c-f (ephe-once + tie-literal): vedha_verifier (ephe-once: probes use the once-per-thread ephemeris path) and window_solver / window_solver_check (tie-literal, SR-NEAR-STATION-TIE applied
+    # literally: a station zone blanks only a tie set that lies inside it) move the window stage. Re-derived ONCE from the final merged tree's real bytes the same way (the prior pin 50695734... is the wave-3c-e head, reproduced
+    # by the same script on that tree); evaluation is unchanged (b3baf81f...); no golden component is re-captured.
     # Window re-pinned for SR-W56-S3 (#3850): gochara_kernel.seal_brief changed (the window stage's only touched module). Re-derived the same way from the merged tree's real
     # bytes (main alone gives 7dc92acc...); evaluation is re-pinned above, geometry is untouched, and no golden component is re-captured.
-    assert got["implementation"]["window"] == "5148dee90d8f362333ecfa7682b8c7241dbba0abe5229526d2bb5b4a81fc2b3d"
+    # Window re-pinned ONCE at I1-FINAL (origin/main merged after GEOMETRY-PIN-ONCE): main's #3850 seal_brief change (mudda-overlap disclosure) joins the integration branch's window-stage edits. Re-derived ONCE from the
+    # merged tree's real bytes the same way (the prior pin a5f05e4c... is the pre-merge head; main's own pin 5148dee9... is on main's tree); geometry is unchanged (27edba25...); no golden component is re-captured.
+    # Window re-pinned ONCE more, the last re-derivation before the TR (SR-PIN-COMMENT-REPIN): e4a5d661e's comment/docstring-only rewording (forced by test_w2_serving_route) moved the window stage's byte digest (75c3fd11... -> 789430e0...); geometry is unchanged. Re-derived by script from the final tree's real bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (equal to input_vector.implementation_digests()); no golden component is re-captured. EQUIVALENCE_RECORD_CHANGELOG.json entry PIN-COMMENT-REPIN.
+    # Window re-pinned ONCE more, the LAST re-derivation before the TR (SR-P1-SLIVER-D2): 604963d43 makes the builder (window_solver, window_sweep) and, in its own code, the verifier
+    # (window_solver_check, window_verifier) leave a piece shorter than one JD-double ulp out of a window's maximum (one sky event read on two paths, N.7.6) and count it
+    # (qualification.certificate.sliver_pieces_excluded) (789430e0... -> b94365dd...). Window-stage modules only: geometry (77cde807...) and evaluation (16c4a524...) are unchanged. Re-derived
+    # by script from the final tree's real bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (equal to input_vector.implementation_digests()); no golden component is
+    # re-captured. EQUIVALENCE_RECORD_CHANGELOG.json entry P1-SLIVER-D2.
+    # Window re-pinned after the TR diagnostic 20261023T1655ZT (TR2 defects A, B): verification_job (A: the geometry-stage near-miss reconciliation excludes exactly the
+    # disclosed identity-domain tails), window_cert_check and numerical_window_gate (B: U_CERT is INCONCLUSIVE, not DISAGREEMENT) move the window stage (b94365dd... ->
+    # e38160c1...); geometry and evaluation unchanged; re-derived by the same script; EQUIVALENCE_RECORD_CHANGELOG.json entry TR2-DEFECTS-AB.
+    # Window re-pinned a SECOND time (SR-TR3-SECOND-REPIN) after final TR #1 20261023T2010ZF (R-6 cap): window_solver_check (TR3 defect E: a certified-constant stretch of a
+    # max-min piece is one plateau; U_CERT: bisection below the 1 ms floor) and window_verifier (U_CERT: the per-window deep-split allowance counter) move the window stage
+    # (e38160c1... -> 25c5badb...); geometry and evaluation unchanged; re-derived by the same script; EQUIVALENCE_RECORD_CHANGELOG.json entry TR3-DEFECT-E-UCERT.
+    assert got["implementation"]["window"] == "25c5badbe01dc8634948295a661d107927c609c6042c060faee89895c8850661"

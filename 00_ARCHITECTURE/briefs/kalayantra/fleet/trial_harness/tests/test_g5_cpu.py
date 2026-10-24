@@ -8,9 +8,13 @@ reconfiguring the cluster, which this item must never do).
 
 Stated tolerances (measured on this Mac 2026-10-22, 18 cores = 6 P + 12 E, shared and busy; see g5_cpu.py's docstring):
   * builder CPU vs the process's own CPU clock: ±10 % + 50 ms (observed +2 %: the sampler's own thread is subtracted);
-  * backend CPU vs an independent `ps -o time=` reading of the same pid: ±10 % + 40 ms (observed ±10 ms: ps has 10 ms resolution);
-  * loaded vs quiet attributed CPU for identical work: within ×1.6 (observed ×1.16..1.43 over 9 pairs under 2×cores hogs, while the wall projection grew ×3.3..4.7), and
-    at most half the wall's growth: CPU seconds move with core placement (P vs E cores), SMT and cache contention, but not with time spent waiting for a core;
+  * backend CPU vs an independent reading of the same pid (`ref_backend_cpu_s`: the scheduler's /proc/<pid>/schedstat on Linux, `ps -o time=` elsewhere): ±10 % + 40 ms
+    (observed ±10 ms: macOS ps has 10 ms resolution; Linux procps prints whole seconds, so on Linux ps cannot be the reference);
+  * loaded vs quiet attributed CPU for identical work: within ×1.6 of k, and the growth beyond k × quiet at most half the wall's GROWTH (loaded − quiet, so an ambient
+    load on the quiet leg cannot fail it).  k = the CPU cost of the same pure burn under the same hogs over its quiet cost, measured in the same attempt (floored at 1):
+    CPU seconds move with core placement (P vs E cores), SMT and cache contention, but not with time spent waiting for a core.  On the Mac k was ×1.34..1.79 under a
+    load of ~33 on 18 cores (the k-free ratio had been ×1.16..1.43 over 9 pairs while the wall projection grew ×3.3..4.7); on the linux/amd64 TR VM (2 threads per core) the SMT sibling roughly doubles the cost (2026-10-23: k-free
+    ratio ×2.3 with the wall ×3.6), which is the work's own cost, not waiting;
   * wall vs attributed-CPU projection on a not-oversubscribed fixture-scale slice: within ×1.5 (observed ×1.04..1.10): wall = CPU + off-CPU wait, and a serial CPU-bound
     slice that is not starved waits for less than a third of its time."""
 import contextlib
@@ -94,6 +98,27 @@ def burn(n):
     return s
 
 
+def ref_backend_cpu_s(pid):
+    """The independent truth for a backend's CPU seconds.  Linux: the scheduler's own on-CPU nanoseconds (/proc/<pid>/schedstat field 1; the meter reads the tick-based
+    utime+stime of /proc/<pid>/stat, a tick-scaled view through a different interface, independent of the meter's code).  Elsewhere: `ps -o time=` (centiseconds on macOS)."""
+    if sys.platform.startswith("linux"):
+        return int(Path(f"/proc/{int(pid)}/schedstat").read_text().split()[0]) / 1e9
+    return g5_cpu._ps_cpu_s(pid)
+
+
+def valid_wall_ratio(k):
+    """The wall growth R an attempt of test_c2 needs before it may be judged.  A meter that counts waiting reads cpu_l / cpu_q = R; c2's assertion admits it iff
+    k / 1.6 <= R <= min(1.6 k, 2 k - 1) (the band, and the growth bound with cpu = wall).  So an attempt is an experiment only when R exceeds max(1.6 k, 2 k - 1)
+    with a 25 % margin (never below the original 1.5): then a waiting-counting meter always fails, whatever k the machine's SMT siblings produce."""
+    return max(1.5, 1.25 * max(1.6 * k, 2 * k - 1))
+
+
+def burn_cost(n):
+    t = time.process_time()
+    burn(n)
+    return time.process_time() - t
+
+
 def calibrate(seconds=0.2):
     t = time.process_time()
     burn(200_000)
@@ -114,9 +139,9 @@ def run_stage(meter, conn, pid, stage, n_burn, n_sql, child_s=0.0):
             r = subprocess.run([sys.executable, "-I", "-c", f"import time\nt=time.process_time()\nwhile time.process_time()-t<{child_s}: pass\nprint(time.process_time())"],
                                capture_output=True, text=True, timeout=60)
             truth["child"] = float(r.stdout.strip())
-        p0 = g5_cpu._ps_cpu_s(pid)
+        p0 = ref_backend_cpu_s(pid)
         conn.execute(SQL_BUSY, (n_sql,)).fetchone()
-        truth["ps_backend"] = g5_cpu._ps_cpu_s(pid) - p0
+        truth["ps_backend"] = ref_backend_cpu_s(pid) - p0
     truth["wall"] = time.time() - t0
     truth["box"] = box
     return truth
@@ -126,7 +151,7 @@ def run_stage(meter, conn, pid, stage, n_burn, n_sql, child_s=0.0):
 
 def test_c1_attributed_cpu_equals_the_known_work_of_a_builder_and_its_postgres_backend(cluster, work):
     """SR-G5-LOAD: 'user+sys of the builder/verifier processes PLUS their Postgres backends'.  Known work: a fixed-count burn here (truth = this process's own CPU
-    clock), a reaped child that burns (truth = its own CPU clock), a busy SQL statement in the trial database's backend (truth = an independent `ps` reading of that pid;
+    clock), a reaped child that burns (truth = its own CPU clock), a busy SQL statement in the trial database's backend (truth = an independent reading, ref_backend_cpu_s of that pid;
     plus scaling: three times the rows costs about three times the CPU).  Planted reversion: the backend term is dropped (`_backend_total` returns 0) → fails."""
     conn, pid = work
     n = calibrate(0.25)
@@ -194,19 +219,36 @@ def verdict(report):
 
 
 def test_c2_on_a_loaded_machine_wall_is_not_evaluated_and_attributed_cpu_projects_close_to_the_quiet_one(cluster, work):
-    """SR-G5-LOAD: wall when the load bound held, attributed_cpu otherwise.  A quiet run and a run under 2×cores real CPU hogs do identical fixed work.  Under the hogs the
+    """SR-G5-LOAD: wall when the load bound held, attributed_cpu otherwise.  A quiet run and a run under real CPU hogs (2×cores, more on a retry: 3, 4, 6×) do identical fixed work.  Under the hogs the
     wall method is NOT usable (method attributed_cpu, no wall projection check survives, `wall_method` NOT_EVALUATED) while the CPU projection stays within ×1.6 of the
-    quiet one (observed ×1.16..1.43) although the wall projection is several times larger.  Planted reversion: `select` ignores the load (always WALL) → the loaded run
-    would be judged on its inflated wall → fails."""
+    quiet one times k, the same burn's own contention cost (k measured ×1.34..1.79 on the loaded Mac, ≈ 2.3 on the TR VM), although the wall projection is several times larger.  Planted reversion: `select` ignores the load (always WALL) → the loaded run
+    would be judged on its inflated wall → fails.  Planted reversion: the CPU projection fed the wall (a meter that counts waiting) → fails, because an attempt is judged
+    only once the wall grew past valid_wall_ratio(k)."""
     conn, pid = work
     n = calibrate(0.2)
-    quiet = slice_world(cluster, conn, pid, n, lambda: 1.0)
-    hogs = Hogs(2 * NCPU)
-    try:
-        time.sleep(0.5)
-        loaded = slice_world(cluster, conn, pid, n, hogs.runnable)
-    finally:
-        hogs.stop()
+    attempts = []
+    for mult in (2, 3, 4, 6):                                                        # more hogs per retry: a longer run queue grows the wall, not k
+        quiet = slice_world(cluster, conn, pid, n, lambda: 1.0)
+        k_q = burn_cost(n)
+        hogs = Hogs(mult * NCPU)
+        try:
+            time.sleep(0.5)
+            k_l = burn_cost(n)
+            loaded = slice_world(cluster, conn, pid, n, hogs.runnable)
+        finally:
+            hogs.stop()
+        wall_q = gates.runtime_projection(quiet, fx.profile())["projected_writer_s"]
+        wall_l = gates.runtime_projection(loaded, fx.profile())["projected_writer_s"]
+        cpu_q = g5_cpu.cpu_projection(quiet, fx.profile(), gates.runtime_projection)["projected_writer_s"]
+        cpu_l = g5_cpu.cpu_projection(loaded, fx.profile(), gates.runtime_projection)["projected_writer_s"]
+        k = max(1.0, k_l / k_q)
+        attempts.append((quiet, loaded, wall_q, wall_l, cpu_q, cpu_l, k))
+        if wall_l / wall_q >= valid_wall_ratio(k):                                   # the hogs starved the builder enough that a waiting-counting meter must fail
+            break
+    # a machine whose own load already inflates the "quiet" leg's wall can leave an attempt in which the hogs added little: such an attempt is not an experiment
+    # (its wall did not grow), so it is retried, never judged; no valid attempt fails the test (never skipped).  Judged on the valid attempt that ends the loop.
+    quiet, loaded, wall_q, wall_l, cpu_q, cpu_l, k = attempts[-1]
+    assert wall_l / wall_q >= valid_wall_ratio(k), [(a[2], a[3], a[6]) for a in attempts]  # the hogs really starved the builder: the wall method would have lied
     vq, vl = verdict(quiet), verdict(loaded)
     gq, gl = vq["gates"]["G-5"], vl["gates"]["G-5"]
     assert gq["projection_method"]["method"] == "wall" and gl["projection_method"]["method"] == "attributed_cpu"
@@ -216,12 +258,10 @@ def test_c2_on_a_loaded_machine_wall_is_not_evaluated_and_attributed_cpu_project
     assert any("(attributed CPU)" in c for c in claims)
     assert gl["wall_method"]["status"] == NOT_EVALUATED and "load per core" in gl["wall_method"]["reason"]
     assert gl["status"] == PASS and gq["status"] == PASS                                      # the CPU method yields a real verdict under load
-    wall_q = gates.runtime_projection(quiet, fx.profile())["projected_writer_s"]
-    wall_l = gates.runtime_projection(loaded, fx.profile())["projected_writer_s"]
-    cpu_q = g5_cpu.cpu_projection(quiet, fx.profile(), gates.runtime_projection)["projected_writer_s"]
-    cpu_l = g5_cpu.cpu_projection(loaded, fx.profile(), gates.runtime_projection)["projected_writer_s"]
-    assert wall_l / wall_q >= 1.5, (wall_q, wall_l)                                           # the hogs really starved the builder: the wall method would have lied
-    assert 1 / 1.6 <= cpu_l / cpu_q <= 1.6 and cpu_l / cpu_q <= (wall_l / wall_q) / 2, (cpu_q, cpu_l, wall_q, wall_l)
+    # the same claim, ambient-load-robust: CPU seconds do not follow time spent waiting for a core.  Judged on GROWTH (loaded − quiet) in the same experiment, so an
+    # ambient load that already inflated the quiet leg's wall (and so shrank the wall RATIO) cannot fail it: the CPU growth beyond the work's own contention cost (k, the
+    # same burn's CPU under the same hogs; SMT siblings and cache, not waiting) is at most half the wall growth, and the CPU ratio stays within ×1.6 of k.
+    assert k / 1.6 <= cpu_l / cpu_q <= k * 1.6 and (cpu_l - k * cpu_q) <= (wall_l - wall_q) / 2, (cpu_q, cpu_l, wall_q, wall_l, k)
     assert gl["projection"]["basis"] == "attributed_cpu" and gl["projection"]["projected_writer_s"] == pytest.approx(cpu_l, abs=0.1)
 
 
@@ -249,21 +289,29 @@ def test_c3_the_cpu_projection_is_the_wall_formula_fed_cpu_seconds_with_the_wall
 
 def test_c4_wall_and_attributed_cpu_projections_agree_within_a_stated_factor_on_a_quiet_small_slice(cluster, work):
     """A real class is hours long, so the agreement is measured on a fixture-scale slice (three step kinds of fixed CPU work in this process and its backend, ≈ 2 s).
-    Stated factor ×1.5 either way (module docstring): wall = CPU + off-CPU wait.  The machine here is shared, so the slice is repeated up to 5 times and the agreement is
-    judged on the QUIETEST attempt — the one whose sampled real load per core was lowest; a machine that is never quiet makes this test fail (run it on a quiet machine
-    or in CI), it is never skipped.  Planted reversion: `record()` builds `by_step_kind` from `self_cpu_s` only (the backend share is lost) → ratio ≈ 2.8 → fails."""
+    Stated factor ×1.5 either way (module docstring): wall = CPU + off-CPU wait.  The machine here is shared, so the agreement is judged NORMALISED by a same-process calibrated reference (the wall per CPU second of a pure fixed burn
+    measured around the slice: ambient waiting multiplies both, so it cancels), on the best of up to 5 attempts; it is never skipped.  Planted reversion: `record()` builds `by_step_kind` from `self_cpu_s` only (the backend share is lost) → ratio ≈ 2.8 → fails."""
     conn, pid = work
     n = calibrate(0.2)
+
+    def starvation():
+        """The same-process calibrated reference: wall seconds per CPU second of a pure fixed burn right now (1.0 on a free core; > 1 when ambient load makes this process wait)."""
+        t, c = time.time(), time.process_time()
+        burn(n)
+        return max(1.0, (time.time() - t) / (time.process_time() - c))
+
     attempts = []
     for _ in range(5):
+        ref0 = starvation()
         rep = slice_world(cluster, conn, pid, n, lambda: os.getloadavg()[0])
+        ref = (ref0 + starvation()) / 2
         wall = gates.runtime_projection(rep, fx.profile())["projected_writer_s"]
         cpu = g5_cpu.cpu_projection(rep, fx.profile(), gates.runtime_projection)["projected_writer_s"]
-        attempts.append((rep["g5_cpu"]["load_per_core_max"], wall / cpu, wall, cpu))
-        if wall / cpu <= 1.5:
+        attempts.append((wall / cpu / ref, wall / cpu, ref, wall, cpu))              # the agreement NORMALISED by the reference's own wait: ambient load cancels, a lost CPU share does not
+        if wall / cpu / ref <= 1.5:
             break
-    load, ratio, wall, cpu = min(attempts)
-    assert 0.9 <= ratio <= 1.5, attempts
+    norm, ratio, ref, wall, cpu = min(attempts)
+    assert 0.9 <= norm <= 1.5, attempts
     assert wall > 0 and cpu > 0
 
 

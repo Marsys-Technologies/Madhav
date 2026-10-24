@@ -54,6 +54,8 @@ SCORE_REASON = "near_miss_unscored"
 MIN_CLEARANCE_DEG = 5e-3
 #: the closest instant is refined on the ephemeris until the bracket is this narrow (days; about 0.9 s)
 CLOSEST_BRACKET_DAYS = 1e-5
+#: the band-edge instants (t_in, t_out) are located on the arc index until the bracket is this narrow (days; about 0.09 s)
+EDGE_BRACKET_DAYS = 1e-6
 _JD_UNIX_EPOCH = 2440587.5
 
 OBJECT_TABLE = "ka_gochara_near_miss_object"
@@ -135,20 +137,18 @@ class Stretch:
 
 
 def _bisect(index, jd_a: float, jd_b: float, target_u: float) -> float:
-    """The instant in the monotone piece [jd_a, jd_b] at which the unwrapped longitude equals `target_u` (same scheme as the contact spans)."""
-    tol = max(index.tolerance_arcsec / 3600.0, 1e-9)
+    """The instant in the monotone piece [jd_a, jd_b] at which the unwrapped longitude equals `target_u`, to `EDGE_BRACKET_DAYS` (about 0.09 s).
+    It narrows the bracket to the end: stopping at the first midpoint within the index tolerance leaves an instant `tolerance / speed` away
+    from the edge (about 16 minutes for Saturn at 0.025 deg/day and 1 arcsec), which the independent ephemeris reconstruction does not reproduce."""
     fa = index.evaluate(jd_a) - target_u
-    mid = 0.5 * (jd_a + jd_b)
-    for _ in range(80):
+    while jd_b - jd_a > EDGE_BRACKET_DAYS:
         mid = 0.5 * (jd_a + jd_b)
         fm = index.evaluate(mid) - target_u
-        if abs(fm) <= tol:
-            return mid
         if (fa < 0) == (fm < 0):
             jd_a, fa = mid, fm
         else:
             jd_b = mid
-    return mid
+    return 0.5 * (jd_a + jd_b)
 
 
 def rootless_stretches(index, levels: Sequence[float], orb_deg: float) -> list[Stretch]:

@@ -666,16 +666,24 @@ def _scalar(conn, sql, params):
 def _ephemeris_position(ephe_path):
     """Independent Swiss probe; serialized state and a backend check on EVERY call."""
     import swisseph as swe
-    from panchang_engine.swiss_state import serialized_swiss_state
+    import threading
+    from panchang_engine.swiss_state import ephe_path_generation, serialized_swiss_state
     ids = {"sun": swe.SUN, "moon": swe.MOON, "mercury": swe.MERCURY, "venus": swe.VENUS,
            "mars": swe.MARS, "jupiter": swe.JUPITER, "saturn": swe.SATURN,
            "rahu": swe.MEAN_NODE, "ketu": swe.MEAN_NODE}
     if not ephe_path:
         raise NearMissError("near_miss_ephemeris_missing")
 
+    memo = threading.local()    # SR-EPHE-PATH-ONCE: this verifier's own memo (not the builder's) — the path is set once per thread
+
     @serialized_swiss_state
     def at(body, t):
-        swe.set_ephe_path(ephe_path)
+        # `set_ephe_path` closes the library's files (≈75 µs against ≈0.24 µs for a probe): set it only when this thread has not set
+        # THIS path since any caller last did (the process-wide counter moves on every set); the sidereal mode (≈0.1 µs) is set on every probe
+        if getattr(memo, "state", None) != (ephe_path, ephe_path_generation()):
+            before = ephe_path_generation()
+            swe.set_ephe_path(ephe_path)
+            memo.state = (ephe_path, before + 1) if ephe_path_generation() == before + 1 else None
         swe.set_sid_mode(swe.SIDM_LAHIRI)
         xx, flags = swe.calc_ut(t.timestamp()/86400.0 + 2440587.5, ids[body], swe.FLG_SWIEPH | swe.FLG_SIDEREAL)
         if flags & swe.FLG_MOSEPH or not flags & swe.FLG_SWIEPH:
@@ -701,8 +709,41 @@ def _follow_domain_edge(position_at, body, centres, orb, rec, domain):
         if full["state"] == "contact":
             return full
         if not full["clipped"]:
-            return {**rec, "state":"unresolved", "reason": "rootless_stretch_crosses_identity_domain"}
+            return {**rec, "state":"unresolved", "reason": "rootless_stretch_crosses_identity_domain",
+                    "station_in_domain": _station_in_span(position_at, body, max(full["t_in"], domain[0]), min(full["t_out"], domain[1]))}
     return {**rec, "state":"unresolved", "reason":"clipped_extension_unresolved_within_1500_days"}
+
+
+def _station_in_span(position_at, body, a, b):
+    """Does the body turn (direct <-> retrograde) between a and b? Daily samples of the signed step; a span shorter than three samples cannot say, so it answers
+    True (never infer absence). A station is what the builder's arc index needs to see a rootless stretch at all (`near_miss.rootless_stretches`)."""
+    n = int((b - a).total_seconds() // 86400)
+    if n < 3:
+        return True
+    lon = [position_at(body, a + timedelta(days=k)) for k in range(n + 1)]
+    steps = [((lon[k + 1] - lon[k] + 180.0) % 360.0) - 180.0 for k in range(n)]
+    return any(steps[k] == 0.0 or (steps[k] > 0) != (steps[k + 1] > 0) for k in range(n - 1))
+
+
+def split_identity_domain_tails(derived):
+    """(kept, tails). A TAIL is a rootless stretch that crosses the identity-domain edge (`_follow_domain_edge`) and has NO station inside the domain: the builder's
+    arc index holds only the monotone tail, cannot see the stretch, and can neither store nor refuse it, so its absence from the stored rows is the only possible
+    stored state. It is DISCLOSED by the caller (never green, never silent) instead of failing the generation. A crossing stretch WITH a station inside the domain
+    stays in `kept`: the builder refuses that one by name (`near_miss_unresolved_domain_edge`) and the verifier keeps refusing it."""
+    tails = [r for r in derived if r["state"] == "unresolved" and r.get("reason") == "rootless_stretch_crosses_identity_domain" and r.get("station_in_domain") is False]
+    return [r for r in derived if not any(r is t for t in tails)], tails
+
+
+def tail_record(object_id, body, relation, rec):
+    """One disclosed tail: object id, body, relation, dates; the reason is the verifier's existing name (SR-REASON-ONE-NAME), no new string."""
+    return {"object_id": str(object_id), "body": body, "relation": relation, "t_in": rec["t_in"].isoformat(), "t_out": rec["t_out"].isoformat(),
+            "reason": rec["reason"], "station_in_domain": False}
+
+
+def tail_disclosure(edge_tails):
+    """The disclosure as it enters the verification report: the records AND their COUNT (SR-NEARMISS-DOMAIN-TAIL condition 1) — a count a reader can
+    compare with zero without opening the list. Zero is a measured zero (`verify_generation` looked at every crossing stretch), not an absence."""
+    return {"identity_domain_tails": list(edge_tails), "identity_domain_tail_count": len(edge_tails)}
 
 
 def _junction(conn, obj, rec, horizon, dashas, position_at):
@@ -809,6 +850,7 @@ def verify_generation(conn, *, chart_id, generation, ephe_path, persist=False):
         dashas.append({"level":int(key["level_n"]),"start":datetime.fromisoformat(key["start_iso"].replace('Z','+00:00')),
             "end":datetime.fromisoformat(content["end_iso"].replace('Z','+00:00')),"id":str(meta["dasha_row_id"])})
     problems=[]
+    edge_tails=[]
     for s in searches:
         body,relation=s["body"],s["relation_kind"]
         orb=_POINT_ORB_DEG[relation]
@@ -819,7 +861,7 @@ def verify_generation(conn, *, chart_id, generation, ephe_path, persist=False):
             problems.append("near_miss_convention")
         angles=(0.0,) if relation=="conjunction" else _ASPECT_ANGLES[body]
         centres=[(float(s["canonical_target"].split(':')[1])-a)%360 for a in angles]
-        stored=_rows(conn.execute("SELECT *,near_miss_object_id AS object_id FROM public.ka_gochara_near_miss "
+        stored=_rows(conn.execute("SELECT *,near_miss_object_id AS object_id,delta_t::float8 AS delta_t FROM public.ka_gochara_near_miss "
             "WHERE chart_id=%s AND generation=%s AND near_miss_object_id=%s ORDER BY ordinal",(chart_id,generation,s["near_miss_object_id"])))
         for row in stored:
             problems += precision_problems(row)
@@ -830,6 +872,8 @@ def verify_generation(conn, *, chart_id, generation, ephe_path, persist=False):
         derived=derive_near_misses(position_at,body,centres,s["domain_start"],s["domain_end"],orb_deg=orb)
         derived = [_follow_domain_edge(position_at,body,centres,orb,r,(s["domain_start"],s["domain_end"]))
                    if r["clipped"] and r["t_in"] < horizon[1] and r["t_out"] > horizon[0] else r for r in derived]
+        derived, tails = split_identity_domain_tails(derived)
+        edge_tails += [tail_record(s["near_miss_object_id"], body, relation, r) for r in tails]
         for ordinal,r in assign_ordinals([r for r in derived if r["state"]=="near_miss"]):
             r["full_domain_ordinal"]=ordinal
         relevant=[r for r in derived if r["t_in"] < horizon[1] and r["t_out"] > horizon[0]]
@@ -856,4 +900,4 @@ def verify_generation(conn, *, chart_id, generation, ephe_path, persist=False):
         conn.execute("DELETE FROM public.ka_gochara_near_miss_verification WHERE chart_id=%s AND generation=%s",(chart_id,generation))
         conn.execute("INSERT INTO public.ka_gochara_near_miss_verification(chart_id,generation,layer_version,near_miss_digest) VALUES(%s,%s,1,%s)",(chart_id,generation,after))
     return {"status":"VERIFIED", "digest":after,"objects":len(searches),"persisted":persist,
-        "resolution_limit_seconds":60.0, "output_identity":"vacuous_under_policy" if vector.get("result_policy")=="all_null_candidate/1" else None}
+        "resolution_limit_seconds":60.0, **tail_disclosure(edge_tails), "output_identity":"vacuous_under_policy" if vector.get("result_policy")=="all_null_candidate/1" else None}

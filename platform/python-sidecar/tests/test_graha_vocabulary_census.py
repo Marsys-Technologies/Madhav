@@ -151,6 +151,10 @@ _INTENTIONAL_EXCLUSIONS: frozenset[tuple[str, str]] = frozenset({
     # as independent maps.)
     ("window_verifier.py", "_TITLE"),
     ("inventory_verifier.py", "_FACT_SUBJECT"),
+    # SR-OD1 C2 (integrated on kalayantra/od1-integration, I1): the independent vedha-overlay verifier's own kernel-name -> display-title map. Same
+    # ND-ROLES independence as the two verifier maps above (the verifier restates the title table rather than importing the builder's);
+    # added by S3 because the I1 integration commit left this census red.
+    ("vedha_verifier.py", "_TITLE"),
 })
 
 

@@ -41,8 +41,34 @@ def test_probe_counts_calls_through_module_and_alias_and_restores(monkeypatch):
     assert calls == {"solve_window": 2}                                                 # not counted outside the probe
 
 
-def test_probe_reports_absence_when_the_checkout_has_no_solver(monkeypatch):
+def test_probe_reports_present_and_counts_calls_at_a_head_that_carries_the_real_solver():
+    """Claim (PLAN §2.7): at a solver-carrying head the probe reports the solver PRESENT and counts calls into the checkout's real `window_solver` (the
+    peaks-need-a-search detector reads these counts).  Built from the checkout's own module, not a stand-in; restored afterwards."""
+    from conftest import CHECKOUT
+    if not (CHECKOUT / "platform" / "python-sidecar").is_dir():
+        pytest.skip("no checkout export")
+    assert (CHECKOUT / "platform" / "python-sidecar" / "services" / "gochara_kernel" / "window_solver.py").is_file(), "the checkout under test must carry the solver"
+    from services.gochara_kernel import window_solver as ws
+    original = ws.constant_step                                      # a public function DEFINED in the solver module
+    calls = {}
+    with ts.probe_solver(calls) as present:
+        assert present is True
+        ws.constant_step(1.0)
+    assert calls == {"constant_step": 1}
+    assert ws.constant_step is original                              # restored
+
+
+def test_probe_reports_absent_and_counts_nothing_when_the_checkout_has_no_solver_module(monkeypatch, tmp_path):
+    """Claim: where the checkout carries no `window_solver` (a head before it), the probe reports ABSENT and counts nothing.  The no-solver checkout is a package
+    copy under tmp_path that holds no window_solver.py, resolved by the default module name."""
+    pkg = tmp_path / "services" / "gochara_kernel"
+    pkg.mkdir(parents=True)
+    for name, path in (("services", tmp_path / "services"), ("services.gochara_kernel", pkg)):
+        stub = types.ModuleType(name)
+        stub.__path__ = [str(path)]
+        monkeypatch.setitem(sys.modules, name, stub)
     monkeypatch.delitem(sys.modules, "services.gochara_kernel.window_solver", raising=False)
+    assert not (pkg / "window_solver.py").exists()
     calls = {}
     with ts.probe_solver(calls) as present:
         assert present is False

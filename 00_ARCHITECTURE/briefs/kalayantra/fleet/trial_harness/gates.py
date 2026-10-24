@@ -225,6 +225,28 @@ def g3_shares(report: dict, profile: dict) -> dict:
     return gate("G-3", "Share floors", checks, shares=path_shares(report))
 
 
+def recount_agrees(att: dict, live: dict) -> tuple:
+    """R-6 (numerical_window_gate.generation_verdict's own rule): the attested populations are the STORED ones less the verifier's demoted numbered windows.  So the
+    attested windows equal the live windows, and the attested numbered equal the live numbered minus the attested demoted set, MATCHED BY window_id: the attested
+    `demoted_windows` ([{window_id, reason}], read from the attestation) must list each window once, and each must be a live numbered window (`live.numbered_among_demoted`,
+    the listed ids the live table holds with a peak).  A count that is off with no matching demoted id, an id that is not a live numbered window, or an id left unlisted
+    FAILS; an attestation that records no demoted set is read as demoting nothing, i.e. the strict equality.  Returns (verdict, observed); verdict None when a side is absent."""
+    if not att or not live:
+        return None, {"attested": att, "live": live}
+    listed = att.get("demoted_windows")
+    ids = [e.get("window_id") if isinstance(e, dict) else e for e in (listed if isinstance(listed, list) else [])]
+    held = live.get("numbered_among_demoted")
+    held = held if isinstance(held, list) else []
+    obs = {"attested": {k: v for k, v in att.items() if k != "demoted_windows"}, "live": {k: v for k, v in live.items() if k != "numbered_among_demoted"},
+           "demoted": {"listed": len(ids), "distinct": len(set(ids)), "live_numbered": len(set(held) & set(ids)),
+                       "not_live_numbered": len(set(ids) - set(held)), "held_but_unlisted": len(set(held) - set(ids))}}
+    if att.get("numbered") is None or live.get("numbered") is None:
+        return False, obs
+    ok = (att.get("windows") == live.get("windows") and len(ids) == len(set(ids)) and all(isinstance(i, str) and i for i in ids) and set(held) == set(ids)
+          and att["numbered"] == live["numbered"] - len(ids))
+    return ok, obs
+
+
 def g4_verification(report: dict, verification: dict | None) -> dict:
     """The independent verification job re-derived every window: verdict PASSED, numbered > 0, no blocking flag, attested counts = live recount, none UNVERIFIED."""
     if not isinstance(verification, dict) or not verification.get("ran"):
@@ -240,8 +262,8 @@ def g4_verification(report: dict, verification: dict | None) -> dict:
     checks.append(check(f"no {ATTESTATION_BLOCKING_FLAG} flag", None if flags is None else ATTESTATION_BLOCKING_FLAG not in flags, flags, f"not {ATTESTATION_BLOCKING_FLAG}"))
     rec = verification.get("attestation_recount") or {}
     att, live = rec.get("attested") or {}, rec.get("live") or {}
-    ok = None if not att or not live else (att.get("windows") == live.get("windows") and att.get("numbered") == live.get("numbered"))
-    checks.append(check("attestation counts equal the live recount", ok, {"attested": att, "live": live}, "equal"))
+    ok, observed = recount_agrees(att, live)
+    checks.append(check("attestation counts equal the live recount", ok, observed, "attested numbered = live numbered - the attested demoted windows (matched by window_id)"))
     # the live recount must itself be the trial's own count (a recount of another database would be vacuous)
     tot, wp = _get(report, "totals", "windows_total"), _get(report, "totals", "with_peak")
     if live:
@@ -498,8 +520,11 @@ def load_decision_table(table: Any) -> dict:
     if not isinstance(ni, dict) or tuple(ni.get("kinds") or ()) != NONINTERFERENCE_KINDS:
         raise DecisionTableError(f"noninterference.kinds must be exactly {list(NONINTERFERENCE_KINDS)}")
     for d in ni.get("declared_rule_version_changes") or []:
-        if not (isinstance(d, dict) and sorted(d) == ["from", "path", "to"] and d["path"] in PATH_IDS and isinstance(d["from"], str) and isinstance(d["to"], str)):
-            raise DecisionTableError(f"declared rule-version change {d!r} is not {{path, from, to}}")
+        if not (isinstance(d, dict) and sorted(d) == ["from", "path", "ruling", "to"] and d["path"] in PATH_IDS and isinstance(d["from"], str) and isinstance(d["to"], str)):
+            raise DecisionTableError(f"declared rule-version change {d!r} is not {{path, from, to, ruling}}")
+        rl = d["ruling"]       # an identity move is declared WITH the ruling(s) it stands on (B.3): a move with no ruling is a finding, never a declaration
+        if not (isinstance(rl, list) and rl and all(isinstance(x, str) and x for x in rl) and len(set(rl)) == len(rl)):
+            raise DecisionTableError(f"declared rule-version change {d['path']} {d['from']} -> {d['to']} names no ruling (a non-empty list of ruling ids is required)")
     body = {k: v for k, v in table.items() if k != "sha256"}
     return {**body, "sha256": sha256_of(body)}
 

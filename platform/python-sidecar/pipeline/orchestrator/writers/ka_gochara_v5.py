@@ -67,10 +67,10 @@ from services.gochara_kernel import stretch_sink as gk_stretch_sink
 from services.gochara_kernel import ephemeris_pins as gk_ephemeris_pins
 from services.gochara_kernel.native_conn import native_connection
 from services.gochara_kernel import arcs as gk_arcs
-from services.gochara_kernel.dasha_read import make_period_rows_for, make_period_rows_for_snapshot
+from services.gochara_kernel.dasha_read import PERIOD_TABLE_ENDS_REASON, make_period_rows_for, make_period_rows_for_snapshot
 from services.gochara_kernel.chart_context import (fetch_chart_context, fetch_chart_context_from_snapshot,
                                                    require_complete)
-from services.gochara_kernel.knots import calc_sidereal_lon, sample_knots
+from services.gochara_kernel.knots import calc_sidereal_lon, calc_sidereal_lon_speed, sample_knots
 from services.gochara_kernel.record_store import (RecordStore,
                                                   materialise_record_grain,
                                                   write_class_coverage)
@@ -78,6 +78,9 @@ from services.gochara_kernel import inventory as gk_inventory
 from services.gochara_kernel import input_vector as gk_input_vector
 from services.gochara_kernel import input_vector_verifier as gk_input_vector_verifier
 from services.gochara_kernel import window_sweep as gk_window_sweep
+from services.gochara_kernel import p1_operands as gk_p1_operands
+from services.gochara_kernel import p1_operands_check as gk_p1_operands_check
+from services.gochara_kernel import vedha_source as gk_vedha_source
 from services.gochara_kernel import result_policy as gk_result_policy
 from services.gochara_kernel import contact_certify as gk_contact_certify
 from services.gochara_kernel import near_miss as gk_near_miss
@@ -110,26 +113,60 @@ COVERAGE_SUBSTEP_PREFIX = "coverage:"
 RECORD_SUBSTEP_PREFIX = "record:"
 # design v1.5: the window sweep — `window:<class>:<path>` after the class's record grains.
 WINDOW_SUBSTEP_PREFIX = "window:"
-def _drishti_source(agent: str, offset: int, factor_ref: tuple):
+def _drishti_answer(agent: str, offset: int, factor_ref: tuple) -> dict:
     """Stream B's `gochara_rules.drishti.graduated_drishti` (cited table; CALLED, never copied), called
     with the MEMBERSHIP's own factor ref (a 1.1.0 path calls the 1.1.0 row). The returned `factor` is
     verified against the ref asked for — a source answering for a different row is a refusal, never
-    re-labelled. Its `value` is None for an operand it cannot classify (a node, a non-aspect offset) —
-    the sweep reads that as an undeterminable instant (unqualified), never a default."""
+    re-labelled."""
     from services.gochara_rules import drishti as rules_drishti
     ref = tuple(factor_ref)
     out = rules_drishti.graduated_drishti(gk_window_sweep.graha_title(agent), offset, factor_ref=ref)
     if tuple(out.get("factor") or ()) != ref:
         raise gk_window_sweep.SweepRefusal(
             f"graduated_drishti answered for {out.get('factor')!r}, asked for {ref!r}")
-    return out["value"]
+    return out
+
+
+def _drishti_source(agent: str, offset: int, factor_ref: tuple):
+    """The graduated-dṛṣṭi value. It is None for an operand the table cannot classify (an offset the bound rule does
+    not define, a node) — the sweep reads that as an undeterminable instant (unqualified), never a default."""
+    return _drishti_answer(agent, offset, factor_ref)["value"]
+
+
+def _drishti_reason(agent: str, offset: int, factor_ref: tuple):
+    """Why `_drishti_source` is None at this operand — the table's own named reason (SR-D6-OBJECTIVE-UNKNOWN; None when the
+    value is known). The sweep passes it through as the factor's `unknown_reason` instead of its generic code."""
+    return _drishti_answer(agent, offset, factor_ref).get("reason")
+
+
+# an optional attribute on the source (the pattern the vedha source uses with `.overlay`): the `(agent, offset, ref) -> value`
+# signature every caller and test relies on is unchanged
+_drishti_source.reason = _drishti_reason
 
 
 # The two operand SOURCES the sweep calls but this writer does not own. None = a named missing input
 # in the sweep (graduated_drishti_source_not_landed / vedha_overlay_not_bound), and the same fact is
 # handed to the independent window verifier, so builder and verifier cannot disagree on it.
 DRISHTI_SOURCE = _drishti_source
-VEDHA_SOURCE = None         # the overlay binding is a pending steward ruling (kala_vedha_gochara vs derived)
+VEDHA_SOURCE = None         # an EXPLICIT binding (a steward ruling, or a test's); None ⇒ the active rule profile decides — `vedha_source()`
+#: SR-OD1 C1 (VEDHA-SOURCE, ND-NODE-VEDHA, ND-VIPAREETA — owner-confirmed 2026-10-21): the vedha operand of the FINAL (doctrine)
+#: rule profile is DERIVED (Phaladīpikā XXVI house-vedha only; nodes obstruct) from the obstructors' sign residence, itself derived at the
+#: instant from the pinned ephemeris (SR-VEDHA-RESIDENCE-SOURCE) — no longer from the stored residence contacts. The measuring
+#: profile keeps its pre-doctrine contract byte for byte: the overlay stays unbound there (`vedha_overlay_not_bound`).
+FINAL_VEDHA_SOURCE = gk_vedha_source.SOURCE
+
+
+def vedha_source():
+    """The vedha operand source of the ACTIVE rule profile (read at call time): an explicit `VEDHA_SOURCE` binding wins; else the
+    derived source under the final profile; else None. Builder, input vector and verification job all ask THIS, so none of them
+    can disagree with another about whether the overlay is bound."""
+    if VEDHA_SOURCE is not None:
+        return VEDHA_SOURCE
+    return FINAL_VEDHA_SOURCE if gk_rule_registry.final_rules_active() else None
+# SR-OD1 P1a: P1's dignity / combustion / maitrī operand sources are bound when the owner-table PR (D2) supplies the value rules
+# `{factor_id: p1_operands.ValueRule}`. None = unbound: P1 windows keep their named blank (`value_mapping_undeclared`) and the three L0
+# reference tables are not a dependency of the build (`_l0_consumed`).
+P1_VALUE_RULES = None
 # AM-5 (v1.5 amendments; migration 1206): the search-completeness chain.
 MANIFEST_SUBSTEP = "manifest"
 SNAPSHOT_SUBSTEP = "snapshot"
@@ -744,6 +781,9 @@ def _applicable_rulings() -> list[dict]:
     out += [{"id": r["ruling_ref"], "path": f"{r['path_id']}@{r['rule_version']}"}
             for r in _rr.path_rows() if r["ruling_ref"]]
     out.append({"id": "AM-14", "rule": "moon_agent_excluded_from_stored_tier"})
+    # SR-OD1 D3 (B.3): the owner rulings the vedha operand stands on are part of the identity whenever a vedha source is bound
+    if vedha_source() is not None:
+        out += [{"id": rid, "factor": "vedha_attenuation@1.3.0", "rule": rule} for rid, rule in gk_vedha_source.RULINGS.items()]
     # R9-5: the PD level of P1 is explicitly authorised TESTIMONY under a named limitation (part of the identity)
     out.append({"id": gk_evaluator.P1_PD_RULING, "limitation": gk_evaluator.P1_PD_LIMITATION,
                 "rule": "p1_pd_level_is_testimony_never_scored"})
@@ -902,6 +942,8 @@ def _verify_live_inputs(ctx: ContextSpec, chart_id: str) -> None:
         ephe_path=_ephe_path(ctx), path_refs=gk_rule_registry.bound_path_refs(),
         rulings=_applicable_rulings(),
         stored_scope=TEST_SLICE_SCOPE if slice_ is not None else gk_input_vector.STORED_SCOPE,
+        # D-FLIP F-10: the expected scored edge comes from the governed source, never from the stored vector being checked (a forged pin drifts by name)
+        scored_until=gk_input_vector.scored_until_instant(),
         # SR-W3-SHAPE 3: the expected deferral comes from the run's VALIDATED config, never from the stored vector (Codex P1-2)
         in_build_verify=_verify_component(_defer_in_build_verify(ctx, slice_)),
         test_slice=_slice_component(slice_) if slice_ is not None else None,
@@ -913,14 +955,25 @@ def _verify_live_inputs(ctx: ContextSpec, chart_id: str) -> None:
     gk_input_vector_verifier.verify_inputs(
         ctx.db_conn, _scope_normalised(stored, slice_), ephe_path=_ephe_path(ctx),
         modules=gk_input_vector.IMPLEMENTATION_MODULES, path_refs=gk_rule_registry.bound_path_refs(),
-        require_scored_classes=True)
+        require_scored_classes=True, require_scored_until=True)
+
+
+def _p1_form_b_bound() -> bool:
+    """D2: does the bound catalogue contain a P1 version whose soft-factor rows declare the owner's Form B table (P1@1.3.0)? The answer
+    follows the registry, not a flag: the day `("P1", "1.3.0")` joins `BOUND_PATH_REFS` the build consumes P1's L0 tables and numbers P1."""
+    from services.gochara_rules import p1_valence as _pv, registry as _rules_registry
+    return any(pid == "P1" and _pv.has_form_b([_rules_registry.FACTORS[ref] for ref in _rules_registry.RULE_PATHS[(pid, ver)]["soft_factors"]])
+               for pid, ver in gk_rule_registry.bound_path_refs())
 
 
 def _l0_consumed() -> tuple[str, ...]:
     """The L0 authorities this build ACTUALLY consumes (R8-1). The vedha pairs feed P2's vedha operand only;
-    while `VEDHA_SOURCE` is unbound nothing reads them, so `bg_transit_rules` is not a dependency of the
-    build and is neither loaded nor bound."""
-    return ("bg_transit_rules",) if VEDHA_SOURCE is not None else ()
+    while the vedha source is unbound (`vedha_source()`) nothing reads them, so `bg_transit_rules` is not a dependency of the
+    build and is neither loaded nor bound. The same rule holds for P1's three reference tables: they are consumed only when the P1 operand
+    sources are bound (`P1_VALUE_RULES`, or a bound P1 version that declares the Form B table)."""
+    return (("bg_transit_rules",) if vedha_source() is not None else ()) \
+        + (("bg_combustion_orbs", "bg_dignity_reference", "bg_graha_naisargika_friendship")
+           if P1_VALUE_RULES is not None or _p1_form_b_bound() else ())
 
 
 class ChartRefusal(Exception):
@@ -1033,6 +1086,14 @@ CENTURY_CONFIG_SCHEMA = "gochara_v5_century_config/2"
 _CENTURY_CONFIG_FIELDS = frozenset({"schema", "final_rules", "defer_in_build_verify", "horizon", "result_policy"})
 _RESULT_POLICY_KEY = "result_policy"
 _FINAL_RULES_KEY = "gochara_v5_final_rules"
+#: SR-B1-Q3C-JOB: the trial's explicit selection of P1@1.3.0 (Form B, the Q3(c) side rule). Absent / False = today's behaviour, byte-identical. It is not a
+#: century-config field: only a trial harness (`j4d_slice_qualify --p1-form-b`) sets it, so a production dispatch can never carry it.
+_P1_FORM_B_KEY = "gochara_v5_p1_form_b"
+
+
+def _p1_form_b_kwargs(ctx) -> dict:
+    """The profile's `p1_form_b` argument iff the run's config names the key — the default call stays exactly `rule_profile(final_rules=...)`."""
+    return {"p1_form_b": ctx.config[_P1_FORM_B_KEY]} if _P1_FORM_B_KEY in ctx.config else {}
 _CENTURY_DEFER_KEY = "gochara_v5_defer_in_build_verify"
 
 
@@ -1131,7 +1192,7 @@ def _with_rule_profile(method):
     @wraps(method)
     def profiled(self, ctx, *args, **kwargs):
         final = ctx.config.get("gochara_v5_final_rules", False)
-        with gk_rule_registry.rule_profile(final_rules=final):
+        with gk_rule_registry.rule_profile(final_rules=final, **_p1_form_b_kwargs(ctx)):
             return method(self, ctx, *args, **kwargs)
     return profiled
 
@@ -1246,7 +1307,7 @@ class GocharaV5Writer(WriterBase):
         # F-CHANNEL: the staged century config is overlaid and an unmarked run without an explicit profile / horizon refused HERE — after the configuration checks
         # above (no database use before them) and before the first read of the rule profile; the rest of the substep runs under the RESOLVED profile.
         ctx = _resolve_run_config(ctx)
-        with gk_rule_registry.rule_profile(final_rules=ctx.config.get(_FINAL_RULES_KEY, False)):
+        with gk_rule_registry.rule_profile(final_rules=ctx.config.get(_FINAL_RULES_KEY, False), **_p1_form_b_kwargs(ctx)):
             return self._run_resolved_substep(ctx, step, chart_id)
 
     def _run_resolved_substep(self, ctx: ContextSpec, step: SubStep, chart_id: str) -> WriterResult:
@@ -1346,6 +1407,9 @@ class GocharaV5Writer(WriterBase):
                 # re-derives it from the verifier's own universe and the seal-time completeness function (migration 1306) compares
                 # the claimed classes with it
                 scored_classes=SCORED_CLASSES,
+                # D-FLIP F-10: the exclusive end of the scored horizon, from the evaluation protocol's observation-mask end (never a constant here); the served surface
+                # marks windows past it unscored, and the independent verifier re-derives it from the same governed source
+                scored_until=gk_input_vector.scored_until_instant(),
                 # C46: a sliced build is unsealable by construction — stored_scope no verifier
                 # vocabulary knows, plus the marker digest; absent marker = the default, unchanged
                 stored_scope=TEST_SLICE_SCOPE if slice_ is not None else gk_input_vector.STORED_SCOPE,
@@ -1360,7 +1424,7 @@ class GocharaV5Writer(WriterBase):
             gk_input_vector_verifier.verify_inputs(
                 ctx.db_conn, _scope_normalised(vector, slice_), ephe_path=ephe_path, modules=gk_input_vector.IMPLEMENTATION_MODULES,
                 path_refs=gk_rule_registry.bound_path_refs(),
-                jd_range=gk_input_vector.consumed_jd_range(horizon), require_scored_classes=True)
+                jd_range=gk_input_vector.consumed_jd_range(horizon), require_scored_classes=True, require_scored_until=True)
             jd = horizon[0].timestamp() / 86400.0 + _JD_UNIX_EPOCH
             _lon, retflag = calc_sidereal_lon("Sun", jd, ephe_path)
             if not (retflag & 2):
@@ -1734,6 +1798,9 @@ class GocharaV5Writer(WriterBase):
             # AM-20 (revised): the stored house descriptor is the count from the lagna
             verify_p1_house_descriptor(ctx.db_conn, chart_id=chart_id, generation=GENERATION,
                                        event_class=event_class)
+        blanked = counts.get(PERIOD_TABLE_ENDS_REASON, 0)
+        table_end_note = (f"; {blanked} P1 supports reach past the end of the stored daśā table: unknown, "
+                          f"reason {PERIOD_TABLE_ENDS_REASON}" if blanked else "")
         gate_note = (f"; P1 transit records NOT minted — {p1_closed}" if path_id == "P1" and p1_closed else "")
         return WriterResult(
             asset_id=self.asset_id, rows_inserted=inserted,
@@ -1749,7 +1816,7 @@ class GocharaV5Writer(WriterBase):
                    f"{counts['prereq_evaluated']} prerequisite results "
                    f"evaluated; dasha_build="
                    f"{dasha_contract['build_id'] if dasha_contract['read'] else 'not_read'}"
-                   f"{gate_note}{nm_note}"))
+                   f"{table_end_note}{gate_note}{nm_note}"))
 
     @staticmethod
     def _store_near_misses(ctx: ContextSpec, *, chart_id: str, edges, arc_index_for, horizon, position_at,
@@ -1830,7 +1897,31 @@ class GocharaV5Writer(WriterBase):
                     "Swiss bit (F-14 — a Moshier fallback is a named failure, never a silent probe)")
             return lon
 
+        def speed_at(body: str, t: datetime) -> tuple:
+            """The solver's seam (S3): (sidereal longitude, Swiss longitudinal speed in degrees per DAY) from ONE ephemeris call; the same Swiss-bit
+            discipline as `position_at`."""
+            jd = t.timestamp() / 86400.0 + _JD_UNIX_EPOCH
+            lon, speed, retflag = calc_sidereal_lon_speed(body.title(), jd, ephe_path)
+            if not (retflag & 2):
+                raise RuntimeError(
+                    f"speed probe {body} @ {t.isoformat()}: retflag {retflag} lacks the Swiss bit (F-14 — a Moshier fallback is a named failure)")
+            return lon, speed
+
         store = WindowStore(ctx.db_conn)
+        # SR-OD1 P1a / D2: the P1 operand sources, only when bound — per-factor `P1_VALUE_RULES`, or the Form B table the grain's version
+        # declares (read from the persisted rows the sweep itself evaluates); the L0 tables are read through the validated loaders,
+        # never a fallback
+        p1_l0 = []
+
+        def p1_operands_for(version: str):
+            if path_id != "P1":
+                return None
+            form_b = gk_p1_operands.form_b_mapping(bound_rows(path_id, version))
+            if form_b is None and P1_VALUE_RULES is None:
+                return None
+            if not p1_l0:
+                p1_l0.append(gk_p1_operands.load_p1_l0(ctx.db_conn.cursor()))
+            return gk_p1_operands.P1Operands(p1_l0[0], position_at, rules=None if form_b is not None else P1_VALUE_RULES, form_b=form_b)
         # R9-1: the result policy is read BACK from the generation's manifest (the vector the build was bound to) —
         # this writer holds no policy constant of its own
         policy = gk_result_policy.manifest_policy(ctx.db_conn, chart_id, GENERATION)
@@ -1850,14 +1941,25 @@ class GocharaV5Writer(WriterBase):
         windows = memberships = 0
         excluded: dict = {}
         reasons: dict = {}
-        unqualified = unverified = reproduced = 0
+        unqualified = unverified = reproduced = solver_deferred = 0
         for version in versions:        # the path→version map comes from the records, not a constant
+            p1_ops = p1_operands_for(version)
             records = store.read_grain(
                 chart_id=chart_id, generation=GENERATION, event_class=event_class,
-                path_id=path_id, rule_version=version, position_at=position_at)
+                path_id=path_id, rule_version=version, position_at=position_at, p1=p1_ops, speed_at=speed_at)
+            # R4 (SR-Q6-L1-AMEND): a Form B grain records the combustion authority its states were derived from (orb row ids + digest, the
+            # L1 module's digest) in every window's qualification provenance; the verifier re-derives the same record from its own reads
+            inherited = gk_p1_operands.grain_inheritance(p1_ops)
+            vedha = vedha_source()
+            if hasattr(vedha, "for_grain"):    # C1: a source bound to this grain (its reads are lazy: only a vedha-bearing record triggers them)
+                # SR-VEDHA-RESIDENCE-SOURCE: the obstructors' residence is derived from THIS substep's ephemeris probe, not read from stored contacts
+                vedha = vedha.for_grain(ctx.db_conn, chart_id=chart_id, generation=GENERATION, event_class=event_class,
+                                        records=records, position_at=position_at)
+            # S3: a window with a qualified function-valued member is SOLVED (certified maximum + earliest tie instant) or blank under a named solver reason —
+            # never the retired dynamic switch. The budget is per window; the independent solver check runs once, in the verification job (N-6, below).
             drafts, ex = gk_window_sweep.draft_windows(
-                event_class, records, bound_rows, drishti=DRISHTI_SOURCE, vedha=VEDHA_SOURCE,
-                policy=policy)
+                event_class, records, bound_rows, drishti=DRISHTI_SOURCE, vedha=vedha,
+                solver=gk_window_sweep.PRODUCTION_SOLVER, policy=policy, combustion_inheritance=inherited)
             counts = store.replace_grain_windows(
                 chart_id=chart_id, generation=GENERATION, event_class=event_class,
                 path_id=path_id, rule_version=version, drafts=drafts)
@@ -1871,12 +1973,19 @@ class GocharaV5Writer(WriterBase):
             gk_window_verifier.verify_member_geometry(
                 ctx.db_conn, chart_id=chart_id, generation=GENERATION, event_class=event_class,
                 path_id=path_id, rule_version=version, position_at=position_at)
+            rows = bound_rows(path_id, version)
+            # D2: a P1 version that declares the Form B table is re-derived by the verifier's OWN sky + L0 reads (P1c), never from the
+            # builder's operands; absent that table the self-check is exactly what it was
+            p1_check = (gk_p1_operands_check.P1Check.from_conn(ctx.db_conn, position_at)
+                        if path_id == "P1" and gk_p1_operands_check.needs_p1_check(rows) else None)
             report = verify_window_semantics(
                 ctx.db_conn, chart_id=chart_id, generation=GENERATION, event_class=event_class,
                 path_id=path_id, rule_version=version,
-                factor_rows=bound_rows(path_id, version),
-                drishti_bound=DRISHTI_SOURCE is not None, vedha_bound=VEDHA_SOURCE is not None)
+                factor_rows=rows,
+                drishti_bound=DRISHTI_SOURCE is not None, vedha_bound=vedha_source() is not None,
+                solver_check=False, p1_check=p1_check, ephe_path=ephe_path)             # N-6: the independent prover runs once, in the verification job
             unverified += report["unverified_dynamic"]
+            solver_deferred += report["solver_check_deferred_windows"]
             reproduced += report["fully_reproduced"]
             windows += counts["windows"]
             memberships += counts["memberships"]
@@ -1893,9 +2002,12 @@ class GocharaV5Writer(WriterBase):
                 f"{' — ' + ', '.join(why) if why else ''} — score/evidence/peak NULL, severity NULL by "
                 f"ruling), {memberships} membership row(s); excluded records {excluded}; independent SQL "
                 "components + member-support geometry checked; semantic re-derivation: ")
-        tail = (f"{reproduced} window(s) reproduced exactly, {unverified} UNVERIFIED (function-valued "
-                "members — checked against universal bounds only; this result does NOT satisfy a "
-                "verification gate)" if unverified
+        pending = unverified - solver_deferred          # numbered by the solver, its independent check left to the verification job (N-6)
+        tail = (f"{reproduced} window(s) reproduced exactly"
+                + (f", {pending} UNVERIFIED (function-valued members — checked against universal bounds only; this result does NOT satisfy a "
+                   "verification gate)" if pending else "")
+                + (f", {solver_deferred} numbered by the solver with its independent check DEFERRED to the verification job (not a pass)"
+                   if solver_deferred else "") if unverified
                 else f"reproduced all {reproduced} window(s) exactly")
         stored_note = ("; verification result NOT persisted by the builder — verification_pending_verifier_principal "
                        "(the separate verification job writes it; the candidate gate stays closed until it has run)")

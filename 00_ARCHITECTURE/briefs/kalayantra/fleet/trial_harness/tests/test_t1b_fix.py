@@ -152,6 +152,9 @@ def _verify_world(monkeypatch, seen):
         def fetchone(self):
             return self.row
 
+        def fetchall(self):
+            return []                                                   # no demoted windows in this fake
+
     class Conn:
         def execute(self, sql, args=()):
             return Cur((1, 1, 0) if sql == ts.VERIFY_ATTESTED_SQL else (1, 1) if sql == ts.LIVE_COUNT_SQL else (0,))
@@ -171,6 +174,33 @@ def test_b3_a_verify_stage_judges_the_slice_against_the_trial_census_and_restore
         seen["installed"](None, chart_id="x", generation="g", vector={"scored_classes": ["bereavement"]}, found=())                                  # a trial class outside the pin
     assert vj._enforce_class_census is real_census
     assert state["verification"]["ran"] is True
+
+
+def test_the_recount_records_the_attested_demoted_ids_and_which_of_them_the_live_table_holds_as_numbered():
+    """R-6: G-4 matches the attested numbered count against the live one by window_id, so the harness must capture the ids (numerical_window_gate.demotions)."""
+    asked = []
+
+    class Cur:
+        def __init__(self, rows):
+            self.rows = rows
+
+        def fetchone(self):
+            return self.rows[0]
+
+        def fetchall(self):
+            return self.rows
+
+    class Conn:
+        def execute(self, sql, args=()):
+            asked.append((sql, args))
+            return Cur({ts.VERIFY_ATTESTED_SQL: [(4509, 4491, 0)], ts.LIVE_COUNT_SQL: [(4509, 4492)], ts.VERIFY_DEMOTED_SQL: [("w1", "tie_ambiguous")],
+                        ts.LIVE_NUMBERED_AMONG_SQL: [("w1",)]}[sql])
+    rec = ts.collect_attestation_recount(Conn(), "c", "g", ["k"])
+    assert rec["attested"] == {"windows": 4509, "numbered": 4491, "demoted_windows": [{"window_id": "w1", "reason": "tie_ambiguous"}]}
+    assert rec["live"] == {"windows": 4509, "numbered": 4492, "numbered_among_demoted": ["w1"]}
+    assert asked[-1][1][-1] == ["w1"]
+    import gates
+    assert gates.recount_agrees(rec["attested"], rec["live"])[0] is True
 
 
 def _run_script(tmp_path, env_extra, unset=()):

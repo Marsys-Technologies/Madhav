@@ -37,7 +37,7 @@ from services.gochara_kernel import verification_job as vj
 from services.gochara_kernel import window_sweep as ws
 
 QUAL, ALL_NULL = rp.POLICY_QUALIFICATION, rp.POLICY_ALL_NULL
-PINNED_DIGEST = "5bbc65bb5fc98547bf0bea5d1ff90c76965155f3166a7042a11ab34772e6a80f"      # this test's OWN literal (a fourth copy: it is what the others are compared with)
+PINNED_DIGEST = "f2c831a46c32ddb534cb07443e798f6c0fdce448c1b191570565f698ff5de3a9"      # this test's OWN literal (a fourth copy: it is what the others are compared with)
 
 
 # ── 1. the table is frozen ─────────────────────────────────────────────────────────────────────────────────────────

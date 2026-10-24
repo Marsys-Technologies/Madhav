@@ -9,6 +9,11 @@ with ONE envelope (a plain, JSON-serialisable dict) and never with a bare list:
     outside the horizon is the refusal `outside_served_horizon`; a partial overlap is clipped and says so.
   * Every numeric window field is passed through exactly as stored (NULL stays null). The reader computes no score,
     valence, peak, rank or adversity flag. The order is chronological with a stated total tie-break.
+    ONE exception, and it is the seal's, not the reader's: a window the verifier DEMOTED (R-6: its solver check was inconclusive; the generation's PASSED
+    numerical-window attestation lists it by `window_id` and reason) is served as the named blank it was sealed as — every numeric field null, the valence
+    `unqualified`, `unqualified_reason` the attested reason, `demoted_at_seal` true — whatever number the stored row still carries. This is applied in ONE place, to the
+    finished window list (`_serve_demoted_as_blank`), after both the window page and the constructor's per-window qualification (which carries `objective_value` and the
+    builder's `solver_certificate`) have been merged in, so no path can serve the number round the other.
   * Completeness is never decided here: for every requested class the existing mandatory constructor
     `scope_response.coverage_response` is CALLED and its result carried, for a positive and for a no-window answer.
   * `scoring_status` needs the scored edge pinned in the manifest's input vector. Until that pin exists the status is
@@ -28,6 +33,7 @@ from datetime import datetime, timezone
 from typing import Any, Sequence
 
 from . import scope_response as sr
+from .numerical_window_gate import ATTESTATION_KEY as GATE_ATTESTATION_KEY
 from .result_policy import POLICY_ALL_NULL, POLICY_QUALIFICATION, RESULT_POLICIES
 
 ENVELOPE_SCHEMA = "gochara_v5_windows/1"
@@ -58,7 +64,7 @@ SERVED_NOT_SCORED = "served_not_scored"
 SCORING_STATUSES = (SCORED_HORIZON, STRADDLES_SCORED_EDGE, SERVED_NOT_SCORED)
 REASON_SCORED_UNTIL_NOT_PINNED = "scored_until_not_pinned"
 REASON_SCORED_UNTIL_NOT_AN_INSTANT = "scored_until_not_an_instant"
-#: the input-vector key the scored edge is read from (work item W10 adds the pin; nothing is assumed until it exists)
+#: the input-vector key the scored edge is read from (the candidate manifest pins it: `input_vector.scored_until_instant`, re-derived by the verifier; a manifest without it reads null)
 SCORED_UNTIL_VECTOR_KEY = "scored_until"
 
 NUMBERS_DISCLOSURE = {
@@ -111,7 +117,7 @@ NEAR_MISS_COLUMN_TYPES = {
 #: tables this reader cannot answer without (an absent one is a schema error for the caller, never an empty answer)
 REQUIRED_TABLES = ("kala_gochara_publication", "kala_gochara_coverage", "ka_gochara_generation_seal",
                    "ka_gochara_eval_window", "ka_gochara_eval_window_record", "ka_gochara_relationship_record",
-                   "ka_gochara_contact", "ka_gochara_physical_object", "ka_gochara_search_inventory")
+                   "ka_gochara_contact", "ka_gochara_physical_object", "ka_gochara_search_inventory", "ka_gochara_eval_window_verification")
 SEAL_APPROVAL_TABLE = "ka_gochara_seal_approval"
 
 _IDENT = _re.compile(r"^[a-z][a-z0-9_]*\Z")
@@ -245,8 +251,9 @@ def _scoring_status(lo: datetime, hi: datetime, edge: datetime | None, reason: s
 # ── windows and members ──────────────────────────────────────────────────────────────────────────────────────────────
 
 _WINDOW_COLUMNS = ("w.window_id::text, w.event_class, w.path_id, w.rule_version, lower(w.interval), upper(w.interval),"
-                   " lower_inc(w.interval), upper_inc(w.interval), w.peak_instant, w.score, w.evidence_for,"
-                   " w.evidence_against, w.outcome_valence_for_native, w.severity, w.null_states_used")
+                   " lower_inc(w.interval), upper_inc(w.interval), w.peak_instant, w.score::float8,"
+                   " w.evidence_for::float8, w.evidence_against::float8, w.outcome_valence_for_native, w.severity::float8,"
+                   " w.null_states_used")
 _WINDOW_ORDER = (" ORDER BY lower(w.interval), upper(w.interval), w.event_class, w.path_id, w.rule_version,"
                  " w.window_id")
 
@@ -527,10 +534,42 @@ def _window_page(conn, chart_id, generation, classes, instant, lo, hi, limit, ed
             'outcome_valence_for_native': r[12], 'severity': r[13], 'null_states_used': list(r[14] or []),
             'objective': None, 'objective_value': None, 'qualification': None,
             'qualification_reason': 'not_provided_by_coverage_constructor', 'vedha_moon_obstruction_scope': None,
+            'unqualified_reason': None, 'demoted_at_seal': False,
             'scoring_status': scoring, 'scoring_status_reason': reason,
             'members': members[r[0]], 'member_count': len(members[r[0]]),
         })
     return windows, counts
+
+
+def _demoted_windows(conn, chart_id: str, generation: str, policy: str) -> dict[str, str]:
+    """{window_id: reason} of the windows the generation's VERIFIED grains attest as DEMOTED to a named blank (R-6). Only the numerical policy has any; a malformed entry is
+    ignored here (the numerical-window gate refuses to seal one), never guessed."""
+    if policy != POLICY_QUALIFICATION:
+        return {}
+    out: dict[str, str] = {}
+    for (identity,) in _all(conn, "SELECT runner_identity FROM public.ka_gochara_eval_window_verification WHERE chart_id = %s AND generation = %s"
+                                  " AND status = 'VERIFIED' AND policy_version = %s ORDER BY event_class, path_id, rule_version",
+                            (chart_id, generation, POLICY_QUALIFICATION)):
+        identity = _as_dict(identity)
+        attestation = identity.get(GATE_ATTESTATION_KEY) if isinstance(identity, dict) else None
+        for entry in (attestation.get("demoted_windows") if isinstance(attestation, dict) else None) or ():
+            if isinstance(entry, dict) and isinstance(entry.get("window_id"), str) and isinstance(entry.get("reason"), str) and entry["reason"]:
+                out[entry["window_id"]] = entry["reason"]
+    return out
+
+
+def _serve_demoted_as_blank(windows: list, demoted: dict[str, str]) -> None:
+    """Serve each listed window as its named blank, in place: no number survives — not the page's columns, not the constructor's `objective_value`, not the builder's
+    `solver_certificate` (its value and instant are the unverified number)."""
+    for w in windows:
+        reason = demoted.get(w['window_id'])
+        if reason is None:
+            continue
+        w.update(peak_instant=None, score=None, evidence_for=None, evidence_against=None, severity=None, objective_value=None,
+                 outcome_valence_for_native='unqualified', unqualified_reason=reason, demoted_at_seal=True)
+        q = w.get('qualification')
+        if isinstance(q, dict):
+            w['qualification'] = {**{k: v for k, v in q.items() if k != 'solver_certificate'}, 'unqualified_reason': reason}
 
 
 def _class_coverage(conn, chart_id, generation, names, windows, counts, horizon):
@@ -546,7 +585,9 @@ def _class_coverage(conn, chart_id, generation, names, windows, counts, horizon)
             if target is not None and entry.get('qualification') is not None:
                 target.update(objective=entry.get('objective'), objective_value=entry.get('objective_value'),
                               qualification=entry['qualification'], qualification_reason=None,
-                              vedha_moon_obstruction_scope=entry.get('vedha_moon_obstruction_scope'))
+                              vedha_moon_obstruction_scope=entry.get('vedha_moon_obstruction_scope'),
+                              unqualified_reason=entry['qualification'].get('unqualified_reason')
+                              if isinstance(entry['qualification'], dict) else None)
         total = counts.get(name, 0)
         classes.append({'event_class': name, 'windows_matched': total, 'windows_returned': len(page),
                         'completeness': coverage.get('completeness'), 'coverage': coverage,
@@ -589,6 +630,7 @@ def read_v5(conn: Any, chart_id: str, generation: str, *, event_classes: Sequenc
     if not names:
         return _refuse(env, 'class_evidence_unavailable', 'no search inventory or matching class evidence for this generation')
     classes = _class_coverage(conn, chart_id, generation, names, windows, counts, (lo, hi))
+    _serve_demoted_as_blank(windows, _demoted_windows(conn, chart_id, generation, env['result_policy']))
     refusals = [c for c in classes if c['coverage'].get('refusal') or c['completeness'] == 'refused']
     if refusals:
         return _refuse(env, refusals[0]['coverage'].get('refusal') or 'coverage_refused',

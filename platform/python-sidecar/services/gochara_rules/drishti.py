@@ -26,6 +26,12 @@ Output = the factor result the score algebra consumes (`{"value",
 "null_state"}`): value in [0, 1], or None (+ the registry row's null_state,
 `unqualified`) for an operand that cannot be classified — never an invented
 0 or 1 (CLAUDE.md §N.7 item 6).
+
+The undefined-offset case (ruling SR-D6-OBJECTIVE-UNKNOWN (b)): the bound rows (graduated_drishti@1.0.0 / @1.1.0, "step",
+¼/½/¾/1 at 3-10/5-9/4-8/7) DEFINE a value at those offsets only. At offsets 1, 2, 6, 11, 12 they define nothing — not a
+zero — so the result is the named blank `no_aspect_rule_defined_at_offset`, never an invented 0. Where a rule version DOES
+define "no aspect" as a value at an offset, it is declared in DEFINED_ZERO_OFFSETS (keyed by the factor ref it belongs to)
+and the offset reads 0.0, a computed fact, not an invented judgment. No bound row declares one today: the table is empty.
 """
 from __future__ import annotations
 
@@ -39,6 +45,12 @@ ORDINARY: dict[int, float] = {3: 0.25, 10: 0.25, 5: 0.5, 9: 0.5, 4: 0.75, 8: 0.7
 SPECIAL_FULL: dict[str, tuple[int, ...]] = {"Mars": (4, 8), "Jupiter": (5, 9), "Saturn": (3, 10)}
 _CASTERS = frozenset({"Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"})
 _NODES = frozenset({"Rahu", "Ketu"})
+#: the named blank for an offset the BOUND rule does not define (SR-D6-OBJECTIVE-UNKNOWN (b)); it replaces the earlier
+#: `no_aspect_at_this_offset` and is the only name this module gives that case
+NO_RULE_AT_OFFSET = "no_aspect_rule_defined_at_offset"
+#: {factor ref: offsets at which that bound rule version DEFINES "no aspect" as the value 0.0}. EMPTY: neither bound row
+#: names a zero (see the module docstring); a rule version that defines one adds its offsets here, with its ruling.
+DEFINED_ZERO_OFFSETS: dict[tuple, frozenset] = {}
 # Persisted records carry LOWERCASE graha tokens; the strength table speaks title case. A CLOSED adapter —
 # anything outside it is not a graha this module knows (never `.title()`-guessed).
 TOKEN_TO_AGENT = {n.lower(): n for n in sorted(_CASTERS | _NODES)}
@@ -83,8 +95,10 @@ def graduated_drishti(agent: str, offset: int, *, factor_ref: tuple[str, str] = 
         value, basis = 1.0, "special_full"
     elif offset in ORDINARY:
         value, basis = ORDINARY[offset], "ordinary_graduated"
+    elif offset in DEFINED_ZERO_OFFSETS.get(tuple(factor_ref), ()):
+        value, basis = 0.0, "rule_defined_zero"
     else:
-        return _unqualified("no_aspect_at_this_offset", agent, offset, factor_ref)
+        return _unqualified(NO_RULE_AT_OFFSET, agent, offset, factor_ref)
     return {"value": value, "null_state": _row(factor_ref)["null_state"],
             "reason": None, "basis": basis, "factor": factor_ref,
             "evidence": {"scored": False, "kind": "typed_operand_evidence",

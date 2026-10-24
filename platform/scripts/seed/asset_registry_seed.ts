@@ -2384,7 +2384,9 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: "Placeholder surface for the pending '5.0' generation — the skeleton writes NOTHING (every path raises NotImplementedError), so the count stays 0 until steward pins 3-7 land and the geometry/solver is implemented under a later governed step.",
-    depends_on: ['ga_positions', 'ga_dashas', 'bg_transit_rules'],
+    // 1392 (K8 registry truth) -> 1403 (SR-K8-EDGE-1403): + bg_dignity_reference, the single L0 producer of the three tables the P1 operand loaders read
+    // (bg_dignity_reference, bg_graha_naisargika_friendship, bg_combustion_orbs: services/gochara_kernel/p1_operands.py:109-111, ka_gochara_v5._l0_consumed).
+    depends_on: ['ga_positions', 'ga_dashas', 'bg_transit_rules', 'bg_dignity_reference'],
     // Pravāha A5.3: INERT to all planners. is_active=false keeps this row out
     // of runPreparation's planning set (src/lib/build/runPreparation.ts:183,
     // WHERE is_active = true) and recalibrationEnqueue's writer sweep

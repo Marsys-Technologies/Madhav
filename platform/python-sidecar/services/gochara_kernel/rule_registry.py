@@ -85,6 +85,14 @@ NATAL_RELATIONS = (
 ND_H_PATH_REFS = tuple((pid, rules_registry.ND_H_VERSION) for pid in ("P1", "P3", "P4"))
 BOUND_PATH_REFS = (("P1", "1.0.0"), ("P2", "1.0.0"), ("P3", "1.0.0"), ("P4", "1.0.0"), ("P5", "1.0.0"))
 BOUND_PATHS = tuple(dict.fromkeys(pid for pid, _v in BOUND_PATH_REFS))
+#: SR-OD1 V1 (owner-confirmed doctrine batch). The measuring profile keeps the 1.0.0 catalogue and selection BYTE FOR
+#: BYTE (the measuring build contract is for those rows); the FINAL profile — the only one a century run uses —
+#: additionally binds P1/P2/P3/P4@1.3.0, exactly as it does the ND-H 1.2.0 rows.
+DOCTRINE_PATH_REFS = tuple((pid, rules_registry.DOCTRINE_VERSION) for pid in rules_registry.DOCTRINE_PATHS)
+#: SR-OD1 D3: P2 is now a doctrine path (P2@1.3.0, the owner-confirmed vedha rows) and is bound through `DOCTRINE_PATH_REFS`; the
+#: AM-18 row P2@1.1.0 is no longer bound (as P3/P4@1.1.0 are not). Kept as an empty tuple so a caller that patches it still works.
+VEDHA_PATH_REFS: tuple = ()
+FINAL_ONLY_PATH_REFS = ND_H_PATH_REFS + DOCTRINE_PATH_REFS + VEDHA_PATH_REFS
 
 
 # Final-rule helpers require an explicit context; the production writer keeps
@@ -92,22 +100,46 @@ BOUND_PATHS = tuple(dict.fromkeys(pid for pid, _v in BOUND_PATH_REFS))
 # prevents one concurrent writer from changing another writer's selection.
 _FINAL_RULES = ContextVar("gochara_final_rules", default=False)
 
+# SR-B1-Q3C-JOB: the owner's Form B period-lord rule version P1@1.3.0 (Q3(c) side rule) is REGISTERED but not selected by default. A trial — and only a
+# trial, until the owner/surrogate flips the default — selects it EXPLICITLY through the profile flag `p1_form_b` (writer config key
+# `gochara_v5_p1_form_b`; `j4d_slice_qualify --p1-form-b`). Off (the default) nothing below moves: the catalogue, the selection and every digest are
+# byte-identical to a build that has never heard of 1.3.0.
+P1_FORM_B_REF = ("P1", rules_registry.P1_FORM_B_VERSION)
+P1_FORM_B_FACTOR_REFS = tuple(tuple(ref) for ref in rules_registry.RULE_PATHS[P1_FORM_B_REF]["soft_factors"])
+_P1_FORM_B = ContextVar("gochara_p1_form_b", default=False)
+
 
 @contextmanager
-def rule_profile(*, final_rules: bool):
+def rule_profile(*, final_rules: bool, p1_form_b: bool = False):
     if type(final_rules) is not bool:
         raise ValueError("gochara_v5_final_rules must be a boolean")
+    if type(p1_form_b) is not bool:
+        raise ValueError("gochara_v5_p1_form_b must be a boolean")
     token = _FINAL_RULES.set(final_rules)
+    token_b = _P1_FORM_B.set(p1_form_b)
     try:
         yield
     finally:
+        _P1_FORM_B.reset(token_b)
         _FINAL_RULES.reset(token)
+
+
+def p1_form_b_selected() -> bool:
+    """Is P1@1.3.0 (Form B, the Q3(c) side rule) selected by the CURRENT profile? Read at call time; False unless a trial asked for it."""
+    return _P1_FORM_B.get()
+
+
+def final_rules_active() -> bool:
+    """True inside a `rule_profile(final_rules=True)` scope (the century / doctrine profile); read at call time."""
+    return _FINAL_RULES.get()
 
 
 def bound_path_refs() -> tuple[tuple[str, str], ...]:
     """The CURRENT bound CATALOGUE — every sealed (path, version) — read at call time (a consumer never
     captures the tuple at import)."""
-    return tuple(dict.fromkeys(tuple(BOUND_PATH_REFS) + (ND_H_PATH_REFS if _FINAL_RULES.get() else ())))
+    return tuple(dict.fromkeys(tuple(BOUND_PATH_REFS) + (ND_H_PATH_REFS if _FINAL_RULES.get() else ())
+                               + (DOCTRINE_PATH_REFS + VEDHA_PATH_REFS if _FINAL_RULES.get() else ())
+                               + ((P1_FORM_B_REF,) if _P1_FORM_B.get() else ())))
 
 
 # R8-2 (Codex round 8): the bound CATALOGUE is not the SELECTION. `BOUND_PATH_REFS` is every (path, version)
@@ -116,6 +148,19 @@ def bound_path_refs() -> tuple[tuple[str, str], ...]:
 # path). The default selection is the 1.0.0 set; a successor is searched only by a deliberate edit of
 # `SELECTED_PATH_REFS` (or a per-class override) after its review gate passes. Both are read at call time.
 SELECTED_PATH_REFS = (("P1", "1.0.0"), ("P2", "1.0.0"), ("P3", "1.0.0"), ("P4", "1.0.0"), ("P5", "1.0.0"))
+#: SR-OD1 V1: the FINAL profile's default selection — the doctrine rows P1/P3/P4@1.3.0 and (SR-OD1 D3: VEDHA-SOURCE /
+#: ND-NODE-VEDHA / ND-VIPAREETA) the owner-confirmed vedha row P2@1.3.0; P5 is held (ST-P5-HOLD) and stays @1.0.0.
+#: The per-class ND-H overrides below still win for their paths.
+FINAL_SELECTED_PATH_REFS = (("P1", rules_registry.DOCTRINE_VERSION), ("P2", rules_registry.DOCTRINE_VERSION),
+                            ("P3", rules_registry.DOCTRINE_VERSION), ("P4", rules_registry.DOCTRINE_VERSION),
+                            ("P5", "1.0.0"))
+
+
+def default_selection_refs() -> tuple[tuple[str, str], ...]:
+    """The default selection of the ACTIVE rule profile (read at call time, like the catalogue)."""
+    return FINAL_SELECTED_PATH_REFS if _FINAL_RULES.get() else SELECTED_PATH_REFS
+
+
 # ND-H-20261005 (FB-30): 1.2.0 is selected PER CLASS — the eight ND-H classes run P1/P3/P4 under 1.2.0; every
 # other class stays at the default selection, so its obligations, records and digests are byte-identical.
 CLASS_SELECTION_OVERRIDES: dict = {           # {(event_class, path_id): version}
@@ -131,10 +176,12 @@ CLASS_SELECTION_OVERRIDES.update({
 def selected_versions_for(event_class: str) -> dict[str, str]:
     """{path_id: the ONE version a class's search runs under}: the default selection with the per-class
     overrides applied; refuses a selection that is not sealed in the bound catalogue."""
-    selected = dict(SELECTED_PATH_REFS)
+    selected = dict(default_selection_refs())
     for (cls, pid), version in CLASS_SELECTION_OVERRIDES.items():
         if cls == event_class and (_FINAL_RULES.get() or version != rules_registry.ND_H_VERSION):
             selected[pid] = version
+    if _P1_FORM_B.get() and selected.get("P1") == "1.0.0":     # the trial flag moves the DEFAULT P1 only; an ND-H class's 1.2.0 override is its own decision (plan I-5)
+        selected["P1"] = rules_registry.P1_FORM_B_VERSION
     for pid, version in selected.items():
         if (pid, version) not in bound_path_refs():
             raise ValueError(f"selected {pid}@{version} is not in the bound catalogue")
@@ -218,6 +265,12 @@ _FACTOR_DOCTRINE_ORDERING = {
     "maitri_compound": ["extreme_enemy", "enemy", "neutral", "friend",
                         "extreme_friend"],
 }
+#: a row whose doctrine ordering differs from its factor's default is keyed by the composite reference
+_FACTOR_DOCTRINE_ORDERING_AT = {
+    # Form B (P1-MAPPING-DECISION): seven rungs, WEAKEST → STRONGEST placement
+    ("dignity_of_transit_sign", rules_registry.DOCTRINE_VERSION):
+        ["debility", "inimical", "neutral", "friendly", "own", "mulatrikona", "exaltation"],
+}
 _FACTOR_OPERAND_TOKEN = {
     "dignity_of_transit_sign": "dignity:transit_sign_for_period_lord",
     "combustion": "state:combustion_of_period_lord",
@@ -239,9 +292,18 @@ BOUND_FACTOR_REFS = tuple((fid, _FACTOR_FIRST_VERSION.get(fid, "1.0.0")) for fid
 BOUND_FACTORS = tuple(dict.fromkeys(fid for fid, _v in BOUND_FACTOR_REFS))
 
 
+#: SR-OD1 V1: the factor rows only the FINAL profile binds — the 1.3.0 doctrine rows (vedha_attenuation@1.3.0 since SR-OD1 D3),
+#: plus graduated_drishti@1.1.0 (AM-13, bound as it is). maitri_compound is RETIRED (Q7 b): no 1.3.0 row.
+DOCTRINE_FACTOR_REFS = tuple((fid, rules_registry.DOCTRINE_VERSION)
+                             for fid in ("dignity_of_transit_sign", "combustion", "agent_nature", "activity_kernel",
+                                         "vedha_attenuation"))
+FINAL_ONLY_FACTOR_REFS = ((("karaka_agent", rules_registry.ND_H_VERSION),) + DOCTRINE_FACTOR_REFS
+                          + (("graduated_drishti", rules_registry.KERNEL_VERSION),))
+
+
 def bound_factor_refs():
-    return tuple(dict.fromkeys(tuple(BOUND_FACTOR_REFS) +
-                               ((("karaka_agent", rules_registry.ND_H_VERSION),) if _FINAL_RULES.get() else ())))
+    return tuple(dict.fromkeys(tuple(BOUND_FACTOR_REFS) + (FINAL_ONLY_FACTOR_REFS if _FINAL_RULES.get() else ()) +
+                               (P1_FORM_B_FACTOR_REFS if _P1_FORM_B.get() else ())))
 
 
 # E6: predicate declarations (id → (operator, operands)).
@@ -374,9 +436,11 @@ def factor_rows() -> list[dict]:
             "range_upper": float(src["range"][1]),
             "units": units,
             "calibration_status": src["calibration_status"],
-            "doctrine_ordering": _FACTOR_DOCTRINE_ORDERING.get(fid),
-            "category_mapping": (src.get("ordering_anchor")
-                                 if fid == "dignity_of_transit_sign" else src.get("category_mapping")),
+            "doctrine_ordering": _FACTOR_DOCTRINE_ORDERING_AT.get((fid, version), _FACTOR_DOCTRINE_ORDERING.get(fid)),
+            # E5: the 1.0.0 dignity row's virupa ordering anchor rides here; a row that authors a value table (the P1 Form B rows) is
+            # persisted with THAT table
+            "category_mapping": (src["category_mapping"] if src.get("category_mapping") is not None
+                                 else src.get("ordering_anchor") if fid == "dignity_of_transit_sign" else None),
             "null_state": src["null_state"],
             "effect": src["effect"],
         })
@@ -436,7 +500,7 @@ def _membership_consistent() -> None:
     any SQL — §2.1)."""
     # the selection is one version per path, drawn from the bound catalogue
     seen: set[str] = set()
-    for pid, version in SELECTED_PATH_REFS:
+    for pid, version in default_selection_refs():
         if pid in seen:
             raise ValueError(f"selected path {pid} appears twice — at most one version per path")
         seen.add(pid)
@@ -563,6 +627,14 @@ class RuleRegistryStore:
             (path_id, rule_version)).fetchall()
         if not members:
             raise RegistryDivergenceError(f"no soft-factor membership persisted for {path_id}@{rule_version}")
+        # SR-NDH-INPLACE: the persisted membership must BE the declared one. A row built from the content a version had before an in-place re-derivation (the
+        # 1.2.0 rows before SR-OD1 V1 held the 1.0.0 factor set) names bound factors, so the per-member check below cannot see it: the whole set is compared.
+        declared_path = rules_registry.RULE_PATHS.get((path_id, rule_version))
+        want_members = sorted(tuple(ref) for ref in declared_path["soft_factors"]) if declared_path is not None else None
+        have_members = sorted(_as_tuple(["factor_id", "factor_rule_version"], m) for m in members)
+        if want_members != have_members:
+            raise RegistryDivergenceError(
+                f"persisted soft-factor membership of {path_id}@{rule_version} is not the declared one — stored {have_members} vs declared {want_members}")
         declared = {(r["factor_id"], r["rule_version"]): r for r in factor_rows()}
         out = []
         for member in members:
@@ -571,16 +643,18 @@ class RuleRegistryStore:
             if ref not in declared:
                 raise RegistryDivergenceError(f"persisted membership {ref} is not a bound factor reference")
             row = self.conn.execute(
-                "SELECT operand_selector, null_state, function, direction FROM public.ka_gochara_factor"
+                "SELECT operand_selector, null_state, function, direction, category_mapping FROM public.ka_gochara_factor"
                 " WHERE factor_id = %s AND rule_version = %s", ref).fetchone()
             if row is None:
                 raise RegistryDivergenceError(f"factor {ref} has persisted membership but no row")
-            selector, null_state, function, direction = _as_tuple(
-                ["operand_selector", "null_state", "function", "direction"], row)
+            selector, null_state, function, direction, mapping = _as_tuple(
+                ["operand_selector", "null_state", "function", "direction", "category_mapping"], row)
             selector = _normalise(selector)
+            mapping = _normalise(mapping)
             want = declared[ref]
             if (selector != want["operand_selector"] or null_state != want["null_state"]
-                    or function != want["function"] or direction != want["direction"]):
+                    or function != want["function"] or direction != want["direction"]
+                    or (mapping or None) != (want["category_mapping"] or None)):
                 raise RegistryDivergenceError(f"persisted factor {ref} diverges from the declaration")
             src = rules_registry.FACTORS[ref]
             decoded = decode_factor_selector(factor_id, selector)
@@ -592,6 +666,11 @@ class RuleRegistryStore:
             item["operand_selector"] = selector                    # verbatim, as persisted
             if decoded:
                 item["applicability"] = decoded
+            if src.get("category_mapping") is not None:
+                # OD-1 D2: an AUTHORED value table (the P1 Form B rows) is part of the declaration the sweep and the verifier evaluate, so it
+                # is read back as persisted and checked against the declaration above. The 1.0.0 dignity row's `ordering_anchor` rides in
+                # the same DB column (E5) but is no value table: it is not surfaced here, so a 1.0.0 grain reads exactly what it read.
+                item["category_mapping"] = mapping
             out.append(item)
         return out
 
@@ -622,12 +701,20 @@ def _normalise(value):
 
 
 __all__ = [
+    "P1_FORM_B_FACTOR_REFS",
+    "P1_FORM_B_REF",
+    "p1_form_b_selected",
     "BOUND_FACTORS",
     "BOUND_FACTOR_REFS",
     "BOUND_PATHS",
     "BOUND_PATH_REFS",
     "bound_path_refs",
     "SELECTED_PATH_REFS",
+    "FINAL_SELECTED_PATH_REFS",
+    "default_selection_refs",
+    "DOCTRINE_PATH_REFS",
+    "FINAL_ONLY_PATH_REFS",
+    "FINAL_ONLY_FACTOR_REFS",
     "CLASS_SELECTION_OVERRIDES",
     "selected_path_version",
     "selected_versions_for",

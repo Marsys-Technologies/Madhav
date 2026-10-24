@@ -193,6 +193,46 @@ def test_g4_attested_counts_must_equal_the_live_recount():
     assert status(run(r), "G-4") == FAIL
 
 
+# R-6 (numerical_window_gate.generation_verdict; demotions(), _after_classification): attested numbered = live numbered - the verifier's demoted windows, matched by window_id.
+def _one_demotion(r, att_numbered=None, ids=("w-demoted",), held=("w-demoted",)):
+    live_n = r["verification"]["attestation_recount"]["live"]["numbered"]
+    r["verification"]["attestation_recount"]["attested"] = {"windows": 1800, "numbered": live_n - 1 if att_numbered is None else att_numbered,
+                                                            "demoted_windows": [{"window_id": i, "reason": "tie_ambiguous"} for i in ids]}
+    r["verification"]["attestation_recount"]["live"]["numbered_among_demoted"] = list(held)
+    return r
+
+
+def _g4_recount(r):
+    return next(c for c in run(r)["gates"]["G-4"]["checks"] if c["claim"] == "attestation counts equal the live recount")["status"]
+
+
+def test_g4_one_attested_demotion_is_live_numbered_minus_the_demoted_id():
+    r, b, p = fx.good()
+    assert _g4_recount(_one_demotion(r)) == PASS            # the strict-equality reversion reads FAIL here (1293 != 1294)
+
+
+def test_g4_a_count_off_by_one_without_a_matching_demoted_id_fails():
+    r, b, p = fx.good()
+    r["verification"]["attestation_recount"]["attested"]["numbered"] -= 1                    # no demoted set recorded at all
+    assert _g4_recount(r) == FAIL
+    r, b, p = fx.good()
+    assert _g4_recount(_one_demotion(r, att_numbered=1294 - 2)) == FAIL                       # one id listed, two missing from the count
+    r, b, p = fx.good()
+    assert _g4_recount(_one_demotion(r, ids=(), held=())) == FAIL                             # the count says demoted, the list is empty
+
+
+def test_g4_a_demoted_id_that_is_not_a_live_numbered_window_fails():
+    r, b, p = fx.good()
+    assert _g4_recount(_one_demotion(r, held=())) == FAIL
+
+
+def test_g4_a_demoted_window_listed_twice_or_a_live_id_left_unlisted_fails():
+    r, b, p = fx.good()
+    assert _g4_recount(_one_demotion(r, att_numbered=1294 - 2, ids=("w1", "w1"), held=("w1",))) == FAIL
+    r, b, p = fx.good()
+    assert _g4_recount(_one_demotion(r, held=("w-demoted", "w-other"))) == FAIL
+
+
 def test_g4_recount_must_be_of_this_trials_windows():
     r, b, p = fx.good()
     r["verification"]["attestation_recount"]["live"] = {"windows": 1700, "numbered": 1294}

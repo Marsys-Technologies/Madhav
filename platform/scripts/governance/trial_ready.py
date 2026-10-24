@@ -11,14 +11,22 @@ Semantics (the whole point; each is pinned by `__tests__/test_trial_ready.py`):
     A check with no bound detector part is `null`.
   * ONE commit: the ref is resolved to a full sha; the work tree must be at that sha with no modified tracked file before AND after the detectors
     ran, else every check reads null (the evidence cannot be attributed to one commit). The registry itself is read from that commit.
-  * Skipped tests are not passes: a test oracle that skipped (a missing database, say) reads null.
+  * Skipped tests are not passes (SR-EVALUATOR-SKIP-IS-NULL): in a `pytest` part, any skip, xfail or not-run of a bound test makes the part null; the part reads true only if
+    every bound test PASSED. A skip is tolerated only when the part's `optional_skips` declares that exact test (`{"test": <node id>, "reason": <why>}`, reason required).
 
 The detectors live in the registry (`trial_ready_checks.json`, read at the evaluated commit): per check a list of `parts`, all of which must read true.
-Part kinds: `pytest`, `git_file`, `db_sql`, `db_migrations`, `json_keys`, `json_field_eq`, `unbound`. A part reads false when its detector ran and the claim
+Part kinds: `pytest`, `git_file`, `db_sql`, `db_migrations`, `json_keys`, `json_field_eq`, `lane_ledger`, `any_of`, `unbound`. A part reads false when its detector ran and the claim
 failed, null when the detector could not run or its evidence is unreadable. A `pytest` part may carry `env` (values may use `{repo}`, the evaluated work tree) and
 `deselect` (node ids a known environment-dependent test is excluded by, each named and justified in the registry). A `db_migrations` part either lists `prefixes`
 or sets `mode: "all"` (every migration file at the commit must be recorded). A `json_field_eq` part reads a JSON record outside the repository (TR-BIND: T21, T24);
 each field declares exactly one of `equals` (a constant), `equals_head` (the evaluated sha) or `equals_patch_id_of` (a base ref: `git diff <base>...<head> | git patch-id --stable`).
+A `json_field_eq` part may name its record by `path_env` (the environment variable that holds the path; unset or empty -> null) instead of `path`, and by `sibling` (a bare file
+name) the file next to it: SR-T24-NATIVE reads the qualifying run's OWN equivalence record (`TRIAL_READY_EQ_RECORD`) and its `eq_pinned_inputs.json` that way.
+An `any_of` part (T24) holds `alternatives`: a list of part lists, each list an AND (as for a check). The part is true when any alternative is true, else false when any alternative
+is false, else null: an alternative with no evidence offers nothing (never a pass), while one that ran and failed still counts when no other alternative qualifies.
+A `lane_ledger` part (TR-BIND: T22) runs the checker AT THE COMMIT (`lane_ledger_check.py`, which recomputes every lane's patch-id from git and recounts BLOCKING findings from the
+review jobs' own result files) over the ledger file named by the environment variable `ledger_env`: exit 0 reads true, exit 1 false, anything else -- and an unset or unreadable
+ledger -- null. The ledger is an identity list, never a verdict: nothing it states is trusted except the heads, bases and paths it names.
 Parts combine three-valued: any false -> false; else any null -> null; else true.
 A lane that merges adds the binding of its own oracle to the registry in its PR; until then its check is `unbound` and reads null.
 
@@ -132,33 +140,77 @@ def _d_git_file(ctx: "Ctx", part: Part) -> Outcome:
     return ok, ref, _sha256(data), "contains/absent checked"
 
 
-def _pytest_outcome(junit: Path, rc: int) -> Tuple[Optional[bool], List[List[str]], str]:
-    """Read the junit file: false only when a test FAILED; error/skip/collection trouble/no file is null (the oracle did not run to a verdict)."""
+def _node_key(nodeid: str) -> Tuple[str, str]:
+    """(dotted classname, test name) as junit writes them, from a pytest node id `dir/file.py::Class::test` (a bare file gives name '')."""
+    parts = nodeid.split("::")
+    module = re.sub(r"\.py$", "", parts[0]).strip("/").replace("/", ".")
+    return ".".join([module, *parts[1:-1]]), (parts[-1] if len(parts) > 1 else "")
+
+
+def _case_matches(spec: str, classname: str, name: str) -> bool:
+    """Does the junit case (classname, name) belong to the bound test `spec` (a file or a node id)? Rootdir-tolerant: the dotted path may carry a prefix."""
+    want_cls, want_name = _node_key(spec)
+    have = "." + classname + "."
+    if "::" not in spec:
+        return ("." + want_cls + ".") in have
+    if not have.endswith("." + want_cls + "."):
+        return False
+    return name == want_name or name.startswith(want_name + "[")
+
+
+def _optional_skips(part: Part) -> Dict[Tuple[str, str], str]:
+    """The skips the registry declares optional: `optional_skips: [{"test": <node id>, "reason": <why>}]`. An entry with no reason declares nothing (SR-EVALUATOR-SKIP-IS-NULL)."""
+    out: Dict[Tuple[str, str], str] = {}
+    for e in part.get("optional_skips") or []:
+        if isinstance(e, dict) and isinstance(e.get("test"), str) and "::" in e["test"] and isinstance(e.get("reason"), str) and e["reason"].strip():
+            out[_node_key(e["test"])] = e["reason"].strip()
+    return out
+
+
+def _pytest_outcome(junit: Path, rc: int, bound: Optional[List[str]] = None,
+                    optional: Optional[Dict[Tuple[str, str], str]] = None) -> Tuple[Optional[bool], List[List[str]], str]:
+    """Read the junit file, per test (SR-EVALUATOR-SKIP-IS-NULL, N.8): false only when a test FAILED; otherwise true only if EVERY bound test PASSED -- an error, a skip,
+    an xfail, a bound file or node that produced no passing case (not run), collection trouble or no file is null. A skip is tolerated only when the registry declares that
+    exact test optional WITH a reason (`optional_skips`); the part still needs a passing case for every bound test."""
+    optional = optional or {}
     try:
         root = ET.parse(str(junit)).getroot()
     except (OSError, ET.ParseError):
         return None, [], "no readable junit result (pytest exit %d)" % rc
     cases: List[List[str]] = []
-    failed = errored = skipped = 0
+    seen: List[Tuple[str, str, str]] = []
+    failed = errored = skipped = xfailed = declared = 0
     for tc in root.iter("testcase"):
-        name = "%s::%s" % (tc.get("classname", ""), tc.get("name", ""))
+        cls, nm = tc.get("classname", ""), tc.get("name", "")
+        name = "%s::%s" % (cls, nm)
+        sk = tc.find("skipped")
         if tc.find("failure") is not None:
             failed += 1
-            cases.append([name, "failed"])
+            status = "failed"
         elif tc.find("error") is not None:
             errored += 1
-            cases.append([name, "error"])
-        elif tc.find("skipped") is not None:
+            status = "error"
+        elif sk is not None and (sk.get("type") == "pytest.xfail" or str(sk.get("message", "")).lower().startswith("xfail")):
+            xfailed += 1
+            status = "xfail"
+        elif sk is not None and (cls, nm) in optional:
+            declared += 1
+            status = "skipped_optional"
+        elif sk is not None:
             skipped += 1
-            cases.append([name, "skipped"])
+            status = "skipped"
         else:
-            cases.append([name, "passed"])
+            status = "passed"
+        cases.append([name, status])
+        seen.append((cls, nm, status))
     cases.sort()
     if failed:
         return False, cases, "%d test(s) failed" % failed
-    if errored or skipped or rc != 0 or not cases:
-        return None, cases, "no verdict: errors=%d skipped=%d exit=%d collected=%d" % (errored, skipped, rc, len(cases))
-    return True, cases, "%d passed" % len(cases)
+    not_run = [b for b in (bound or []) if not any(st == "passed" and _case_matches(b, c, n) for c, n, st in seen)]
+    if errored or skipped or xfailed or not_run or rc != 0 or not cases:
+        return None, cases, ("no verdict: errors=%d skipped=%d xfail=%d not_run=%s exit=%d collected=%d"
+                             % (errored, skipped, xfailed, ",".join(not_run) or "-", rc, len(cases)))
+    return True, cases, "%d passed (%d declared-optional skip(s))" % (len(cases) - declared, declared)
 
 
 def _d_pytest(ctx: "Ctx", part: Part) -> Outcome:
@@ -190,8 +242,9 @@ def _d_pytest(ctx: "Ctx", part: Part) -> Outcome:
         rc = r.returncode
     except (OSError, subprocess.SubprocessError) as exc:
         return None, ref, None, "pytest could not run: %s" % type(exc).__name__
-    value, cases, detail = _pytest_outcome(junit, rc)
-    return value, ref, _sha256(_canon({"tests": tests, "deselect": deselect, "cases": cases})), detail
+    optional = _optional_skips(part)
+    value, cases, detail = _pytest_outcome(junit, rc, tests, optional)
+    return value, ref, _sha256(_canon({"tests": tests, "deselect": deselect, "optional_skips": sorted("%s::%s" % k for k in optional), "cases": cases})), detail
 
 
 def _loopback_dsn(spec: Part) -> Tuple[Optional[str], Optional[str], str]:
@@ -325,6 +378,16 @@ def _d_json_field_eq(ctx: "Ctx", part: Part) -> Outcome:
     field with the commit the evaluator resolved, so a record made for ANY other head reads false; `{head}` in `path` names a per-head file. A missing or
     unparsable file, a missing field and a JSON null all read null (no evidence); a present field with another value (or another type: 1 is not true) reads false."""
     raw = part.get("path")
+    if "path_env" in part:                                # the record's location is named by the environment, never by the registry (SR-T24-NATIVE)
+        name = part.get("path_env")
+        raw = os.environ.get(name, "") if isinstance(name, str) and name else ""
+        if not raw:
+            return None, "env:%s" % (name or "path_env"), None, "%s is not set: no record was named for this run" % (name or "path_env")
+        sib = part.get("sibling")
+        if sib is not None:
+            if not isinstance(sib, str) or not sib or "/" in sib or sib in (".", ".."):
+                return None, "env:%s" % name, None, "sibling must be a bare file name"
+            raw = str(Path(raw).parent / sib)
     path = raw.replace("{head}", ctx.sha) if isinstance(raw, str) else None
     ref = "file:%s" % path
     fields = [f for f in part.get("fields", []) if isinstance(f, dict) and isinstance(f.get("field"), str) and f["field"]]
@@ -354,6 +417,56 @@ def _d_json_field_eq(ctx: "Ctx", part: Part) -> Outcome:
     return combine(verdicts), ref, _sha256(data), "%d field(s) read" % len(fields)
 
 
+def _d_lane_ledger(ctx: "Ctx", part: Part) -> Outcome:
+    """T22: the lane ledger checker, run from the evaluated work tree, over a ledger file outside the repository (named by `ledger_env`) that must have been rebuilt AT this
+    commit (the checker reads FALSE for a ledger built at another head). exit 0 -> true, 1 -> false, else null (could not run); the digest is the checker's own JSON reading."""
+    env_name = part.get("ledger_env")
+    checker_rel = part.get("checker", "platform/scripts/governance/lane_ledger_check.py")
+    ref = "lane_ledger:%s@%s" % (env_name, ctx.sha[:12])
+    ledger = os.environ.get(env_name, "") if isinstance(env_name, str) and env_name else ""
+    if not ledger:
+        return None, ref, None, "%s is not set: no lane ledger was rebuilt at this commit" % (env_name or "ledger_env")
+    if not ctx.tree_ok:
+        return None, ref, None, "work tree is not the commit: %s" % ctx.tree_reason
+    if not isinstance(checker_rel, str) or blob(ctx.repo, ctx.sha, checker_rel) is None:
+        return None, ref, None, "the checker is not present at the commit"
+    out = ctx.workdir / ("lane-ledger-%s" % _sha256(ref.encode())[:12] + ".json")
+    out.unlink(missing_ok=True)
+    cmd = [ctx.python, "-I", str(ctx.repo / checker_rel), "--ledger", ledger, "--repo", str(ctx.repo), "--integration-ref", ctx.sha, "--json-out", str(out), "--quiet"]
+    try:
+        r = subprocess.run(cmd, env=scrubbed(), capture_output=True, timeout=int(part.get("timeout_s", 600)))
+    except (OSError, subprocess.SubprocessError) as exc:
+        return None, ref, None, "the checker could not run: %s" % type(exc).__name__
+    if r.returncode not in (0, 1):
+        return None, ref, None, "the checker could not read the ledger (exit %d)" % r.returncode
+    try:
+        reading = out.read_bytes()
+        value = json.loads(reading.decode("utf-8")).get("value")
+    except (OSError, ValueError):
+        return None, ref, None, "the checker wrote no readable result"
+    if value is not (r.returncode == 0):                    # the checker's exit and its own JSON must agree, else neither is evidence
+        return None, ref, _sha256(reading), "the checker's exit code and its result disagree"
+    return value, ref, _sha256(reading), "lane ledger %s" % ("holds" if value else "does not hold")
+
+
+def _d_any_of(ctx: "Ctx", part: Part) -> Outcome:
+    """T24: alternative qualifying evidence. Each alternative is a list of parts read as a check reads them (three-valued AND). True when any alternative is true; else false
+    when any alternative is false; else null. An alternative with no evidence (null) never promotes the part, and never hides another alternative's false."""
+    alts = part.get("alternatives")
+    if not isinstance(alts, list) or not alts or not all(isinstance(a, list) and a for a in alts):
+        return None, None, None, "any_of part declares no alternatives"
+    values: List[Optional[bool]] = []
+    refs: List[str] = []
+    digests: List[Any] = []
+    for i, alt in enumerate(alts):
+        results = [run_part(ctx, p) for p in alt]
+        values.append(combine([r[0] for r in results]))
+        refs.extend(r[1] for r in results if r[1])
+        digests.append({"alt": i, "value": values[-1], "parts": [r[2] for r in results]})
+    value: Optional[bool] = True if any(v is True for v in values) else False if any(v is False for v in values) else None
+    return value, "; ".join(refs) or None, (_sha256(_canon(digests)) if value is not None else None), "%d alternative(s) read: %s" % (len(alts), values)
+
+
 DETECTORS = {
     "unbound": _d_unbound,
     "git_file": _d_git_file,
@@ -362,6 +475,8 @@ DETECTORS = {
     "db_migrations": _d_db_migrations,
     "json_keys": _d_json_keys,
     "json_field_eq": _d_json_field_eq,
+    "lane_ledger": _d_lane_ledger,
+    "any_of": _d_any_of,
 }
 
 

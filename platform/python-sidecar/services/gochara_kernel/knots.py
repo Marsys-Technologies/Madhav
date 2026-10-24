@@ -37,9 +37,11 @@ from dataclasses import dataclass, field
 from datetime import date, timedelta
 from typing import Any
 
+import threading
+
 import swisseph as swe
 
-from panchang_engine.swiss_state import serialized_swiss_state
+from panchang_engine.swiss_state import ephe_path_generation, serialized_swiss_state
 
 EPHE_FLAGS = swe.FLG_SWIEPH | swe.FLG_SIDEREAL
 
@@ -132,6 +134,28 @@ def _check_retflag(body: str, retflag: int) -> str:
 # The figures are not comparable across baselines; the conclusion is the same: cheap, trivially correct.
 
 
+# ── ephemeris path: set once per thread (SR-EPHE-PATH-ONCE) ─────────────────
+# `swe.set_ephe_path` closes the library's open ephemeris files: re-issued before every probe it cost ≈75 µs against ≈0.24 µs
+# for the probe (≈45 % of a record step, CENTURY_SIZING E2). The path is therefore set only when this thread has not set THIS
+# path since the process last touched it: the memo is per thread (on Linux the Swiss state is thread-local, on macOS
+# process-wide — a per-thread memo is correct for both) and carries the process-wide `ephe_path_generation` read right
+# after our own set, so ANY other `set_ephe_path` caller (a test, PyJHora, another writer, a different directory) invalidates it
+# and the next probe re-asserts. `set_sid_mode` is NOT memoised: it costs ≈0.1 µs and other code does change the mode.
+# A serialized Swiss-state owner in its own right (re-entrant under the two seams below, DP-SD-010 inventory).
+_EPHE_MEMO = threading.local()
+
+
+@serialized_swiss_state
+def _ensure_ephe_path(ephe_path: str) -> None:
+    memo = getattr(_EPHE_MEMO, "state", None)
+    if memo is not None and memo == (ephe_path, ephe_path_generation()):
+        return
+    before = ephe_path_generation()
+    swe.set_ephe_path(ephe_path)
+    # our own call is exactly one tick; any other tick means a concurrent setter — then nothing is remembered
+    _EPHE_MEMO.state = (ephe_path, before + 1) if ephe_path_generation() == before + 1 else None
+
+
 @serialized_swiss_state
 def _assert_moon_file_backend(jd_ut: float, ephe_path: str | None) -> None:
     """Fail closed unless the Moon at `jd_ut` is served from the .se1 files.
@@ -164,7 +188,7 @@ def calc_sidereal_lon(body: str, jd_ut: float, ephe_path: str | None) -> tuple[f
     (sid mode / ephe path) cannot interleave across threads.
     """
     if ephe_path is not None:
-        swe.set_ephe_path(ephe_path)
+        _ensure_ephe_path(ephe_path)
     swe.set_sid_mode(swe.SIDM_LAHIRI)
     swe_id = GRAHA_TO_SWE[body]
     if body in ("Rahu", "Ketu") and swe_id != swe.MEAN_NODE:
@@ -188,7 +212,7 @@ def calc_sidereal_lon_speed(body: str, jd_ut: float, ephe_path: str | None) -> t
     The same flags, node model and Moon file probe as `calc_sidereal_lon`, plus FLG_SPEED. Swiss returns the speed as the derivative of its own series, so
     its sign changes exactly at a station of the ephemeris. A serialized Swiss-state owner (DP-SD-010) like `calc_sidereal_lon`."""
     if ephe_path is not None:
-        swe.set_ephe_path(ephe_path)
+        _ensure_ephe_path(ephe_path)
     swe.set_sid_mode(swe.SIDM_LAHIRI)
     swe_id = GRAHA_TO_SWE[body]
     if body in ("Rahu", "Ketu") and swe_id != swe.MEAN_NODE:

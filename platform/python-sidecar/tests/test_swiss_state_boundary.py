@@ -176,7 +176,9 @@ EXPECTED_OPERATION_OWNERS = {
     ("services/gochara_kernel/input_vector_verifier.py", "_probe"),                # R9-3: the verifier's own census/probe/backend
     ("services/gochara_kernel/input_vector.py", "probe_series_digest"),
     ("services/gochara_kernel/near_miss_verifier.py", "at"),                       # P06B: the verifier's independent Swiss probe (@serialized_swiss_state)
+    ("services/gochara_kernel/vedha_verifier.py", "longitude_at"),                 # SR-VEDHA-RESIDENCE-SOURCE: the verifier's own sidereal reader of the obstructors' residence (@serialized_swiss_state)
     ("services/gochara_kernel/knots.py", "_assert_moon_file_backend"),
+    ("services/gochara_kernel/knots.py", "_ensure_ephe_path"),                     # SR-EPHE-PATH-ONCE: the builder's once-per-thread ephemeris-path set (@serialized_swiss_state)
     ("services/gochara_kernel/knots.py", "calc_sidereal_lon"),
     ("services/gochara_kernel/knots.py", "calc_sidereal_lon_speed"),
     ("services/gochara_v3/engine.py", "_evaluate_single_from_context"),

@@ -49,7 +49,7 @@ def test_nodes_cast_no_drishti_and_non_aspect_offsets_are_a_named_null():
         assert r["value"] is None and r["reason"] == "node_casts_no_drishti"
     for offset in (1, 2, 6, 11, 12):
         r = graduated_drishti("Saturn", offset)
-        assert r["value"] is None and r["reason"] == "no_aspect_at_this_offset"
+        assert r["value"] is None and r["reason"] == "no_aspect_rule_defined_at_offset"   # SR-D6-OBJECTIVE-UNKNOWN (b)
     # never an invented 0 or 1 for an unclassifiable operand
     for agent, offset in (("Pluto", 7), ("Mars", 0), ("Mars", 13), ("Mars", True), ("Mars", 7.0), (None, 7)):
         r = graduated_drishti(agent, offset)

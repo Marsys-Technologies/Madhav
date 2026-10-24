@@ -27,6 +27,7 @@ stored on its manifest, never a fingerprint of today's catalogue.
 """
 from __future__ import annotations
 
+import datetime as _dt
 import hashlib
 import importlib
 import json
@@ -58,15 +59,19 @@ IMPLEMENTATION_MODULES = {
     "evaluation": tuple(_K + m for m in (
         "chart_context", "coverage", "dasha_read", "rehearsal_settlement", "ephemeris_pins", "evaluator", "horizon", "input_vector", "input_vector_verifier",
         "inventory", "inventory_store", "inventory_verifier", "nd_h_tables", "ledger", "lifecycle", "native_conn",
-        "record_derivation", "record_verifier", "scope_response",
-        "rule_registry")) + ("pipeline.orchestrator.writers.ka_gochara_v5",) + tuple(_R + m for m in (
+        "p1_nature_operands", "p1_operands", "record_derivation", "record_verifier", "scope_response",
+        "rule_registry")) + ("pipeline.orchestrator.writers.ka_gochara_v5",
+                         # the L1 rule functions P1 CALLS by name (`p1_inputs._l1`, CLAUDE.md §N.5): not in the writer's import closure by design
+                         "ga_writers.ga_condition_writer") + tuple(_R + m for m in (
         "admission", "ashtakavarga", "dignity", "drishti", "favourable_houses", "flat_selector", "frames",
-        "kernel_factor", "nature", "p6", "permission", "predicates", "records", "registry", "score", "strength",
+        "kernel_factor", "nature", "p1_inputs", "p1_valence", "p6", "permission", "predicates", "records", "registry", "score", "strength",
         "valence", "vedha", "vedha_derive")),
     # R10-4: the VERIFICATION JOB (the library and the operator entry point) is part of the governed implementation identity —
-    # the pinned job is part of the trusted system (AM-24 item 4), so a different job is a different manifest vector
-    "window": tuple(_K + m for m in ("result_policy", "candidate_boundary", "numerical_window_gate", "seal_brief", "seal_flow", "verification_job", "window_gate", "window_store",
-                                     "window_sweep", "window_verifier")) + ("pipeline.orchestrator.verification_job", "pipeline.orchestrator.seal_job"),
+    # the pinned job is part of the trusted system (AM-24 item 4), so a different job is a different manifest vector.
+    # SR-OD1 R9c-A10-1 (G-8): the window solver (S1) and its independent checker (S2) decide a built window's value and its verification, so they sit here with the sweep/verifier
+    # they serve (never geometry; `vedha_source`, the derived vedha overlay the sweep reads, is in the same stage — SR-OD1 C1): editing either must move the window digest even before the sweep imports it (S3), which the import-closure test could not see
+    "window": tuple(_K + m for m in ("result_policy", "candidate_boundary", "numerical_window_gate", "p1_operands_check", "seal_brief", "seal_flow", "vedha_source", "verification_job", "g6_plan", "window_gate", "window_store",
+                                     "vedha_verifier", "window_cert_check", "window_solver", "window_solver_check", "window_sweep", "window_verifier")) + ("pipeline.orchestrator.verification_job", "pipeline.orchestrator.seal_job"),
 }
 
 # The L0 authorities a path READS, and which loader reads them (R8-1). `bg_transit_rules` is consumed ONLY
@@ -75,7 +80,14 @@ IMPLEMENTATION_MODULES = {
 # loader's `content_digest` — never a selection of this module's own. It is a build dependency ONLY when the
 # build actually consumes it (the vedha operand bound — `VEDHA_SOURCE`); an unconsumed authority is not an
 # input (`bg_transit_av_gates` would be consumed by P5 only — held by ruling ST-P5-HOLD — so it is not bound).
-L0_CONSUMED = {"bg_transit_rules": ("P2", "services.gochara_rules.vedha_derive.load_pairs")}
+#
+# P1 (SR-OD1 P1a): its three reference tables are consumed through `p1_operands`' validated loaders (the strict `p1_inputs` validators, no
+# fallback), so each identity is that loader's `content_digest` over the rows consumed. Like the vedha pairs they are a build dependency ONLY
+# when the build actually binds the P1 operand sources (`ka_gochara_v5._l0_consumed`).
+L0_CONSUMED = {"bg_transit_rules": ("P2", "services.gochara_rules.vedha_derive.load_pairs"),
+               "bg_dignity_reference": ("P1", "services.gochara_kernel.p1_operands.load_dignity_reference"),
+               "bg_combustion_orbs": ("P1", "services.gochara_kernel.p1_operands.load_combustion_orbs"),
+               "bg_graha_naisargika_friendship": ("P1", "services.gochara_kernel.p1_operands.load_naisargika")}
 
 
 class InputDrift(RuntimeError):
@@ -214,6 +226,34 @@ def _scored_classes_component(classes) -> list:
     return sorted(classes)
 
 
+#: the vector key the SERVED surface reads the scored edge from (the read-side module's `SCORED_UNTIL_VECTOR_KEY`; a test pins the two equal)
+SCORED_UNTIL_KEY = "scored_until"
+_IST = _dt.timezone(_dt.timedelta(hours=5, minutes=30))        # the scorer's day convention (gochara_eval.registry: "All event dates are IST calendar dates")
+
+
+def scored_until_instant() -> str:
+    """OD-1 / D-FLIP F-10: the EXCLUSIVE end of the scored horizon as an aware ISO instant, taken from the governed source and nowhere else — the
+    evaluation protocol's observation-mask end `gochara_eval.registry.H1` (2026-04-17, an inclusive IST calendar date, protocol v2.3 §1/§3), so the
+    edge is the IST midnight that follows it (2026-04-18T00:00:00+05:30). Read at call time from the registry, never restated here (CLAUDE.md §N.7.3):
+    the density report's scored span, the scorer and this pin cannot disagree."""
+    from services.gochara_eval.registry import H1
+    return _dt.datetime.combine(H1 + _dt.timedelta(days=1), _dt.time(), _IST).isoformat()
+
+
+def _scored_until_component(value) -> str:
+    """The pinned edge must be an aware ISO instant string; a bare date, a naive timestamp or a non-string is refused here, never normalised
+    (the serving reader would otherwise have to guess a zone, `scored_until_not_an_instant`). ADDITIVE and optional at the serializer, like
+    `scored_classes`: a vector built without it carries no key, so the frozen vectors keep their literal preimages and digests."""
+    if isinstance(value, str):
+        try:
+            parsed = _dt.datetime.fromisoformat(value)
+        except ValueError:
+            parsed = None
+        if parsed is not None and parsed.tzinfo is not None and parsed.utcoffset() is not None:
+            return value
+    raise InputDrift(f"scored_until {value!r} is not an aware ISO-8601 instant")
+
+
 def assemble_vector(inp: dict) -> dict:
     """The vector from already-obtained inputs, PURE — the single serializer `build_input_vector` and the
     frozen test vectors (`am16_vectors_frozen_v1.json`, literal preimages + expected sha256) both use."""
@@ -242,6 +282,7 @@ def assemble_vector(inp: dict) -> dict:
       | ({"in_build_verify": inp["in_build_verify"]} if inp.get("in_build_verify") is not None else {}) \
       | ({"test_slice": inp["test_slice"]} if inp.get("test_slice") is not None else {}) \
       | ({"horizon_basis": inp["horizon_basis"]} if inp.get("horizon_basis") is not None else {}) \
+      | ({SCORED_UNTIL_KEY: _scored_until_component(inp["scored_until"])} if inp.get("scored_until") is not None else {}) \
       | ({"near_miss_layer_version": _near_miss_layer_component(inp["near_miss_layer_version"])} if inp.get("near_miss_layer_version") is not None else {}) \
       | ({"qualification_table": inp["qualification_table"]} if inp.get("qualification_table") is not None else {})
 
@@ -410,20 +451,29 @@ def l0_identities(conn, consumed: Iterable[str]) -> dict:
     """{asset_id: content digest of the rows the build CONSUMES} for exactly the L0 authorities named in
     `consumed` (the build's actual consumption — never "every table a path could read"). `bg_transit_rules` is
     read through B's validated loader: an absent table, an empty/incomplete/changed authority, an uncited or
-    fabricated row is refused by name; the digest is the loader's own `content_digest` (all 42 consumed rows)."""
-    from services.gochara_rules import vedha_derive
+    fabricated row is refused by name; the digest is the loader's own `content_digest` (all 42 consumed rows). The three P1 reference
+    tables are read through `p1_operands`' validated loaders the same way (an incomplete table, a duplicate row or an L0/L1 mūlatrikoṇa
+    divergence is refused by name)."""
+    from services.gochara_kernel import p1_operands
+    from services.gochara_rules import p1_inputs, vedha_derive
+    p1_loaders = {"bg_dignity_reference": p1_operands.load_dignity_reference, "bg_combustion_orbs": p1_operands.load_combustion_orbs,
+                  "bg_graha_naisargika_friendship": p1_operands.load_naisargika}
     out = {}
     for asset in sorted(set(consumed)):
         if asset not in L0_CONSUMED:
             raise InputDrift(f"l0: {asset!r} is not a known consumed authority (known: {sorted(L0_CONSUMED)})")
         try:
             with conn.transaction():                  # a savepoint: a missing table must not poison the caller
-                pairs = vedha_derive.load_pairs(conn.cursor())
+                if asset in p1_loaders:
+                    out[asset] = p1_loaders[asset](conn.cursor()).content_digest
+                else:
+                    out[asset] = vedha_derive.load_pairs(conn.cursor()).content_digest
         except vedha_derive.VedhaPairsError as exc:
             raise InputDrift(f"l0: {asset} is not the validated authority the pair loader consumes: {exc}") from exc
+        except p1_inputs.StrictInputError as exc:
+            raise InputDrift(f"l0: {asset} is not the validated authority the P1 loader consumes: {exc}") from exc
         except Exception as exc:  # noqa: BLE001 - a missing L0 table must name itself, not leak a driver error
             raise InputDrift(f"l0: {asset} is not readable ({type(exc).__name__}) — nothing to bind") from exc
-        out[asset] = pairs.content_digest
     return out
 
 
@@ -476,7 +526,7 @@ def build_input_vector(conn, *, sky_convention_id: str, ephe_path: str | None,
                        l0_consumed: Iterable[str] = (), census_override=None,
                        result_policy: str = DEFAULT_RESULT_POLICY,
                        near_miss_layer_version: int | None | str = "auto",
-                       scored_classes: Iterable[str] | None = None,
+                       scored_classes: Iterable[str] | None = None, scored_until: str | None = None,
                        stored_scope: str = STORED_SCOPE, test_slice: dict | None = None, horizon_basis: dict | None = None,
                        in_build_verify: dict | None = None) -> dict:
     """The vector of what this build CONSUMES. `l0_consumed` names the L0 authorities actually read (none ⇒
@@ -488,7 +538,9 @@ def build_input_vector(conn, *, sky_convention_id: str, ephe_path: str | None,
     substep that re-derives a DIFFERENT basis drifts by name. Absent (None) for a horizon that was configured, not derived. `in_build_verify`
     (SR-W3-SHAPE 3) is the record that a FINAL build deferred its in-build `verify:<class>` self-check to the independent verification job; absent
     (None) when the self-check runs, so such a build's vector is byte-identical to one built before the flag existed (§N.8: a build that skipped the
-    self-check is distinguishable by its manifest alone)."""
+    self-check is distinguishable by its manifest alone). `scored_until` (D-FLIP F-10) is the exclusive end of the scored horizon (`scored_until_instant()`),
+    pinned so the served surface can mark windows past it as unscored; the writer supplies it, the independent verifier re-derives it, and it is
+    absent (None) for a vector built without it — the serving reader then states `scored_until_not_pinned`, never a default."""
     from .substrate import SUBSTRATE_BODIES, SUBSTRATE_DOMAIN_END, SUBSTRATE_DOMAIN_START
     from .convention import ORB_TABLE
     from .record_store import POINT_ORB_SOURCE
@@ -512,6 +564,7 @@ def build_input_vector(conn, *, sky_convention_id: str, ephe_path: str | None,
         "rulings": list(rulings),
         "impl_modules": _implementation_modules(modules),
         "scored_classes": None if scored_classes is None else list(scored_classes),
+        "scored_until": scored_until,
         "test_slice": test_slice,
         "horizon_basis": horizon_basis,
         "near_miss_layer_version": near_miss_layer_version if near_miss_layer_version != "auto" else (
@@ -557,6 +610,7 @@ def verify_replay(conn, stored: dict, path_refs: Iterable[tuple[str, str]], **kw
     kw.setdefault("l0_consumed", tuple(stored.get("l0", {})))
     kw.setdefault("result_policy", stored.get("result_policy"))
     kw.setdefault("scored_classes", stored.get("scored_classes"))
+    kw.setdefault("scored_until", stored.get(SCORED_UNTIL_KEY))
     kw.setdefault("stored_scope", stored.get("stored_scope", STORED_SCOPE))
     kw.setdefault("test_slice", stored.get("test_slice"))
     kw.setdefault("horizon_basis", stored.get("horizon_basis"))
@@ -579,6 +633,7 @@ def verify_live(conn, stored: dict, **kw) -> None:
     kw.setdefault("l0_consumed", tuple(stored.get("l0", {})))
     kw.setdefault("result_policy", stored.get("result_policy"))
     kw.setdefault("scored_classes", stored.get("scored_classes"))
+    kw.setdefault("scored_until", stored.get(SCORED_UNTIL_KEY))
     kw.setdefault("stored_scope", stored.get("stored_scope", STORED_SCOPE))
     kw.setdefault("test_slice", stored.get("test_slice"))
     kw.setdefault("horizon_basis", stored.get("horizon_basis"))
@@ -594,7 +649,7 @@ def verify_live(conn, stored: dict, **kw) -> None:
 
 __all__ = ["EXCLUDED_AUDIT_FIELDS", "IMPLEMENTATION_MODULES", "InputDrift", "REGISTRY_DIGEST_SCHEMA",
            "DEFAULT_RESULT_POLICY", "EPHEMERIS_KEYS", "L0_CONSUMED", "consumed_jd_range", "POLICY_ALL_NULL", "POLICY_QUALIFICATION",
-           "RESULT_POLICIES", "VECTOR_SCHEMA", "activity_orb_states", "ephemeris_component", "l0_identities",
+           "RESULT_POLICIES", "SCORED_UNTIL_KEY", "VECTOR_SCHEMA", "scored_until_instant", "activity_orb_states", "ephemeris_component", "l0_identities",
            "library_artifact_sha",
            "platform_identity",
            "probe_opened_files", "sky_convention_identity", "admission_orb_digest", "build_input_vector",

@@ -208,8 +208,8 @@ export interface NirmanaStagedInertCandidateRule {
 
 export const NIRMANA_STAGED_INERT_CANDIDATE_RULES: ReadonlyMap<string, NirmanaStagedInertCandidateRule> = new Map<string, NirmanaStagedInertCandidateRule>([
   ['ka_gochara_v4_41_candidate', { declaredDependsOn: [], emptyDependsOnAllowed: true, testTriggers: [], evidenceCutoff: null, dependents: 'none', reason: 'staged inert candidate', decision: 'PRAVAHA-2996 (migration 1243)' }],
-  // N-137: v5 carries the TRUTHFUL dependencies (migration 1304) and one declared test trigger (the small test build); it stays excluded as an unsealed test candidate until its full build.
-  ['ka_gochara_v5', { declaredDependsOn: ['ga_dashas', 'ga_positions'], emptyDependsOnAllowed: true, testTriggers: ['gochara-v5-small-test'], evidenceCutoff: null, dependents: 'none', reason: 'unsealed test candidate', decision: 'N-137' }],
+  // N-137: v5 carries the TRUTHFUL dependencies (migration 1304; 1392 + bg_transit_rules; 1403 + bg_dignity_reference, the L0 producer of the dignity / friendship / combustion-orb tables its P1 loaders read) and one declared test trigger (the small test build); it stays excluded as an unsealed test candidate until its full build.
+  ['ka_gochara_v5', { declaredDependsOn: ['bg_dignity_reference', 'bg_transit_rules', 'ga_dashas', 'ga_positions'], emptyDependsOnAllowed: true, testTriggers: ['gochara-v5-small-test'], evidenceCutoff: null, dependents: 'none', reason: 'unsealed test candidate', decision: 'N-137' }],
   // N-138: the legacy century writer — see the N-138 paragraph above for the audit facts and the END CONDITION.
   ['ka_gochara_v3_century_materialize', {
     declaredDependsOn: ['bg_sky_calendar', 'ka_gochara_resonance', 'ka_kota_chakra', 'ka_moorti_nirnaya', 'ka_tithi_pravesha', 'ka_vedha_gochara'],

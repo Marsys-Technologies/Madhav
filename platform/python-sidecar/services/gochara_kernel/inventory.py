@@ -34,7 +34,7 @@ from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta, timezone
 from typing import Mapping, Sequence
 
-from .evaluator import RecordEdge, enumerate_edges
+from .evaluator import RecordEdge, enumerate_edges, node_aspect_declined
 from .substrate import _uuid8_of
 from services.gochara_rules import registry as _rules
 from services.gochara_rules.registry import signature_houses
@@ -187,12 +187,35 @@ class SearchCapability:
     moon_scope_domain: bool = False
 
 
+#: SR-D6-OBJECTIVE-UNKNOWN (a): a node as the ASPECTING agent is DECLARED not-applicable (N-14, O-CF-DRISHTI: nodes cast no dṛṣṭi) — excluded from
+#: the product at the inventory, counted per class and path, and never a window-level blank. The reason is `gochara_rules.drishti`'s own name for it.
+NODE_CASTS_NO_DRISHTI = "node_casts_no_drishti"
+
+
+@dataclass(frozen=True)
+class NotApplicable:
+    """`count` enumerated candidate edges of `agent` under `path_id` that the rule declares not-applicable (`reason`)."""
+
+    reason: str
+    path_id: str
+    agent: str
+    count: int
+
+
 @dataclass(frozen=True)
 class ClassInventory:
     event_class: str
     horizon: tuple[datetime, datetime]
     pins: tuple[PinPlan, ...]
     intervals: tuple[IntervalPlan, ...]
+    #: the declared not-applicable candidates of the SEARCHED versions (not obligations: nothing is searched for them). Not part of
+    #: the stored ledger — an accounting beside it, so no digest moves.
+    not_applicable: tuple[NotApplicable, ...] = ()
+
+    @property
+    def node_aspect_not_applicable(self) -> int:
+        """The class's total of node-as-aspecting-agent edges declared not-applicable."""
+        return sum(n.count for n in self.not_applicable if n.reason == NODE_CASTS_NO_DRISHTI)
 
     @property
     def obligations(self) -> list[Obligation]:
@@ -317,19 +340,28 @@ def _plan_p1(event_class: str, chart: dict, lo: datetime, hi: datetime,
 
 def supersession_basis(path_id: str, old: str, new: str) -> str:
     """The 1206-grammar basis of a `superseded_by_version` pin (non-degrading: no ruling_ref). The anchor names
-    the amendment that approved the successor; the verifier carries its OWN copy of this table."""
+    the amendment that approved the successor; the verifier carries its OWN copy of this table. A successor at the
+    owner-confirmed doctrine version (1.3.0, SR-OD1 V1) names the owner ruling it stands on instead."""
+    if new == _rules.DOCTRINE_VERSION:
+        return f"ruling:{_rules.DOCTRINE_PATH_RULINGS[path_id]}"
     anchor = "AM-18" if path_id == "P2" else "AM-13"
     return f"spec:GOCHARA_SPECS_V1_5_AMENDMENTS@1.5#{anchor}-{path_id.lower()}-{old}-superseded-by-{new}"
 
 
-def _approved_successor(path_id: str, version: str) -> str | None:
-    """The version the registry approves as `path@version`'s successor (None if none)."""
+def _approved_successors(path_id: str, version: str) -> frozenset[str]:
+    """EVERY version the registry approves as a successor of `path@version`: the AM-13 / AM-18 table
+    (`SUPERSEDED_PATHS`, one step) and the owner-confirmed doctrine chain (`DOCTRINE_SUPERSEDED_PATHS`, SR-OD1 V1:
+    1.0.0 → 1.3.0, and 1.1.0 → 1.3.0 for P3/P4). A 1.0.0 row has both, so the selected version decides which applies."""
     from services.gochara_rules import registry as rules_registry
-    row = rules_registry.SUPERSEDED_PATHS.get(rules_registry.composite_ref(path_id, version))
-    if row is None:
-        return None
-    pid, ver = tuple(row["superseded_by"])
-    return ver if pid == path_id else None
+    ref = rules_registry.composite_ref(path_id, version)
+    out = set()
+    for table in (rules_registry.SUPERSEDED_PATHS, rules_registry.DOCTRINE_SUPERSEDED_PATHS):
+        row = table.get(ref)
+        if row is not None:
+            pid, ver = tuple(row["superseded_by"])
+            if pid == path_id:
+                out.add(ver)
+    return frozenset(out)
 
 
 def _exclusion_for(path_id: str, version: str,
@@ -383,6 +415,8 @@ def plan_class_inventory(
                 f"{event_class}/{path_id}: {len(versions)} sealed versions {sorted(versions)} and no "
                 "selected version — the planner never searches (or double-counts) them all")
 
+    na_by_version: dict = {(p, v): [] for p, vs in by_path.items() for v in vs}
+
     def disposition(path_id: str, rule_version: str):
         """(PinPlan, [IntervalPlan]) of `path@version` as if it were the searched version."""
         excl = _exclusion_for(path_id, rule_version, path_exclusions)
@@ -395,6 +429,17 @@ def plan_class_inventory(
                 and event_class not in _rules.ND_H_CLASSES and selected.get(path_id) != rule_version):
             return PinPlan(path_id, rule_version, "excluded", exclusion_reason="not_applicable_to_class",
                            basis=f"ruling:{_rules.ND_H_RULING}"), []
+        # SR-OD1 V1: the 1.3.0 doctrine row is every OTHER class's row. A class that runs the path at its ND-H /
+        # ND-P2 row (1.2.0, re-derived in place from the 1.3.0 soft factors) does not search 1.3.0 — non-degrading,
+        # basis the ruling that put the class on 1.2.0 (the scoped supersession's own ruling, one source).
+        if (rule_version == _rules.DOCTRINE_VERSION and path_id in H_DEPENDENT_PATHS
+                and selected.get(path_id) == _rules.ND_H_VERSION):
+            scoped_row = _rules.CLASS_SUPERSEDED_PATHS.get((event_class, path_id, _rules.RULE_VERSION))
+            if scoped_row is None:
+                raise InventoryBlocked(
+                    f"{event_class}/{path_id}: runs at {_rules.ND_H_VERSION} but names no class-scoped ruling for it")
+            return PinPlan(path_id, rule_version, "excluded", exclusion_reason="not_applicable_to_class",
+                           basis=f"ruling:{scoped_row['ruling_ref']}"), []
         # ND-H item 5: P2 emits no row for a parent class once the class runs under its ND-H rows (the
         # native's Moon never evidences the parent, §1.2 inv 6).
         if (path_id == "P2" and event_class in _rules.P2_NO_ROW_CLASSES
@@ -419,7 +464,11 @@ def plan_class_inventory(
                 return PinPlan(path_id, rule_version, "included", ob_plan), list(iv_plan)
             return PinPlan(path_id, rule_version, "computed_empty",
                            basis="spec:GOCHARA_DESIGN_SPECS@1.4#2.2-p1-empty-qualified-set"), []
-        edges = enumerate_edges(event_class, path_id, chart, rule_version=rule_version)
+        with node_aspect_declined() as declined:
+            edges = enumerate_edges(event_class, path_id, chart, rule_version=rule_version)
+        for agent in sorted(set(declined)):
+            na_by_version[(path_id, rule_version)].append(
+                NotApplicable(NODE_CASTS_NO_DRISHTI, path_id, agent, declined.count(agent)))
         seen: dict[str, Obligation] = {}
         for edge in edges:
             ob = obligation_of_edge(edge)
@@ -455,7 +504,7 @@ def plan_class_inventory(
                 pins.append(pin)                 # excluded / computed_empty exactly as the version would be
                 continue
             # a non-selected version that WOULD be searched: superseded by the included selection, or refused
-            if chosen_pin.disposition == "included" and _approved_successor(path_id, rule_version) == chosen:
+            if chosen_pin.disposition == "included" and chosen in _approved_successors(path_id, rule_version):
                 pins.append(PinPlan(path_id, rule_version, "excluded",
                                     exclusion_reason="superseded_by_version",
                                     basis=supersession_basis(path_id, rule_version, chosen)))
@@ -497,11 +546,13 @@ def plan_class_inventory(
             detail['final_rule_context'] = context
         annotated.append(replace(iv, detail=detail))
     intervals = annotated
+    # the declared not-applicable account follows the SEARCHED version of each path (a non-selected version is accounted by its pin only)
+    not_applicable = tuple(n for path_id in sorted(by_path) for n in na_by_version[(path_id, selected[path_id])])
     return ClassInventory(event_class=event_class, horizon=(lo, hi),
-                          pins=tuple(pins), intervals=tuple(intervals))
+                          pins=tuple(pins), intervals=tuple(intervals), not_applicable=not_applicable)
 
 
-__all__ = ["supersession_basis", "ClassInventory", "DEGRADING_REASONS", "DashaRow", "H_UNKNOWN_RULING",
+__all__ = ["supersession_basis", "ClassInventory", "NODE_CASTS_NO_DRISHTI", "NotApplicable", "DEGRADING_REASONS", "DashaRow", "H_UNKNOWN_RULING",
            "P5_HOLD_RULING", "PERIOD_ROLE_LEVEL", "standing_exclusions", "EXCLUSION_REASONS", "Exclusion",
            "H_DEPENDENT_PATHS", "IntervalPlan", "InventoryBlocked", "Obligation",
            "PinPlan", "STATE_COMPLETE", "STATE_EXCLUDED_MOON", "STATE_MISSING", "SearchCapability",

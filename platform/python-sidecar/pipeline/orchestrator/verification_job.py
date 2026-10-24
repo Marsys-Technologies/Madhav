@@ -1,6 +1,8 @@
 """Entry point of the separate VERIFICATION JOB (ND-ROLES option A; Codex round 9, R9-6.1).
 
     python -m pipeline.orchestrator.verification_job --chart <uuid> [--generation 5.0] [--class <c> …] [--report-only]
+        (`--class` repeated names a SHARD of the generation: SR-OD1 R8 launches the 26 classes as pinned shards — fleet/VERIFY_SHARDS.json — each its own execution; the
+        generation-wide AGGREGATE `numerical_window_gate.generation_verdict` is what `--brief` and the seal read, and it refuses unless every class is attested at one head)
     python -m pipeline.orchestrator.verification_job --chart <uuid> [--generation 5.0] --brief [--sealing-commit <sha>]
 
 NOT a registered writer and not in the build DAG: the orchestrator contract is frozen and nothing chains this to a build.
@@ -62,7 +64,7 @@ def _build_kwargs(conn, ephe_path: str | None) -> dict:
         position_at=position_at, ephe_path=ephe_path, modules=iv.IMPLEMENTATION_MODULES, path_refs=rr.bound_path_refs(),
         configured_selection_for=rr.selected_versions_for, path_rulings=w.VERIFIER_PATH_RULINGS,
         h_unknown=w.VERIFIER_H_UNKNOWN_RULING, moon_scope_domain=moon, factor_rows_for=bound_rows,
-        drishti_bound=w.DRISHTI_SOURCE is not None, vedha_bound=w.VEDHA_SOURCE is not None)
+        drishti_bound=w.DRISHTI_SOURCE is not None, vedha_bound=w.vedha_source() is not None)
 
 
 def _moon_scope_available(conn) -> bool:
@@ -84,6 +86,8 @@ def main(argv=None) -> int:
     ap.add_argument("--report-only", action="store_true")
     ap.add_argument("--final-rules", action="store_true",
                     help="verify an explicitly configured final-rule candidate; default keeps measuring rules")
+    ap.add_argument("--p1-form-b", action="store_true",
+                    help="SR-B1-Q3C-JOB: verify a build that selected P1@1.3.0 (owner's Form B, Q3(c) side rule); must match the build's flag; default keeps 1.0.0")
     ap.add_argument("--brief", action="store_true", help="produce, persist and digest the canonical seal approval payload; stdout ends in "
                     "{brief_chunk,...} lines then a COMPACT last line {status, sha256, persisted, brief_bytes, brief_file, brief_chunks}")
     ap.add_argument("--brief-out", default=None, help="also write the full brief (canonical JSON bytes; sha256 == the digest) to this file")
@@ -92,7 +96,7 @@ def main(argv=None) -> int:
     ap.add_argument("--ephe-path", default=os.environ.get("SE_EPHE_PATH"))
     args = ap.parse_args(argv)
     from services.gochara_kernel import rule_registry
-    with rule_registry.rule_profile(final_rules=args.final_rules):
+    with rule_registry.rule_profile(final_rules=args.final_rules, **({"p1_form_b": True} if args.p1_form_b else {})):
         return _run(args)
 
 
@@ -142,8 +146,19 @@ def _run(args):
                                              "sha256": out["sha256"], "persisted": persisted, "producer": producer,
                                              "brief_bytes": len(raw), "brief_file": brief_file, "brief_chunks": True}))
             return vj.EXIT_OK
-        report = vj.run(conn, chart_id=args.chart, generation=args.generation, classes=args.classes,
-                        report_only=args.report_only, **_build_kwargs(conn, args.ephe_path))
+        producer = None
+        if not args.report_only:
+            # SR-OD1 R8: a persisting launch (a shard or the whole generation) stamps every row it writes with its own commit / immutable image / execution — it refuses
+            # BEFORE writing anything if the job cannot name them, exactly as `--brief` does
+            from services.gochara_kernel import seal_brief
+            try:
+                producer = seal_brief.producer_identity()
+            except seal_brief.BriefRefused as exc:
+                print(seal_brief.canonical_json({"status": "REFUSED", "code": exc.code, "detail": exc.detail}))
+                return vj.EXIT_REFUSED
+        classes = None if args.classes is None else list(dict.fromkeys(args.classes))      # a repeated --class names it once
+        report = vj.run(conn, chart_id=args.chart, generation=args.generation, classes=classes,
+                        report_only=args.report_only, producer=producer, **_build_kwargs(conn, args.ephe_path))
         print(json.dumps(report, default=str, sort_keys=True))
         return report["exit_code"]
     except vj.VerificationRefused as exc:

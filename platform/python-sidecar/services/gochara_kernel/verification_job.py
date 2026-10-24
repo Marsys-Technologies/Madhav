@@ -23,6 +23,8 @@ self-check as a REPORT; it never persists a verification row (it holds no privil
 The entry point `pipeline/orchestrator/verification_job.py` is not a registered writer and is not in the build DAG."""
 from __future__ import annotations
 
+import threading
+import time
 from typing import Any, Callable
 
 GENERATION = "5.0"
@@ -265,7 +267,7 @@ def check_preconditions(conn, *, chart_id: str, generation: str, classes=None, e
     try:
         ivv.verify_inputs(conn, vec, ephe_path=ephe_path, modules=modules, path_refs=path_refs,
                           jd_range=iv.consumed_jd_range((manifest_horizon.lower, manifest_horizon.upper)),
-                          require_scored_classes=True)
+                          require_scored_classes=True, require_scored_until=True)
     except RuntimeError as exc:
         raise VerificationRefused("stale_inputs", str(exc)) from exc
     out["inputs"] = "independently re-derived"
@@ -303,11 +305,39 @@ class VerificationDisagrees(RuntimeError):
         self.stage, self.detail = stage, detail
 
 
+#: SR-OD1 R8X (B4 / G-5): the time THIS thread has spent acquiring the chart / global locks, so a class's measured wall can be split into LOCK WAIT (a sibling shard holds the
+#: lock: not work, not part of the serial projection) and COMPUTE. Per thread: two shards driven from one process (the overlap harness) must not read each other's wait.
+_WALL = threading.local()
+
+
+def lock_wait_s() -> float:
+    return getattr(_WALL, "lock_wait_s", 0.0)
+
+
 def take_locks(conn, chart_id: str) -> None:
     """R10-3: the chart lock, THEN the global SHARED key — the builder's own order — taken before ANY read that feeds an
-    attestation and held (transaction-scoped advisory locks) until the caller's transaction ends. Re-entrant."""
-    conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (chart_id,))
-    conn.execute("SELECT public.ka_gochara_lock_global_shared()")
+    attestation and held (transaction-scoped advisory locks) until the caller's transaction ends. Re-entrant. The time the two calls take is accumulated as LOCK WAIT."""
+    t0 = time.monotonic()
+    try:
+        conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (chart_id,))
+        conn.execute("SELECT public.ka_gochara_lock_global_shared()")
+    finally:
+        _WALL.lock_wait_s = lock_wait_s() + (time.monotonic() - t0)
+
+
+def class_wall(event_class: str) -> dict | None:
+    """What this thread has spent on the class `run` is verifying, in whole milliseconds (the brief has no float encoding): the wall since it started, the lock wait inside it and the
+    compute (the rest). None when the class was not started by `run` (a direct library call): an unmeasured wall is null, never zero."""
+    t0 = getattr(_WALL, "class_t0", None)
+    if t0 is None or getattr(_WALL, "class_name", None) != event_class:
+        return None
+    wall = round((time.monotonic() - t0) * 1000)
+    wait = min(round((lock_wait_s() - _WALL.class_lock0) * 1000), wall)
+    return {"class": event_class, "wall_ms": wall, "lock_wait_ms": wait, "compute_ms": wall - wait}
+
+
+def _class_started(event_class: str) -> None:
+    _WALL.class_t0, _WALL.class_name, _WALL.class_lock0 = time.monotonic(), event_class, lock_wait_s()
 
 
 def _included_pins(conn, chart_id, generation, event_class):
@@ -365,9 +395,130 @@ def _inventory_header(conn, chart_id, generation, event_class):
     return None if row is None else (tuple(row.values()) if isinstance(row, dict) else tuple(row))
 
 
+# ── contact geometry and the near-miss layer ─────────────────────────────────────────────────────────
+
+#: the verifier's OWN statements (no builder code, no `near_miss` import): the class's concrete POINT obligations — the objects a
+#: near-miss can exist for — and the generation's stored near-miss rows of those objects
+_NM_LAYER_SQL = ("SELECT to_regclass('public.ka_gochara_near_miss') IS NOT NULL"
+                 " AND to_regclass('public.ka_gochara_near_miss_object') IS NOT NULL")
+_NM_OBLIGATIONS_SQL = (
+    "SELECT DISTINCT o.agent, o.relation, o.target FROM public.ka_gochara_search_obligation o"
+    " JOIN public.ka_gochara_search_path_pin p ON (p.chart_id, p.generation, p.event_class, p.path_id, p.rule_version)"
+    "   = (o.chart_id, o.generation, o.event_class, o.path_id, o.rule_version) AND p.disposition = 'included'"
+    " WHERE o.chart_id = %s AND o.generation = %s AND o.event_class = %s AND o.relation IN ('conjunction', 'aspect')"
+    "   AND o.target LIKE 'point:%%' AND o.agent <> 'moon' AND o.agent NOT LIKE 'period_lord:%%'")
+_NM_STORED_SQL = (
+    "SELECT o.body, o.relation_kind, o.canonical_target, n.near_miss_id, n.t_in, n.t_out, n.clearance_deg"
+    " FROM public.ka_gochara_near_miss n JOIN public.ka_gochara_near_miss_object o ON o.near_miss_object_id = n.near_miss_object_id"
+    " WHERE n.chart_id = %s AND n.generation = %s")
+_NM_OBJECTS_SQL = (
+    "SELECT o.near_miss_object_id, o.body, o.relation_kind, o.canonical_target, c.domain_start, c.domain_end"
+    " FROM public.ka_gochara_near_miss_search s JOIN public.ka_gochara_near_miss_object o ON o.near_miss_object_id = s.near_miss_object_id"
+    " JOIN public.ka_gochara_sky_convention c ON c.convention_id = o.convention_id WHERE s.chart_id = %s AND s.generation = %s")
+
+
+def _row_tuple(r):
+    return tuple(r.values()) if isinstance(r, dict) else tuple(r)
+
+
+def identity_domain_tails(conn, *, chart_id: str, generation: str, keys, position_at, horizon) -> list[dict]:
+    """The DISCLOSED identity-domain tails (SR-NEARMISS-DOMAIN-TAIL) of the searched objects named by `keys` = {(body, relation, canonical target)}: the very records
+    `near_miss_verifier.verify_generation` discloses for them (same derivation, same follow of the clipped stretch, same split, same `tail_record` carrying the
+    object id), recomputed here because the generation-wide pass runs once per epoch and a later shard only finds its persisted result, which carries no tails."""
+    from . import near_miss_verifier as nmv
+    from .window_verifier import _ASPECT_ANGLES, _POINT_ORB_DEG
+    out = []
+    seen: dict = {}
+    for obj_id, body, relation, target, d0, d1 in sorted(map(_row_tuple, conn.execute(_NM_OBJECTS_SQL, (chart_id, generation)).fetchall()),
+                                                         key=lambda r: (r[1], r[2], r[3])):
+        if (body, relation, target) not in keys:
+            continue
+        if seen.setdefault((body, relation, target), obj_id) != obj_id:       # the tail is matched by this key, so it must name ONE object
+            raise RuntimeError(f"near_miss_tail_ambiguous: {body} {relation} {target} is held by two searched objects ({seen[(body, relation, target)]}, {obj_id})")
+        orb = _POINT_ORB_DEG[relation]
+        angles = (0.0,) if relation == "conjunction" else _ASPECT_ANGLES[body]
+        centres = [(float(target.split(":")[1]) - a) % 360 for a in angles]
+        try:
+            derived = nmv.derive_near_misses(position_at, body, centres, d0, d1, orb_deg=orb)
+            derived = [nmv._follow_domain_edge(position_at, body, centres, orb, r, (d0, d1))
+                       if r["clipped"] and r["t_in"] < horizon[1] and r["t_out"] > horizon[0] else r for r in derived]
+        except nmv.NearMissError as exc:
+            raise RuntimeError(f"near_miss_tail_underivable: {body} {relation} {target}: {exc}") from exc
+        out += [{**nmv.tail_record(obj_id, body, relation, r), "target": target} for r in nmv.split_identity_domain_tails(derived)[1]]
+    return out
+
+
+def near_miss_reconcile_problems(conn, *, chart_id: str, generation: str, event_class: str, reported: list, horizon,
+                                 position_at=None, disclosed: list | None = None) -> list[str]:
+    """The graze sink is NOT a forgiveness. A near-miss is an in-band stretch that never crosses the exact aspect level; the builder mints a
+    point contact only around an exact root (ND-P2-20261005 rules 1-2, AM-13), so its ledger rightly holds none and the near-miss layer holds
+    the stretch instead. What the certifier classified as a graze from the ephemeris alone (`reported`, whole stretches) must therefore pair one
+    to one — by (body, relation, target) and overlap — with the near-miss rows stored for the class's point obligations, in both directions.
+    Agreement of the bounds is `near_miss_verifier`'s duty. Named problems (empty = they agree).
+
+    ONE exception, exactly the verifier's own disclosure (SR-NEARMISS-DOMAIN-TAIL): a reported stretch that crosses the identity-domain edge with NO station
+    inside the domain is a TAIL the builder's arc index cannot see, so it stores nothing for it and could not. Such a stretch is not an omission: it is appended
+    to `disclosed` (object id, body, relation, dates) and is not a problem. It is excused only when the object's own tail (`identity_domain_tails`, recomputed from
+    the ephemeris with `position_at`) overlaps it; any other reported-but-unstored object, a crossing stretch WITH an in-domain station included, still fails by
+    name. Without `position_at` nothing is excused. Nothing here says the tail is sealed: the disclosure is report-level."""
+    keys = {_row_tuple(r) for r in conn.execute(_NM_OBLIGATIONS_SQL, (chart_id, generation, event_class)).fetchall()}
+    free = []
+    for body, relation, target, nm_id, t_in, t_out, clearance in map(_row_tuple, conn.execute(_NM_STORED_SQL, (chart_id, generation)).fetchall()):
+        if (body, relation, target) in keys and t_in < horizon[1] and t_out > horizon[0]:
+            free.append({"key": (body, relation, target), "id": str(nm_id), "t_in": t_in, "t_out": t_out, "clearance": clearance})
+    problems = []
+    from datetime import datetime
+
+    def paired(g, t_in, t_out):
+        return t_in < datetime.fromisoformat(g["interval"][1]) and datetime.fromisoformat(g["interval"][0]) < t_out
+    key_of = lambda g: (g["body"], g["relation"], g["target"])      # noqa: E731
+    unstored = {key_of(g) for g in reported if not any(s["key"] == key_of(g) and paired(g, s["t_in"], s["t_out"]) for s in free)}
+    tails = [] if position_at is None or not unstored else identity_domain_tails(
+        conn, chart_id=chart_id, generation=generation, keys=unstored, position_at=position_at, horizon=horizon)
+    for g in reported:
+        match = next((s for s in free if s["key"] == key_of(g) and paired(g, s["t_in"], s["t_out"])), None)
+        if match is not None:
+            free.remove(match)
+            continue
+        tail = next((t for t in tails if (t["body"], t["relation"], t["target"]) == key_of(g)
+                     and paired(g, datetime.fromisoformat(t["t_in"]), datetime.fromisoformat(t["t_out"]))), None)
+        if tail is not None:
+            tails.remove(tail)
+            if disclosed is not None:
+                disclosed.append(tail)
+            continue
+        problems.append(f"near_miss_reported_but_unstored: {g['body']} {g['relation']} {g['target']} [{g['interval'][0]}, {g['interval'][1]}) "
+                        f"closest {g.get('closest_approach_deg')} deg")
+    for s in free:
+        problems.append(f"near_miss_stored_but_unreported: {' '.join(s['key'])} [{s['t_in'].isoformat()}, {s['t_out'].isoformat()}) "
+                        f"clearance {s['clearance']} deg (id {s['id']})")
+    return problems
+
+
+def certify_geometry(conn, *, chart_id: str, generation: str, event_class: str, position_at, horizon) -> dict:
+    """The contact-geometry stage. Where the near-miss layer exists the certifier gets a graze sink (a rootless in-band stretch is not an omitted
+    contact) and the grazes it reports are reconciled with the stored near-miss rows (`near_miss_reconcile_problems`); a graze with no stored row
+    and a stored row with no graze both raise by name, except a disclosed identity-domain tail (reported in the result, never silent). Anything else the certifier finds (omission, anomaly, unresolved) still raises. Without
+    the layer there is nowhere to keep a near-miss: no sink, exactly as before."""
+    from . import contact_certify as cc
+    layer = bool(_one(conn.execute(_NM_LAYER_SQL).fetchone()))
+    graze_sink: list | None = [] if layer else None
+    geometry = cc.certify_contact_geometry(conn, chart_id=chart_id, generation=generation, event_class=event_class, position_at=position_at,
+                                           graze_sink=graze_sink)
+    if layer:
+        disclosed: list = []
+        problems = near_miss_reconcile_problems(conn, chart_id=chart_id, generation=generation, event_class=event_class,
+                                                reported=graze_sink, horizon=horizon, position_at=position_at, disclosed=disclosed)
+        if problems:
+            raise RuntimeError(f"near-miss reconciliation failed {event_class}: " + "; ".join(problems))
+        geometry = {**geometry, "identity_domain_tails": disclosed, "identity_domain_tail_count": len(disclosed)}      # a measured zero, not an absence
+    return geometry
+
+
 def verify_class(conn, *, chart_id: str, generation: str, event_class: str, position_at, configured_selection: dict,
                  path_rulings: dict, h_unknown: dict, moon_scope_domain: bool, factor_rows_for: Callable,
-                 drishti_bound: bool, vedha_bound: bool, persist: bool, runner: dict | None = None) -> dict:
+                 drishti_bound: bool, vedha_bound: bool, persist: bool, runner: dict | None = None, shard: dict | None = None,
+                 g6_sel=None, g6_resolver: Callable | None = None) -> dict:
     """See `_verify_class`. A class whose records (or any derivation) the verifier cannot independently derive is
     UNVERIFIED — an explicit result, the gate stays closed, nothing is persisted — never a pass."""
     from . import inventory_verifier as inv_v
@@ -376,14 +527,15 @@ def verify_class(conn, *, chart_id: str, generation: str, event_class: str, posi
                              position_at=position_at, configured_selection=configured_selection,
                              path_rulings=path_rulings, h_unknown=h_unknown, moon_scope_domain=moon_scope_domain,
                              factor_rows_for=factor_rows_for, drishti_bound=drishti_bound, vedha_bound=vedha_bound,
-                             persist=persist, runner=runner)
+                             persist=persist, runner=runner, shard=shard, g6_sel=g6_sel, g6_resolver=g6_resolver)
     except inv_v.Unverifiable as exc:
         return {"event_class": event_class, "persisted": False, "status": "UNVERIFIED", "reason": str(exc)}
 
 
 def _verify_class(conn, *, chart_id: str, generation: str, event_class: str, position_at, configured_selection: dict,
                   path_rulings: dict, h_unknown: dict, moon_scope_domain: bool, factor_rows_for: Callable,
-                  drishti_bound: bool, vedha_bound: bool, persist: bool, runner: dict | None = None) -> dict:
+                  drishti_bound: bool, vedha_bound: bool, persist: bool, runner: dict | None = None, shard: dict | None = None,
+                  g6_sel=None, g6_resolver: Callable | None = None) -> dict:
     """Everything the independent verifiers say about ONE event class. With `persist=False` (the builder's in-build
     self-check, and `--report-only`) nothing is written. With `persist=True` — the verifier principal's act — the 1206
     inventory-verification row and every included P1–P4 grain's 1240 window-verification row are REPLACED (the caller
@@ -391,12 +543,13 @@ def _verify_class(conn, *, chart_id: str, generation: str, event_class: str, pos
 
     UNVERIFIED (the verifier cannot derive every path) is a RESULT, not an error. Any independent DISAGREEMENT raises
     `VerificationDisagrees` and writes nothing for the class."""
-    from . import contact_certify as cc
     from . import inventory_verifier as inv_v
     from . import record_verifier as rv
     from . import numerical_window_gate as nwg
     from . import window_gate as wg
     from . import window_verifier as wv
+    from . import p1_operands_check as p1c
+    from . import g6_plan
 
     def stage(name, fn):
         try:
@@ -445,8 +598,8 @@ def _verify_class(conn, *, chart_id: str, generation: str, event_class: str, pos
     out["inventory_digest"], out["ledger_digest"] = res["digest"], led
     # R10-6: the fixed 3 s / 6 h aspect-span precheck is GONE — `contact_certify` (next) certifies the aspect-to-span contacts,
     # like every other, under the DERIVED tolerance (accuracy / |speed| + 1 s) and the union-of-contacts contract
-    out["geometry"] = stage("contact_geometry", lambda: cc.certify_contact_geometry(
-        conn, chart_id=chart_id, generation=generation, event_class=event_class, position_at=position_at))
+    out["geometry"] = stage("contact_geometry", lambda: certify_geometry(
+        conn, chart_id=chart_id, generation=generation, event_class=event_class, position_at=position_at, horizon=horizon))
     from . import record_derivation as rd
     has_snapshot = _one(conn.execute("SELECT count(*) FROM public.ka_gochara_search_input_snapshot"
                                      " WHERE chart_id = %s AND generation = %s", (chart_id, generation)).fetchone())
@@ -475,6 +628,9 @@ def _verify_class(conn, *, chart_id: str, generation: str, event_class: str, pos
                              " AND generation = %s", (chart_id, generation)).fetchone())
     windows = []
     reports: list = []
+    # C2: the janma-rāśi sign (1..12) from the snapshot's COPY of the natal chart — the vedha verifier cross-checks every stored
+    # P2 house against it (None without a snapshot: it is then the sign the stored records imply, and they must agree)
+    moon_sign = None if chart is None else inv_v._sign_index(chart["natal"]["moon"]) + 1
     for path_id, version in pins:
         grain = dict(chart_id=chart_id, generation=generation, event_class=event_class, path_id=path_id,
                      rule_version=version)
@@ -491,8 +647,13 @@ def _verify_class(conn, *, chart_id: str, generation: str, event_class: str, pos
             out.setdefault("records", {})[path_id] = derived["records"]
         stage(f"member_support {path_id}", lambda g=grain: wv.verify_member_support(conn, **g))
         stage(f"member_geometry {path_id}", lambda g=grain: wv.verify_member_geometry(conn, position_at=position_at, **g))
-        report = stage(f"window_semantics {path_id}", lambda g=grain, p=path_id, v=version: wv.verify_window_semantics(
-            conn, factor_rows=factor_rows_for(p, v), drishti_bound=drishti_bound, vedha_bound=vedha_bound, **g))
+        rows = factor_rows_for(path_id, version)
+        # P1c: a P1 path whose rows declare a value table is re-derived from the verifier's own sky + L0 reads
+        p1_check = p1c.P1Check.from_conn(conn, position_at) if path_id == "P1" and p1c.needs_p1_check(rows) else None
+        g6_inputs: dict = {}                    # SR-OD1 R8X S-1: the numbered windows of THIS grain, as the re-solve inputs the production G-6 resolver builds on demand
+        report = stage(f"window_semantics {path_id}", lambda g=grain, r=rows, c=p1_check, gi=g6_inputs: wv.verify_window_semantics(
+            conn, factor_rows=r, drishti_bound=drishti_bound, vedha_bound=vedha_bound,
+            solver_check=True, p1_check=c, moon_sign=moon_sign, position_at=position_at, resolve_inputs=gi, **g))
         entry = {"path_id": path_id, "rule_version": version, "status": report["status"],
                  "policy_version": report["policy_version"], "windows": report["windows"]}
         attestation = None
@@ -500,8 +661,19 @@ def _verify_class(conn, *, chart_id: str, generation: str, event_class: str, pos
             # OD-1: the NUMERICAL-WINDOW GATE — the recount of every window of this grain against the re-derivation just made; it raises on any difference
             attestation = stage(f"numerical_window_gate {path_id}", lambda g=grain, r=report: nwg.grain_attestation(conn, report=r, policy=policy, **g))
             entry["numerical_window_gate"] = {k: attestation[k] for k in ("status", "windows", "numbered", "blank")}
+            # SR-OD1 R8X (T18): G-6 is COMPULSORY in the pinned plan — the grain's deterministic-sample / top-mixed windows are re-solved from scratch (a DISAGREEMENT raises and blocks the
+            # seal) and the evidence rides in the row beside the attestation; a window the plan selects and nothing re-solved is recorded as such, and the aggregate refuses it
+            if g6_sel is None:
+                g6_sel = g6_plan.selection(conn, chart_id, generation)
+            # the PRODUCTION resolver (`window_verifier.g6_resolver`): the verifier's own `check_numbered(resolve=True)` over the inputs this grain's verification just built. An injected
+            # `g6_resolver` replaces it (tests only; the entry point passes none)
+            g6_evidence = stage(f"g6_resample {path_id}", lambda g=grain, gi=g6_inputs: g6_plan.collect(
+                chart_id=chart_id, generation=generation, grain=g, sel=g6_sel, resolver=g6_resolver if g6_resolver is not None else wv.g6_resolver(gi)))
+            entry["g6"] = {"selected": len(g6_evidence["windows"]), "agreed": sum(1 for w in g6_evidence["windows"].values() if w["result"] == g6_plan.PASS_CLASS)}
+        else:
+            g6_evidence = None
         windows.append(entry)
-        reports.append((grain, report, None if derived is None else derived["derived_windows"], attestation))
+        reports.append((grain, report, None if derived is None else derived["derived_windows"], attestation, g6_evidence))
     out["windows"] = windows
     if persist:
         # ORDER (Stream B's all-guards rehearsal): the WINDOW verifications first, the 1206 inventory row last — the class's
@@ -515,9 +687,10 @@ def _verify_class(conn, *, chart_id: str, generation: str, event_class: str, pos
             raise VerificationDisagrees(
                 "consistency", "the data this verification checked changed before it could be persisted — the report "
                 "no longer identifies the stored state (a writer replaced it outside the lock protocol); nothing is persisted")
-        for grain, report, derived_w, attestation in reports:
+        wall = class_wall(event_class)               # R8X (B4): measured once, so every grain of the class carries the same wall; None (unmeasured) when `run` did not start the class
+        for grain, report, derived_w, attestation, g6_evidence in reports:
             # OD-1: under `window_qualification/1` the grain's PASSED attestation rides in the runner-identity object of its 1240 row (no migration needed)
-            row_runner = runner if attestation is None else nwg.runner_with_attestation(runner if runner is not None else wg.runner_identity(), attestation)
+            row_runner = runner if attestation is None else nwg.runner_with_attestation(runner if runner is not None else wg.runner_identity(), attestation, shard, wall, g6_evidence)
             stage(f"record_verification {grain['path_id']}", lambda g=grain, r=report, d=derived_w, rr=row_runner:
                   wg.record_verification(conn, report=r, input_digest=snap, expected=d, runner=rr,
                                          checked_inputs_digest=fp0["grains"][f"{g['path_id']}@{g['rule_version']}"][0],
@@ -584,13 +757,37 @@ def candidate_gate_on_candidate_manifest(conn, chart_id: str, generation: str) -
     return out
 
 
+def near_miss_verified_for_state(conn, chart_id: str, generation: str):
+    """The persisted near-miss verification digest when it equals the digest of the stored near-miss state NOW (the seal gate's own staleness test, migration 1381); else None. A
+    rebuild that changes the near-miss state makes the row stale, so the pass runs again; a class-sharded launch's second and later shards reuse the first one's result."""
+    if not _one(conn.execute("SELECT to_regclass('public.ka_gochara_near_miss_verification') IS NOT NULL").fetchone()):
+        return None                    # the near-miss layer is not in this database: the pass has nothing to reuse (it reports OFF)
+    row = conn.execute("SELECT near_miss_digest FROM public.ka_gochara_near_miss_verification WHERE chart_id = %s AND generation = %s", (chart_id, generation)).fetchone()
+    if row is None:
+        return None
+    stored = _one(row)
+    now = _one(conn.execute("SELECT public.ka_gochara_near_miss_digest(%s, %s)", (chart_id, generation)).fetchone())
+    return stored if stored == now else None
+
+
 def run(conn, *, chart_id: str, generation: str = GENERATION, classes=None, position_at, ephe_path: str | None = None,
         modules: dict | None = None, path_refs=None, configured_selection_for: Callable, path_rulings: dict,
         h_unknown: dict, moon_scope_domain: bool, factor_rows_for: Callable, drishti_bound: bool, vedha_bound: bool,
-        report_only: bool = False, enforce_identity: bool = True) -> dict:
+        report_only: bool = False, enforce_identity: bool = True, producer: dict | None = None, g6_resolver: Callable | None = None) -> dict:
     """The whole sequence. Identity first, then the preconditions (a refusal writes NOTHING), then one transaction per
     class (replace-before-seal), then the SAME candidate gate the seal uses. `enforce_identity=False` is a TEST SEAM for
-    fixtures that connect as a superuser; the entry point never passes it."""
+    fixtures that connect as a superuser; the entry point never passes it.
+
+    SR-OD1 R8 — class-sharded launches: `classes` names the SHARD this launch verifies. Every 1240 row it persists under `window_qualification/1` carries the shard stamp
+    (`numerical_window_gate.shard_stamp`: generation, head = this runner's commit, image digest, execution, the shard's classes). `producer` is the job's own identity
+    (`seal_brief.producer_identity()`: commit / image digest / execution id; the entry point passes it and refuses to persist without it); without one the image and execution
+    are read from the job's environment and are None where it names none. A SUBSET run also reports `aggregate`: what the generation-wide verdict reads now, so the cockpit
+    sees which classes are still missing — it never changes this run's own status (the sealer and the brief read the aggregate, not a shard's report).
+
+    SR-OD1 R8X: G-6 is part of the pinned plan (`g6_plan`). `g6_resolver(request) -> report | None` is the from-scratch re-solve of one selected window; the default (None) is the PRODUCTION resolver,
+    `window_verifier.g6_resolver` — `window_cert_check.check_numbered(resolve=True)` over the grain's own verified inputs (R8X S-1). A resolver that covers no window (returns None)
+    records every selected window unresolved and the aggregate refuses a generation that has any. Each class's
+    measured wall (lock wait apart from compute) rides in its rows for the wall rule (`numerical_window_gate.wall_rule`)."""
     from . import window_gate as wg
     report: dict[str, Any] = {"chart_id": chart_id, "generation": generation, "report_only": report_only, "classes": {}}
     report["identity"] = check_identity(conn) if enforce_identity else {"separate": "NOT CHECKED (test seam)"}
@@ -609,12 +806,27 @@ def run(conn, *, chart_id: str, generation: str = GENERATION, classes=None, posi
             take_locks(conn, chart_id)
             if precondition_fingerprint(conn, chart_id, generation) != shared_fp:
                 raise VerificationRefused("stale_inputs", "manifest changed before near-miss verification")
-            report["near_miss"] = nmv.verify_generation(conn, chart_id=chart_id, generation=generation,
-                ephe_path=ephe_path, persist=not report_only)
+            done = None if report_only else near_miss_verified_for_state(conn, chart_id, generation)
+            if done is not None:          # SR-A10-1 B3: the generation-wide near-miss pass runs ONCE per epoch — a later shard finds its persisted result and reuses it
+                report["near_miss"] = {"status": "VERIFIED", "digest": done, "persisted": True, "reused": True}
+            else:
+                report["near_miss"] = nmv.verify_generation(conn, chart_id=chart_id, generation=generation,
+                    ephe_path=ephe_path, persist=not report_only)
     except nmv.NearMissError as exc:
         raise VerificationDisagrees("near_miss", str(exc)) from exc
+    from . import numerical_window_gate as nwg
+    from . import g6_plan
+    g6_sel = g6_plan.selection(conn, chart_id, generation) if nwg._has_provenance(conn) else g6_plan.Selection([])      # the plan's requirement, from the stored windows, once
+    env = __import__("os").environ
+    who = producer or {}
+    head = (pre.get("runner") or {}).get("commit")
+    shard = nwg.shard_stamp(generation=generation, head=head, classes=pre["classes"], epoch=nwg.current_epoch(conn, chart_id, generation),
+                            image_digest=who.get("image_digest", env.get("GOCHARA_RUNNER_IMAGE_DIGEST")),
+                            execution_id=who.get("execution_id", env.get("CLOUD_RUN_EXECUTION"))) if head else None
+    report["shard"] = shard
     disagreements = []
     for cls in pre["classes"]:
+        _class_started(cls)
         try:
             with conn.transaction():
                 take_locks(conn, chart_id)
@@ -626,7 +838,7 @@ def run(conn, *, chart_id: str, generation: str = GENERATION, classes=None, posi
                     conn, chart_id=chart_id, generation=generation, event_class=cls, position_at=position_at,
                     configured_selection=configured_selection_for(cls), path_rulings=path_rulings, h_unknown=h_unknown,
                     moon_scope_domain=moon_scope_domain, factor_rows_for=factor_rows_for, drishti_bound=drishti_bound,
-                    vedha_bound=vedha_bound, persist=not report_only, runner=pre.get("runner"))
+                    vedha_bound=vedha_bound, persist=not report_only, runner=pre.get("runner"), shard=shard, g6_sel=g6_sel, g6_resolver=g6_resolver)
         except VerificationDisagrees as exc:
             report["classes"][cls] = {"event_class": cls, "status": "DISAGREE", "stage": exc.stage, "detail": exc.detail}
             disagreements.append(cls)
@@ -648,6 +860,9 @@ def run(conn, *, chart_id: str, generation: str = GENERATION, classes=None, posi
     if report_only and verdict["status"] != nwg.NOT_APPLICABLE:
         verdict = {"schema": nwg.SCHEMA, "status": "NOT_EVALUATED", "policy": verdict["policy"], "detail": "report-only: nothing was persisted, so no attestation exists to read back"}
     report["numerical_window_gate"] = verdict
+    if not full and not report_only and verdict["status"] != nwg.NOT_APPLICABLE:
+        agg = nwg.generation_verdict(conn, chart_id, generation)
+        report["aggregate"] = {"status": agg["status"], "problems": agg["problems"][:50], "problem_count": len(agg["problems"]), "classes_attested": (agg.get("aggregate") or {}).get("classes_attested")}
     if verdict["status"] == nwg.FAILED:
         gate = gate + [{"event_class": "*", "path_id": None, "rule_version": None, "violation": "numerical_window_gate_failed", "detail": p} for p in verdict["problems"]]
     report["gate"] = gate

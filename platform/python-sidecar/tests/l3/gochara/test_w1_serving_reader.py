@@ -454,10 +454,82 @@ def test_the_policy_is_read_from_the_manifest_and_stored_numbers_pass_through_un
     assert not FORBIDDEN_WINDOW_KEYS & set(win)
 
 
+# ── a window the verifier DEMOTED is served as the named blank (SR-OD1 R67, lane review B-1 c) ───────────
+
+_DEMOTED_WINDOW_CLAIM = "R-6 / §N.7.6: a window the VERIFIED grain's attestation lists as demoted is served as its named blank — every number null — whatever the stored row carries"
+
+
+def _number_the_window(w):
+    """Seed the one window with numbers under window_qualification/1. (The builder's certificate is not seeded: the `qualification` shape CHECK only admits it from migration
+    1402, which is not composed yet; that it is stripped from a blank is the offline claim D-4 in test_od1_r67_certificate.)"""
+    stored = _stored_window(w)[0]
+    peak = stored[1] + (stored[2] - stored[1]) / 2
+    _unguarded(w, "ka_gochara_eval_window",
+               "UPDATE public.ka_gochara_eval_window SET score = 0.25, evidence_for = 1.5, evidence_against = 0.5, objective_value = 0.75, severity = 0.625,"
+               " peak_instant = %s, outcome_valence_for_native = 'mixed',"
+               " qualification = jsonb_set(qualification, '{unqualified_reason}', 'null'::jsonb)"
+               " WHERE window_id = %s", (peak, stored[0]))
+    return stored[0]
+
+
+def _attest_demoted(w, window_id, reason):
+    """The persisted attestation of the verified grains, as the verification job stores it in the runner identity (`numerical_window_gate.demoted_windows`)."""
+    _unguarded(w, "ka_gochara_eval_window_verification",
+               "UPDATE public.ka_gochara_eval_window_verification SET status = 'VERIFIED', policy_version = 'window_qualification/1',"
+               " runner_identity = runner_identity::jsonb || jsonb_build_object('numerical_window_gate', jsonb_build_object('demoted_windows',"
+               " jsonb_build_array(jsonb_build_object('window_id', %s::text, 'reason', %s::text))))"
+               " WHERE chart_id = %s AND generation = %s", (window_id, reason, CHART_ID, GEN))
+
+
+def _oracle_demoted_window_is_served_blank(w, read):
+    window_id = _number_the_window(w)
+    served = read(w, event_classes=[CLS])["windows"][0]
+    assert (served["score"], served["objective_value"], served["outcome_valence_for_native"]) == (0.25, 0.75, "mixed")      # control: not demoted, passed through as stored
+    assert served["demoted_at_seal"] is False and served["unqualified_reason"] is None
+    _attest_demoted(w, window_id, "verifier_budget_exhausted")
+    env = read(w, event_classes=[CLS])
+    blank = next(x for x in env["windows"] if x["window_id"] == window_id)
+    for field in ("peak_instant", "score", "evidence_for", "evidence_against", "severity", "objective_value"):
+        assert blank[field] is None, (field, blank[field])
+    assert blank["outcome_valence_for_native"] == "unqualified" and blank["demoted_at_seal"] is True
+    assert blank["unqualified_reason"] == "verifier_budget_exhausted" == blank["qualification"]["unqualified_reason"]
+    json.dumps(env)
+
+
+def test_a_demoted_window_is_served_as_its_named_blank(world):
+    w = world
+    w.result_policy = "window_qualification/1"
+    _sealed(w)
+    _oracle_demoted_window_is_served_blank(w, _read)
+
+
+def test_the_blank_is_applied_by_read_v5_itself_reverting_it_serves_the_number(world):
+    """The single planted reversion of the wiring (the finished window list no longer passes through `_serve_demoted_as_blank`) must fail the oracle above."""
+    from pathlib import Path
+    import sys
+    import types
+    w = world
+    w.result_policy = "window_qualification/1"
+    _sealed(w)
+    src = Path(rd.__file__).read_text()
+    old = "    _serve_demoted_as_blank(windows, _demoted_windows(conn, chart_id, generation, env['result_policy']))\n"
+    assert src.count(old) == 1
+    mod = types.ModuleType("_w1_reverted_serving_reader")
+    mod.__file__, mod.__package__ = rd.__file__, rd.__package__
+    sys.modules[mod.__name__] = mod
+    try:
+        exec(compile(src.replace(old, ""), mod.__file__, "exec"), mod.__dict__)
+        with pytest.raises(AssertionError, match="peak_instant"):
+            _oracle_demoted_window_is_served_blank(w, lambda ww, **kw: mod.read_v5(ww.conn, CHART_ID, GEN, **kw))
+    finally:
+        sys.modules.pop(mod.__name__, None)
+
+
 # ── the scored edge: the manifest's pin, or null with a reason ───────────────────────────────────────────
 
 def test_without_a_pinned_scored_edge_the_status_is_null_with_the_reason(world):
     w = _sealed(world)
+    _set_vector(w, "input_generation_vector - %s::text", (rd.SCORED_UNTIL_VECTOR_KEY,))      # the writer now pins the edge (OD-1 / F-10): strip it to read the unpinned manifest
     env = _read(w, event_classes=[CLS])
     assert env["scored_until"] is None and env["scored_until_reason"] == "scored_until_not_pinned"
     assert env["windows"][0]["scoring_status"] is None

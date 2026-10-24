@@ -1038,7 +1038,21 @@ def test_p10_entries_present_and_disabled():
         assert ops[kind]["enabled_by"] == item
 
 
-@pytest.mark.parametrize("item,kind", sorted(P10_STILL_DISABLED.items()))
+def test_p10_still_disabled_is_empty_by_design_and_every_p10_kind_is_enabled_and_bound():
+    # Every P10 item is enabled now (P10_ENABLED_ITEMS), so the parametrised test below has no case left; it must not turn into a silently
+    # skipped empty set (N.8; madhav-44 2026-10-23). The empty set is asserted here, and each formerly disabled kind is enabled in the live
+    # table AND in the reviewed binding set (BASE + pin shards), whose own binding checks judge it.
+    assert set(P10_STILL_DISABLED) == set(P10) - set(P10_ENABLED_ITEMS)
+    if P10_STILL_DISABLED:
+        pytest.fail("P10_STILL_DISABLED is not empty: test_future_table_enablement_and_typed_model_detectors_stay_separate judges those kinds")
+    ops = load_ops(OPS_FILE.read_text())["ops"]
+    for item, kind in sorted(P10.items()):
+        assert enabled_state(kind, ops[kind]) is True, f"{item}: {kind} must be enabled"
+        assert kind in ENABLED_KINDS, f"{item}: {kind} is enabled outside the reviewed BASE + shard binding set"
+
+
+@pytest.mark.parametrize("item,kind", sorted(P10_STILL_DISABLED.items()) or [pytest.param(None, None, marks=pytest.mark.skip(
+    reason="P10_STILL_DISABLED is empty by design; judged by test_p10_still_disabled_is_empty_by_design_and_every_p10_kind_is_enabled_and_bound"))])
 def test_future_table_enablement_and_typed_model_detectors_stay_separate(item, kind):
     # The reconciled model uses packet/rehearsal evidence, not enabled-string
     # completion. Preserve the legacy first-key format without inventing a detector.

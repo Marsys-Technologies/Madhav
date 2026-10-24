@@ -17,6 +17,17 @@ from scripts.kala_gochara_cutover import j4d_slice_qualify as q
 from services.gochara_kernel import measuring_capture as mc
 from services.gochara_kernel import rule_registry as rr
 
+@pytest.fixture(autouse=True)
+def _pre_doctrine_final_profile(monkeypatch):
+    """SR-OD1 V1: the owner-confirmed doctrine rows (P1/P3/P4@1.3.0, P2@1.1.0) change the version of EVERY scored cell under the
+    final rules, so with the real registry no cell is "unchanged" any more and this slice proof — equality with the measuring
+    golden for unchanged cells — has nothing to compare (the 4-class TRIAL under window_qualification/1 is the dispatch gate now,
+    SR-OD1-DESIGN). These oracles pin the proof's MECHANICS, so they run on the pre-doctrine final profile the module's docstring
+    describes (ND-H / ND-P2 / parental suppression only); the claim "no cell is unchanged" is pinned in test_od1_v1_versions."""
+    monkeypatch.setattr(rr, "FINAL_SELECTED_PATH_REFS", rr.SELECTED_PATH_REFS)
+    monkeypatch.setattr(rr, "FINAL_ONLY_PATH_REFS", rr.ND_H_PATH_REFS)
+
+
 SLICE = ["business_launch", "marriage", "parental_event"]
 HORIZON = ["1998-01-01T00:00:00+00:00", "2084-02-05T00:00:00+00:00"]
 RECEIPT = ('{"head":"' + "a" * 40 + '","item":"P06b","merged_on_main":true,"mutation_verified":true,'
@@ -575,7 +586,8 @@ def test_the_build_observer_records_the_policy_at_the_call_and_restores_the_modu
         cc.certify_contact_geometry(None, sink_policy=cc.POLICY_SINK_ALL)
         cc.certify_contact_geometry(None)                                                 # the default is the strict policy
         ws.maximise_earliest(None, None, None)
-    assert seen == {"certification_policies": [cc.POLICY_SINK_ALL, cc.POLICY_RAISE], "maximise_earliest_calls": 1}
+    assert seen == {"certification_policies": [cc.POLICY_SINK_ALL, cc.POLICY_RAISE], "maximise_earliest_calls": 1,
+                    "solver": {"calls": 0, "certified": 0, "blank": {}, "evals": 0, "max_window_evals": 0}}
     assert (cc.certify_contact_geometry, ws.maximise_earliest) == stubbed and len(calls) == 2
 
 
@@ -608,11 +620,13 @@ def _row(policy, with_peak, edges):
     return q.peak_windows_row(_PeakConn(policy, with_peak), chart_id="c", classes=["marriage"], observed={"maximise_earliest_calls": edges})
 
 
-def test_peak_windows_and_maximise_earliest_edges_must_both_be_positive_where_the_policy_admits_peaks():
-    ok = _row(QUALIFICATION, 4, 9)
-    assert ok["passed"] and ok["admitted"] and ok["windows_with_peak_fields_set"] == 4 and ok["maximise_earliest_edges"] == 9
-    assert _row(QUALIFICATION, 0, 9)["problems"][0].startswith("peak_windows_zero")             # 0 is a defect, not a pass
-    assert _row(QUALIFICATION, 4, 0)["problems"][0].startswith("maximise_earliest_edges_zero")
+def test_peak_windows_must_be_positive_and_the_legacy_search_unused_where_the_policy_admits_peaks():
+    """SR-OD1 S3 (N-7): a time-varying window is SOLVED under window_qualification_table/2, so the gate no longer demands `maximise_earliest` edges > 0 (a constants-only
+    slice has none); it demands the opposite — a window numbered by the sampler carries no certificate, so any such call is a defect."""
+    ok = _row(QUALIFICATION, 4, 0)
+    assert ok["passed"] and ok["admitted"] and ok["windows_with_peak_fields_set"] == 4 and ok["legacy_search_calls"] == 0
+    assert _row(QUALIFICATION, 0, 0)["problems"][0].startswith("peak_windows_zero")             # 0 is a defect, not a pass
+    assert _row(QUALIFICATION, 4, 9)["problems"][0].startswith("legacy_search_used")
 
 
 def test_under_the_all_null_policy_no_peak_is_admitted_and_one_that_appears_is_a_defect():

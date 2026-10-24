@@ -18,12 +18,30 @@ and the factor rows the path is sealed against:
 
 A window with a non-constant member (an angular kernel) is checked structurally only and reported as
 `numeric_reproduced = False` — never claimed as reproduced.
+
+S3 (SR-OD1): a window with a qualified FUNCTION-valued member (a point-kernel tent, a graduated dṛṣṭi, a vedha overlay) is no longer "structural only". The
+builder SOLVES it (`window_solver`); this module re-proves the stored numbers with the INDEPENDENT prover `window_solver_check` (`window_solver_check.check_window`
+over plain data adapted here from the stored rows and the verifier's OWN derivations: the kernel geometry, the dṛṣṭi offset, the vedha overlay, the ephemeris
+`position_at`). VERIFIED ⇒ the window is reproduced; REFUTED ⇒ a disagreement (the stored maximum, its instant or the numbers at the peak are wrong);
+UNVERIFIED ⇒ the prover could not settle it inside its budget (the window stays UNVERIFIED and blocks the seal). A BLANK solver window is confirmed the same
+way: the prover must find the structural defect (H1 / H2 / an undeterminable operand) that the stored reason names.
+
+P1c (SR-OD1): a P1 record whose factor rows declare a `category_mapping` is STEP-valued — constant between the instants its
+dignity / combustion / nature state changes, which `p1_operands_check` derives independently from `position_at` and L0. Such a
+window IS reproduced (pieces cut at those instants, value read at each piece's start) once `dynamic_enabled`; without a
+`p1_check` the verifier has no derivation and the record is unqualified by name — a numbered window is then a disagreement.
 """
 from __future__ import annotations
 
-from datetime import timezone
+import bisect
+import functools
+import math
+from datetime import datetime, timedelta, timezone
 
 from . import boundary_match as bm
+from . import p1_operands_check as _p1c
+from . import window_cert_check as _cc
+from . import window_solver_check as _chk
 
 _TOL = 1e-6                                 # REAL (float4) storage round-trip — NOT the peak tie
 _TIE = 1e-9                                 # the frozen measurement contract's peak-tie tolerance
@@ -32,8 +50,11 @@ _TITLE = {"sun": "Sun", "moon": "Moon", "mars": "Mars", "mercury": "Mercury", "j
           "venus": "Venus", "saturn": "Saturn", "rahu": "Rahu", "ketu": "Ketu"}
 
 
-def _row_state(row: dict, rec: dict, drishti_bound: bool, vedha_bound: bool):
-    """('na',) | ('const', v) | ('fn',) | ('unq', reason) for one factor on one record."""
+def _row_state(row: dict, rec: dict, drishti_bound: bool, vedha_bound: bool, p1=None, vedha_overlay=None):
+    """('na',) | ('const', v) | ('fn',) | ('step',) | ('unq', reason) for one factor on one record. `p1` is the
+    `p1_operands_check.P1Binding` of a P1 path (P1c): the verifier's own derivation of the period lord's step-valued states.
+    A vedha factor's `fn` carries (complete, wholly_unknown, blank_reason): `('fn', complete, wholly_unknown, blank_reason)` from the
+    verifier's own derivation (C2, `vedha_overlay`)."""
     fid, ap = row["factor_id"], row.get("applicability")
     if fid == "activity_kernel":
         if not ap:
@@ -51,10 +72,25 @@ def _row_state(row: dict, rec: dict, drishti_bound: bool, vedha_bound: bool):
             return ("na",)
         return ("fn",) if drishti_bound else ("unq", "graduated_drishti_source_not_landed")
     if fid == "vedha_attenuation":
-        return ("fn",) if vedha_bound else ("unq", "vedha_overlay_not_bound")
+        if not vedha_bound:
+            return ("unq", "vedha_overlay_not_bound")
+        if vedha_overlay is None:
+            raise RuntimeError("window verifier: a vedha source is bound but no independent vedha derivation was supplied "
+                               "(derive one with vedha_verifier.derive_overlay)")
+        derived = vedha_overlay(rec["id"])
+        if not derived.applicable:
+            return ("na",)             # adverse residence / a house with no cited pair: declared not-applicable, never a silent 1
+        return ("fn", derived.complete, derived.wholly_unknown, derived.blank_reason)
     if fid in ("dignity_of_transit_sign", "combustion", "agent_nature", "maitri_compound"):
         if row.get("value_mapping"):
             raise RuntimeError(f"window verifier: {fid} declares a value_mapping it cannot derive from")
+        if row.get("category_mapping"):
+            if fid == "maitri_compound":
+                return ("unq", "maitri_compound_retired_not_derivable")      # Q7 b: retired from P1, no derivation exists
+            if p1 is None:
+                return ("unq", "p1_derivation_not_supplied")                  # declared, yet nothing here can derive it
+            problem = p1.record_problem(fid, rec)
+            return ("unq", problem) if problem else ("step",)
         return ("unq", "value_mapping_undeclared")
     if fid == "karaka_agent":
         # K-A (ND-H-20261005; registry `karaka_agent` row): a RANK category — never admits, excludes or zeroes.
@@ -72,9 +108,9 @@ def _row_state(row: dict, rec: dict, drishti_bound: bool, vedha_bound: bool):
 #: R8-6: a record with a STATE-valued operand (a dṛṣṭi source, a vedha overlay) is solved piecewise between the
 #: instants the operand's state changes, so those instants must be known COMPLETELY — otherwise it is unqualified.
 #: The verifier's own statement of what the substrate can supply: a dṛṣṭi record's changes are the body's sign
-#: ingresses, complete only where the class's coverage partition completed the whole support; NO source of vedha
-#: overlay edges exists, so any record carrying a vedha factor is incomplete. (The builder's SweepRecord asserts the
-#: same through `state_boundaries_complete`; these are two derivations.)
+#: ingresses, complete only where the class's coverage partition completed the whole support; a vedha record's changes
+#: are the edges of the verifier's OWN derivation (`vedha_verifier`, C2), complete when its segments tile the supports.
+#: (The builder's per-factor `OperandSource.complete` asserts the same; these are two derivations.)
 _STATE_VALUED = ("graduated_drishti", "vedha_attenuation")
 STATE_BOUNDARIES_REASON = "state_boundaries_incomplete"
 
@@ -92,15 +128,32 @@ def _boundaries_complete(relation, supports, completed) -> bool:
     return all(completed.lower <= a and b <= completed.upper for a, b in supports)
 
 
-def _record_state(factor_rows, rec, drishti_bound, vedha_bound):
-    states = [_row_state(r, rec, drishti_bound, vedha_bound) for r in factor_rows]
+def _record_state(factor_rows, rec, drishti_bound, vedha_bound, vedha_overlay=None, p1=None):
+    # the overlay concerns the vedha row alone and the P1 derivation the P1 rows: every other call keeps the bare four-argument
+    # `_row_state` contract
+    def _kw(r):
+        kw = {}
+        if p1 is not None:
+            kw["p1"] = p1
+        if vedha_overlay is not None and r["factor_id"] == "vedha_attenuation":
+            kw["vedha_overlay"] = vedha_overlay
+        return kw
+    states = [_row_state(r, rec, drishti_bound, vedha_bound, **_kw(r)) for r in factor_rows]
     if any(s[0] == "unq" for s in states):
         return ("unq", sorted({s[1] for s in states if s[0] == "unq"}))
-    state_valued_fn = any(s[0] == "fn" and r["factor_id"] in _STATE_VALUED for s, r in zip(states, factor_rows))
-    if state_valued_fn and not rec.get("boundaries_complete"):
+    state_valued = [(s, r) for s, r in zip(states, factor_rows) if s[0] == "fn" and r["factor_id"] in _STATE_VALUED]
+    # completeness is judged PER FACTOR: a vedha factor by its own derivation's tiling, every other by the record-wide rule
+    if any(not (s[1] if r["factor_id"] == "vedha_attenuation" and len(s) > 1 else rec.get("boundaries_complete"))
+           for s, r in state_valued):
         return ("unq", [STATE_BOUNDARIES_REASON])
+    # a vedha value undeterminable over EVERY instant of the supports makes the record itself unqualified (the sweep's §2.1 rule), under the reason it names
+    blank = [s[3] for s, r in state_valued if r["factor_id"] == "vedha_attenuation" and len(s) > 3 and s[2]]
+    if blank:
+        return ("unq", sorted(set(blank)))
     if any(s[0] == "fn" for s in states):
         return ("fn", None)
+    if any(s[0] == "step" for s in states):
+        return ("step", None)           # value and side come from the P1 derivation, per piece
     value = 1.0
     for s in states:
         if s[0] == "const":
@@ -108,7 +161,14 @@ def _record_state(factor_rows, rec, drishti_bound, vedha_bound):
     return ("const", value)
 
 
-def _channel(event_class: str, path_id: str, rec: dict) -> str:
+#: W0: the marker for a record whose side is decided PER INSTANT by a factor (P1 agent_nature, Q3(a)); the channel at t then
+#: comes from the caller-supplied `channel_at`, never from this module's static derivation
+PER_INSTANT = "per_instant"
+
+
+def _channel(event_class: str, path_id: str, rec: dict, *, per_instant: bool = False) -> str:
+    if path_id == "P1" and per_instant:
+        return PER_INSTANT
     if path_id in ("P3", "P4"):
         return "evidence_for_occurrence"
     if path_id == "P2":
@@ -123,9 +183,18 @@ def _channel(event_class: str, path_id: str, rec: dict) -> str:
     raise RuntimeError(f"window verifier: path {path_id} has no channel derivation")
 
 
-def _against_evaluated(path_id: str, factor_rows: list[dict]) -> bool:
+def _names_a_channel(direction) -> bool:
+    return isinstance(direction, str) and ("channel" in direction or "valence" in direction)
+
+
+def _against_evaluated(path_id: str, factor_rows: list[dict], *, per_instant_channel: bool = False) -> bool:
     if path_id == "P2":
         return True
+    if path_id == "P1" and per_instant_channel:
+        # P1B: the caller derives each P1 record's side per instant, so a row that names a channel is an evaluable
+        # against-channel operand; a silent or unparseable direction (neither magnitude-only nor naming a channel) is not
+        return bool(factor_rows) and all(r.get("direction") in _MAGNITUDE_ONLY or _names_a_channel(r.get("direction"))
+                                         for r in factor_rows)
     return bool(factor_rows) and all(r.get("direction") in _MAGNITUDE_ONLY for r in factor_rows)
 
 
@@ -135,19 +204,264 @@ def earliest_max(cands):
     return best, min(t for v, t in cands if v >= best - _TIE)
 
 
-def _pieces(lo, hi, recs):
-    """Elementary pieces of [lo, hi): between consecutive clipped support endpoints."""
+def _pieces(lo, hi, recs, extra_cuts=None):
+    """Elementary pieces of [lo, hi): between consecutive clipped support endpoints, and — W0 — at the instants
+    `extra_cuts(rid, record, a, b)` lists inside each clipped support (a per-instant channel's change instants)."""
     cuts = {lo, hi}
-    for r in recs.values():
+    for rid, r in recs.items():
         for a, b in r["supports"]:
             if a < hi and b > lo:
                 cuts.update((max(a, lo), min(b, hi)))
+                if extra_cuts is not None:
+                    cuts.update(c for c in extra_cuts(rid, r, max(a, lo), min(b, hi)) if lo < c < hi)
     ordered = sorted(cuts)
     return list(zip(ordered, ordered[1:]))
 
 
 def _live(recs, t):
     return [rid for rid, r in recs.items() if any(a <= t < b for a, b in r["supports"])]
+
+
+
+# ── S3: the adapter from stored rows to the independent prover (`window_solver_check`) ─────────────────────────────────────────────
+
+#: the named reasons a SOLVER window may be blank under — this verifier's OWN literals (the builder's live in `window_solver`; a test asserts equality)
+SOLVER_STRUCTURAL = {"monotone_arc_not_established": _chk.F_H1, "state_boundaries_incomplete": _chk.F_H2}
+SOLVER_BUDGET_REASONS = ("solver_budget_exhausted", "solver_certificate_incomplete")
+#: SR-NEAR-STATION-TIE: the builder's blank for a window whose station zone can host the earliest tie. Confirmed by the prover's OWN re-derivation
+#: (`window_solver_check.confirm_tie_isolation`), not by a finding code: the window has no stored peak to refute.
+SOLVER_TIE_ZONE_REASON = "tie_isolation_unresolved"
+SOLVER_UNKNOWN_REASONS = ("objective_unknown_over_component", "objective_undeterminable")
+#: the named reasons a dṛṣṭi read may be undeterminable under (the rule authority's `graduated_drishti` reasons, restated here; SR-D6-OBJECTIVE-UNKNOWN —
+#: the generic code never stands for one of them, and a node as the aspecting agent is not a window blank at all: N-14, declared not-applicable at the inventory)
+DRISHTI_UNKNOWN_REASONS = ("agent_unrecognised", "node_casts_no_drishti", "offset_not_an_inclusive_house_count_1_12", "no_aspect_rule_defined_at_offset")
+_SPAN_KERNEL_VALUE_KEY = "inside"
+
+
+def _point_levels(rec: dict, target: str | None):
+    """(target longitude, rays) of a POINT record: the verifier's own statement of the kernel geometry — the directed dṛṣṭi angles are the record's body's
+    (`_ASPECT_ANGLES`), a conjunction has the single ray 0."""
+    if target is None or not target.startswith("point:"):
+        raise RuntimeError(f"window verifier: point record {rec['id']} carries the target {target!r}, not point:<longitude>")
+    lam = float(target.split(":", 1)[1]) % 360.0
+    if rec["relation"] == "aspect":
+        rays = _ASPECT_ANGLES[rec["agent"]]
+        if not rays:
+            raise RuntimeError(f"window verifier: record {rec['id']}: a node casts no dṛṣṭi (N-14) — an aspect record on {rec['agent']!r} cannot be checked")
+        return lam, tuple(rays)
+    return lam, (None,)
+
+
+def _record_targets(conn, rids) -> dict:
+    """{record_id: canonical_target} by this verifier's own SQL (a separate read, so the member read keeps its column contract)."""
+    if not rids:
+        return {}
+    rows = conn.execute(
+        "SELECT r.record_id::text, o.canonical_target FROM public.ka_gochara_relationship_record r"
+        " JOIN public.ka_gochara_physical_object o ON o.physical_object_id = r.object_id WHERE r.record_id::text = ANY(%s)", (sorted(rids),)).fetchall()
+    return {(r["record_id"] if isinstance(r, dict) else r[0]): (list(r.values())[1] if isinstance(r, dict) else r[1]) for r in rows}
+
+
+def _ingress_instants(conn, rid: str, agent: str) -> list:
+    """The stored sign-ingress instants of the record's body under the record's contact convention (the dṛṣṭi offset's change instants)."""
+    rows = conn.execute(
+        "SELECT e.t_exact FROM public.ka_gochara_sky_event e WHERE e.event_kind = 'sign_ingress' AND e.t_exact IS NOT NULL AND e.body = %s"
+        " AND e.convention_id = (SELECT c.convention_id FROM public.ka_gochara_relationship_record r"
+        "   JOIN public.ka_gochara_contact c ON (c.chart_id, c.generation, c.contact_id) = (r.chart_id, r.generation, r.contact_id)"
+        "   WHERE r.record_id::text = %s) ORDER BY e.t_exact", (agent, rid)).fetchall()
+    return [next(iter(r.values())) if isinstance(r, dict) else r[0] for r in rows]
+
+
+_UNIX_EPOCH_JD = 2440587.5                  # JD of 1970-01-01T00:00:00 UTC (the verifier's own statement of the calendar anchor)
+
+
+def _edge_ulp(c) -> timedelta:
+    """One JD-ulp at the stored edge `c`, in whole microseconds, rounded UP and widened by 1 µs (the storage grain). A stored change instant is a JD double
+    bisected to 1e-9 d and written as a µs datetime, so it is exact to this and no better (SR-H2-1S / R-2). Never looser: ~40 µs at today's JD."""
+    jd = _UNIX_EPOCH_JD + (c - datetime(1970, 1, 1, tzinfo=c.tzinfo)).total_seconds() / 86400.0
+    return timedelta(microseconds=math.ceil(math.ulp(jd) * 86400e6) + 1)
+
+
+def _sliver_resolution_s(t) -> float:
+    """SR-P1-SLIVER-D2: the stored-edge resolution at `t`, in seconds: the spacing of the JD double that carries the instant (≈ 40.2 µs at JD 2.46e6), COMPUTED from the
+    instant, never a literal. A piece shorter than this is one sky event read on two paths, not a sky configuration: it is no candidate for the window's maximum (N.7.6).
+    This verifier's own statement of the rule; the builder's (`window_sweep.sliver_resolution_s`) is never imported."""
+    return math.ulp(_UNIX_EPOCH_JD + (t - datetime(1970, 1, 1, tzinfo=timezone.utc)).total_seconds() / 86400.0) * 86400.0
+
+
+def _read_instant(edges, t):
+    """The instant at which the state owning `t` is read. The convention is half-open, the NEW state owns the boundary instant (`p1_operands_check` NAMED
+    LIMITS), compared at the stored edge's own precision: `t` within one ulp after a stored edge `c` is read at `c + ulp` (the new state), and `t` within
+    one ulp before the next edge `c'` is read at `c' - ulp` (still the old state). Anything farther from an edge is read where it stands, so an edge
+    listed seconds from the real change still leaves a piece whose state steps and is refuted."""
+    k = bisect.bisect_right(edges, t)
+    if k:
+        u = _edge_ulp(edges[k - 1])
+        if t - edges[k - 1] < u:
+            return edges[k - 1] + u
+    if k < len(edges):
+        u = _edge_ulp(edges[k])
+        if edges[k] - t <= u:
+            return edges[k] - u
+    return t
+
+
+def _drishti_step(conn, rec: dict, row: dict, target: str, position_at):
+    """The graduated-dṛṣṭi factor as a `StepFactor`: the whole-sign inclusive house offset from the aspecting body's sign to the target's sign, read from the
+    ephemeris at each instant, through Stream B's cited table (the rule authority, shared by design). Its change instants are the body's stored sign
+    ingresses, asserted complete only where the coverage rule says so."""
+    from services.gochara_rules import drishti as _rules_drishti
+    ref = (row["factor_id"], row["rule_version"])
+    title = _TITLE[rec["agent"]]
+    if target.startswith("span:"):
+        tgt_sign = int(target.split(":", 1)[1]) - 1
+    elif target.startswith("point:"):
+        tgt_sign = int(float(target.split(":", 1)[1]) // 30.0) % 12
+    else:
+        raise RuntimeError(f"window verifier: record {rec['id']}: no dṛṣṭi offset for the target {target!r}")
+
+    def answer(t):
+        src_sign = int(position_at(rec["agent"], t) // 30.0) % 12
+        out = _rules_drishti.graduated_drishti(title, (tgt_sign - src_sign) % 12 + 1, factor_ref=ref)
+        if tuple(out.get("factor") or ()) != ref:
+            raise RuntimeError(f"window verifier: graduated_drishti answered for {out.get('factor')!r}, asked for {ref!r}")
+        return out
+    ingress = _ingress_instants(conn, rec["id"], rec["agent"])
+    # SR-D6-OBJECTIVE-UNKNOWN: the factor's own NAMED reason for an undeterminable read comes from this verifier's own call of the rule
+    # authority (never from the builder), so the prover's operand_undeterminable finding carries a name the stored blank can be held to
+    return _chk.StepFactor(value_at=lambda t, _i=ingress: answer(_read_instant(_i, t))["value"], boundaries=lambda lo, hi, _i=ingress: [c for c in _i if lo < c < hi],
+                           complete=bool(rec.get("boundaries_complete")),
+                           unknown_reason=lambda t, _i=ingress: answer(_read_instant(_i, t)).get("reason"))
+
+
+class NoSolverDerivation(RuntimeError):
+    """A factor (or a P1 binding) the verifier has no solver-check derivation for: a NAMED refusal. The certificate check keeps it a RuntimeError (as before); the G-6
+    resolver reads it as "the window is not covered" (None, unresolved), never as a disagreement (§N.7.6, §N.8)."""
+
+
+#: the three P1 Form-B categorical rows are ONE step-valued table (agent_nature x dignity x combustion, `p1_operands_check.P1Binding._evaluate`): one `StepFactor` per record
+_P1_STEP_FACTORS = ("agent_nature", "dignity_of_transit_sign", "combustion")
+
+
+def _p1_step_factor(p1, rec: dict):
+    """A P1 record's categorical product as a `StepFactor` from the verifier's own `P1Binding`: value at t (None = undeterminable at t, the prover's own refusal), change
+    instants = the binding's `channel_boundaries`, complete by that derivation."""
+    def value_at(t):
+        v = p1.value_at(rec, t)
+        return None if isinstance(v, _p1c.P1Unknown) else v
+    return _chk.StepFactor(value_at=value_at, boundaries=lambda lo, hi: p1.channel_boundaries(rec, lo, hi), complete=True)
+
+
+def _checker_records(conn, *, recs: dict, qualified: dict, chans: dict, factor_rows: list, position_at, vedha_overlay, channel_at, channel_boundaries, p1=None):
+    """The window's members as the prover's plain data. A record with several directed rays becomes one `CheckRecord` per ray (the kernel is the best ray: a max
+    inside the record's root / agent group). Every factor is derived here from the stored row, the factor rows and the ephemeris — never read from the builder."""
+    targets = _record_targets(conn, [rid for rid, r in recs.items() if rid in qualified and r["relation"] in ("residence", "aspect", "conjunction")])
+    out = []
+    for rid, rec in recs.items():
+        chan = chans[rid]
+        per_instant = chan == PER_INSTANT
+        kw = dict(root=rec["root"], agent=rec["agent"], supports=tuple((a, b) for a, b in rec["supports"]),
+                  channel=None if per_instant else chan,
+                  channel_at=(lambda t, _r=rec: channel_at(_r, t)) if per_instant and channel_at is not None else None,
+                  channel_boundaries=(lambda lo, hi, _r=rec: channel_boundaries(_r, lo, hi)) if per_instant and channel_boundaries is not None else None)
+        if rid not in qualified:
+            out.append(_chk.CheckRecord(record_id=rid, qualified=False, **kw))
+            continue
+        constant, steps, tent = 1.0, [], None
+        p1_step = None
+        for row in factor_rows:
+            fid, ap = row["factor_id"], row.get("applicability")
+            if fid == "activity_kernel":
+                span, ang = (ap or {}).get("span") or {}, (ap or {}).get("angular") or {}
+                if rec["kind"] in (span.get("object_kinds") or ()):
+                    constant *= float(span["inside"])
+                elif rec["kind"] in (ang.get("object_kinds") or ()):
+                    tent = (float(ang["orb_deg"]), *_point_levels(rec, targets.get(rid)))
+            elif fid == "graduated_drishti":
+                if rec["relation"] in ((ap or {}).get("relations") or ()):
+                    steps.append(_drishti_step(conn, rec, row, targets.get(rid) or "", position_at))
+            elif fid == "vedha_attenuation":
+                derived = vedha_overlay(rid)
+                if derived.applicable:
+                    steps.append(_chk.StepFactor(value_at=derived.value_at, boundaries=derived.boundaries, complete=derived.complete))
+            elif fid == "karaka_agent" and row.get("null_state") == "omit":
+                continue
+            elif fid in _P1_STEP_FACTORS and row.get("category_mapping") and p1 is not None:
+                if p1_step is None:      # P1c: the verifier's own P1 derivation (sky + L0), the product of the three rows; its change instants are where value OR side may change
+                    p1_step = _p1_step_factor(p1, rec)
+                    steps.append(p1_step)
+            else:
+                raise NoSolverDerivation(f"window verifier: factor {fid!r} has no solver-check derivation")
+        if tent is None:
+            out.append(_chk.CheckRecord(record_id=rid, constant=constant, steps=tuple(steps), **kw))
+            continue
+        orb, lam, rays = tent
+        for k, ray in enumerate(rays):
+            out.append(_chk.CheckRecord(record_id=f"{rid}#{k}", constant=constant, steps=tuple(steps),
+                                        tent=_chk.TentFactor(body=rec["agent"], level_deg=lam, orb_deg=orb, ray_deg=ray), **kw))
+    return out
+
+
+def _structural_codes(report) -> set:
+    return {f.code for f in report.findings if f.code in (_chk.F_H1, _chk.F_H2, _chk.F_UNDET)}
+
+
+def _unknown_name_problem(reason: str, report) -> str | None:
+    """The NAME of an undeterminable-operand blank is held to the prover's own (SR-D6-OBJECTIVE-UNKNOWN): a blank stored under the generic code where
+    the independent derivation names the operand's reason, or under one dṛṣṭi reason where the prover reads another, is a builder that dropped or
+    changed the name. None when the stored reason is consistent (or the prover names nothing, or the reason is not a dṛṣṭi/generic one)."""
+    named = sorted({f.reason for f in report.findings if f.code == _chk.F_UNDET and f.reason})
+    if named and (reason in SOLVER_UNKNOWN_REASONS or (reason in DRISHTI_UNKNOWN_REASONS and reason not in named)):
+        return f"blank under {reason!r}, but the independent derivation names the undeterminable operand {named} — the reason is dropped or changed"
+    return None
+
+
+def _certificate_verdict(window: dict, *, records: list, objective: str, position_at, against_evaluated: bool, ov):
+    """The verifier's own check of ONE function-valued window against the builder's stored `solver_certificate` (R-6/R-7): `window_cert_check.check_numbered`
+    for a numbered window (its stored maximum, instant and the numbers at the peak, with the search seeded from the certificate), `check_budget_blank` for a
+    `solver_budget_exhausted` blank. Returns a `CertReport` (AGREED / DISAGREEMENT / INCONCLUSIVE). A window with no certificate is a DISAGREEMENT (the
+    sweep always stores one for a solved or budget-exhausted window) — never a pass."""
+    certificate = (window["qualification"] or {}).get("solver_certificate")
+    if window["peak"] is None:
+        return _cc.check_budget_blank(lo=window["lo"], hi=window["hi"], records=records, objective=objective, position_at=position_at, certificate=certificate,
+                                      event_class=window["event_class"])
+    stored = _chk.StoredWindow(peak_instant=window["peak"], objective_value=ov, score=window["score"], evidence_for=window["evidence_for"],
+                               evidence_against=window["evidence_against"], outcome_valence=window["valence"])
+    return _cc.check_numbered(lo=window["lo"], hi=window["hi"], records=records, objective=objective, stored=stored, position_at=position_at,
+                              certificate=certificate, event_class=window["event_class"], against_evaluated=against_evaluated)
+
+def _g6_inputs(conn, *, recs, qualified, chans, factor_rows, position_at, vedha_overlay, channel_at, channel_boundaries, window: dict, path_id: str, against_ok: bool, p1=None):
+    """The inputs of one numbered window's G-6 from-scratch re-solve (SR-OD1 R8X S-1), built from the stored row, the factor rows and the verifier's own sky with the SAME
+    derivation `_certificate_verdict` uses (`_checker_records`) — never from the builder's certificate. None (the resolver does not cover the window) when there is no sky to
+    solve over or the stored window states no maximum to compare with: an honest null, never a pass."""
+    if position_at is None:
+        return None
+    ov = window["objective_value"] if window["objective_value"] is not None else (window["score"] if path_id == "P4" else None)
+    if ov is None:
+        return None
+    stored = _chk.StoredWindow(peak_instant=window["peak"], objective_value=ov, score=window["score"], evidence_for=window["evidence_for"],
+                               evidence_against=window["evidence_against"], outcome_valence=window["valence"])
+    try:
+        records = _checker_records(conn, recs=recs, qualified=qualified, chans=chans, factor_rows=factor_rows, position_at=position_at, vedha_overlay=vedha_overlay,
+                                   channel_at=channel_at, channel_boundaries=channel_boundaries, p1=p1)
+    except NoSolverDerivation:
+        return None                  # a factor with no derivation here: the window is not covered (named refusal, unresolved) — never a disagreement
+    return dict(lo=window["lo"], hi=window["hi"], records=records, objective=_chk.OBJ_MAXMIN if path_id == "P4" else _chk.OBJ_SUM, stored=stored,
+                position_at=position_at, event_class=window["event_class"], against_evaluated=against_ok)
+
+
+def g6_resolver(inputs: dict):
+    """The PRODUCTION G-6 resolver (`g6_plan`'s contract: `resolver(request) -> CertReport | None`) over one grain's numbered windows. `inputs` is the `resolve_inputs` mapping
+    `verify_window_semantics` filled while it verified the grain: `{window_id: thunk}`, each thunk building `_g6_inputs` on demand (only the selected ~3 % + five windows pay for it).
+    The re-solve is `window_cert_check.check_numbered(resolve=True)`: NO certificate is used, the verifier's own enclosure solves the window from scratch and compares it with the
+    stored numbers. A window the grain did not verify as numbered (no thunk) or one the inputs cannot be built for is not covered: None, which the plan records as unresolved."""
+    def resolve(request: dict):
+        make = inputs.get(request["window_id"])
+        args = None if make is None else make()
+        if args is None:
+            return None
+        return _cc.check_numbered(certificate=None, resolve=True, **args)
+    return resolve
 
 
 #: the frozen qualification policy this verifier implements (R8-4) — the builder's `window_sweep.draft_windows`
@@ -191,8 +505,63 @@ def _expected_valence(event_class, ev_for, ev_against, reason):
 def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class: str, path_id: str,
                             rule_version: str, factor_rows: list[dict],
                             drishti_bound: bool = False, vedha_bound: bool = False,
-                            dynamic_enabled: bool = False, policy: str | None = None) -> dict:
+                            dynamic_enabled: bool | None = None, policy: str | None = None,
+                            solver_check: bool = True, channel_at=None, channel_boundaries=None, p1_check=None,
+                            vedha_overlay=None, moon_sign: int | None = None, position_at=None, solver_check_fn=None,
+                            ephe_path: str | None = None, resolve_inputs: dict | None = None) -> dict:
+    """`dynamic_enabled` (S3): whether a window with a function-valued member is SOLVED (the `window_qualification_table/2` rule 2) or still blank under the
+    retired dynamic switch. None (the default) follows the table this code implements: solved under `window_qualification/1`. `False` answers a build made
+    with the legacy switch (tests of the retired behaviour only).
+
+    `solver_check` (W0, plan N-6; S3): whether THIS call runs the independent prover (`window_solver_check`) on a window whose numbers cannot be reproduced
+    by the constant-window derivation (a function-valued member under `dynamic_enabled`), over the ephemeris `position_at`. The in-build self-check in the writer
+    passes False — the independent prover runs once, in the verification job, not twice inside the writer's cap — and then
+    reports those windows as DEFERRED (`solver_check_deferred_windows`), never as checked. A call with `solver_check=True` but no `position_at` has no
+    ephemeris to prove against: the windows stay UNVERIFIED (`solver_check_unavailable_windows`). `solver_checked_windows` counts the windows the prover
+    settled (VERIFIED); the report says what ran. A deferral never satisfies a gate — the windows stay UNVERIFIED.
+
+    `channel_at(record, t)` / `channel_boundaries(record, lo, hi)` (W0): the per-instant channel of a P1 record and its change
+    instants, supplied by the caller's own derivation; absent ⇒ a P1 record has no channel derivation (refused, as before).
+
+    `solver_check_fn` (R-6/R-7): the verifier's check of a function-valued window's stored numbers and certificate. Called with ONE dict
+    {window, lo, hi, peak, score, evidence_for, evidence_against, valence, objective_value, qualification, records, qualified, event_class,
+    path_id, rule_version} per such window when `solver_check` is true; it returns a `window_cert_check.CertReport` (or any object with
+    `.classification` in AGREED / DISAGREEMENT / INCONCLUSIVE, `.findings` and `.inconclusive`), or None for a window it does not cover
+    (that window stays UNVERIFIED, as before). AGREED numbered ⇒ reproduced and numeric; AGREED blank (a justified `solver_budget_exhausted`) ⇒
+    reproduced; DISAGREEMENT ⇒ a problem (the report raises: the seal is blocked, always); INCONCLUSIVE ⇒ the window is DEMOTED — counted as
+    reproduced (as the named blank it will be served as), listed in `inconclusive_windows` with its stored `window_id`, reason and valence, never in `numeric_reproduced`,
+    and capped by the numerical-window gate. Without a `solver_check_fn`, a call that has `position_at` runs the verifier's own adapter
+    (`_certificate_verdict`: `_checker_records` + `window_cert_check`) — the same classes, from the stored certificate; a call with neither leaves the
+    window UNVERIFIED (`solver_check_unavailable_windows`).
+
+    `resolve_inputs` (SR-OD1 R8X S-1): when a dict is passed, every NUMBERED window this call reaches is registered in it, keyed by its `window_id`, as a thunk that builds the inputs of its G-6
+    from-scratch re-solve (`_g6_inputs`) from the same members, factor rows and sky as the certificate check — nothing is derived unless the plan selects the window (`g6_resolver`).
+
+    `p1_check` (P1c): a `p1_operands_check.P1Check` — the verifier's own sky + L0 derivation of the P1 states. Bound to this
+    path's factor rows it supplies the P1 records' value, side (`channel_at`), unknown reasons and change instants, replacing any
+    `channel_at` / `channel_boundaries` passed in. A P1 path whose rows declare no `category_mapping` is unchanged by it.
+
+    `vedha_overlay` / `moon_sign` (C2): with a vedha source bound, a record's vedha factor is read from `vedha_overlay(record_id)`
+    — by default the overlay this verifier derives itself, the obstructors' residence from the ephemeris (`vedha_verifier.derive_overlay`,
+    given the janma-rāśi sign `moon_sign` 1..12 when the caller has it from the L1 snapshot). Not applicable ⇒ the factor takes no
+    part; undeterminable throughout ⇒ the record is unqualified; otherwise a complete-edged step function (a `fn`, so the window
+    stays UNVERIFIED until the solver check exists).
+    """
     grain = (chart_id, generation, event_class, path_id, rule_version)
+    p1 = None
+    if path_id == "P1" and p1_check is not None and _p1c.needs_p1_check(factor_rows):
+        p1 = p1_check.bind(factor_rows, event_class)
+        channel_at, channel_boundaries = p1.channel_at, p1.channel_boundaries
+    derived_vedha = None
+    if vedha_bound and vedha_overlay is None and any(r["factor_id"] == "vedha_attenuation" for r in factor_rows):
+        from . import vedha_verifier as _vv
+        # SR-VEDHA-RESIDENCE-SOURCE: the verifier reads the ephemeris itself (its own reader); the directory is the caller's `ephe_path`, else the one
+        # the caller's position probe declares (`cache_key`), else the environment's `SE_EPHE_PATH` — the probe's CODE is never used
+        declared = getattr(position_at, "cache_key", None)
+        vedha_overlay = derived_vedha = _vv.derive_overlay(
+            conn, chart_id=chart_id, generation=generation, event_class=event_class, path_id=path_id,
+            rule_version=rule_version, moon_sign=moon_sign,
+            ephe_path=ephe_path or (declared[1] if isinstance(declared, tuple) and len(declared) == 2 else None))
     # R9-1: the policy is the MANIFEST's. An explicit `policy` is only for a generation without a manifest row (the
     # solver's own fixtures); against a manifest it must agree — it never overrides it.
     manifest_policy = _manifest_policy(conn, grain)
@@ -202,30 +571,38 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
         raise RuntimeError(f"window verifier: policy {policy!r} != the manifest's {manifest_policy!r}")
     if policy not in POLICIES:
         raise RuntimeError(f"window verifier: no result policy selected (the generation has no manifest row)")
+    if dynamic_enabled is None:
+        dynamic_enabled = policy == POLICY_VERSION
     prov_cols = conn.execute(
         "SELECT count(*) FROM pg_attribute WHERE attrelid = 'public.ka_gochara_eval_window'::regclass"
         " AND attname IN ('objective', 'objective_value', 'qualification') AND NOT attisdropped").fetchone()
     has_prov = (next(iter(prov_cols.values())) if isinstance(prov_cols, dict) else prov_cols[0]) == 3
     windows = [tuple(r.values()) if isinstance(r, dict) else tuple(r) for r in conn.execute(
-        "SELECT window_id::text, lower(interval), upper(interval), peak_instant, score,"
-        " evidence_for, evidence_against, severity, null_states_used, outcome_valence_for_native,"
-        + (" objective, objective_value, qualification" if has_prov else " NULL, NULL, NULL") +
+        # SR-F4-STORE-EXACT: every REAL is read as float8. The driver's default text read of a float4 is the SHORTEST decimal that round-trips it (1.9420573 for the
+        # stored 1.94205725…), a double up to half a float4 spacing away from the number the database holds; compared against the independent re-derivation inside
+        # `_f4_tol` (half a spacing) it stacked a second half-spacing on the builder's own rounding and read a correct store as a disagreement. `::float8` is exact.
+        "SELECT window_id::text, lower(interval), upper(interval), peak_instant, score::float8,"
+        " evidence_for::float8, evidence_against::float8, severity::float8, null_states_used, outcome_valence_for_native,"
+        + (" objective, objective_value::float8, qualification" if has_prov else " NULL, NULL, NULL") +
         " FROM public.ka_gochara_eval_window WHERE chart_id = %s AND generation = %s"
         " AND event_class = %s AND path_id = %s AND rule_version = %s ORDER BY 2", grain).fetchall()]
     # R9-2: the COMPLETE expected membership, derived here from the grain's own records — not read back from the stored
     # links. Every admitted scored record whose support overlaps a window is a member; no other record is; no admitted
     # record with a support sits in no window. The numeric derivation below runs over the EXPECTED members.
+    # R-5 (SR-PLAN-REVIEW-RECONCILED): a P1 record's governed subject is its PERIOD ANCHOR LORD (migration 1233), else its agent; the
+    # anchor is selected LAST so a caller's row without it still reads as "no anchor" (the agent). Other paths carry no anchor.
+    anchor_col = "r.period_anchor_lord" if path_id == "P1" else "NULL::text"
     record_rows = conn.execute(
         "SELECT r.record_id::text, COALESCE(r.contact_id, r.object_id)::text,"
-        " r.relation, r.object_kind, r.agent, r.house_from_frame, lower(s.x), upper(s.x)"
+        " r.relation, r.object_kind, r.agent, r.house_from_frame, lower(s.x), upper(s.x), " + anchor_col +
         " FROM public.ka_gochara_relationship_record r"
         " CROSS JOIN LATERAL unnest(r.temporal_support_intervals) AS s(x)"
         " WHERE r.chart_id = %s AND r.generation = %s AND r.event_class = %s AND r.path_id = %s"
         " AND r.rule_version = %s AND r.admission_state = 'admitted' AND r.operator_role = 'scored'", grain).fetchall()
     grain_records: dict[str, dict] = {}
-    for rid, root, rel, kind, agent, house, lo, hi in record_rows:
-        rec = grain_records.setdefault(rid, {"root": root, "relation": rel, "kind": kind, "agent": agent,
-                                             "house": house, "supports": []})
+    for rid, root, rel, kind, agent, house, lo, hi, *anchor in record_rows:
+        rec = grain_records.setdefault(rid, {"id": rid, "root": root, "relation": rel, "kind": kind, "agent": agent,
+                                             "anchor": anchor[0] if anchor else None, "house": house, "supports": []})
         rec["supports"].append((lo, hi))
     stored_links: dict[str, set] = {}
     for wid, rid in conn.execute(
@@ -256,12 +633,27 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
     for recs_ in by_window.values():
         for rec_ in recs_.values():
             rec_["boundaries_complete"] = _boundaries_complete(rec_["relation"], rec_["supports"], completed)
-    against_ok = _against_evaluated(path_id, factor_rows)
+    against_ok = _against_evaluated(path_id, factor_rows, per_instant_channel=channel_at is not None)
     problems: list[str] = list(membership_problems)
     numeric = 0
     fully_reproduced = 0            # windows whose stored fields were reproduced EXACTLY (incl. the NULL ones)
     unverified: list[str] = []      # windows with a function-valued member while the solver is enabled
+    deferred: list[str] = []        # …of those, the ones whose solver check this call was told to leave to the verification job
+    unavailable: list[str] = []     # …and the ones it was asked to check but had no ephemeris to prove against
+    inconclusive: list[dict] = []   # R-6: windows the certificate check could not settle inside the verifier's own budget — demoted to a named blank at seal
+    solver_checked = 0              # windows the independent check SETTLED (a numbered window AGREED, a blank window's certificate or defect CONFIRMED) or demoted
+    solver_blank: dict[str, int] = {}   # …of which blank windows, by the stored reason the check confirmed
+    # SR-UCERT-CAP-WATCH: how often the verifier's per-window deep-bisection allowance (`window_solver_check.DEEP_SPLIT_CAP`) was used / spent, read off the deciding
+    # check's own record (`rederived`); a window whose verdict carries no such record (a budget blank, an injected `solver_check_fn`) is counted in none of these.
+    deep_split = {"windows_using_deep_cuts": 0, "windows_spent_allowance": 0, "deep_bisections": 0, "allowance_exhausted_leaves": 0}
+    unverified_why: dict[str, list] = {}
     detail: list[dict] = []         # the lossless qualification provenance, DERIVED here (1156 has no column)
+    inherited = None                # R4: the combustion authority THIS verifier read (None = no P1 binding ⇒ the window carries no such key)
+    if p1 is not None and has_prov:          # only a window table that persists the provenance carries it
+        try:
+            inherited = p1.check.combustion_inheritance()
+        except _p1c.StrictInputError as exc:
+            problems.append(f"combustion inheritance cannot be derived: {exc}")
 
     def expect_null_window(tag, stored, reason):
         """The window must carry no numeric result: NULL score/peak/evidence and the unqualified valence."""
@@ -292,18 +684,38 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
         want_q = {"policy": policy, "unqualified_reason": row["unqualified_reason"], "unresolved": row["unresolved"],
                   "affected_channels": row["affected_channels"], "members": row["members"],
                   "qualified_members": qualified_members}
-        if s_qual != want_q:
+        if inherited is not None:
+            want_q["combustion_inheritance"] = inherited
+            # R4 (SR-Q6-L1-AMEND): the combustion authority is compared FIELD BY FIELD, so a refusal names what differs (the orb rows, or the L1 code)
+            got = s_qual.get("combustion_inheritance")
+            if not isinstance(got, dict):
+                problems.append(f"{tag}: the window records no combustion inheritance (orb rows + L1 module digest)")
+            else:
+                for k in sorted(set(inherited) | set(got)):
+                    if got.get(k) != inherited.get(k):
+                        problems.append(f"{tag}: combustion inheritance {k} {got.get(k)!r} != re-derived {inherited.get(k)!r}")
+        # SR-P1-SLIVER-D2: the count of sliver pieces left out of the maximum rides in the generic `certificate` member (migration 1402), present only when it is > 0.
+        # A window re-derived piecewise carries THIS verifier's own count; a solver-checked window (its pieces are the builder's cut structure, which this verifier
+        # does not repeat) carries the builder's, accepted only when it equals the sliver pieces its own stored geometry lists (a count nothing backs is refused)
+        n_sliver = row.get("sliver_pieces_excluded")
+        if n_sliver is None:
+            cert = s_qual.get("solver_certificate")
+            n_sliver = sum(1 for pc in ((cert or {}).get("geometry") or {}).get("pieces", ()) if isinstance(pc, list) and len(pc) == 3 and pc[2] == "sliver")
+        if n_sliver:
+            want_q["certificate"] = {"sliver_pieces_excluded": n_sliver}
+        if {k: v for k, v in s_qual.items() if k != "solver_certificate"} != want_q:
             problems.append(f"{tag}: qualification {s_qual} != re-derived {want_q}")
 
     for (wid, lo, hi, peak, score, ev_for, ev_against, severity, null_states, valence,
          s_objective, s_objective_value, s_qualification) in windows:
         recs = by_window.get(wid, {})
         tag = f"window {lo.astimezone(timezone.utc).isoformat()}"
-        states = {rid: _record_state(factor_rows, r, drishti_bound, vedha_bound) for rid, r in recs.items()}
+        states = {rid: _record_state(factor_rows, r, drishti_bound, vedha_bound, vedha_overlay, p1) for rid, r in recs.items()}
         unq_ids = [rid for rid, s in states.items() if s[0] == "unq"]
         qualified = {rid: s for rid, s in states.items() if s[0] != "unq"}
         null_states = list(null_states or [])
         has_fn = any(s[0] == "fn" for s in qualified.values())
+        has_step = any(s[0] == "step" for s in qualified.values())      # P1c: step-valued from the P1 derivation
         if severity is not None:
             problems.append(f"{tag}: severity {severity} must be NULL")
         if peak is not None and not (lo <= peak < hi):
@@ -314,12 +726,22 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
 
         def chan(rid, must=False):
             try:
-                return _channel(event_class, path_id, recs[rid])
+                c = _channel(event_class, path_id, recs[rid], per_instant=channel_at is not None)
             except RuntimeError:
                 if must:
                     raise
                 return None                      # unknown channel: affects BOTH
+            return c if c != PER_INSTANT or rid in qualified else None
         chans = {rid: chan(rid, must=(rid in qualified)) for rid in recs}
+
+        def chan_at(rid, t):
+            """The record's channel at t: the static one, or — a per-instant record — the caller's derivation."""
+            if chans[rid] != PER_INSTANT:
+                return chans[rid]
+            c = channel_at(recs[rid], t)
+            if c not in ("evidence_for_occurrence", "evidence_against_occurrence"):
+                raise RuntimeError(f"window verifier: the per-instant channel of record {rid} at {t.isoformat()} is {c!r}")
+            return c
         reasons: dict[str, int] = {}
         for rid in unq_ids:
             for r in states[rid][1]:
@@ -358,25 +780,32 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
             detail.append(row)
             continue
         # ── policy 2: the dynamic switch ────────────────────────────────────────────────────────────────────
-        if has_fn and not dynamic_enabled:
+        if (has_fn or has_step) and not dynamic_enabled:
             row["unqualified_reason"] = DYNAMIC_SWITCH_REASON
             row["unresolved"] = {**row["unresolved"], DYNAMIC_SWITCH_REASON: sum(
-                1 for s in qualified.values() if s[0] == "fn")}
+                1 for s in qualified.values() if s[0] in ("fn", "step"))}
             ok_null = expect_null_window(tag, stored, DYNAMIC_SWITCH_REASON)
             check_provenance(tag, row, len(qualified), s_objective, s_objective_value, s_qualification)
             if ok_null:
                 fully_reproduced += 1
             detail.append(row)
             continue
-        if has_fn:                                   # the solver is enabled: numbers NOT reproduced here
+        if resolve_inputs is not None and peak is not None:
+            resolve_inputs[wid] = functools.partial(
+                _g6_inputs, conn, recs=recs, qualified=qualified, chans=chans, factor_rows=factor_rows, position_at=position_at, vedha_overlay=vedha_overlay,
+                channel_at=channel_at, channel_boundaries=channel_boundaries, path_id=path_id, against_ok=against_ok, p1=p1,
+                window={"lo": lo, "hi": hi, "peak": peak, "score": score, "evidence_for": ev_for, "evidence_against": ev_against, "valence": valence,
+                        "objective_value": s_objective_value, "event_class": event_class})
+        if has_fn:                                   # the solver is enabled: the constant-window derivation cannot reproduce these numbers
             detail.append(row)
-            unverified.append(tag)
             # UNIVERSAL BOUNDS (hold for any factor value in [0,1], so they bind where numbers cannot be
             # reproduced): evidence is a Σ over roots of a per-root max of values ≤ 1; the score is a unit value
             if score is not None and not (0.0 <= score <= 1.0 + _TOL):
                 problems.append(f"{tag}: score {score} outside [0,1]")
-            for_roots = {recs[rid]["root"] for rid in qualified if chans[rid] == "evidence_for_occurrence"}
-            against_roots = {recs[rid]["root"] for rid in qualified if chans[rid] == "evidence_against_occurrence"}
+            for_roots = {recs[rid]["root"] for rid in qualified
+                         if chans[rid] in ("evidence_for_occurrence", PER_INSTANT)}
+            against_roots = {recs[rid]["root"] for rid in qualified
+                             if chans[rid] in ("evidence_against_occurrence", PER_INSTANT)}
             if ev_for is not None and (ev_for < -_TOL or ev_for > len(for_roots) + _TOL):
                 problems.append(f"{tag}: evidence_for {ev_for} is outside [0, {len(for_roots)}] — {len(for_roots)} "
                                 "root(s) feed the channel and every per-root value is ≤ 1")
@@ -385,8 +814,125 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
             if not against_ok and ev_against is not None:
                 problems.append(f"{tag}: evidence_against is stored but the registry row declares no way to "
                                 "evaluate that channel (expected NULL)")
+            # S3 + R67: the INDEPENDENT check. Not run in the writer's in-build self-check (N-6: deferred, never a pass), and not runnable without an
+            # ephemeris or an injected `solver_check_fn` (unavailable, never a pass).
+            if not solver_check:
+                unverified.append(tag)
+                deferred.append(tag)
+                continue
+            reason = (s_qualification or {}).get("unqualified_reason")
+            stored_unresolved = dict((s_qualification or {}).get("unresolved") or {})
+            if peak is None:                         # a BLANK window with a function-valued member: it must be a named blank carrying no number
+                if reason is None or reason not in stored_unresolved:
+                    problems.append(f"{tag}: a blank window with a function-valued member carries no usable reason ({reason!r}, unresolved {stored_unresolved!r})")
+                    continue
+                if not expect_null_window(tag, stored, reason):
+                    continue
+            # a structural blank (H1/H2/undeterminable) is confirmed by the prover's own probe; a numbered window and a budget blank are checked against the
+            # builder's certificate (`solver_check_fn`, else the verifier's `window_cert_check` adapter)
+            structural_blank = peak is None and reason not in SOLVER_BUDGET_REASONS
+            if (solver_check_fn is None or structural_blank) and position_at is None:
+                unverified.append(tag)
+                unavailable.append(tag)
+                continue
+            records = None if position_at is None else _checker_records(
+                conn, recs=recs, qualified=qualified, chans=chans, factor_rows=factor_rows, position_at=position_at, vedha_overlay=vedha_overlay,
+                channel_at=channel_at, channel_boundaries=channel_boundaries, p1=p1)
+            objective = _chk.OBJ_MAXMIN if path_id == "P4" else _chk.OBJ_SUM
+            if structural_blank:
+                if reason == SOLVER_TIE_ZONE_REASON:
+                    tie_why = _chk.confirm_tie_isolation(lo=lo, hi=hi, records=records, objective=objective, position_at=position_at,
+                                                         event_class=event_class, against_evaluated=against_ok)
+                    probe, want_code = None, None
+                    if tie_why is None:
+                        problems.append(f"{tag}: blank under {reason!r}, but the independent prover finds the earliest tie isolated — a blank where the table yields a value")
+                        continue
+                else:
+                    probe = _chk.check_window(lo=lo, hi=hi, records=records, objective=objective, position_at=position_at, event_class=event_class,
+                                              against_evaluated=against_ok, stored=_chk.StoredWindow(peak_instant=lo, objective_value=0.0))
+                    want_code = SOLVER_STRUCTURAL.get(reason, _chk.F_UNDET)
+                if want_code is not None and want_code not in _structural_codes(probe):
+                    problems.append(f"{tag}: blank under {reason!r}, but the independent prover finds no such defect "
+                                    f"(it found {sorted(f.code for f in probe.findings) or 'none'}) — a blank where the table yields a value")
+                    continue
+                name_problem = _unknown_name_problem(reason, probe) if want_code == _chk.F_UNDET else None
+                if name_problem:
+                    problems.append(f"{tag}: {name_problem}")
+                    continue
+                solver_checked += 1
+                solver_blank[reason] = solver_blank.get(reason, 0) + 1
+                fully_reproduced += 1
+                row["unqualified_reason"] = reason
+                row["unresolved"] = dict(sorted({**row["unresolved"], **{k: v for k, v in stored_unresolved.items() if k not in row["unresolved"]}}.items()))
+                check_provenance(tag, row, len(qualified), s_objective, s_objective_value, s_qualification)
+                continue
+            ov = s_objective_value if s_objective_value is not None else (score if path_id == "P4" else None)
+            if peak is not None and ov is None and solver_check_fn is None:
+                problems.append(f"{tag}: a numbered window carries no objective_value — its maximum cannot be proved")
+                continue
+            window = {"window": row["window"], "lo": lo, "hi": hi, "peak": peak, "score": score, "evidence_for": ev_for, "evidence_against": ev_against,
+                      "valence": valence, "objective_value": s_objective_value, "qualification": s_qualification, "records": recs, "qualified": qualified,
+                      "event_class": event_class, "path_id": path_id, "rule_version": rule_version}
+            if solver_check_fn is not None:
+                verdict = solver_check_fn(window)
+            else:
+                verdict = _certificate_verdict(window, records=records, objective=objective, position_at=position_at, against_evaluated=against_ok, ov=ov)
+            if verdict is None:                      # the seam does not cover this window: UNVERIFIED, never a pass
+                unverified.append(tag)
+                continue
+            solver_checked += 1
+            _rd = getattr(getattr(verdict, "inner", None), "rederived", None) or {}
+            deep_split["deep_bisections"] += _rd.get("deep_bisections", 0)
+            deep_split["allowance_exhausted_leaves"] += _rd.get("allowance_exhausted_leaves", 0)
+            deep_split["windows_using_deep_cuts"] += 1 if _rd.get("deep_bisections", 0) > 0 else 0
+            deep_split["windows_spent_allowance"] += 1 if _rd.get("allowance_exhausted_leaves", 0) > 0 else 0
+            cls = verdict.classification
+            if cls == "DISAGREEMENT":
+                problems.append(f"{tag}: the independent solver check DISAGREES — " + "; ".join(f"{code}: {detail_}" for code, detail_ in verdict.findings))
+            elif cls == "INCONCLUSIVE":
+                why = sorted(r for r, _d in verdict.inconclusive)[0]
+                inconclusive.append({"window": row["window"], "window_id": wid, "reason": why, "stored_numbered": peak is not None,
+                                     "valence": valence, "had_score": score is not None})
+                fully_reproduced += 1                  # reproduced as the named blank it will be served as
+            elif cls == "AGREED":
+                if peak is not None:
+                    numeric += 1
+                    row["objective_value"] = s_objective_value
+                else:                                  # a blank the certificate justified: a NAMED blank carrying no number
+                    row["unqualified_reason"] = reason
+                    row["unresolved"] = stored_unresolved
+                check_provenance(tag, row, len(qualified), s_objective, s_objective_value, s_qualification)
+                fully_reproduced += 1
+            else:
+                problems.append(f"{tag}: the solver check returned the unknown class {cls!r}")
             continue
         # ── policy 3–5: every live member is a constant — re-derive piecewise ─────────────────────────────
+        def val(rid, t):
+            """The record's value at t: its constant, or — a P1 step-valued record — the P1 derivation's."""
+            return p1.value_at(recs[rid], t) if qualified[rid][0] == "step" else qualified[rid][1]
+
+        pieces = _pieces(lo, hi, recs, None if channel_boundaries is None else
+                         lambda rid, r, x, y: channel_boundaries(r, x, y) if chans[rid] == PER_INSTANT else [])
+        if has_step:
+            # P1c: a piece on which a live step-valued member is undeterminable leaves the objective unknown there; the window is
+            # then blank — the first reason (sorted), one count per (piece, reason) — the policy table's rule for an unknown
+            # portion, which is never dropped (R7 [1])
+            unknown: dict[str, int] = {}
+            for a, _b in pieces:
+                for reason in {p1.unknown_reason(recs[rid], a) for rid in _live(recs, a)
+                               if rid in qualified and qualified[rid][0] == "step"} - {None}:
+                    unknown[reason] = unknown.get(reason, 0) + 1
+            if unknown:
+                merged = dict(row["unresolved"])
+                for reason, n in unknown.items():
+                    merged[reason] = merged.get(reason, 0) + n
+                row["unresolved"], row["unqualified_reason"] = dict(sorted(merged.items())), sorted(unknown)[0]
+                ok_null = expect_null_window(tag, stored, row["unqualified_reason"])
+                check_provenance(tag, row, len(qualified), s_objective, s_objective_value, s_qualification)
+                if ok_null:
+                    fully_reproduced += 1
+                detail.append(row)
+                continue
         if peak is None or ev_for is None:
             problems.append(f"{tag}: the objective is qualified but peak/evidence_for is NULL")
             detail.append(row)
@@ -395,20 +941,25 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
             problems.append(f"{tag}: evidence_against is stored but the registry row declares no way to "
                             "evaluate that channel (expected NULL)")
         cands = []
-        for a, b in _pieces(lo, hi, recs):
+        n_sliver = 0
+        for a, b in pieces:
+            if (b - a).total_seconds() < _sliver_resolution_s(a):
+                n_sliver += 1                     # SR-P1-SLIVER-D2: one sky event on two paths — the piece is no candidate for the maximum
+                continue
             live = [rid for rid in _live(recs, a) if rid in qualified]
             if path_id == "P4":
                 act = {}
                 for rid in live:
-                    act[recs[rid]["agent"]] = max(act.get(recs[rid]["agent"], 0.0), qualified[rid][1])
+                    act[recs[rid]["agent"]] = max(act.get(recs[rid]["agent"], 0.0), val(rid, a))
                 if set(act) == {"jupiter", "saturn"}:
                     cands.append((min(act.values()), a))
             else:
                 per_root: dict[str, float] = {}
                 for rid in live:
-                    if chans[rid] == "evidence_for_occurrence":
-                        per_root[recs[rid]["root"]] = max(per_root.get(recs[rid]["root"], 0.0), qualified[rid][1])
+                    if chan_at(rid, a) == "evidence_for_occurrence":
+                        per_root[recs[rid]["root"]] = max(per_root.get(recs[rid]["root"], 0.0), val(rid, a))
                 cands.append((sum(per_root.values()), a))     # no for-channel member live ⇒ the objective is 0
+        row["sliver_pieces_excluded"] = n_sliver
         if not cands:
             problems.append(f"{tag}: no objective candidate re-derived")
             detail.append(row)
@@ -423,15 +974,15 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
         want_against_null = (not against_ok) or bool(live_unq_against)
         sums = {"evidence_for_occurrence": {}, "evidence_against_occurrence": {}}
         for rid in live_q:
-            slot = sums[chans[rid]]
-            slot[recs[rid]["root"]] = max(slot.get(recs[rid]["root"], 0.0), qualified[rid][1])
+            slot = sums[chan_at(rid, want_peak)]
+            slot[recs[rid]["root"]] = max(slot.get(recs[rid]["root"], 0.0), val(rid, want_peak))
         want_for = sum(sums["evidence_for_occurrence"].values())
         if path_id == "P4":
             want_score = best
         elif any(rid in unq_ids for rid in live_now):
             want_score = None                         # a live unqualified member's product is unknown
         else:
-            want_score = max((qualified[rid][1] for rid in live_q), default=0.0)
+            want_score = max((val(rid, want_peak) for rid in live_q), default=0.0)
         ok = True
         if (score is None) != (want_score is None) or (
                 score is not None and abs(score - want_score) > _TOL):
@@ -440,7 +991,9 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
         if want_score is not None and not (0.0 <= want_score <= 1.0 + _TOL):
             problems.append(f"{tag}: re-derived score {want_score} outside [0,1]")
             ok = False
-        if peak != want_peak:
+        # an instant at a DERIVED change point (P1c) is located to BISECT_SECONDS by each side independently: two locations agree
+        # within PEAK_TOLERANCE_SECONDS. Every other peak is a stored support endpoint — compared exactly
+        if (peak != want_peak) if not has_step else (abs((peak - want_peak).total_seconds()) > _p1c.PEAK_TOLERANCE_SECONDS):
             problems.append(f"{tag}: peak {peak} != re-derived {want_peak}")
             ok = False
         if abs(ev_for - want_for) > _TOL:
@@ -475,7 +1028,11 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
     return {"windows": len(windows), "numeric_reproduced": numeric,
             "fully_reproduced": fully_reproduced, "unverified_dynamic": len(unverified),
             "unverified_windows": unverified, "policy_version": policy,
+            "dynamic_enabled": bool(dynamic_enabled), "solver_check_requested": solver_check, "solver_checked_windows": solver_checked,
+            "solver_check_deferred_windows": len(deferred), "solver_check_unavailable_windows": len(unavailable),
+            "solver_blank_windows": dict(sorted(solver_blank.items())), "deep_split_allowance": deep_split, "unverified_why": unverified_why, "inconclusive_windows": inconclusive,
             "fields_verified": list(GOVERNED_FIELDS), "windows_detail": detail,
+            **({"vedha_derivation": derived_vedha.summary()} if derived_vedha is not None else {}),
             # VERIFIED only when EVERY window's stored fields were reproduced exactly
             "status": "UNVERIFIED_DYNAMIC" if unverified else "VERIFIED"}
 
@@ -788,7 +1345,7 @@ def verify_member_geometry(conn, *, chart_id: str, generation: str, event_class:
     grain = (chart_id, generation, event_class, path_id, rule_version)
     rows = conn.execute(
         "SELECT DISTINCT c.contact_id::text, c.body, c.relation_kind, c.t_in, c.t_out, c.t_exact, o.canonical_target,"
-        " lower(cov.completed_horizon), upper(cov.completed_horizon), c.delta_lambda"
+        " lower(cov.completed_horizon), upper(cov.completed_horizon), c.delta_lambda::float8"
         " FROM public.ka_gochara_eval_window_record m"
         " JOIN public.ka_gochara_relationship_record r ON r.record_id = m.record_id"
         " JOIN public.ka_gochara_contact c ON (c.chart_id, c.generation, c.contact_id)"
@@ -859,12 +1416,17 @@ def verify_member_geometry(conn, *, chart_id: str, generation: str, event_class:
 
 def reconstruct_qualification(conn, *, chart_id: str, generation: str, event_class: str, path_id: str,
                               rule_version: str, factor_rows: list[dict],
-                              drishti_bound: bool = False, vedha_bound: bool = False) -> dict:
+                              drishti_bound: bool = False, vedha_bound: bool = False,
+                              vedha_overlay=None, moon_sign: int | None = None, ephe_path: str | None = None) -> dict:
     """{window_id: {affected_channels, reasons: {record_id: [reason...]}}} — the qualification a window
     carries, RECONSTRUCTED from its stored members and the bound factor rows (1156 has no column for it;
     persistence is not required, reconstruction is). Serving reads this; a channel is affected when an
     unqualified member feeds it (a channel-less one feeds both)."""
     grain = (chart_id, generation, event_class, path_id, rule_version)
+    if vedha_bound and vedha_overlay is None and any(r["factor_id"] == "vedha_attenuation" for r in factor_rows):
+        from . import vedha_verifier as _vv
+        vedha_overlay = _vv.derive_overlay(conn, chart_id=chart_id, generation=generation, event_class=event_class,
+                                           path_id=path_id, rule_version=rule_version, moon_sign=moon_sign, ephe_path=ephe_path)
     rows = conn.execute(
         "SELECT m.window_id::text, r.record_id::text, r.relation, r.object_kind, r.agent, r.house_from_frame,"
         " (SELECT array_agg(ARRAY[lower(x)::text, upper(x)::text]) FROM unnest(r.temporal_support_intervals) x)"
@@ -877,10 +1439,10 @@ def reconstruct_qualification(conn, *, chart_id: str, generation: str, event_cla
     for wid, rid, rel, kind, agent, house, sup in rows:
         from datetime import datetime as _dt
         supports = [(_dt.fromisoformat(a), _dt.fromisoformat(b)) for a, b in (sup or [])]
-        rec = {"relation": rel, "kind": kind, "agent": agent, "house": house,
+        rec = {"id": rid, "relation": rel, "kind": kind, "agent": agent, "house": house,
                "boundaries_complete": _boundaries_complete(rel, supports, completed)}
         slot = out.setdefault(wid, {"affected_channels": set(), "reasons": {}})
-        state = _record_state(factor_rows, rec, drishti_bound, vedha_bound)
+        state = _record_state(factor_rows, rec, drishti_bound, vedha_bound, vedha_overlay)
         if state[0] != "unq":
             continue
         slot["reasons"][rid] = list(state[1])
@@ -892,5 +1454,5 @@ def reconstruct_qualification(conn, *, chart_id: str, generation: str, event_cla
             for wid, v in out.items()}
 
 
-__all__ = ["GOVERNED_FIELDS", "POLICY_VERSION", "reconstruct_qualification", "satisfies_gate",
+__all__ = ["GOVERNED_FIELDS", "POLICY_VERSION", "g6_resolver", "reconstruct_qualification", "satisfies_gate",
            "verify_member_geometry", "verify_member_support", "verify_window_semantics"]

@@ -205,15 +205,51 @@ OVERLAY_EFFECTS = {      # each overlay file's OWN effect, read back as a boolea
     "1403": "SELECT (SELECT depends_on FROM public.asset_registry WHERE asset_id = 'ka_gochara_v5') @> ARRAY['bg_dignity_reference']::text[]"}
 
 
-def plan_overlay(mig_dir: Path, has_table) -> tuple[list[str], dict]:
+#: SR-BASELINE-OVERLAY-SKIP: the code each MANDATORY overlay exists for, probed in the checkout's own production python (`platform/python-sidecar/services`, tests excluded).  A baseline of
+#: origin/main legitimately lacks an overlay file whose requiring code has not merged yet; it may skip that file only when the checkout provably lacks that code.  The probe reads what the
+#: code WRITES or READS (never a function name that a test or the harness also mentions): 250 and 1401 seed the three L0 tables the P1 loaders read; 1402 widens the window `qualification`
+#: CHECK for the two keys `combustion_inheritance` (R-4) and `solver_certificate` (R-6/R-7), which the P1 builder / window solver write.  (1403 is not mandatory: it is always skippable.)
+OVERLAY_REQUIRING_CODE = {
+    "250_bg_dignity_reference.sql": re.compile(r"\b(?:bg_dignity_reference|bg_combustion_orbs|bg_graha_naisargika_friendship)\b"),
+    "1401_l0_node_dignity_friendship.sql": re.compile(r"\b(?:bg_dignity_reference|bg_graha_naisargika_friendship)\b"),
+    "1402_gochara_qualification_provenance_certificate.sql": re.compile(r"\b(?:combustion_inheritance|solver_certificate|stored_certificate|ka_gochara_solver_certificate_ok)\b"),
+}
+REQUIRING_CODE_ROOT = ("platform", "python-sidecar", "services")
+
+
+def requiring_code(checkout: Path, overlay_file: str) -> list[str]:
+    """The checkout's production python files (repo-relative, sorted) that need `overlay_file`; [] = provably none.  Refuses when the code root is absent (an unreadable checkout proves nothing)."""
+    root = checkout.joinpath(*REQUIRING_CODE_ROOT)
+    if not root.is_dir():
+        raise Refused(f"cannot prove the requiring code of {overlay_file} is absent: {'/'.join(REQUIRING_CODE_ROOT)} is not a directory in the checkout")
+    pat = OVERLAY_REQUIRING_CODE[overlay_file]
+    hits = []
+    for p in sorted(root.rglob("*.py")):
+        rel = p.relative_to(root).parts                                  # relative to the code root: a checkout that itself lives under a directory named `tests` must not hide its production code
+        if "tests" in rel or "__pycache__" in rel or p.name.startswith("test_"):
+            continue
+        if pat.search(p.read_text(encoding="utf-8", errors="replace")):
+            hits.append(p.relative_to(checkout).as_posix())
+    return hits
+
+
+def plan_overlay(mig_dir: Path, has_table, *, baseline_checkout: Path | None = None) -> tuple[list[str], dict]:
     """(overlay files to apply, in order; {file: why it is skipped}).  A mandatory file missing from the checkout REFUSES — a trial database without the L0 seeds and the 1402 CHECK cannot
-    run the merged P1 code — while an optional one is skipped BY NAME and recorded, never silently."""
+    run the merged P1 code — while an optional one is skipped BY NAME and recorded, never silently.  SR-BASELINE-OVERLAY-SKIP: only with `baseline_checkout` (BASELINE mode: make_baseline.sh,
+    default policy, label baseline — see `baseline_mode_requested`) a missing mandatory file is skipped by name, and only when the checkout ALSO lacks the code that requires it; if any such
+    code exists the run still REFUSES."""
     todo: list[str] = []
     skipped: dict = {}
     for f, mandatory, table in OVERLAY_MIGRATIONS:
         if not (mig_dir / f).is_file():
             if mandatory:
-                raise Refused(f"overlay migration file missing in the checkout: {f}")
+                if baseline_checkout is None:
+                    raise Refused(f"overlay migration file missing in the checkout: {f}")
+                code = requiring_code(baseline_checkout, f)
+                if code:
+                    raise Refused(f"overlay migration file missing in the checkout: {f} (baseline mode does not skip it: the checkout has the code that requires it, e.g. {code[0]})")
+                skipped[f] = "baseline mode: absent in the checkout, and the checkout has no code that requires it (SR-BASELINE-OVERLAY-SKIP)"
+                continue
             skipped[f] = "absent in the checkout"
         elif table is not None and not has_table(table):
             skipped[f] = f"table {table} is absent from the trial database"
@@ -282,7 +318,8 @@ def setup_lane(state: dict, checkout: Path, out: Path) -> None:
     for f in MIGRATIONS:
         if not (mig_dir / f).is_file():
             raise Refused(f"migration file missing in the checkout: {f}")
-    plan_overlay(mig_dir, lambda _t: True)                               # a mandatory overlay file missing in the checkout refuses BEFORE a database is created
+    base_co = checkout if state.get("baseline_mode") else None
+    plan_overlay(mig_dir, lambda _t: True, baseline_checkout=base_co)    # a mandatory overlay file missing in the checkout refuses BEFORE a database is created (baseline mode: unless the code needing it is absent too)
     t0 = time.time()
     name = f"{DB_PREFIX}{uuid.uuid4().hex[:8]}"
     admin = guarded_admin_connect(ADMIN_DSN, autocommit=True, connect_timeout=5)
@@ -298,7 +335,8 @@ def setup_lane(state: dict, checkout: Path, out: Path) -> None:
             q.require_lane(conn)
             with conn.transaction():
                 conn.execute((mig_dir / f).read_text(encoding="utf-8"))
-        overlay, overlay_skipped = plan_overlay(mig_dir, lambda t: conn.execute("SELECT to_regclass(%s) IS NOT NULL", (f"public.{t}",)).fetchone()[0])
+        overlay, overlay_skipped = plan_overlay(mig_dir, lambda t: conn.execute("SELECT to_regclass(%s) IS NOT NULL", (f"public.{t}",)).fetchone()[0],
+                                                 baseline_checkout=base_co)
         for f in overlay:                                                 # TR_GAPS B4.3: the L0 P1 seeds (250), node dignity (1401), the 1402 CHECK, and 1403 where its table exists
             q.require_lane(conn)
             with conn.transaction():
@@ -809,6 +847,28 @@ SELECT COALESCE(sum((runner_identity::jsonb -> 'numerical_window_gate' ->> 'wind
 FROM public.ka_gochara_eval_window_verification WHERE chart_id = %s AND generation = %s AND event_class = ANY(%s)"""
 LIVE_COUNT_SQL = """SELECT count(*), count(*) FILTER (WHERE peak_instant IS NOT NULL) FROM public.ka_gochara_eval_window
                     WHERE chart_id = %s AND generation = %s AND event_class = ANY(%s)"""
+# R-6: the verifier's demoted windows, as the attestation names them (numerical_window_gate.demotions: sorted {window_id, reason}), and which of those ids the live table
+# holds as numbered windows (a peak is stored) - G-4 matches the attested numbered count against the live one by these ids (gates.recount_agrees)
+VERIFY_DEMOTED_SQL = """
+SELECT d.e ->> 'window_id', d.e ->> 'reason'
+FROM public.ka_gochara_eval_window_verification v,
+     LATERAL jsonb_array_elements(COALESCE(v.runner_identity::jsonb -> 'numerical_window_gate' -> 'demoted_windows', '[]'::jsonb)) AS d(e)
+WHERE v.chart_id = %s AND v.generation = %s AND v.event_class = ANY(%s)
+ORDER BY 1, 2"""
+LIVE_NUMBERED_AMONG_SQL = """SELECT window_id::text FROM public.ka_gochara_eval_window
+                             WHERE chart_id = %s AND generation = %s AND event_class = ANY(%s) AND peak_instant IS NOT NULL AND window_id::text = ANY(%s) ORDER BY 1"""
+
+
+def collect_attestation_recount(conn, chart, generation, classes) -> dict:
+    """The G-4 recount: the attested counts (summed over the grains' persisted attestations) with the attested demoted windows, against the live table's counts with
+    the subset of those demoted ids that are live numbered windows."""
+    args = (chart, generation, classes)
+    att_w, att_n, unattested = conn.execute(VERIFY_ATTESTED_SQL, args).fetchone()
+    live_w, live_n = conn.execute(LIVE_COUNT_SQL, args).fetchone()
+    demoted = [{"window_id": r[0], "reason": r[1]} for r in conn.execute(VERIFY_DEMOTED_SQL, args).fetchall()]
+    held = [r[0] for r in conn.execute(LIVE_NUMBERED_AMONG_SQL, (*args, [e["window_id"] for e in demoted])).fetchall()]
+    return {"attested": {"windows": int(att_w), "numbered": int(att_n), "demoted_windows": demoted},
+            "live": {"windows": live_w, "numbered": live_n, "numbered_among_demoted": held}, "grains_without_attestation": unattested}
 
 
 def make_trial_census(vj, trial_classes):
@@ -903,10 +963,7 @@ def verify_stage(state: dict, out: Path, conn, deadline: float | None) -> bool:
             v["generation_verdict_scope"] = {"classes": sorted(state["classes"]), "scoped": True,
                                              "not_part_of_this_reading": "the aggregate-only checks of numerical_window_gate.generation_verdict (pinned-universe coverage, shard stamps, G-6 evidence, wall "
                                                                          "rule; DEFECT_MAP D-9) — a subset verdict does not carry them; the R8/R8X fixtures and the seal verification job cover them"}
-            att_w, att_n, unattested = conn.execute(VERIFY_ATTESTED_SQL, args).fetchone()
-            live_w, live_n = conn.execute(LIVE_COUNT_SQL, args).fetchone()
-            v["attestation_recount"] = {"attested": {"windows": int(att_w), "numbered": int(att_n)}, "live": {"windows": live_w, "numbered": live_n},
-                                        "grains_without_attestation": unattested}
+            v["attestation_recount"] = collect_attestation_recount(conn, *args)
             v["unverified_windows"] = conn.execute(VERIFY_UNVERIFIED_SQL, args).fetchone()[0] + int(conn.execute(VERIFY_UNVERIFIED_ROWS_SQL, args).fetchone()[0])
             gv = v["generation_verdict"]
             v["generation_verdict"] = {k: gv.get(k) for k in ("status", "policy", "grains", "windows", "numbered_windows", "blank_windows", "judgment_flags", "problems", "by_path",
@@ -1056,7 +1113,10 @@ class _CrosscheckEnv:
         progs = []
         for rid in ids:
             p = ws.build_program(self.records[key][rid], rows, drishti=self.w.DRISHTI_SOURCE, vedha=vedha)
-            p.channel = ws._program_channel(key[0], p.rec, p.qualified) if hasattr(ws, "_program_channel") else p.channel
+            if p.has_channel_fn:                                            # draft_windows: a record whose side a factor decides per instant (P1 agent_nature, Q3(c)) has no static channel
+                p.channel = None
+            elif hasattr(ws, "_program_channel"):
+                p.channel = ws._program_channel(key[0], p.rec, p.qualified)
             if not p.qualified:
                 raise RuntimeError(f"member {rid} is unqualified although the window is numbered")
             progs.append(p)
@@ -1268,7 +1328,7 @@ def build_report(state: dict, out: Path, conn, sidecar: Path, gate_entry: str | 
     rep["anomalies"]["peaks_without_search_calls"] = 0 if (search_calls or not rep["totals"]["with_peak"]) else rep["totals"]["with_peak"]
     rep.update({
         "schema": "ky.trial_slice_report/2", "marker": MARKER, "not_evidence": True, "label": state["label"], "generated_utc": now(),
-        "code": state["code"], "config": {"requested_result_policy": state["requested_policy"], "collect": bool(state.get("collect")),
+        "code": state["code"], "config": {"requested_result_policy": state["requested_policy"], "collect": bool(state.get("collect")), "baseline_mode": bool(state.get("baseline_mode")),
                                            "policy_passed_to_build": None if state["requested_policy"] == "default" else state["requested_policy"],
                                            "classes": state["classes"], "final_rules": True, "in_build_verify_deferred": True, "chart": "canonical (482012f1-…)"},
         "horizon": state.get("horizon"),
@@ -1356,6 +1416,15 @@ def collect_requested(a) -> bool:
     return bool(getattr(a, "collect", False)) or os.environ.get("TRIAL_COLLECT") == "1"
 
 
+def baseline_mode_requested(a) -> bool:
+    """SR-BASELINE-OVERLAY-SKIP: BASELINE mode is asked for explicitly (`--baseline-mode`, set only by make_baseline.sh through TRIAL_BASELINE_MODE=1), never inferred from a missing file, and
+    only for the default policy under the label `baseline`: any other run (every trial policy) that asks for it is refused."""
+    asked = bool(getattr(a, "baseline_mode", False)) or os.environ.get("TRIAL_BASELINE_MODE") == "1"
+    if asked and (a.result_policy != "default" or a.label != "baseline"):
+        raise Refused(f"baseline mode needs --result-policy default and --label baseline, not {a.result_policy!r} / {a.label!r}: a trial run never skips an overlay")
+    return asked
+
+
 def cmd_run(a) -> int:
     started = time.time()
     deadline = None if a.budget_s is None else started + a.budget_s
@@ -1366,6 +1435,7 @@ def cmd_run(a) -> int:
         raise Refused(f"--result-policy must be one of {POLICIES}, not {a.result_policy!r}")
     classes = [c for c in a.classes.split(",") if c]
     collect = collect_requested(a)
+    baseline_mode = baseline_mode_requested(a)
     profile = load_profile(a.profile)
     table = load_decision_table(a.decision_table)                    # A10.1: the G-3 table is checked on EVERY run; an unusable table refuses before any work
     sidecar = bind_checkout(checkout)
@@ -1376,6 +1446,8 @@ def cmd_run(a) -> int:
             raise Refused("state.json in --out belongs to another policy / checkout / class list: use a fresh --out")
         if bool(state.get("collect")) != collect:
             raise Refused(f"state.json in --out was started in {build_mode(state)} mode, this run asks for {'collect' if collect else 'stop_at_first_defect'}: use a fresh --out")
+        if bool(state.get("baseline_mode")) != baseline_mode:
+            raise Refused(f"state.json in --out was started with baseline_mode={bool(state.get('baseline_mode'))}, this run asks for {baseline_mode}: use a fresh --out")
         if (state.get("decision_table") or {}).get("sha256") != table["sha256"]:
             raise Refused("state.json in --out was started under another G-3 decision table: use a fresh --out")
         if state.get("dropped"):
@@ -1391,7 +1463,8 @@ def cmd_run(a) -> int:
                           "branch": git(checkout, "rev-parse", "--abbrev-ref", "HEAD"), "implementation_modules": mods,
                           "implementation_modules_missing": sorted(m for m, d in mods.items() if d == "MISSING")},
                  "decision_table": {"id": table["table_id"], "sha256": table["sha256"]}, "image_digest": a.image_digest,
-                 "solver_module": a.solver_module, "started_utc": now(), "load_average_at_start": [round(x, 1) for x in os.getloadavg()], "steps": [], "defects": [], "db": None, "collect": collect}
+                 "solver_module": a.solver_module, "started_utc": now(), "load_average_at_start": [round(x, 1) for x in os.getloadavg()], "steps": [], "defects": [], "db": None, "collect": collect,
+                 "baseline_mode": baseline_mode}
         write_json(state_path, state)
     if state["db"] is None:
         print(f"[{now()}] setup: creating the throwaway lane database", flush=True)
@@ -1519,6 +1592,7 @@ def cmd_baseline(a) -> int:
                        "prior_4class_windows": sum(classes[c]["windows_total"] for c in ORIGINAL_4), "new_8_windows": sum(classes[c]["windows_total"] for c in NEW_8)},
             "paths": {p: v["windows"] for p, v in rep["paths"].items()},
             "oracle": rep["oracle"], "source_report_sha256": sha_file(Path(a.report)),
+            "baseline_mode": bool(rep["config"].get("baseline_mode")), "overlay_skipped": (rep.get("lane") or {}).get("overlay_skipped"),          # SR-BASELINE-OVERLAY-SKIP: each skipped overlay, by name, with its reason
             "prior_4class_baseline": None if prior is None else {"file_sha256": sha_file(Path(a.prior_4class)), "windows": prior["totals"]["windows_total"]},
             "runtime_s": {"by_step_kind": rep["runtime_s"]["by_step_kind"], "build_substeps_sum": rep["runtime_s"]["build_substeps_sum"],
                           "load_average_at_report": rep["runtime_s"]["load_average_at_report"]},
@@ -1714,6 +1788,8 @@ def build_parser() -> argparse.ArgumentParser:
     r.add_argument("--keep-db", action="store_true")
     r.add_argument("--collect", action="store_true", help="COLLECT mode (diagnostic / PRETR runs; env TRIAL_COLLECT=1): a class's first defect does not stop it — every remaining grain is evaluated and the class "
                                                          "is failed at the END with the full defect list.  Default (TR): stop at the class's first defect")
+    r.add_argument("--baseline-mode", action="store_true", help="BASELINE mode (env TRIAL_BASELINE_MODE=1, set by make_baseline.sh; default policy + label baseline only): a mandatory overlay migration the checkout "
+                                                                "lacks is skipped BY NAME when the checkout also lacks the code that requires it (SR-BASELINE-OVERLAY-SKIP); a trial run always refuses")
     r.add_argument("--baseline", default=None, help="baseline_12.json: windows per class compared in the report; with a numerical policy the gates are evaluated too")
     r.add_argument("--gate-entry", default=None, help="module:function of the numerical-window gate (default: numerical_window_gate.generation_verdict when present)")
     r.add_argument("--code-head", default=None)

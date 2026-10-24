@@ -389,7 +389,29 @@ def test_nothing_else_replaces_or_patches_the_census_step():
             f"{name} touches the census step directly; opt out by name instead (conftest.g8_census_opt_out)"
     code = "\n".join(ln for ln in (Path(__file__).parent / "conftest.py").read_text().splitlines() if not ln.lstrip().startswith("#"))
     assert "_enforce_class_census" not in code.split("def g8_census_opt_out")[0] and "class_census_violations" not in code.split("def g8_census_opt_out")[0], \
-        "the conftest must not patch the census anywhere but inside the named opt-out fixture"
+        "the conftest must not patch the census anywhere but inside the named opt-out fixtures"
+    after = code.split("def g8_job_census_only")[1]
+    assert "\n@pytest.fixture" in after, "g8_job_census_only must be followed by another fixture so its body can be delimited"
+    tail = after.split("\n@pytest.fixture", 1)[1]
+    assert "_enforce_class_census" not in tail and "class_census_violations" not in tail, \
+        "the conftest must not patch the census anywhere but inside the named opt-out fixtures"
+
+
+def test_exactly_the_listed_suites_set_only_the_job_census_aside_each_with_a_stated_reason():
+    """B4: the second named fixture is as closed as the first — the tree's users of it equal its allowlist, each states a reason and applies it as a mark, and it is a different
+    NAME from the first (so the first guard's `g8_census_opt_out` scan cannot be satisfied or confused by it)."""
+    from .conftest import G8_JOB_CENSUS_ONLY_ALLOWLIST
+    sources = _suite_sources()
+    used = {n for n, s in sources.items() if "g8_job_census_only" in s}
+    assert used == G8_JOB_CENSUS_ONLY_ALLOWLIST, f"unexpected {sorted(used - G8_JOB_CENSUS_ONLY_ALLOWLIST)}, missing {sorted(G8_JOB_CENSUS_ONLY_ALLOWLIST - used)}"
+    assert "g8_job_census_only" not in "g8_census_opt_out" and "g8_census_opt_out" not in "g8_job_census_only"
+    for name in sorted(used):
+        src = sources[name]
+        m = re.search(r'^G8_JOB_CENSUS_ONLY_REASON = "([^"]+)"$', src, re.M)
+        assert m and len(m.group(1).strip()) >= 20, f"{name} sets the job census aside without a stated reason"
+        assert re.search(r'^(pytestmark = |@)pytest\.mark\.usefixtures\("g8_job_census_only"\)$', src, re.M), \
+            f"{name} does not apply the fixture as a module mark or a test decorator"
+        assert name not in G8_OPT_OUT_SUITES, f"{name} must use one fixture or the other"
 
 
 def _unwrapped_fixture():
@@ -425,6 +447,50 @@ def test_the_opt_out_fixture_itself_refuses_an_unlisted_suite_and_a_missing_or_s
     assert vj._enforce_class_census is not real and vj.class_census_violations(None, []) == []    # listed + reason: only then is the census set aside (job AND adapter)
     monkeypatch.undo()
     assert vj._enforce_class_census is real and vj.class_census_violations is real_v
+
+
+def test_the_job_census_only_fixture_refuses_an_unlisted_suite_and_leaves_the_aggregate_coverage_on(monkeypatch):
+    """B4, behaviourally: refuses an unlisted suite and a missing reason; for a listed one it sets aside the JOB's census only — `numerical_window_gate.expected_classes` stays the real one."""
+    from . import conftest as cf
+    from services.gochara_kernel import numerical_window_gate as nwg
+    fn = cf.g8_job_census_only
+    fixture = getattr(fn, "__wrapped__", None) or fn._get_wrapped_function()
+    here = Path(__file__).resolve().parent
+    with pytest.raises(pytest.UsageError, match="not on the G8 job-census-only allowlist"):
+        fixture(_Req(here / "test_a53_verification_job.py"), monkeypatch)                # an opt-out suite is not a job-census-only suite
+    req = _Req(here / "test_od1_r8_sharded_aggregate.py", has_reason=False)
+    with pytest.raises(pytest.UsageError, match="without a stated reason"):
+        fixture(req, monkeypatch)
+    real, real_v, real_e = vj._enforce_class_census, vj.class_census_violations, nwg.expected_classes
+    req = _Req(here / "test_od1_r8_sharded_aggregate.py", has_reason=False)
+    req.module.G8_JOB_CENSUS_ONLY_REASON = "x" * 30
+    fixture(req, monkeypatch)
+    assert vj._enforce_class_census is not real and vj.class_census_violations(None, []) == []
+    assert nwg.expected_classes is real_e                                              # the aggregate's coverage check is NOT set aside
+    monkeypatch.undo()
+    assert vj._enforce_class_census is real and vj.class_census_violations is real_v
+
+
+def test_the_job_census_only_fixture_moves_the_aggregate_universe_only_where_a_suite_declares_it(monkeypatch):
+    """Merge-back wave 3c-a (R8X T16 meets RV-INT B4): a suite that narrows the manifest itself declares G8_AGGREGATE_UNIVERSE = "manifest" and the aggregate is then judged against that list
+    (coverage still on, nothing else about the aggregate changes); an undeclared suite keeps the real pinned universe; any other value is a usage error."""
+    from . import conftest as cf
+    from services.gochara_kernel import numerical_window_gate as nwg
+    fn = cf.g8_job_census_only
+    fixture = getattr(fn, "__wrapped__", None) or fn._get_wrapped_function()
+    here = Path(__file__).resolve().parent
+    real_e, real_m = nwg.expected_classes, nwg.manifest_vs_universe
+    req = _Req(here / "test_od1_r8_sharded_aggregate.py", has_reason=False)
+    req.module.G8_JOB_CENSUS_ONLY_REASON = "x" * 30
+    req.module.G8_AGGREGATE_UNIVERSE = "pins"
+    with pytest.raises(pytest.UsageError, match="G8_AGGREGATE_UNIVERSE must be"):
+        fixture(req, monkeypatch)
+    req.module.G8_AGGREGATE_UNIVERSE = "manifest"
+    fixture(req, monkeypatch)
+    assert nwg.expected_classes(None, "c", "g", {"scored_classes": ["marriage"]}) == ["marriage"]     # the list the suite narrowed is the universe
+    assert nwg.manifest_vs_universe is real_m                                                         # the manifest-versus-universe comparison is NOT set aside
+    monkeypatch.undo()
+    assert nwg.expected_classes is real_e
 
 
 # ── Codex G8 amendment 1: the brief (the candidate adapter) judges the census too ────────────────────────────────────────

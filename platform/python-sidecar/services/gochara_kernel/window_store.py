@@ -12,6 +12,7 @@ code with `window_sweep.union_components`.
 """
 from __future__ import annotations
 
+import bisect
 import json as _json
 from datetime import datetime, timezone
 from typing import Callable
@@ -20,7 +21,8 @@ from . import targets
 from .convention import drishti_angles
 from .evaluator import record_uuid
 from .record_store import RecordStore, pipelined
-from .window_sweep import SweepRecord, WindowDraft, graha_title
+from .substrate import DB_BODY
+from .window_sweep import OperandSource, SweepRecord, WindowDraft, graha_title, jd_ulp_tolerance
 
 _SIGN_DEG = 30.0
 
@@ -40,8 +42,33 @@ def _wrap180(x: float) -> float:
     return (x + 180.0) % 360.0 - 180.0
 
 
-def _aspect_offset_provider(target: str, agent: str, position_at: Callable[[str, datetime], float]):
-    """Inclusive whole-sign house offset of the target from the aspecting graha's sign at t."""
+def _read_instant(t: datetime, stored: list[datetime]) -> datetime:
+    """The instant at which the sign is READ for `t`, under the platform's boundary convention (half-open: the NEW state owns the change instant —
+    p1_operands.py BOUNDARIES; SR-OD1 R-2 / SR-H2-1S), the same convention and the same slack as the sweep's support/geometry check
+    (`window_sweep._geometry_at_edge`, `jd_ulp_tolerance`). A stored ingress is a Julian-Day double Swiss bisected to 1e-9 d, so it names the true
+    sign edge only to one JD-ulp; `t` within one ulp of a stored ingress `c` is therefore read one ulp INSIDE the state that owns it:
+    `t` in `[c, c + ulp)` reads at `c + ulp` (the new sign owns `c`), `t` in `[c - ulp, c)` reads at `c - ulp` (the old sign). Never looser: a stored edge
+    further than one ulp from the true one is still read as the wrong sign at its own piece, which the solver's H2 detector refuses. The read never
+    leaves the state (clamped to the midpoint to the neighbouring stored ingress when the state is shorter than 2 ulp)."""
+    i = bisect.bisect_right(stored, t)                 # stored[i-1] <= t < stored[i]
+    if i > 0:
+        c = stored[i - 1]
+        tol = jd_ulp_tolerance(c)
+        if t < c + tol:
+            far = c + tol if i == len(stored) else min(c + tol, c + (stored[i] - c) / 2)
+            return far
+    if i < len(stored):
+        c = stored[i]
+        tol = jd_ulp_tolerance(c)
+        if t >= c - tol:
+            return c - tol if i == 0 else max(c - tol, c - (c - stored[i - 1]) / 2)
+    return t
+
+
+def _aspect_offset_provider(target: str, agent: str, position_at: Callable[[str, datetime], float],
+                            ingresses: list[datetime] | None = None):
+    """Inclusive whole-sign house offset of the target from the aspecting graha's sign at t. `ingresses` = the body's STORED sign-ingress instants
+    (ascending); when given, the sign is read under the boundary convention at those edges (`_read_instant`) — absent, at `t` itself."""
     if target.startswith("span:"):
         tgt_sign = targets.span_sign_index(target) - 1
     elif target.startswith("point:"):
@@ -50,9 +77,10 @@ def _aspect_offset_provider(target: str, agent: str, position_at: Callable[[str,
         return None
 
     name = graha_title(agent)
+    stored = sorted(ingresses) if ingresses else []
 
     def offset(t: datetime) -> int:
-        src_sign = int(position_at(name, t) // _SIGN_DEG) % 12
+        src_sign = int(position_at(name, _read_instant(t, stored) if stored else t) // _SIGN_DEG) % 12
         return (tgt_sign - src_sign) % 12 + 1
 
     return offset
@@ -65,14 +93,36 @@ class WindowStore:
 
     # ── read ────────────────────────────────────────────────────────────────
 
+    def _fetch_stations(self, body: str, convention_id: str) -> list[datetime]:
+        """The substrate's STORED station instants of `body` (the ephemeris-refined `t_exact`, ascending). P1's Mercury / Venus combustion
+        reads the retrograde regime from them (L1 gives those two a smaller orb while retrograde). A READ for the window stage, kept here and
+        not on `RecordStore` so the geometry implementation identity (and the pin that binds it) does not move for it."""
+        rows = self.conn.execute(
+            "SELECT t_exact FROM public.ka_gochara_sky_event WHERE event_kind = 'station' AND body = %s"
+            " AND convention_id = %s AND t_exact IS NOT NULL ORDER BY t_exact",
+            (DB_BODY.get(body, body.lower()), convention_id)).fetchall()
+        return [r[0] if not isinstance(r, dict) else next(iter(r.values())) for r in rows]
+
     def read_grain(self, *, chart_id: str, generation: str, event_class: str, path_id: str,
                    rule_version: str,
-                   position_at: Callable[[str, datetime], float] | None = None) -> list[SweepRecord]:
+                   position_at: Callable[[str, datetime], float] | None = None,
+                   p1=None, speed_at: Callable[[str, datetime], tuple] | None = None) -> list[SweepRecord]:
+        """The grain's records as sweep inputs. `p1` (a `p1_operands.P1Operands`, bound by the writer only when the P1 operand sources are
+        bound) adds the P1 factors' per-factor sources to the P1 records; absent, the records are exactly what they were.
+
+        `speed_at(body, t) -> (longitude, speed deg/day)` (S3, the solver's seam: ONE ephemeris call for both) rides on every record with a body longitude;
+        the stored Swiss station instants of the body ride on every POINT-contact record (`station_instants`, the solver's extra cuts, S0 K-2)."""
+        anchor_col = "NULL::text"
+        if p1 is not None and path_id == "P1":
+            if not self._records.p1_anchor_columns_available():
+                # without the anchor a delivery form (Sun / Jupiter through another lord's sign) would be judged by the WRONG lord's sky
+                raise RuntimeError("P1 operand sources need the period-anchor column (migration 1233): not applied — refused, never defaulted to the agent")
+            anchor_col = "r.period_anchor_lord"
         rows = self.conn.execute(
             "SELECT r.record_id::text, COALESCE(r.contact_id, r.object_id)::text, r.path_id,"
             " r.rule_version, r.relation, r.object_kind, r.agent, r.operator_role,"
             " r.admission_state, o.canonical_target, r.house_from_frame,"
-            " lower(s.x), upper(s.x), lower_inc(s.x), upper_inc(s.x), c.t_exact, c.convention_id"
+            " lower(s.x), upper(s.x), lower_inc(s.x), upper_inc(s.x), c.t_exact, c.convention_id, " + anchor_col +
             " FROM public.ka_gochara_relationship_record r"
             " JOIN public.ka_gochara_physical_object o ON o.physical_object_id = r.object_id"
             " LEFT JOIN public.ka_gochara_contact c ON (c.chart_id, c.generation, c.contact_id)"
@@ -84,11 +134,11 @@ class WindowStore:
             (chart_id, generation, event_class, path_id, rule_version)).fetchall()
         grouped: dict[str, dict] = {}
         for (rid, root, pid, ver, rel, kind, agent, role, adm, target, house,
-             lo, hi, lo_inc, hi_inc, t_exact, conv) in rows:
+             lo, hi, lo_inc, hi_inc, t_exact, conv, anchor) in rows:
             g = grouped.setdefault(rid, {
                 "root": root, "pid": pid, "ver": ver, "rel": rel, "kind": kind, "agent": agent,
                 "role": role, "adm": adm, "target": target, "house": house,
-                "t_exact": t_exact, "conv": conv, "supports": []})
+                "t_exact": t_exact, "conv": conv, "anchor": anchor, "supports": []})
             if lo is not None:
                 if not (lo_inc and not hi_inc):
                     raise RuntimeError(
@@ -97,6 +147,12 @@ class WindowStore:
                 g["supports"].append((lo.astimezone(timezone.utc), hi.astimezone(timezone.utc)))
         out: list[SweepRecord] = []
         crossings: dict[tuple, list[datetime]] = {}
+        station_lists: dict[tuple, list[datetime]] = {}
+
+        def stations_of(lord: str, conv: str) -> list[datetime]:
+            if (lord, conv) not in station_lists:
+                station_lists[(lord, conv)] = sorted(self._fetch_stations(lord, conv))
+            return station_lists[(lord, conv)]
         # R8-6: the ingress boundaries are complete over a support only when the class's coverage partition
         # completed that stretch (an incompletely searched stretch may hide an unlisted sign change)
         cov = self.conn.execute(
@@ -104,33 +160,57 @@ class WindowStore:
             " AND partition_kind = 'event_class' AND partition_key = %s", (chart_id, generation, event_class)).fetchone()
         completed = None if cov is None else (cov[0] if not isinstance(cov, dict) else next(iter(cov.values())))
         for rid, g in grouped.items():
-            lon = offset = rays = hints = bounds = None
+            lon = offset = rays = hints = bounds = lon_speed = tent_stations = None
             if position_at is not None and g["rel"] in ("residence", "aspect", "conjunction"):
                 name = graha_title(g["agent"])
                 lon = (lambda t, _n=name: position_at(_n, t))
                 rays = drishti_angles(name) if g["rel"] == "aspect" else ()
+                if speed_at is not None:
+                    lon_speed = (lambda t, _n=name: speed_at(_n, t))
+                if g["rel"] in ("conjunction", "aspect") and g["target"].startswith("point:") and g["conv"]:
+                    tent_stations = (lambda _n=name, _c=g["conv"]: stations_of(_n, _c))
             if position_at is not None and g["rel"] == "aspect":
-                offset = _aspect_offset_provider(g["target"], g["agent"], position_at)
                 # the dṛṣṭi offset (a house-offset STEP function) changes only where the body changes
                 # sign: the exact ingress instants inside the support are the state boundaries
                 key = (g["agent"], g["conv"])
                 if key not in crossings:
                     crossings[key] = sorted(c.t for c in self._records.fetch_crossings(g["agent"], g["conv"])) \
                         if g["conv"] else []
+                # the sign is read at those stored edges under the half-open boundary convention at JD-ulp precision (a stored ingress names the
+                # true sign edge only to one ulp; a zero-slack read at it saw the OLD sign on the new state's first instant → H2 blank)
+                offset = _aspect_offset_provider(g["target"], g["agent"], position_at, crossings[key])
                 bounds = (lambda lo, hi, _c=crossings[key]: [c for c in _c if lo < c < hi])
             if g["t_exact"] is not None and g["rel"] in ("conjunction", "aspect") \
                     and g["target"].startswith("point:"):
                 te = g["t_exact"].astimezone(timezone.utc)
                 hints = (lambda lo, hi, _te=te: [_te] if lo <= _te < hi else [])
-            out.append(SweepRecord(
+            # the completeness of the ingress list over this record's supports (R8-6, above)
+            bounds_complete = bounds is not None and completed is not None and bool(g["supports"]) \
+                and all(completed.lower <= a and b <= completed.upper for a, b in g["supports"])
+            rec = SweepRecord(
                 record_id=rid, root_id=g["root"], path_id=g["pid"], rule_version=g["ver"],
                 relation=g["rel"], object_kind=g["kind"], agent=g["agent"],
                 operator_role=g["role"], admission_state=g["adm"],
                 supports=tuple(g["supports"]), longitude_at=lon, aspect_rays=rays or (),
                 aspect_offset_at=offset, house_from_frame=g["house"], canonical_target=g["target"],
-                state_boundaries=bounds, peak_hints=hints,
-                state_boundaries_complete=bounds is not None and completed is not None and bool(g["supports"])
-                and all(completed.lower <= a and b <= completed.upper for a, b in g["supports"])))
+                state_boundaries=bounds, peak_hints=hints, state_boundaries_complete=bounds_complete,
+                period_anchor_lord=g["anchor"],
+                longitude_speed_at=lon_speed, station_instants=tent_stations,
+                # W0: the same boundaries, now also stated PER FACTOR — they are the dṛṣṭi offset's, and say nothing
+                # about any other state-valued factor of the record
+                operand_sources={} if bounds is None else {
+                    "graduated_drishti": OperandSource(boundaries=bounds, complete=bounds_complete)})
+            if p1 is not None and g["pid"] == "P1":
+                # P1a: the period lord's dignity / combustion / maitrī sources. Complete only where the class's coverage partition
+                # completed every support (the stored stations behind a Mercury / Venus retrograde regime are a stored list, R8-6).
+                lord = graha_title(g["anchor"] or g["agent"])
+                stations = None
+                if p1.needs_stations(lord) and g["conv"]:
+                    stations = stations_of(lord, g["conv"])
+                p1_complete = completed is not None and bool(g["supports"]) \
+                    and all(completed.lower <= a and b <= completed.upper for a, b in g["supports"])
+                rec = p1.attach(rec, complete=p1_complete, stations=stations, event_class=event_class)
+            out.append(rec)
         return out
 
     # ── write ───────────────────────────────────────────────────────────────
