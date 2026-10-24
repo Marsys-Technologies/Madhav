@@ -28,11 +28,15 @@ SIDECAR = REPO / "platform" / "python-sidecar"
 MIGRATION_ORDER = (167, 169, 171, 172, 184, 202, 223, 242, 342, 417, 426, 474, 499, 586, 590, 591, 595, 596, 598, 640, 641, 1200, 1201)
 SEED_MARK = "INSERT INTO asset_output_digest_specs"
 CHART = "482012f1-710e-4a25-994a-93821f5871aa"
-#: the migration-1304 shape (timeout raised to 72000 by migration 1395) of the small-test registry row (dispatch_v5_small_test_job.EXPECTED_REGISTRY_ROW), INACTIVE
+#: the migration-1304 shape (timeout raised to 72000 by migration 1395; depends_on as 1392 and 1403 leave it) of the small-test registry row
+#: (dispatch_v5_small_test_job.EXPECTED_REGISTRY_ROW), INACTIVE
 V5_ROW = {"scope": "per_chart", "is_active": False, "has_writer": True, "has_substeps": True, "writer_timeout_seconds": 72000,
-          "depends_on": ["ga_positions", "ga_dashas"], "target_table": "ka_gochara_eval_window",
+          "depends_on": ["ga_positions", "ga_dashas", "bg_transit_rules", "bg_dignity_reference"], "target_table": "ka_gochara_eval_window",
           "count_sql": "SELECT COUNT(*) FROM ka_gochara_eval_window WHERE chart_id=$1 AND generation='5.0'",
           "target_floor": 0, "estimated_seconds": None}
+#: the L0 reference upstreams are GLOBAL in production (asset_registry.scope 'global', one chart_id-NULL throughput/freshness row; receipt
+#: J-4e.depends-on-state-20261024T1325Z-a2); the ganita ones are per_chart
+GLOBAL_UPSTREAMS = frozenset({"bg_transit_rules", "bg_dignity_reference"})
 
 
 def _files(number: int) -> list[str]:
@@ -74,15 +78,15 @@ def apply_orchestrator_schema(conn, life_events: bool = False) -> None:
 
 def seed_registry(conn, asset_ids, v5_row=V5_ROW) -> None:
     """Every registered writer needs an asset_registry row with has_writer (the runner's writer-gap preflight), plus the v5 row in its
-    small-test shape, INACTIVE; ga_positions and ga_dashas are LIT with fresh freshness rows (its declared dependencies)."""
-    for asset_id in sorted(asset_ids):
-        if asset_id == "ka_gochara_v5":
-            continue
+    small-test shape, INACTIVE; every declared dependency is registered (per_chart, or global for GLOBAL_UPSTREAMS) and LIT with a fresh
+    freshness row: the pinned chart's for a per_chart upstream, the chart_id-NULL one for a global upstream (production's shape)."""
+    r = v5_row
+    for asset_id in sorted((set(asset_ids) | set(r["depends_on"])) - {"ka_gochara_v5"}):
         conn.execute(
             "INSERT INTO public.asset_registry (asset_id, layer, sort_order, sanskrit_name, english_name, english_description,"
-            " storage_type, scope, has_writer, is_active) VALUES (%s, 'ganita', 0, %s, %s, 'test row', 'postgres_table', 'per_chart',"
-            " true, true) ON CONFLICT (asset_id) DO NOTHING", (asset_id, asset_id, asset_id))
-    r = v5_row
+            " storage_type, scope, has_writer, is_active) VALUES (%s, 'ganita', 0, %s, %s, 'test row', 'postgres_table', %s,"
+            " true, true) ON CONFLICT (asset_id) DO NOTHING",
+            (asset_id, asset_id, asset_id, "global" if asset_id in GLOBAL_UPSTREAMS else "per_chart"))
     conn.execute(
         "INSERT INTO public.asset_registry (asset_id, layer, sort_order, sanskrit_name, english_name, english_description, storage_type,"
         " scope, is_active, has_writer, has_substeps, writer_timeout_seconds, depends_on, target_table, count_sql, target_floor,"
@@ -91,9 +95,10 @@ def seed_registry(conn, asset_ids, v5_row=V5_ROW) -> None:
         (r["scope"], r["is_active"], r["has_writer"], r["has_substeps"], r["writer_timeout_seconds"], r["depends_on"],
          r["target_table"], r["count_sql"], r["target_floor"], r["estimated_seconds"]))
     for dep in r["depends_on"]:
-        conn.execute("INSERT INTO public.asset_throughput (chart_id, asset_id, state) VALUES (%s, %s, 'lit')", (CHART, dep))
+        chart = None if dep in GLOBAL_UPSTREAMS else CHART
+        conn.execute("INSERT INTO public.asset_throughput (chart_id, asset_id, state) VALUES (%s, %s, 'lit')", (chart, dep))
         conn.execute("INSERT INTO public.asset_freshness (asset_id, chart_id, partition_key, freshness_state, receipt_version)"
-                     " VALUES (%s, %s, '__whole_asset__', 'fresh', 'test')", (dep, CHART))
+                     " VALUES (%s, %s, '__whole_asset__', 'fresh', 'test')", (dep, chart))
 
 
 def stage_run(conn, marker: dict, writer_digest: str) -> str:

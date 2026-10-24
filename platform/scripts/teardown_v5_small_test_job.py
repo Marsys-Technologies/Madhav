@@ -137,15 +137,16 @@ LOCK_TIMEOUT = "10s"                                       # the chart lock is r
 RETENTION_DAYS = 90                                        # the cockpit watchdog's terminal-run retention (watchdog/route.ts, M-4)
 RUNBOOK = "00_ARCHITECTURE/briefs/pravaha/V5_SMALLTEST_TEARDOWN_RUNBOOK_v1_0.md"
 
-# The shape the ka_gochara_v5 registry row must hold after teardown: the migration-1304 small-test row, the SAME values
-# dispatch_v5_small_test_job.EXPECTED_REGISTRY_ROW validates before staging (a test pins the two equal).
+# The shape the ka_gochara_v5 registry row must hold after teardown: the migration-1304 small-test row as migrations 1395, 1392 and 1403 leave it,
+# the SAME values dispatch_v5_small_test_job.EXPECTED_REGISTRY_ROW validates before staging (a test pins the two equal). The teardown carries no
+# lit/fresh check on depends_on (the dispatch's _check_dependencies_ready): it only deletes this test's own output and stages nothing.
 EXPECTED_REGISTRY_ROW = {
     "scope": "per_chart",
     "is_active": False,
     "has_writer": True,
     "has_substeps": True,
     "writer_timeout_seconds": 72000,                       # 28800 from migration 1304, raised by migration 1395 (J-3c cap, SR-J3-CAP-LIVE)
-    "depends_on": ["ga_positions", "ga_dashas"],
+    "depends_on": ["ga_positions", "ga_dashas", "bg_transit_rules", "bg_dignity_reference"],   # 1304 pair; 1392 adds bg_transit_rules; 1403 adds bg_dignity_reference
     "target_table": "ka_gochara_eval_window",
     "count_sql": ("SELECT COUNT(*) FROM ka_gochara_eval_window "
                   "WHERE chart_id=$1 AND generation='5.0'"),

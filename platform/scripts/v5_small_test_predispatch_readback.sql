@@ -4,21 +4,25 @@
 BEGIN READ ONLY;
 
 -- 1. THE REGISTRY ROW of ka_gochara_v5: must be INACTIVE and in the migration-1304 shape (PR 3101 applied), with plain data routing.
---    expected: scope per_chart, is_active f, has_writer t, has_substeps t, writer_timeout_seconds 72000 (migration 1395; 28800 before it), depends_on {ga_positions,ga_dashas},
+--    expected: scope per_chart, is_active f, has_writer t, has_substeps t, writer_timeout_seconds 72000 (migration 1395; 28800 before it), depends_on {ga_positions,ga_dashas,bg_transit_rules,bg_dignity_reference} (1304 pair + 1392 + 1403),
 --    target_table ka_gochara_eval_window, target_floor 0, estimated_seconds NULL, asset_kind data, asset_type data, health_probe NULL,
 --    integrity_check_sql NULL, rebuild_on_probe_fail f, catalog_status CURRENT.
 SELECT asset_id, scope, is_active, has_writer, has_substeps, writer_timeout_seconds, depends_on, target_table, count_sql, target_floor,
        estimated_seconds, asset_kind, asset_type, health_probe, integrity_check_sql, rebuild_on_probe_fail, catalog_status
 FROM asset_registry WHERE asset_id = 'ka_gochara_v5';
 
--- 2. THE DECLARED DEPENDENCIES must be LIT for the canonical chart (the runner never dispatches the asset otherwise: it marks it blocked),
---    and their freshness must be 'fresh' (the writer-entry dependency assertion requires it for data dependencies).
---    expected: one row each for ga_positions and ga_dashas: throughput_state lit (or service_ok), freshness_state fresh.
-SELECT d.asset_id,
-       (SELECT t.state FROM asset_throughput t WHERE t.asset_id = d.asset_id AND t.chart_id = '482012f1-710e-4a25-994a-93821f5871aa') AS throughput_state,
-       (SELECT f.freshness_state FROM asset_freshness f WHERE f.asset_id = d.asset_id AND f.chart_id = '482012f1-710e-4a25-994a-93821f5871aa'
+-- 2. THE DECLARED DEPENDENCIES must be LIT and FRESH (the runner never dispatches the asset otherwise: it marks it blocked; the dispatch admission
+--    refuses too). The row to read depends on the upstream's registry scope: per_chart (the ga_* ones) -> the canonical chart's rows; global (the bg_*
+--    L0 references) -> the chart_id-NULL rows (a chart's row of a global asset is never consulted).
+--    expected: one row each for ga_positions, ga_dashas, bg_transit_rules, bg_dignity_reference: throughput_state lit, freshness_state fresh.
+SELECT d.asset_id, ar.scope,
+       (SELECT t.state FROM asset_throughput t WHERE t.asset_id = d.asset_id
+         AND t.chart_id IS NOT DISTINCT FROM (CASE WHEN ar.scope = 'per_chart' THEN '482012f1-710e-4a25-994a-93821f5871aa'::uuid END)) AS throughput_state,
+       (SELECT f.freshness_state FROM asset_freshness f WHERE f.asset_id = d.asset_id
+         AND f.chart_id IS NOT DISTINCT FROM (CASE WHEN ar.scope = 'per_chart' THEN '482012f1-710e-4a25-994a-93821f5871aa'::uuid END)
          ORDER BY f.observed_at DESC LIMIT 1) AS freshness_state
-FROM unnest(ARRAY['ga_positions', 'ga_dashas']) AS d(asset_id);
+FROM unnest(ARRAY['ga_positions', 'ga_dashas', 'bg_transit_rules', 'bg_dignity_reference']) AS d(asset_id)
+LEFT JOIN asset_registry ar ON ar.asset_id = d.asset_id;
 
 -- 3. THE CHART has the birth data the runner reads (public.charts; the runner refuses with 'missing required birth fields' otherwise).
 --    expected: all six columns non-null.
