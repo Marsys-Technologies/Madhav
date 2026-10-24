@@ -643,6 +643,9 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
     inconclusive: list[dict] = []   # R-6: windows the certificate check could not settle inside the verifier's own budget — demoted to a named blank at seal
     solver_checked = 0              # windows the independent check SETTLED (a numbered window AGREED, a blank window's certificate or defect CONFIRMED) or demoted
     solver_blank: dict[str, int] = {}   # …of which blank windows, by the stored reason the check confirmed
+    # SR-UCERT-CAP-WATCH: how often the verifier's per-window deep-bisection allowance (`window_solver_check.DEEP_SPLIT_CAP`) was used / spent, read off the deciding
+    # check's own record (`rederived`); a window whose verdict carries no such record (a budget blank, an injected `solver_check_fn`) is counted in none of these.
+    deep_split = {"windows_using_deep_cuts": 0, "windows_spent_allowance": 0, "deep_bisections": 0, "allowance_exhausted_leaves": 0}
     unverified_why: dict[str, list] = {}
     detail: list[dict] = []         # the lossless qualification provenance, DERIVED here (1156 has no column)
     inherited = None                # R4: the combustion authority THIS verifier read (None = no P1 binding ⇒ the window carries no such key)
@@ -878,6 +881,11 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
                 unverified.append(tag)
                 continue
             solver_checked += 1
+            _rd = getattr(getattr(verdict, "inner", None), "rederived", None) or {}
+            deep_split["deep_bisections"] += _rd.get("deep_bisections", 0)
+            deep_split["allowance_exhausted_leaves"] += _rd.get("allowance_exhausted_leaves", 0)
+            deep_split["windows_using_deep_cuts"] += 1 if _rd.get("deep_bisections", 0) > 0 else 0
+            deep_split["windows_spent_allowance"] += 1 if _rd.get("allowance_exhausted_leaves", 0) > 0 else 0
             cls = verdict.classification
             if cls == "DISAGREEMENT":
                 problems.append(f"{tag}: the independent solver check DISAGREES — " + "; ".join(f"{code}: {detail_}" for code, detail_ in verdict.findings))
@@ -1022,7 +1030,7 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
             "unverified_windows": unverified, "policy_version": policy,
             "dynamic_enabled": bool(dynamic_enabled), "solver_check_requested": solver_check, "solver_checked_windows": solver_checked,
             "solver_check_deferred_windows": len(deferred), "solver_check_unavailable_windows": len(unavailable),
-            "solver_blank_windows": dict(sorted(solver_blank.items())), "unverified_why": unverified_why, "inconclusive_windows": inconclusive,
+            "solver_blank_windows": dict(sorted(solver_blank.items())), "deep_split_allowance": deep_split, "unverified_why": unverified_why, "inconclusive_windows": inconclusive,
             "fields_verified": list(GOVERNED_FIELDS), "windows_detail": detail,
             **({"vedha_derivation": derived_vedha.summary()} if derived_vedha is not None else {}),
             # VERIFIED only when EVERY window's stored fields were reproduced exactly

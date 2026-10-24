@@ -29,6 +29,7 @@ Claims (the cited rule is the ruling or classical definition the oracle is built
   C-2  an UNVERIFIED reason that is not a named INCONCLUSIVE one blocks (DISAGREEMENT)                                  R-6
   C-3  INCONCLUSIVE is derived from the reasons that make it so (end to end through `check_numbered`)                   R-6
   C-4  a bound that cannot be pushed under M + tol, with no point above it, is INCONCLUSIVE; a real exceedance DISAGREES   R-6 (SR-TR2-DEFECT-B)
+       (SR-UCERT-CAP-WATCH: the verifier cuts below 1 ms first, so that case is rare; the claims of that floor are S-32 .. S-34 in test_od1_s2_solver_check)
   G-1  populations are matched AFTER classification (stored numbered = reproduced + demoted)                            R-6
   G-2  a demoted window is attested as a BLANK under its named reason                                                   R-6
   G-3  the demoted share is capped at 0.5 % of all windows; above it the verdict FAILS                                  R-6
@@ -473,7 +474,7 @@ class RoundingEdgeWorld:
     sum F = tentA + tentB peaks AT the crest, F* = 1 + tentB(t_c) = 2 - B0 (orb 1, so a tent is 1 - |offset|). The stored maximum is a float4: `M4`, with F* = M4 + `err_of_half` x half a
     float4 spacing (2^-24 in [1, 2)). The verifier's bound is the sum of each body's larger end value, which exceeds F by B's fall across a leaf (VEL_B x width); the search stops at
     MIN_WIDTH_S = 1 ms (VEL_B x 1 ms = 1.2e-8 here, against a margin to M4 + tol of (1 - err_of_half) x 2^-24 + 1e-10). With `err_of_half` = 0.98 the margin is ~1.2e-9: every point is at or
-    under M4 + tol, and the bound cannot show it."""
+    under M4 + tol, and the bound could not show it at 1 ms — the defect; the verifier now cuts on to DEEP_WIDTH_S and certifies it (C-4 iii)."""
     ORB = 1.0
     VEL_A, VEL_B = 1.8e-4, 1.157e-5          # deg/s: Mercury-like, Sun-like (the trial's two bodies)
     HALF_F4 = 2.0 ** -24                     # half a float4 spacing in [1, 2)
@@ -499,18 +500,64 @@ class RoundingEdgeWorld:
                                    stored=chk.StoredWindow(at(self.t_c), stored_value), position_at=self.pos, certificate=None, resolve=True)
 
 
+class FloorEdgeWorld:
+    """What the verifier's bound still cannot show at its LOWER floor (SR-UCERT-CAP-WATCH): body `A` (tent value 0.9 at `t_end`, crest beyond) ends its support at `t_end` while the Sun-like body B
+    (1.157e-5 deg/s) falls on, so the supremum is F at the last instant of A's support, exactly `margin` under M4 + tol, and the several-body bound is VEL_B x (leaf width) loose: 6e-11 on the 5.6 us
+    leaf the search ends on. A margin of 2e-11 is a maximum under the threshold that nothing the verifier can evaluate shows."""
+    VEL_A, VEL_B = 1.8e-4, 1.157e-5
+
+    def __init__(self, margin: float, *, t_end: float = 3000.0):
+        self.t_end = t_end
+        self.M4 = struct.unpack("f", struct.pack("f", 1.76007128))[0]
+        thr = self.M4 + chk._f4_tol(self.M4)
+        self.b0 = 1.9 - (thr - margin) - (self.VEL_A - self.VEL_B) * 1e-6           # B's offset (deg) at t_end
+
+    def pos(self, body, d):
+        t = (d - T0).total_seconds()
+        return (100.0 + self.VEL_A * (t - self.t_end)) % 360.0 if body == "A" else (200.0 + self.b0 + self.VEL_B * (t - self.t_end)) % 360.0
+
+    def records(self):
+        return [chk.CheckRecord("A", "rA", "A", ((at(0.0), at(self.t_end)),), constant=1.0, tent=chk.TentFactor("A", 100.1, 1.0)),
+                chk.CheckRecord("B", "rB", "B", ((at(0.0), at(2 * self.t_end)),), constant=1.0, tent=chk.TentFactor("B", 200.0, 1.0))]
+
+    def classify(self, m_cc, stored_value):
+        return m_cc.check_numbered(lo=at(0), hi=at(2 * self.t_end), records=self.records(), objective=chk.OBJ_SUM,
+                                   stored=chk.StoredWindow(at(self.t_end - 1e-6), stored_value), position_at=self.pos, certificate=None, resolve=True)
+
+
 @claim("C-4", "window_cert_check", "chk.U_BUDGET, chk.U_CERT, ", "chk.U_BUDGET, ")
 def oracle_c4(mods):
-    """SR-TR2-DEFECT-B, both directions. (i) A stored float4 whose rounding error is 98 % of its limit leaves the exact maximum 1.2e-9 under M + tol; the verifier's cross-body bound
-    cannot show that at its 1 ms floor, and no point it evaluates is above the threshold — so the window is INCONCLUSIVE naming `solver_certificate_incomplete` (demoted to the named blank), with no
-    finding: the sky does not contradict the number. (ii) The same world with the stored maximum one float4 spacing too low is a real exceedance: DISAGREEMENT, whatever else is open."""
+    """SR-TR2-DEFECT-B, both directions, after SR-UCERT-CAP-WATCH made the case rare. (i) A stored float4 whose true maximum is 2e-11 under M + tol is a number nothing the verifier evaluates contradicts,
+    but its several-body bound is 6e-11 loose even at the lowest floor: the window is INCONCLUSIVE naming `solver_certificate_incomplete` (demoted to the named blank), with no finding — the sky does not
+    contradict the number. (ii) The same world with the stored maximum one float4 spacing too low is a real exceedance: DISAGREEMENT, whatever else is open. (iii) The first real window of the trial (the
+    rounding-edge crest, 1.3e-9 under the threshold) is no longer INCONCLUSIVE: the lower floor certifies it AGREED."""
     c = M(mods, "window_cert_check")
-    w = RoundingEdgeWorld(0.98)
-    assert abs(w.f_star - w.M4) < chk._f4_tol(w.M4) and chk._f4_tol(w.M4) - (w.f_star - w.M4) < 2e-9      # the premise: the margin to the threshold is ~1.2e-9, a true maximum under it
+    w = FloorEdgeWorld(2e-11)
     rep = w.classify(c, w.M4)
     assert rep.classification == c.INCONCLUSIVE and [r for r, _ in rep.inconclusive] == [chk.U_CERT] and not rep.findings, (rep.classification, rep.codes())
-    low = w.classify(c, w.M4 - 2.0 ** -23)                 # one float4 spacing below: F* - stored = 1.98 half-spacings, outside the tolerance
+    low = w.classify(c, w.M4 - 2.0 ** -23)                 # one float4 spacing below: the maximum exceeds the stored one by 1.98 half-spacings, outside the tolerance
     assert low.classification == c.DISAGREEMENT and low.findings, (low.classification, low.codes())
+    crest = RoundingEdgeWorld(0.98)
+    assert crest.classify(c, crest.M4).classification == c.AGREED
+
+
+def test_a_cap_exhausting_window_is_inconclusive_and_its_record_says_the_allowance_was_spent():
+    """SR-UCERT-SUBDIV ruling condition 6 end to end at the certificate: a flat two-body sum 1e-7 under M + tol over 10 s (each 1 ms leaf needs one more cut: the allowance runs out first)
+    classifies INCONCLUSIVE `solver_certificate_incomplete` with no finding, and the deciding check's record carries the exhaustion; the same checker on the wide-margin crest world certifies
+    AGREED with no exhaustion. (The oracles of the two halves are S-35 / S-36 in the S2 suite and C-4 / W-4 here.)"""
+    m_val = struct.unpack("f", struct.pack("f", 1.76007128))[0]
+    thr = m_val + chk._f4_tol(m_val)
+    v, tc = 1.8e-4, 10.0
+    b0 = 1.9 - (thr - 1e-7)
+    pos = lambda body, d: ((100.0 + v * ((d - T0).total_seconds() - tc)) if body == "A" else (200.0 + b0 + v * ((d - T0).total_seconds() - tc))) % 360.0   # noqa: E731
+    recs = [chk.CheckRecord("A", "rA", "A", ((at(0.0), at(tc)),), constant=1.0, tent=chk.TentFactor("A", 100.1, 1.0)),
+            chk.CheckRecord("B", "rB", "B", ((at(0.0), at(2 * tc)),), constant=1.0, tent=chk.TentFactor("B", 200.0, 1.0))]
+    rep = cc.check_numbered(lo=at(0), hi=at(2 * tc), records=recs, objective=chk.OBJ_SUM, stored=chk.StoredWindow(at(0), m_val), position_at=pos, certificate=None, resolve=True)
+    assert rep.classification == cc.INCONCLUSIVE and [r for r, _ in rep.inconclusive] == [chk.U_CERT] and not rep.findings, (rep.classification, rep.codes())
+    assert rep.inner.rederived["allowance_exhausted_leaves"] > 0 and rep.inner.rederived["deep_bisections"] == chk.DEEP_SPLIT_CAP, rep.inner.rederived
+    crest = RoundingEdgeWorld(0.98)
+    ok = crest.classify(cc, crest.M4)
+    assert ok.classification == cc.AGREED and ok.inner.rederived["allowance_exhausted_leaves"] == 0, (ok.classification, ok.inner.rederived)
 
 
 # G-1 .. G-4: the gate, over a stored census and a re-derivation report ───────────────────────────────────────────────────────────
@@ -763,8 +810,10 @@ GRAIN = dict(chart_id="c", generation="g", event_class="marriage", path_id="P3",
 
 
 class Verdict:
-    def __init__(self, classification, findings=(), inconclusive=()):
+    def __init__(self, classification, findings=(), inconclusive=(), rederived=None):
         self.classification, self.findings, self.inconclusive = classification, tuple(findings), tuple(inconclusive)
+        if rederived is not None:                          # the deciding check's own record, as `CertReport.inner.rederived`
+            self.inner = types.SimpleNamespace(rederived=rederived)
 
 
 def _fn_windows(verdicts, *, qualification_extra=None, n=1):
@@ -831,6 +880,20 @@ def oracle_w3(mods):
     assert rep["status"] == "VERIFIED" and rep["numeric_reproduced"] == 1
     with pytest.raises(RuntimeError, match="qualification .* != re-derived"):
         _fn_windows_with(v, [Verdict("AGREED")], qualification_extra={"solver_certificate": {"schema": sol.CERT_SCHEMA}, "members": 9})
+
+
+@claim("W-4", "window_verifier", 'deep_split["windows_spent_allowance"] += 1 if _rd.get("allowance_exhausted_leaves", 0) > 0 else 0',
+       'deep_split["windows_spent_allowance"] += 0')
+def oracle_w4(mods):
+    """SR-UCERT-CAP-WATCH, the hit rate in the verification report: `deep_split_allowance` counts, over the grain's windows, those that used deep cuts and those that SPENT the allowance (a leaf
+    met its end uncertified), with the totals — read off each deciding check's own record. Three windows: one that spent it (INCONCLUSIVE), one that used cuts and certified (AGREED), one that
+    needed none (AGREED); a verdict with no record (a stub, a budget blank) is counted in none."""
+    v = M(mods, "window_verifier")
+    rep, _ = _fn_windows_with(v, [Verdict("INCONCLUSIVE", inconclusive=[("solver_certificate_incomplete", "")], rederived={"deep_bisections": 2000, "allowance_exhausted_leaves": 7}),
+                                  Verdict("AGREED", rederived={"deep_bisections": 12, "allowance_exhausted_leaves": 0}),
+                                  Verdict("AGREED", rederived={"deep_bisections": 0, "allowance_exhausted_leaves": 0}),
+                                  Verdict("AGREED")], n=4)
+    assert rep["deep_split_allowance"] == {"windows_using_deep_cuts": 2, "windows_spent_allowance": 1, "deep_bisections": 2012, "allowance_exhausted_leaves": 7}, rep["deep_split_allowance"]
 
 
 # S-1 ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -910,7 +973,7 @@ def test_the_single_planted_reversion_fails_the_oracle(cid):
 
 def test_every_claim_has_exactly_one_reversion_and_one_oracle():
     assert set(CLAIMS) == {"K-1", "K-2", "K-3", "K-4", "V-1", "V-2", "V-3", "V-4", "V-5", "V-6", "V-7", "V-8", "V-9", "C-1", "C-2", "C-3", "C-4", "G-1", "G-2", "G-3", "G-4",
-                           "W-1", "W-2", "W-3", "S-1", "V-10", "V-11", "D-1", "D-2", "D-3", "D-4", "D-5", "T-1"}
+                           "W-1", "W-2", "W-3", "S-1", "V-10", "V-11", "D-1", "D-2", "D-3", "D-4", "D-5", "T-1", "W-4"}
     assert len({(m, old) for _, m, old, _ in CLAIMS.values()}) == len(CLAIMS)             # no two claims share a reversion site
 
 

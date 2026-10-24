@@ -17,7 +17,8 @@ WHAT IT PROVES for one numbered window (a stored peak instant `t*` and objective
                   (tightened, per body, to max(H(l), H(r)) of the body's convex sum H; for the max-min objective: min over
                   the two agents). No speed constant, no acceleration bound (no H4);
                   a piece whose bound is above the threshold is bisected until the bound falls below it, a witness above
-                  it is found, or the width floor is reached (then the window is UNVERIFIED, never passed);
+                  it is found, or the width floor is reached (then the window is UNVERIFIED, never passed): MIN_WIDTH_S, and below it
+                  down to DEEP_WIDTH_S out of a per-window allowance of DEEP_SPLIT_CAP bisections (SR-UCERT-CAP-WATCH);
   3. EARLIEST TIE the stored `t*` is the earliest DISTINCT LOCAL EXTREMUM of F within the frozen tie tolerance (1e-9) of the
                   UNROUNDED maximum. The tie rule is between distinct extrema, never on the shoulder of one smooth hump. The
                   +-2e-10 grey band around that threshold is ONLY an ambiguity detector (R-1 b): when the earliest qualifying
@@ -88,7 +89,9 @@ MIN_STATION_SPACING_D = 19.75  # S0 measurement 19.7585 d (Mercury); must exceed
 NEAR_END_S = 120.0            # a station this close to a support end is a Swiss/spline offset (<= 16.7 s measured), a cut
 NEAR_END_NOISE_DEG = 3.9e-9   # S0 K-2: the Swiss longitude is non-monotone by up to this inside a station zone (a noise comb of tied maxima)
 VEL_H_S = 600.0               # half-width of the centred-difference velocity (the speed is read, never assumed)
-MIN_WIDTH_S = 1e-3            # the bound search stops bisecting here (UNVERIFIED if still not certified)
+MIN_WIDTH_S = 1e-3            # the bound search's ordinary floor: below it a still-uncertified leaf is bisected only out of the DEEP allowance
+DEEP_WIDTH_S = 1e-5           # SR-UCERT-CAP-WATCH: the lower floor of that allowance (below the ~4e-5 s JD-ulp resolution of the stored edges: finer cannot help the real sky)
+DEEP_SPLIT_CAP = 2000         # …and at most this many bisections below MIN_WIDTH_S per window (each costs one evaluation per body): the extra cost is bounded, whatever the window
 LEAF_S = 0.0864               # resolution (1e-6 d) of the extremum enumeration; each extremum is then located to a microsecond
 ISOLATION_S = 4.0             # R-3: tied extrema closer than this (2 x the builder's LEAF, <= 2 s on the real sky: window_solver H5) are not isolated
 LOCATE_XTOL_S = 1e-6           # an extremum is located to a microsecond: a kinked peak loses < 1e-10 of value at that distance
@@ -627,6 +630,11 @@ class _Engine:
     def _bound(self, m_stored: float):
         thr = m_stored + _f4_tol(m_stored)
         worst = None
+        deep_left = DEEP_SPLIT_CAP
+        # the per-window cap record (SR-UCERT-CAP-WATCH, measurable hit rate): bisections used out of the allowance, and the leaves that reached
+        # the allowance's end still uncertified (> 0 = the window spent the allowance; each such leaf is `worst`, never passed)
+        self.rederived["deep_bisections"] = 0
+        self.rederived["allowance_exhausted_leaves"] = 0
         for pc in self.pieces:
             if not pc.defined:
                 continue
@@ -657,14 +665,27 @@ class _Engine:
                         self._above(m, w, m_stored)
                         return
                 if r - l <= MIN_WIDTH_S:
-                    worst = (l, r)
-                    continue
+                    # The bound of a several-body piece is the sum of each body's larger end value: it exceeds F on a leaf by the opposing body's
+                    # variation across the leaf (~1e-8 per ms), so a window whose true maximum sits within that of M + tol cannot be certified at
+                    # 1 ms. More cuts, never a wider tolerance: the SAME bound, applied to smaller leaves (any partition of a monotone piece is
+                    # sound, `_seeds`), stays an upper bound at every depth and tightens linearly with the leaf; a point above the threshold
+                    # is still found by the midpoint evaluation above, and a leaf still uncertified at DEEP_WIDTH_S (or once the allowance is
+                    # spent) is `worst` exactly as before — never passed.
+                    if r - l <= DEEP_WIDTH_S:
+                        worst = (l, r)
+                        continue
+                    if deep_left <= 0:
+                        self.rederived["allowance_exhausted_leaves"] += 1
+                        worst = (l, r)
+                        continue
+                    deep_left -= 1
+                    self.rederived["deep_bisections"] += 1
                 stack.append((m, r, vm, vr))
                 stack.append((l, m, vl, vm))
         if worst is not None:
             self.unverified.append((U_CERT, f"the bound could not be pushed under M + {_f4_tol(m_stored):.3g} on "
                                             f"[{self._dt(worst[0]).isoformat()}, {self._dt(worst[1]).isoformat()}) at the "
-                                            f"{MIN_WIDTH_S} s width floor"))
+                                            f"{DEEP_WIDTH_S} s width floor"))
 
     def _above(self, t: float, value: float, m_stored: float):
         self.findings.append(Finding(F_ABOVE, f"the objective reaches {value!r} at {self._dt(t).isoformat()}, above the "
