@@ -423,10 +423,35 @@ def scoped_measurements(conn, tables: list[str], sequences: list[str]) -> dict:
     return {'tables': out, 'sequences': measure_sequences(conn, sequences)}
 
 
-def measure_scope_now(tables: list[str], sequences: list[str], dsn: str | None = None) -> dict:
+def scoped_measurements_presence_only(conn, tables: list[str], sequences: list[str], presence_only) -> dict:
+    """The builder-safe form of `scoped_measurements` (SR-J4E-FIX): a principal that by design cannot SELECT some scoped relations still proves them.
+    (1) every scoped relation is resolved through the catalog (needs no table privilege); one absent REFUSES, by name. (2) the content of every relation
+    the current user CAN SELECT is measured exactly as the capture measures it; a read error propagates (it refuses upstream). (3) the relations the
+    current user cannot SELECT must equal `presence_only` EXACTLY: any other unreadable relation REFUSES (a grant the principal needs is still caught),
+    and so does a pinned one that has become readable (the pin is stale). No generic "skip if no privilege". (4) The result names the presence-only
+    relations under 'presence_only': they are proven present, never read (N.8: no silent skip)."""
+    pinned = sorted(set(presence_only))
+    found = _qualified_oids(conn, tables)
+    missing = [t for t in tables if t not in found]
+    if missing:
+        raise BackupRefused('scope relation missing: ' + ', '.join(missing))
+    readable = {oid: ok for oid, ok in conn.execute(
+        "SELECT o, has_table_privilege(o, 'SELECT') FROM unnest(%s::bigint[]::oid[]) AS o", ([found[t][0] for t in tables],)).fetchall()}
+    unreadable = sorted(t for t in tables if not readable[found[t][0]])
+    if unreadable != pinned:
+        raise BackupRefused('unreadable scope relations differ from the pinned presence-only set: unexpected '
+                            + (', '.join(sorted(set(unreadable) - set(pinned))) or 'none') + '; pinned but now readable '
+                            + (', '.join(sorted(set(pinned) - set(unreadable))) or 'none'))
+    out = scoped_measurements(conn, [t for t in tables if t not in set(pinned)], sequences)
+    out['presence_only'] = pinned
+    return out
+
+
+def measure_scope_now(tables: list[str], sequences: list[str], dsn: str | None = None, presence_only=None) -> dict:
     """A fresh, strictly read-only measurement of the relations a scoped capture measured, by the same function the
     capture used (scoped_measurements): the check-time side of the scoped-content digest (SR-BACKUP-VALIDITY-A8).
-    Opens its own READ ONLY transaction, never writes and always rolls back."""
+    Opens its own READ ONLY transaction, never writes and always rolls back. `presence_only` (None for every capture and smalltest caller) is the
+    century dispatch's builder-safe form (`scoped_measurements_presence_only`)."""
     import psycopg
     source = dsn or os.environ.get('DATABASE_URL')
     if not source:
@@ -434,6 +459,8 @@ def measure_scope_now(tables: list[str], sequences: list[str], dsn: str | None =
     with psycopg.connect(source, autocommit=True) as conn:
         conn.execute('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY')
         try:
+            if presence_only is not None:
+                return scoped_measurements_presence_only(conn, tables, sequences, presence_only)
             return scoped_measurements(conn, tables, sequences)
         finally:
             conn.rollback()

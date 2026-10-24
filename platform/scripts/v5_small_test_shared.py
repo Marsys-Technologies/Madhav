@@ -1069,6 +1069,8 @@ def century_request_problem(req, root, measure=None):
                 if measure is not None:
                     try:
                         measure()
+                    except Refused:
+                        raise       # the dispatch script's own named refusal (relation names only, SR-J4E-FIX)
                     except Exception:
                         raise Refused('scoped content could not be measured now; the century scope is not shown to be present') from None
                 century_dryrun_evidence(req, root)

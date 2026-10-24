@@ -74,6 +74,13 @@ def run(argv=None, *, dispatcher=None, connect=None, launcher=century_cloud_laun
         conn.close()
 
 
+def _is_named_refusal(exc):
+    """bridge.Refused or v5_small_test_shared.Refused, nothing else. The shared module is looked up, never imported: run() puts platform/scripts on the
+    path only when it imports the dispatcher, and a shared.Refused cannot exist unless that module was loaded."""
+    shared_refused = getattr(sys.modules.get("v5_small_test_shared"), "Refused", None)
+    return isinstance(exc, (bridge.Refused,) + ((shared_refused,) if shared_refused else ()))
+
+
 def cli(argv=None):
     try:
         run(argv)
@@ -81,7 +88,11 @@ def cli(argv=None):
     except SystemExit as exc:
         return exc.code
     except BaseException as exc:
-        print(f"century launch failed ({type(exc).__name__}); reconcile retained evidence, never retry", file=sys.stderr)
+        if _is_named_refusal(exc):
+            # SR-J4E-FIX: a Refused's text is ids/counts/relation names only (never connection text), so it is shown; every other exception stays type-only
+            print(f"century launch refused: {exc}; reconcile retained evidence, never retry", file=sys.stderr)
+        else:
+            print(f"century launch failed ({type(exc).__name__}); reconcile retained evidence, never retry", file=sys.stderr)
         return 130 if isinstance(exc, KeyboardInterrupt) else 1
 
 

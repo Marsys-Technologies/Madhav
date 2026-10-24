@@ -511,10 +511,92 @@ def test_the_dispatch_and_century_execute_policies_refuse_an_unmeasurable_scope(
     else:
         req = {**ref, 'kind': kind, 'item_id': shared.CENTURY_ITEM, 'args': dict(zip(shared.CENTURY_ARG_KEYS, ('all', 'true', 'true', '2001-01-01T00:00:00+00:00,2051-01-01T00:00:00+00:00', 'window_qualification/1')))}      # the five exact args (F-CHANNEL, OD-1), synthetic bounds
         policy = century._century_request_policy
+        monkeypatch.setattr(century, 'PRESENCE_ONLY_RELATIONS', frozenset())            # this login is a superuser: it reads every relation, so none is presence-only here
     assert policy(req, root) is None                                                    # measurable and unchanged: admitted
     with psycopg.connect(dsn, autocommit=True) as conn:
         conn.execute('ALTER TABLE p02.written RENAME TO written_renamed')               # a scoped relation the measurement can no longer find
     assert UNMEASURABLE in policy(req, root)
+
+
+# ---- SR-J4E-FIX: the century dispatch runs as the builder login, which cannot SELECT three scoped relations by design (migration 1240) ----
+
+CENTURY_UNMEASURABLE = 'scoped content could not be measured now'
+
+
+@pytest.fixture
+def builder_like(scoped, monkeypatch):
+    """A real LOGIN role standing in for data_plane_builder: it can SELECT the scoped p02 tables but holds NOTHING on public._migrations_applied (the stand-in for
+    the three relations migration 1240 withholds). DATABASE_URL is switched to that login, as the executor's builder environment does. Dropped at the end."""
+    import dispatch_v5_century_job as century
+    dsn, _, _ = scoped
+    role = 'p02_builder_' + uuid.uuid4().hex[:8]
+    with psycopg.connect(dsn, autocommit=True) as admin:
+        admin.execute(f'CREATE ROLE {role} LOGIN')
+        admin.execute(f'GRANT USAGE ON SCHEMA p02 TO {role}')
+        admin.execute(f'GRANT SELECT ON p02.written, p02.audit TO {role}')
+    login = psycopg.conninfo.make_conninfo(dsn, user=role)
+    monkeypatch.setenv('DATABASE_URL', login)
+    monkeypatch.setattr(century, 'PRESENCE_ONLY_RELATIONS', frozenset({'public._migrations_applied'}))
+    monkeypatch.setattr(shared, 'absence_evidence', lambda req, root: None)             # not under test: the lifecycle-absence file evidence
+    monkeypatch.setattr(shared, 'century_dryrun_evidence', lambda req, root: None)      # not under test: reached only after the scope check
+    req = {'kind': 'century_dispatch', 'item_id': shared.CENTURY_ITEM,
+           'args': dict(zip(shared.CENTURY_ARG_KEYS, ('all', 'true', 'true', '2001-01-01T00:00:00+00:00,2051-01-01T00:00:00+00:00', 'window_qualification/1')))}
+    try:
+        yield dsn, role, century._century_request_policy, req
+    finally:
+        with psycopg.connect(dsn, autocommit=True) as admin:
+            admin.execute(f'DROP OWNED BY {role}')
+            admin.execute(f'DROP ROLE {role}')
+
+
+def test_century_policy_admits_a_builder_login_that_cannot_select_the_pinned_relations(builder_like, tmp_path):
+    """Claim (1)+(2)+(3)+(4) happy path: the login really cannot read the pinned relation, every scoped relation is found, the readable ones are read, the
+    unreadable set equals the pin -> ADMITTED; and the measurement names the presence-only relation it did not read (N.8: no silent skip)."""
+    dsn, role, policy, req = builder_like
+    with psycopg.connect(psycopg.conninfo.make_conninfo(dsn, user=role), autocommit=True) as probe:
+        with pytest.raises(psycopg.errors.InsufficientPrivilege):
+            probe.execute('SELECT 1 FROM public._migrations_applied')                    # the premise: the old whole-scope measurement cannot run as this login
+    assert policy(req, tmp_path) is None
+    measured = backup.measure_scope_now(backup.load_scope()['tables'], [], presence_only=frozenset({'public._migrations_applied'}))
+    assert measured['presence_only'] == ['public._migrations_applied']
+    assert sorted(measured['tables']) == ['p02.audit', 'p02.written']
+
+
+def test_century_policy_refuses_a_fourth_unreadable_relation_by_name(builder_like, tmp_path):
+    """Claim (3): the builder losing SELECT on any relation OUTSIDE the pin (a grant it really needs) is caught, not skipped."""
+    dsn, role, policy, req = builder_like
+    with psycopg.connect(dsn, autocommit=True) as admin:
+        admin.execute(f'REVOKE SELECT ON p02.audit FROM {role}')
+    problem = policy(req, tmp_path)
+    assert CENTURY_UNMEASURABLE in problem and 'unexpected p02.audit' in problem
+
+
+def test_century_policy_refuses_a_pinned_relation_that_became_readable(builder_like, tmp_path):
+    """Claim (3), the other direction: the unreadable set must EQUAL the pin, so a stale pin is a refusal too."""
+    dsn, role, policy, req = builder_like
+    with psycopg.connect(dsn, autocommit=True) as admin:
+        admin.execute(f'GRANT SELECT ON public._migrations_applied TO {role}')
+    problem = policy(req, tmp_path)
+    assert CENTURY_UNMEASURABLE in problem and 'now readable public._migrations_applied' in problem
+
+
+def test_century_policy_refuses_a_missing_scoped_relation_by_name(builder_like, tmp_path):
+    """Claim (1): every scoped relation is resolved through the catalog, and one that is gone refuses naming it."""
+    dsn, _, policy, req = builder_like
+    with psycopg.connect(dsn, autocommit=True) as admin:
+        admin.execute('DROP TABLE p02.audit')
+    problem = policy(req, tmp_path)
+    assert CENTURY_UNMEASURABLE in problem and 'scope relation missing: p02.audit' in problem
+
+
+def test_century_policy_refuses_a_read_error_on_a_readable_relation(builder_like, tmp_path):
+    """Claim (2): the content of a relation the login CAN select is really read, and a read that fails refuses (row-level security that raises stands in
+    for any read-time failure)."""
+    dsn, _, policy, req = builder_like
+    with psycopg.connect(dsn, autocommit=True) as admin:
+        admin.execute('ALTER TABLE p02.written ENABLE ROW LEVEL SECURITY')
+        admin.execute('CREATE POLICY boom ON p02.written FOR SELECT USING (1 / (id - id) = 1)')
+    assert policy(req, tmp_path) == CENTURY_UNMEASURABLE + '; the century scope is not shown to be present'
 
 
 def test_the_fresh_measurement_is_read_only(scoped, monkeypatch):
