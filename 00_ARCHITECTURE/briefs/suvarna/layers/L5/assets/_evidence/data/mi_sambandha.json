@@ -1,0 +1,270 @@
+{
+ "asset_id": "mi_sambandha",
+ "collected_utc": "2026-10-03T12:30:33.131732Z",
+ "chart": "482012f1-710e-4a25-994a-93821f5871aa",
+ "registry": {
+  "rung": "R5",
+  "layer": "mimamsa",
+  "scope": "per_chart",
+  "domain": "chart",
+  "asset_id": "mi_sambandha",
+  "size_sql": "SELECT pg_total_relation_size('mimamsa_manifestation_grammar')",
+  "count_sql": "SELECT count(*) FROM mimamsa_manifestation_grammar WHERE chart_id = $1",
+  "dead_flag": null,
+  "is_active": true,
+  "asset_kind": "data",
+  "asset_type": "data",
+  "created_at": "2026-06-26T19:09:00.713129+00:00",
+  "depends_on": [
+   "mi_pramana",
+   "mi_pariksha",
+   "mi_bhavisya"
+  ],
+  "has_writer": true,
+  "layer_name": "M\u012bm\u0101\u1e43s\u0101",
+  "sort_order": 8,
+  "layer_index": "L5",
+  "clear_tables": null,
+  "english_name": "Manifestation grammar",
+  "has_substeps": false,
+  "health_probe": null,
+  "storage_type": "postgres_table",
+  "target_floor": 0,
+  "target_table": "mimamsa_manifestation_grammar",
+  "provides_apis": null,
+  "sanskrit_name": "Sambandha",
+  "superseded_by": null,
+  "catalog_status": "CURRENT",
+  "service_health": null,
+  "last_invoked_at": null,
+  "selftest_detail": null,
+  "data_disposition": null,
+  "last_selftest_at": null,
+  "estimated_seconds": 1,
+  "volume_explanation": "Structural baseline from classical priors; empirical cells accumulate with event outcomes",
+  "english_description": "Per-native grammar of how each signal/house/karaka expresses \u2014 which channel fires for THIS person (G2)",
+  "integrity_check_sql": "\nSELECT NOT EXISTS (\n  SELECT 1 FROM mimamsa_manifestation_grammar g\n  GROUP BY g.chart_id\n  HAVING count(DISTINCT (g.origin_kind, g.origin_ref, g.channel_id)) <> count(*)\n      OR count(*) FILTER (WHERE NOT EXISTS (SELECT 1 FROM charts c WHERE c.id = g.chart_id)) > 0\n      OR count(*) FILTER (WHERE g.fire_count < 0 OR g.opportunity_count < 0 OR g.scored_count < 0\n                            OR g.n_support < 0 OR g.fire_count > g.opportunity_count\n                            OR g.scored_count > g.opportunity_count) > 0\n      OR count(*) FILTER (WHERE (g.opportunity_count = 0) <> (g.channel_propensity IS NULL)) > 0\n      OR count(*) FILTER (WHERE g.opportunity_count > 0\n                            AND g.channel_propensity\n                                IS DISTINCT FROM round(g.fire_count::numeric / g.opportunity_count, 4)) > 0\n      OR count(*) FILTER (WHERE g.propensity_delta\n                                IS DISTINCT FROM round(g.channel_propensity - g.prior_propensity, 4)) > 0\n      OR count(*) FILTER (WHERE g.prior_propensity NOT BETWEEN 0 AND 1\n                            OR (g.channel_propensity IS NOT NULL\n                                AND g.channel_propensity NOT BETWEEN 0 AND 1)) > 0\n      OR count(*) FILTER (WHERE g.confidence_band IS NOT NULL\n                            AND (isempty(g.confidence_band) OR lower(g.confidence_band) < 0\n                                 OR upper(g.confidence_band) > 1)) > 0\n      OR count(*) FILTER (WHERE g.opportunity_count > 0\n                            AND NOT EXISTS (SELECT 1 FROM mimamsa_manifestation_sets s\n                                             WHERE s.chart_id = g.chart_id AND s.channel_id = g.channel_id)) > 0\n      OR count(*) FILTER (WHERE g.evidence_grade NOT IN ('empirical','prior_only')\n                            OR g.citation_ref IS NULL\n                            OR btrim(coalesce(g.origin_kind, '')) = ''\n                            OR btrim(coalesce(g.origin_ref, '')) = ''\n                            OR btrim(coalesce(g.domain, '')) = ''\n                            OR btrim(coalesce(g.grammar_formula_version, '')) = '') > 0\n)\n",
+  "natural_key_partition": "mimamsa_manifestation_grammar (chart_id, origin_kind, origin_ref, channel_id) -- sole writer; (chart_id, origin_kind, origin_ref, channel_id) is the table's own PRIMARY KEY. domain is excluded from the key -- the writer always sets origin_ref equal to domain (both the empirical and prior-seed row-construction loops build the same key tuple), so domain is a value column redundant with origin_ref, not an independent key component. None of the three key columns beyond chart_id is a random uuid4 -- origin_kind is a fixed literal (\"prediction_set\") and origin_ref/channel_id are deterministic domain/channel names -- writer does an unconditional DELETE FROM mimamsa_manifestation_grammar WHERE chart_id = %s immediately before the INSERT batch (delete-then-insert-per-chart, CLAUDE.md SS N.3), so the PK is a sufficient live natural key; updated_at (DEFAULT now()) excluded from the digest value columns as non-deterministic across rebuilds",
+  "rebuild_on_probe_fail": false,
+  "expected_volume_inputs": {
+   "floor": 0,
+   "partition": "chart_id",
+   "derivation": "one row per (origin_kind, origin_ref, channel_id) with real opportunities, plus prior-only seed rows",
+   "chart_scoped": true,
+   "known_defect": "17 of the seeded rows per chart carry channel_ids mi_bhavisya can never emit (finding B-F-13); the count is therefore NOT yet a clean derivation and this formula describes the current writer, not the intended one",
+   "observed_2026_09_05": {
+    "total": 47
+   }
+  },
+  "writer_timeout_seconds": 10800,
+  "expected_volume_formula": "EXOGENOUS(channels observed in manifestation_sets + seeded priors, floor 0)"
+ },
+ "throughput": {
+  "state": "error",
+  "history": [],
+  "asset_id": "mi_sambandha",
+  "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+  "last_error": "BLOCKED: upstream dependency(ies) mi_bhavisya, mi_pariksha, mi_pramana did not complete in this run; skipped to avoid building on incomplete data",
+  "rows_written": 24,
+  "expected_rows": null,
+  "last_built_at": "2026-08-21T02:36:53.726749+00:00",
+  "rows_per_second": null,
+  "duration_seconds": null,
+  "last_measured_at": null,
+  "measurement_count": 0,
+  "last_measured_build_id": null,
+  "built_against_writer_hash": "unknown",
+  "built_against_upstream_hash": "e134df6b5eb2cc62"
+ },
+ "runs_summary": [
+  {
+   "n": 9,
+   "last": "2026-07-13T21:13:41.719555+00:00",
+   "state": "aborted",
+   "disposition": null
+  },
+  {
+   "n": 34,
+   "last": "2026-08-13T01:16:35.345857+00:00",
+   "state": "complete",
+   "disposition": null
+  },
+  {
+   "n": 28,
+   "last": "2026-08-21T02:36:53.726749+00:00",
+   "state": "error",
+   "disposition": "blocked_dependency"
+  },
+  {
+   "n": 20,
+   "last": null,
+   "state": "queued",
+   "disposition": null
+  }
+ ],
+ "last_runs": [
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "cbd6ea44-3c09-4ce5-9b21-d22fb0eeccf6",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-08-13T01:16:35.345857+00:00",
+   "started_at": "2026-08-13T01:16:35.085059+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "51eaa05c-7604-42cc-a3db-e7fa6d9c3f7c",
+   "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+   "ended_at": "2026-08-12T17:12:13.400823+00:00",
+   "started_at": "2026-08-12T17:12:11.241085+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "global",
+   "state": "complete",
+   "run_id": "9fc3e49d-8c24-4be7-80f0-29c8cff726e8",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-08-07T23:49:13.907003+00:00",
+   "started_at": "2026-08-07T23:49:12.276787+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "d33b44ce-5e42-4e90-9e54-6f7445652931",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-08-07T19:01:17.936917+00:00",
+   "started_at": "2026-08-07T19:01:14.67675+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "5940f325-63b5-48ce-b9de-3472a5746af4",
+   "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+   "ended_at": "2026-07-28T10:59:26.776812+00:00",
+   "started_at": "2026-07-28T10:59:25.868914+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "08b895f3-b3dc-4d75-b672-6bca077e28a0",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-07-28T10:19:49.613835+00:00",
+   "started_at": "2026-07-28T10:19:48.265058+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "0faf6c66-8dad-4bcf-8478-fd92f3171b66",
+   "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+   "ended_at": "2026-07-28T05:02:25.151175+00:00",
+   "started_at": "2026-07-28T05:02:23.556209+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "ed26e2d3-6dfa-43a4-936e-a815f7fc5309",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-07-28T03:31:41.701003+00:00",
+   "started_at": "2026-07-28T03:31:37.544369+00:00",
+   "disposition": null,
+   "output_changed": null
+  }
+ ],
+ "last_runs_canonical": [
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "cbd6ea44-3c09-4ce5-9b21-d22fb0eeccf6",
+   "ended_at": "2026-08-13T01:16:35.345857+00:00",
+   "started_at": "2026-08-13T01:16:35.085059+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "9fc3e49d-8c24-4be7-80f0-29c8cff726e8",
+   "ended_at": "2026-08-07T23:49:13.907003+00:00",
+   "started_at": "2026-08-07T23:49:12.276787+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "d33b44ce-5e42-4e90-9e54-6f7445652931",
+   "ended_at": "2026-08-07T19:01:17.936917+00:00",
+   "started_at": "2026-08-07T19:01:14.67675+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "08b895f3-b3dc-4d75-b672-6bca077e28a0",
+   "ended_at": "2026-07-28T10:19:49.613835+00:00",
+   "started_at": "2026-07-28T10:19:48.265058+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "ed26e2d3-6dfa-43a4-936e-a815f7fc5309",
+   "ended_at": "2026-07-28T03:31:41.701003+00:00",
+   "started_at": "2026-07-28T03:31:37.544369+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "7b364f83-07ce-4bd0-9024-92f01fc8ec59",
+   "ended_at": "2026-07-27T06:15:05.893873+00:00",
+   "started_at": "2026-07-27T06:15:05.811573+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "42720d15-f943-42af-8b76-e4f97f3bfd3f",
+   "ended_at": "2026-07-24T11:12:29.906556+00:00",
+   "started_at": "2026-07-24T11:12:29.449425+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "17d69e59-50f2-4c47-ab81-602516b9211d",
+   "ended_at": "2026-07-18T14:18:34.220198+00:00",
+   "started_at": "2026-07-18T14:18:34.082136+00:00",
+   "disposition": null,
+   "output_changed": null
+  }
+ ],
+ "live_count": "count\n24\n(1 row)"
+}

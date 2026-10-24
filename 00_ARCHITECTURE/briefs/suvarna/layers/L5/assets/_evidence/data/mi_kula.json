@@ -1,0 +1,253 @@
+{
+ "asset_id": "mi_kula",
+ "collected_utc": "2026-10-03T12:30:07.302561Z",
+ "chart": "482012f1-710e-4a25-994a-93821f5871aa",
+ "registry": {
+  "rung": "R5",
+  "layer": "mimamsa",
+  "scope": "global",
+  "domain": "shared",
+  "asset_id": "mi_kula",
+  "size_sql": "SELECT pg_total_relation_size('mimamsa_signal_families')",
+  "count_sql": "SELECT\n  (SELECT count(*) FROM mimamsa_signal_families) +\n  (SELECT count(*) FROM mimamsa_negative_controls) AS count",
+  "dead_flag": null,
+  "is_active": true,
+  "asset_kind": "data",
+  "asset_type": "data",
+  "created_at": "2026-06-26T19:09:00.282872+00:00",
+  "depends_on": [
+   "bg_rules",
+   "bg_class_priors"
+  ],
+  "has_writer": true,
+  "layer_name": "M\u012bm\u0101\u1e43s\u0101",
+  "sort_order": 2,
+  "layer_index": "L5",
+  "clear_tables": null,
+  "english_name": "Signal families",
+  "has_substeps": false,
+  "health_probe": null,
+  "storage_type": "postgres_table",
+  "target_floor": 0,
+  "target_table": "mimamsa_signal_families",
+  "provides_apis": null,
+  "sanskrit_name": "Kula",
+  "superseded_by": null,
+  "catalog_status": "CURRENT",
+  "service_health": null,
+  "last_invoked_at": null,
+  "selftest_detail": null,
+  "data_disposition": null,
+  "last_selftest_at": null,
+  "estimated_seconds": 1,
+  "volume_explanation": "Fixed global catalogue of signal families + negative controls; grows only when new families are registered",
+  "english_description": "Signal-family registry + negative-control battery \u2014 the governing catalogue of what influences a reading",
+  "integrity_check_sql": "\nWITH prior_map(family_id, stc, sub) AS (VALUES\n    ('fam_graha_natal','position','*'),\n    ('fam_dasha_period','dasha_period','*'),\n    ('fam_yoga','yoga','*'),\n    ('fam_divisional','varga_pattern','*'),\n    ('fam_transit','time_window','*'),\n    ('fam_convergence','composite_state','*'),\n    ('fam_ashtakavarga','*','strength_ashtakavarga'),\n    ('fam_msr_signal','configuration','*'),\n    ('fam_anchor','time_window','*'))\nSELECT\n      (SELECT count(DISTINCT family_id) = count(*) FROM mimamsa_signal_families)\n  AND NOT EXISTS (\n        SELECT 1 FROM mimamsa_signal_families f\n         WHERE (f.family_class = 'negative_control'\n                AND NOT (f.prior_weight = 0 AND f.default_state = 'CONTROL_ONLY'\n                         AND f.evidence_tier = 'NEGATIVE_CONTROL'))\n            OR (f.family_class <> 'negative_control'\n                AND NOT (f.prior_weight > 0 AND f.default_state <> 'CONTROL_ONLY'))\n            OR f.family_class NOT IN ('classical','negative_control')\n            OR f.citation_refs IS NULL OR f.binding_spec IS NULL\n            OR btrim(coalesce(f.display_name, '')) = ''\n            OR btrim(coalesce(f.soundness_basis, '')) = ''\n            OR btrim(coalesce(f.calibration_status, '')) = ''\n            OR btrim(coalesce(f.formula_version, '')) = '')\n  AND NOT EXISTS (\n        SELECT 1 FROM prior_map m\n         WHERE NOT EXISTS (\n           SELECT 1 FROM mimamsa_signal_families f\n             JOIN brahma_class_priors p\n               ON p.prior_version = '1.0' AND p.signal_tradition = '*' AND p.fact_kind = '*'\n              AND p.signal_type_class = m.stc AND p.source_subsystem = m.sub\n            WHERE f.family_id = m.family_id AND f.prior_weight = p.class_prior))\n  AND NOT EXISTS (\n        SELECT 1 FROM mimamsa_negative_controls c\n         WHERE c.tolerance IS NULL OR c.tolerance <= 0\n            OR btrim(coalesce(c.expected_score, '')) = ''\n            OR btrim(coalesce(c.known_false_basis, '')) = ''\n            OR c.citation_refs IS NULL OR c.binding_spec IS NULL\n            OR btrim(coalesce(c.formula_version, '')) = ''\n            OR (c.last_harness_score IS NULL) <> (c.last_harness_status IS NULL))\n  AND (SELECT count(DISTINCT control_id) = count(*) FROM mimamsa_negative_controls)\n",
+  "natural_key_partition": null,
+  "rebuild_on_probe_fail": false,
+  "expected_volume_inputs": {
+   "scope": "global",
+   "derivation": "the hand-authored family catalogue plus its negative-control battery",
+   "chart_scoped": false,
+   "observed_2026_09_05": {
+    "total": 15,
+    "controls": 4,
+    "families": 11
+   }
+  },
+  "writer_timeout_seconds": 10800,
+  "expected_volume_formula": "COUNT(mimamsa_signal_families) + COUNT(mimamsa_negative_controls)"
+ },
+ "throughput": null,
+ "runs_summary": [
+  {
+   "n": 1,
+   "last": "2026-09-06T17:24:23.829533+00:00",
+   "state": "aborted",
+   "disposition": null
+  },
+  {
+   "n": 2,
+   "last": "2026-09-06T21:30:30.926663+00:00",
+   "state": "complete",
+   "disposition": "build"
+  },
+  {
+   "n": 30,
+   "last": "2026-07-27T06:15:01.165613+00:00",
+   "state": "complete",
+   "disposition": null
+  },
+  {
+   "n": 1,
+   "last": null,
+   "state": "queued",
+   "disposition": null
+  }
+ ],
+ "last_runs": [
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "a6111e46-fc59-4275-9b1f-67b271880236",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-09-06T21:30:30.926663+00:00",
+   "started_at": "2026-09-06T21:30:30.868093+00:00",
+   "disposition": "build",
+   "output_changed": true
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "343fe4fa-5979-4cb3-a5f3-a1600304fd28",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-09-06T19:20:59.40881+00:00",
+   "started_at": "2026-09-06T19:20:59.358107+00:00",
+   "disposition": "build",
+   "output_changed": true
+  },
+  {
+   "error": null,
+   "scope": "layer",
+   "state": "complete",
+   "run_id": "7b364f83-07ce-4bd0-9024-92f01fc8ec59",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-07-27T06:15:01.165613+00:00",
+   "started_at": "2026-07-27T06:15:01.079789+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "layer",
+   "state": "complete",
+   "run_id": "fe64d0b7-6627-484f-890b-1f8a91132125",
+   "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+   "ended_at": "2026-07-26T21:18:01.104377+00:00",
+   "started_at": "2026-07-26T21:18:01.001783+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "layer",
+   "state": "complete",
+   "run_id": "b97b6eb0-0166-4ed6-ad94-9af9423b9e65",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-07-14T16:18:09.5711+00:00",
+   "started_at": "2026-07-14T16:18:09.473089+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "layer",
+   "state": "complete",
+   "run_id": "ee0829d6-41ab-4bc0-8673-fcd14932a430",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-07-13T03:28:11.270759+00:00",
+   "started_at": "2026-07-13T03:28:11.190078+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "layer",
+   "state": "complete",
+   "run_id": "762de6e8-0ff2-4d18-9f8f-7ada5530c37a",
+   "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+   "ended_at": "2026-07-13T02:35:52.130584+00:00",
+   "started_at": "2026-07-13T02:35:52.044819+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "global",
+   "state": "complete",
+   "run_id": "cb20ce01-ce74-437c-8c26-02060d275c9a",
+   "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+   "ended_at": "2026-07-13T01:16:43.949218+00:00",
+   "started_at": "2026-07-13T01:16:43.856122+00:00",
+   "disposition": null,
+   "output_changed": null
+  }
+ ],
+ "last_runs_canonical": [
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "a6111e46-fc59-4275-9b1f-67b271880236",
+   "ended_at": "2026-09-06T21:30:30.926663+00:00",
+   "started_at": "2026-09-06T21:30:30.868093+00:00",
+   "disposition": "build",
+   "output_changed": true
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "343fe4fa-5979-4cb3-a5f3-a1600304fd28",
+   "ended_at": "2026-09-06T19:20:59.40881+00:00",
+   "started_at": "2026-09-06T19:20:59.358107+00:00",
+   "disposition": "build",
+   "output_changed": true
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "7b364f83-07ce-4bd0-9024-92f01fc8ec59",
+   "ended_at": "2026-07-27T06:15:01.165613+00:00",
+   "started_at": "2026-07-27T06:15:01.079789+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "b97b6eb0-0166-4ed6-ad94-9af9423b9e65",
+   "ended_at": "2026-07-14T16:18:09.5711+00:00",
+   "started_at": "2026-07-14T16:18:09.473089+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "ee0829d6-41ab-4bc0-8673-fcd14932a430",
+   "ended_at": "2026-07-13T03:28:11.270759+00:00",
+   "started_at": "2026-07-13T03:28:11.190078+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "24246fa5-a0d9-4676-bab7-381495196a57",
+   "ended_at": "2026-07-11T17:42:20.2936+00:00",
+   "started_at": "2026-07-11T17:42:20.208099+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "f56d56da-e760-496b-8362-58e82a6251b5",
+   "ended_at": "2026-07-11T14:53:30.401281+00:00",
+   "started_at": "2026-07-11T14:53:29.136136+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": "frozen manifest validation failed: asset_registry changed after dispatch for frozen asset mi_kula",
+   "state": "aborted",
+   "run_id": "ce114909-a63d-4a74-b74c-533bbc99e03e",
+   "ended_at": "2026-09-06T17:24:23.829533+00:00",
+   "started_at": null,
+   "disposition": null,
+   "output_changed": null
+  }
+ ],
+ "live_count": "count\n15\n(1 row)"
+}

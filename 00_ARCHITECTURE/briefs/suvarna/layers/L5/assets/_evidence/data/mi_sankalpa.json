@@ -1,0 +1,260 @@
+{
+ "asset_id": "mi_sankalpa",
+ "collected_utc": "2026-10-03T12:31:01.268956Z",
+ "chart": "482012f1-710e-4a25-994a-93821f5871aa",
+ "registry": {
+  "rung": "R5",
+  "layer": "mimamsa",
+  "scope": "per_chart",
+  "domain": "chart",
+  "asset_id": "mi_sankalpa",
+  "size_sql": "SELECT pg_total_relation_size('mimamsa_intervention_ledger')",
+  "count_sql": "SELECT count(*) FROM mimamsa_intervention_ledger WHERE chart_id = $1",
+  "dead_flag": null,
+  "is_active": true,
+  "asset_kind": "data",
+  "asset_type": "data",
+  "created_at": "2026-08-02T06:05:05.780632+00:00",
+  "depends_on": [
+   "ka_kshetra"
+  ],
+  "has_writer": true,
+  "layer_name": "M\u012bm\u0101\u1e43s\u0101",
+  "sort_order": 14,
+  "layer_index": "L5",
+  "clear_tables": null,
+  "english_name": "Intervention Ledger",
+  "has_substeps": false,
+  "health_probe": null,
+  "storage_type": "postgres_table",
+  "target_floor": 0,
+  "target_table": "mimamsa_intervention_ledger",
+  "provides_apis": null,
+  "sanskrit_name": "Sa\u1e45kalpa",
+  "superseded_by": null,
+  "catalog_status": "CURRENT",
+  "service_health": null,
+  "last_invoked_at": null,
+  "selftest_detail": null,
+  "data_disposition": null,
+  "last_selftest_at": null,
+  "estimated_seconds": 2,
+  "volume_explanation": "Accumulates only when a native adopts an elected intervention at serve time. A build correctly produces zero rows; zero is measured-zero, not absent-data.",
+  "english_description": "Unified intervention ledger \u2014 every elected act (up\u0101ya \u00b7 yaj\u00f1a \u00b7 elected activity) with its adjudication record, predicted differential, performance attestation and outcome linkage; the three-armed study of election itself. Prediction spine is brahma_prospective_ledger by FK (ruling S-1) \u2014 this writer never inserts into it directly.",
+  "integrity_check_sql": "\nSELECT NOT EXISTS (\n  SELECT 1 FROM mimamsa_intervention_ledger l\n  GROUP BY l.chart_id\n  HAVING count(DISTINCT l.intervention_id) <> count(*)\n      OR count(*) FILTER (WHERE NOT EXISTS (SELECT 1 FROM charts c WHERE c.id = l.chart_id)) > 0\n      OR count(*) FILTER (WHERE l.elected_window IS NULL OR isempty(l.elected_window)\n                            OR lower_inf(l.elected_window) OR upper_inf(l.elected_window)) > 0\n      OR count(*) FILTER (WHERE (l.outcome_event_id IS NOT NULL) <> (l.outcome_linked_at IS NOT NULL)) > 0\n      OR count(*) FILTER (WHERE l.performed IS NOT NULL\n                            AND btrim(coalesce(l.performed_attested_by, '')) = '') > 0\n      OR count(*) FILTER (WHERE l.study_arm = 'elected_pending' AND l.performed IS NOT NULL) > 0\n      OR count(*) FILTER (WHERE l.study_arm = 'elected_not_acted' AND l.performed IS NOT FALSE) > 0\n      OR count(*) FILTER (WHERE l.study_arm = 'acted_with_election'\n                            AND NOT (l.performed IS TRUE\n                                     AND l.performed_at IS NOT NULL\n                                     AND l.performed_at >= lower(l.elected_window)\n                                     AND l.performed_at <= upper(l.elected_window))) > 0\n      OR count(*) FILTER (WHERE l.performed IS NULL AND l.outcome_event_id IS NOT NULL) > 0\n      OR count(*) FILTER (WHERE l.performed IS FALSE AND l.performed_at IS NOT NULL) > 0\n      OR count(*) FILTER (WHERE l.adjudication_record IS NULL OR l.score_vector IS NULL\n                            OR btrim(coalesce(l.precision_basis, '')) = ''\n                            OR btrim(coalesce(l.paddhati_version, '')) = ''\n                            OR btrim(coalesce(l.predicted_differential, '')) = ''\n                            OR btrim(coalesce(l.filed_by, '')) = ''\n                            OR btrim(coalesce(l.engine_version, '')) = ''\n                            OR l.created_at IS NULL) > 0\n)\n",
+  "natural_key_partition": null,
+  "rebuild_on_probe_fail": false,
+  "expected_volume_inputs": {
+   "kind": "append_only_event_log",
+   "note": "this asset is the P7 SUBSTRATE, distinct from the remedy-efficacy LEDGER parked in plan \u00a77.3, which is the analysis over it",
+   "floor": 0,
+   "trigger": "a native adopting an elected intervention at serve time",
+   "write_path": "kala_upaya_get -> recordInterventionLedgerEntry -> intervention_ledger_record (live and tested)",
+   "unbounded_above": true
+  },
+  "writer_timeout_seconds": 300,
+  "expected_volume_formula": "EXOGENOUS(append_only_event_log, floor 0)"
+ },
+ "throughput": {
+  "state": "dormant",
+  "history": [],
+  "asset_id": "mi_sankalpa",
+  "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+  "last_error": null,
+  "rows_written": 0,
+  "expected_rows": null,
+  "last_built_at": "2026-08-13T01:02:38.387443+00:00",
+  "rows_per_second": null,
+  "duration_seconds": null,
+  "last_measured_at": null,
+  "measurement_count": 0,
+  "last_measured_build_id": null,
+  "built_against_writer_hash": "unknown",
+  "built_against_upstream_hash": "99d1bbeed7ef47d1"
+ },
+ "runs_summary": [
+  {
+   "n": 3,
+   "last": null,
+   "state": "aborted",
+   "disposition": null
+  },
+  {
+   "n": 5,
+   "last": "2026-08-13T01:02:38.387443+00:00",
+   "state": "complete",
+   "disposition": null
+  },
+  {
+   "n": 2,
+   "last": null,
+   "state": "queued",
+   "disposition": null
+  }
+ ],
+ "last_runs": [
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "cbd6ea44-3c09-4ce5-9b21-d22fb0eeccf6",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-08-13T01:02:38.387443+00:00",
+   "started_at": "2026-08-13T01:02:38.055325+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "e24e06c1-d557-4d99-a188-e5bb5829541d",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-08-12T23:40:33.427989+00:00",
+   "started_at": "2026-08-12T23:40:32.954171+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "efebbbbf-72d0-4f7c-ac40-efd12c25941d",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-08-12T15:57:28.335015+00:00",
+   "started_at": "2026-08-12T15:57:26.919546+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "84790929-7258-4e46-8697-bfd85d9728ca",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-08-12T15:25:47.6551+00:00",
+   "started_at": "2026-08-12T15:25:46.559222+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "global",
+   "state": "complete",
+   "run_id": "9fc3e49d-8c24-4be7-80f0-29c8cff726e8",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-08-07T23:04:10.690999+00:00",
+   "started_at": "2026-08-07T23:04:08.983143+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "global",
+   "state": "aborted",
+   "run_id": "5d9e208e-38d7-44f4-a949-0baa4a39b26c",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": null,
+   "started_at": null,
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "global",
+   "state": "aborted",
+   "run_id": "423dfb7f-c4cd-4a34-a1a0-4962c938dd72",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": null,
+   "started_at": null,
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "global",
+   "state": "aborted",
+   "run_id": "9f4daf36-fa26-4d12-9804-1cef1658008c",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": null,
+   "started_at": null,
+   "disposition": null,
+   "output_changed": null
+  }
+ ],
+ "last_runs_canonical": [
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "cbd6ea44-3c09-4ce5-9b21-d22fb0eeccf6",
+   "ended_at": "2026-08-13T01:02:38.387443+00:00",
+   "started_at": "2026-08-13T01:02:38.055325+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "e24e06c1-d557-4d99-a188-e5bb5829541d",
+   "ended_at": "2026-08-12T23:40:33.427989+00:00",
+   "started_at": "2026-08-12T23:40:32.954171+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "efebbbbf-72d0-4f7c-ac40-efd12c25941d",
+   "ended_at": "2026-08-12T15:57:28.335015+00:00",
+   "started_at": "2026-08-12T15:57:26.919546+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "84790929-7258-4e46-8697-bfd85d9728ca",
+   "ended_at": "2026-08-12T15:25:47.6551+00:00",
+   "started_at": "2026-08-12T15:25:46.559222+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "9fc3e49d-8c24-4be7-80f0-29c8cff726e8",
+   "ended_at": "2026-08-07T23:04:10.690999+00:00",
+   "started_at": "2026-08-07T23:04:08.983143+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "aborted",
+   "run_id": "5d9e208e-38d7-44f4-a949-0baa4a39b26c",
+   "ended_at": null,
+   "started_at": null,
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "aborted",
+   "run_id": "423dfb7f-c4cd-4a34-a1a0-4962c938dd72",
+   "ended_at": null,
+   "started_at": null,
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "aborted",
+   "run_id": "9f4daf36-fa26-4d12-9804-1cef1658008c",
+   "ended_at": null,
+   "started_at": null,
+   "disposition": null,
+   "output_changed": null
+  }
+ ],
+ "live_count": "count\n0\n(1 row)"
+}
