@@ -234,7 +234,8 @@ def test_seed_rules_propagates_insert_failure_instead_of_reporting_success(monke
                 raise RuntimeError("constraint violation")
 
         def fetchone(self):
-            return {"count": 1}
+            # "is_nullable": TI-L0-23 pre-flight (sutravali_rules.confidence must accept NULL)
+            return {"count": 1, "is_nullable": "YES"}
 
         def fetchall(self):
             if "DISTINCT text_id" in self.sql:
