@@ -145,6 +145,17 @@ _ALL_OBSTRUCTION_TYPES = frozenset({
 })
 
 
+def _vacuous_label(upstream_rows: int, conv_generation) -> str:
+    """SR-K9-ADMITTED-ZERO: '' unless the upstream holds NO peak-dated convergence window, else the run-level vacuous label.
+
+    Zero obstruction rows from an empty upstream is a named outcome, never a silent pass: the integrity contract reads true on an empty
+    obstruction table (an honest null, CLAUDE.md §N.7.6), so the label is what tells a reader the green is vacuous. Rows are never invented."""
+    if upstream_rows > 0:
+        return ''
+    return (f"upstream_convergence_rows={upstream_rows}; vacuous=true reason=empty_upstream_convergence "
+            f"(no peak-dated convergence window in generation {conv_generation!r}, so there is no window to test for obstruction)")
+
+
 def _severity(score: float) -> str:
     for threshold, label in _SEVERITY_THRESHOLDS:
         if score >= threshold:
@@ -247,9 +258,11 @@ class _LegacyKaVighnakaraWriter(WriterBase):
                 attest_inputs(conn, candidate, 'ka_vighnakara',
                               sources={'kala_convergence': [], 'predicate_generation': [predicate_gen]},
                               produced_rows=0)
+            label = _vacuous_label(len(convergence_rows), conv_generation)
+            logger.warning("ka_vighnakara: %s", label)    # the orchestrator persists no WriterResult.notes (FROZEN contract): also in the run log
             return WriterResult(
                 asset_id='ka_vighnakara', rows_inserted=0,
-                notes='No convergence windows — run ka_sangam first',
+                notes=f'No convergence windows — run ka_sangam first; {label}',
             )
 
         # Pre-fetch natal lagna longitude from chart_facts (for papakartari + combustion)

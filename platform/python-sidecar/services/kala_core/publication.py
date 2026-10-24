@@ -40,7 +40,7 @@ def _grain_refusal(absent: list[str], unplanned: list[str], failed: list[str]) -
     return 'candidate has absent, unplanned or failed grains; '+'; '.join(parts)
 
 
-def _candidate(conn: Any, run_id: str, generation: str) -> tuple[Candidate, dict]:
+def _candidate(conn: Any, run_id: str, generation: str, *, enforce_zero_rows: bool = False) -> tuple[Candidate, dict]:
     query = ('SELECT chart_id, build_id, expected_head_generation, state, conventions '
              'FROM kala_layer_candidate WHERE build_id = %s AND generation = %s')
     row = conn.execute(query,(run_id,generation)).fetchone()
@@ -78,7 +78,72 @@ def _candidate(conn: Any, run_id: str, generation: str) -> tuple[Candidate, dict
     failed = sorted(r[0] for r in rows if r[1] not in {'rows','zero_rows'})
     if absent or unplanned or failed:
         raise CandidateNotPublishable(_grain_refusal(absent,unplanned,failed))
+    # The zero-row detector reads the layer tables and the registry, which the narrow `verifier_principal` role may not (migration 1330 grants it the grain,
+    # verification and nothing else; verification only binds a digest). It therefore runs where the serving change is made: `publish`.
+    unlabelled = _unexplained_zero_rows(conn,c.chart_id,generation,[r[0] for r in rows if r[1] == 'zero_rows']) if enforce_zero_rows else []
+    if unlabelled:
+        raise CandidateNotPublishable('zero-row completion without a measured vacuous reason and a passing integrity check: '+'; '.join(unlabelled))
     return c, {'run':run,'grains':tuple(sorted(grains))}
+
+
+# SR-K9-ADMITTED-ZERO (compensating detector, CLAUDE.md N.8): ka_sangam and ka_vighnakara declare target_floor = 0 (migration 1409), the in-contract
+# statement that a writer may correctly produce 0 rows (asset_runner.py "target_floor=0 ... explicit declaration"). That makes the orchestrator's own
+# "0 rows = silent failure" signal (state 'dormant') unavailable for them, and the frozen DEP-ASSERT cannot be taught otherwise, so THIS gate (outside the frozen
+# path) is the detector: a zero-row grain of these writers publishes only when (1) the emptiness is explained by a named reason that THIS gate re-measures from
+# the candidate's own rows (the writers' vacuous=true label, read from rows because WriterResult.notes and the run log are not persisted: FROZEN contract),
+# and (2) the asset's registered integrity_check_sql passes now. A measured non-vacuous emptiness (upstream holds windows, the writer wrote none) refuses.
+VACUOUS_ZERO_WRITERS = ('ka_sangam', 'ka_vighnakara')
+
+
+def _scalar(conn: Any, sql: str, params: tuple) -> int:
+    return int(conn.execute(sql, params).fetchone()[0] or 0)
+
+
+def _vacuous_reason(conn: Any, writer: str, chart_id: str, generation: str) -> str | None:
+    """The named reason the candidate's zero rows are vacuous, MEASURED from its own rows; None when the emptiness is not explained (the label cannot be true)."""
+    windows = _scalar(conn, 'SELECT count(*) FROM kala_convergence WHERE chart_id = %s AND generation = %s', (chart_id, generation))
+    if writer == 'ka_vighnakara':     # its upstream is the candidate's peak-dated convergence windows (writers/ka_vighnakara.py run)
+        peak = _scalar(conn, 'SELECT count(*) FROM kala_convergence WHERE chart_id = %s AND generation = %s AND peak_date IS NOT NULL', (chart_id, generation))
+        return 'empty_upstream_convergence' if peak == 0 else None
+    if windows:                       # ka_sangam wrote windows, so its grain cannot honestly read zero_rows
+        return None
+    # the admitted-predicate filter is the writer's own (writers/ka_sangam.py plan_substeps, candidate branch)
+    admitted, unresolved = (int(v or 0) for v in conn.execute(
+        'SELECT count(*), count(*) FILTER (WHERE p.signal_id IS NULL) FROM kala_activation_predicates p '
+        "WHERE p.chart_id = %s AND p.generation = %s AND p.mechanism_route = 'admitted' "
+        "AND p.conclusion_state_jsonb->>'effective_state' = 'in_force' AND p.conclusion_state_jsonb->>'scored' = 'true'",
+        (chart_id, generation)).fetchone())
+    if admitted == 0:
+        return 'no_admitted_predicates'
+    # SR-SANGAM-SIGNAL-UNRESOLVED sanctions exactly two honest nulls: nothing admitted, and every admitted predicate signal-less (no window can be attributed).
+    # Admitted predicates that DO carry a signal and still wrote 0 windows are the silent failure floor 0 stopped the orchestrator detecting: refuse (N.8).
+    return 'all_admitted_signal_unresolved' if unresolved == admitted else None
+
+
+def _unexplained_zero_rows(conn: Any, chart_id: str, generation: str, zero_grains: list[str]) -> list[str]:
+    """One refusal line per zero-row grain of ka_sangam / ka_vighnakara lacking a measured vacuous reason or a passing integrity check; [] when none."""
+    problems = []
+    for key in sorted(zero_grains):
+        writer = key.split(':', 1)[0]
+        if writer not in VACUOUS_ZERO_WRITERS:
+            continue
+        reason = _vacuous_reason(conn, writer, chart_id, generation)
+        if reason is None:
+            problems.append(f'{key}: zero rows but the candidate holds the input the writer should have turned into rows (not vacuous)')
+            continue
+        row = conn.execute('SELECT integrity_check_sql FROM asset_registry WHERE asset_id = %s', (writer,)).fetchone()
+        if row is None or not row[0]:
+            problems.append(f'{key}: vacuous ({reason}) but {writer} has no integrity_check_sql to confirm it')
+            continue
+        try:
+            with conn.transaction():      # a savepoint: a SQL error must not abort the caller's transaction, or the next grain's reads would lose their named reason
+                verdict = conn.execute(row[0]).fetchone()
+        except psycopg.Error as exc:
+            problems.append(f'{key}: vacuous ({reason}) but integrity_check_sql errored: {type(exc).__name__}')
+            continue
+        if not verdict or not verdict[0]:
+            problems.append(f'{key}: vacuous ({reason}) but integrity_check_sql did not pass')
+    return problems
 
 
 def verify(conn: Any, *, run_id: str, generation: str, independently_derived_digest: str) -> dict:
@@ -94,7 +159,7 @@ def verify(conn: Any, *, run_id: str, generation: str, independently_derived_dig
 
 
 def publish(conn: Any, *, run_id: str, generation: str, expected_head: str | None) -> dict:
-    c, detail = _candidate(conn,run_id,generation)
+    c, detail = _candidate(conn,run_id,generation,enforce_zero_rows=True)
     if expected_head != c.expected_head_generation:
         raise CandidateNotPublishable('request expected-head differs from candidate-open pin')
     publish_candidate(conn,c,expected_grains=detail['grains'])
