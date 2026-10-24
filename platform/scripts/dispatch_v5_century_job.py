@@ -119,16 +119,37 @@ def prepare_report(*, dry_run, run_id, manifest, manifest_digest, existing, note
             "stdout": [run_id]}
 
 
+
+# SR-J4E-FIX (incident J-4e.dispatch REFUSED 2026-10-24T17:26Z) + SR-J4E-FIX-AMEND-1: the century_dispatch principal is the builder login (executor_ops:
+# needs=builder, role data_plane_builder), which by design cannot SELECT these FOUR relations (measured read-only in production, receipt J-4e.builder-select-20261024T1756Z;
+# of the 38 scoped relations none is missing). They are proven PRESENT through the catalog and never read.
+#   * ka_gochara_eval_window_verification, ka_gochara_search_inventory_verification: migration 1240 ("the builder gets NOTHING on the new table"; the writer
+#     cannot verify itself);
+#   * asset_throughput_state_audit: migration 1211_asset_throughput_state_audit_builder_grants.sql grants the builder INSERT and sequence USAGE only
+#     ("no grant of SELECT"; the builder writes audit rows through the state trigger and never reads them);
+#   * _migrations_applied: no grant to the builder.
+# This set is EXACT in both directions (a privilege-drift tripwire): any other relation the builder cannot SELECT refuses, so a grant the builder really
+# needs is still caught, and a pinned one that has become readable refuses too (the pin is stale).
+PRESENCE_ONLY_RELATIONS = frozenset({"public._migrations_applied", "public.ka_gochara_eval_window_verification",
+                                     "public.ka_gochara_search_inventory_verification", "public.asset_throughput_state_audit"})
+
+
 def _century_request_policy(req, root):
     """The century evidence policy with its read-only exact-scope measurement. SR-A12-BACKUP-REMOVAL: no backup is named or judged any more, but the
-    reviewed scope's relations must still be found and measurable in the database (a missing or unreadable one refuses `UNMEASURABLE`). The executor's
-    admission has no database; this is the check that reads it, at --execute and before anything is staged.
+    reviewed scope's relations must still be found in the database (SR-J4E-FIX: builder-safe, see `PRESENCE_ONLY_RELATIONS`): every scoped relation is
+    resolved through the catalog and an absent one refuses by name; the content of each relation the builder can SELECT is read (a read error refuses);
+    the relations it cannot SELECT must be exactly the pinned presence-only set, else refuse. The executor's admission has no database; this is the
+    check that reads it, at --execute and before anything is staged. The measurement's values are not consumed by anything (SR-A12-BACKUP-REMOVAL
+    removed the digest comparison): only its ability to run is, so the readability check on the builder's own tables is the signal kept.
     (I) INTERPRETATION A12-M1: the relations are the reviewed scope file's tables (`backup.load_scope()`, the small-test file, whose table lists are
     identical to the century file's: pinned by test_century_scope_relations_equal_the_small_test_scope); alternative: load the century file itself."""
     import backup_v5_small_test_job as backup
 
     def measure_scope():
-        return backup.measure_scope_now(backup.load_scope()['tables'], [])
+        try:
+            return backup.measure_scope_now(backup.load_scope()['tables'], [], presence_only=PRESENCE_ONLY_RELATIONS)
+        except backup.BackupRefused as exc:      # its texts are relation names only (no connection text), so they are shown
+            raise shared.Refused(f"scoped content could not be measured now; the century scope is not shown to be present: {exc}") from None
     return shared.century_request_problem(req, root, measure=measure_scope)
 
 

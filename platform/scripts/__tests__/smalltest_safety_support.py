@@ -31,7 +31,7 @@ def accepted(root, kind, name, **fields):
 FIXTURE_MEASURED = dict(tables={'public.a': dict(rows=1, sha256='a' * 64)}, sequences={})
 
 
-def fixture_measure(tables, sequences, dsn=None):
+def fixture_measure(tables, sequences, dsn=None, presence_only=None):
     """Stands in for backup_v5_small_test_job.measure_scope_now in suites that stage a dispatch against a fake database:
     the scoped content is unchanged since scoped_backup_for's capture. The measurement itself is proved in
     test_backup_v5_small_test_scoped.py and tests/l3/kala_db/test_p01_smalltest_backup_scoped.py."""

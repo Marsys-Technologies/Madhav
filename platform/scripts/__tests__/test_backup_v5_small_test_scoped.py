@@ -298,7 +298,7 @@ def now_measure(changed=None):
     """What a fresh read-only measurement of the recorded relations returns: the same content, or one changed table."""
     seen = []
 
-    def measure(tables, sequences):
+    def measure(tables, sequences, dsn=None, presence_only=None):
         seen.append((tables, sequences))
         out = json.loads(json.dumps(MEASURED))
         if changed:
@@ -545,7 +545,7 @@ def test_the_century_execute_policy_names_no_backup_and_keeps_every_other_admiss
     monkeypatch.setattr(backup, 'measure_scope_now', unchanged)
     assert century._century_request_policy(req, tmp_path) is None
     assert unchanged.seen == [(backup.load_scope()['tables'], [])], 'the reviewed scope relations are measured, once, for measurability only'
-    def cannot_measure(tables, sequences):
+    def cannot_measure(tables, sequences, dsn=None, presence_only=None):
         raise RuntimeError('relation does not exist')
     monkeypatch.setattr(backup, 'measure_scope_now', cannot_measure)
     assert 'scoped content could not be measured now' in century._century_request_policy(req, tmp_path)
@@ -559,6 +559,36 @@ def test_the_century_execute_policy_names_no_backup_and_keeps_every_other_admiss
     del refuse['absence']
     refuse['dryrun'] = 'no completed staging dry run'
     assert century._century_request_policy(req, tmp_path) == 'no completed staging dry run'
+
+
+def test_the_century_policy_pins_the_four_builder_unreadable_relations_and_shows_a_named_refusal(backup, shared, tmp_path, monkeypatch):
+    """Claims (SR-J4E-FIX-AMEND-1; migration 1240 'the builder gets NOTHING on the new table', migration 1211 'no grant of SELECT'): (a) the presence-only set is
+    EXACTLY the four relations the production read-only measurement found the builder cannot SELECT (receipt J-4e.builder-select-20261024T1756Z: of the 38
+    scoped relations none missing; the migrations ledger, the two window-verification tables and asset_throughput_state_audit), all inside both reviewed scopes, and the policy hands exactly that set to the measurement; (b) a named refusal
+    of the measurement (a missing relation) reaches the caller with its relation name, while any other failure stays the fixed text."""
+    century = importlib.import_module('dispatch_v5_century_job')
+    monkeypatch.setattr(shared, 'absence_evidence', lambda req, root, *a: None)
+    monkeypatch.setattr(shared, 'century_dryrun_evidence', lambda req, root, *a: None)
+    req = {'kind': 'century_dispatch', 'item_id': shared.CENTURY_ITEM, 'args': dict(zip(shared.CENTURY_ARG_KEYS, ('all', 'true', 'true', '2001-01-01T00:00:00+00:00,2051-01-01T00:00:00+00:00', 'window_qualification/1')))}
+    assert century.PRESENCE_ONLY_RELATIONS == {'public._migrations_applied', 'public.ka_gochara_eval_window_verification',
+                                                'public.ka_gochara_search_inventory_verification', 'public.asset_throughput_state_audit'}
+    assert len(century.PRESENCE_ONLY_RELATIONS) == 4
+    assert century.PRESENCE_ONLY_RELATIONS <= set(backup.load_scope()['tables'])
+    assert century.PRESENCE_ONLY_RELATIONS <= set(backup.load_scope(name='century')['tables'])
+    seen = []
+
+    def measure(tables, sequences, dsn=None, presence_only=None):
+        seen.append(presence_only)
+        return {'tables': {}, 'sequences': {}}
+    monkeypatch.setattr(backup, 'measure_scope_now', measure)
+    assert century._century_request_policy(req, tmp_path) is None
+    assert seen == [century.PRESENCE_ONLY_RELATIONS]
+
+    def missing(tables, sequences, dsn=None, presence_only=None):
+        raise backup.BackupRefused('scope relation missing: public.ka_gochara_x')
+    monkeypatch.setattr(backup, 'measure_scope_now', missing)
+    problem = century._century_request_policy(req, tmp_path)
+    assert 'scoped content could not be measured now' in problem and 'public.ka_gochara_x' in problem
 
 
 def test_century_scope_relations_equal_the_small_test_scope(backup):
