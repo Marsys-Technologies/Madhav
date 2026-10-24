@@ -13,6 +13,12 @@ Claims (D-OWNER-TESTS-20261016; ONE oracle and ONE planted reversion each, the r
   P-3  a stretch touching a station zone is never taken as flat (the longitude is non-monotone there by up to NEAR_END_NOISE_DEG)
   P-4  the budget cap is unchanged: a P4 window that genuinely needs more evaluations than `max_evals` is INCONCLUSIVE `verifier_budget_exhausted`, never a pass
   P-5  a true exceedance on a plateau window is still REFUTED (objective_exceeds_stored_maximum) — the pruning hides nothing above the stored maximum
+  P-6  the flatness tolerance is PLATEAU_EPS and no wider: an EARLIER tie hidden in a gentle max-min hump (enclosure wider than PLATEAU_EPS, narrower than TIE) is still found, so a
+       stored instant at the later plateau is REFUTED `earlier_tie_not_taken`
+
+Not claimed: the `_flat` guard `objective != OBJ_MAXMIN` (keeps P1-P3 on the unchanged scan). A direct call on the plateau world with the objective switched to the sum objective did not
+fail when the guard was reverted (tried as an oracle, dropped: the plateau world has no sum-objective counterpart whose enclosure is wide), so the guard is left without an oracle
+rather than carry one that cannot read false (N.8); it is a scope guard, not a value.
 
 Doctrine / analytic source: the plateau world below is closed-form (Jupiter const 0.5 record + a rising tent kept under it, Saturn a slowly falling tent kept over it): F = 0.5
 exactly on the whole window, so the maximum is 0.5, the earliest tie is the window's start (the frozen earliest-tie rule, plan §2.1; `_extrema`: "a plateau's instant is its start").
@@ -39,6 +45,24 @@ def w_plateau(m, *, j_const=0.4, days=DAYS):
             m.CheckRecord("jt", "RJ", "jupiter", sup, constant=j_const, tent=m.TentFactor("J", 130.0, 40.0)),
             m.CheckRecord("s", "RS", "saturn", sup, constant=1.0, tent=m.TentFactor("S", 200.0, 60.0))]
     return {"lo": at(0), "hi": at(days), "records": recs, "pos": pos, "objective": m.OBJ_MAXMIN}
+
+
+H1 = 0.5 - 0.5e-9
+K = 0.6e-10                            # per day, both tents (longitude speed 6e-9 deg/d at orb 100)
+
+
+def w_gentle(m):
+    """Closed-form world for P-6 (R-1/R-3 earliest-tie rule). On [0, 10) d Jupiter's tent rises linearly and Saturn's falls linearly, crossing at t1 = 5 d with F = H1 = 0.5 - 0.5e-9
+    (a kink); on [10, 20) d constant records make F = 0.5 exactly (the maximum M; plateau start 10 d). H1 >= M - TIE + GREY, so the EARLIEST tie is t1, not the plateau. Over [0, 10) the
+    max-min enclosure is 0.6e-9 wide: wider than PLATEAU_EPS, narrower than TIE."""
+    pos = sky(J=lambda t: 150.0 - 100.0 * (1.0 - H1) + 100.0 * K * (t - 5.0),
+              S=lambda t: 250.0 + 100.0 * (1.0 - H1) + 100.0 * K * (t - 5.0))
+    a, b = ((at(0), at(10)),), ((at(10), at(20)),)
+    recs = [m.CheckRecord("j1", "RJ", "jupiter", a, tent=m.TentFactor("J", 150.0, 100.0)),
+            m.CheckRecord("s1", "RS", "saturn", a, tent=m.TentFactor("S", 250.0, 100.0)),
+            m.CheckRecord("jc", "RJ", "jupiter", b, constant=0.5),
+            m.CheckRecord("sc", "RS", "saturn", b, constant=1.0)]
+    return {"lo": at(0), "hi": at(20), "records": recs, "pos": pos, "objective": m.OBJ_MAXMIN}
 
 
 PLATEAU_OLD = ("return self._reduce_upper(pc, v1, v2) - lower <= PLATEAU_EPS", "return False")
@@ -105,6 +129,18 @@ def oracle_true_exceedance_still_refutes(m):
     rep = run(m, w, stored(m, 0.0, 0.5), max_evals=BUDGET)
     assert rep.status == m.REFUTED and chk.F_ABOVE in codes(rep), (rep.status, codes(rep))
     assert cc.classify(rep) == cc.DISAGREEMENT
+
+
+@claim("P-6", "- lower <= PLATEAU_EPS", "- lower <= TIE")
+def oracle_tolerance_is_plateau_eps(m):
+    """The earliest tie of the gentle-hump world is the kink at 5 d (F = 0.5 - 0.5e-9, within TIE of the maximum 0.5): a stored instant at 5 d verifies and one at the plateau's start
+    (10 d) is REFUTED as a later tie. A flatness tolerance widened to TIE reads the whole hump as one plateau, takes its end sample (the plateau's start) as the earliest tie and
+    VERIFIES the wrong instant."""
+    w = w_gentle(m)
+    ok = run(m, w, stored(m, 5.0, 0.5))
+    assert ok.status == m.VERIFIED, (ok.status, ok.unverified, codes(ok))
+    late = run(m, w, stored(m, 10.0, 0.5))
+    assert late.status == m.REFUTED and chk.F_EARLIER_TIE in codes(late), (late.status, codes(late))
 
 
 @pytest.mark.parametrize("cid", sorted(CLAIMS))
