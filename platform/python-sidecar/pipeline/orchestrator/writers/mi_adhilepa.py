@@ -291,6 +291,7 @@ class MiAdhilepaWriter(WriterBase):
                 logger.info("[mi_adhilepa] %d fact overlays", len(fact_rows))
 
         # ── Convergence overlays (kala_convergence) ──────────────────────────
+        notes = ""
         if _table_exists(conn, "kala_convergence"):
             with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
                 cur.execute(
@@ -298,6 +299,12 @@ class MiAdhilepaWriter(WriterBase):
                     (chart_id,),
                 )
                 convergences = cur.fetchall()
+
+            if not convergences:
+                # SR-EMPTY-REASON: zero convergence overlays is "nothing to weight" only if the layer is computed-and-empty.
+                from services.kala_core.empty_layer_reason import read_empty_layer
+                notes = "convergence_overlays_none:" + read_empty_layer(
+                    conn, chart_id, "kala_convergence", savepoint="sp_adhilepa_conv_state")["empty_reason"]
 
             mult = multipliers.get("fam_convergence")
             if mult and convergences:
@@ -363,4 +370,5 @@ class MiAdhilepaWriter(WriterBase):
             asset_id=self.asset_id,
             rows_inserted=total,
             duration_seconds=time.time() - t0,
+            notes=notes,
         )

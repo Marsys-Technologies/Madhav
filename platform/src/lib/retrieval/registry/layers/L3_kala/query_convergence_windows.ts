@@ -13,6 +13,7 @@
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import { buildHonestPagination } from '@/lib/retrieval/envelope'
+import { readEmptyLayer } from './empty_layer_reason'
 
 export const queryConvergenceWindowsCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L3/query_convergence_windows',
@@ -154,12 +155,21 @@ export const queryConvergenceWindowsCapability: CapabilityDescriptor = {
         total:  total_matching,
       })
 
+      // SR-EMPTY-REASON (N.6 rule 4): an empty result is never a bare [] — name which kind of empty it is, from
+      // measured counts (rows in any partition / in the served partition / the writer asset's build state).
+      const empty = total_matching === 0 && result.rows.length === 0
+        ? await readEmptyLayer({ table: 'kala_convergence', asset_id: 'ka_sangam', chart_id,
+            servedFromWhere: `kala_convergence WHERE chart_id = $1 AND ${SERVED_GENERATION}` })
+        : null
+
       return {
         content: {
           chart_id,
           convergence_windows: result.rows,
           window_count:        result.rows.length,
           total_matching,
+          empty_reason:        empty?.empty_reason ?? null,
+          ...(empty ? { layer_state: empty.layer_state } : {}),
           more_available:      pagination.more_available,
           next_cursor:         pagination.next_cursor,
           signal_id_refs:      signalRefs,

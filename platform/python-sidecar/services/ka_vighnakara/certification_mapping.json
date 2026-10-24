@@ -7,7 +7,7 @@
   "carriage": {
     "nature": "derivation",
     "served_surface": "legacy only; sealed candidates unpublished",
-    "evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/query_obstruction_periods.ts:69"
+    "evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/query_obstruction_periods.ts:70"
   },
   "ldgr_source": {
     "column": "assertion.provenance",

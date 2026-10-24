@@ -199,7 +199,14 @@ class PhPratikaraWriter(WriterBase):
                 rows_inserted += 1
 
         logger.info("ph_pratikara: inserted %d rows into phala_mitigation for %s", rows_inserted, chart_id)
-        return WriterResult(asset_id='ph_pratikara', rows_inserted=rows_inserted)
+        notes = ''
+        if not obstructions:
+            # SR-EMPTY-REASON: zero mitigation rows are "no remedies needed" only if the obstruction layer was computed
+            # and empty; otherwise nothing was assessed. Say which.
+            from services.kala_core.empty_layer_reason import read_empty_layer
+            notes = 'no_obstructions_to_mitigate:' + read_empty_layer(
+                conn, chart_id, 'kala_obstruction', savepoint='sp_layer_state_pk')['empty_reason']
+        return WriterResult(asset_id='ph_pratikara', rows_inserted=rows_inserted, notes=notes)
 
     def _load_obstructions(self, conn, chart_id: str) -> list:
         """

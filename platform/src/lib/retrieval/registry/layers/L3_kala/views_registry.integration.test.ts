@@ -91,6 +91,7 @@ it('old temporal tools still return their golden shapes and isolate private cand
 const fixtureChart = '11111111-1111-4111-8111-111111111111'
 const schema = `
 CREATE TEMP TABLE kala_layer_head (chart_id uuid, generation text, published_at timestamptz);
+CREATE TEMP TABLE asset_throughput (chart_id uuid, asset_id text, state text);
 CREATE TEMP TABLE kala_layer_candidate (chart_id uuid, generation text, build_id uuid, model_digest text, rule_registry_version text, conventions jsonb, state text);
 CREATE TEMP TABLE kala_layer_candidate_grain (chart_id uuid, generation text, grain_key text, result_state text, input_vector text);
 CREATE TEMP TABLE kala_gochara_coverage (chart_id uuid, generation text, partition_kind text, partition_key text, unsearched_reason text);
