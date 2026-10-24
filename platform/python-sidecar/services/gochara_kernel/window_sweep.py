@@ -1366,7 +1366,13 @@ def draft_windows(event_class: str, records: list[SweepRecord],
                 raise SweepRefusal(f"window {lo.isoformat()}: {exc}") from exc
             # R-7 (the one engine): the certificate is the piece tree of THIS solve, named by the solver's own objective (the migration admits `sum_of_group_max` /
             # `min_of_group_max`, not the sweep's `objective_name`); None for a blank that has no tree (only budget exhaustion keeps one)
-            solver_certificate = _solver.stored_certificate(res, objective=problem.objective, t0_iso=lo.isoformat(), max_evals=solver.max_evals)
+            # SR-KGEW-QUAL-BOUND (4): a certificate that does not fit the stored shape even in its bounded form is never stored (the database would refuse the row); the window
+            # is the honest null under the solver's own named reason, carrying no certificate, counted per class in `unresolved`
+            try:
+                solver_certificate = _solver.stored_certificate(res, objective=problem.objective, t0_iso=lo.isoformat(), max_evals=solver.max_evals)
+            except _solver.CertificateUnfit as exc:
+                solver_certificate = None
+                res = _solver.SolveResult(_solver.BLANK, None, None, _solver.REASON_CERTIFICATE, res.evals, exc.detail)
             if res.status == _solver.BLANK:
                 unknown_pieces, unnamed_pieces = 1, 0
                 reason_pieces = {res.reason: 1}

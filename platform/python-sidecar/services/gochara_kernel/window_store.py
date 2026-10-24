@@ -14,7 +14,10 @@ from __future__ import annotations
 
 import bisect
 import json as _json
+import math
+import re
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Callable
 
 from . import targets
@@ -84,6 +87,166 @@ def _aspect_offset_provider(target: str, agent: str, position_at: Callable[[str,
         return (tgt_sign - src_sign) % 12 + 1
 
     return offset
+
+
+# ── the pre-insert mirror of `kgew_qualification_shape_ck` (SR-KGEW-QUAL-BOUND ruling 5) ───────────────────────────────────────────────────────────
+# `ka_gochara_window_qualification_ok` (migrations 1240 + 1402) and `ka_gochara_solver_certificate_ok` (1402), restated in Python so that a window the database
+# would refuse is a loud named DEFECT BEFORE the row is sent (the constraint failing mid-grain names a constraint, never the window), and measured on its OWN code: the
+# builder's fit (`window_solver.stored_certificate`) shares nothing with this check, so a builder miscount cannot pass its own detector. Reachable only through a builder
+# defect — `stored_certificate` fits the shape by construction — which is exactly what makes a hit worth raising.
+_QUAL_KEYS = ("policy", "unqualified_reason", "unresolved", "affected_channels", "members", "qualified_members")
+_QUAL_OPTIONAL = ("combustion_inheritance", "certificate", "solver_certificate")
+_QUAL_POLICIES = ("all_null_candidate/1", "window_qualification/1")
+_CHANNELS = ("evidence_for_occurrence", "evidence_against_occurrence")
+_COMBUSTION_KEYS = ("orb_digest", "orb_row_ids", "l1_module", "l1_module_digest")
+_CERT_KEYS = ("schema", "objective", "t0", "outcome", "reason", "phase", "value", "instant", "upper_bound", "evals", "max_evals", "budget_scope",
+              "limits", "geometry", "geometry_digest", "cells", "open", "open_total", "truncated")
+_LIMIT_KEYS = ("QUANT", "TIE", "EPS_M", "TIME_TOL", "LEAF_CURV", "H1_SPACING_S", "h4_used")
+_CELL_KINDS = ("piece", "dead", "leaf", "pruned")
+#: the database's caps on a stored solver certificate (migration 1402), restated; a test compares them with the function's own source text
+CERT_MAX_CELLS, CERT_MAX_OPEN, CERT_MAX_OCTETS = 400, 200, 262144
+_DIGEST = re.compile(r"^[0-9a-f]{64}$")
+
+
+def _is_num(x) -> bool:
+    return isinstance(x, (int, float)) and not isinstance(x, bool)
+
+
+def jsonb_octets(value) -> int:
+    """`octet_length(value::jsonb::text)`: PostgreSQL prints a jsonb as `{"k": v, "k2": [1, 2]}` (a space after `:` and `,`), every number as a plain-decimal `numeric` (`1e-06` →
+    `0.000001`, `1e+22` → 23 digits — `json.dumps` sizes are NOT the database's) and a string with its JSON escapes (everything else as UTF-8 bytes). A non-finite number is
+    not jsonb: ValueError. Never below the database's figure for a finite float (a negative zero is one byte more here than there)."""
+    if value is None or value is True:
+        return 4
+    if value is False:
+        return 5
+    if isinstance(value, int):
+        return len(str(value))
+    if isinstance(value, float):
+        if not math.isfinite(value):
+            raise ValueError("a non-finite number is not jsonb")
+        return len(format(Decimal(repr(value)), "f"))
+    if isinstance(value, str):
+        return 2 + sum(2 if ch in '"\\\b\f\n\r\t' else 6 if ord(ch) < 0x20 else len(ch.encode("utf-8")) for ch in value)
+    if isinstance(value, (list, tuple)):
+        return 2 + sum(jsonb_octets(v) for v in value) + 2 * max(0, len(value) - 1)
+    if isinstance(value, dict):
+        return 2 + sum(jsonb_octets(k) + 2 + jsonb_octets(v) for k, v in value.items()) + 2 * max(0, len(value) - 1)
+    raise TypeError(f"{type(value).__name__} is not jsonb")
+
+
+def solver_certificate_defects(c) -> list[str]:
+    """What `ka_gochara_solver_certificate_ok(c)` would refuse in `c`, as short counts-only phrases (no chart value, no date). [] = the database accepts it."""
+    if not isinstance(c, dict):
+        return ["the solver certificate is not an object"]
+    out: list[str] = []
+    if set(c) != set(_CERT_KEYS):
+        out.append(f"certificate keys differ from the closed list (missing {sorted(set(_CERT_KEYS) - set(c))}, extra {sorted(set(c) - set(_CERT_KEYS))})")
+        return out
+    if c["schema"] != "window_solver_certificate/1":
+        out.append("schema is not window_solver_certificate/1")
+    if c["objective"] not in ("sum_of_group_max", "min_of_group_max"):
+        out.append("objective is not a named objective")
+    if not isinstance(c["t0"], str):
+        out.append("t0 is not a string")
+    if c["outcome"] not in ("solved", "blank"):
+        out.append("outcome is neither solved nor blank")
+    if not (c["reason"] is None or isinstance(c["reason"], str)):
+        out.append("reason is neither a string nor null")
+    solved = c["outcome"] == "solved"
+    if solved != (c["reason"] is None):
+        out.append("reason is null iff the outcome is solved — violated")
+    if not isinstance(c["phase"], str):
+        out.append("phase is not a string")
+    for k in ("value", "instant", "upper_bound"):
+        if not (c[k] is None or _is_num(c[k])):
+            out.append(f"{k} is neither a number nor null")
+    if solved != (c["value"] is not None):
+        out.append("value is non-null iff the outcome is solved — violated")
+    for k in ("evals", "max_evals", "open_total"):
+        if not _is_num(c[k]):
+            out.append(f"{k} is not a number")
+    if c["budget_scope"] != "window":
+        out.append("budget_scope is not window")
+    lim = c["limits"]
+    if not isinstance(lim, dict) or any(k not in lim for k in _LIMIT_KEYS) or not isinstance(lim.get("h4_used"), bool):
+        out.append("limits is not an object carrying the required members (h4_used boolean)")
+    g = c["geometry"]
+    if not isinstance(g, dict) or not isinstance(g.get("cuts"), list) or not isinstance(g.get("pieces"), list):
+        out.append("geometry is not an object with cuts and pieces arrays")
+    if not (isinstance(c["geometry_digest"], str) and _DIGEST.match(c["geometry_digest"])):
+        out.append("geometry_digest is not 64 lowercase hex characters")
+    cells, opens = c["cells"], c["open"]
+    if not isinstance(cells, list):
+        out.append("cells is not an array")
+    else:
+        if len(cells) > CERT_MAX_CELLS:
+            out.append(f"{len(cells)} cells exceed the cap of {CERT_MAX_CELLS}")
+        bad = sum(1 for e in cells if not (isinstance(e, list) and len(e) == 4 and e[0] in _CELL_KINDS and all(_is_num(x) for x in e[1:])))
+        if bad:
+            out.append(f"{bad} malformed cell(s)")
+    if not isinstance(opens, list):
+        out.append("open is not an array")
+    else:
+        if len(opens) > CERT_MAX_OPEN:
+            out.append(f"{len(opens)} open cells exceed the cap of {CERT_MAX_OPEN}")
+        bad = sum(1 for e in opens if not (isinstance(e, list) and len(e) == 2 and all(_is_num(x) for x in e)))
+        if bad:
+            out.append(f"{bad} malformed open cell(s)")
+    if not isinstance(c["truncated"], bool):
+        out.append("truncated is not a boolean")
+    try:
+        n = jsonb_octets(c)
+    except (ValueError, TypeError) as exc:
+        out.append(f"the certificate is not representable as jsonb ({exc})")
+    else:
+        if n > CERT_MAX_OCTETS:
+            out.append(f"{n} bytes as jsonb text exceed the cap of {CERT_MAX_OCTETS}")
+    return out
+
+
+def qualification_shape_defects(q) -> list[str]:
+    """What `kgew_qualification_shape_ck` (`ka_gochara_window_qualification_ok(q)`) would refuse in the window's `qualification` — counts-only phrases; [] = accepted."""
+    if q is None:
+        return []
+    if not isinstance(q, dict):
+        return ["the qualification is not an object"]
+    out: list[str] = []
+    missing = [k for k in _QUAL_KEYS if k not in q]
+    extra = sorted(set(q) - set(_QUAL_KEYS) - set(_QUAL_OPTIONAL))
+    if missing or extra:
+        out.append(f"qualification keys differ from the closed list (missing {missing}, extra {extra})")
+        return out
+    if q["policy"] not in _QUAL_POLICIES:
+        out.append("policy is not a named policy")
+    if not (q["unqualified_reason"] is None or isinstance(q["unqualified_reason"], str)):
+        out.append("unqualified_reason is neither a string nor null")
+    if not isinstance(q["unresolved"], dict) or not all(_is_num(v) for v in q["unresolved"].values()):
+        out.append("unresolved is not an object of numbers")
+    if not isinstance(q["affected_channels"], list) or any(ch not in _CHANNELS for ch in q["affected_channels"]):
+        out.append("affected_channels is not an array of the two channel names")
+    if not (_is_num(q["members"]) and _is_num(q["qualified_members"])):
+        out.append("members / qualified_members are not numbers")
+    if "combustion_inheritance" in q:
+        ci = q["combustion_inheritance"]
+        if not (isinstance(ci, dict) and set(ci) == set(_COMBUSTION_KEYS) and all(isinstance(ci[k], str) for k in ("orb_digest", "l1_module", "l1_module_digest"))
+                and isinstance(ci["orb_row_ids"], dict) and all(_is_num(v) for v in ci["orb_row_ids"].values())):
+            out.append("combustion_inheritance is not the closed {orb_digest, orb_row_ids, l1_module, l1_module_digest} record")
+    if "certificate" in q and not isinstance(q["certificate"], dict):
+        out.append("certificate is not an object")
+    if "solver_certificate" in q:
+        out += solver_certificate_defects(q["solver_certificate"])
+    return out
+
+
+class QualificationShapeDefect(RuntimeError):
+    """A window's `qualification` would violate `kgew_qualification_shape_ck`. Names the window (its deterministic id and grain) and what is wrong — ids and counts only, never a
+    chart value or a date. Raised BEFORE the insert: the builder emitted a record the schema's own rule refuses (a builder defect, not data)."""
+
+    def __init__(self, *, window_key: str, event_class: str, path_id: str, rule_version: str, problems: list[str]):
+        self.window_key, self.event_class, self.path_id, self.rule_version, self.problems = window_key, event_class, path_id, rule_version, list(problems)
+        super().__init__(f"DEFECT: ka_gochara_eval_window.qualification would violate kgew_qualification_shape_ck — window {window_key} "
+                         f"(class {event_class}, path {path_id}, rule_version {rule_version}): " + "; ".join(problems))
 
 
 class WindowStore:
@@ -237,11 +400,19 @@ class WindowStore:
             chart_id=chart_id, generation=generation, event_class=event_class)
         provenance = self.provenance_columns_available()
         memberships = 0
+        wids = [window_uuid(chart_id=chart_id, generation=generation, event_class=event_class, path_id=path_id, rule_version=rule_version, interval=d.interval)
+                for d in drafts]
+        quals: list = [None] * len(drafts)
+        if provenance:
+            # SR-KGEW-QUAL-BOUND (5): every window's qualification is checked against the constraint's own rule BEFORE any insert goes out (a hit is a loud, named defect)
+            for i, d in enumerate(drafts):
+                quals[i] = d.qualification()
+                problems = qualification_shape_defects(quals[i])
+                if problems:
+                    raise QualificationShapeDefect(window_key=str(wids[i]), event_class=event_class, path_id=path_id, rule_version=rule_version, problems=problems)
         # J-4c: every window and membership insert of the grain goes out together (no statement reads another's result)
         with pipelined(self.conn):
-            for d in drafts:
-                wid = window_uuid(chart_id=chart_id, generation=generation, event_class=event_class,
-                                  path_id=path_id, rule_version=rule_version, interval=d.interval)
+            for d, wid, qual in zip(drafts, wids, quals):
                 rng = f"[{d.interval[0].isoformat()},{d.interval[1].isoformat()})"
                 base = (str(wid), chart_id, event_class, generation, path_id, rule_version, rng,
                         d.peak_instant, d.score, d.evidence_for, d.evidence_against,
@@ -257,7 +428,7 @@ class WindowStore:
                         " objective, objective_value, qualification)"
                         " VALUES (%s,%s,%s,%s,%s,%s,%s::tstzrange,%s,%s,%s,%s,%s,%s,'event_class',%s,"
                         " %s::jsonb,%s::text[],%s,%s,%s::jsonb)",
-                        base + (d.objective, d.objective_value, _json.dumps(d.qualification(), sort_keys=True)))
+                        base + (d.objective, d.objective_value, _json.dumps(qual, sort_keys=True)))
                 else:
                     self.conn.execute(
                         "INSERT INTO public.ka_gochara_eval_window ("
@@ -341,4 +512,4 @@ class WindowStore:
         return {"windows": len(stored)}
 
 
-__all__ = ["WindowStore", "window_uuid"]
+__all__ = ["WindowStore", "window_uuid", "QualificationShapeDefect", "qualification_shape_defects", "solver_certificate_defects", "jsonb_octets"]

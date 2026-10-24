@@ -422,6 +422,9 @@ def _certificate_verdict(window: dict, *, records: list, objective: str, positio
     `solver_budget_exhausted` blank. Returns a `CertReport` (AGREED / DISAGREEMENT / INCONCLUSIVE). A window with no certificate is a DISAGREEMENT (the
     sweep always stores one for a solved or budget-exhausted window) — never a pass."""
     certificate = (window["qualification"] or {}).get("solver_certificate")
+    if window["peak"] is None and (window["qualification"] or {}).get("unqualified_reason") == _cc.INCOMPLETE_REASON:
+        # SR-KGEW-QUAL-BOUND (4): the builder's honest null for a window whose certificate could not be stored even bounded — nothing to check, INCONCLUSIVE under its own name
+        return _cc.check_incomplete_blank(lo=window["lo"], objective=objective, certificate=certificate)
     if window["peak"] is None:
         return _cc.check_budget_blank(lo=window["lo"], hi=window["hi"], records=records, objective=objective, position_at=position_at, certificate=certificate,
                                       event_class=window["event_class"])
@@ -641,6 +644,7 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
     deferred: list[str] = []        # …of those, the ones whose solver check this call was told to leave to the verification job
     unavailable: list[str] = []     # …and the ones it was asked to check but had no ephemeris to prove against
     inconclusive: list[dict] = []   # R-6: windows the certificate check could not settle inside the verifier's own budget — demoted to a named blank at seal
+    incomplete_resolved = 0         # SR-KGEW-QUAL-BOUND: windows whose stored certificate was INCOMPLETE (bounded): re-solved from scratch, never counted as certificate-checked
     solver_checked = 0              # windows the independent check SETTLED (a numbered window AGREED, a blank window's certificate or defect CONFIRMED) or demoted
     solver_blank: dict[str, int] = {}   # …of which blank windows, by the stored reason the check confirmed
     # SR-UCERT-CAP-WATCH: how often the verifier's per-window deep-bisection allowance (`window_solver_check.DEEP_SPLIT_CAP`) was used / spent, read off the deciding
@@ -881,6 +885,7 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
                 unverified.append(tag)
                 continue
             solver_checked += 1
+            incomplete_resolved += 1 if getattr(verdict, "certificate_incomplete", False) and peak is not None else 0
             _rd = getattr(getattr(verdict, "inner", None), "rederived", None) or {}
             deep_split["deep_bisections"] += _rd.get("deep_bisections", 0)
             deep_split["allowance_exhausted_leaves"] += _rd.get("allowance_exhausted_leaves", 0)
@@ -1030,7 +1035,7 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
             "unverified_windows": unverified, "policy_version": policy,
             "dynamic_enabled": bool(dynamic_enabled), "solver_check_requested": solver_check, "solver_checked_windows": solver_checked,
             "solver_check_deferred_windows": len(deferred), "solver_check_unavailable_windows": len(unavailable),
-            "solver_blank_windows": dict(sorted(solver_blank.items())), "deep_split_allowance": deep_split, "unverified_why": unverified_why, "inconclusive_windows": inconclusive,
+            "solver_blank_windows": dict(sorted(solver_blank.items())), "certificate_incomplete_resolved_windows": incomplete_resolved, "deep_split_allowance": deep_split, "unverified_why": unverified_why, "inconclusive_windows": inconclusive,
             "fields_verified": list(GOVERNED_FIELDS), "windows_detail": detail,
             **({"vedha_derivation": derived_vedha.summary()} if derived_vedha is not None else {}),
             # VERIFIED only when EVERY window's stored fields were reproduced exactly

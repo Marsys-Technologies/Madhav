@@ -24,6 +24,16 @@ WHAT IT DOES FOR A `solver_budget_exhausted` BLANK (`check_budget_blank`) — th
   cannot discharge (its bound reaches the best value the verifier has seen, less the tie) — if every open cell is dischargeable the builder
   stopped with the work done, and the blank is not borne out.
 
+AN INCOMPLETE CERTIFICATE IS NEVER A CHECKED ONE (SR-KGEW-QUAL-BOUND ruling 3). The builder bounds what it stores (migration 1402 caps a certificate at 400 cells and 256 KiB) and says so: `truncated: true`
+IS the ruling's `certificate_complete: false` (the stored key list is closed, so the flag keeps its existing name), and `geometry.omitted` states the counts. `check_numbered` treats a certificate as
+INCOMPLETE when it says `truncated` is not exactly false, OR when its stored geometry no longer hashes to `geometry_digest` (the digest is over the FULL geometry: a detector for "the stored geometry is
+partial" that does not trust the flag). An incomplete certificate is NOT used: the window is RE-SOLVED from scratch by the verifier's own prover (`certificate_incomplete=True`, `resolved=True`,
+`used_certificate=False`), and the stored number survives only if that re-solve verifies it; the verifier's own budget running out is INCONCLUSIVE (`verifier_budget_exhausted`, R-6, the 0.5 % cap), exactly
+as for any window. (The stored value and peak are still compared with the certificate's own claim first: a certificate that contradicts its row is a DISAGREEMENT whatever its completeness.) For a
+`solver_budget_exhausted` blank the flag is recorded on the report but the verdict is unchanged: that check rests on the listed OPEN cells and the verifier's own enclosure, not on the closed cells or the
+geometry a bounded certificate omits. A blank under `solver_certificate_incomplete` — the builder's honest null for a window whose certificate cannot be stored even bounded — has no certificate to check:
+`check_incomplete_blank` reports it INCONCLUSIVE under that same named reason (it is in `INCONCLUSIVE_REASONS`: counted, never a pass, never a disagreement).
+
 TWO CLASSES OF UNVERIFIED (R-6). DISAGREEMENT — a bound violated, a different maximum, an earlier qualifying extremum, a certificate the sky or the
 stored row contradicts, a blank whose certificate shows fewer evaluations than the declared budget or no open cell — blocks the seal, always.
 INCONCLUSIVE — the verifier could not settle the window inside its own budget (`verifier_budget_exhausted`), or could not push its first-order bound under the
@@ -38,7 +48,9 @@ cannot discharge"; the G-6 sample rate defaults to 2 %; a H1/H2 failure the veri
 """
 from __future__ import annotations
 
+import dataclasses
 import hashlib
+import json
 import math
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -50,6 +62,7 @@ from . import window_solver_check as chk
 SCHEMA = "window_solver_certificate/1"
 OBJECTIVE_NAMES = {chk.OBJ_SUM: "sum_of_group_max", chk.OBJ_MAXMIN: "min_of_group_max"}     # the frozen objective ↔ the builder's name for it
 BUDGET_REASON = "solver_budget_exhausted"
+INCOMPLETE_REASON = "solver_certificate_incomplete"      # the builder's honest null for a window whose certificate cannot be stored even in bounded form (= `chk.U_CERT`'s string)
 POLICY_MAX_EVALS_WINDOW = 500_000      # the per-window builder budget the policy declares
 OWN_QUANT = 1e-6
 OWN_TIE = chk.TIE
@@ -122,6 +135,7 @@ class CertReport:
     seeds: int = 0                            # sub-intervals the certificate's partition gave the verifier's search to start from
     inner: Optional[object] = None            # the `window_solver_check.CheckReport` that decided it (numbered windows)
     alternative_reason: Optional[str] = None  # a budget blank the verifier also finds blank for another named reason (H1/H2)
+    certificate_incomplete: bool = False      # SR-KGEW-QUAL-BOUND: the stored certificate was bounded (`truncated`, or its geometry no longer hashes to its digest): it was NOT counted as checked
 
     @property
     def agreed(self) -> bool:
@@ -241,6 +255,20 @@ def _from_inner(inner, *, extra=(), **kw) -> CertReport:
     return _report(findings, inconclusive, inner=inner, **kw)
 
 
+def certificate_incomplete(cert) -> bool:
+    """Is the stored certificate PARTIAL? True when `truncated` is anything but the boolean false (a builder's own flag: cells, cuts or pieces were left out), or when the stored geometry
+    does not hash to `geometry_digest` (the builder hashes the FULL `{cuts, pieces}` canonically — sorted keys, compact separators — so a bounded geometry cannot match it). Either way
+    the certificate is not evidence a check may rest on; the caller re-solves."""
+    if not isinstance(cert, dict) or cert.get("truncated") is not False:
+        return True
+    g = cert.get("geometry")
+    try:
+        blob = json.dumps({"cuts": g["cuts"], "pieces": g["pieces"]}, sort_keys=True, separators=(",", ":"), allow_nan=False)
+    except (TypeError, KeyError, ValueError):
+        return True
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest() != cert.get("geometry_digest")
+
+
 # ── a numbered window ────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 def check_numbered(*, lo: datetime, hi: datetime, records, objective: str, stored, position_at, certificate, resolve: bool = False,
@@ -265,6 +293,10 @@ def check_numbered(*, lo: datetime, hi: datetime, records, objective: str, store
             bad.append((C_STORED, f"the certificate's peak instant {certificate.get('instant')!r} s is not the stored peak {stored.peak_instant.isoformat()}"))
     if bad:
         return _report(bad, (), used_certificate=False, fell_back=False, resolved=False, evals=0)
+    if certificate_incomplete(certificate):
+        # SR-KGEW-QUAL-BOUND (3): a bounded certificate is never "checked"; the window is re-solved from scratch and THAT outcome stands (INCONCLUSIVE when the verifier's budget runs out)
+        eng, rep = run(None)
+        return _from_inner(rep, used_certificate=False, fell_back=False, resolved=True, evals=eng.evals, certificate_incomplete=True)
     eng, rep = run(cells)
     if eng.witness_findings:
         return _report(eng.witness_findings, (), used_certificate=True, fell_back=False, resolved=False, evals=eng.evals,
@@ -285,7 +317,14 @@ def check_numbered(*, lo: datetime, hi: datetime, records, objective: str, store
 
 def check_budget_blank(*, lo: datetime, hi: datetime, records, objective: str, position_at, certificate,
                        max_evals: int = chk.DEFAULT_MAX_EVALS, event_class: Optional[str] = None) -> CertReport:
-    """Is this window's `solver_budget_exhausted` blank borne out by its certificate? (module doc)"""
+    """Is this window's `solver_budget_exhausted` blank borne out by its certificate? (module doc) The report records whether that certificate was incomplete (`certificate_incomplete`);
+    the verdict itself rests on the listed open cells and the verifier's own enclosure, which a bounded certificate keeps."""
+    report = _check_budget_blank(lo=lo, hi=hi, records=records, objective=objective, position_at=position_at, certificate=certificate, max_evals=max_evals, event_class=event_class)
+    return dataclasses.replace(report, certificate_incomplete=certificate_incomplete(certificate)) if isinstance(certificate, dict) else report
+
+
+def _check_budget_blank(*, lo: datetime, hi: datetime, records, objective: str, position_at, certificate,
+                        max_evals: int = chk.DEFAULT_MAX_EVALS, event_class: Optional[str] = None) -> CertReport:
     bad, offset, cells, opens = _parse(certificate, objective=objective, outcome="blank", lo=lo)
     if not bad:
         if certificate.get("reason") != BUDGET_REASON:
@@ -338,5 +377,23 @@ def check_budget_blank(*, lo: datetime, hi: datetime, records, objective: str, p
     return _report((), (), used_certificate=True, fell_back=False, resolved=False, evals=eng.evals, cells_checked=eng.cells_checked, open_cells=len(opens))
 
 
-__all__ = ["AGREED", "DISAGREEMENT", "INCONCLUSIVE", "INCONCLUSIVE_REASONS", "SCHEMA", "BUDGET_REASON", "POLICY_MAX_EVALS_WINDOW", "G6_SAMPLE_RATE",
-           "CertReport", "check_budget_blank", "check_numbered", "classify", "g6_sampled"]
+# ── a solver_certificate_incomplete blank ────────────────────────────────────────────────────────────────────────────────────
+
+def check_incomplete_blank(*, lo: datetime, objective: str, certificate) -> CertReport:
+    """The builder's blank under `solver_certificate_incomplete` (SR-KGEW-QUAL-BOUND ruling 4; the window's certificate could not be stored even bounded, or the solver could not complete its
+    own). There is no number to check and normally no certificate: the verifier can neither confirm nor refute what it was not given, so the window is INCONCLUSIVE under that named reason
+    (counted per class, never a pass, never a disagreement). A certificate that IS present must still be well-formed and say this reason — a malformed or contradicting one is a DISAGREEMENT."""
+    if certificate is None:
+        return _report((), ((INCOMPLETE_REASON, "the builder stored no solver certificate for this window: it is an honest null the verifier cannot confirm"),),
+                       used_certificate=False, fell_back=False, resolved=False, evals=0, certificate_incomplete=True)
+    bad, _offset, _cells, _opens = _parse(certificate, objective=objective, outcome="blank", lo=lo)
+    if not bad and certificate.get("reason") != INCOMPLETE_REASON:
+        bad.append((C_OUTCOME, f"the certificate's reason is {certificate.get('reason')!r}, not {INCOMPLETE_REASON!r}"))
+    if bad:
+        return _report(bad, (), used_certificate=False, fell_back=False, resolved=False, evals=0, certificate_incomplete=True)
+    return _report((), ((INCOMPLETE_REASON, "the builder's certificate for this window is incomplete: an honest null the verifier cannot confirm"),),
+                   used_certificate=False, fell_back=False, resolved=False, evals=0, certificate_incomplete=True)
+
+
+__all__ = ["AGREED", "DISAGREEMENT", "INCONCLUSIVE", "INCONCLUSIVE_REASONS", "SCHEMA", "BUDGET_REASON", "INCOMPLETE_REASON", "POLICY_MAX_EVALS_WINDOW", "G6_SAMPLE_RATE",
+           "CertReport", "certificate_incomplete", "check_budget_blank", "check_incomplete_blank", "check_numbered", "classify", "g6_sampled"]
