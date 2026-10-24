@@ -1,0 +1,14 @@
+{
+ "schema": "ky.executor_pin_shard/2",
+ "item": "KV3-B-OPS-CONTRACT",
+ "function_hashes": {
+  "W4": {
+   "OWNER_GO_DIR": "929dc17712e7a8082d79c62b5509cec8a9b01d237a030e0fb4e00132190a33e7",
+   "OWNER_GO_KINDS": "23d0ae168cee0eec8073d55073be185f3263e6a0f0e8978b522e7b4e2dda78e2",
+   "OWNER_GO_SCHEMA": "7c14824473b6faaf0ce62b8d984b331aa2e216bd120d13b81de335be05bbd304",
+   "OWNER_GO_WRITER": "acab40281e4e5693e512ddac32dc6a192d8e90998a91c79e341522f54915fa44",
+   "owner_go_problem": "3f115b15728fdc5a8c4a0f707394fa514dfffb46ac8cfba94d9056fc0217ded7",
+   "validate": "552c0fc243bc0dbfae9206e95322884a77c6f51e614a2dd12ed83f5394f35d41"
+  }
+ }
+}

@@ -43,7 +43,12 @@ class _LegacyKaKalaDarshanaWriter(WriterBase):
             convergence_rows = cur.fetchall()
 
         if not convergence_rows:
-            return WriterResult(asset_id='ka_kala_darshana', rows_inserted=0, notes='No convergence windows — run ka_sangam first')
+            # SR-EMPTY-REASON: "run ka_sangam first" is right only when the layer was never computed.
+            from services.kala_core.empty_layer_reason import read_empty_layer
+            conv_reading = read_empty_layer(conn, chart_id, 'kala_convergence', savepoint='sp_darshana_conv_state')
+            return WriterResult(asset_id='ka_kala_darshana', rows_inserted=0,
+                                notes=f"No convergence windows ({conv_reading['empty_reason']})"
+                                      + (' — run ka_sangam first' if conv_reading['empty_reason'] == 'layer_not_computed' else ''))
 
         from services.kala_core.served_generation import served_obstruction_predicate  # obstruction data grouped by convergence_id, SERVED partition only
         with conn.cursor() as cur:
@@ -53,6 +58,17 @@ class _LegacyKaKalaDarshanaWriter(WriterBase):
                 WHERE o.chart_id = %s AND """ + served_obstruction_predicate('o') + """
             """, (chart_id,))
             obstruction_rows = cur.fetchall()
+
+        # SR-EMPTY-REASON: an empty obstruction layer leaves every window with obstructions == [] and an unreduced score.
+        # That reads as "checked, none found" only when ka_vighnakara actually ran; otherwise it is "not checked".
+        obstruction_layer = None
+        if not obstruction_rows:
+            from services.kala_core.empty_layer_reason import read_empty_layer
+            obstruction_layer = read_empty_layer(conn, chart_id, 'kala_obstruction', savepoint='sp_darshana_obs_state')
+            obstruction_layer['assessed'] = obstruction_layer['empty_reason'] == 'computed_found_none'
+            logger.warning("[ka_kala_darshana] obstruction layer empty (%s): windows are %s against obstructions",
+                           obstruction_layer['empty_reason'],
+                           'measured clear' if obstruction_layer['assessed'] else 'NOT checked')
 
         # Group obstructions by convergence_id
         obs_by_conv = {}
@@ -123,6 +139,7 @@ class _LegacyKaKalaDarshanaWriter(WriterBase):
                 obstructions=obstructions,
                 orb_strength=orb_str,
                 rarity_years=rarity,
+                obstruction_layer=obstruction_layer,
             )
 
             rows.append((
@@ -192,10 +209,13 @@ def _compute_net_label(effective_score: float, obstructions: list) -> str:
 
 def _build_narrative(mode: str, effective_score: float, net_label: str,
                      peak_date, conf_label: str, obstructions: list,
-                     orb_strength: float, rarity_years: float) -> dict:
+                     orb_strength: float, rarity_years: float,
+                     obstruction_layer: dict | None = None) -> dict:
     """
     Build a structured narrative for display.
-    Returns: {headline, context, caution}
+    Returns: {headline, context, caution}; plus `obstruction_layer` when the whole obstruction layer was empty
+    (SR-EMPTY-REASON) -- {assessed, empty_reason, layer_state}, so a window with no obstruction rows can be told
+    apart from one nobody checked.
     """
     peak_str = str(peak_date) if peak_date else 'unknown date'
     rarity_str = f"{rarity_years:.1f}-year" if rarity_years else ''
@@ -243,7 +263,13 @@ def _build_narrative(mode: str, effective_score: float, net_label: str,
         elif moderate:
             caution = f"Moderate obstruction: {moderate[0]['type']}. Intensity reduced."
 
-    return {'headline': headline, 'context': context, 'caution': caution}
+    narrative = {'headline': headline, 'context': context, 'caution': caution}
+    if obstruction_layer is not None:
+        narrative['obstruction_layer'] = obstruction_layer
+        if not obstruction_layer.get('assessed'):
+            narrative['caution'] = (f"Not checked against obstructions: the obstruction layer is empty "
+                                    f"({obstruction_layer.get('empty_reason')}).")
+    return narrative
 
 
 @register('ka_kala_darshana')

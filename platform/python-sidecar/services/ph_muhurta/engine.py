@@ -156,6 +156,9 @@ class MuhurtaContext:
     # M2
     overlapping_obstruction_id:  Optional[int] = None
     obstruction_penalty:         float = 0.0
+    # SR-EMPTY-REASON: what the obstruction layer was when overlap was checked (see obstruction_layer_note); None = the
+    # caller did not measure it, which the record states rather than reading as "no overlap".
+    obstruction_layer:           Optional[dict] = None
     # M3
     linked_anchor_id:            Optional[str] = None
     linked_anchor_domain:        Optional[str] = None
@@ -198,6 +201,27 @@ class MuhurtaRecord:
     follow_up_hook_jsonb:           Optional[dict] = None  # for P7B scheduler
 
 
+# The only empty-layer state in which "no obstruction overlap" is a measured result rather than an absence of evidence.
+_OBSTRUCTION_ASSESSED_EMPTY = 'computed_found_none'
+
+
+def obstruction_layer_note(layer: Optional[dict]) -> tuple[bool, Optional[str]]:
+    """(overlap_assessed, sentence for the verdict reason) for the obstruction layer the overlap check ran against.
+
+    A layer with windows was assessed. An empty layer was assessed only when it was measured as computed-and-empty;
+    every other empty state (never computed, rows only in an unserved partition, undatable rows, unreadable) means
+    nothing was checked, and the record says so with the measured reason instead of reading as "no overlap".
+    """
+    if layer is None:
+        return False, 'Obstruction overlap not assessed: the obstruction layer was not measured for this record.'
+    if layer.get('windows'):
+        return True, None
+    reason = layer.get('empty_reason')
+    if reason == _OBSTRUCTION_ASSESSED_EMPTY:
+        return True, None
+    return False, f'Obstruction overlap not assessed: obstruction layer empty ({reason or "reason_unmeasured"}).'
+
+
 def derive_muhurta_record(ctx: MuhurtaContext) -> MuhurtaRecord:
     """Derive one MuhurtaRecord from pre-fetched context (no DB calls)."""
     # M1: personalization = avg(condition, transit)
@@ -219,6 +243,10 @@ def derive_muhurta_record(ctx: MuhurtaContext) -> MuhurtaRecord:
         composite,
         tara_chandra_known=(ctx.tarabala_chandrabala_source != 'placeholder_no_ephemeris'),
     )
+
+    overlap_assessed, overlap_note = obstruction_layer_note(ctx.obstruction_layer)
+    if overlap_note:
+        reason = f'{reason} {overlap_note}' if reason else overlap_note
 
     # Significators: check which are noted (structural; full check needs live ephemeris)
     strengthen_grahas = ctx.activity_significators.get('strengthen_grahas', [])
@@ -266,6 +294,8 @@ def derive_muhurta_record(ctx: MuhurtaContext) -> MuhurtaRecord:
         'tarabala_chandrabala_source': ctx.tarabala_chandrabala_source,
         'adversity_penalty':         penalty,
         'obstruction_id':            ctx.overlapping_obstruction_id,
+        'obstruction_overlap_assessed': overlap_assessed,
+        'obstruction_layer':         ctx.obstruction_layer,
         'linked_anchor_id':          ctx.linked_anchor_id,
         'composite_formula':         'panchanga × personalization × tara_candra^0.5 × (1−penalty)',
         'fructification_rules':      ctx.fructification_rules,

@@ -27,7 +27,8 @@ it('S2 query_obstruction_periods reads the served partition for the page and for
   const { queryObstructionPeriodsCapability } = await import('./query_obstruction_periods')
   db.mockResolvedValue({ rows: [] })
   await queryObstructionPeriodsCapability.handler({ chart_id: 'chart-1', severity: 'severe' }, undefined)
-  expect(db).toHaveBeenCalledTimes(2)
+  // page + total, then the SR-EMPTY-REASON layer-state probe an empty result triggers (it also reads only the served partition)
+  expect(db).toHaveBeenCalledTimes(3)
   for (const [sql] of db.mock.calls) {
     expect(sql).toContain(SERVED_PREDICATE_O)
     expect(sql).not.toMatch(/generation IS NULL/)
@@ -42,6 +43,7 @@ function viewRows(obstructionGenerations: (string | null)[], darshanaGenerations
     `INSERT INTO ${table} VALUES (${index + 1}, '${chart}', ${generation === null ? 'NULL' : `'${generation}'`}, 'a${index + 1}', NULL, NULL, NULL, NULL, NULL);`).join('\n')
   return import('./view_common').then(({ viewSql }) => disposableSql(`BEGIN;
     CREATE TEMP TABLE kala_layer_head (chart_id uuid, generation text, published_at timestamptz);
+    CREATE TEMP TABLE asset_throughput (chart_id uuid, asset_id text, state text);
     CREATE TEMP TABLE kala_layer_candidate (chart_id uuid, generation text, build_id uuid, model_digest text, rule_registry_version text, conventions jsonb, state text);
     CREATE TEMP TABLE kala_layer_candidate_grain (chart_id uuid, generation text, grain_key text, result_state text);
     CREATE TEMP TABLE kala_gochara_coverage (chart_id uuid, generation text, partition_kind text, partition_key text);

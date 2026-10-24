@@ -299,7 +299,14 @@ class PhNimittaWriter(WriterBase):
                 identity_collapsed,
             )
         logger.info("ph_nimitta: inserted %d rows into phala_anchors for %s", rows_inserted, chart_id)
-        return WriterResult(asset_id='ph_nimitta', rows_inserted=rows_inserted)
+        notes = ''
+        if not convergence_rows:
+            # SR-EMPTY-REASON: the convergence source contributed no anchors; the other sources carried on. Name why,
+            # so "no convergence anchors" is not read as "no convergence windows exist".
+            from services.kala_core.empty_layer_reason import read_empty_layer
+            notes = 'convergence_source_empty:' + read_empty_layer(
+                conn, chart_id, 'kala_convergence', savepoint='sp_nimitta_conv_state')['empty_reason']
+        return WriterResult(asset_id='ph_nimitta', rows_inserted=rows_inserted, notes=notes)
 
     # ── private helpers ──────────────────────────────────────────────────────
 

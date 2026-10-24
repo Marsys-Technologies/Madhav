@@ -221,6 +221,8 @@ def test_enabling_a_kind_does_not_bypass_executor_request_gates(kind, tmp_path):
                 # validate() ends with the scheduler, measuring-cancel and served-probe admission rules; neither applies to a small-test kind
                 # (each has its own suite), so they are transport doubles here like smalltest_policy_problem.
                 'scheduler_policy_problem': lambda req: None, 'measuring_cancel_problem': lambda req: None,
+                # the owner go gate covers only century_dispatch and the production rebuild (its own suite: fleet/tests/test_executor_owner_go.py)
+                'owner_go_problem': lambda req, op=None: None,
                 # the mechanical route needs a pack fill, which none of these requests carries (its own suite: fleet/tests/test_executor_mechanical_production.py)
                 'mechanical_pre_acceptance': lambda req, table: 'the mechanical route is not under test here',
                 'served_probe_problem': lambda req, op: None}

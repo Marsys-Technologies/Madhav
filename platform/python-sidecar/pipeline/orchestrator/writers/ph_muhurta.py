@@ -69,7 +69,7 @@ class PhMuhurtaWriter(WriterBase):
         logger.info("ph_muhurta: %d influenceable anchors found", len(anchors))
 
         # Load obstruction windows (M2) into a lookup: date → obstruction_id
-        obstruction_windows = self._load_obstruction_windows(conn, chart_id)
+        obstruction_windows, obstruction_layer = self._read_obstruction_layer(conn, chart_id)
 
         # Load chart condition scores (M1) for the relevant grahas
         condition_scores = self._load_condition_scores(conn, chart_id)
@@ -165,6 +165,7 @@ class PhMuhurtaWriter(WriterBase):
                     transit_score=transit,
                     overlapping_obstruction_id=obstruction_id,
                     obstruction_penalty=obstruction_penalty,
+                    obstruction_layer=obstruction_layer,
                     linked_anchor_id=anchor_id,   # M3: prediction-fused
                     linked_anchor_domain=domain,
                     # BA-P5B EXT / JL-016: real serve-time bala scores when available,
@@ -250,7 +251,14 @@ class PhMuhurtaWriter(WriterBase):
                 natural_key_collisions,
             )
         logger.info("ph_muhurta: inserted %d rows into phala_muhurta for %s", rows_inserted, chart_id)
-        return WriterResult(asset_id='ph_muhurta', rows_inserted=rows_inserted)
+        notes = ''
+        if not obstruction_layer['windows']:
+            # SR-EMPTY-REASON: say why no row carries an obstruction overlap, so "0 overlaps" cannot be read as "none".
+            notes = f"obstruction_layer_empty:{obstruction_layer['empty_reason']}"
+            logger.warning("ph_muhurta: no obstruction windows to check overlap against (%s) -- overlap NOT assessed "
+                           "unless the layer was computed-and-empty; layer_state=%s",
+                           obstruction_layer['empty_reason'], obstruction_layer['layer_state'])
+        return WriterResult(asset_id='ph_muhurta', rows_inserted=rows_inserted, notes=notes)
 
     def _load_influenceable_anchors(self, conn, chart_id: str) -> list:
         # B9: cap raised to MAX_MUHURTA_ANCHORS (400). The previous 100-row cap silently
@@ -279,7 +287,11 @@ class PhMuhurtaWriter(WriterBase):
         return rows
 
     def _load_obstruction_windows(self, conn, chart_id: str) -> dict:
-        """Load L3 obstruction windows as {(start,end): id}.
+        """The obstruction windows alone ({(start,end): id}); see _read_obstruction_layer for the layer's state."""
+        return self._read_obstruction_layer(conn, chart_id)[0]
+
+    def _read_obstruction_layer(self, conn, chart_id: str) -> tuple[dict, dict]:
+        """Load L3 obstruction windows as {(start,end): id} AND report what the layer was.
 
         Obstructions are stored in `kala_obstruction` (built by ka_vighnakara), which
         carries no dates of its own — each row links to the `kala_convergence` row
@@ -291,9 +303,16 @@ class PhMuhurtaWriter(WriterBase):
         selected obstruction_start/obstruction_end columns that do not exist — the read
         always errored and was silently swallowed, so obstruction overlap was permanently
         empty. Corrected to the real table + JOIN.
+
+        SR-EMPTY-REASON: an EMPTY result used to read as "no obstruction overlap" whether the layer was never built,
+        held rows nobody could date, or the read had failed. The second value names which: {'windows': n,
+        'empty_reason': None | services.kala_core.empty_layer_reason.EMPTY_LAYER_REASONS | 'served_rows_without_
+        convergence_window' | 'obstruction_read_failed', 'layer_state': measured counts}.
         """
+        from services.kala_core.empty_layer_reason import read_empty_layer
         from services.kala_core.served_generation import served_obstruction_predicate
         result: dict = {}
+        failed = False
         try:
             with conn.cursor() as sp:
                 sp.execute("SAVEPOINT sp_muhurta_obs")
@@ -319,13 +338,24 @@ class PhMuhurtaWriter(WriterBase):
             with conn.cursor() as sp:
                 sp.execute("RELEASE SAVEPOINT sp_muhurta_obs")
         except Exception as exc:
+            failed = True
+            result = {}
             try:
                 with conn.cursor() as sp:
                     sp.execute("ROLLBACK TO SAVEPOINT sp_muhurta_obs")
             except Exception:
                 pass
-            logger.debug("ph_muhurta: ka_vighnakara load skipped: %s", exc)
-        return result
+            logger.warning("ph_muhurta: obstruction load failed, overlap not assessed: %s", exc)
+        if result:
+            return result, {'windows': len(result), 'empty_reason': None, 'layer_state': None}
+        if failed:
+            return result, {'windows': 0, 'empty_reason': 'obstruction_read_failed', 'layer_state': None}
+        reading = read_empty_layer(conn, chart_id, 'kala_obstruction', savepoint='sp_muhurta_obs_state')
+        reason = reading['empty_reason']
+        if reason == 'filters_excluded_all_rows':
+            # the served partition holds rows; the join to a served convergence window (which gives them a date) dropped all
+            reason = 'served_rows_without_convergence_window'
+        return result, {'windows': 0, 'empty_reason': reason, 'layer_state': reading['layer_state']}
 
     def _load_condition_scores(self, conn, chart_id: str) -> dict[str, float]:
         """Load ga_condition_composite condition_score per graha."""

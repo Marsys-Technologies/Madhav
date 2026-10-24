@@ -15,6 +15,7 @@
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import { servedObstructionPredicate } from './served_obstruction'
+import { readEmptyLayer } from './empty_layer_reason'
 
 const MAX_LIMIT = 50
 
@@ -90,12 +91,20 @@ export const queryObstructionPeriodsCapability: CapabilityDescriptor = {
         query<{ total: string }>(`SELECT COUNT(*)::text AS total FROM kala_obstruction o WHERE ${where}`, params),
       ])
       const total_matching = Number(countRes.rows[0]?.total ?? 0)
+      // SR-EMPTY-REASON (N.6 rule 4): an empty result is never a bare [] that reads as "no obstacles" — name which
+      // kind of empty it is, from measured counts (rows in any partition / in the served partition / asset state).
+      const empty = total_matching === 0 && rowsRes.rows.length === 0
+        ? await readEmptyLayer({ table: 'kala_obstruction', asset_id: 'ka_vighnakara', chart_id,
+            servedFromWhere: `kala_obstruction o WHERE o.chart_id = $1 AND ${servedObstructionPredicate('o')}` })
+        : null
       return {
         content: {
           chart_id,
           obstructions: rowsRes.rows,
           count: rowsRes.rows.length,
           total_matching,
+          empty_reason: empty?.empty_reason ?? null,
+          ...(empty ? { layer_state: empty.layer_state } : {}),
           more_available: total_matching > rowsRes.rows.length,
           filters: { obstruction_type, severity, min_severity_score, limit },
           provenance: { tables: ['kala_obstruction'], source: 'L3 Kāla obstruction (vighna) windows; served chart-scoped.' },
