@@ -584,7 +584,7 @@
     "commit": "287093002",
     "modules": [
      "window_solver_check",
-    "window_verifier"
+     "window_verifier"
     ]
    },
    "implementation_digests": {
@@ -603,6 +603,45 @@
    },
    "recipe": "input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) on the merged tree, equal to input_vector.implementation_digests(); the golden window pin in test_mb_ordinary_golden.py replaced by exact-string substitution; century_contract.json image.writer_source_digest 9706eed5 -> e5ebcfde from get_writer_source_hash('ka_gochara_v5'), century_contract.py --check equal (partial: no --pack). Harness digest unchanged (no trial_harness file moved). implementation_digest.lock.json not touched.",
    "interpretations": [],
+   "closed": true
+  },
+  {
+   "id": "DISPATCH-HEAD-DELTA-4",
+   "rulings": [
+    "SR-DISPATCH-HEAD-DELTA-4",
+    "SR-RECORD-ONLY-DELTA",
+    "SR-TR2-QUALIFY-PATH"
+   ],
+   "category": "E1",
+   "part": "trial-harness digest + record/governance files; NO implementation digest",
+   "base_commit": "6ebe04f576e2188f7f845a272fa6dfc5f032a580",
+   "derived_at_head": "(this commit)",
+   "statement": "Delta from the final-TR-#2 head 6ebe04f57 to the dispatch head, EXACTLY the four admitted parts: (1) record-only: EQUIVALENCE_RECORD_CHANGELOG TR3-DEFECT-E-UCERT names window_verifier; test_mb_ordinary_golden.py pin-history comment (7cb28e6e6); (2) platform/scripts/governance/no_local_aspect_dict_allowlist.json window_verifier _ASPECT_ANGLES line 1066 -> 1094 (6a341f4ce; RV-INT D01A-ALLOWLIST-LINE); (3) trial_harness gates.py + trial_slice.py: G-4 recount matches the R-6 demotions by window_id, with tests test_gates.py, test_t1b_fix.py (365e9c165, reviewed ACCEPTED); (4) fleet/equivalence_record.py knows the input_vector key scored_until, with fleet/tests/test_equivalence_record.py (365e9c165). Plus the harness-digest re-pin it implies (test_trial_ready.py, TRIAL_HARNESS_LANDED.md) and this entry. No IMPLEMENTATION_MODULES, century-writer, migration, registry, century-config or dispatch-pack file moves.",
+   "implementation_digests": {
+    "geometry": {
+     "before": "77cde807a5e0bf6a3733bea3f48270774920acd7434f37f2c2eb73fe781d3616",
+     "after": "77cde807a5e0bf6a3733bea3f48270774920acd7434f37f2c2eb73fe781d3616"
+    },
+    "evaluation": {
+     "before": "16c4a5243711fd95e045dee3b9e47c5242fca07b7569d2c7a24bdf79ba7cd6cc",
+     "after": "16c4a5243711fd95e045dee3b9e47c5242fca07b7569d2c7a24bdf79ba7cd6cc"
+    },
+    "window": {
+     "before": "25c5badbe01dc8634948295a661d107927c609c6042c060faee89895c8850661",
+     "after": "25c5badbe01dc8634948295a661d107927c609c6042c060faee89895c8850661"
+    }
+   },
+   "harness_digest": {
+    "before": "04b1d1d28cf98cb12fd6de7b3870eef9168daead34d33a7cbea35f8330abaa19",
+    "after": "204ff29f1036293d6a2866cb36f1187cc0bacd09592385429fcb0f2744dabe66"
+   },
+   "recipe": "implementation digests by input_vector_verifier.module_digests(IMPLEMENTATION_MODULES) at both heads (equal); harness digest by test_trial_ready.harness_digest() of the tree.",
+   "interpretations": [
+    {
+     "choice": "(I) the harness-digest re-pin files (test_trial_ready.py, TRIAL_HARNESS_LANDED.md) and this changelog entry are part of part 3 / condition 'harness digest delta recorded'",
+     "alternative": "treat them as a fifth part (which would void the ruling)"
+    }
+   ],
    "closed": true
   }
  ]
