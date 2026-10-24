@@ -2137,7 +2137,7 @@
         {
           "asset_id": "ka_sangam",
           "table": "kala_convergence",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/L3_kala/query_convergence_windows.ts:82-176",
+          "source_ref": "platform/src/lib/retrieval/registry/layers/L3_kala/query_convergence_windows.ts:83-176",
           "disposition": "derived_from_source_query",
           "via_helper": null,
           "shared": false
@@ -2626,7 +2626,7 @@
         {
           "asset_id": "ka_vighnakara",
           "table": "kala_obstruction",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/L3_kala/query_obstruction_periods.ts:69-95",
+          "source_ref": "platform/src/lib/retrieval/registry/layers/L3_kala/query_obstruction_periods.ts:70-95",
           "disposition": "derived_from_source_query",
           "via_helper": null,
           "shared": false
