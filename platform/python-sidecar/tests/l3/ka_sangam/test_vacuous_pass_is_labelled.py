@@ -85,5 +85,8 @@ def test_v2_a_run_that_writes_windows_is_not_labelled_vacuous(monkeypatch, caplo
     assert not any('vacuous' in rec.getMessage() for rec in caplog.records)
 
 
-def test_label_is_empty_when_no_predicate_was_admitted():
-    assert ks._vacuous_label(0, 0, 0) == ''                                  # nothing admitted: nothing to be vacuous about
+def test_zero_admitted_predicates_is_a_named_vacuous_state_not_a_silent_one():
+    """SR-K9-ADMITTED-ZERO: with target_floor = 0 (migration 1409) and 0 admitted predicates (K4-2b unadmitted) the run is labelled, so the K9 gate can tell it from a defect."""
+    label = ks._vacuous_label(0, 0, 0)
+    assert 'vacuous=true reason=no_admitted_predicates' in label
+    assert ks._vacuous_label(0, 0, 5) == ''                                  # windows written: never labelled
