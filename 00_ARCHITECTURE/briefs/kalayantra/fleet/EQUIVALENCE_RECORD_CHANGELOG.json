@@ -643,6 +643,35 @@
     }
    ],
    "closed": true
+  },
+  {
+   "id": "DISPATCH-HEAD-DELTA-5",
+   "rulings": [
+    "SR-DISPATCH-HEAD-DELTA-5",
+    "SR-DISPATCH-HEAD-DELTA-5-AMEND-1"
+   ],
+   "category": "E1",
+   "part": "executor pin shards only (test-side pins); NO implementation, harness or century-writer digest",
+   "base_commit": "a58f2069b2f1",
+   "derived_at_head": "(this commit)",
+   "statement": "fleet/tests/executor_pin_shards/J-4b-r8.json named plan item 'J-4b-r8', which is not in plan_model.json (test_merged_shards_load_and_name_real_plan_items failed; already failing at 06ce0e0ba). Its only content, w4_bindings for verification_job and verification_job_dryrun, is moved byte-identically into J-4b.json as one new key (J-4b.json's existing keys unchanged; its entries for both kinds already agree with the bindings, as load_shards validates) and J-4b-r8.json is deleted. Nothing is added to plan_model.json (owner: do not add to the tracker). The executor's fully resolved operation table and every shard-resolved pin (runtime executor_ops.json sha, assert_table_matches_pin expectations, w4 bindings, classes, production set, function hashes) are byte-identical before and after (dump sha 3705bd58c075c9ad both). Shard + w4 tests 95/95 (94 + 1 failed before).",
+   "implementation_digests": {
+    "geometry": {
+     "before": "77cde807a5e0bf6a3733bea3f48270774920acd7434f37f2c2eb73fe781d3616",
+     "after": "77cde807a5e0bf6a3733bea3f48270774920acd7434f37f2c2eb73fe781d3616"
+    },
+    "evaluation": {
+     "before": "16c4a5243711fd95e045dee3b9e47c5242fca07b7569d2c7a24bdf79ba7cd6cc",
+     "after": "16c4a5243711fd95e045dee3b9e47c5242fca07b7569d2c7a24bdf79ba7cd6cc"
+    },
+    "window": {
+     "before": "25c5badbe01dc8634948295a661d107927c609c6042c060faee89895c8850661",
+     "after": "25c5badbe01dc8634948295a661d107927c609c6042c060faee89895c8850661"
+    }
+   },
+   "recipe": "fast/delta5/resolved_dump.py run in the fleet directory before and after; cmp equal.",
+   "interpretations": [],
+   "closed": true
   }
  ]
 }

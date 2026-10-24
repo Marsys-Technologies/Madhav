@@ -46,5 +46,23 @@
       "timeout_s": 21600,
       "enabled_by": "J-4b"
     }
+  },
+  "w4_bindings": {
+    "verification_job": [
+      "gcloud",
+      "00_ARCHITECTURE/briefs/kalayantra/fleet/verification_launch.py",
+      [],
+      ["generation", "shard"],
+      true,
+      900
+    ],
+    "verification_job_dryrun": [
+      "gcloud",
+      "00_ARCHITECTURE/briefs/kalayantra/fleet/verification_launch.py",
+      ["--dry-run"],
+      ["generation", "shard"],
+      false,
+      21600
+    ]
   }
 }
