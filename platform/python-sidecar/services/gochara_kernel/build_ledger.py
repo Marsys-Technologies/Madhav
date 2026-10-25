@@ -18,6 +18,12 @@ A RESUME (`check_binding` -> `check_manifest` -> the writer's live-input check -
   * no chain rows exist for a substep that is NOT recorded (no orphan) and no verification row exists yet.
 Anything else raises `ResumeRefused` BY NAME and writes nothing: a program fix means teardown + a fresh build, never a silent rebuild.
 
+THE EXPLICIT BINDING (SR-RESUME-EXPLICIT-BINDING). A ledger alone never authorises a skip. The writer resumes ONLY when the run's staged plan_manifest carries
+`gochara_v5_century_resume` (RESUME_BINDING_KEY; staged by the executor's century_resume binding from its accepted ledger readback): the run being resumed, the program
+identity (implementation, writer and plan digests + horizon) and the ordered substeps already ledgered. A run WITHOUT it that finds ledger rows written by another run
+refuses `fresh_run_found_ledger` (never resumes, never deletes); a run WITH it whose identity or substep list disagrees with the ledger refuses by name. Rows this very
+run wrote are its own (the orchestrator re-plans after the last substep to confirm nothing remains) and are never "found".
+
 HONEST LIMITS (named, not hidden): a global substep (rules, convention, body:*) owns no chart x generation rows, so its scope is NULL and its resume
 trust is the binding + atomicity; near-miss rows and contacts a record grain wrote are covered through the records that reference them (a contact
 no ledgered record references is not attributable to a substep), and the independent verification job re-derives both.
@@ -28,12 +34,20 @@ import dataclasses
 import hashlib
 import json
 import os
+import re
+import uuid
 from contextlib import contextmanager, nullcontext
 from datetime import datetime, timezone
 
 TABLE = "ka_gochara_build_ledger"
 SCOPE_SCHEMA = "gochara_build_ledger_scope/1"
 EXECUTION_ENV = "CLOUD_RUN_EXECUTION"
+#: the plan_manifest key the executor's century_resume binding stages (platform/scripts/v5_small_test_shared.py RESUME_BINDING_KEY / resume_binding) and the writer's ONLY resume signal
+RESUME_BINDING_KEY = "gochara_v5_century_resume"
+RESUME_BINDING_SCHEMA = "gochara_v5_century_resume/1"
+_BINDING_FIELDS = frozenset({"schema", "resumes_run_id", "program", "ledger_substeps"})
+_PROGRAM_FIELDS = frozenset({"implementation_digest", "writer_digest", "plan_digest", "horizon"})
+_HEX64 = re.compile(r"[0-9a-f]{64}")
 
 #: write-time / run-identity columns: never part of a content digest (two correct builds differ in exactly these)
 VOLATILE_COLUMNS = ("created_at", "computed_at", "finalized_at", "build_id", "manifest_id", "published_at", "superseded_at")
@@ -276,6 +290,96 @@ def check_binding(entries: list[Entry], binding: Binding, full_keys: list[str]) 
                             f"(rules profile, verify deferral, result policy) differs (first at {bad[0].substep_key!r})", [e.substep_key for e in bad])
 
 
+# ── the explicit resume binding ───────────────────────────────────────────────────────────────────────────────────────────────────────
+
+@dataclasses.dataclass(frozen=True)
+class ResumeBinding:
+    """The validated `plan_manifest[RESUME_BINDING_KEY]`: what the executor admitted this run to continue."""
+    resumes_run_id: str
+    implementation_digest: str
+    writer_digest: str
+    plan_digest: str
+    horizon: tuple                       # (lo, hi) aware UTC datetimes
+    ledger_substeps: tuple               # ordered substep keys the accepted readback measured
+
+
+def validate_resume_binding(raw) -> ResumeBinding:
+    """The binding as a typed value, or `resume_binding_malformed` by name. Exact fields, 64-hex digests, an aware ISO horizon, a non-empty duplicate-free substep list."""
+    def refuse(msg):
+        raise ResumeRefused("resume_binding_malformed", f"{RESUME_BINDING_KEY}: {msg} — refused, never guessed")
+    if not isinstance(raw, dict) or set(raw) != _BINDING_FIELDS:
+        refuse(f"fields {sorted(raw) if isinstance(raw, dict) else type(raw).__name__} are not exactly {sorted(_BINDING_FIELDS)}")
+    if raw["schema"] != RESUME_BINDING_SCHEMA:
+        refuse(f"schema {raw['schema']!r} is not {RESUME_BINDING_SCHEMA!r}")
+    try:
+        run_id = str(uuid.UUID(str(raw["resumes_run_id"])))
+    except ValueError:
+        refuse(f"resumes_run_id {raw['resumes_run_id']!r} is not a UUID")
+    program = raw["program"]
+    if not isinstance(program, dict) or set(program) != _PROGRAM_FIELDS:
+        refuse(f"program fields {sorted(program) if isinstance(program, dict) else type(program).__name__} are not exactly {sorted(_PROGRAM_FIELDS)}")
+    for field in ("implementation_digest", "writer_digest", "plan_digest"):
+        if not (isinstance(program[field], str) and _HEX64.fullmatch(program[field])):
+            refuse(f"program.{field} is not a 64-hex digest")
+    horizon = program["horizon"]
+    if not isinstance(horizon, (list, tuple)) or len(horizon) != 2 or not all(isinstance(x, str) for x in horizon):
+        refuse(f"program.horizon {horizon!r} is not a pair of ISO timestamps")
+    try:
+        points = tuple(datetime.fromisoformat(x) for x in horizon)
+    except ValueError:
+        refuse(f"program.horizon {horizon!r} is not parseable ISO 8601")
+    if any(p.tzinfo is None for p in points):
+        refuse(f"program.horizon {horizon!r} carries a naive timestamp")
+    keys = raw["ledger_substeps"]
+    if not isinstance(keys, (list, tuple)) or not keys or not all(isinstance(k, str) and k.strip() for k in keys) or len(set(keys)) != len(keys):
+        refuse("ledger_substeps is not a non-empty list of distinct substep keys")
+    return ResumeBinding(run_id, program["implementation_digest"], program["writer_digest"], program["plan_digest"],
+                         tuple(p.astimezone(timezone.utc) for p in points), tuple(keys))
+
+
+def foreign_entries(entries: list[Entry], build_run_id) -> list[Entry]:
+    """The ledger rows another run wrote. The rows this run wrote itself are never 'found': the orchestrator re-plans after the last substep to confirm nothing remains."""
+    return [e for e in entries if str(e.build_run_id) != str(build_run_id)]
+
+
+def check_not_a_fresh_run_over_a_ledger(entries: list[Entry], build_run_id) -> None:
+    """A run staged WITHOUT the explicit binding that finds rows another run ledgered refuses `fresh_run_found_ledger`: it never resumes (the ledger alone does not
+    authorise a skip) and never deletes (a clean start is a teardown, the owner's operation)."""
+    found = foreign_entries(entries, build_run_id)
+    if found:
+        runs = sorted({str(e.build_run_id) for e in found})
+        raise ResumeRefused("fresh_run_found_ledger",
+                            f"this run carries no {RESUME_BINDING_KEY} binding but {len(found)} substep(s) are already ledgered by run(s) {', '.join(runs)} "
+                            f"(first {found[0].substep_key!r}): a resume is staged only through the century_resume operation; a fresh dispatch never resumes and never deletes — "
+                            "tear the generation down first", [e.substep_key for e in found])
+
+
+def check_resume_binding(binding: ResumeBinding, entries: list[Entry], build_run_id) -> None:
+    """The explicit binding agrees with the ledger it claims to continue: it is another run's resume (not this run's own), the identity it names is the identity of every
+    row another run ledgered (implementation, writer, plan digests, horizon), and the ordered substeps it lists are exactly those rows. The running program is judged
+    against the same rows next (`check_binding`), so the three — binding, ledger, program — are one identity."""
+    if binding.resumes_run_id == str(build_run_id):
+        raise ResumeRefused("resume_binding_self_reference", f"{RESUME_BINDING_KEY}.resumes_run_id is this run ({build_run_id}): a run cannot resume itself")
+    found = foreign_entries(entries, build_run_id)
+    for field in ("implementation_digest", "writer_digest", "plan_digest"):
+        bad = [e for e in found if getattr(e, field) != getattr(binding, field)]
+        if bad:
+            raise ResumeRefused("resume_binding_program_mismatch",
+                                f"{field}: the binding names {getattr(binding, field)} but the ledger holds {getattr(bad[0], field)} (first at {bad[0].substep_key!r}) — the binding "
+                                "does not describe this ledger", [e.substep_key for e in bad])
+    bad = [e for e in found if tuple(e.horizon) != tuple(binding.horizon)]
+    if bad:
+        raise ResumeRefused("resume_binding_program_mismatch", f"horizon: the binding names {_horizon_text(binding.horizon)} but the ledger holds {_horizon_text(bad[0].horizon)} "
+                            f"(first at {bad[0].substep_key!r})", [e.substep_key for e in bad])
+    held = [e.substep_key for e in found]
+    if held != list(binding.ledger_substeps):
+        extra = [k for k in held if k not in binding.ledger_substeps]
+        lost = [k for k in binding.ledger_substeps if k not in held]
+        raise ResumeRefused("resume_binding_substeps_mismatch",
+                            f"the binding lists {len(binding.ledger_substeps)} ledgered substep(s) but the ledger holds {len(held)} from other runs "
+                            f"(in the ledger only: {extra}; in the binding only: {lost}; or the order differs)", extra + lost)
+
+
 def check_manifest(conn, chart_id: str, generation: str, entries: list[Entry], *, require_horizon_basis: bool = False) -> None:
     """V1: the candidate manifest the ledgered substeps were bound to still stands, unchanged. The vector digest covers the whole input vector, including the
     horizon_basis pin (FB-2): a resume that skips the manifest substep must find the pin it recorded. With `require_horizon_basis` (a run that could pin: it carries
@@ -364,6 +468,7 @@ def resumed_generation_problem(conn, chart_id: str, generation: str) -> str | No
             + ") and the seal does not yet record the list of producer executions — a resumed build is not sealed until it does")
 
 
-__all__ = ["Binding", "Entry", "ResumeRefused", "TABLE", "canonical", "check_binding", "check_manifest", "load", "manifest_identity",
-           "measure_scope", "pinned_session", "plan_digest", "producer_executions", "record", "resumed_generation_problem", "table_digest",
+__all__ = ["Binding", "Entry", "RESUME_BINDING_KEY", "RESUME_BINDING_SCHEMA", "ResumeBinding", "ResumeRefused", "TABLE", "canonical", "check_binding",
+           "check_manifest", "check_not_a_fresh_run_over_a_ledger", "check_resume_binding", "foreign_entries", "load", "manifest_identity", "measure_scope",
+           "pinned_session", "plan_digest", "producer_executions", "record", "resumed_generation_problem", "table_digest", "validate_resume_binding",
            "vector_sha256", "verify_chain"]

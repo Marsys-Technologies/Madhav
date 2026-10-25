@@ -15,6 +15,7 @@ import json
 import math
 from typing import Any
 
+import completion                               # TR-26 G-completion predicates (SR-J4E-HORIZON-BASIS): pure functions, no import-time effect
 import g5_cpu                                   # G5-CPU (SR-G5-LOAD): the attributed-CPU method of G-5; pure helpers, no import-time effect
 
 PASS, FAIL, NOT_EVALUATED = "PASS", "FAIL", "NOT_EVALUATED"
@@ -26,6 +27,11 @@ TRIAL_READY_PREDICATE = "TRIAL_READY/1"
 TRIAL_READY_IDS = tuple("T%02d" % n for n in range(1, 26))
 TRIAL_CLASSES_12 = ("bereavement", "chronic_onset", "illness_acute", "major_loss", "achievement_recognition", "business_launch", "financial_deception",
                     "foreign_settlement", "parental_event", "property_acquisition", "psychological_arc", "spiritual_turn")
+#: TR-26 (SR-J4E-CENTURY-FAIL-1 (4)): the 14 scored classes the 12-class trial never ran = input_vector_verifier.SCORED_CLASS_UNIVERSE minus TRIAL_CLASSES_12.  A DATA fact for the
+#: 26-class / 14-class gate profiles; a drift test must pin TRIAL_CLASSES_26 equal to that universe (CLAUDE.md §N.7.3 — never a restated constant that can shadow it).
+TRIAL_CLASSES_NEW_14 = ("career_advancement", "career_change", "career_entry", "career_setback", "childbirth", "education_milestone", "exam_outcome", "major_gain",
+                        "marriage", "relocation", "romantic_start", "separation", "surgery", "travel_event")
+TRIAL_CLASSES_26 = TRIAL_CLASSES_12 + TRIAL_CLASSES_NEW_14
 #: the anomaly fields of `trial_report.json` that must all be zero (G-1); a missing field is a detector that did not run, not a zero
 ANOMALY_FIELDS = ("number_without_score", "peak_without_score", "valence_without_score", "blank_without_reason_code")
 SOLVER_BUDGET_REASON = "solver_budget_exhausted"
@@ -120,7 +126,7 @@ def g1_integrity(report: dict, baseline: dict, profile: dict) -> dict:
     checks = []
     want = tuple(profile.get("trial_classes") or TRIAL_CLASSES_12)
     got = tuple(sorted(_get(report, "config", "classes", default=[])))
-    checks.append(check("the trial ran exactly the 12 required classes", sorted(want) == list(got), list(got), sorted(want)))
+    checks.append(check(f"the trial ran exactly the {len(want)} required classes", sorted(want) == list(got), list(got), sorted(want)))
     base_classes = baseline.get("classes") or {}
     unmeasured = sorted(c for c in want if _get(base_classes, c, "windows_total") is None)
     checks.append(check("the baseline carries a measured window count for every required class", None if unmeasured else True, unmeasured or "all measured", "all measured",
@@ -141,7 +147,48 @@ def g1_integrity(report: dict, baseline: dict, profile: dict) -> dict:
         checks.append(check("anomalies are all zero", None, f"anomaly detector(s) absent: {missing}", 0))
     else:
         checks.append(check("anomalies are all zero", not nonzero, nonzero or 0, 0))
+    checks += g1_baseline_provenance_checks(report, baseline, profile)
+    checks += g1_certificate_checks(report, profile)
     return gate("G-1", "Integrity", checks)
+
+
+def g1_baseline_provenance_checks(report: dict, baseline: dict, profile: dict) -> list[dict]:
+    """TR-26 (SR-TR26-PLAN (b): no pre-built baseline — it is made on the VM, first, at the dispatch head, and is a RUN INPUT outside the digest-pinned harness directory): with the profile's
+    `baseline_provenance.required` the baseline must say it was built at THE TRIAL'S OWN head and that its own all-null oracle passed.  Absent fields read NOT_EVALUATED, never equal (§N.8)."""
+    spec = profile.get("baseline_provenance")
+    if not isinstance(spec, dict) or not spec.get("required"):
+        return []
+    bh, th = _get(baseline, "code", "head"), _get(report, "code", "head")
+    passed = _get(baseline, "oracle", "passed")
+    return [check("the baseline was built at the trial's own head", None if not bh or not th else bh == th, [bh, th], "equal",
+                  note="the baseline is made in the same session at the dispatch head; a baseline of another head does not vouch for this one"),
+            check("the baseline's own all-null oracle passed", None if passed is None else passed is True, passed, True)]
+
+
+def g1_certificate_checks(report: dict, profile: dict) -> list[dict]:
+    """TR-26 (cockpit addition to SR-TR26-PLAN; the century failure of SR-J4E-CENTURY-FAIL-1): no earlier gate measured certificate SIZE — the 12 TR #2 classes passed at ~310 cells on headroom
+    alone against the 400-cell cap.  With the profile's `certificate_audit.required` the trial report must carry `certificate_audit` (read-only SELECT on the trial DB, trial_slice.cert_audit) for
+    every trial class; the check FAILS when any stored certificate exceeds the profile's `max_cells` / `max_bytes` (the database's own caps, migration 1402) — unreachable after the writer fix —
+    and REPORTS the headroom per class in `observed`.  A report without the audit is NOT_EVALUATED, never green (§N.8)."""
+    spec = profile.get("certificate_audit")
+    if not isinstance(spec, dict) or not spec.get("required"):
+        return []
+    max_cells, max_bytes = spec.get("max_cells"), spec.get("max_bytes")
+    audit = report.get("certificate_audit")
+    want = sorted(profile.get("trial_classes") or TRIAL_CLASSES_12)
+    per = audit.get("classes") if isinstance(audit, dict) else None
+    if not isinstance(per, dict) or not isinstance(max_cells, int) or not isinstance(max_bytes, int):
+        return [check("every stored solver certificate is inside the database's cell and byte caps", None, "no certificate_audit in the report (or no caps in the profile)",
+                      {"max_cells": max_cells, "max_bytes": max_bytes}, note="the audit is a read-only SELECT on the trial database, run before it is dropped")]
+    missing = [c for c in want if c not in per]
+    over = {c: {"max_cells": v.get("max_cells"), "max_bytes": v.get("max_bytes")} for c, v in sorted(per.items())
+            if c in want and ((v.get("max_cells") or 0) > max_cells or (v.get("max_bytes") or 0) > max_bytes)}
+    headroom = {c: {"cells": max_cells - (v.get("max_cells") or 0), "bytes": max_bytes - (v.get("max_bytes") or 0), "truncated_windows": v.get("truncated")}
+                for c, v in sorted(per.items()) if c in want}
+    if missing:
+        return [check("every stored solver certificate is inside the database's cell and byte caps", None, f"no audit row for: {missing}", "every trial class")]
+    return [check("every stored solver certificate is inside the database's cell and byte caps", not over, over or {"headroom_per_class": headroom},
+                  {"max_cells": max_cells, "max_bytes": max_bytes}, note="headroom per class is reported in `observed`; a truncated window is counted, not failed")]
 
 
 def census_gap(report: dict) -> str | None:
@@ -275,6 +322,44 @@ def g4_verification(report: dict, verification: dict | None) -> dict:
     checks.append(check("UNVERIFIED windows = 0", None if un is None else un == 0, un, 0))
     checks.append(check("every class VERIFIED", None if not cls else not not_verified, not_verified or "all VERIFIED", "VERIFIED"))
     return gate("G-4", "Independent verification", checks, source=verification.get("source"), verdict_scope=verification.get("generation_verdict_scope"))
+
+
+def g4_inconclusive_checks(report: dict, profile: dict) -> list[dict]:
+    """TR-26 (SR-KGEW-QUAL-BOUND-AMEND-2 (b), binding): the verifier's INCONCLUSIVE windows (the certificate check could not settle them inside its own budget, so they are demoted to a named
+    blank) are counted per class from `verifier_repeat.inconclusive_windows`.  Up to `per_class_accept` (2) in a class and `total_max` (12) in all are ACCEPTED and disclosed window by window in
+    `observed` (class, path, window id — ids only) for the seal brief; a 3rd in any class, or more than 12 in total, reads REPORT (REFER-TO-SURROGATE before dispatch), never PASS.
+    (I) INTERPRETATION: "honest-null / INCONCLUSIVE count" is the verifier's INCONCLUSIVE verdicts; the builder's own named blanks are counted by G-3's caps.  Profile-gated:
+    `verification.inconclusive_thresholds.required`; a report without the record is NOT_EVALUATED."""
+    spec = _get(profile, "verification", "inconclusive_thresholds")
+    if not isinstance(spec, dict) or not spec.get("required"):
+        return []
+    claim = f"the verifier's INCONCLUSIVE windows are within {spec.get('per_class_accept')} per class and {spec.get('total_max')} in total"
+    wins = _get(report, "verifier_repeat", "inconclusive_windows")
+    if not isinstance(wins, list) or not isinstance(spec.get("per_class_accept"), int) or not isinstance(spec.get("total_max"), int):
+        return [check(claim, None, "no verifier_repeat.inconclusive_windows in the report (or no thresholds in the profile)", "recorded")]
+    per: dict[str, int] = {}
+    for w in wins:
+        per[w.get("event_class")] = per.get(w.get("event_class"), 0) + 1
+    over_class = {c: n for c, n in sorted(per.items()) if n > spec["per_class_accept"]}
+    over_total = len(wins) > spec["total_max"]
+    disclosed = sorted(({"event_class": w.get("event_class"), "path_id": w.get("path_id"), "window_id": w.get("window_id"), "reason": w.get("reason")} for w in wins),
+                       key=lambda d: (str(d["event_class"]), str(d["path_id"]), str(d["window_id"])))
+    return [report_check(claim, not over_class and not over_total, {"total": len(wins), "per_class": dict(sorted(per.items())), "classes_over": over_class, "total_over": over_total,
+                                                                    "disclosed": disclosed},
+                         {"per_class_accept": spec["per_class_accept"], "total_max": spec["total_max"]},
+                         note="REFER-TO-SURROGATE before dispatch when exceeded; every accepted window is disclosed in `disclosed` for the seal brief")]
+
+
+def g5_truncated_resolve_checks(report: dict, profile: dict) -> list[dict]:
+    """TR-26 (SR-KGEW-QUAL-BOUND-AMEND-2 (c), binding): the verifier re-solves a window whose stored certificate is `truncated` from scratch, so its wall time is measured and reported
+    SEPARATELY (windows, seconds total / max, by class and path) — it feeds the W4 verification re-size.  Not capped here: a measurement, PASS when measured (zero truncated windows is a
+    measurement of zero), NOT_EVALUATED when the verifier-repeat record carries none.  Profile-gated: `runtime.truncated_resolve_report`."""
+    if not _get(profile, "runtime", "truncated_resolve_report"):
+        return []
+    tr = _get(report, "verifier_repeat", "truncated_resolve")
+    claim = "the verifier's re-solve wall time for the truncated windows is measured and reported separately"
+    ok = isinstance(tr, dict) and isinstance(tr.get("windows"), int) and isinstance(tr.get("seconds_total"), (int, float)) and tr.get("windows") == tr.get("windows_timed")
+    return [check(claim, True if ok else None, tr if ok else "no truncated-window timing in verifier_repeat (or a truncated window was not timed)", "windows, seconds_total, seconds_max, by_class, by_path")]
 
 
 def runtime_projection(report: dict, profile: dict) -> dict:
@@ -429,8 +514,8 @@ def g6_crosscheck(report: dict, crosscheck: dict | None, profile: dict) -> dict:
     return gate("G-6", "Cross-check", checks, sample={k: crosscheck.get(k) for k in ("seed", "sampled", "numbered_windows", "top_mixed_requested", "top_mixed_checked")})
 
 
-def g7_determinism(report: dict, second: dict | None) -> dict:
-    """A second trial run produces byte-identical window rows."""
+def g7_determinism(report: dict, second: dict | None, profile: dict | None = None) -> dict:
+    """A second trial run produces byte-identical window rows — and, where the profile requires it (TR-26), identical verifier verdicts on every truncated window and the G-6 sample."""
     if not isinstance(second, dict):
         return gate("G-7", "Determinism", [check("a second trial run exists", None, "no second report supplied", "second run")])
     a, b = report.get("window_rows_digest") or {}, second.get("window_rows_digest") or {}
@@ -440,7 +525,124 @@ def g7_determinism(report: dict, second: dict | None) -> dict:
     checks.append(check("the two runs stored the same number of windows", a.get("windows") == b.get("windows") and a.get("windows") is not None, [a.get("windows"), b.get("windows")], "equal"))
     checks.append(check("the window rows are byte-identical (sha256 over canonical rows)", bool(a.get("sha256")) and a.get("sha256") == b.get("sha256"),
                         [a.get("sha256", "")[:16], b.get("sha256", "")[:16]], "equal"))
+    checks += g7_verifier_repeat_checks(report, second, profile or {})
+    checks += g7_kill_resume_checks(report, second, profile or {})
     return gate("G-7", "Determinism", checks)
+
+
+GENERIC_REFUSALS = ("Exception", "BaseException", "RuntimeError", "AssertionError", "KeyError", "AttributeError", "TypeError", "ValueError", "OSError", "SystemExit")
+
+
+def g7_kill_resume_checks(report: dict, second: dict, profile: dict) -> list[dict]:
+    """TR-26 (SR-RESUME-NOW, binding): the SECOND run is the KILL+RESUME leg — the century build deterministically aborted after substep N (a committed class behind, a window-sweep substep next), then resumed.
+    With the profile's `determinism.kill_resume.required`, G-7 PASSES only if (1) the resumed run says where it was killed, with >= 1 class committed and the next substep inside the window sweep; (2) the
+    skipped substeps provably did not re-run — the harness's own producer-execution log (not the writer's ledger) shows no substep executed both before the kill and after the resume, and before ∪ after is
+    exactly the plan; (3) the resumed generation is BYTE-IDENTICAL to the fresh one over EVERY trial class (the window-rows digest, its per-class digests and the membership digest; a class missing from either
+    side is NOT_EVALUATED, so the leg can only stand in for a plain second run when it covers all of them); (4) a resume attempted with a different program digest REFUSED BY NAME before running any substep
+    (a generic exception name, or a message that does not mention the digest, is not a refusal by name).  Every missing record is NOT_EVALUATED, never a pass (§N.8)."""
+    spec = _get(profile, "determinism", "kill_resume")
+    if not isinstance(spec, dict) or not spec.get("required"):
+        return []
+    rl = second.get("resume_leg")
+    if not isinstance(rl, dict) or not isinstance(rl.get("killed_after_substep"), int) or not rl.get("resumed"):
+        return [check("the second run is a kill+resume leg that was resumed", None, "no resume_leg in the second report" if not isinstance(rl, dict) else {"resumed": rl.get("resumed")}, "killed and resumed")]
+    plan, before, after = rl.get("plan_substeps") or [], rl.get("executed_before_abort") or [], rl.get("executed_after_resume") or []
+    checks = [check("the kill landed inside the window sweep with at least one class already committed",
+                    bool(rl.get("classes_committed_at_abort")) and str(rl.get("abort_next_step") or "").split(":")[0] == "window" and rl["killed_after_substep"] >= 1,
+                    {"killed_after_substep": rl["killed_after_substep"], "committed_classes": len(rl.get("classes_committed_at_abort") or []), "next_step_kind": str(rl.get("abort_next_step") or "").split(":")[0]},
+                    ">=1 committed class, next substep kind window")]
+    rerun = sorted(set(before) & set(after))
+    complete = bool(plan) and sorted(set(before) | set(after)) == sorted(set(plan)) and len(before) == rl["killed_after_substep"] and bool(after)
+    checks.append(check("the substeps skipped on resume did not re-run, and before-kill plus after-resume is exactly the plan", None if not plan or not before else (not rerun and complete),
+                        {"ran_before_kill": len(before), "ran_after_resume": len(after), "plan": len(plan), "rerun": len(rerun), "rerun_examples": rerun[:3]}, "no substep in both; union == plan"))
+    want = sorted(profile.get("trial_classes") or TRIAL_CLASSES_12)
+    da, db = report.get("window_rows_digest") or {}, second.get("window_rows_digest") or {}
+    pa, pb = da.get("per_class") or {}, db.get("per_class") or {}
+    if sorted(pa) != want or sorted(pb) != want:
+        checks.append(check("the fresh and the resumed generation are compared over every trial class", None, {"fresh_missing": sorted(set(want) - set(pa)), "resumed_missing": sorted(set(want) - set(pb))}, f"all {len(want)} classes"))
+    else:
+        diff = sorted(c for c in want if pa[c] != pb[c])
+        same = bool(da.get("sha256")) and da.get("sha256") == db.get("sha256") and bool(da.get("memberships_sha256")) and da.get("memberships_sha256") == db.get("memberships_sha256") and not diff
+        checks.append(check("the resumed generation is byte-identical to the fresh one over every trial class (rows, per-class rows, memberships)", same,
+                            {"classes": len(want), "differing_classes": diff, "rows_equal": da.get("sha256") == db.get("sha256"), "memberships_equal": da.get("memberships_sha256") == db.get("memberships_sha256")}, "equal"))
+    pr = rl.get("refusal_probe")
+    needle = str(spec.get("refusal_message_contains") or "digest").lower()
+    if not isinstance(pr, dict) or not pr.get("attempted"):
+        checks.append(check("a resume with a different program digest refuses by name", None, "no refusal probe recorded", "refused by name"))
+    else:
+        ok, obs = refused_by_name(pr, needle)
+        checks.append(check("a resume with a different program digest refuses by name", ok, obs, "refused before any substep, by a named refusal that mentions the digest"))
+    for dim in spec.get("refusal_dimensions") or []:             # SR-RESUME-NOW (3): the source digest and the library digest are perturbed ONE AT A TIME; each must refuse by name on its own
+        rec = (pr.get("by_dimension") or {}).get(dim) if isinstance(pr, dict) else None
+        claim = f"a resume with a different {dim} digest refuses by name"
+        if not isinstance(rec, dict) or not rec.get("attempted"):
+            checks.append(check(claim, None, f"no {dim}-digest refusal probe recorded", "refused by name"))
+        else:
+            ok, obs = refused_by_name(rec, needle)
+            checks.append(check(claim, ok, obs, "refused before any substep, by a named refusal that mentions the digest"))
+    return checks
+
+
+def refused_by_name(pr: dict, needle: str) -> tuple:
+    """(True | False, observed) for one refusal-probe record: the resume was refused, before any substep ran, by an exception that is not a generic one and whose message mentions the digest."""
+    name, msg = pr.get("refusal_name"), str(pr.get("message") or "")
+    named = bool(name) and name not in GENERIC_REFUSALS and needle in msg.lower()
+    ok = bool(pr.get("refused")) and pr.get("executed_substeps") == 0 and named
+    return ok, {"refused": pr.get("refused"), "refusal_name": name, "message_mentions_digest": needle in msg.lower(), "substeps_run": pr.get("executed_substeps")}
+
+
+def _demoted(report: dict) -> list | None:
+    d = _get(report, "verification", "attestation_recount", "attested", "demoted_windows")
+    if not isinstance(d, list):
+        return None
+    return sorted((str(x.get("window_id")), str(x.get("reason"))) for x in d if isinstance(x, dict))
+
+
+def g7_verifier_repeat_checks(report: dict, second: dict, profile: dict) -> list[dict]:
+    """TR-26 (SR-TR26-PLAN (a), binding cockpit finding): W4's two verification passes do NOT compare per-window verdicts (its dry run is judged on `report.gate == []` and capacity only, and a
+    report-only run persists nothing), so G-7 compares them itself.  With the profile's `determinism.verifier_repeat.required`, BOTH runs must carry `verifier_repeat` (trial_slice.verifier_repeat_section:
+    the solver-check verdict of every window the verifier's certificate check reached, the ids of the windows whose certificate is `truncated`, the ids of run 1's G-6 cross-check sample) and
+    G-7 PASSES only if, for every audited window (truncated windows ∪ the G-6 sample), the verdict of run 2 equals run 1's, the truncated sets are equal, and the demoted (INCONCLUSIVE) windows the
+    attestations name are the same.  A missing record, an uncovered class, an unmapped verdict or a truncated window the solver check never reached is NOT_EVALUATED, never a pass (§N.8)."""
+    spec = _get(profile, "determinism", "verifier_repeat")
+    if not isinstance(spec, dict) or not spec.get("required"):
+        return []
+    claim = "the verifier's per-window verdicts on the truncated windows and the G-6 sample are identical in both runs"
+    ra, rb = report.get("verifier_repeat"), second.get("verifier_repeat")
+    if not (isinstance(ra, dict) and isinstance(rb, dict) and isinstance(ra.get("verdicts"), dict) and isinstance(rb.get("verdicts"), dict)):
+        return [check(claim, None, {"run1": isinstance(ra, dict), "run2": isinstance(rb, dict)}, "both runs carry verifier_repeat",
+                      note="run 2 must verify (TR_G7_VERIFY=1), not be build-only: the repeat is the verifier's own verdicts")]
+    want = sorted(profile.get("trial_classes") or TRIAL_CLASSES_12)
+    covered = [sorted(r.get("classes_covered") or []) for r in (ra, rb)]
+    unmapped = [r.get("unmapped_verdicts") for r in (ra, rb)]
+    gaps = {"classes_not_covered": [sorted(set(want) - set(c)) for c in covered], "unmapped_verdicts": unmapped}
+    if any(c != want for c in covered) or any(u != 0 for u in unmapped):
+        return [check("the verifier-repeat record covers every trial class and maps every verdict to a window", None, gaps, "every class, 0 unmapped")]
+    ta, tb = sorted(ra.get("truncated_window_ids") or []), sorted(rb.get("truncated_window_ids") or [])
+    g6 = ra.get("g6_sample_window_ids")
+    if not isinstance(g6, list):
+        return [check("run 1 recorded its G-6 sample", None, "absent", "present", note="run 1 must run the cross-check (its sample is the G-6 sample)")]
+    checks = [check("the truncated windows (solver_certificate.truncated = true) are the same windows in both runs", ta == tb, {"run1": len(ta), "run2": len(tb)}, "equal")]
+    va, vb = ra["verdicts"], rb["verdicts"]
+    never = sorted(w for w in set(ta) | set(tb) if w not in va or w not in vb)
+    checks.append(check("every truncated window reached the verifier's solver check in both runs", None if never else True,
+                        {"truncated": len(ta), "without_verdict": [w[:8] for w in never[:5]], "count": len(never)}, "all", note="a truncated window with no verdict is a detector that did not run" if never else None))
+    audit = sorted(set(ta) | set(tb) | set(g6))
+    differ = sorted(w for w in audit if va.get(w) != vb.get(w))
+    g6_with_verdict = sum(1 for w in set(g6) if w in va and w in vb)          # sample windows the solver check reached in BOTH runs (the rest compare absent-in-both, i.e. vacuously)
+    state = False if differ else (True if g6_with_verdict else None)          # a difference is a FAIL whatever the sample; an equal comparison over NO sample verdict is no evidence (§N.8)
+    checks.append(check(claim, state, {"audited": len(audit), "truncated": len(ta), "g6_sample": len(g6), "g6_with_verdict": g6_with_verdict,
+                                       "differing": len(differ), "examples": [{"window": w[:8], "run1": va.get(w), "run2": vb.get(w)} for w in differ[:5]]}, "0 differing, >= 1 G-6 sample window with a verdict in both runs",
+                        note="a window with no solver verdict (verified by exact re-derivation) is compared as absent-in-both; a sample with none is NOT_EVALUATED" if not g6_with_verdict else
+                        "a window with no solver verdict (verified by exact re-derivation) is compared as absent-in-both"))
+    da, db = _demoted(report), _demoted(second)
+    if da is None or db is None:
+        checks.append(check("the windows the attestations demote (INCONCLUSIVE) are the same in both runs", None, {"run1": da is not None, "run2": db is not None}, "both recorded"))
+    else:
+        checks.append(check("the windows the attestations demote (INCONCLUSIVE) are the same in both runs", da == db, {"run1": len(da), "run2": len(db)}, "equal"))
+    sa, sb = ({c: (v or {}).get("status") for c, v in (_get(r, "verification", "classes", default={}) or {}).items()} for r in (report, second))
+    checks.append(check("every trial class has the same verification status in both runs", None if not sa or not sb else sa == sb, {"run1": len(sa), "run2": len(sb)}, "equal"))
+    return checks
 
 
 def g8_head_identity(report: dict, dispatch_modules: dict | None) -> dict:
@@ -689,6 +891,26 @@ def g7_noninterference_checks(report: dict, baseline: dict, table: dict) -> list
 
 # ── the digests record (PLAN v2 G-8: a later L0 / registry / ephemeris / config change invalidates the trial) ────────────────────────────
 
+def g8_completion_checks(report: dict, profile: dict) -> list[dict]:
+    """TR-26 G-completion (SR-J4E-HORIZON-BASIS, SR-J4E-POSTRUN-READBACKS): the two century completion-gate checks the trial itself never exercised, re-run on the probe's RAW readbacks by the pack's
+    own predicates (`completion.horizon_basis_check`, `completion.provenance_check`) — the probe's words are never the verdict.  With the profile's `completion.required`:
+    (1) `horizon_basis`: a century-shaped (unmarked, staged-century-config) manifest carries a non-null `horizon_basis` pin, candidate status, the TRIAL's own ruled horizon;
+    (2) `digests_equal_dry_run` receipts: a build that went through the REAL build entry (`asset_runner.run_asset`) wrote a provenance receipt whose code_digest equals the expected_code_digest and whose
+        build_id is that run.  A missing record is NOT_EVALUATED; a completed run with no receipt (a bypass of the real entry, TR #2's shape) and an unpinned manifest read FALSE."""
+    spec = _get(profile, "completion")
+    if not isinstance(spec, dict) or not spec.get("required"):
+        return []
+    hz = report.get("horizon")
+    ruled = [hz.get("start"), hz.get("end")] if isinstance(hz, dict) and isinstance(hz.get("start"), str) and isinstance(hz.get("end"), str) else None
+    sec = report.get("completion")
+    got = completion.evaluate_record(sec, ruled)
+    hb, pv = got["horizon_basis"], got["provenance"]
+    return [check("a century-shaped manifest (unmarked run, staged century config) carries a pinned horizon_basis", hb[0], hb[1], "candidate manifest, ruled horizon, horizon_basis pinned",
+                  note=None if hb[0] is not None else "not evaluated: " + hb[1]),
+            check("a build through the real build entry (asset_runner.run_asset) wrote a provenance receipt with the expected code digest and this run's build id", pv[0], pv[1],
+                  "non-empty receipts; code_digest == expected_code_digest; build_id == run id", note=None if pv[0] is not None else "not evaluated: " + pv[1])]
+
+
 def g8_digest_checks(report: dict, dispatch_digests: dict | None) -> list[dict]:
     rec = report.get("digests_record")
     comps = rec.get("components") if isinstance(rec, dict) else None
@@ -780,14 +1002,21 @@ def evaluate(report: dict, baseline: dict, profile: dict, *, second_report: dict
     a10 = decision_table is not None
     g2 = g2_wiring(report, _table_profile(decision_table, profile) if a10 else profile)
     g3 = g3_decision_table(report, decision_table) if a10 else g3_shares(report, profile)
-    g5, g7, g8 = g5_runtime(report, profile, verification), g7_determinism(report, second_report), g8_head_identity(report, dispatch_modules)
+    g5, g7, g8 = g5_runtime(report, profile, verification), g7_determinism(report, second_report, profile), g8_head_identity(report, dispatch_modules)
     if a10:
         for g, extra in ((g5, g5_effective_wall_checks(report, profile)), (g7, g7_noninterference_checks(report, baseline, decision_table)),
                          (g8, g8_digest_checks(report, dispatch_digests))):
             g["checks"] = g["checks"] + extra
             g["status"] = roll_up(g["checks"])
+    g8["checks"] = g8["checks"] + g8_completion_checks(report, profile)                              # TR-26 G-completion (profile-gated; a profile without `completion` adds nothing)
+    g8["status"] = roll_up(g8["checks"])
     g5 = g5_cpu.apply_to_gate(g5, report, profile, check=check, roll_up=roll_up, runtime_projection=runtime_projection)         # G5-CPU hook: wall | attributed_cpu | neither
-    gates = [g1_integrity(report, baseline, profile), g2, g3, g4_verification(report, verification), g5, g6_crosscheck(report, crosscheck, profile), g7, g8]
+    g4 = g4_verification(report, verification)
+    for g, extra in ((g4, g4_inconclusive_checks(report, profile)), (g5, g5_truncated_resolve_checks(report, profile))):
+        if extra:
+            g["checks"] = g["checks"] + extra
+            g["status"] = roll_up(g["checks"])
+    gates = [g1_integrity(report, baseline, profile), g2, g3, g4, g5, g6_crosscheck(report, crosscheck, profile), g7, g8]
     if a10:
         gates.insert(0, g0_trial_ready(report))
     by = {g["id"]: g["status"] for g in gates}

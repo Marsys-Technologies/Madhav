@@ -227,6 +227,12 @@ SCOPED_STATEMENT_TIMEOUT_MS = 300_000
 # order, each file hash-checked against the ledger's own sha256. (I) INTERPRETATION J2A-B3: "touches a scope table" is a
 # whole-word textual mention of a scope table name in the migration file; an over-inclusion or a dynamic-SQL miss fails
 # the restore loudly before any receipt. Alternative: carry every post-bundle migration.
+# SR-RESTORE-SCHEMA-ONLY (century restore, 2026-10-25): the archive carries the definitions and the data of every scope
+# table, so a later migration can only matter to the restore if it creates something the archived tables DEPEND ON (a
+# function a trigger or default calls, a type or domain a column uses, a table, sequence, schema, extension...). A
+# migration that merely UPDATEs/INSERTs registry rows, or only alters/grants/indexes scope tables, needs production rows
+# or roles the throwaway copy does not have and changes nothing the archive restores; the 19-of-1032 mention rule picked
+# 12 of those and the first one failed. SCHEMA_OBJECT is that second condition (see derive_restore_migrations).
 SCOPED_RESTORE_BASE_PATH = 'run/canonical_l1/20261016T135745Z/schema.sql'
 SCOPED_RESTORE_BASE_SHA256 = '7e15492f09d54b3f4c49e05afe4237b70254d59740e6a1222a0aa4277899700e'
 # The cut is a property of the pinned bundle file, like its sha256: schema.sql was written 2026-10-16 22:40:23 IST =
@@ -239,9 +245,21 @@ SCOPED_LEDGER_TABLE = 'public._migrations_applied'
 # ruling re-proves that very backup. Each script digest listed here is such a capture script; its receipts are restored
 # through the ledger-derived fallback with the ledger read from the archive itself. Any other script digest, and any
 # capture by the current script lacking its ledger digest, is refused as before.
+# The second entry is the century capture j4e_20261025t005235z, taken by the script at c718a5535. That script carries the
+# ledger digest, but its own sha256 is no longer this file's; the capture code path of this file is byte-identical to
+# c718a5535's (every capture-reachable definition compared by test_the_capture_path_is_byte_identical_to_the_h2_script),
+# so the capture is exactly what this script would have written. Listing it admits no other script.
 SCOPED_LEGACY_CAPTURE_SCRIPTS = {
     '3f967bf9cd99abe725db9983b50f99d4263e96336c44ee4b2ce3a707022aeb29': 'seedless capture w4r1_20261017t090403z',
+    '94f76c4ffbe3533e9954a0742e8dc11707e3c4827b380ec57a473239f980e0b0': 'century capture j4e_20261025t005235z (script c718a5535)',
 }
+# A later migration is carried into the restore base only if, with comments removed, it has a statement at a line start that
+# creates an object an archived table can depend on. CREATE [TEMP] / INDEX / VIEW / POLICY, ALTER, GRANT, COMMENT, DO, UPDATE,
+# INSERT and DELETE do not qualify: the archive supplies every scope table's own columns, constraints, indexes and triggers.
+SCHEMA_OBJECT = re.compile(r'^[ \t]*CREATE[ \t]+(?:OR[ \t]+REPLACE[ \t]+)?'
+                           r'(?:FUNCTION|PROCEDURE|TRIGGER|TYPE|DOMAIN|TABLE|SEQUENCE|SCHEMA|EXTENSION|AGGREGATE|OPERATOR|COLLATION)\b',
+                           re.I | re.M)
+_SQL_COMMENT = re.compile(r'/\*.*?\*/|--[^\n]*', re.S)
 MIGRATIONS_DIR = Path(__file__).resolve().parent.parent / 'migrations'
 
 
@@ -564,9 +582,13 @@ def ledger_from_archive(archive: Path, settings: dict) -> list[dict]:
 def derive_restore_migrations(ledger: list[dict], scope_tables: list[str], migrations_dir: Path | None = None) -> tuple:
     """The (file, sha256) migrations to apply on top of the bundle schema, in ledger order.
 
-    Derived, never pinned: an entry applied after the bundle was cut whose repository file mentions a scope table.
-    A candidate whose file is absent, or whose hash is not the one the ledger recorded, refuses (the base would not be
-    what production ran).
+    Derived, never pinned: an entry applied after the bundle was cut whose repository file (1) mentions a scope table
+    AND (2) creates a schema object an archived table can depend on (SCHEMA_OBJECT: function, procedure, trigger, type,
+    domain, table, sequence, schema, extension, aggregate, operator, collation). Rule (2) is textual and deterministic;
+    a pure data-fix (UPDATE/INSERT/DELETE of registry rows, digests, timeouts) or an alter/grant/index/view-only
+    migration is never carried. A carried migration that also edits data fails loudly, as before. A candidate whose file
+    is absent, or whose hash is not the one the ledger recorded, refuses (the base would not be what production ran).
+    The check is made for every post-bundle entry, selected or not, so a tampered skipped file still refuses.
     """
     cut = datetime.fromisoformat(SCOPED_RESTORE_BASE_CUT)
     mention = re.compile('(?<![A-Za-z0-9_])(?:' + '|'.join(re.escape(t.split('.', 1)[1]) for t in scope_tables)
@@ -583,19 +605,29 @@ def derive_restore_migrations(ledger: list[dict], scope_tables: list[str], migra
             raise BackupRefused(f'ledger migration applied after the bundle is missing from the repository: {name}')
         if hashlib.sha256(body).hexdigest() != entry['sha256']:
             raise BackupRefused(f'ledger migration differs from the file production applied: {name}')
-        if mention.search(body.decode('utf-8', 'replace')):
+        text = body.decode('utf-8', 'replace')
+        if mention.search(text) and SCHEMA_OBJECT.search(_SQL_COMMENT.sub('', text)):
             chosen.append((name, entry['sha256']))
     return tuple(chosen)
 
 
 def restore_base_sql(root: Path, migrations: tuple = ()) -> tuple[str, dict]:
     """The governed L1 bundle schema plus the derived migrations as one executable script, and the identity of what it is built from.
+    (restore_base_steps is the same script cut into its named steps, which the restore runs one at a time.)
 
     The bundle's schema.sql is a plain pg_dump with a psql-only restrict/unrestrict guard pair (dropped) and its own
     CREATE SCHEMA public, which the bundle's strict restore ran after dropping the empty public schema, followed by
     the five extensions. It is hash-checked against the bundle manifest before use; never printed or copied.
     `migrations` is derive_restore_migrations' (file, sha256) tuple; each file is hash-checked again as it is read.
+    The bundle sets search_path to '' for the rest of its session; production applied every migration with the default
+    path, so it is RESET once the bundle text ends and before the first migration.
     """
+    steps, identity = restore_base_steps(root, migrations)
+    return ''.join(sql_text for _, sql_text in steps), identity
+
+
+def restore_base_steps(root: Path, migrations: tuple = ()) -> tuple[list[tuple[str, str]], dict]:
+    """restore_base_sql as an ordered list of (step name, SQL): 'bundle' first, then one step per migration file."""
     try:
         raw = (root / SCOPED_RESTORE_BASE_PATH).read_bytes()
     except OSError:
@@ -609,14 +641,14 @@ def restore_base_sql(root: Path, migrations: tuple = ()) -> tuple[str, dict]:
         raise BackupRefused('restore base schema has no single public schema declaration')
     end = text.index(marker) + len(marker)
     extensions = '\n'.join(f'CREATE EXTENSION IF NOT EXISTS "{e}" WITH SCHEMA public;' for e in SCOPED_RESTORE_BASE_EXTENSIONS)
-    parts, applied = ['DROP SCHEMA public;\n', text[:end], '\n', extensions, '\n', text[end:]], []
+    steps, applied = [('bundle', ''.join(['DROP SCHEMA public;\n', text[:end], '\n', extensions, '\n', text[end:], '\nRESET search_path;\n']))], []
     for name, expected in migrations:
         body = (MIGRATIONS_DIR / name).read_bytes() if re.fullmatch(r'[A-Za-z0-9_.-]+\.sql', name) else b''
         if hashlib.sha256(body).hexdigest() != expected:
             raise BackupRefused(f'restore base migration is missing or differs from the reviewed file: {name}')
-        parts.append('\n' + body.decode('utf-8') + '\n')
+        steps.append((name, '\n' + body.decode('utf-8') + '\n'))
         applied.append({'file': name, 'sha256': expected})
-    return ''.join(parts), {'bundle': SCOPED_RESTORE_BASE_PATH, 'sha256': SCOPED_RESTORE_BASE_SHA256, 'migrations': applied}
+    return steps, {'bundle': SCOPED_RESTORE_BASE_PATH, 'sha256': SCOPED_RESTORE_BASE_SHA256, 'migrations': applied}
 
 
 def validate_scoped_capture(receipt: dict, archive: Path, label: str, scope_name: str = 'small_test') -> dict:
@@ -873,6 +905,26 @@ def snapshot_scoped(folder: Path, label: str, scope_name: str = 'small_test') ->
     return receipt
 
 
+# A failing base step is named by its step (the bundle or a migration file), the error class, the SQLSTATE and the
+# schema/relation names PostgreSQL attaches to the error. The message and detail are never printed (a RAISE or a
+# constraint detail can carry row content); only a "<kind> "<identifier>" does not exist" message, which holds an
+# identifier and nothing else, is repeated.
+_MISSING_OBJECT = re.compile(r'(?:relation|function|type|schema|column|extension|sequence|table|trigger|operator|procedure) '
+                             r'"[A-Za-z0-9_.$]+"(?: of relation "[A-Za-z0-9_.$]+")? does not exist')
+
+
+def base_step_failure(step: str, exc) -> 'BackupRefused':
+    """The BackupRefused that names a failed restore-base step without any row content (see _MISSING_OBJECT)."""
+    named = [f'{field}={value}' for field, value in (('schema', exc.diag.schema_name), ('table', exc.diag.table_name),
+                                                    ('column', exc.diag.column_name), ('constraint', exc.diag.constraint_name))
+             if value and re.fullmatch(r'[A-Za-z0-9_.$]+', str(value))]
+    message = exc.diag.message_primary or ''
+    if exc.sqlstate and exc.sqlstate[:2] in ('42', '3F') and _MISSING_OBJECT.fullmatch(message):
+        named.append(message)
+    return BackupRefused(f'restore base step {step} failed: {type(exc).__name__} sqlstate={exc.sqlstate or "?"}'
+                         + (f' ({"; ".join(named)})' if named else ''))
+
+
 def restore_verify_scoped(folder: Path, label: str, receipt: dict, scope_name: str = 'small_test') -> dict:
     import psycopg
     from psycopg import sql
@@ -908,12 +960,16 @@ def restore_verify_scoped(folder: Path, label: str, receipt: dict, scope_name: s
             raise BackupRefused('restore target has the source database name')
         if control.execute('SELECT 1 FROM pg_database WHERE datname = %s', (target['dbname'],)).fetchone():
             raise BackupRefused('restore target already exists; no reuse, reset or deletion is permitted')
-        base_sql, base = restore_base_sql(Path(os.environ.get('KY_ROOT', '/Users/Dev/kalayantra')), migrations)
+        base_steps, base = restore_base_steps(Path(os.environ.get('KY_ROOT', '/Users/Dev/kalayantra')), migrations)
         base['ledger'] = dict(identity, source='capture' if 'migrations_ledger' in receipt else 'archive')
         control.execute(sql.SQL('CREATE DATABASE {} TEMPLATE template0').format(sql.Identifier(target['dbname'])))
         try:
             with psycopg.connect(**dict(target, passfile=os.devnull, options='')) as prep:
-                prep.execute(base_sql)
+                for step, step_sql in base_steps:
+                    try:
+                        prep.execute(step_sql)
+                    except psycopg.Error as exc:
+                        raise base_step_failure(step, exc) from None
                 # the archive's own definitions replace the base's copies of exactly the data set
                 for name in receipt['scope']['tables']:
                     prep.execute(sql.SQL('DROP TABLE IF EXISTS {} CASCADE').format(sql.Identifier(*name.split('.', 1))))

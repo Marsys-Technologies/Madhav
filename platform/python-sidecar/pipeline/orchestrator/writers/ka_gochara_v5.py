@@ -1094,6 +1094,10 @@ _RESULT_POLICY_KEY = "result_policy"
 #: set by `_resolve_run_config` (and by nothing else) on a run whose plan manifest carries the century config: the writer's own record that this is a CENTURY build — it
 #: gates the committed-substep ledger / resume and the horizon_basis pin. A caller that supplies it is refused (a harness cannot switch a run into century mode by config).
 CENTURY_STAGED_KEY = "gochara_v5_century_staged"
+#: SR-RESUME-EXPLICIT-BINDING: the plan_manifest key the executor's century_resume binding stages (`gk_build_ledger.RESUME_BINDING_KEY`) and, once validated, the writer's own
+#: record of it in the resolved config — set by `_resolve_run_config` and by nothing else. It is the ONLY signal that lets a run resume over ledger rows.
+RESUME_BINDING_KEY = gk_build_ledger.RESUME_BINDING_KEY
+RESUME_BINDING_STAGED_KEY = "gochara_v5_century_resume_binding"
 _FINAL_RULES_KEY = "gochara_v5_final_rules"
 #: SR-B1-Q3C-JOB: the trial's explicit selection of P1@1.3.0 (Form B, the Q3(c) side rule). Absent / False = today's behaviour, byte-identical. It is not a
 #: century-config field: only a trial harness (`j4d_slice_qualify --p1-form-b`) sets it, so a production dispatch can never carry it.
@@ -1167,6 +1171,8 @@ def _resolve_run_config(ctx: ContextSpec) -> ContextSpec:
     Called by `plan_substeps` and, after its configuration checks, by `run_substep` — never at entry, so a mis-provisioned job still refuses before any database use."""
     if CENTURY_STAGED_KEY in ctx.config:
         raise CenturyConfigRefusal(f"{ASSET_ID}: {CENTURY_STAGED_KEY} is set by the writer from the staged {CENTURY_CONFIG_KEY} and by nothing else — refused, never accepted from the caller")
+    if RESUME_BINDING_STAGED_KEY in ctx.config:
+        raise CenturyConfigRefusal(f"{ASSET_ID}: {RESUME_BINDING_STAGED_KEY} is set by the writer from the staged {RESUME_BINDING_KEY} and by nothing else — refused, never accepted from the caller")
     manifest = _plan_manifest(ctx)
     marked = manifest is not None and TEST_SLICE_KEY in manifest
     if manifest is not None and CENTURY_CONFIG_KEY in manifest:
@@ -1182,7 +1188,12 @@ def _resolve_run_config(ctx: ContextSpec) -> ContextSpec:
             if key in merged and (tuple(present) if key == "horizon" and isinstance(present, (list, tuple)) else present) != value:
                 raise CenturyConfigRefusal(f"{ASSET_ID}: {CENTURY_CONFIG_KEY}: ctx.config[{key!r}] {present!r} contradicts the staged value {value!r} — refused, never guessed")
             merged[key] = value
+        if RESUME_BINDING_KEY in manifest:           # SR-RESUME-EXPLICIT-BINDING: validated here, judged against the ledger in `_resume_plan`
+            merged[RESUME_BINDING_STAGED_KEY] = gk_build_ledger.validate_resume_binding(manifest[RESUME_BINDING_KEY])
         ctx = dataclasses.replace(ctx, config=merged)
+    elif manifest is not None and RESUME_BINDING_KEY in manifest:
+        raise ResumeRefused("resume_binding_without_century_config",
+                            f"{ASSET_ID}: {RESUME_BINDING_KEY} is staged on a run that carries no {CENTURY_CONFIG_KEY}: only a century run resumes — refused, never guessed")
     if not marked and not ctx.dry_run:
         if ctx.config.get(_FINAL_RULES_KEY) is None:
             raise RunProfileRefusal(f"{ASSET_ID}: run_rule_profile_required: this run is not a test slice and names no {_FINAL_RULES_KEY} — "
@@ -1216,6 +1227,9 @@ def _with_rule_profile(method):
 # unchanged — by skipping the recorded substeps INCLUDING `manifest` and `snapshot` (the head: `snapshot` replaces the whole chain, `manifest` would silently
 # rebind the input vector to the new code). Any difference refuses by name (`ResumeRefused`): a program fix means teardown + a fresh build. Every other run (a
 # test slice, the measuring build, a harness) takes the whole-build plan exactly as before: no ledger rows, no resume.
+# SR-RESUME-EXPLICIT-BINDING: the ledger alone authorises nothing. A run resumes ONLY when its staged plan_manifest carries `gochara_v5_century_resume` (the executor's
+# century_resume binding: the resumed run, the program identity, the ordered ledgered substeps) and that binding describes exactly the ledger; a century run WITHOUT it
+# that finds rows another run ledgered refuses `fresh_run_found_ledger` (it never resumes and never deletes).
 ResumeRefused = gk_build_ledger.ResumeRefused
 
 
@@ -1335,8 +1349,14 @@ class GocharaV5Writer(WriterBase):
         chart_id = str(ctx.config["chart_id"])
         keys = [s.key for s in steps]
 
+        binding = ctx.config.get(RESUME_BINDING_STAGED_KEY)
+
         def resume():
             entries = gk_build_ledger.load(ctx.db_conn, chart_id, GENERATION)
+            if binding is None:
+                gk_build_ledger.check_not_a_fresh_run_over_a_ledger(entries, ctx.build_id)   # SR-RESUME-EXPLICIT-BINDING: a ledger alone never authorises a skip
+            else:
+                gk_build_ledger.check_resume_binding(binding, entries, ctx.build_id)         # the explicit binding must describe exactly the ledger it continues
             if not entries:
                 return steps
             gk_build_ledger.check_binding(entries, _ledger_binding(ctx, keys), keys)

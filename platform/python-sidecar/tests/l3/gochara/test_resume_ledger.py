@@ -13,6 +13,8 @@ CLAIMS, each with its own fail-on-revert oracle (the planted reversion is named 
   E. atomicity: an aborted substep leaves NO ledger row and no data
   F. the century teardown clears the ledger
   G. the sealer refuses a generation several executions produced (the seal does not yet record the producer list)
+  I. SR-RESUME-EXPLICIT-BINDING: a run resumes ONLY on the staged `gochara_v5_century_resume` binding; without it a ledger is `fresh_run_found_ledger` (never resumed, never
+     deleted); a binding that disagrees with the ledger (identity, substep list), is malformed, is self-referential or sits on a non-century run refuses by name
 Governing sources: root CLAUDE.md §N.2 (frozen contract), §N.3 (per-chart delete-then-insert), §N.8 (a signal is earned by a detector that can read false);
 migration 436's header (completed_keys never fed); the ruling SR-RESUME-NOW.
 """
@@ -83,7 +85,18 @@ class _Harness:
         self.conn.close()
         self.w.close()
 
-    def _ctx(self, horizon, century, birth=False):
+    def binding(self):
+        """The binding the executor stages for a resume, built from the accepted ledger readback (shared.resume_binding's shape): the run being resumed, the program identity the
+        ledger rows carry, the ordered substeps they hold."""
+        entries = bl.load(self.w.conn, CHART_ID, GEN)
+        first = entries[0]
+        return {"schema": bl.RESUME_BINDING_SCHEMA, "resumes_run_id": entries[-1].build_run_id,
+                "program": {"implementation_digest": first.implementation_digest, "writer_digest": first.writer_digest, "plan_digest": first.plan_digest,
+                            "horizon": [x.astimezone(timezone.utc).isoformat() for x in first.horizon]},
+                "ledger_substeps": [e.substep_key for e in entries]}
+
+    def _ctx(self, horizon, century, birth=False, resume=False):
+        """`resume`: False = a run staged without the binding (a century_dispatch); True = the binding of the current ledger; a dict = that raw binding (to plant a defect)."""
         run_id = str(uuid.uuid4())
         config = {"chart_id": self.chart, "ephe_path": EPHE_PATH}
         if birth:                                                      # what the production orchestrator always supplies; the harness omits it (no pin is derived)
@@ -92,16 +105,22 @@ class _Harness:
             manifest = {writer_mod.CENTURY_CONFIG_KEY: {
                 "schema": writer_mod.CENTURY_CONFIG_SCHEMA, "final_rules": False, "defer_in_build_verify": False,
                 "horizon": [horizon[0].isoformat(), horizon[1].isoformat()], "result_policy": "all_null_candidate/1"}}
+            if resume:
+                manifest[bl.RESUME_BINDING_KEY] = self.binding() if resume is True else resume
             self.w.conn.execute("INSERT INTO public.build_runs (id, plan_manifest, plan_manifest_digest) VALUES (%s::uuid, %s::jsonb, %s)",
                                 (run_id, json.dumps(manifest), writer_mod._manifest_digest(manifest)))
         else:
             config.update(gochara_v5_final_rules=False, horizon=horizon)
+            if resume:
+                manifest = {bl.RESUME_BINDING_KEY: self.binding() if resume is True else resume}
+                self.w.conn.execute("INSERT INTO public.build_runs (id, plan_manifest, plan_manifest_digest) VALUES (%s::uuid, %s::jsonb, %s)",
+                                    (run_id, json.dumps(manifest), writer_mod._manifest_digest(manifest)))
         return ContextSpec(asset_id=writer_mod.ASSET_ID, build_id=run_id, db_conn=self.conn, dry_run=False, config=config)
 
-    def dispatch(self, writer, horizon=SHORT, century=True, birth=False):
-        """One dispatch exactly as the orchestrator makes it; a failure is rolled back as the orchestrator does."""
+    def dispatch(self, writer, horizon=SHORT, century=True, birth=False, resume=False):
+        """One dispatch exactly as the orchestrator makes it; a failure is rolled back as the orchestrator does. `resume`: see `_ctx` (the century_resume binding)."""
         from pipeline.orchestrator import asset_runner
-        ctx = self._ctx(horizon, century, birth)
+        ctx = self._ctx(horizon, century, birth, resume)
         try:
             asset_runner._drive_substeps(self.conn, self.conn.cursor(), ctx.build_id, self.chart, writer_mod.ASSET_ID, writer, ctx)
         except BaseException:
@@ -109,8 +128,8 @@ class _Harness:
             raise
         return ctx.build_id
 
-    def plan(self, writer, horizon=SHORT, century=True, birth=False):
-        ctx = self._ctx(horizon, century, birth)
+    def plan(self, writer, horizon=SHORT, century=True, birth=False, resume=False):
+        ctx = self._ctx(horizon, century, birth, resume)
         try:
             return [s.key for s in writer.plan_substeps(ctx)]
         finally:
@@ -188,7 +207,7 @@ def test_a_complete_ledger_plans_nothing_and_every_recorded_scope_still_measures
     (no false tamper on a healthy chain: the digests exclude exactly the write-time columns)."""
     writer = _Subset()
     h.dispatch(writer)
-    assert h.plan(_Subset()) == []
+    assert h.plan(_Subset(), resume=True) == []
     entries = bl.load(h.w.conn, CHART_ID, GEN)
     bl.verify_chain(h.w.conn, CHART_ID, GEN, entries)
     assert {e.substep_key for e in entries if e.scope is None} == set(), "a chain substep recorded no scope"
@@ -243,7 +262,7 @@ def test_kill_at_substep_n_then_resume_equals_a_fresh_build_and_does_not_rerun_r
     contacts_before = dict(h.w.conn.execute("SELECT contact_id::text, xmin::text FROM public.ka_gochara_contact WHERE generation = %s", (GEN,)).fetchall())
 
     second = _Subset()
-    h.dispatch(second)
+    h.dispatch(second, resume=True)
     assert second.ran == order[order.index(kill_after):], "the resume must run exactly the substeps that were not recorded"
     ran = first.ran + second.ran
     assert ran.count(writer_mod.MANIFEST_SUBSTEP) == 1, "the manifest substep ran twice: the resume silently rebound the manifest"
@@ -269,6 +288,7 @@ def _killed(h, kill_after=f"record:{CLASSES[0]}:P2"):
 def _refused_with_nothing_written(h, code, expect_in_message=(), writer=None, **kw):
     chain, ledger = h.chain(), h.ledger()
     writer = writer or _Subset()
+    kw.setdefault("resume", True)               # the executor's century_resume binding, built from the ledger as it stands (SR-RESUME-EXPLICIT-BINDING)
     with pytest.raises(bl.ResumeRefused) as exc:
         h.dispatch(writer, **kw)
     assert exc.value.code == code, str(exc.value)
@@ -443,6 +463,92 @@ def test_chain_rows_of_an_unrecorded_substep_refuse_as_orphans_naming_it(h):
     assert last in err.keys
 
 
+# ── I. the explicit resume binding (SR-RESUME-EXPLICIT-BINDING) ──────────────────────────────────────────────────────────────────────
+
+def test_a_run_without_the_binding_that_finds_ledger_rows_refuses_fresh_run_found_ledger_and_deletes_nothing(h):
+    """THE claim: a ledger alone authorises nothing. A century run staged WITHOUT `gochara_v5_century_resume` (a century_dispatch) over a killed build's ledger refuses by name,
+    runs no substep and neither deletes nor writes anything (ledger and chain equal before and after).
+    Revert: drop `check_not_a_fresh_run_over_a_ledger` from `_resume_plan` => the run silently resumes (the pre-binding behaviour), this refusal never comes and a substep runs."""
+    _killed(h)
+    err = _refused_with_nothing_written(h, "fresh_run_found_ledger", ("century_resume",), resume=False)
+    assert err.keys and err.keys[0] == writer_mod.MANIFEST_SUBSTEP, "the refusal names the ledgered substeps, in plan order"
+    assert h.ledger(), "the ledger was deleted"
+
+
+def test_the_rows_a_run_wrote_itself_are_never_found_so_the_orchestrators_completion_probe_still_reads_an_empty_plan(h):
+    """`asset_runner` re-plans with the SAME ctx after the last substep (the SATYA-DIPA completeness probe) and reads [] as complete. A fresh run's own rows must not read as
+    'found'. Revert: `foreign_entries` returns every row => the probe's re-plan refuses `fresh_run_found_ledger` and the asset is never promoted."""
+    from pipeline.orchestrator import asset_runner
+    ctx = h._ctx(SHORT, True)
+    asset_runner._drive_substeps(h.conn, h.conn.cursor(), ctx.build_id, h.chart, writer_mod.ASSET_ID, _Subset(), ctx)
+    assert [s.key for s in _Subset().plan_substeps(ctx)] == []
+    h.conn.rollback()
+
+
+def test_a_resumed_runs_re_plan_reads_complete_foreign_rows_by_the_binding_and_its_own_by_being_its_own(h):
+    """The same probe after a RESUME: the ledger now holds the killed run's substeps (the binding lists exactly those) and this run's own. Revert: as above — with the
+    binding, `foreign_entries` returning every row makes the re-plan disagree with the binding's list (`resume_binding_substeps_mismatch`)."""
+    from pipeline.orchestrator import asset_runner
+    _killed(h)
+    ctx = h._ctx(SHORT, True, resume=True)
+    asset_runner._drive_substeps(h.conn, h.conn.cursor(), ctx.build_id, h.chart, writer_mod.ASSET_ID, _Subset(), ctx)
+    assert [s.key for s in _Subset().plan_substeps(ctx)] == [], "a resumed run's re-plan must read complete"
+    h.conn.rollback()
+
+
+def test_a_resume_binding_whose_program_identity_disagrees_with_the_ledger_refuses_by_name(h):
+    """The binding names the program the ledger was built by; each of its four identity fields is judged against the rows another run ledgered.
+    Revert: drop the identity comparison from `check_resume_binding` => a binding for ANOTHER program is accepted and the resume is judged only against the running program."""
+    _killed(h)
+    for field, other in (("implementation_digest", "a" * 64), ("writer_digest", "b" * 64), ("plan_digest", "c" * 64), ("horizon", [LONG[0].isoformat(), LONG[1].isoformat()])):
+        raw = h.binding()
+        raw["program"][field] = other
+        err = _refused_with_nothing_written(h, "resume_binding_program_mismatch", (field,), resume=raw)
+        assert err.keys, field
+
+
+def test_a_resume_binding_whose_substep_list_disagrees_with_the_ledger_refuses_by_name(h):
+    """The binding lists the ordered substeps the accepted readback measured; the ledger must hold exactly those. A shorter, a longer and a reordered list all refuse.
+    Revert: drop the list comparison => a binding that lists fewer substeps than the ledger holds (a stale readback) resumes over rows nobody admitted."""
+    _killed(h)
+    base = h.binding()["ledger_substeps"]
+    for listed in (base[:-1], base + [f"window:{CLASSES[0]}:P1"], list(reversed(base))):
+        raw = h.binding()
+        raw["ledger_substeps"] = listed
+        _refused_with_nothing_written(h, "resume_binding_substeps_mismatch", resume=raw)
+
+
+def test_a_resume_binding_that_is_malformed_self_referential_or_on_a_non_century_run_refuses_by_name(h):
+    """Fail-closed shape: exact fields, 64-hex digests, an aware horizon, a non-empty distinct substep list; a run cannot resume itself; only a century run resumes.
+    Revert: validate nothing (`validate_resume_binding` returns whatever it is given) => each of these is accepted or fails with an untyped error."""
+    _killed(h)
+    good = h.binding()
+    for broken in ({**good, "extra": 1}, {**good, "schema": "gochara_v5_century_resume/0"}, {**good, "ledger_substeps": []},
+                   {**good, "program": {**good["program"], "writer_digest": "xyz"}}, {**good, "program": {**good["program"], "horizon": ["2020-01-01T00:00:00", "2021-01-01T00:00:00"]}}):
+        _refused_with_nothing_written(h, "resume_binding_malformed", resume=broken)
+    # a binding on a run that is not a century run (no century config staged): refused, never read as a resume
+    with pytest.raises(bl.ResumeRefused) as exc:
+        h.plan(_Subset(), century=False, resume=good)
+    assert exc.value.code == "resume_binding_without_century_config"
+    # the writer's own record of the binding is not a caller's to set
+    ctx = h._ctx(SHORT, True, resume=True)
+    ctx.config[writer_mod.RESUME_BINDING_STAGED_KEY] = True
+    with pytest.raises(writer_mod.CenturyConfigRefusal, match="by nothing else"):
+        _Subset().plan_substeps(ctx)
+    h.conn.rollback()
+    # a run cannot resume itself: the binding it is staged with names this run's own id
+    ctx = h._ctx(SHORT, True)
+    manifest = {writer_mod.CENTURY_CONFIG_KEY: {
+        "schema": writer_mod.CENTURY_CONFIG_SCHEMA, "final_rules": False, "defer_in_build_verify": False,
+        "horizon": [SHORT[0].isoformat(), SHORT[1].isoformat()], "result_policy": "all_null_candidate/1"}, bl.RESUME_BINDING_KEY: {**good, "resumes_run_id": ctx.build_id}}
+    h.w.conn.execute("UPDATE public.build_runs SET plan_manifest = %s::jsonb, plan_manifest_digest = %s WHERE id = %s::uuid",
+                     (json.dumps(manifest), writer_mod._manifest_digest(manifest), ctx.build_id))
+    with pytest.raises(bl.ResumeRefused) as exc:
+        _Subset().plan_substeps(ctx)
+    assert exc.value.code == "resume_binding_self_reference"
+    h.conn.rollback()
+
+
 # ── E. atomicity ────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 def test_an_aborted_substep_leaves_no_ledger_row_and_no_data(h):
@@ -476,7 +582,7 @@ def test_the_century_teardown_scope_deletes_counts_and_locks_the_ledger(h):
     with h.w.conn.transaction():
         h.w.conn.execute(f"DELETE FROM ka_gochara_build_ledger WHERE {where}", params)
     assert h.ledger() == []
-    assert h.plan(_Subset()) == _plan_order(), "after the teardown the next plan is a fresh build"
+    assert h.plan(_Subset()) == _plan_order(), "after the teardown the next plan is a fresh build (no binding needed: the ledger is empty)"
 
 
 # ── G. the sealer refuses a generation several executions built ─────────────────────────────────────────────────────────────────
@@ -485,7 +591,7 @@ def test_the_producer_execution_list_names_every_build_run_and_the_sealer_proble
     """Revert: `resumed_generation_problem` returns None for >1 producers => a resumed generation passes the sealer's check."""
     _killed(h)
     assert bl.resumed_generation_problem(h.w.conn, CHART_ID, GEN) is None, "one execution so far"
-    h.dispatch(_Subset())
+    h.dispatch(_Subset(), resume=True)
     why = bl.resumed_generation_problem(h.w.conn, CHART_ID, GEN)
     assert why and why.startswith("resumed_generation_not_sealable") and "2 executions" in why
     runs = [p["build_run_id"] for p in bl.producer_executions(h.w.conn, CHART_ID, GEN)]

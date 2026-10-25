@@ -34,6 +34,8 @@
 --   data_plane_builder   SELECT, INSERT, UPDATE, DELETE (the writer upserts; the century teardown, which runs as the builder, deletes)
 --   gochara_verifier     SELECT only
 --   gochara_sealer       SELECT only (the sealer reads the producer-execution list)
+--   amjis_app            SELECT only (SR-RESUME-INTEGRATION: the app role reads the ledger for the century resume readback; the privilege is a stated fact,
+--                        never inferred from table ownership)
 --
 -- ROUTE: public-schema DDL — a Kāla protected-window migration (derived automatically by governance/kala_protected_migrations.py).
 -- IDEMPOTENT: CREATE TABLE / INDEX IF NOT EXISTS; GRANT of a held privilege is a no-op. FAIL-CLOSED: refuses when a prerequisite is missing,
@@ -120,6 +122,12 @@ BEGIN
   ELSE
     RAISE NOTICE 'migration 1410: role gochara_sealer NOT FOUND — NO sealer grant was issued; the sealer cannot read the producer-execution list until it is provisioned and granted';
   END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'amjis_app') THEN
+    GRANT SELECT ON public.ka_gochara_build_ledger TO amjis_app;
+    RAISE NOTICE 'migration 1410: app SELECT grant issued to role amjis_app';
+  ELSE
+    RAISE NOTICE 'migration 1410: role amjis_app NOT FOUND — NO app grant was issued; the century resume readback cannot read the ledger until it is provisioned and granted';
+  END IF;
 END;
 $$;
 
@@ -160,6 +168,9 @@ BEGIN
       END IF;
     END IF;
   END LOOP;
+  IF to_regrole('amjis_app') IS NOT NULL AND NOT has_table_privilege('amjis_app', 'public.ka_gochara_build_ledger', 'SELECT') THEN
+    RAISE EXCEPTION 'migration 1410 post-apply check failed: amjis_app cannot read the ledger (SELECT is granted explicitly, never assumed from ownership)';
+  END IF;
   RAISE NOTICE 'migration 1410: presence checks passed';
 END;
 $$;

@@ -672,6 +672,186 @@
    "recipe": "fast/delta5/resolved_dump.py run in the fleet directory before and after; cmp equal.",
    "interpretations": [],
    "closed": true
+  },
+  {
+   "id": "TR26-HARNESS",
+   "rulings": [
+    "SR-TR26-PLAN",
+    "SR-J4E-CENTURY-FAIL-1",
+    "SR-TR2-TRUNC-AUDIT",
+    "SR-KGEW-QUAL-BOUND-AMEND-2",
+    "SR-RESUME-NOW",
+    "SR-J4E-HORIZON-BASIS",
+    "SR-J4E-POSTRUN-READBACKS",
+    "SR-TR26-HARNESS-NB"
+   ],
+   "category": "E1",
+   "part": "trial-harness digest + record/governance files; NO implementation digest",
+   "base_commit": "c718a5535",
+   "derived_at_head": "(this commit)",
+   "statement": "Delta from H2 c718a5535 to the TR-26 harness landing, EXACTLY: (1) trial_harness gates.py + trial_slice.py + run_trial.sh + make_baseline.sh + gate_profile.tr26.json + tests test_tr26.py / test_tr26_gates.py / test_tr26_resume.py (the 26-class universe, baseline --classes, G-7 verifier repeat on the truncated windows and the G-6 sample, G-1 certificate size + baseline provenance, G-4 INCONCLUSIVE thresholds, G-5 truncated re-solve time, the read-only certificate / TR #2 truncation audit, the kill+resume leg with its refusal probe); (1b) follow-up commit on the same PR (rulings SR-J4E-HORIZON-BASIS, SR-J4E-POSTRUN-READBACKS, SR-RESUME-NOW (3)): trial_harness completion.py (new) + gates.py (G-8 g8_completion_checks, refused_by_name, the refusal_dimensions loop) + trial_slice.py (completion-probe, evaluate --completion, resume-probe per dimension: perturbed_copy / refusal_record / combine_refusals) + gate_profile.tr26.json (completion, refusal_dimensions) + tests test_tr26_completion.py / test_tr26_completion_live.py / test_tr26_resume.py; (1c) second follow-up on the same PR (ruling SR-TR26-HARNESS-NB, review X-20261025T010530Z-review-pr3912 NB-1/NB-2): gates.py (G-7 verifier-repeat: `g6_with_verdict` in observed, the sample comparison NOT_EVALUATED when no G-6 sample window has a solver verdict in both runs) + tests test_tr26_gates.py / test_tr26_completion.py (a DB-free structural oracle that the completion probe calls asset_runner.run_asset exactly once and never the writer directly); (2) the harness-digest re-pin it implies (test_trial_ready.py, TRIAL_HARNESS_LANDED.md) and this entry. No IMPLEMENTATION_MODULES, century-writer, migration, registry, century-config or dispatch-pack file moves. The TR-26 baseline is a run input made at the dispatch head on the VM and is not a file of the pinned directory, so the trial head equals the dispatch head.",
+   "implementation_digests": {
+    "geometry": {
+     "before": "77cde807a5e0bf6a3733bea3f48270774920acd7434f37f2c2eb73fe781d3616",
+     "after": "77cde807a5e0bf6a3733bea3f48270774920acd7434f37f2c2eb73fe781d3616"
+    },
+    "evaluation": {
+     "before": "16c4a5243711fd95e045dee3b9e47c5242fca07b7569d2c7a24bdf79ba7cd6cc",
+     "after": "16c4a5243711fd95e045dee3b9e47c5242fca07b7569d2c7a24bdf79ba7cd6cc"
+    },
+    "window": {
+     "before": "25c5badbe01dc8634948295a661d107927c609c6042c060faee89895c8850661",
+     "after": "25c5badbe01dc8634948295a661d107927c609c6042c060faee89895c8850661"
+    }
+   },
+   "harness_digest": {
+    "before": "204ff29f1036293d6a2866cb36f1187cc0bacd09592385429fcb0f2744dabe66",
+    "after": "ac21584fa2b092f89573e45d940de9b651a9755f28f881ed6a6ab9eaf50f669f"
+   },
+   "recipe": "implementation digests by input_vector_verifier.module_digests(IMPLEMENTATION_MODULES) at both trees (equal); harness digest by test_trial_ready.harness_digest() of the tree.",
+   "interpretations": [
+    {
+     "choice": "(I) harness_digest.after is the digest of the tree after the SR-TR26-HARNESS-NB follow-up; the intermediate digests of this PR (17a55618..., f23c08d8...) never land on main",
+     "alternative": "separate entries per commit of the PR"
+    },
+    {
+     "choice": "(I) the G-completion checks are folded into G-8 (profile `completion`), no new gate id; the intermediate harness digest of the first commit of this PR (17a55618...) never lands on main, so the entry's harness_digest.after is the final one",
+     "alternative": "a new entry TR26-HARNESS-COMPLETION with before = 17a55618..."
+    },
+    {
+     "choice": "(I) the re-pin files (test_trial_ready.py, TRIAL_HARNESS_LANDED.md) and this entry belong to the harness part, as for DISPATCH-HEAD-DELTA-4 part 3",
+     "alternative": "treat them as a separate part"
+    }
+   ],
+   "closed": true
+  },
+  {
+   "id": "KGEW-QUAL-BOUND",
+   "rulings": [
+    "SR-KGEW-QUAL-BOUND",
+    "SR-KGEW-QUAL-BOUND-AMEND-1",
+    "SR-KGEW-QUAL-BOUND-AMEND-2"
+   ],
+   "category": "E1",
+   "part": "implementation.window (golden pin); geometry and evaluation unchanged",
+   "base_commit": "c718a5535e1d4c963f4bd67fc9b07ffdcced235f",
+   "derived_at_head": "(this commit)",
+   "statement": "PR #3913 (kalayantra/kgew-qual-bound), SR-KGEW-QUAL-BOUND Option A: the ka_gochara_v5 solver certificate always fits the database's kgew_qualification_shape_ck (cells held to the hard 400, the whole certificate measured as jsonb text against 262144 less a 4096-byte margin, geometry bounded in two steps with truncated=true and geometry.omitted counts and geometry_digest over the full geometry; a certificate that cannot fit is the named blank solver_certificate_incomplete). Five IMPLEMENTATION_MODULES['window'] modules move: window_solver (bounded stored_certificate, jsonb_text_octets), window_store (pre-insert mirror of kgew_qualification_shape_ck, QualificationShapeDefect), window_cert_check (certificate_incomplete: truncated or geometry no longer hashing to geometry_digest -> re-solved, never counted as checked), window_sweep (CertificateUnfit -> solver_certificate_incomplete) and window_verifier (stored solver_certificate_incomplete blank -> check_incomplete_blank, report counter certificate_incomplete_resolved_windows). These are result-bearing solver/checker modules, so category E1.inside applies (equivalence_requalification.json). Requalification consequence: full 26-class TR-26 including G-7 at the combined dispatch head (SR-J4E-CENTURY-FAIL-1 (4), SR-KGEW-QUAL-BOUND (7)). No migration, no geometry or evaluation module, no century-writer source, no century_contract.json and no trial_harness file moves; implementation_digest.lock.json is a CI-generated overlay and is not touched. Aggregate implementation_digest (wg.implementation_digest()) 5f10735c28fd0f972bdd0645b4bdd6408548662bf22598b54123336fc091ad32 -> 8dbee6c44e5464e02c791d21ee5ce3b1cbb62466a51baa34a6da70470b550a45. The golden window pin in test_mb_ordinary_golden.py moves with this change (the pin at the ordinary-manifest test); the J4P baseline literal beaa2310... is a past capture's evidence and is not rewritten.",
+   "cause": {
+    "commit": "dfeaec867",
+    "modules": [
+     "window_solver",
+     "window_store",
+     "window_cert_check",
+     "window_sweep",
+     "window_verifier"
+    ]
+   },
+   "implementation_digests": {
+    "geometry": {
+     "before": "77cde807a5e0bf6a3733bea3f48270774920acd7434f37f2c2eb73fe781d3616",
+     "after": "77cde807a5e0bf6a3733bea3f48270774920acd7434f37f2c2eb73fe781d3616"
+    },
+    "evaluation": {
+     "before": "16c4a5243711fd95e045dee3b9e47c5242fca07b7569d2c7a24bdf79ba7cd6cc",
+     "after": "16c4a5243711fd95e045dee3b9e47c5242fca07b7569d2c7a24bdf79ba7cd6cc"
+    },
+    "window": {
+     "before": "25c5badbe01dc8634948295a661d107927c609c6042c060faee89895c8850661",
+     "after": "f5b42386e37eec0f8f46a7faae1c726f5273c0afccf9b2c2450192bbce90398d"
+    }
+   },
+   "recipe": "python -m services.gochara_kernel.implementation_registry compute() (CHECK/print mode, never --write) and input_vector.implementation_digests(), run with the venv Python 3.13 on a git-archive copy of c718a5535 (before) and on the PR head 1c4c52772 (after); both equal input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES). The golden window pin in test_mb_ordinary_golden.py replaced by exact-string substitution; implementation_digest.lock.json not touched.",
+   "interpretations": [
+    {
+     "choice": "(I) the changelog entry and the golden window pin move in the PR's follow-up commit rather than in the fix commit",
+     "alternative": "amend the fix commit (rewrites pushed history)"
+    }
+   ],
+   "closed": true
+  },
+  {
+   "id": "CENTURY-RESUME-WRITER",
+   "rulings": [
+    "SR-RESUME-NOW",
+    "SR-RESUME-INTEGRATION",
+    "SR-RESUME-EXPLICIT-BINDING",
+    "SR-COMPLETION-GATE-RESUME",
+    "SR-3913-CONTRACT-REPIN",
+    "OWNER-RESUMABLE-REQUIRED-20261025"
+   ],
+   "category": "E1",
+   "part": "implementation.evaluation (golden pin) and implementation.window (golden pin); geometry unchanged; century_contract.json image.writer_source_digest",
+   "base_commit": "a782eacdb",
+   "derived_at_head": "(this commit)",
+   "cause": {
+    "commit": "0f19daee5 + the PR #3916 reconciliation commit",
+    "modules": [
+     "ka_gochara_v5",
+     "build_ledger",
+     "input_vector",
+     "seal_flow"
+    ]
+   },
+   "statement": "PR #3916 (kalayantra/century-resume-writer), the century writer's committed-substep ledger (migration 1410, public.ka_gochara_build_ledger) and writer-side resume, merged with main a782eacdb (#3912 TR-26 harness, #3915 restore fix, #3913 solver-certificate fit). Four IMPLEMENTATION_MODULES move against main: evaluation = ka_gochara_v5 (ledger rows, resume plan, the century horizon_basis pin, and at the reconciliation the explicit resume binding), build_ledger (NEW to the evaluation stage: the ledger, its checks, and the reconciliation's validate_resume_binding / check_resume_binding / check_not_a_fresh_run_over_a_ledger) and input_vector (build_ledger joins IMPLEMENTATION_MODULES['evaluation']); window = seal_flow (the sealer refuses a generation several executions produced). Behaviour: an ordinary or non-century run records no ledger row and plans the whole plan exactly as before; a CENTURY run resumes over ledger rows ONLY when its staged plan_manifest carries the executor's explicit binding `gochara_v5_century_resume` (the resumed run, the program identity - implementation, writer and plan digests + horizon - and the ordered ledgered substeps; PR #3914), and a century run WITHOUT it that finds ledger rows another run wrote refuses `fresh_run_found_ledger` (never resumes, never deletes); a binding whose identity or substep list disagrees with the ledger, is malformed, names the run itself or sits on a non-century run refuses by name. No result-bearing solver/checker/evaluator-computation byte moves (the ledger is bookkeeping and every chain byte is asserted equal to a ledger-free build), but ka_gochara_v5 and input_vector are evaluation-stage modules, so the stage digest moves and E1.inside applies (equivalence_requalification.json: full_tr). Requalification: covered by the single TR-26 at the combined head, INCLUDING its kill+resume leg (trial_harness test_tr26_resume.py, the completion probe and the resume-refusal probes), run after PR #3914 (executor) lands; no separate trial. Also: migration 1410 (still UNAPPLIED in production, edited on the branch) adds GRANT SELECT to amjis_app with a post-apply check; century_contract.json image.writer_source_digest rebound to get_writer_source_hash('ka_gochara_v5') of the merged tree (64fec0f8... -> d3cdd192...). The two backup-scope pins in v5_small_test_shared.py (small_test a09451e8..., century e0e2faa7...) recompute equal on the merged tree and are not edited by this reconciliation. implementation_digest.lock.json is a CI-generated overlay and is not touched. Aggregate implementation_digest (wg.implementation_digest()) 8dbee6c44e5464e02c791d21ee5ce3b1cbb62466a51baa34a6da70470b550a45 -> 19b52dbe2a777f197b061c188c9c15d0796da2e5babc212cff78e1708595c468.",
+   "modules": {
+    "evaluation": {
+     "ka_gochara_v5": {
+      "before_sha256": "33aa69b9f75c",
+      "after_sha256": "455551612ca4"
+     },
+     "build_ledger": {
+      "before_sha256": null,
+      "after_sha256": "1afff7360e29"
+     },
+     "input_vector": {
+      "before_sha256": "4b3fe07cb122",
+      "after_sha256": "c50a96127be3"
+     }
+    },
+    "window": {
+     "seal_flow": {
+      "before_sha256": "29597329ac3b",
+      "after_sha256": "afb16f4c45fa"
+     }
+    }
+   },
+   "implementation_digests": {
+    "geometry": {
+     "before": "77cde807a5e0bf6a3733bea3f48270774920acd7434f37f2c2eb73fe781d3616",
+     "after": "77cde807a5e0bf6a3733bea3f48270774920acd7434f37f2c2eb73fe781d3616"
+    },
+    "evaluation": {
+     "before": "16c4a5243711fd95e045dee3b9e47c5242fca07b7569d2c7a24bdf79ba7cd6cc",
+     "after": "ebc2d38c14dcdd95920ea8f9e18646bb8c164147933a219470e6591a09004041"
+    },
+    "window": {
+     "before": "f5b42386e37eec0f8f46a7faae1c726f5273c0afccf9b2c2450192bbce90398d",
+     "after": "455ab5ade967bc299a4858fde58cce94fe5637c994106c7b9007f53f91b9fabb"
+    }
+   },
+   "writer_source_digest": {
+    "before": "64fec0f87261b801917517d288b495537aef1325705bd2d339f4f3efa9c605cd",
+    "after": "d3cdd192fc4cc949683b1d5d2b307af96a206356e9000c266aa011eeac3dc55f"
+   },
+   "requalification": {
+    "row": "E1.inside",
+    "action": "full_tr",
+    "plan": "covered by the single TR-26 at the combined head, including the kill+resume leg; no separate trial",
+    "after": "PR #3914 (century_resume executor) lands"
+   },
+   "recipe": "python -m services.gochara_kernel.implementation_registry compute() (CHECK/print mode, never --write) and input_vector.implementation_digests(), run with the venv Python 3.13 on a git-archive of origin/main a782eacdb (before) and on the PR #3916 reconciled tree (after); both equal input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES). Module hashes (first 12 hex) are input_vector._module_source_digest(name). The golden pins in test_mb_ordinary_golden.py replaced by exact-string substitution; writer_source_digest by get_writer_source_hash('ka_gochara_v5'); century_contract.py --check (no --pack) reports differs_in [] after the rebind; implementation_digest.lock.json not touched.",
+   "interpretations": [
+    {
+     "choice": "(I) one entry for the whole PR (the ledger commit and the reconciliation commit), because only the final merged-head digests ever land on main; the intermediate pins of the first commit (57252fb7... evaluation) never reach main",
+     "alternative": "separate entries SR-RESUME-NOW and CENTURY-RESUME-WRITER with the intermediate digests as the second entry's before"
+    },
+    {
+     "choice": "(I) the category is E1 with row E1.inside because input_vector/ka_gochara_v5 are evaluation-stage modules, even though no solver/checker/evaluator computation byte moved",
+     "alternative": "treat a bookkeeping-only change as E1.outside (4-class slice + amd64)"
+    }
+   ],
+   "closed": true
   }
  ]
 }

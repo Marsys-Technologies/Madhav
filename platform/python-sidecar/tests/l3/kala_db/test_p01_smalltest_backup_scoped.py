@@ -9,6 +9,7 @@ table outside the scope that holds rows the archive must NOT contain.
 import hashlib
 import json
 import os
+import re
 import secrets
 import sys
 import uuid
@@ -650,4 +651,177 @@ def test_the_other_reviewed_scopes_capture_and_restore_through_the_same_mechanis
     assert not (folder / 'restore.json').exists()
     proof = backup.restore_verify(folder, label, name)
     assert proof['restore_verified'] is True and proof['target_removed'] is True and proof['scope_sha256'] == receipt['scope']['sha256']
+    assert_target_removed(dsn, label)
+
+
+# ---- SR-RESTORE-SCHEMA-ONLY: the century backup's shape (41 tables; later migrations of three kinds) ----------------------
+
+H2_CAPTURE_SCRIPT = '94f76c4ffbe3533e9954a0742e8dc11707e3c4827b380ec57a473239f980e0b0'    # the script at c718a5535 that took j4e_20261025t005235z
+CENTURY_PARENTS = ('century_parent_a', 'century_parent_b', 'century_parent_c')            # the FK-closure additions: 38 declared + 3 = 41
+# Like the real schema.sql: schema only, and an empty search_path for the rest of its session. asset_registry is in the base
+# (and in the scope) but holds no rows - production's rows are not in a schema-only bundle.
+CENTURY_BUNDLE = """SELECT pg_catalog.set_config('search_path', '', false);
+CREATE SCHEMA public;
+CREATE TABLE public.asset_registry (asset_id text PRIMARY KEY, timeout_s integer);
+"""
+# the kinds of later migration that mention a scope table: a schema object the archived trigger needs, public-qualified like the
+# real 1394 (so that with the fix reverted the run reaches the data-fix below and fails there, as the incident did), a registry
+# data-fix that needs production rows (1395's kind), a grant to a role the throwaway cluster does not have (1390's kind), and - after
+# them in ledger order - a second schema migration that is unqualified, to need the bundle's empty search_path reset (Claim B)
+CENTURY_MIGRATIONS = {
+    '9001_schema_fn.sql': """CREATE FUNCTION public.shape_guard() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN PERFORM 1 FROM public.asset_throughput; RETURN NEW; END $$;
+""",
+    '9002_registry_datafix.sql': """DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM asset_registry WHERE asset_id = 'ka_gochara_v5') THEN RAISE EXCEPTION 'asset ka_gochara_v5 is not registered'; END IF;
+END $$;
+UPDATE asset_registry SET timeout_s = 72000 WHERE asset_id = 'ka_gochara_v5';  -- the asset_throughput timeout
+""",
+    '9003_grant_only.sql': "GRANT SELECT ON asset_throughput TO ky_no_such_verifier_role;\n",
+    '9004_schema_fn_unqualified.sql': """CREATE FUNCTION shape_guard_unqualified() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN PERFORM 1 FROM public.asset_throughput; RETURN NEW; END $$;
+""",
+}
+
+
+@pytest.fixture
+def century_shape(scoped, monkeypatch):
+    """A synthetic copy of the century backup's shape: the 38 declared century tables (synthetic rows) plus 3 FK parents, a bundle
+    with an empty search_path, and a ledger with two schema migrations and two that must not be applied."""
+    dsn, tmp_path, _ = scoped
+    document = json.loads(Path(backup.SCOPE_PATHS['century']).read_text())
+    tables = [e['table'] for e in document['written']]
+    scope_file = tmp_path / 'century_scope.json'
+    scope_file.write_text(json.dumps({'schema': 'ky.smalltest_backup_scope/1', 'name': 'century', 'written': [{'table': t} for t in tables],
+                                      'context': [{'table': 'public._migrations_applied'}], 'guarded_children': []}))
+    monkeypatch.setitem(backup.SCOPE_PATHS, 'century', scope_file)
+    bundle = tmp_path / 'century_bundle.sql'
+    bundle.write_bytes(CENTURY_BUNDLE.encode())
+    monkeypatch.setattr(backup, 'SCOPED_RESTORE_BASE_PATH', str(bundle))
+    monkeypatch.setattr(backup, 'SCOPED_RESTORE_BASE_SHA256', hashlib.sha256(CENTURY_BUNDLE.encode()).hexdigest())
+    names = [t.split('.', 1)[1] for t in tables]
+    others = [n for n in names if n != 'asset_registry']
+    with psycopg.connect(dsn, autocommit=True) as conn:
+        for name in names + list(CENTURY_PARENTS):
+            conn.execute(f'DROP TABLE IF EXISTS public.{name} CASCADE')
+        conn.execute('DROP FUNCTION IF EXISTS public.shape_guard() CASCADE')
+        conn.execute('DROP FUNCTION IF EXISTS public.shape_guard_unqualified() CASCADE')
+        for name in CENTURY_PARENTS:
+            conn.execute(f'CREATE TABLE public.{name} (id serial PRIMARY KEY, label text)')
+            conn.execute(f"INSERT INTO public.{name} (label) VALUES ('{name}-1'), ('{name}-2')")
+        conn.execute('CREATE TABLE public.asset_registry (asset_id text PRIMARY KEY, timeout_s integer)')
+        conn.execute("INSERT INTO public.asset_registry VALUES ('ka_gochara_v5', 72000), ('ka_vedha_gochara', 600)")
+        for position, name in enumerate(others):
+            parent = CENTURY_PARENTS[position] if position < len(CENTURY_PARENTS) else None
+            conn.execute(f'CREATE TABLE public.{name} (id serial PRIMARY KEY, v text' + (f', parent_id integer REFERENCES public.{parent}(id)' if parent else '') + ')')
+            conn.execute(f"INSERT INTO public.{name} (v{', parent_id' if parent else ''}) VALUES ('{name}-1'{', 1' if parent else ''}), ('{name}-2'{', 2' if parent else ''})")
+        conn.execute(CENTURY_MIGRATIONS['9001_schema_fn.sql'])
+        conn.execute(CENTURY_MIGRATIONS['9004_schema_fn_unqualified.sql'])
+        conn.execute('CREATE TRIGGER shape_guard BEFORE UPDATE ON public.asset_throughput FOR EACH STATEMENT EXECUTE FUNCTION shape_guard()')
+        for name, body in CENTURY_MIGRATIONS.items():
+            (tmp_path / 'migrations' / name).write_text(body)
+            conn.execute("INSERT INTO public._migrations_applied (filename, applied_at, sha256) VALUES (%s, now(), %s)",
+                         (name, hashlib.sha256(body.encode()).hexdigest()))
+    yield dsn, tmp_path
+    with psycopg.connect(dsn, autocommit=True) as conn:
+        for name in names + list(CENTURY_PARENTS):
+            conn.execute(f'DROP TABLE IF EXISTS public.{name} CASCADE')
+        conn.execute('DROP FUNCTION IF EXISTS public.shape_guard() CASCADE')
+        conn.execute('DROP FUNCTION IF EXISTS public.shape_guard_unqualified() CASCADE')
+
+
+def century_capture(tmp_path):
+    label = 'p02_' + uuid.uuid4().hex
+    folder = tmp_path / label
+    return folder, label, backup.snapshot(folder, label, 'century')
+
+
+def test_a_century_shaped_backup_restores_applying_the_schema_migration_and_skipping_the_data_fix_and_the_grant(century_shape):
+    """Claim A (the run-7b62d268 failure, UndefinedTable asset_registry): only the later migrations that create a function are part of
+    the base; the registry data-fix (needs production rows) and the grant-only migration (needs a role) are not. With the selection
+    reverted the data-fix is applied to the bundle's schema-only copy and the restore fails with that UndefinedTable."""
+    dsn, tmp_path = century_shape
+    folder, label, receipt = century_capture(tmp_path)
+    assert len(receipt['scope']['tables']) == 41 and len(receipt['scope']['closure']) == 3
+    proof = backup.restore_verify(folder, label, 'century')
+    assert proof['restore_verified'] is True and proof['measurements'] == receipt['measurements']
+    assert [m['file'] for m in proof['restore_base']['migrations']] == ['9001_schema_fn.sql', '9004_schema_fn_unqualified.sql']
+    assert_target_removed(dsn, label)
+
+
+def test_a_row_that_differs_after_the_century_shaped_restore_still_fails_the_restore(century_shape, monkeypatch):
+    """Claim C: selecting fewer migrations weakens no comparison - every row of every table is still compared."""
+    dsn, tmp_path = century_shape
+    folder, label, _ = century_capture(tmp_path)
+    real = backup.run_client
+
+    def altered(argv, settings, timeout=14400):
+        real(argv, settings, timeout)
+        with psycopg.connect(**settings, autocommit=True) as target:
+            target.execute('ALTER TABLE public.ka_gochara_near_miss DISABLE TRIGGER ALL')
+            target.execute("UPDATE public.ka_gochara_near_miss SET v = 'changed' WHERE id = 1")
+    monkeypatch.setattr(backup, 'run_client', altered)
+    with pytest.raises(backup.BackupRefused, match='restore row counts/content hashes/sequence state'):
+        backup.restore_verify(folder, label, 'century')
+    assert not (folder / 'restore.json').exists()
+    assert_target_removed(dsn, label)
+
+
+def without_search_path_reset(monkeypatch):
+    real_steps = backup.restore_base_steps
+
+    def no_reset(root, migrations=()):
+        steps, identity = real_steps(root, migrations)
+        return [(n, s.replace('RESET search_path;', '')) for n, s in steps], identity
+    monkeypatch.setattr(backup, 'restore_base_steps', no_reset)
+
+
+def test_the_unqualified_schema_migration_needs_the_bundles_empty_search_path_reset_before_it_runs(century_shape, monkeypatch):
+    """Claim B: production applied every migration with the default search_path; the bundle empties it for its session. Without the
+    RESET the (correctly selected) unqualified schema migration 9004 cannot create its function."""
+    dsn, tmp_path = century_shape
+    folder, label, _ = century_capture(tmp_path)
+    without_search_path_reset(monkeypatch)
+    with pytest.raises(backup.BackupRefused) as failed:
+        backup.restore_verify(folder, label, 'century')
+    assert str(failed.value) == 'restore base step 9004_schema_fn_unqualified.sql failed: InvalidSchemaName sqlstate=3F000'
+    assert_target_removed(dsn, label)
+
+
+def test_a_failing_base_migration_is_named_with_its_class_and_relation_and_never_with_row_content(century_shape, monkeypatch):
+    """Claim D: the withheld error names the failing step, class, SQLSTATE and - for a missing object - its identifier. Forced by choosing the
+    data-fix migration the way the old mention-only rule did (the run-7b62d268 failure, byte for byte): UndefinedTable asset_registry. With the
+    path reset the registry guard raises its own message, which can hold anything and is not repeated."""
+    dsn, tmp_path = century_shape
+    monkeypatch.setattr(backup, 'SCHEMA_OBJECT', re.compile('^DO', re.M))                  # picks 9002 (the data-fix) only
+    folder, label, _ = century_capture(tmp_path)
+    with monkeypatch.context() as no_reset:
+        without_search_path_reset(no_reset)
+        with pytest.raises(backup.BackupRefused) as failed:
+            backup.restore_verify(folder, label, 'century')
+    assert str(failed.value) == ('restore base step 9002_registry_datafix.sql failed: UndefinedTable sqlstate=42P01 '
+                                 '(relation "asset_registry" does not exist)')
+    assert_target_removed(dsn, label)
+    with pytest.raises(backup.BackupRefused) as failed:
+        backup.restore_verify(folder, label, 'century')
+    assert str(failed.value) == 'restore base step 9002_registry_datafix.sql failed: RaiseException sqlstate=P0001'
+    assert 'ka_gochara_v5' not in str(failed.value)
+    assert not (folder / 'restore.json').exists()
+    assert_target_removed(dsn, label)
+
+
+def test_the_h2_capture_script_identity_is_accepted_and_no_other_identity_is(century_shape):
+    """Claim E: the capture j4e_20261025t005235z (script c718a5535, sha 94f76c4f...) restores through the legacy list; a different identity is
+    refused as before. The identity gate is the only difference between the two runs."""
+    dsn, tmp_path = century_shape
+    folder, label, _ = century_capture(tmp_path)
+    rewrite_capture(folder, lambda r: r.update(script_sha256='9' * 64))
+    with pytest.raises(backup.BackupRefused, match='capture script identity changed'):
+        backup.restore_verify(folder, label, 'century')
+    rewrite_capture(folder, lambda r: r.update(script_sha256=H2_CAPTURE_SCRIPT[:-1] + ('0' if H2_CAPTURE_SCRIPT[-1] != '0' else '1')))
+    with pytest.raises(backup.BackupRefused, match='capture script identity changed'):
+        backup.restore_verify(folder, label, 'century')
+    rewrite_capture(folder, lambda r: r.update(script_sha256=H2_CAPTURE_SCRIPT))
+    proof = backup.restore_verify(folder, label, 'century')
+    assert proof['restore_verified'] is True and proof['restore_base']['ledger']['source'] == 'capture'
     assert_target_removed(dsn, label)
