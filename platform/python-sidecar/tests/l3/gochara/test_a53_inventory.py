@@ -225,6 +225,9 @@ def apply_near_miss_storage(conn):
     Applied AFTER a world's writer build, so the near-miss layer stays OFF for that build."""
     if conn.execute("SELECT to_regclass('public.ka_gochara_near_miss_search')").fetchone()[0] is None:
         conn.execute((MIGRATIONS / "1308_gochara_near_miss_storage.sql").read_text())
+    # SR-RESUME-NOW: the teardown's closed list also covers the century build's committed-substep ledger (migration 1410); same reason, same helper
+    if conn.execute("SELECT to_regclass('public.ka_gochara_build_ledger')").fetchone()[0] is None:
+        conn.execute((MIGRATIONS / "1410_ka_gochara_build_ledger.sql").read_text())
 
 
 def create_am5_database(tag="am5", faithful=False, apply_1240=True, apply_1305=False):

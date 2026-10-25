@@ -1047,6 +1047,26 @@
     }
    ],
    "note": "migration 1308 near-miss layer; same reach as ka_gochara_near_miss, and the teardown deletes and counts it the same way"
+  },
+  {
+   "table": "public.ka_gochara_build_ledger",
+   "group": "writer_generation_5_0",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/build_ledger.py",
+     "function": "record",
+     "kind": "INSERT",
+     "line": 228
+    },
+    {
+     "file": "platform/scripts/teardown_v5_small_test_job.py",
+     "function": "_delete_everything",
+     "kind": "DELETE",
+     "line": 480,
+     "via": "dynamic"
+    }
+   ],
+   "note": "migration 1410 (SR-RESUME-NOW): the century build's committed-substep ledger, written by the writer inside each substep's transaction; the teardown deletes, counts and proves it absent with the rest of the generation. Written only by a century run (a small-test or measuring slice records no ledger); the small-test and century scopes hold the same relations, so it is listed in both."
   }
  ],
  "context": [
@@ -1173,6 +1193,7 @@
    "function": "_delete_everything",
    "resolver": "const:platform/scripts/v5_small_test_shared.py+platform/scripts/teardown_v5_small_test_job.py:GENERATION_TABLES:first",
    "tables": [
+    "ka_gochara_build_ledger",
     "ka_gochara_contact",
     "ka_gochara_eval_window",
     "ka_gochara_near_miss",

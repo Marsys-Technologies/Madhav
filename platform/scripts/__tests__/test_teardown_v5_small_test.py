@@ -264,7 +264,9 @@ ROWS = {"ka_gochara_eval_window": 3, "ka_gochara_relationship_record": 4, "ka_go
         "ka_gochara_search_interval": 1, "ka_gochara_search_obligation": 1, "ka_gochara_search_path_pin": 1,
         "ka_gochara_search_input_snapshot": 1,
         # migration 1308: a pre-existing near-miss of the generation is the layer's output and is deleted with it (the global object table is not)
-        "ka_gochara_near_miss": 2, "ka_gochara_near_miss_search": 1}
+        "ka_gochara_near_miss": 2, "ka_gochara_near_miss_search": 1,
+        # migration 1410 (SR-RESUME-NOW): the century build's committed-substep ledger is part of the generation's output and is deleted with it
+        "ka_gochara_build_ledger": 3}
 
 
 @contextlib.contextmanager

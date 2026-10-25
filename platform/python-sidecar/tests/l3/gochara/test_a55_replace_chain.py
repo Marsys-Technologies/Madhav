@@ -1,10 +1,11 @@
 """A5.5f (G7) — a rebuild REPLACES the whole unsealed candidate chart x generation output chain; it never accretes.
 
-THE CONTRACT these tests pin: every dispatch of the asset is a WHOLE-BUILD REPLAY. The orchestrator drives the full plan on
-every dispatch (it calls `_drive_substeps` without `completed_keys`), so the `snapshot` substep always runs, always before any
-substep that writes chain rows, and a failed build restarts from zero on retry. There is no resume. The replace therefore lives
-in the snapshot substep; a head-skipping invocation (harness, CLI, a future resume) is not a supported mode and the horizon
-guard refuses one that would mix horizons.
+THE CONTRACT these tests pin: every dispatch of the asset that has no century ledger is a WHOLE-BUILD REPLAY. The orchestrator
+drives the full plan on every dispatch (it calls `_drive_substeps` without `completed_keys`), so the `snapshot` substep always
+runs, always before any substep that writes chain rows, and a failed build restarts from zero on retry. The replace therefore
+lives in the snapshot substep; a head-skipping invocation without a ledger (harness, CLI) is not a supported mode and the horizon
+guard refuses one that would mix horizons. (SR-RESUME-NOW: a CENTURY run, staged through the century config, resumes from its
+own committed-substep ledger instead, and never reaches the replace over a partial chain; tests/l3/gochara/test_resume_ledger.py.)
 
 Two tiers.
 
@@ -389,7 +390,7 @@ def test_a_sealed_generation_is_not_replaced(world):
 
 
 def test_a_partial_run_that_skips_the_head_does_not_over_delete(world, fresh):
-    """NOT a resume (none exists: the orchestrator replays the whole plan on every dispatch). A partial run that skips the
+    """NOT a resume (a run with no century ledger is replayed whole by the orchestrator). A partial run that skips the
     manifest/snapshot head, as a harness or a CLI could, builds a second class BESIDE the first: the replace does not run, so
     the first class's rows are untouched and the result equals one uninterrupted build. A whole-plan re-run then replaces and
     rebuilds, also equal."""

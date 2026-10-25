@@ -607,7 +607,14 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # Evaluation re-pinned ONCE more, the LAST re-derivation before the TR (SR-P2-ADMISSION-VERIFIER-FIX): 66560932b makes the P2 record verifier (record_derivation, an evaluation-stage module) re-derive
     # house_from_moon from the sealed CITED set, not the adverse search plan (dc911db8... -> 16c4a524...). Verifier-only; the builder is unchanged, so no rebuild is needed. Re-derived by script from the final tree's real
     # bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (equal to input_vector.implementation_digests()); no golden component is re-captured. EQUIVALENCE_RECORD_CHANGELOG.json entry P2-ADMISSION.
-    assert got["implementation"]["evaluation"] == "16c4a5243711fd95e045dee3b9e47c5242fca07b7569d2c7a24bdf79ba7cd6cc"
+    # Evaluation re-pinned ONCE for SR-RESUME-NOW (the committed-substep ledger, migration 1410): the ka_gochara_v5 writer (ledger rows, resume plan, the century horizon_basis pin) and input_vector
+    # (`build_ledger` joins the evaluation stage) changed; a new module `build_ledger` entered the stage. The ordinary run's every other component, outcome, row count and SQL shape is
+    # asserted unchanged above (no extra statement, no horizon_basis); the prior pin 16c4a524... is main's. Re-derived from the real bytes with module_digests(IMPLEMENTATION_MODULES).
+    # Evaluation re-pinned ONCE more at the reconciliation of PR #3916 (SR-RESUME-INTEGRATION, SR-RESUME-EXPLICIT-BINDING): build_ledger (the explicit resume binding: validate_resume_binding,
+    # check_resume_binding, check_not_a_fresh_run_over_a_ledger) and the ka_gochara_v5 writer (the binding is read from the staged plan_manifest; a century run without it that finds
+    # ledger rows refuses fresh_run_found_ledger) changed the evaluation stage's bytes (57252fb7... -> ebc2d38c...; main's own pin is 16c4a524...). The ordinary run's every component, outcome and SQL shape is
+    # asserted unchanged above. Re-derived from the merged tree's real bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES); EQUIVALENCE_RECORD_CHANGELOG.json entry CENTURY-RESUME-WRITER.
+    assert got["implementation"]["evaluation"] == "ebc2d38c14dcdd95920ea8f9e18646bb8c164147933a219470e6591a09004041"
     # J-4c (main, #3770): the geometry stage also moved by the Swiss-polished in-orb span edges in record_store._in_orb_span_around_root. With P06b's near_miss_verifier in the
     # geometry identity, the merged-tree digest below is re-derived the same way (main alone gives 4479243d...; evaluation and window are unchanged by J-4c itself; J-4c F-LEANNESS (d96b3bfb0) then moved record_store again, anchor-column probe once per store). No golden component is
     # re-captured: this capture's SQL shapes, counts and outcomes do not depend on the span edges' last arcsec.
@@ -721,4 +728,7 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # (e38160c1... -> 25c5badb...); geometry and evaluation unchanged; re-derived by the same script; EQUIVALENCE_RECORD_CHANGELOG.json entry TR3-DEFECT-E-UCERT.
     # Window re-pinned for SR-KGEW-QUAL-BOUND (PR #3913): window_solver, window_store, window_cert_check, window_sweep and window_verifier move the window stage (the solver certificate always fits
     # kgew_qualification_shape_ck) (25c5badb... -> f5b42386...); geometry (77cde807...) and evaluation (16c4a524...) unchanged; re-derived by the same script; EQUIVALENCE_RECORD_CHANGELOG.json entry KGEW-QUAL-BOUND.
-    assert got["implementation"]["window"] == "f5b42386e37eec0f8f46a7faae1c726f5273c0afccf9b2c2450192bbce90398d"
+    # Window re-pinned for SR-RESUME-NOW: seal_flow (the window stage's sealing step) now refuses a generation several executions produced (f5b42386... -> 455ab5ad...). The merged tree's
+    # window digest is the SR-KGEW-QUAL-BOUND window plus this seal_flow edit, re-derived from the real bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES);
+    # the reconciliation of PR #3916 adds no window-stage byte. EQUIVALENCE_RECORD_CHANGELOG.json entry CENTURY-RESUME-WRITER.
+    assert got["implementation"]["window"] == "455ab5ade967bc299a4858fde58cce94fe5637c994106c7b9007f53f91b9fabb"

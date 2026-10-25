@@ -93,6 +93,7 @@ from services.gochara_kernel.window_verifier import verify_window_semantics
 from services.gochara_kernel.window_store import WindowStore
 from services.gochara_kernel import inventory_verifier as gk_verifier
 from services.gochara_kernel import ledger as gk_ledger
+from services.gochara_kernel import build_ledger as gk_build_ledger
 from services.gochara_kernel.dasha_read import LEVEL_N, load_pinned_vimshottari
 from services.gochara_kernel.inventory_store import InventoryStore
 from services.gochara_kernel import rule_registry as gk_rule_registry
@@ -734,12 +735,17 @@ def _derived_outer_bound(ctx: ContextSpec) -> tuple:
 
 
 def _horizon_basis(ctx: ContextSpec, slice_: "TestSlice | None") -> dict | None:
-    """The record pinned in the manifest vector beside the horizon (MB-ADDITIONS 3): the basis of the derivation an `all_classes_full` marker was validated
-    against, and NOTHING otherwise — an ordinary build and the two older slice shapes get no basis component, so their vectors are byte-identical to main's
-    (steward MB-CODEX-1 ruling 1). None also for a context without birth parameters or without a connection (a harness, a unit test)."""
-    if slice_ is None or slice_.run != MEASURING_RUN:
-        return None
+    """The record pinned in the manifest vector beside the horizon (MB-ADDITIONS 3; FB-2): the basis of the derivation the run's horizon was validated against, for
+    the measuring build (an `all_classes_full` marker) AND — SR-J4E-HORIZON-BASIS — for a CENTURY build (unmarked, staged through `gochara_v5_century_config`; its
+    candidate used to carry no pin, so the completion and teardown gates read FALSE on it). NOTHING otherwise: an ordinary build and the two older slice shapes get no
+    basis component, so their vectors stay byte-identical to main's (steward MB-CODEX-1 ruling 1) — the discriminator is the staged century config, never merely 'a
+    horizon is configured'. None also for a context without birth parameters or without a connection (a harness, a unit test)."""
     if not ctx.config.get("birth_params") or ctx.db_conn is None:
+        return None
+    if slice_ is None:
+        if ctx.config.get(CENTURY_STAGED_KEY) is not True:
+            return None
+    elif slice_.run != MEASURING_RUN:
         return None
     return _derive_horizon(ctx, ruling=_pinned_horizon_basis(ctx) is None).basis_record()
 
@@ -1085,6 +1091,13 @@ CENTURY_CONFIG_KEY = "gochara_v5_century_config"
 CENTURY_CONFIG_SCHEMA = "gochara_v5_century_config/2"
 _CENTURY_CONFIG_FIELDS = frozenset({"schema", "final_rules", "defer_in_build_verify", "horizon", "result_policy"})
 _RESULT_POLICY_KEY = "result_policy"
+#: set by `_resolve_run_config` (and by nothing else) on a run whose plan manifest carries the century config: the writer's own record that this is a CENTURY build — it
+#: gates the committed-substep ledger / resume and the horizon_basis pin. A caller that supplies it is refused (a harness cannot switch a run into century mode by config).
+CENTURY_STAGED_KEY = "gochara_v5_century_staged"
+#: SR-RESUME-EXPLICIT-BINDING: the plan_manifest key the executor's century_resume binding stages (`gk_build_ledger.RESUME_BINDING_KEY`) and, once validated, the writer's own
+#: record of it in the resolved config — set by `_resolve_run_config` and by nothing else. It is the ONLY signal that lets a run resume over ledger rows.
+RESUME_BINDING_KEY = gk_build_ledger.RESUME_BINDING_KEY
+RESUME_BINDING_STAGED_KEY = "gochara_v5_century_resume_binding"
 _FINAL_RULES_KEY = "gochara_v5_final_rules"
 #: SR-B1-Q3C-JOB: the trial's explicit selection of P1@1.3.0 (Form B, the Q3(c) side rule). Absent / False = today's behaviour, byte-identical. It is not a
 #: century-config field: only a trial harness (`j4d_slice_qualify --p1-form-b`) sets it, so a production dispatch can never carry it.
@@ -1156,6 +1169,10 @@ def _resolve_run_config(ctx: ContextSpec) -> ContextSpec:
     A test slice (the measuring build included) is exempt: it sets its scope in its marker and its rules are always the measuring ones. A dry run executes
     nothing (it plans without a connection), so the guard does not apply to it; the overlay still does when a manifest is readable.
     Called by `plan_substeps` and, after its configuration checks, by `run_substep` — never at entry, so a mis-provisioned job still refuses before any database use."""
+    if CENTURY_STAGED_KEY in ctx.config:
+        raise CenturyConfigRefusal(f"{ASSET_ID}: {CENTURY_STAGED_KEY} is set by the writer from the staged {CENTURY_CONFIG_KEY} and by nothing else — refused, never accepted from the caller")
+    if RESUME_BINDING_STAGED_KEY in ctx.config:
+        raise CenturyConfigRefusal(f"{ASSET_ID}: {RESUME_BINDING_STAGED_KEY} is set by the writer from the staged {RESUME_BINDING_KEY} and by nothing else — refused, never accepted from the caller")
     manifest = _plan_manifest(ctx)
     marked = manifest is not None and TEST_SLICE_KEY in manifest
     if manifest is not None and CENTURY_CONFIG_KEY in manifest:
@@ -1165,12 +1182,18 @@ def _resolve_run_config(ctx: ContextSpec) -> ContextSpec:
         wanted = {_FINAL_RULES_KEY: staged["final_rules"], _CENTURY_DEFER_KEY: staged["defer_in_build_verify"],
                   "horizon": tuple(datetime.fromisoformat(x) for x in staged["horizon"]), _RESULT_POLICY_KEY: staged["result_policy"]}
         merged = dict(ctx.config)
+        merged[CENTURY_STAGED_KEY] = True
         for key, value in wanted.items():
             present = merged.get(key)
             if key in merged and (tuple(present) if key == "horizon" and isinstance(present, (list, tuple)) else present) != value:
                 raise CenturyConfigRefusal(f"{ASSET_ID}: {CENTURY_CONFIG_KEY}: ctx.config[{key!r}] {present!r} contradicts the staged value {value!r} — refused, never guessed")
             merged[key] = value
+        if RESUME_BINDING_KEY in manifest:           # SR-RESUME-EXPLICIT-BINDING: validated here, judged against the ledger in `_resume_plan`
+            merged[RESUME_BINDING_STAGED_KEY] = gk_build_ledger.validate_resume_binding(manifest[RESUME_BINDING_KEY])
         ctx = dataclasses.replace(ctx, config=merged)
+    elif manifest is not None and RESUME_BINDING_KEY in manifest:
+        raise ResumeRefused("resume_binding_without_century_config",
+                            f"{ASSET_ID}: {RESUME_BINDING_KEY} is staged on a run that carries no {CENTURY_CONFIG_KEY}: only a century run resumes — refused, never guessed")
     if not marked and not ctx.dry_run:
         if ctx.config.get(_FINAL_RULES_KEY) is None:
             raise RunProfileRefusal(f"{ASSET_ID}: run_rule_profile_required: this run is not a test slice and names no {_FINAL_RULES_KEY} — "
@@ -1195,6 +1218,42 @@ def _with_rule_profile(method):
         with gk_rule_registry.rule_profile(final_rules=final, **_p1_form_b_kwargs(ctx)):
             return method(self, ctx, *args, **kwargs)
     return profiled
+
+
+# ── the committed-substep ledger / writer-side resume (SR-RESUME-NOW; OWNER-RESUMABLE-REQUIRED-20261025; migration 1410) ──────────────────────────────
+# The frozen orchestrator never feeds `completed_keys`, so a failed century build restarted from zero. The writer therefore plans only what is not yet done:
+# every substep of a CENTURY build (a run staged through `gochara_v5_century_config`) records itself in `ka_gochara_build_ledger` inside its own transaction,
+# and a later dispatch whose ledger exists resumes — after `build_ledger` has proved the program, the horizon, the manifest and every recorded substep's rows
+# unchanged — by skipping the recorded substeps INCLUDING `manifest` and `snapshot` (the head: `snapshot` replaces the whole chain, `manifest` would silently
+# rebind the input vector to the new code). Any difference refuses by name (`ResumeRefused`): a program fix means teardown + a fresh build. Every other run (a
+# test slice, the measuring build, a harness) takes the whole-build plan exactly as before: no ledger rows, no resume.
+# SR-RESUME-EXPLICIT-BINDING: the ledger alone authorises nothing. A run resumes ONLY when its staged plan_manifest carries `gochara_v5_century_resume` (the executor's
+# century_resume binding: the resumed run, the program identity, the ordered ledgered substeps) and that binding describes exactly the ledger; a century run WITHOUT it
+# that finds rows another run ledgered refuses `fresh_run_found_ledger` (it never resumes and never deletes).
+ResumeRefused = gk_build_ledger.ResumeRefused
+
+
+def _ledger_active(ctx: ContextSpec) -> bool:
+    """True only for a run that is staged as a century build: `_resolve_run_config` found `gochara_v5_century_config` (and no test-slice marker) in its plan manifest and
+    said so in the resolved config. Reads nothing: an ordinary run's statements are exactly main's. A dry run executes nothing and a run without a connection
+    cannot record, so neither records or resumes. (I) INTERPRETATION: the gate is the staged century config, the one signal the production orchestrator can deliver
+    (it builds ctx.config from chart_id and birth_params only), so slices keep their replay semantics."""
+    return not ctx.dry_run and ctx.db_conn is not None and ctx.config.get(CENTURY_STAGED_KEY) is True
+
+
+def _writer_digest() -> str:
+    from pipeline.orchestrator.writer_runtime_support import get_writer_source_hash
+    return get_writer_source_hash(ASSET_ID)
+
+
+def _ledger_binding(ctx: ContextSpec, keys) -> "gk_build_ledger.Binding":
+    """The identity of the program running NOW, against which every ledger row is judged."""
+    horizon = tuple(h.astimezone(timezone.utc) for h in _effective_horizon(ctx, None))
+    return gk_build_ledger.Binding(
+        implementation_digest=gk_window_gate.implementation_digest(), writer_digest=_writer_digest(), horizon=horizon,
+        plan_digest=gk_build_ledger.plan_digest(
+            asset_id=ASSET_ID, keys=keys, final_rules=ctx.config.get(_FINAL_RULES_KEY),
+            defer_in_build_verify=ctx.config.get(_CENTURY_DEFER_KEY, False), result_policy=ctx.config.get(_RESULT_POLICY_KEY), horizon=horizon))
 
 
 @register(ASSET_ID)
@@ -1230,6 +1289,14 @@ class GocharaV5Writer(WriterBase):
         slice_ = _test_slice(ctx)
         _defer_in_build_verify(ctx, slice_)         # SR-W3-SHAPE 3: a refused flag is refused at PLAN time; the plan itself never changes
         classes = slice_.classes if slice_ is not None else SCORED_CLASSES
+        steps = self._full_plan(classes)
+        if not _ledger_active(ctx):
+            return steps                            # no century ledger: EXACTLY the whole-build plan, as before (every slice, measuring and harness run)
+        return self._resume_plan(ctx, steps)
+
+    @staticmethod
+    def _full_plan(classes) -> list[SubStep]:
+        """The whole plan for `classes`, unfiltered — the plan of every fresh build and the reference a resume plans against."""
         steps = [
             SubStep(key=RULES_SUBSTEP,
                     label="rule_binding: P1–P5 registry + F3 seals (global "
@@ -1276,6 +1343,56 @@ class GocharaV5Writer(WriterBase):
                 label=f"independent inventory verification: {event_class}"))
         return steps
 
+    def _resume_plan(self, ctx: ContextSpec, steps: list[SubStep]) -> list[SubStep]:
+        """The plan of a CENTURY run: the whole plan when the ledger of (chart, generation) is empty (a fresh build, byte for byte as before), else the plan minus
+        the recorded substeps after the resume has been proved safe. READ ONLY (the SATYA-DIPA probe calls this inside a savepoint)."""
+        chart_id = str(ctx.config["chart_id"])
+        keys = [s.key for s in steps]
+
+        binding = ctx.config.get(RESUME_BINDING_STAGED_KEY)
+
+        def resume():
+            entries = gk_build_ledger.load(ctx.db_conn, chart_id, GENERATION)
+            if binding is None:
+                gk_build_ledger.check_not_a_fresh_run_over_a_ledger(entries, ctx.build_id)   # SR-RESUME-EXPLICIT-BINDING: a ledger alone never authorises a skip
+            else:
+                gk_build_ledger.check_resume_binding(binding, entries, ctx.build_id)         # the explicit binding must describe exactly the ledger it continues
+            if not entries:
+                return steps
+            gk_build_ledger.check_binding(entries, _ledger_binding(ctx, keys), keys)
+            if any(e.substep_key == MANIFEST_SUBSTEP for e in entries):
+                gk_build_ledger.check_manifest(ctx.db_conn, chart_id, GENERATION, entries, require_horizon_basis=bool(ctx.config.get("birth_params")))
+                try:
+                    _verify_live_inputs(ctx, chart_id)       # the live ephemeris / library / registry / implementation inputs still equal the manifest's vector
+                except (gk_input_vector.InputDrift, HorizonMismatch, HorizonBasisHorizonChanged) as exc:
+                    raise ResumeRefused("resume_program_changed", f"{type(exc).__name__}: {exc}") from exc
+                except EphemerisConfigRefusal:
+                    raise
+                except RuntimeError as exc:                   # verify_inputs: the independent derivation disagrees with the manifest
+                    raise ResumeRefused("resume_program_changed", f"{type(exc).__name__}: {exc}") from exc
+            gk_build_ledger.verify_chain(ctx.db_conn, chart_id, GENERATION, entries)
+            done = {e.substep_key for e in entries}
+            return [s for s in steps if s.key not in done]
+        return _in_savepoint(ctx.db_conn, resume)
+
+    def _record_ledger(self, ctx: ContextSpec, step: SubStep, chart_id: str, result: WriterResult) -> None:
+        """The last act of a substep of a century run: its ledger row, in the SAME transaction (the orchestrator commits after it). Never commits."""
+        if not _ledger_active(ctx):
+            return
+        keys = [s.key for s in self._full_plan(SCORED_CLASSES)]
+        if step.key not in keys:
+            return
+        ordinal = keys.index(step.key)
+        manifest_id = vec = None
+        if ordinal >= keys.index(MANIFEST_SUBSTEP):
+            ident = gk_build_ledger.manifest_identity(ctx.db_conn, chart_id, GENERATION)
+            if ident is not None:
+                manifest_id, vec = ident[0], ident[2]
+        scope, scope_digest = gk_build_ledger.measure_scope(ctx.db_conn, chart_id, GENERATION, step.key)
+        gk_build_ledger.record(
+            ctx.db_conn, chart_id, GENERATION, key=step.key, ordinal=ordinal, binding=_ledger_binding(ctx, keys), manifest_id=manifest_id,
+            vec_sha=vec, build_run_id=ctx.build_id, rows_written=int(result.rows_inserted or 0), scope=scope, scope_digest=scope_digest)
+
     @_with_rule_profile
     def run_substep(self, ctx: ContextSpec, step: SubStep) -> WriterResult:
         """One substep per the pin-5 grain ('rules' | 'convention' | per-body).
@@ -1311,7 +1428,13 @@ class GocharaV5Writer(WriterBase):
             return self._run_resolved_substep(ctx, step, chart_id)
 
     def _run_resolved_substep(self, ctx: ContextSpec, step: SubStep, chart_id: str) -> WriterResult:
-        """The substep proper, under the resolved config and rule profile (see `run_substep`)."""
+        """The substep proper, under the resolved config and rule profile (see `run_substep`), then — for a century run — its ledger row in the same transaction."""
+        result = self._execute_substep(ctx, step, chart_id)
+        self._record_ledger(ctx, step, chart_id, result)
+        return result
+
+    def _execute_substep(self, ctx: ContextSpec, step: SubStep, chart_id: str) -> WriterResult:
+        """The substep proper (see `_run_resolved_substep`)."""
         # DELIBERATE CHANGE TO EVERY v5 BUILD (steward MB-CODEX-2 ruling 2), not only the measuring shape: the state guard. The frozen runner's watchdog marks an asset
         # `error` on a fired `writer_timeout_seconds` and does NOT stop the writer thread, so an evicted thread could keep committing substeps; the final build needs this
         # protection too. A healthy build (state `building`) behaves exactly as before apart from this one read-only SELECT per substep; a dry run and an absent row skip it;
@@ -1470,16 +1593,15 @@ class GocharaV5Writer(WriterBase):
                               and any(str(r.get("lord_graha", "")).lower() == lord
                                       and (level is None or int(r["level_n"]) == level)
                                       for lord, level in consulted)]
-            # A5.5f (G7): a rebuild REPLACES the whole unsealed CANDIDATE chart x generation output chain, never
-            # accretes. THE CONTRACT: every dispatch of this asset is a WHOLE-BUILD REPLAY. The orchestrator drives the
-            # full plan on every dispatch (asset_runner calls _drive_substeps without completed_keys), so this
-            # snapshot substep always runs, always first among the chain-writing substeps, and a failed build restarts
-            # from zero on retry. There is NO resume and none is built here (the orchestrator is frozen). That is why
-            # the replace can sit at this one per-plan reset point: it runs before every substep that writes chain rows
-            # (inventory / coverage / record / window), so a dispatch can never wipe what it wrote itself. An
-            # invocation that SKIPS the head (a CLI, a harness, a future resume) is not a supported mode: the horizon
-            # guard in _verify_live_inputs refuses one that would mix horizons. A sealed generation, and a manifest
-            # that is not a candidate, are refused by name before any delete.
+            # A5.5f (G7): a rebuild REPLACES the whole unsealed CANDIDATE chart x generation output chain, never accretes. THE CONTRACT: a dispatch that finds no
+            # ledger rows (every non-century run, and a fresh century build) is a WHOLE-BUILD REPLAY: the orchestrator drives the full plan (asset_runner calls
+            # _drive_substeps without completed_keys), so this snapshot substep always runs, always first among the chain-writing substeps, and a failed build
+            # restarts from zero on retry. The replace sits at this one per-plan reset point: it runs before every substep that writes chain rows (inventory /
+            # coverage / record / window), so a dispatch can never wipe what it wrote itself. SR-RESUME-NOW: a CENTURY run resumes instead, from its own ledger
+            # (`ka_gochara_build_ledger`, migration 1410): `plan_substeps` omits the recorded substeps, `manifest` and `snapshot` among them, only after
+            # `build_ledger` has proved the program, horizon, manifest and every recorded substep's rows unchanged; so this replace never runs over a partial
+            # chain. An invocation that skips the head without a ledger (a CLI, a harness) is not a supported mode: the horizon guard in _verify_live_inputs
+            # refuses one that would mix horizons. A sealed generation, and a manifest that is not a candidate, are refused by name before any delete.
             replaced = rstore.delete_generation_chain(chart_id=chart_id, generation=GENERATION)
             # ND-P2 (migration 1308): the near-miss layer is part of the SAME whole-generation replace. It runs after the chain delete, which has
             # already refused a sealed generation and a manifest that is not a candidate, and it runs under a test slice too (a slice stores no
