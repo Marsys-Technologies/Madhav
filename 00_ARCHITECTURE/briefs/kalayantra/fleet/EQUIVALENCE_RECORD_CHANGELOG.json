@@ -724,6 +724,51 @@
     }
    ],
    "closed": true
+  },
+  {
+   "id": "KGEW-QUAL-BOUND",
+   "rulings": [
+    "SR-KGEW-QUAL-BOUND",
+    "SR-KGEW-QUAL-BOUND-AMEND-1",
+    "SR-KGEW-QUAL-BOUND-AMEND-2"
+   ],
+   "category": "E1",
+   "part": "implementation.window (golden pin); geometry and evaluation unchanged",
+   "base_commit": "c718a5535e1d4c963f4bd67fc9b07ffdcced235f",
+   "derived_at_head": "(this commit)",
+   "statement": "PR #3913 (kalayantra/kgew-qual-bound), SR-KGEW-QUAL-BOUND Option A: the ka_gochara_v5 solver certificate always fits the database's kgew_qualification_shape_ck (cells held to the hard 400, the whole certificate measured as jsonb text against 262144 less a 4096-byte margin, geometry bounded in two steps with truncated=true and geometry.omitted counts and geometry_digest over the full geometry; a certificate that cannot fit is the named blank solver_certificate_incomplete). Five IMPLEMENTATION_MODULES['window'] modules move: window_solver (bounded stored_certificate, jsonb_text_octets), window_store (pre-insert mirror of kgew_qualification_shape_ck, QualificationShapeDefect), window_cert_check (certificate_incomplete: truncated or geometry no longer hashing to geometry_digest -> re-solved, never counted as checked), window_sweep (CertificateUnfit -> solver_certificate_incomplete) and window_verifier (stored solver_certificate_incomplete blank -> check_incomplete_blank, report counter certificate_incomplete_resolved_windows). These are result-bearing solver/checker modules, so category E1.inside applies (equivalence_requalification.json). Requalification consequence: full 26-class TR-26 including G-7 at the combined dispatch head (SR-J4E-CENTURY-FAIL-1 (4), SR-KGEW-QUAL-BOUND (7)). No migration, no geometry or evaluation module, no century-writer source, no century_contract.json and no trial_harness file moves; implementation_digest.lock.json is a CI-generated overlay and is not touched. Aggregate implementation_digest (wg.implementation_digest()) 5f10735c28fd0f972bdd0645b4bdd6408548662bf22598b54123336fc091ad32 -> 8dbee6c44e5464e02c791d21ee5ce3b1cbb62466a51baa34a6da70470b550a45. The golden window pin in test_mb_ordinary_golden.py moves with this change (the pin at the ordinary-manifest test); the J4P baseline literal beaa2310... is a past capture's evidence and is not rewritten.",
+   "cause": {
+    "commit": "dfeaec867",
+    "modules": [
+     "window_solver",
+     "window_store",
+     "window_cert_check",
+     "window_sweep",
+     "window_verifier"
+    ]
+   },
+   "implementation_digests": {
+    "geometry": {
+     "before": "77cde807a5e0bf6a3733bea3f48270774920acd7434f37f2c2eb73fe781d3616",
+     "after": "77cde807a5e0bf6a3733bea3f48270774920acd7434f37f2c2eb73fe781d3616"
+    },
+    "evaluation": {
+     "before": "16c4a5243711fd95e045dee3b9e47c5242fca07b7569d2c7a24bdf79ba7cd6cc",
+     "after": "16c4a5243711fd95e045dee3b9e47c5242fca07b7569d2c7a24bdf79ba7cd6cc"
+    },
+    "window": {
+     "before": "25c5badbe01dc8634948295a661d107927c609c6042c060faee89895c8850661",
+     "after": "f5b42386e37eec0f8f46a7faae1c726f5273c0afccf9b2c2450192bbce90398d"
+    }
+   },
+   "recipe": "python -m services.gochara_kernel.implementation_registry compute() (CHECK/print mode, never --write) and input_vector.implementation_digests(), run with the venv Python 3.13 on a git-archive copy of c718a5535 (before) and on the PR head 1c4c52772 (after); both equal input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES). The golden window pin in test_mb_ordinary_golden.py replaced by exact-string substitution; implementation_digest.lock.json not touched.",
+   "interpretations": [
+    {
+     "choice": "(I) the changelog entry and the golden window pin move in the PR's follow-up commit rather than in the fix commit",
+     "alternative": "amend the fix commit (rewrites pushed history)"
+    }
+   ],
+   "closed": true
   }
  ]
 }

@@ -719,4 +719,6 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # Window re-pinned a SECOND time (SR-TR3-SECOND-REPIN) after final TR #1 20261023T2010ZF (R-6 cap): window_solver_check (TR3 defect E: a certified-constant stretch of a
     # max-min piece is one plateau; U_CERT: bisection below the 1 ms floor) and window_verifier (U_CERT: the per-window deep-split allowance counter) move the window stage
     # (e38160c1... -> 25c5badb...); geometry and evaluation unchanged; re-derived by the same script; EQUIVALENCE_RECORD_CHANGELOG.json entry TR3-DEFECT-E-UCERT.
-    assert got["implementation"]["window"] == "25c5badbe01dc8634948295a661d107927c609c6042c060faee89895c8850661"
+    # Window re-pinned for SR-KGEW-QUAL-BOUND (PR #3913): window_solver, window_store, window_cert_check, window_sweep and window_verifier move the window stage (the solver certificate always fits
+    # kgew_qualification_shape_ck) (25c5badb... -> f5b42386...); geometry (77cde807...) and evaluation (16c4a524...) unchanged; re-derived by the same script; EQUIVALENCE_RECORD_CHANGELOG.json entry KGEW-QUAL-BOUND.
+    assert got["implementation"]["window"] == "f5b42386e37eec0f8f46a7faae1c726f5273c0afccf9b2c2450192bbce90398d"
