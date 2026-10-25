@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# TRIAL_SLICE v2: the 12-class trial under a named result policy (default window_qualification/1), passed explicitly.
+# TRIAL_SLICE v2: the 12-class (TR-26: 26-class, TRIAL_CLASSES + TRIAL_PROFILE=gate_profile.tr26.json) trial under a named result policy (default window_qualification/1), passed explicitly.
 #   usage: run_trial.sh <code checkout> [out_dir]
 #   env:   TRIAL_POLICY=window_qualification/1|all_null_candidate/1|default   (default window_qualification/1)
 #          TRIAL_BUDGET_S=300         stop launching work after N s and exit 75 (run the SAME command again to resume) — for a 10-minute foreground limit
@@ -7,6 +7,7 @@
 #          TRIAL_BASELINE=<baseline_12.json> (default: baseline_12.json next to this script)   TRIAL_PROFILE=<gate profile JSON>
 #          TRIAL_VERIFY=1             run the verification job inline after the build (G-4)
 #          TRIAL_CROSSCHECK=1         run the G-6 cross-check after the build            TRIAL_CROSSCHECK_SEED=<int>
+#          TRIAL_CERT_AUDIT=1         TR-26: the read-only certificate-size / truncation audit of the trial database (counts only), before the database is dropped
 #          TRIAL_CODE_HEAD=<40-hex>   REQUIRED for a `git archive` export (not a git work tree)
 #          TRIAL_CLASSES=a,b,..       default: the 12 classes   TRIAL_LABEL=trial   TRIAL_KEEP_DB=1   TRIAL_DISPATCH_MODULES=<json {module: sha256}>
 #          TRIAL_SOLVER_MODULE=pkg.module   where the checkout's solver lives (default services.gochara_kernel.window_solver)
@@ -70,6 +71,7 @@ if [ -n "${TRIAL_EQ_PINNED_EXTRA:-}" ]; then args+=(--eq-pinned-extra "$TRIAL_EQ
 if [ -n "${TRIAL_IMAGE_DIGEST:-}" ]; then args+=(--image-digest "$TRIAL_IMAGE_DIGEST"); fi
 if [ "${TRIAL_VERIFY:-}" = "1" ]; then args+=(--verify); fi
 if [ "${TRIAL_CROSSCHECK:-}" = "1" ]; then args+=(--crosscheck); fi
+if [ "${TRIAL_CERT_AUDIT:-}" = "1" ]; then args+=(--cert-audit); fi
 if [ "${TRIAL_KEEP_DB:-}" = "1" ]; then args+=(--keep-db); fi
 if [ "${TRIAL_COLLECT:-}" = "1" ]; then args+=(--collect); fi
 if [ "${TRIAL_BASELINE_MODE:-}" = "1" ]; then args+=(--baseline-mode); fi
