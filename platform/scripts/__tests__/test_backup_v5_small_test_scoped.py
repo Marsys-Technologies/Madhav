@@ -12,10 +12,12 @@ One oracle per production claim (testing standard D-OWNER-TESTS-20261016):
 The real pg_dump / pg_restore / SQL-measurement claims are in
 tests/l3/kala_db/test_p01_smalltest_backup_scoped.py.
 """
+import ast
 import copy
 import hashlib
 import importlib
 import json
+import re
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -263,18 +265,38 @@ def _ledger(backup, tmp_path, monkeypatch, files):
     return backup.ledger_entries(rows), directory
 
 
-def test_restore_migrations_are_those_applied_after_the_bundle_that_mention_a_scope_table_in_ledger_order(backup, tmp_path, monkeypatch):
-    """Claim: base = bundle + every ledger migration applied after the bundle that touches a scope table (the 1394 shape:
-    a function and a trigger on kala_gochara_publication). Earlier ones are already in the bundle; unrelated ones are not
-    needed; order is the ledger's, not the file name's."""
+def test_restore_migrations_are_those_applied_after_the_bundle_that_mention_a_scope_table_and_create_a_schema_object_in_ledger_order(backup, tmp_path, monkeypatch):
+    """Claim: base = bundle + every ledger migration applied after the bundle that touches a scope table AND creates something an archived
+    table can depend on (the 1394 shape: a function and a trigger on kala_gochara_publication). Earlier ones are already in the bundle;
+    unrelated ones are not needed; a pure data-fix on a scope table (the 1395 shape) is not carried; order is the ledger's, not the file name's."""
     ledger, directory = _ledger(backup, tmp_path, monkeypatch, [
         (9, '1394_late.sql', 17, 'CREATE TRIGGER t BEFORE UPDATE ON public.kala_gochara_publication EXECUTE FUNCTION f();'),
         (4, '1235_before_the_bundle.sql', -3, 'ALTER TABLE public.kala_gochara_publication ADD COLUMN x int;'),
-        (7, '1393_unrelated.sql', 5, 'ALTER TABLE public.some_other_table ADD COLUMN y int;'),
-        (8, '1500_between.sql', 6, 'UPDATE public.asset_throughput SET state = state;')])
+        (7, '1393_unrelated.sql', 5, 'CREATE FUNCTION g() RETURNS int LANGUAGE sql AS $$ SELECT 1 $$; -- no scope table'),
+        (8, '1500_between.sql', 6, 'CREATE OR REPLACE FUNCTION public.h() RETURNS int LANGUAGE sql AS $$ SELECT count(*)::int FROM public.asset_throughput $$;'),
+        (10, '1501_datafix.sql', 18, "UPDATE public.asset_throughput SET state = state; -- CREATE FUNCTION in a comment\n/* CREATE TABLE x (); */"),
+        (11, '1502_alter_only.sql', 19, 'ALTER TABLE public.asset_throughput ADD COLUMN y int; GRANT SELECT ON public.asset_throughput TO someone;'),
+        (12, '1503_temp_table.sql', 20, 'CREATE TEMP TABLE scratch AS SELECT * FROM public.asset_throughput;')])
     chosen = backup.derive_restore_migrations(ledger, ['public.kala_gochara_publication', 'public.asset_throughput'], directory)
     assert [name for name, _ in chosen] == ['1500_between.sql', '1394_late.sql']
     assert chosen[0][1] == hashlib.sha256((directory / '1500_between.sql').read_bytes()).hexdigest()
+
+
+def test_a_create_statement_that_only_appears_inside_a_comment_does_not_select_a_data_fix(backup, tmp_path, monkeypatch):
+    """Claim: the schema-object rule reads the migration with its comments stripped. A registry data-fix whose header comment describes
+    the function it replaces (a line starting CREATE OR REPLACE FUNCTION inside a block or a line comment) creates nothing and is not carried."""
+    ledger, directory = _ledger(backup, tmp_path, monkeypatch, [
+        (1, '1600_block_comment.sql', 17, "/*\n  CREATE OR REPLACE FUNCTION public.f() ... was replaced in 1394\n*/\nUPDATE public.asset_throughput SET state = state;"),
+        (2, '1601_line_comment.sql', 18, "-- CREATE TABLE public.never_created (id int);\nUPDATE public.asset_throughput SET state = state;")])
+    assert backup.derive_restore_migrations(ledger, ['public.asset_throughput'], directory) == ()
+
+
+def test_a_skipped_post_bundle_migration_is_still_hash_checked(backup, tmp_path, monkeypatch):
+    """Not selecting a file does not mean not reading it: the repository must still reproduce exactly what production ran."""
+    ledger, directory = _ledger(backup, tmp_path, monkeypatch, [(1, '1395_datafix.sql', 17, 'UPDATE public.t SET x = 1;')])
+    (directory / '1395_datafix.sql').write_text('UPDATE public.t SET x = 2;')
+    with pytest.raises(backup.BackupRefused, match='differs from the file production applied'):
+        backup.derive_restore_migrations(ledger, ['public.t'], directory)
 
 
 @pytest.mark.parametrize('fault,reason', [('absent', 'missing from the repository'), ('edited', 'differs from the file production applied')])
@@ -596,3 +618,104 @@ def test_century_scope_relations_equal_the_small_test_scope(backup):
     sound while the two reviewed files list the same relations (SR-A12-BACKUP-REMOVAL keeps the exact-scope measurement)."""
     century, small = backup.load_scope(name='century'), backup.load_scope(name='small_test')
     assert century['tables'] == small['tables'] and century['written'] == small['written']
+
+
+# ---- SR-RESTORE-SCHEMA-ONLY: the century backup's real migration set; the unchanged capture path; the reset search_path -----
+
+CENTURY_LEDGER_AFTER_THE_BUNDLE = [
+    '1394_gochara_statement_lock_touched_charts.sql', '1395_ka_gochara_v5_writer_timeout_72000.sql', '1305_gochara_snapshot_owns_l1_copy.sql',
+    '1306_gochara_expected_class_census.sql', '1308_gochara_near_miss_storage.sql', '1392_k8_registry_truth.sql',
+    '1381_gochara_near_miss_seal_integration.sql', '1390_kala_layer_operation_verifier_reads.sql', '1398_gochara_snapshot_dasha_held.sql',
+    '1397_k8_registry_remainder.sql', '1399_ka_yojaka_output_digest_v2.sql', '1400_ka_yojaka_output_digest_v3.sql',
+    '1405_kala_convergence_generation.sql', '1404_gochara_resonance_map_generation.sql', '1408_ka_vedha_gochara_writer_timeout_600.sql',
+    '1406_kala_obstruction_generation_scope.sql', '1409_k9_floors_achieved_zero.sql', '1403_ka_gochara_v5_depends_on_l0_dignity.sql',
+    '1402_gochara_qualification_provenance_certificate.sql']       # the 19 that mention a century scope table, in production's ledger order (run 7b62d268)
+CENTURY_SCHEMA_MIGRATIONS = ['1394_gochara_statement_lock_touched_charts.sql', '1305_gochara_snapshot_owns_l1_copy.sql',
+                             '1306_gochara_expected_class_census.sql', '1308_gochara_near_miss_storage.sql',
+                             '1381_gochara_near_miss_seal_integration.sql', '1398_gochara_snapshot_dasha_held.sql',
+                             '1402_gochara_qualification_provenance_certificate.sql']
+
+
+def test_the_century_backups_nineteen_later_migrations_reduce_to_the_seven_that_create_schema_objects(backup, monkeypatch):
+    """Claim A (run 7b62d268): the repository's real migration files, the reviewed century scope. Mention alone picks 19, 12 of which only
+    edit registry rows (or grant to a role) and cannot run on a copy without production rows; the schema-object rule keeps the 7 that
+    create a function, trigger or table."""
+    cut = datetime.fromisoformat(backup.SCOPED_RESTORE_BASE_CUT)
+    rows = [(n, name, cut + timedelta(hours=n), hashlib.sha256((backup.MIGRATIONS_DIR / name).read_bytes()).hexdigest())
+            for n, name in enumerate(CENTURY_LEDGER_AFTER_THE_BUNDLE, start=1)]
+    ledger = backup.ledger_entries(rows)
+    tables = backup.load_scope(name='century')['tables'] + ['public.asset_output_digest_specs', 'public.charts', 'public.profiles']   # + the capture's 3 FK parents
+    chosen = backup.derive_restore_migrations(ledger, tables)
+    assert [n for n, _ in chosen] == CENTURY_SCHEMA_MIGRATIONS
+    with monkeypatch.context() as old_rule:
+        old_rule.setattr(backup, 'SCHEMA_OBJECT', re.compile(''))                 # the mention-only rule that failed
+        assert len(backup.derive_restore_migrations(ledger, tables)) == 19
+
+
+def test_the_restore_base_resets_the_bundles_empty_search_path_before_the_first_migration_and_the_steps_join_to_the_script(backup, tmp_path, monkeypatch):
+    """Claim B: the bundle sets search_path to '' for its session; production applied migrations with the default path."""
+    root = _bundle(tmp_path, backup, monkeypatch, b"SELECT pg_catalog.set_config('search_path', '', false);\nCREATE SCHEMA public;\nCREATE TABLE public.t (id int);\n")
+    migrations = tmp_path / 'migrations'
+    migrations.mkdir()
+    (migrations / '1_a.sql').write_text('SELECT 1;')
+    monkeypatch.setattr(backup, 'MIGRATIONS_DIR', migrations)
+    pins = (('1_a.sql', hashlib.sha256(b'SELECT 1;').hexdigest()),)
+    steps, identity = backup.restore_base_steps(root, pins)
+    assert [name for name, _ in steps] == ['bundle', '1_a.sql']
+    assert steps[0][1].rstrip().endswith('RESET search_path;') and 'SELECT 1;' not in steps[0][1]
+    text, same_identity = backup.restore_base_sql(root, pins)
+    assert text == ''.join(sql for _, sql in steps) and same_identity == identity
+    assert text.index("set_config('search_path'") < text.index('RESET search_path;') < text.index('SELECT 1;')
+
+
+H2_CAPTURE_SCRIPT = '94f76c4ffbe3533e9954a0742e8dc11707e3c4827b380ec57a473239f980e0b0'          # backup_v5_small_test_job.py at c718a5535
+# sha256 over the source text of every module-level definition reachable from `snapshot` (the capture entry point), taken from c718a5535
+H2_CAPTURE_PATH_DIGEST = 'a4493df17426dd96fed7e4c50fc73c111c366bb98959e636af1a93253ddac9bd'
+
+
+def capture_path_digest(source):
+    """(digest, names): the source text of each module-level function/class/constant reachable by name from `snapshot`, hashed together."""
+    tree = ast.parse(source)
+    defs = {}
+    for node in tree.body:
+        if isinstance(node, (ast.FunctionDef, ast.ClassDef)):
+            defs[node.name] = node
+        elif isinstance(node, ast.Assign):
+            defs.update({t.id: node for t in node.targets if isinstance(t, ast.Name)})
+    reach, todo = set(), ['snapshot']
+    while todo:
+        name = todo.pop()
+        if name not in reach and name in defs:
+            reach.add(name)
+            todo += [n.id for n in ast.walk(defs[name]) if isinstance(n, ast.Name)]
+    parts = {n: ast.get_source_segment(source, defs[n]) for n in sorted(reach)}
+    return hashlib.sha256(json.dumps(parts, sort_keys=True).encode()).hexdigest(), sorted(reach)
+
+
+def test_the_capture_path_is_byte_identical_to_the_h2_script(backup):
+    """Claim E: SCOPED_LEGACY_CAPTURE_SCRIPTS admits the H2 script's captures only while this file would have written the very same capture.
+    Any edit to a definition the capture reaches changes this digest: then the H2 entry must be removed (and the label re-captured)."""
+    digest, names = capture_path_digest(Path(backup.__file__).read_text())
+    assert {'snapshot', 'snapshot_scoped', 'scoped_catalog', 'scoped_measurements', 'validate_scoped_capture', 'dump_table_args'} <= set(names)
+    assert not {'restore_verify', 'restore_verify_scoped', 'derive_restore_migrations', 'restore_base_sql', 'SCHEMA_OBJECT',
+                'SCOPED_LEGACY_CAPTURE_SCRIPTS'} & set(names)                     # the restore side is outside the capture path
+    assert digest == H2_CAPTURE_PATH_DIGEST
+
+
+def test_the_legacy_capture_list_holds_exactly_the_two_reviewed_identities(backup):
+    assert sorted(backup.SCOPED_LEGACY_CAPTURE_SCRIPTS) == sorted([H2_CAPTURE_SCRIPT, '3f967bf9cd99abe725db9983b50f99d4263e96336c44ee4b2ce3a707022aeb29'])
+    assert hashlib.sha256(Path(backup.__file__).read_bytes()).hexdigest() != H2_CAPTURE_SCRIPT      # this file is a new script: the entry is what admits the old capture
+
+
+@pytest.mark.parametrize('error,expected', [
+    ('42P01', 'restore base step 1395_x.sql failed: FakeError sqlstate=42P01 (relation "asset_registry" does not exist)'),
+    ('P0001', 'restore base step 1395_x.sql failed: FakeError sqlstate=P0001'),
+])
+def test_a_base_step_failure_repeats_only_identifier_messages(backup, error, expected):
+    class Diag:
+        schema_name = table_name = column_name = constraint_name = None
+        message_primary = 'relation "asset_registry" does not exist' if error == '42P01' else 'row content (secret-row-value) is not allowed'
+
+    class FakeError(Exception):
+        sqlstate, diag = error, Diag()
+    assert str(backup.base_step_failure('1395_x.sql', FakeError())) == expected
