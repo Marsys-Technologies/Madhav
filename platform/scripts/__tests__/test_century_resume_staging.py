@@ -3,8 +3,8 @@ dispatch_v5_small_test_job._admit.
 
 Doctrine: root CLAUDE.md §N.8 (each claim is measured by a detector that can read false) and §B.10 (no invented value). One oracle per distinct production claim; each passes on the
 real module and FAILS on a copy of it with that ONE claim's line reverted (the planted reversion). The live gate runs against the local disposable cluster (127.0.0.1:55433,
-KALA_REQUIRE_DB=1) on TEMP tables only: they shadow the real names for one session and nothing outlives the connection. The ledger is the writer lane's (migration 1410): its TEMP
-stand-in is built from the migration's own column names and types (ledger_migration_support), never from names stated here.
+KALA_REQUIRE_DB=1) in a fresh disposable database per test (dropped with its connection). The ledger is the writer lane's (migration 1410): the fixture APPLIES the real migration
+(ledger_migration_support.ledger_connection), it never writes a table of its own.
 
   S1 the live gate admits a resume only over a ledger written by the request's writer program
   S2 nothing to resume refuses by name: no candidate manifest, no ledger table, an empty ledger
@@ -18,7 +18,6 @@ import hashlib
 import importlib.util
 import io
 import json
-import os
 import subprocess
 import sys
 from pathlib import Path
@@ -37,7 +36,6 @@ import dispatch_v5_century_resume_job as binding  # noqa: E402
 import dispatch_v5_small_test_job as staging  # noqa: E402
 import v5_small_test_shared as shared  # noqa: E402
 
-CLUSTER = os.environ.get("KALA_ADMIN_DSN", "postgresql://postgres@127.0.0.1:55433/postgres")
 CONTRACT = json.loads((REPO / "00_ARCHITECTURE/briefs/kalayantra/fleet/century_contract.json").read_text())
 WRITER = CONTRACT["image"]["writer_source_digest"]
 OTHER_RUN = "99999999-9999-4999-8999-999999999999"
@@ -60,43 +58,30 @@ def module_copy(tmp_path, source, mutation=None):
     return module
 
 
-def cluster():
-    try:
-        import psycopg
-        import psycopg.rows
-        return psycopg.connect(CLUSTER, autocommit=True, connect_timeout=3, row_factory=psycopg.rows.dict_row)
-    except Exception:
-        if os.environ.get("KALA_REQUIRE_DB") == "1":
-            pytest.fail("KALA_REQUIRE_DB=1 and the local cluster is unreachable")
-        pytest.skip("local cluster unreachable: deferred to CI")
-
-
-def ledger_table(conn):
-    """The ledger's TEMP stand-in: the MIGRATION's columns and types (found and parsed by ledger_migration_support)."""
-    found = M.find_migration()
-    if found is None:
-        if os.environ.get("KALA_REQUIRE_LEDGER_MIGRATION") == "1":
-            pytest.fail("KALA_REQUIRE_LEDGER_MIGRATION=1 and no migration creates public.ka_gochara_build_ledger")
-        pytest.skip("no migration creating public.ka_gochara_build_ledger: the ledger schema was NOT measured")
-    parsed = M.parse_ledger(found[1])
-    conn.execute(f"CREATE TEMP TABLE {parsed['table']} (" + ", ".join(f"{c} {t}" for c, t in parsed["columns"].items()) + ")")
+def cluster(**kw):
+    """A fresh disposable database in which the REAL migration 1410 has been applied (ledger_migration_support.ledger_connection); a context manager."""
+    import psycopg.rows
+    return M.ledger_connection(row_factory=psycopg.rows.dict_row, **kw)
 
 
 def ledger_row(conn, key, **change):
     identity = dict(S.IDENTITY, writer_digest=WRITER)
     identity["horizon"] = "[" + identity["horizon"] + ")"                      # the tstzrange column takes a range literal
-    values = {"chart_id": shared.CHART_ID, "generation": "5.0", "substep_key": key, **identity, **change}
+    ordinal = conn.execute(f"SELECT coalesce(max(ordinal) + 1, 0) AS n FROM {shared.RESUME_LEDGER_TABLE}").fetchone()["n"]          # unique per (chart, generation)
+    values = {"chart_id": shared.CHART_ID, "generation": "5.0", "substep_key": key, "ordinal": ordinal, "build_run_id": S.RUN, "rows_written": 0, **identity, **change}
     conn.execute(f"INSERT INTO {shared.RESUME_LEDGER_TABLE} ({', '.join(values)}) VALUES ({', '.join(['%s'] * len(values))})", list(values.values()))
 
 
 def world(conn, *, ledger=("snapshot", "inventory:career"), run_state="failed", trigger=shared.CENTURY_TRIGGERED_BY, with_ledger_table=True):
-    """TEMP tables shadowing the real names for this session: the run being resumed and the writer's ledger."""
+    """The run being resumed (a TEMP stand-in for the run table, which this database does not have) and the writer's ledger: the REAL table, created by migration 1410 when the
+    connection was opened; `with_ledger_table=False` drops it, the world before 1410 was applied."""
     conn.execute("CREATE TEMP TABLE build_runs (id uuid, chart_id uuid, state text, triggered_by text)")
     conn.execute("INSERT INTO build_runs VALUES (%s, %s, %s, %s)", [S.RUN, shared.CHART_ID, run_state, trigger])
     if with_ledger_table:
-        ledger_table(conn)
         for key in ledger:
             ledger_row(conn, key)
+    else:
+        conn.execute(f"DROP TABLE public.{shared.RESUME_LEDGER_TABLE}")
 
 
 def gate_request(**over):
@@ -108,8 +93,7 @@ CANDIDATE = {"manifest_id": "m", "status": "candidate"}
 
 # ───────────────────────────── S1 / S2 / S3 the live gate ─────────────────────────────
 def oracle_s1_a_resume_continues_only_the_same_program(module, tmp_path):
-    conn = cluster()
-    with conn:
+    with cluster() as conn:
         world(conn)
         notes = module.resume_gate(gate_request())(conn.cursor(), 4, CANDIDATE)
         assert len(notes) == 1 and "2 committed substep(s)" in notes[0] and S.RUN in notes[0], "control failed — the ledger of the request's program is admitted"
@@ -121,16 +105,14 @@ def oracle_s1_a_resume_continues_only_the_same_program(module, tmp_path):
 
 
 def oracle_s2_nothing_to_resume_refuses_by_name(module, tmp_path):
-    conn = cluster()
-    with conn:
+    with cluster() as conn:
         world(conn, ledger=())
         with pytest.raises(shared.Refused, match="holds no committed substep"):
             module.resume_gate(gate_request())(conn.cursor(), 4, CANDIDATE)
         for manifest, text in ((None, "no candidate manifest"), ({"manifest_id": "m", "status": "published"}, "status published")):
             with pytest.raises(shared.Refused, match=text):
                 module.resume_gate(gate_request())(conn.cursor(), 4, manifest)
-    conn = cluster()
-    with conn:
+    with cluster() as conn:
         world(conn, with_ledger_table=False)
         with pytest.raises(shared.Refused, match="ledger ka_gochara_build_ledger does not exist"):
             module.resume_gate(gate_request())(conn.cursor(), 4, CANDIDATE)
@@ -139,13 +121,11 @@ def oracle_s2_nothing_to_resume_refuses_by_name(module, tmp_path):
 def oracle_s3_the_run_to_resume_is_an_unfinished_century_run_of_this_chart(module, tmp_path):
     for label, kwargs, run_id in (("a completed run", dict(run_state="completed"), S.RUN), ("a small-test run", dict(trigger=shared.TRIGGERED_BY), S.RUN),
                                   ("an unknown run", {}, OTHER_RUN)):
-        conn = cluster()
-        with conn:
+        with cluster() as conn:
             world(conn, **kwargs)
             with pytest.raises(shared.Refused, match="is not an unfinished century run of chart"):
                 module.resume_gate(gate_request(resume_run_id=run_id))(conn.cursor(), 4, CANDIDATE)
-    conn = cluster()
-    with conn:
+    with cluster() as conn:
         world(conn, run_state="failed")
         module.resume_gate(gate_request())(conn.cursor(), 4, CANDIDATE)          # control: a failed century run resumes
 

@@ -1,22 +1,20 @@
 """SR-RESUME-INTEGRATION (rulings SR-RESUME-INTEGRATION, SR-RESUME-EXPLICIT-BINDING): "the WRITER lane's migration 1410 is the source of truth; the executor side adapts to it,
 never the reverse. The reconciliation commit is checked by a test that reads the ledger schema from 1410 (not a hand-copied constant)."
 
-THIS TEST READS THE MIGRATION. `ledger_migration_support.find_migration()` finds the migration that creates public.ka_gochara_build_ledger (the repository's platform/migrations;
-before the writer lane has merged, its branch via read-only `git show`) and PARSES its CREATE TABLE. Nothing below restates a column.
+THIS TEST READS THE MIGRATION. `ledger_migration_support.find_migration()` finds the migration that creates public.ka_gochara_build_ledger (the repository's platform/migrations only)
+and PARSES its CREATE TABLE. Nothing below restates a column, and the database tests APPLY the migration itself (`ledger_connection`): no hand-written ledger table exists in any fixture.
 
   L1 every ledger column the executor's SQL reads (the resume readback, v5_small_test_shared.resume_readback_sql) is a column of the migration's table, the table is the migration's,
      and the executor reads every column its gate consumes — fail-on-revert: a column renamed in a copy of the migration, and a column renamed in a copy of the executor, each fail
-  L2 against the local cluster, on a TEMP table built from the migration's own column names and types, the readback runs and yields a proof the gate admits — fail-on-revert: the same
-     table with one column renamed makes the readback fail (the executor's SQL cannot silently read a column that is not there)
+  L2 against the local cluster, on the table the migration itself creates, the readback runs and yields a proof the gate admits — fail-on-revert: the same migration with one column
+     renamed, applied, makes the readback fail (the executor's SQL cannot silently read a column that is not there; the fixture cannot drift from the schema)
   L3 the live admission of the staging binding (dispatch_v5_century_resume_job.resume_gate) reads the ledger's identity columns from the same table — fail-on-revert: one renamed column
   L4 the types the gate interprets (scope jsonb, horizon tstzrange, ordinal/rows_written integer) are the migration's
 
-If the migration cannot be found the tests SKIP with that reason (a skip is "not measured", never a pass); with KALA_REQUIRE_LEDGER_MIGRATION=1 they FAIL instead. After the writer lane
-merges the migration is in the tree and nothing here skips.
+If the migration cannot be found the tests FAIL (never skip: a skip is "not measured"). Only an unreachable cluster skips, and fails under KALA_REQUIRE_DB=1.
 """
 import importlib.util
 import json
-import os
 import sys
 from pathlib import Path
 
@@ -31,20 +29,13 @@ import century_resume_support as S  # noqa: E402
 import ledger_migration_support as M  # noqa: E402
 import v5_small_test_shared as shared  # noqa: E402
 
-CLUSTER = os.environ.get('KALA_ADMIN_DSN', 'postgresql://postgres@127.0.0.1:55433/postgres')
 # what the gate INTERPRETS of a column's type (a statement of how it reads the data, measured against the migration, never a source of names)
 INTERPRETED_TYPES = {'scope': 'jsonb', 'horizon': 'tstzrange', 'ordinal': 'integer', 'rows_written': 'integer', 'manifest_id': 'uuid'}
 
 
 @pytest.fixture(scope='module')
 def migration():
-    found = M.find_migration()
-    if found is None:
-        reason = 'no migration creating public.ka_gochara_build_ledger in platform/migrations or on the writer lane branch'
-        if os.environ.get('KALA_REQUIRE_LEDGER_MIGRATION') == '1':
-            pytest.fail('KALA_REQUIRE_LEDGER_MIGRATION=1 and ' + reason)
-        pytest.skip(reason + ': the ledger schema was NOT measured')
-    return found
+    return M.find_migration()                                    # raises MigrationMissing: a missing migration FAILS
 
 
 def schema_problems(parsed, module=shared):
@@ -112,32 +103,24 @@ def test_l4_the_types_the_gate_interprets_are_the_migrations(migration):
 
 
 # ───────────────────────────── the local cluster ─────────────────────────────
-def _cluster():
-    try:
-        import psycopg
-        return psycopg.connect(CLUSTER, autocommit=True, connect_timeout=3)
-    except Exception:
-        if os.environ.get('KALA_REQUIRE_DB') == '1':
-            pytest.fail('KALA_REQUIRE_DB=1 and the local cluster is unreachable')
-        pytest.skip('local cluster unreachable: deferred to CI')
-
-
-def temp_ledger(conn, parsed):
-    """TEMP tables only (in the cluster's own `postgres` database, shadowing the real names for this one session; nothing outlives the connection). The ledger is built from the
-    MIGRATION'S column names and types; the chain tables the readback counts are minimal stand-ins."""
+def chain_tables(conn):
+    """TEMP tables only (they shadow the real names for this one session): the chain tables the readback counts are minimal stand-ins; the LEDGER is the real table the migration
+    created when the connection was opened."""
     for table in shared.RESUME_CHAIN_TABLES + shared.RESUME_NEVER_PRESENT:
         conn.execute(f'CREATE TEMP TABLE {table} (chart_id uuid, generation text, partition_kind text)')
     conn.execute('CREATE TEMP TABLE kala_gochara_publication (chart_id uuid, generation text, status text, manifest_id uuid)')
-    conn.execute(f'CREATE TEMP TABLE {parsed["table"]} (' + ', '.join(f'{c} {t}' for c, t in parsed['columns'].items()) + ')')
 
 
-def fill_ledger(conn, parsed, rows):
-    columns = [c for c in parsed['columns'] if c in S.ledger_rows()[0] or c in ('chart_id', 'generation')]
+def fill_ledger(conn, parsed, rows, rename=None):
+    """Inserts `rows` into the table the migration created. `rename` = {the executor's column name: the column the drifted table has instead}; values are keyed by the executor's names."""
+    back = {new: old for old, new in (rename or {}).items()}
+    known = set(S.ledger_rows()[0]) | {'chart_id', 'generation'}
+    columns = [c for c in parsed['columns'] if back.get(c, c) in known]
     for row in rows:
         values = {'chart_id': shared.CHART_ID, 'generation': '5.0', **{k: v for k, v in row.items() if k != 'horizon'},
                   'horizon': f"[{row['horizon'][0]},{row['horizon'][1]})"}
         values['scope'] = None if row['scope'] is None else json.dumps(row['scope'])
-        conn.execute(f'INSERT INTO {parsed["table"]} ({", ".join(columns)}) VALUES ({", ".join(["%s"] * len(columns))})', [values[c] for c in columns])
+        conn.execute(f'INSERT INTO {parsed["table"]} ({", ".join(columns)}) VALUES ({", ".join(["%s"] * len(columns))})', [values[back.get(c, c)] for c in columns])
 
 
 def fill_chain(conn, rows):
@@ -151,9 +134,8 @@ def fill_chain(conn, rows):
 def test_l2_against_the_migrations_table_the_readback_yields_a_proof_the_gate_admits(migration, tmp_path):
     parsed = M.parse_ledger(migration[1])
     rows = S.ledger_rows()
-    conn = _cluster()
-    with conn:
-        temp_ledger(conn, parsed)
+    with M.ledger_connection() as conn:
+        chain_tables(conn)
         fill_ledger(conn, parsed, rows)
         fill_chain(conn, rows)
         measured = json.loads(conn.execute(shared.resume_readback_sql()).fetchone()[0])
@@ -173,12 +155,17 @@ def test_l2_against_the_migrations_table_the_readback_yields_a_proof_the_gate_ad
     assert binding['ledger_substeps'] == [r['substep_key'] for r in rows] and binding['resumes_run_id'] == S.RUN
 
 
+def test_l2_the_fixtures_ledger_is_exactly_the_migrations_table(migration):
+    """The fixture's ledger is the migration APPLIED, not a copy of it: the columns and types the database holds are the ones the migration's CREATE TABLE states (so a
+    hand-written stand-in, or a fixture that drifted from the schema, reads false here)."""
+    with M.ledger_connection() as conn:
+        assert M.held_columns(conn) == M.migration_columns(migration[1])
+
+
 def test_l2_a_column_renamed_in_the_migration_makes_the_readback_fail(migration):
     import psycopg
-    drifted = M.parse_ledger(M.rename_column(migration[1], 'implementation_digest', 'impl_digest'))
-    conn = _cluster()
-    with conn:
-        temp_ledger(conn, drifted)
+    with M.ledger_connection(migration_text=M.rename_column_everywhere(migration[1], 'implementation_digest', 'impl_digest')) as conn:
+        chain_tables(conn)
         with pytest.raises(psycopg.errors.UndefinedColumn, match='implementation_digest'):
             conn.execute(shared.resume_readback_sql())
 
@@ -189,25 +176,21 @@ def test_l3_the_live_admission_reads_the_migrations_identity_columns(migration, 
     import psycopg
     import psycopg.rows
     import dispatch_v5_century_resume_job as job
-    parsed = M.parse_ledger(migration[1])
     identity = dict(S.IDENTITY)
     req = {'resume_run_id': S.RUN, 'program_identity': identity}
     manifest = {'status': 'candidate'}
 
-    def gate_on(parsed_table, **change):
-        conn = psycopg.connect(CLUSTER, autocommit=True, connect_timeout=3, row_factory=psycopg.rows.dict_row)
-        with conn:
-            temp_ledger(conn, parsed_table)
-            fill_ledger(conn, parsed_table, S.ledger_rows(identity=dict(identity, **change)))
+    def gate_on(text, rename=None, **change):
+        parsed_table = M.parse_ledger(text)
+        with M.ledger_connection(migration_text=text, row_factory=psycopg.rows.dict_row) as conn:
+            fill_ledger(conn, parsed_table, S.ledger_rows(identity=dict(identity, **change)), rename)
             conn.execute('CREATE TEMP TABLE build_runs (id uuid, chart_id uuid, state text, triggered_by text)')
             conn.execute('INSERT INTO build_runs VALUES (%s, %s, %s, %s)', [S.RUN, shared.CHART_ID, 'failed', shared.CENTURY_TRIGGERED_BY])
             return job.resume_gate(req)(conn.cursor(), [], manifest)
 
-    _cluster().close()                      # skip (or fail under KALA_REQUIRE_DB=1) here when the cluster is unreachable
-    assert 'RESUME of century run' in gate_on(parsed)[0], 'control failed — the ledger of the request\'s program is admitted'
+    assert 'RESUME of century run' in gate_on(migration[1])[0], 'control failed — the ledger of the request\'s program is admitted'
     for column in ('writer_digest', 'implementation_digest', 'plan_digest'):
         with pytest.raises(shared.Refused, match=column):
-            gate_on(parsed, **{column: '1' * 64})
-    drifted = M.parse_ledger(M.rename_column(migration[1], 'plan_digest', 'plan_sha'))
+            gate_on(migration[1], **{column: '1' * 64})
     with pytest.raises(psycopg.errors.UndefinedColumn, match='plan_digest'):
-        gate_on(drifted)
+        gate_on(M.rename_column_everywhere(migration[1], 'plan_digest', 'plan_sha'), rename={'plan_digest': 'plan_sha'})
