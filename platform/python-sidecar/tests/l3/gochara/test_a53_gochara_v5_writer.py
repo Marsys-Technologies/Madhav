@@ -551,3 +551,26 @@ def test_a_truthy_non_boolean_final_rule_flag_is_refused(value):
     ctx.config['gochara_v5_final_rules'] = value
     with pytest.raises(ValueError, match='must be a boolean'):
         writer_mod.GocharaV5Writer().plan_substeps(ctx)
+
+
+# ── SR-J4E-HORIZON-BASIS F1: which UNMARKED builds are handed a horizon basis (DB-free; the measuring-build mutation catalogue's oracle) ──
+
+def test_only_a_staged_century_build_among_unmarked_builds_is_handed_a_horizon_basis(monkeypatch):
+    """An unmarked (no test-slice) build gets a basis pinned in its manifest vector ONLY when the staged century config is set; an ordinary build gets none, so
+    its vector stays byte-identical (MB-CODEX-1 ruling 1). The derivation itself is stubbed: this pins the DISCRIMINATOR, not the horizon arithmetic.
+    Reverts this test kills (mutation_check_measuring_build.py): the ordinary-build guard neutered => the ordinary build is handed a basis; the century branch
+    neutered => the century build is handed none (the F1 fix reverted)."""
+    probe = {"schema": "horizon_basis/1", "probe": "synthetic"}
+
+    class _Horizon:
+        def basis_record(self):
+            return probe
+
+    monkeypatch.setattr(writer_mod, "_derive_horizon", lambda ctx, ruling=True: _Horizon())
+    monkeypatch.setattr(writer_mod, "_pinned_horizon_basis", lambda ctx: None)
+    base = {"chart_id": CHART_ID, "birth_params": {"synthetic": True}}
+    ordinary = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="test-build", db_conn=_RecordingConn(), config=dict(base), dry_run=False)
+    century = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="test-build", db_conn=_RecordingConn(),
+                          config={**base, writer_mod.CENTURY_STAGED_KEY: True}, dry_run=False)
+    assert writer_mod._horizon_basis(ordinary, None) is None, "an ordinary unmarked build must not be handed a basis"
+    assert writer_mod._horizon_basis(century, None) == probe, "a staged century build must be handed its basis (SR-J4E-HORIZON-BASIS)"
