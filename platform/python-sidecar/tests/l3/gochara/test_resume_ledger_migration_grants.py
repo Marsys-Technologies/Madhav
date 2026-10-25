@@ -13,6 +13,7 @@ CLAIMS, each with its own fail-on-revert oracle (the planted reversion is named 
   E. applied by the builder ITSELF (an owner) without its grant, the post-apply block RAISES: ownership never satisfies a non-owner role's grant
   F. a SELECT that reaches amjis_app only through PUBLIC is not the `grant` form: the post-apply block RAISES
   G. an owner that revoked its own SELECT is refused: the `owner` form requires relowner = amjis_app AND has_table_privilege SELECT, and names both
+  H. each read-only role (gochara_verifier, gochara_sealer) is in the post-apply ACL loop: its grant reverted => RAISE naming it
 
 Runs on the guarded local disposable cluster (GOCHARA_A53_ADMIN_DSN; NOT_RUN skip when unreachable, a FAILURE under GOCHARA_A53_REQUIRE_DB=1) in a throwaway database; the
 cluster-wide roles are created only if absent and dropped again only if this test created them.
@@ -147,6 +148,16 @@ def test_a_public_read_grant_is_not_the_app_roles_explicit_grant(database):
     assert GRANT in MIGRATION.read_text()
     with pytest.raises(Exception, match="amjis_app can read the ledger in neither admitted form"):
         _apply(database, MIGRATION.read_text().replace(GRANT, "GRANT SELECT ON public.ka_gochara_build_ledger TO PUBLIC;"))
+
+
+@pytest.mark.parametrize("role", ["gochara_verifier", "gochara_sealer"])
+def test_with_a_reader_grant_reverted_the_post_apply_block_raises_naming_that_reader(database, role):
+    """Each read-only role is in the post-apply ACL loop. Planted: its GRANT replaced by a no-op => the apply must RAISE naming it.
+    Revert: drop the role from the three-role loop => the migration applies cleanly without its grant and this test fails."""
+    grant = f"GRANT SELECT ON public.ka_gochara_build_ledger TO {role};"
+    assert grant in MIGRATION.read_text(), f"the migration no longer states the {role} grant in the form this oracle reverts"
+    with pytest.raises(Exception, match=f"{role} has no explicit ACL grant of SELECT"):
+        _apply(database, MIGRATION.read_text().replace(grant, "NULL;"))
 
 
 def test_with_the_builder_grant_reverted_the_post_apply_block_raises_naming_the_builder(database):
