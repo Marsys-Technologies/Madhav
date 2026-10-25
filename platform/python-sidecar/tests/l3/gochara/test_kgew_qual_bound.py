@@ -28,6 +28,7 @@ Claims (the ruling item or classical/DB rule each oracle is built from):
   V-2  the stored geometry no longer hashing to `geometry_digest` is incomplete even when the flag says complete        ruling 3 / N.8 (a detector behind the flag)
   V-3  the verifier's budget running out on an incomplete certificate is INCONCLUSIVE (R-6), and the report says so     ruling 3
   V-4  a blank under `solver_certificate_incomplete` is INCONCLUSIVE at the verifier, not a disagreement               ruling 4 / R-6
+  V-5  an incomplete certificate is re-solved from scratch, `run(None)`: the stored cells never seed the verifier's search  SR-KGEW-QUAL-BOUND-AMEND-3 (R-7, B-3)
 """
 from __future__ import annotations
 
@@ -230,7 +231,10 @@ def oracle_q7(mods, db=None, monkeypatch=None):
     `unresolved[reason] = 1` (the writer's per-class summary counts it from there)."""
     _unfit_world(monkeypatch)
     w = mods["window_sweep"]
-    (draft,) = w.draft_windows("marriage", _p4_records(), lambda p, v: _rows(p, v), solver=w.PRODUCTION_SOLVER)[0]
+    try:
+        (draft,) = w.draft_windows("marriage", _p4_records(), lambda p, v: _rows(p, v), solver=w.PRODUCTION_SOLVER)[0]
+    except sol.CertificateUnfit as exc:                      # the specific failure of this claim: the sweep must catch it, not let it abort the class
+        pytest.fail(f"the sweep let CertificateUnfit escape instead of storing the honest null: {exc}")
     assert draft.unqualified_reason == sol.REASON_CERTIFICATE == "solver_certificate_incomplete"
     assert draft.peak_instant is None and draft.objective_value is None and draft.score is None and draft.solver_certificate is None
     assert draft.outcome_valence_for_native == "unqualified" and draft.unresolved == {sol.REASON_CERTIFICATE: 1}
@@ -298,6 +302,39 @@ def oracle_v1(mods, db=None):
     refuted = c.check_numbered(lo=h.records()[0].supports[0][0], hi=h.records()[0].supports[0][1], records=h.records(), objective=chk.OBJ_SUM, stored=wrong,
                                position_at=h.pos, certificate={**flagged, "value": res.value + 1.0})
     assert refuted.classification == c.DISAGREEMENT and refuted.certificate_incomplete
+
+
+@claim("V-5", "window_cert_check",
+       "        eng, rep = run(None)\n        return _from_inner(rep, used_certificate=False, fell_back=False, resolved=True, evals=eng.evals, certificate_incomplete=True)",
+       "        eng, rep = run(cells)\n        return _from_inner(rep, used_certificate=False, fell_back=False, resolved=True, evals=eng.evals, certificate_incomplete=True)")
+def oracle_v5(mods, db=None, monkeypatch=None):
+    """SR-KGEW-QUAL-BOUND-AMEND-3 (R-7, B-3): the truncated certificate is the builder's partial evidence; the re-solve is the verifier's INDEPENDENT search, so it starts from nothing —
+    `run(None)`, never seeded by the stored cells. Two detectors, each of which reads false on `run(cells)`:
+    (1) the engine the incomplete branch builds is handed no cells (a spy on the engine constructor), while a complete certificate's check IS handed its cells;
+    (2) behaviourally, a flagged certificate carrying DELIBERATELY WRONG cells (valid in form, a bogus partition) is re-solved with exactly the work of a from-scratch `resolve=True` run on the
+        same window; a seeded run would inherit the bogus partition (measured: 758 seeds, 21,832 evaluations against 19,894)."""
+    c = mods["window_cert_check"]
+    h = Hump()
+    res, cert = h.solve()
+    seen: list = []
+
+    class Spy(c._SeededEngine):
+        def __init__(self, *a, cells=None, **kw):
+            seen.append(cells)
+            super().__init__(*a, cells=cells, **kw)
+
+    monkeypatch.setattr(c, "_SeededEngine", Spy)
+    h.check(c, cert, res)
+    assert len(seen) == 1 and seen[0], "a complete certificate's cells seed the check"
+    seen.clear()
+    bogus = copy.deepcopy(cert)
+    bogus["truncated"] = True
+    bogus["cells"] = [["piece", 1000.0 * i, 1000.0 * i + 500.0, 1.0e9] for i in range(1, 190)]
+    rep = h.check(c, bogus, res)
+    assert seen == [None], f"the incomplete branch must start the engine from scratch, not from the stored cells: {[None if s is None else len(s) for s in seen]}"
+    scratch = h.check(c, cert, res, resolve=True)
+    assert rep.resolved and rep.certificate_incomplete and not rep.used_certificate and rep.agreed
+    assert rep.evals == scratch.evals and rep.inner.status == scratch.inner.status, (rep.evals, scratch.evals)
 
 
 @claim("V-2", "window_cert_check", "    return hashlib.sha256(blob.encode(\"utf-8\")).hexdigest() != cert.get(\"geometry_digest\")",
@@ -433,13 +470,12 @@ def test_oracle_passes_on_the_real_code(cid, mdb, monkeypatch):
 def test_the_single_planted_reversion_fails_the_oracle(cid, mdb, monkeypatch):
     oracle, module, old, new, _db = CLAIMS[cid]
     mods = reverted_modules(module, old, new)         # built OUTSIDE the raises-block: a reversion that no longer matches is an ERROR, not a pass
-    with pytest.raises((Exception, pytest.fail.Exception)) as info:
+    with pytest.raises((AssertionError, pytest.fail.Exception)) as info:        # the oracle's own assertion/fail: an unrelated Exception (a TypeError, a broken module) is NOT "caught"
         _run(oracle, mods, mdb, monkeypatch)
-    assert not isinstance(info.value, (SyntaxError, NameError, ImportError)), f"the reversion broke the module instead of the claim: {info.value!r}"
 
 
 def test_every_claim_has_exactly_one_reversion_and_one_oracle():
-    assert set(CLAIMS) == {"Q-1", "Q-2", "Q-3", "Q-4", "Q-5", "Q-6", "Q-7", "Q-9", "V-1", "V-2", "V-3", "V-4"}
+    assert set(CLAIMS) == {"Q-1", "Q-2", "Q-3", "Q-4", "Q-5", "Q-6", "Q-7", "Q-9", "V-1", "V-2", "V-3", "V-4", "V-5"}
     assert len({(m, old) for _, m, old, _n, _d in CLAIMS.values()}) == len(CLAIMS)
 
 
