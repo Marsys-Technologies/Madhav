@@ -438,6 +438,7 @@
         "scripts/__tests__/test_teardown*.py",
         "scripts/__tests__/test_p01*.py",
         "scripts/__tests__/test_backup*.py",
+        "scripts/__tests__/test_century_resume*.py",
         "scripts/__tests__/test_w4*.py"
       ],
       "path_triggers": [
@@ -594,7 +595,8 @@
         "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_log_view_proof*.py",
         "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_equivalence_record*.py",
         "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_consumer_probe*.py",
-        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_dispatch_chain*.py"
+        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_dispatch_chain*.py",
+        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_century_launch*.py"
       ]
     },
     "governance-tool-tests-seal-inputs": {

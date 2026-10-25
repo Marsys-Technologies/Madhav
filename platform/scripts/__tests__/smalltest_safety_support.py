@@ -92,10 +92,13 @@ def request_for(root, scope, *, dry_run=False, rowset_sha256=None):
     return authorize(root, req)
 
 
-def absence_for(root, *, committed=None):
+def absence_for(root, *, committed=None, century=False):
+    """`century=True`: the census of a century_dispatch(_dryrun) also counts the committed-substep ledger (SR-RESUME-NOW, migration 1410; absence_evidence requires it)."""
     import csv
     import io
     counts = {t: 0 for t, _ in shared.ABSENCE_TABLES}
+    if century:
+        counts[shared.LEDGER_ABSENCE_TABLE] = 0
     counts.update({t: 0 for t in ('kala_gochara_publication', 'build_runs', 'build_run_assets',
         'asset_provenance_receipts', 'asset_freshness', 'asset_throughput', 'owned_test_runs',
         'ka_gochara_eval_window_record', 'ka_gochara_record_prerequisite',

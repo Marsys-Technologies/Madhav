@@ -56,6 +56,10 @@ NEAR_MISS_TABLES = (
     ("ka_gochara_near_miss_search", ""),
 )
 ABSENCE_TABLES = OUTPUT_TABLES + NEAR_MISS_TABLES   # the generation-scoped tables the absence census must count (the manifest and the cascade children are added where it is built)
+# SR-RESUME-NOW (migration 1410): the century build's committed-substep ledger. It is generation-scoped output too, but deliberately NOT in ABSENCE_TABLES: that tuple is the
+# single list the century contract (century_contract.output_tables) and the other lifecycles' censuses derive from, and the table exists only once 1410 is applied. The CENTURY
+# absence census adds it (absence_readback_sql(century=True); absence_evidence reads it from the request's kind); the teardown deletes it with the generation (teardown GENERATION_TABLES).
+LEDGER_ABSENCE_TABLE = "ka_gochara_build_ledger"
 
 
 class Refused(RuntimeError):
@@ -607,7 +611,48 @@ def staged_scope(req, root):
             or not re.fullmatch(r'[0-9a-f]{64}', str(scope.get('input_vector_sha256', '')))
             or not re.fullmatch(r'[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}', str(scope.get('manifest_id', '')))):
         raise Refused(('century' if century else 'measuring') + ' scope requires its actual launch, candidate manifest and input vector')
+    resumed_runs_problem(scope, root, century)
     return scope
+
+
+RESUMED_RUN_KEYS = ('run_id', 'plan_manifest_digest', 'resume_receipt', 'resume_acceptance')
+
+
+def resumed_runs_problem(scope, root, century):
+    """SR-RESUME-NOW teardown scope: a century build that was RESUMED left one more build_runs row per resume (each a new run over the same generation '5.0' chain),
+    and the century teardown deletes exactly the runs its scope names. `scope['resumed_runs']` (optional; century only) names them, each bound to the accepted
+    `century_resume` launch receipt that started it (same run id, same plan manifest digest, an actual execution of the century job). Without it a resumed
+    build's extra runs refuse the teardown by name (`only the identified staged run ... may be deleted`) and the chart could never be cleared for a fresh dispatch.
+    Raises Refused; returns None. A scope that carries no `resumed_runs` is judged exactly as before."""
+    import re
+    import uuid
+    if 'resumed_runs' not in scope:
+        return None
+    if not century:
+        raise Refused('resumed_runs belong to the century teardown scope only')
+    entries = scope['resumed_runs']
+    if not isinstance(entries, list) or not entries:
+        raise Refused('resumed_runs must be a non-empty list of the resumed runs')
+    seen = {scope.get('run_id')}
+    for entry in entries:
+        if not isinstance(entry, dict) or set(entry) != set(RESUMED_RUN_KEYS):
+            raise Refused('a resumed run names exactly ' + ', '.join(RESUMED_RUN_KEYS))
+        try:
+            canonical = str(uuid.UUID(str(entry['run_id']))) == entry['run_id']
+        except ValueError:
+            canonical = False
+        if not canonical or entry['run_id'] in seen:
+            raise Refused('a resumed run id must be a canonical UUID, distinct from every other run of the scope')
+        seen.add(entry['run_id'])
+        r, _ = accepted_receipt(root, entry['resume_receipt'], entry['resume_acceptance'], 'century_resume')
+        launch = r.get('launch') or {}
+        if (r.get('status') != 'COMPLETED' or r.get('item_id') != CENTURY_ITEM or launch.get('status') != 'LAUNCHED'
+                or launch.get('schema') != 'ky.century_launch/1' or launch.get('run_id') != entry['run_id']
+                or launch.get('chart_id') != CHART_ID or launch.get('asset_id') != ASSET_ID
+                or not re.fullmatch(r'[0-9a-f]{64}', str(entry['plan_manifest_digest']))
+                or launch.get('plan_manifest_digest') != entry['plan_manifest_digest']
+                or not re.fullmatch(r'brahma-build-pipeline-job-[a-z0-9]+(?:-[a-z0-9]+)*', str(launch.get('execution_name', '')))):
+            raise Refused('a resumed run differs from the accepted century_resume launch that started it')
 
 
 def dryrun_evidence(req, root, scope, rowset_sha256=None):
@@ -630,7 +675,7 @@ def dryrun_evidence(req, root, scope, rowset_sha256=None):
 
 
 # Every launch / committed-teardown kind a lifecycle can contain: an absence proof is only ever bound to the LATEST of them.
-DISPATCH_KINDS = ('smalltest_dispatch', 'measuring_dispatch', 'century_dispatch')
+DISPATCH_KINDS = ('smalltest_dispatch', 'measuring_dispatch', 'century_dispatch', 'century_resume')   # SR-RESUME-NOW: a resume's launch is a launch of the lifecycle, so a later dispatch needs its own teardown and absence after it too
 TEARDOWN_KINDS = ('smalltest_teardown', 'measuring_teardown', 'century_teardown')
 
 
@@ -639,9 +684,14 @@ def absence_evidence(req, root, *, teardown_receipt=None):
 
     The first dispatch instead consumes a baseline readback with run_id=null.
     Readback output is JSON emitted by SELECT; the executor retains full bytes.
+
+    A century dispatch (`req['kind']` century_dispatch / century_dispatch_dryrun; SR-RESUME-NOW, migration 1410): the census also counts the committed-substep ledger (LEDGER_ABSENCE_TABLE) and it must be absent. A fresh
+    build that found ledger rows would be a resume the writer refuses, so the dispatch refuses first, by name. Other lifecycles keep their census byte for byte (the
+    table need not exist for them).
     """
     r, a = accepted_receipt(root, req.get('absence_receipt'), req.get('absence_acceptance'), 'readback_sql')
     p = a.get('absence') or {}
+    century = req.get('kind') in ('century_dispatch', 'century_dispatch_dryrun')
     import hashlib
     if r.get('status') != 'COMPLETED' or not r.get('output_file'):
         raise Refused('independent absence readback output required')
@@ -667,6 +717,9 @@ def absence_evidence(req, root, *, teardown_receipt=None):
         raise Refused("accepted absence differs from the measured readback output")
     # Acceptance binds the measured readback output, the exact deleted scope,
     # and commit receipt. It is never inferred from exit zero or N-137 alone.
+    if century and isinstance(p.get('counts'), dict) and type(p['counts'].get(LEDGER_ABSENCE_TABLE)) is int and p['counts'][LEDGER_ABSENCE_TABLE] != 0:
+        raise Refused('committed-substep ledger rows exist for this chart and generation (' + LEDGER_ABSENCE_TABLE + ': ' + str(p['counts'][LEDGER_ABSENCE_TABLE])
+                      + '): a fresh century dispatch needs it absent; resume the build (century_resume) or tear it down first')
     if (p.get('schema') != 'ky.smalltest_independent_absence/1' or p.get('chart_id') != CHART_ID
             or p.get('generation') != GENERATION or p.get('registry_inert') is not True or p.get('output_sha256') != r['output_sha256']
             or not isinstance(p.get('counts'), dict) or not p['counts']
@@ -676,6 +729,8 @@ def absence_evidence(req, root, *, teardown_receipt=None):
                 'asset_provenance_receipts', 'asset_freshness', 'asset_throughput',
                 'ka_gochara_eval_window_record', 'ka_gochara_record_prerequisite',
                 'ka_gochara_eval_window_verification', 'ka_gochara_search_inventory_verification', 'owned_test_runs'}
+    if century:
+        required = required | {LEDGER_ABSENCE_TABLE}
     if not required <= p['counts'].keys():
         raise Refused('independent absence census is incomplete')
     if teardown_receipt is not None:
@@ -895,8 +950,10 @@ def smalltest_request_problem(req, root, measure=None):
         return str(exc) if isinstance(exc, Refused) else 'malformed small-test evidence'
 
 
-def absence_readback_sql(committed=None):
+def absence_readback_sql(committed=None, *, century=False):
     """One independent SELECT for readback_sql; no DB connection or mutation.
+
+    `century` (or a committed century teardown) adds the ledger count to the census (see absence_evidence).
 
     The cockpit stages this returned text under run/ops/sql, submits readback_sql,
     then V accepts its measured absence_proof plus the output byte digest.
@@ -921,8 +978,9 @@ def absence_readback_sql(committed=None):
     # a century teardown's census counts the century trigger; every other lifecycle keeps the small-test one, byte for byte
     trigger = CENTURY_TRIGGERED_BY if committed and committed.get('kind') == 'century_teardown' else TRIGGERED_BY
     run_where = f"id = {run}" if run else f"chart_id = {chart} AND triggered_by = '{trigger}'"
+    century = century or bool(committed and committed.get('kind') == 'century_teardown')
     queries = {t: f"SELECT count(*) FROM {t} WHERE chart_id = {chart} AND generation = {gen}{extra}"
-               for t, extra in ABSENCE_TABLES + (("kala_gochara_publication", ""),)}
+               for t, extra in ABSENCE_TABLES + (("kala_gochara_publication", ""),) + (((LEDGER_ABSENCE_TABLE, ""),) if century else ())}
     for t in ('ka_gochara_eval_window_record', 'ka_gochara_record_prerequisite',
               'ka_gochara_eval_window_verification', 'ka_gochara_search_inventory_verification'):
         queries[t] = f"SELECT count(*) FROM {t} WHERE chart_id = {chart} AND generation = {gen}"
@@ -1060,7 +1118,7 @@ def century_request_problem(req, root, measure=None):
             if req.get('item_id') != CENTURY_ITEM:
                 raise Refused('century dispatch belongs to ' + CENTURY_ITEM)
             century_args_problem(req.get('args') or {})
-            # Even a staging rollback may not bypass the previous lifecycle: generation '5.0' must be independently absent.
+            # Even a staging rollback may not bypass the previous lifecycle: generation '5.0' must be independently absent (the committed-substep ledger included).
             absence_evidence(req, root)
             if kind == 'century_dispatch':
                 # SR-A12-BACKUP-REMOVAL: a century dispatch no longer names a scoped backup (no dump is taken): the scoped_backup_problem call that stood here
@@ -1074,6 +1132,13 @@ def century_request_problem(req, root, measure=None):
                     except Exception:
                         raise Refused('scoped content could not be measured now; the century scope is not shown to be present') from None
                 century_dryrun_evidence(req, root)
+        elif kind in ('century_resume', 'century_resume_dryrun'):
+            # SR-RESUME-NOW: the ONE kind (and its staging-rollback twin) whose absence gate admits a partly present chain, and only a ledger-attested one
+            # (resume_evidence). A century_dispatch above still demands every count zero; nothing here is reachable from another kind.
+            if req.get('item_id') != CENTURY_ITEM:
+                raise Refused('century resume belongs to ' + CENTURY_ITEM)
+            century_args_problem(req.get('args') or {})
+            resume_evidence(req, root)
         elif kind in ('century_teardown', 'century_teardown_dryrun'):
             scope = staged_scope(req, root)
             if kind == 'century_teardown':
@@ -1105,6 +1170,258 @@ def century_dryrun_evidence(req, root, manifest_digest=None):
     except (KeyError, ValueError, TypeError):
         raise Refused('century staging rollback must precede the accepted launch request') from None
     return p
+
+
+# ───────────────────────────── the century resume (SR-RESUME-NOW, OWNER-RESUMABLE-REQUIRED-20261025) ─────────────────────────────
+# A resume continues a killed or failed century build over the substeps its own ledger has COMMITTED, instead of tearing the chain down and rebuilding it. A
+# century_dispatch demands generation '5.0' independently absent (absence_evidence, ledger included). A century_resume instead demands a ledger-attested partial chain:
+# an accepted read-only readback (resume_readback_sql) of the ledger and of the generation's tables, bound to the run it resumes, whose
+#   - ledger rows all carry ONE program identity, equal to the request's `program_identity` (implementation digest, writer source digest, plan digest, horizon);
+#     the executor additionally ties its writer_digest to the century contract at the reviewed commit, so a resume on a different program refuses by name;
+#   - ordinals are 0..n-1 (the recorded substeps are a prefix of the plan) and every substep was committed by an execution AND a run of the resumed lineage (the cited
+#     launch receipt and the launches it itself resumed);
+#   - manifest-bound rows name ONE manifest, the live candidate; every `scope_digest` is the sha256 of its canonical `scope`;
+#   - per-table row counts equal the sum of the ledger's `scope.tables[*].rows`: a row no committed substep accounts for is an UNATTESTED row and refuses by name, as
+#     does a ledger that accounts for more rows than are present (a deleted or torn-down row);
+#   - verification tables hold nothing (a resume after the verifier started is refused) and the one manifest is still a candidate.
+# The per-substep CONTENT digest (`scope.tables[*].digest`) is the WRITER's to recompute at plan time (it owns the natural keys, build_ledger.verify_chain); this gate cannot
+# re-derive a row digest, so it binds the ledger's counts and identity and records the digests, never claiming to have checked them (§N.8). Contacts and the near-miss
+# tables are not attributable to a substep (build_ledger's HONEST LIMITS): they are never equated, only required empty when no record substep is ledgered.
+# THE LEDGER IS THE WRITER LANE'S migration 1410 (public.ka_gochara_build_ledger) and the names below are read from it: platform/scripts/__tests__/
+# test_century_resume_ledger_schema.py PARSES the migration and fails when this section selects a column or a table the migration does not create.
+RESUME_LEDGER_TABLE = 'ka_gochara_build_ledger'
+RESUME_LEDGER_COLUMNS = ('substep_key', 'ordinal', 'manifest_id', 'vector_sha256', 'implementation_digest', 'writer_digest', 'plan_digest', 'build_run_id', 'execution_id',
+                         'rows_written', 'scope', 'scope_digest')       # selected as they are
+RESUME_LEDGER_HORIZON = 'horizon'                                      # a tstzrange: selected as [lower, upper]
+RESUME_LEDGER_KEYS = RESUME_LEDGER_COLUMNS + (RESUME_LEDGER_HORIZON,)  # the keys of one ledger row in the readback
+RESUME_IDENTITY_FIELDS = ('implementation_digest', 'writer_digest', 'plan_digest', 'horizon')
+RESUME_CHAIN_TABLES = tuple(t for t, _ in ABSENCE_TABLES) + ('ka_gochara_eval_window_record', 'ka_gochara_record_prerequisite')
+RESUME_UNATTRIBUTED_TABLES = ('ka_gochara_contact', 'ka_gochara_near_miss', 'ka_gochara_near_miss_search')
+RESUME_EXACT_TABLES = tuple(t for t in RESUME_CHAIN_TABLES if t not in RESUME_UNATTRIBUTED_TABLES)
+RESUME_MANIFEST_TABLE = 'kala_gochara_publication'
+RESUME_NEVER_PRESENT = ('ka_gochara_eval_window_verification', 'ka_gochara_search_inventory_verification')
+# the substeps that own chart x generation rows (build_ledger._probes): their ledger scope may not be NULL. The rest (rules, convention, body:*) are global idempotent substeps.
+RESUME_CHAIN_SUBSTEP_KINDS = ('manifest', 'snapshot', 'inventory', 'coverage', 'record', 'window', 'verify')
+RESUME_SCOPE_SCHEMA = 'gochara_build_ledger_scope/1'                   # build_ledger.SCOPE_SCHEMA
+RESUME_SCHEMA = 'ky.century_resume_readback/2'
+RESUME_BINDING_KEY = 'gochara_v5_century_resume'                       # the plan_manifest key the resume binding stages for the writer (see resume_binding)
+RESUME_BINDING_SCHEMA = 'gochara_v5_century_resume/1'
+RESUME_LINEAGE_MAX = 32      # the longest chain of resumes followed back to the original dispatch
+
+
+def resume_readback_sql():
+    """One independent SELECT for readback_sql (no connection, no mutation): the ledger of (chart, generation) and the generation's table counts, as ONE
+    `resume_proof` JSON column the verifier accepts together with the output byte digest (the shape of absence_readback_sql). Constants only enter the SQL."""
+    import json
+    chart = "'" + CHART_ID + "'::uuid"
+    gen = "'" + GENERATION + "'"
+    base = "'" + json.dumps(dict(schema=RESUME_SCHEMA, chart_id=CHART_ID, generation=GENERATION), sort_keys=True, separators=(',', ':')) + "'::jsonb"
+    columns = ', '.join("'" + c + "', l." + c for c in RESUME_LEDGER_COLUMNS)
+    columns += ", '" + RESUME_LEDGER_HORIZON + "', jsonb_build_array(lower(l." + RESUME_LEDGER_HORIZON + "), upper(l." + RESUME_LEDGER_HORIZON + "))"
+    ledger = ("COALESCE((SELECT jsonb_agg(jsonb_build_object(" + columns + ") ORDER BY l.ordinal, l.substep_key) FROM " + RESUME_LEDGER_TABLE
+              + " l WHERE l.chart_id = " + chart + " AND l.generation = " + gen + "), '[]'::jsonb)")
+    extras = dict(ABSENCE_TABLES)
+    queries = {t: f"SELECT count(*) FROM {t} WHERE chart_id = {chart} AND generation = {gen}{extras.get(t, '')}" for t in RESUME_CHAIN_TABLES + RESUME_NEVER_PRESENT}
+    counts = ', '.join("'" + t + "', (" + sql + ")" for t, sql in sorted(queries.items()))
+    manifest = ("(SELECT jsonb_build_object('count', count(*), 'status', min(status), 'manifest_id', min(manifest_id::text)) FROM " + RESUME_MANIFEST_TABLE
+                + " WHERE chart_id = " + chart + " AND generation = " + gen + ")")
+    return ("SELECT (" + base + " || jsonb_build_object('ledger', " + ledger + ", 'census', jsonb_build_object(" + counts + "), 'manifest', " + manifest
+            + "))::text AS resume_proof")
+
+
+def _resume_horizon(value):
+    """A horizon as a pair of UTC datetimes, from 'start,end' or a two-element list — else Refused by name."""
+    from datetime import datetime, timezone
+    parts = list(value) if isinstance(value, (list, tuple)) and len(value) == 2 else value.split(',') if isinstance(value, str) else None
+    if parts is None or len(parts) != 2:
+        raise Refused('a resume horizon must be two timestamps')
+    try:
+        pair = tuple(datetime.fromisoformat(str(part).replace('Z', '+00:00')) for part in parts)
+    except ValueError:
+        raise Refused('a resume horizon bound is not an ISO 8601 timestamp') from None
+    if any(bound.tzinfo is None for bound in pair):
+        raise Refused('a resume horizon bound carries no timezone')
+    return tuple(bound.astimezone(timezone.utc) for bound in pair)
+
+
+def resume_lineage(root, prior):
+    """(executions, run ids) of the lineage `prior` (a century_dispatch or century_resume launch receipt) belongs to: its own and, for a resume, those of the launches
+    it itself resumed, back to the original century_dispatch. Each hop reads the archived request of the receipt and checks it is the request the receipt bound."""
+    executions, runs, seen = set(), set(), set()
+    for _ in range(RESUME_LINEAGE_MAX):
+        name = prior.get('operation_id')
+        launch = prior.get('launch') or {}
+        if (prior.get('kind') not in ('century_dispatch', 'century_resume') or prior.get('status') != 'COMPLETED' or prior.get('exit_code') != 0
+                or prior.get('item_id') != CENTURY_ITEM or not isinstance(name, str) or name in seen
+                or launch.get('status') != 'LAUNCHED' or launch.get('schema') != 'ky.century_launch/1'
+                or launch.get('chart_id') != CHART_ID or launch.get('asset_id') != ASSET_ID):
+            raise Refused('resume lineage: every hop must be the COMPLETED launch receipt of a century dispatch or resume')
+        seen.add(name)
+        executions.add(launch.get('execution_name'))
+        runs.add(launch.get('run_id'))
+        if prior['kind'] == 'century_dispatch':
+            return executions, runs
+        import json
+        try:
+            archived = json.loads((root / 'done' / (name + '.json')).read_text())
+        except (OSError, ValueError):
+            raise Refused('resume lineage: the archived request of ' + str(name) + ' is unreadable') from None
+        if not isinstance(archived, dict) or request_hash(archived) != prior.get('request_sha256'):
+            raise Refused('resume lineage: the archived request of ' + str(name) + ' is not the request its receipt bound')
+        prior = read_evidence(root, 'receipts', archived.get('resumes'))
+    raise Refused('resume lineage is longer than ' + str(RESUME_LINEAGE_MAX))
+
+
+def resume_program_problem(req, contract):
+    """Raises Refused unless the request's program identity names the writer program the century contract declares (`image.writer_source_digest`): a resume
+    continues only the program that wrote the ledger and that the deployed image carries. Pure: `contract` is the parsed fleet/century_contract.json of the
+    reviewed tree (the executor ties the same two values at admission; the launcher and the staging rollback repeat it, so no entry point trusts the caller)."""
+    identity = req.get('program_identity')
+    declared = ((contract or {}).get('image') or {}).get('writer_source_digest') if isinstance(contract, dict) else None
+    if not (isinstance(identity, dict) and isinstance(declared, str) and declared and identity.get('writer_digest') == declared):
+        raise Refused('program_identity.writer_digest differs from the century contract writer_source_digest: a resume continues only the same program')
+
+
+def resume_evidence(req, root):
+    """The admission of a `century_resume` (see the section header). Raises Refused by name; returns the accepted readback proof."""
+    import csv
+    import hashlib
+    import io
+    import json
+    import re
+    from datetime import datetime
+    from pathlib import Path
+    prior = read_evidence(root, 'receipts', req.get('resumes'))
+    if req['resumes']['name'] != str(prior.get('operation_id')) + '.json':
+        raise Refused('resumes must cite a receipt by its own operation id')
+    executions, lineage_runs = resume_lineage(root, prior)
+    if (prior.get('launch') or {}).get('run_id') != req.get('resume_run_id'):
+        raise Refused('resume_run_id is not the run the cited launch receipt names')
+    identity = req.get('program_identity')
+    if not isinstance(identity, dict) or set(identity) != set(RESUME_IDENTITY_FIELDS):
+        raise Refused('program_identity must name exactly ' + ', '.join(RESUME_IDENTITY_FIELDS))
+    for field in RESUME_IDENTITY_FIELDS[:3]:
+        if not (isinstance(identity[field], str) and re.fullmatch(r'[0-9a-f]{64}', identity[field])):
+            raise Refused('program_identity.' + field + ' must be 64 lowercase hex')
+    if _resume_horizon(identity['horizon']) != _resume_horizon((req.get('args') or {}).get('horizon')):
+        raise Refused('program_identity.horizon differs from the request horizon')
+    # the accepted readback, measured: its bytes are the executor's retained output, the acceptance repeats exactly what they say
+    r, a = accepted_receipt(root, req.get('resume_receipt'), req.get('resume_acceptance'), 'readback_sql')
+    p = a.get('resume_readback') or {}
+    if r.get('status') != 'COMPLETED' or not r.get('output_file'):
+        raise Refused('independent resume readback output required')
+    path = Path(r['output_file'])
+    try:
+        if path.resolve().parent != (root / 'receipts').resolve():
+            raise Refused('resume readback output escapes evidence directory')
+        body = path.read_bytes()
+        if hashlib.sha256(body).hexdigest() != r.get('output_sha256'):
+            raise Refused('resume readback output digest mismatch')
+    except OSError:
+        raise Refused('resume readback output unreadable') from None
+    try:
+        records = list(csv.DictReader(io.StringIO(body.decode()), delimiter='\t'))
+        measured = json.loads(records[0]['resume_proof']) if len(records) == 1 else None
+    except (ValueError, KeyError, UnicodeError):
+        raise Refused('readback must emit one JSON resume_proof column') from None
+    if measured != {k: v for k, v in p.items() if k != 'output_sha256'} or p.get('output_sha256') != r['output_sha256']:
+        raise Refused('accepted resume readback differs from the measured readback output')
+    try:
+        if datetime.fromisoformat(r['ts']) <= datetime.fromisoformat(prior['ts']):
+            raise ValueError()
+    except (KeyError, ValueError, TypeError):
+        raise Refused('the resume readback must follow the launch it resumes') from None
+    if p.get('schema') != RESUME_SCHEMA or p.get('chart_id') != CHART_ID or p.get('generation') != GENERATION:
+        raise Refused('measured resume readback of this chart and generation required')
+    # the ledger: one program, committed inside the resumed lineage, accounting for the present rows exactly
+    rows = p.get('ledger')
+    if not isinstance(rows, list) or not rows:
+        raise Refused('no committed-substep ledger for this chart and generation: there is nothing to resume')
+    attested = {t: 0 for t in RESUME_EXACT_TABLES + (RESUME_MANIFEST_TABLE,)}
+    keys, ordinals, bound = set(), [], set()
+    for row in rows:
+        if not isinstance(row, dict) or set(row) != set(RESUME_LEDGER_KEYS):
+            raise Refused('ledger row does not carry exactly the columns ' + ', '.join(RESUME_LEDGER_KEYS))
+        key = row['substep_key']
+        if not isinstance(key, str) or not key or key in keys:
+            raise Refused('ledger substep_key missing or duplicated')
+        keys.add(key)
+        if type(row['ordinal']) is not int or row['ordinal'] < 0 or type(row['rows_written']) is not int or row['rows_written'] < 0:
+            raise Refused('ledger substep ' + key + ' has a malformed ordinal or row count')
+        ordinals.append(row['ordinal'])
+        for field in RESUME_IDENTITY_FIELDS:
+            same = (_resume_horizon(row[field]) == _resume_horizon(identity[field])) if field == 'horizon' else row[field] == identity[field]
+            if not same:
+                raise Refused('program identity differs from the ledger (' + field + ' of substep ' + key + '): a resume continues only the same program')
+        if row['execution_id'] not in executions:
+            raise Refused('ledger substep ' + key + ' was committed by an execution outside the resumed lineage')
+        if row['build_run_id'] not in lineage_runs:
+            raise Refused('ledger substep ' + key + ' was committed by a run outside the resumed lineage')
+        if (row['manifest_id'] is None) != (row['vector_sha256'] is None):
+            raise Refused('ledger substep ' + key + ' carries half of a manifest binding')
+        if row['manifest_id'] is not None:
+            if not (isinstance(row['vector_sha256'], str) and re.fullmatch(r'[0-9a-f]{64}', row['vector_sha256'])):
+                raise Refused('ledger substep ' + key + ' carries a malformed input-vector digest')
+            bound.add((row['manifest_id'], row['vector_sha256']))
+        scope, scope_digest = row['scope'], row['scope_digest']
+        if scope is None and scope_digest is None:
+            if key.partition(':')[0] in RESUME_CHAIN_SUBSTEP_KINDS:
+                raise Refused('ledger substep ' + key + ' owns chain rows but carries no scope: its rows are unattested')
+            continue                      # a global idempotent substep (rules, convention, body:*): an honest null, no rows to attest
+        if (scope is None or not isinstance(scope_digest, str) or not re.fullmatch(r'[0-9a-f]{64}', scope_digest) or not isinstance(scope, dict)
+                or scope.get('schema') != RESUME_SCOPE_SCHEMA or not isinstance(scope.get('tables'), dict)):
+            raise Refused('ledger substep ' + key + ' carries a malformed scope')
+        canonical = json.dumps(scope, sort_keys=True, separators=(',', ':'), ensure_ascii=False, allow_nan=False)     # build_ledger.canonical
+        if hashlib.sha256(canonical.encode('utf-8')).hexdigest() != scope_digest:
+            raise Refused('ledger substep ' + key + ' scope digest is not the digest of its scope')
+        for table, owned in scope['tables'].items():
+            if (not isinstance(owned, dict) or set(owned) != {'rows', 'digest'} or type(owned['rows']) is not int or owned['rows'] < 0
+                    or not (isinstance(owned['digest'], str) and re.fullmatch(r'[0-9a-f]{64}', owned['digest']))):
+                raise Refused('ledger substep ' + key + ' has a malformed row count')
+            if table in attested:
+                attested[table] += owned['rows']
+            elif not table.startswith('ka_gochara_contact'):         # the contacts a record grain references: never attributed
+                raise Refused('ledger substep ' + key + ' attests rows of a table outside the chain: ' + str(table))
+    if sorted(ordinals) != list(range(len(rows))):
+        raise Refused('ledger ordinals are not 0..' + str(len(rows) - 1) + ': the recorded substeps are not a prefix of the plan')
+    if len(bound) > 1:
+        raise Refused('ledger substeps are bound to more than one manifest')
+    census = p.get('census')
+    if not isinstance(census, dict) or not set(RESUME_CHAIN_TABLES + RESUME_NEVER_PRESENT) <= set(census) or any(type(n) is not int or n < 0 for n in census.values()):
+        raise Refused('resume census is incomplete')
+    for table in RESUME_NEVER_PRESENT:
+        if census[table]:
+            raise Refused('verification rows exist in ' + table + ': a resume after the verifier started is refused')
+    manifest = p.get('manifest')
+    if not isinstance(manifest, dict) or manifest.get('count') != 1 or manifest.get('status') != 'candidate':
+        raise Refused('exactly one candidate manifest is required to resume')
+    for table in RESUME_EXACT_TABLES + (RESUME_MANIFEST_TABLE,):
+        present = manifest['count'] if table == RESUME_MANIFEST_TABLE else census[table]
+        if present > attested[table]:
+            raise Refused('unattested rows in ' + table + ': ' + str(present) + ' present, the ledger accounts for ' + str(attested[table]))
+        if present < attested[table]:
+            raise Refused('the ledger accounts for more rows in ' + table + ' than are present: ' + str(attested[table]) + ' attested, ' + str(present) + ' present')
+    if not any(key.partition(':')[0] == 'record' for key in keys):
+        for table in RESUME_UNATTRIBUTED_TABLES:
+            if census[table]:
+                raise Refused('unattested rows in ' + table + ': ' + str(census[table]) + ' present and no record substep is in the ledger')
+    if not bound or next(iter(bound))[0] != manifest.get('manifest_id'):
+        raise Refused('the ledger is not bound to the live candidate manifest')
+    return p
+
+
+def resume_binding(req, root):
+    """The EXPLICIT resume binding the staged run carries (SR-RESUME-EXPLICIT-BINDING): `plan_manifest[RESUME_BINDING_KEY]`. The writer resumes ONLY on this key (and on a
+    ledger that proves everything again); a run without it that finds ledger rows refuses by name. It is built from the ACCEPTED readback (resume_evidence), so it can name
+    nothing the gate did not admit: the run being resumed, the program the ledger was built by (implementation, writer and plan digests, horizon as UTC bounds) and the
+    ordered keys of the substeps the ledger held when the readback measured it. Pure; raises Refused by name; deterministic, so the staging, the launcher and the dry run
+    all compute the same manifest."""
+    proof = resume_evidence(req, root)
+    identity = req['program_identity']
+    return {'schema': RESUME_BINDING_SCHEMA, 'resumes_run_id': req['resume_run_id'],
+            'program': {'implementation_digest': identity['implementation_digest'], 'writer_digest': identity['writer_digest'], 'plan_digest': identity['plan_digest'],
+                        'horizon': [bound.isoformat() for bound in _resume_horizon(identity['horizon'])]},
+            'ledger_substeps': [row['substep_key'] for row in sorted(proof['ledger'], key=lambda r: r['ordinal'])]}
 
 
 def century_generation_ownership(cur, owned: list[str], *, remedy: str, notes: list[str] | None = None, lock: bool = False):

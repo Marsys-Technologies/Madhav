@@ -49,7 +49,7 @@ def staging_proof(manifest=None, **over):
 
 def dispatch_request(root, *, kind='century_dispatch', with_dryrun=True, proof=None, receipt_kind='century_dispatch_dryrun'):
     req = dict(kind=kind, item_id='J-4e', operation_id='launch', args=dict(ARGS))
-    req['absence_receipt'], req['absence_acceptance'] = S.absence_for(root)
+    req['absence_receipt'], req['absence_acceptance'] = S.absence_for(root, century=True)      # a century dispatch's census counts the 1410 ledger too
     if with_dryrun:
         rr, ar = S.accepted(root, receipt_kind, 'staging-rollback', item_id='J-4e', staging=proof or staging_proof())
         req.update(dryrun_receipt=rr, dryrun_acceptance=ar)

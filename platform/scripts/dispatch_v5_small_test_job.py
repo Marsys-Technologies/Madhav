@@ -514,9 +514,13 @@ def lookup(*, run_id: str | None = None) -> list[dict]:
     return [r for r in runs if run_id is None or r["id"] == run_id]
 
 
-def _admit(cur) -> tuple[list[dict], list[str]]:
+def _admit(cur, resume=None) -> tuple[list[dict], list[str]]:
     """Every admission check (Codex PR 3097 rulings 1 to 5), read-only, INSIDE the chart lock and before anything is staged. Returns the
-    existing small-test runs and notes for the listing; raises a named refusal otherwise."""
+    existing small-test runs and notes for the listing; raises a named refusal otherwise.
+
+    `resume` (SR-RESUME-NOW) is for dispatch_v5_century_resume_job.py only and is None for every other caller, which then behaves exactly as before:
+    a callable `resume(cur, rows, manifest) -> notes` that REPLACES the refusal of existing generation '5.0' output below (and nothing else: the
+    N-137 end state is then judged with the century trigger as well, because the run being resumed is itself a century run)."""
     notes: list[str] = []
     _take_chart_lock(cur)
     shared.refuse_if_frozen(cur)                                   # ruling 1: published / sealed / serving
@@ -529,7 +533,8 @@ def _admit(cur) -> tuple[list[dict], list[str]]:
             "active run per chart; wait for it to end (a planned run that was never started is failed by the cockpit watchdog after "
             f"{EXECUTE_WITHIN_MINUTES} minutes) or stop it, then dispatch")
     depends_on = _validate_registry_row(cur)                       # ruling 4 + 3: row locked FOR SHARE, validated inactive, never activated
-    problems = shared.end_state_problems(cur)                      # ruling 2: the monitor's N-137 conditions (the shared copy)
+    problems = (shared.end_state_problems(cur) if resume is None      # ruling 2: the monitor's N-137 conditions (the shared copy)
+                else shared.end_state_problems(cur, (TRIGGERED_BY, shared.CENTURY_TRIGGERED_BY)))
     if problems:
         raise shared.Refused("the Nirmana N-137 conditions for the small-test asset do not hold: " + "; ".join(problems))
     _check_dependencies_ready(cur, depends_on)                     # SR-W3-REGISTRY-ROW: every depends_on asset lit + fresh (scope-aware); state after structure
@@ -545,7 +550,9 @@ def _admit(cur) -> tuple[list[dict], list[str]]:
     # not. The snapshot substep replaces the whole generation's chain, so a dispatch over existing output is exactly the interrupted-replacement
     # hazard; the only way forward is a clean start. The refusal does not name another script: it names the runbook.
     rows, manifest = shared.generation_exists(cur)
-    if rows or manifest is not None:
+    if resume is not None:
+        notes.extend(resume(cur, rows, manifest))
+    elif rows or manifest is not None:
         raise shared.Refused(
             f"generation '{shared.GENERATION}' already has output for chart {CHART_ID} ({rows} output row(s); manifest "
             f"{'present, status ' + str(manifest['status']) if manifest is not None else 'absent'}): this dispatch never builds over it, "
@@ -568,13 +575,14 @@ def main(argv: list[str] | None = None) -> None:
 
 def _main(argv=None, *, marker_builder=build_slice_marker,
           operation_kind="smalltest_dispatch", request_policy=_smalltest_request_policy,
-          manifest_check=None, parse_args=None, manifest_builder=None, triggered_by=None, report_builder=None):
+          manifest_check=None, parse_args=None, manifest_builder=None, triggered_by=None, report_builder=None, admit=None):
     """Shared staging transaction; explicit measuring and century entry points supply their policy.
 
     This is not a CLI override. The small-test entry point retains its full-shape
     refusal; no environment flag or request argument can switch its authority.
     The four trailing keywords are for dispatch_v5_century_job.py only: its own argument parser, its manifest (NO slice marker),
     its run trigger and its report. Left at None they are the small-test/measuring behaviour, unchanged.
+    `admit` (SR-RESUME-NOW) is for dispatch_v5_century_resume_job.py only: its admission, a `_admit(cur, resume=...)`; None is `_admit(cur)`.
     """
     args = (parse_args or _parse_args)(sys.argv[1:] if argv is None else argv)
     manifest_builder = manifest_builder or build_small_test_manifest
@@ -643,7 +651,7 @@ def _main(argv=None, *, marker_builder=build_slice_marker,
     created_at = None                                # the stored value, returned by the INSERT (None on a dry run: no row is kept)
     phase = "open"                                   # open -> committing (COMMIT sent) -> committed
     try:
-        existing, notes = _admit(cur)
+        existing, notes = (admit or _admit)(cur)
         candidate = _load_inactive_candidate(cur)    # the row is read inactive; NO UPDATE of asset_registry is ever issued
         manifest, manifest_digest = manifest_builder(
             candidate=candidate, slice_marker=slice_marker)

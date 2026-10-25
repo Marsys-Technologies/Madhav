@@ -26,7 +26,8 @@ import datetime as dt
 FAMILIES = {
     "century": {"kind": "century_cancel", "item": "J-4e", "dispatch_kind": "century_dispatch", "launch_schema": "ky.century_launch/1", "schema": "ky.century_cancel/1",
                 "script": "century_cancel.py", "job": "brahma-build-pipeline-job", "execution": "brahma-build-pipeline-job-abc12", "other": "brahma-build-pipeline-job-zzz99",
-                "foreign_job_execution": "gochara-verification-job-abc12", "foreign_dispatch": ("measuring_dispatch", "J-3c")},
+                "foreign_job_execution": "gochara-verification-job-abc12", "foreign_dispatch": ("measuring_dispatch", "J-3c"),
+                "also_dispatch": ("century_resume",)},      # SR-RESUME-NOW: a resume launches the same job, so its launch receipt may be cancelled the same way
     "verification": {"kind": "verification_cancel", "item": "J-5s", "dispatch_kind": "verification_job", "launch_schema": "ky.verification_launch/1", "schema": "ky.verification_cancel/1",
                      "script": "verification_cancel.py", "job": "gochara-verification-job", "execution": "gochara-verification-job-abc12", "other": "gochara-verification-job-zzz99",
                      "foreign_job_execution": "brahma-build-pipeline-job-abc12", "foreign_dispatch": ("century_dispatch", "J-4e")},
@@ -153,7 +154,7 @@ def test_k4_a_target_other_than_the_dispatched_execution_is_refused_and_nothing_
 def test_k4_another_familys_dispatch_receipt_never_binds_the_target(world):
     kind, item = world.fam["foreign_dispatch"]
     foreign = world.dispatch_ref(kind=kind, item=item)                                                         # same execution name, the other family's COMPLETED launch
-    assert world.validate(world.cancel_request(dispatch=foreign)) == f"the cited receipt is not the COMPLETED launch of a {world.fam['item']} {world.fam['dispatch_kind']}"
+    assert world.validate(world.cancel_request(dispatch=foreign)) == f"the cited receipt is not the COMPLETED launch of a {world.fam['item']} {' or '.join((world.fam['dispatch_kind'], *world.fam.get('also_dispatch', ())))}"
     assert "does not match its sha256" in world.validate(world.cancel_request(dispatch=dict(foreign, sha256="0" * 64)))
     wrong_item = world.dispatch_ref(item="J-3c" if world.fam["item"] != "J-3c" else "J-4e")
     assert "not the COMPLETED launch" in world.validate(world.cancel_request(dispatch=wrong_item))

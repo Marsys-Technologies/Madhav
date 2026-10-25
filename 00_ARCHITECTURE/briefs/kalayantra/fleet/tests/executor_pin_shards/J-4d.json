@@ -1,0 +1,103 @@
+{
+  "schema": "ky.executor_pin_shard/2",
+  "item": "J-4d",
+  "after": "century_dispatch_dryrun",
+  "entries": {
+    "century_resume": {
+      "enabled": true,
+      "needs": "builder",
+      "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/century_launch.py",
+      "fixed_args": [
+        "--resume"
+      ],
+      "allowed_args": [
+        "classes",
+        "final_rules",
+        "defer_in_build_verify",
+        "horizon",
+        "result_policy"
+      ],
+      "production": true,
+      "remote_async": true,
+      "enabled_by": "J-4d",
+      "also_needs": [
+        "gcloud"
+      ]
+    },
+    "century_resume_dryrun": {
+      "enabled": true,
+      "needs": "builder",
+      "script": "platform/scripts/dispatch_v5_century_resume_job.py",
+      "fixed_args": [
+        "--i-am-steward",
+        "--after-settled-1",
+        "--dry-run"
+      ],
+      "allowed_args": [
+        "classes",
+        "final_rules",
+        "defer_in_build_verify",
+        "horizon",
+        "result_policy"
+      ],
+      "production": false,
+      "enabled_by": "J-4d"
+    }
+  },
+  "classes": {
+    "century_resume": [
+      "remote_async",
+      "marker_in_process"
+    ],
+    "century_resume_dryrun": [
+      "dryrun_census"
+    ]
+  },
+  "w4_bindings": {
+    "century_resume": [
+      "builder",
+      "00_ARCHITECTURE/briefs/kalayantra/fleet/century_launch.py",
+      [
+        "--resume"
+      ],
+      [
+        "classes",
+        "final_rules",
+        "defer_in_build_verify",
+        "horizon",
+        "result_policy"
+      ],
+      true,
+      null
+    ],
+    "century_resume_dryrun": [
+      "builder",
+      "platform/scripts/dispatch_v5_century_resume_job.py",
+      [
+        "--i-am-steward",
+        "--after-settled-1",
+        "--dry-run"
+      ],
+      [
+        "classes",
+        "final_rules",
+        "defer_in_build_verify",
+        "horizon",
+        "result_policy"
+      ],
+      false,
+      null
+    ]
+  },
+  "function_hashes": {
+    "W4": {
+      "receipt": "8b9e18e2447268b12b3d40a6904de37396e4c876a3a7f1dffca131ab2a8aa47e",
+      "smalltest_policy_problem": "c9971a9af00d18aae2a7d6ce386ae716e9071ddb29cbe455b2290eef1a44e808",
+      "REMOTE_ASYNC_KINDS": "4084556c5a569a0a02d24b04e1e2839bdeedb9d397844d4fd4611b5bb60171ee",
+      "measuring_cancel_problem": "a247e838cdf38bf6f2f77365bdceddbb4d1a3d115b5677a97efc8f0477eff211",
+      "LAUNCH_SCHEMAS": "9a78cefc07f0a039d0ba36f34809ec4f6a10e37a93fcad957356ff71d4122cd5",
+      "century_contract_problem": "8b20945bde0dc2d6e0ddd40b645c118d2b7b975ba8e218d293b4fb04ca8a834d",
+      "CANCEL_FAMILIES": "cfc78073d20489772fe64c547550fa3fe7243071a2335f333b7f83d823a45f8e"
+    }
+  }
+}

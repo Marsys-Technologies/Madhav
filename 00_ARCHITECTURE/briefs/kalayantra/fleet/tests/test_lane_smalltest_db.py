@@ -54,6 +54,9 @@ def _lane_database(prefix, tag, *, seed=None):
                     conn.execute((migrations / '1382_gochara_authority_no_truncate.sql').read_text())
             for ddl in STUB_DDL: conn.execute(ddl)
             apply_near_miss_storage(conn)       # the teardown's closed list covers the migration-1308 generation tables (as c37/c38/n18 do)
+            # SR-RESUME-NOW: the teardown's closed list (GENERATION_TABLES) and the century census also cover the migration-1410 committed-substep ledger. It is the REAL
+            # table: apply_near_miss_storage (above) applies platform/migrations/1410_ka_gochara_build_ledger.sql itself, so this fixture cannot drift from the schema.
+            assert conn.execute("SELECT to_regclass('public.ka_gochara_build_ledger')").fetchone()[0] is not None, 'migration 1410 was not applied'
             conn.execute('ALTER TABLE asset_registry ADD COLUMN layer text DEFAULT \'L3\', ADD COLUMN natural_key_partition text')
             conn.execute('ALTER TABLE build_runs ADD COLUMN action text, ADD COLUMN plan jsonb')
             conn.execute('ALTER TABLE build_run_assets ADD COLUMN position integer, ADD COLUMN state text')
@@ -85,6 +88,14 @@ def _lane_database(prefix, tag, *, seed=None):
 def lane_db():
     with _lane_database('ky_j1atest_', 'cli') as (target, _dsn):
         yield target
+
+
+def test_lane_fixture_ledger_is_the_real_migration_1410():
+    """The lane database's committed-substep ledger is migration 1410 APPLIED (not a hand-written table): the columns and types it holds are the ones the migration states."""
+    sys.path.insert(0, str(ROOT / 'platform/scripts/__tests__'))
+    import ledger_migration_support as M
+    with _lane_database('ky_j1atest_', 'ledger') as (_target, dsn), psycopg.connect(dsn, autocommit=True) as conn:
+        assert M.held_columns(conn) == M.migration_columns(M.find_migration()[1])
 
 
 @pytest.mark.parametrize('kind', KINDS + ('readback_sql',))

@@ -170,8 +170,7 @@ def test_x3_every_production_kind_of_the_real_table_is_classified(tmp_path):
     exempt = {k for k in production if mod.mechanical_exempt(k)}
     assert exempt == {"smalltest_teardown", "measuring_teardown", "century_teardown", "publish_head", "rollback_head", "layer_publish", "layer_rollback", *CANCELS,
                       "orchestrator_rebuild_teardown", "orchestrator_rebuild_cancel"}   # SR-PREBUILD-ALL: every *_teardown is a deletion, never mechanical
-    assert production - exempt == {"backup_snapshot", "backup_restore_verify", "smalltest_dispatch", "measuring_dispatch", "verification_job", "century_dispatch",
-                                   "orchestrator_rebuild", "layer_verify", "scheduler_pause", "scheduler_resume", "protected_window_dispatch", "gochara_role_provisioning_dispatch"}   # U-M-01 / U-M-03: a dispatch, neither a deletion nor a serving change, so mechanical-eligible with a dry run; SR-CANCEL-LANE: every cancel kind (orchestrator_rebuild_cancel included) is single-signer, held with measuring_cancel
+    assert production - exempt == PRODUCTION - EXEMPT   # BASE_MECHANICAL_ELIGIBLE (U-M-01 / U-M-03: a dispatch, neither a deletion nor a serving change, so mechanical-eligible with a dry run; SR-CANCEL-LANE: every cancel kind is single-signer) plus what the reviewed pin shards add (SR-RESUME-NOW: century_resume); hand-written, never read from the table under test
     assert mod.NO_DRYRUN_KINDS == {"backup_snapshot", "backup_restore_verify"} and all(k + "_dryrun" in table for k in {"smalltest_dispatch", "measuring_dispatch", "scheduler_pause", "scheduler_resume", "protected_window_dispatch", "gochara_role_provisioning_dispatch", "orchestrator_rebuild_cancel"})
 
 
