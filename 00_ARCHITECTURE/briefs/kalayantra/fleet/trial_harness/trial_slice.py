@@ -8,7 +8,8 @@ once per pending substep, final rules, strict certification, in-build verify DEF
 
   trial_slice.py run       --checkout PATH --result-policy POLICY --out DIR [--label L] [--classes a,b,..] [--budget-s N] [--keep-db] [--code-head SHA]
                            [--baseline baseline_12.json] [--gate-entry module:function] [--verify] [--crosscheck [--crosscheck-seed N]] [--cert-audit]
-  trial_slice.py resume-probe --out DIR         TR-26: a resume with a perturbed program digest must refuse by name (on a copy of the killed run's database)
+  trial_slice.py resume-probe --out DIR         TR-26: a resume with a perturbed program digest (source, then library, one at a time) must refuse by name (on a copy of the killed run's database)
+  trial_slice.py completion-probe --checkout PATH --out DIR   TR-26 G-completion: the horizon_basis pin of a century-shaped manifest + a provenance receipt from a build through the REAL entry (asset_runner.run_asset)
   trial_slice.py cert-audit --out DIR           TR-26: the read-only certificate-size / truncation audit of a KEPT trial database (the run does it itself with --cert-audit, before the drop)
   trial_slice.py report    --out DIR            re-render the report from the DB the state names (no build)
   trial_slice.py drop      --out DIR            drop the throwaway DB the state names (only one this harness created)
@@ -1801,27 +1802,51 @@ def cmd_run(a) -> int:
     return 0
 
 
-def cmd_resume_probe(a) -> int:
-    """TR-26 kill+resume leg (SR-RESUME-NOW (ii)): a RESUME ATTEMPTED WITH A DIFFERENT PROGRAM DIGEST must refuse by name.  On a COPY of the killed run's database (CREATE DATABASE .. TEMPLATE; the
-    real one is never touched), the resume is attempted from a PERTURBED copy of the checkout's sidecar — one comment line appended to the writer and to every gochara_kernel module, so any definition of
-    "source/library digest" that covers the writer or the kernel changes — in a child process.  Evidence recorded in the killed state (`refusal_probe`): whether the writer refused, the refusal's name
-    (exception class) and how many substeps it ran (0 for a refusal before any work).  The probe database and the perturbed copy are removed.  Counts and names only."""
-    import psycopg
-    out = Path(a.out).resolve()
-    state = load_state(out)
-    if state.get("killed_after_substep") is None or state.get("writer_resumed") or state.get("dropped"):
-        raise Refused("resume-probe needs a KILLED, not yet resumed, not dropped run (run --abort-after-substep first; probe BEFORE --writer-resume)")
-    checkout = Path(state["code"]["checkout"])
+#: SR-RESUME-NOW (3): what "a different program digest" is, one dimension at a time.  `source` = the writer module itself; `library` = the code the implementation digest governs besides it
+#: (services/gochara_kernel, services/gochara_rules).  Each is perturbed ALONE and each resume attempt must refuse by name on its own.
+PERTURBATIONS = {"source": ("pipeline/orchestrator/writers/ka_gochara_v5.py",),
+                 "library": ("services/gochara_kernel/*.py", "services/gochara_rules/*.py")}
+
+
+def refusal_record(result: dict, perturbation: str) -> dict:
+    """One resume attempt's evidence from the probe child's result: refused iff the child raised AND ran no substep (`executed == []`).  A child that went on to resume (no exception) or died after running
+    a substep is NOT a refusal.  Counts and names only."""
+    ex = result.get("executed")
+    return {"attempted": True, "perturbation": perturbation, "refused": bool(result.get("refused_with")) and ex == [], "refusal_name": result.get("refused_with"),
+            "message": result.get("message"), "executed_substeps": None if ex is None else len(ex)}
+
+
+def combine_refusals(by_dimension: dict) -> dict:
+    """The record G-7 reads: refused only if EVERY dimension refused; the name/message are the first dimension that did not refuse (else the first one)."""
+    first = next((r for r in by_dimension.values() if not r["refused"]), next(iter(by_dimension.values())))
+    exs = [r["executed_substeps"] for r in by_dimension.values()]
+    return {"attempted": True, "perturbation": "; ".join(f"{k}: {r['perturbation']}" for k, r in by_dimension.items()), "refused": all(r["refused"] for r in by_dimension.values()),
+            "refusal_name": first["refusal_name"], "message": first["message"], "executed_substeps": None if any(x is None for x in exs) else max(exs), "by_dimension": by_dimension}
+
+
+def perturbed_copy(checkout: Path, dest: Path, dim: str) -> list:
+    """A copy of the checkout's sidecar (no tests) under `dest` with one comment line appended to every `dim` file; returns the perturbed files.  Refuses when the dimension matches no file."""
     sidecar = checkout / "platform" / "python-sidecar"
-    pdir = out / "resume_probe"
+    shutil.copytree(sidecar, dest / "platform" / "python-sidecar", ignore=shutil.ignore_patterns("__pycache__", "tests", "node_modules", ".pytest_cache"))
+    if (checkout / "platform" / "migrations").is_dir():
+        (dest / "platform" / "migrations").symlink_to(checkout / "platform" / "migrations")
+    ps = dest / "platform" / "python-sidecar"
+    files = sorted({f for pat in PERTURBATIONS[dim] for f in ps.glob(pat)})
+    if not files:
+        raise Refused(f"resume-probe: the {dim} perturbation matched no file in the checkout ({PERTURBATIONS[dim]}): nothing would be perturbed")
+    for f in files:
+        f.write_text(f.read_text(encoding="utf-8") + f"\n# resume-probe: perturbed {dim} digest\n", encoding="utf-8")
+    return files
+
+
+def attempt_resume_with_perturbation(state: dict, out: Path, checkout: Path, dim: str, timeout_s: int) -> dict:
+    """A copy of the killed run's database (CREATE DATABASE .. TEMPLATE; the real one is never touched), a copy of the checkout's sidecar with one comment line appended to the `dim` files, and a child
+    process that attempts `run --writer-resume --probe-run` from that copy.  The probe database and the perturbed copy are removed.  Returns `refusal_record`."""
+    import psycopg
+    pdir = out / f"resume_probe_{dim}"
     shutil.rmtree(pdir, ignore_errors=True)
     pert = pdir / "checkout"
-    shutil.copytree(sidecar, pert / "platform" / "python-sidecar", ignore=shutil.ignore_patterns("__pycache__", "tests", "node_modules", ".pytest_cache"))
-    if (checkout / "platform" / "migrations").is_dir():
-        (pert / "platform" / "migrations").symlink_to(checkout / "platform" / "migrations")
-    ps = pert / "platform" / "python-sidecar"
-    for f in [ps / "pipeline/orchestrator/writers/ka_gochara_v5.py", *sorted((ps / "services/gochara_kernel").glob("*.py"))]:
-        f.write_text(f.read_text(encoding="utf-8") + "\n# resume-probe: perturbed program digest\n", encoding="utf-8")
+    files = perturbed_copy(checkout, pert, dim)
     probe_db = DB_PREFIX + uuid.uuid4().hex[:8]
     with psycopg.connect(ADMIN_DSN, autocommit=True, connect_timeout=5) as admin:
         admin.execute(f'CREATE DATABASE "{probe_db}" TEMPLATE "{state["db"]}"')
@@ -1831,20 +1856,48 @@ def cmd_resume_probe(a) -> int:
         write_json(pdir / "state.json", {**state, "db": probe_db, "code": {**state["code"], "checkout": str(pert.resolve())}, "writer_resumed": False})
         cmd = [sys.executable, "-I", "-X", "utf8", str(HERE / "trial_slice.py"), "run", "--checkout", str(pert), "--result-policy", state["requested_policy"], "--out", str(pdir), "--label", "probe",
                "--classes", ",".join(state["classes"]), "--writer-resume", "--probe-run", "--code-head", state["code"]["head"]] + (["--collect"] if state.get("collect") else [])
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=a.timeout_s)
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout_s)
         pr = pdir / "probe_result.json"
         result = json.loads(pr.read_text()) if pr.is_file() else {"refused_with": None, "executed": None, "message": f"the probe child wrote no result (exit {proc.returncode}): {scrub(proc.stderr, 160)}"}
     finally:
         with psycopg.connect(ADMIN_DSN, autocommit=True, connect_timeout=5) as admin:
             admin.execute(f'DROP DATABASE IF EXISTS "{probe_db}" WITH (FORCE)')                    # only the database this command created
         shutil.rmtree(pert, ignore_errors=True)
-    ex = result.get("executed")
-    state["refusal_probe"] = {"attempted": True, "perturbation": "one comment line appended to the writer module and every services/gochara_kernel module",
-                              "refused": bool(result.get("refused_with")) and ex == [], "refusal_name": result.get("refused_with"), "message": result.get("message"),
-                              "executed_substeps": None if ex is None else len(ex)}
+    return refusal_record(result, f"one comment line appended to {len(files)} {dim} file(s): {', '.join(PERTURBATIONS[dim])}")
+
+
+def cmd_resume_probe(a) -> int:
+    """TR-26 kill+resume leg (SR-RESUME-NOW (ii)(3)): a RESUME ATTEMPTED WITH A DIFFERENT PROGRAM DIGEST must refuse by name — once with only the SOURCE digest changed (the writer module) and once with only
+    the LIBRARY digest changed (the gochara kernel and rules modules), each from a perturbed copy of the checkout's sidecar on a COPY of the killed run's database, in a child process.  Evidence recorded in
+    the killed state (`refusal_probe`, with `by_dimension`): whether the writer refused, the refusal's name (exception class) and how many substeps it ran (0 for a refusal before any work).  Counts and names only."""
+    out = Path(a.out).resolve()
+    state = load_state(out)
+    if state.get("killed_after_substep") is None or state.get("writer_resumed") or state.get("dropped"):
+        raise Refused("resume-probe needs a KILLED, not yet resumed, not dropped run (run --abort-after-substep first; probe BEFORE --writer-resume)")
+    checkout = Path(state["code"]["checkout"])
+    by_dim = {dim: attempt_resume_with_perturbation(state, out, checkout, dim, a.timeout_s) for dim in PERTURBATIONS}
+    state["refusal_probe"] = combine_refusals(by_dim)
     write_json(out / "state.json", state)
     print(json.dumps(state["refusal_probe"], indent=1))
     return 0 if state["refusal_probe"]["refused"] else 1
+
+
+def cmd_completion_probe(a) -> int:
+    """TR-26 G-completion (SR-J4E-HORIZON-BASIS, SR-J4E-POSTRUN-READBACKS): the century's two completion checks that TR #2 never exercised — the horizon_basis pin of a century-shaped manifest, and the
+    provenance receipt of a build through the REAL build entry — on the local lane cluster.  Writes <out>/completion.json (raw readbacks); the verdict is `gates` G-8 (`evaluate --completion`).  Exit 0 only
+    if both checks read TRUE here (the console view; the gate re-judges the recorded readbacks)."""
+    import completion
+    out = Path(a.out).resolve()
+    out.mkdir(parents=True, exist_ok=True)
+    checkout = Path(a.checkout).resolve()
+    head = a.code_head or git(checkout, "rev-parse", "HEAD")
+    if not head or not re.fullmatch(r"[0-9a-f]{40}", head):
+        raise Refused("the checkout is not a git work tree (a `git archive` export): pass --code-head <40-hex> so the record names the code it measured")
+    bind_checkout(checkout)
+    rec = completion.run_completion_probe(out, checkout, slice_days=a.slice_days, policy=a.policy, keep_db=a.keep_db, code_head=head)
+    got = completion.evaluate_record(rec, rec.get("ruled_horizon"))
+    print(json.dumps({"total_wall_s": rec.get("total_wall_s"), **{k: {"state": v[0], "why": v[1]} for k, v in got.items()}}, indent=1))
+    return 0 if all(v[0] is True for v in got.values()) else 1
 
 
 def cmd_cert_audit(a) -> int:
@@ -1957,6 +2010,8 @@ def cmd_evaluate(a) -> int:
     base = json.loads(Path(a.baseline).read_text())
     profile = load_profile(a.profile)
     second = json.loads(Path(a.second_report).read_text()) if a.second_report else None
+    if getattr(a, "completion", None):                                    # TR-26 G-completion: the probe's raw readbacks, judged by G-8
+        rep["completion"] = json.loads(Path(a.completion).read_text())
     if a.dispatch_checkout:
         dispatch = module_digests(Path(a.dispatch_checkout).resolve())
     else:
@@ -2166,6 +2221,13 @@ def build_parser() -> argparse.ArgumentParser:
     rp = sub.add_parser("resume-probe")
     rp.add_argument("--out", required=True, help="the KILLED run directory (before --writer-resume): a resume with a perturbed program digest is attempted on a copy of its database")
     rp.add_argument("--timeout-s", type=int, default=900)
+    cp = sub.add_parser("completion-probe")
+    cp.add_argument("--checkout", required=True)
+    cp.add_argument("--out", required=True)
+    cp.add_argument("--slice-days", type=int, default=30, help="horizon of the all-class test slice that goes through the real build entry (<= 366 days)")
+    cp.add_argument("--policy", default="all_null_candidate/1", help="the numeric-result policy staged in the century config")
+    cp.add_argument("--keep-db", action="store_true")
+    cp.add_argument("--code-head", default=None, help="the head (40 hex) the checkout is an export of (required for a `git archive` export)")
     ca = sub.add_parser("cert-audit")
     ca.add_argument("--out", required=True, help="a run directory whose database was kept (--keep-db): the read-only audit is printed and written to <out>/certificate_audit.json")
     p = sub.add_parser("report")
@@ -2187,6 +2249,7 @@ def build_parser() -> argparse.ArgumentParser:
     e.add_argument("--baseline", required=True)
     e.add_argument("--profile", default=None)
     e.add_argument("--second-report", default=None)
+    e.add_argument("--completion", default=None, help="TR-26: <out>/completion.json written by `completion-probe` (G-8 G-completion reads its raw readbacks)")
     e.add_argument("--dispatch-checkout", default=None)
     e.add_argument("--dispatch-modules", default=None)
     e.add_argument("--verification-report", default=None, help="the verification job's own JSON report (G-4/G-5 from the real job instead of the inline stage)")
@@ -2237,7 +2300,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv=None) -> int:
     a = build_parser().parse_args(argv)
-    return {"run": cmd_run, "cert-audit": cmd_cert_audit, "resume-probe": cmd_resume_probe, "report": cmd_report, "drop": cmd_drop, "baseline": cmd_baseline, "evaluate": cmd_evaluate, "project": cmd_project,
+    return {"run": cmd_run, "cert-audit": cmd_cert_audit, "resume-probe": cmd_resume_probe, "completion-probe": cmd_completion_probe, "report": cmd_report, "drop": cmd_drop, "baseline": cmd_baseline, "evaluate": cmd_evaluate, "project": cmd_project,
             "trial-ready": cmd_trial_ready, "eq-record": cmd_eq_record, "amd64-readiness": cmd_amd64_readiness, "amd64-run": cmd_amd64_run, "amd64-finish": cmd_amd64_finish, "check-table": cmd_check_table}[a.cmd](a)
 
 

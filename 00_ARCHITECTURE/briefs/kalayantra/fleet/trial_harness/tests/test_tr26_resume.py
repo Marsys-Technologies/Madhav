@@ -2,8 +2,10 @@
 gives the plan; the ledger-aware variant below is what the writer PR (kalayantra/century-resume-writer, not yet written at c718a5535) is specified to do — the oracles prove the DETECTORS (a writer that does not skip
 what it committed reads FAIL), not that writer.  One oracle per distinct claim; the single planted reversion is named in each docstring."""
 import copy
+import os
 import sys
 import types
+from pathlib import Path
 
 import pytest
 
@@ -177,3 +179,80 @@ def test_the_tr26_profile_requires_the_kill_resume_leg():
     import json
     prof = json.loads((ts.HERE / "gate_profile.tr26.json").read_text())
     assert prof["determinism"]["kill_resume"]["required"] is True and prof["determinism"]["verifier_repeat"]["required"] is True
+
+
+# ── SR-RESUME-NOW (3): the source digest and the library digest, one at a time ──────────────────────────────────
+
+def dims_profile():
+    p = profile()
+    p["determinism"]["kill_resume"]["refusal_dimensions"] = ["source", "library"]
+    return p
+
+
+def probe_by(source=None, library=None):
+    s, lib = {**PROBE, "perturbation": "s", **(source or {})}, {**PROBE, "perturbation": "l", **(library or {})}
+    return {**combined(s, lib), "by_dimension": {"source": s, "library": lib}}
+
+
+def combined(s, lib):
+    return ts.combine_refusals({"source": s, "library": lib})
+
+
+def g7_dims(monkeypatch, tmp_path, **kw):
+    a, b = pair(monkeypatch, tmp_path, probe=probe_by(**kw))
+    return gates.g7_determinism(a, b, dims_profile())
+
+
+PROCEEDED = {"refused_with": None, "defect": None, "message": "", "executed": [f"window:{B}", f"verify:{B}"]}
+REFUSED = {"refused_with": "ProgramDigestMismatch", "message": "resume refused: the program digest differs from the ledger's", "executed": []}
+
+
+def test_a_probe_child_that_went_on_to_resume_is_not_a_refusal_and_a_child_that_ran_a_substep_before_failing_is_not_either():
+    """The planted `resume proceeding`: the child's result carries no exception and the substeps it ran.  Reversion: count `refused_with` alone as a refusal (drop the `executed == []` conjunct)."""
+    assert ts.refusal_record(PROCEEDED, "x")["refused"] is False and ts.refusal_record(PROCEEDED, "x")["executed_substeps"] == 2
+    died_late = {"refused_with": "ProgramDigestMismatch", "message": "digest", "executed": [f"window:{B}"]}
+    assert ts.refusal_record(died_late, "x")["refused"] is False
+    assert ts.refusal_record(REFUSED, "x")["refused"] is True and ts.refusal_record({"refused_with": None, "executed": None, "message": "no result"}, "x")["executed_substeps"] is None
+
+
+def test_g7_fails_when_the_resume_with_a_different_source_digest_proceeds_even_if_the_library_one_refused(monkeypatch, tmp_path):
+    """SR-RESUME-NOW (3) planted case 1.  Reversion: judge only the combined record's `refused` (drop refusal_dimensions)."""
+    g = g7_dims(monkeypatch, tmp_path, source=ts.refusal_record(PROCEEDED, "s"))
+    assert claim(g, "different source digest refuses by name")["status"] == FAIL
+    assert claim(g, "different library digest refuses by name")["status"] == PASS
+    assert claim(g, "a different program digest refuses by name")["status"] == FAIL and g["status"] == FAIL
+
+
+def test_g7_fails_when_the_resume_with_a_different_library_digest_proceeds_even_if_the_source_one_refused(monkeypatch, tmp_path):
+    """Planted case 2: a resume lane that checks only the writer's own source hash passes the source probe and fails this one.  Reversion: perturb both dimensions at once (the first job's probe)."""
+    g = g7_dims(monkeypatch, tmp_path, library=ts.refusal_record(PROCEEDED, "l"))
+    assert claim(g, "different library digest refuses by name")["status"] == FAIL and claim(g, "different source digest refuses by name")["status"] == PASS and g["status"] == FAIL
+
+
+def test_g7_passes_when_each_dimension_refuses_by_name_before_any_substep(monkeypatch, tmp_path):
+    g = g7_dims(monkeypatch, tmp_path, source=ts.refusal_record(REFUSED, "s"), library=ts.refusal_record(REFUSED, "l"))
+    assert g["status"] == PASS, [c for c in g["checks"] if c["status"] != PASS]
+
+
+def test_g7_is_not_evaluated_for_a_dimension_nobody_attempted_and_the_dimension_names_come_from_the_profile(monkeypatch, tmp_path):
+    a, b = pair(monkeypatch, tmp_path, probe=PROBE)                                    # the first job's record: no by_dimension
+    g = gates.g7_determinism(a, b, dims_profile())
+    assert claim(g, "different source digest refuses by name")["status"] == NOT_EVALUATED and claim(g, "different library digest refuses by name")["status"] == NOT_EVALUATED
+    assert gates.g7_determinism(a, b, profile())["status"] == PASS                      # without the profile switch the combined check alone, as before
+
+
+def test_the_probe_perturbs_exactly_the_digest_it_names(tmp_path):
+    """The `source` perturbation changes the writer module's implementation digest and no kernel/rules module's; the `library` perturbation the reverse.  Reversion: make `library` also match the writer file."""
+    checkout = Path(os.environ.get("KY_TEST_CHECKOUT") or Path(ts.__file__).resolve().parents[5])
+    if not (checkout / "platform" / "python-sidecar" / "pipeline").is_dir():
+        pytest.skip("no checkout")
+    base = ts.module_digests(checkout)
+    writer = "pipeline.orchestrator.writers.ka_gochara_v5"
+    for dim in ("source", "library"):
+        dest = tmp_path / dim
+        files = ts.perturbed_copy(checkout, dest, dim)
+        moved = {m for m, d in ts.module_digests(dest).items() if d != base.get(m)}
+        if dim == "source":
+            assert moved == {writer} and len(files) == 1
+        else:
+            assert writer not in moved and moved and all(m.startswith(("services.gochara_kernel.", "services.gochara_rules.")) for m in moved)

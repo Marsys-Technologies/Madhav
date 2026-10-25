@@ -2,7 +2,7 @@
  "schema": "ky.trial_gate_profile/1",
  "profile_id": "PLACEHOLDER-TR26-PLAN-DEFAULTS-20261025",
  "final": false,
- "provenance": "PLACEHOLDER. gate_profile.plan_defaults.json with trial_classes = the 26 scored classes (SR-J4E-CENTURY-FAIL-1 (4): trial universe = century universe; SR-TR26-PLAN: writer fix => 26 classes, no 14-class path). Every other value is unchanged (answers q4=b q9=a, share floors, runtime, crosscheck). Owner/surrogate confirmation of the profile is pending, as for the 12-class one. TR-26 additions (all profile-gated, data): determinism.verifier_repeat (G-7 compares the verifier's per-window verdicts on the truncated windows and the G-6 sample; SR-TR26-PLAN (a)), certificate_audit (G-1: cells/bytes against the database caps, headroom per class; SR-KGEW-QUAL-BOUND-AMEND-2 (a)), verification.inconclusive_thresholds (G-4: 2 per class / 12 total accepted and disclosed, more = REFER-TO-SURROGATE; AMEND-2 (b)), runtime.truncated_resolve_report (G-5: re-solve wall time of the truncated windows reported separately; AMEND-2 (c)). determinism.kill_resume (G-7: the second run is the kill+resume leg, SR-RESUME-NOW).",
+ "provenance": "PLACEHOLDER. gate_profile.plan_defaults.json with trial_classes = the 26 scored classes (SR-J4E-CENTURY-FAIL-1 (4): trial universe = century universe; SR-TR26-PLAN: writer fix => 26 classes, no 14-class path). Every other value is unchanged (answers q4=b q9=a, share floors, runtime, crosscheck). Owner/surrogate confirmation of the profile is pending, as for the 12-class one. TR-26 additions (all profile-gated, data): determinism.verifier_repeat (G-7 compares the verifier's per-window verdicts on the truncated windows and the G-6 sample; SR-TR26-PLAN (a)), certificate_audit (G-1: cells/bytes against the database caps, headroom per class; SR-KGEW-QUAL-BOUND-AMEND-2 (a)), verification.inconclusive_thresholds (G-4: 2 per class / 12 total accepted and disclosed, more = REFER-TO-SURROGATE; AMEND-2 (b)), runtime.truncated_resolve_report (G-5: re-solve wall time of the truncated windows reported separately; AMEND-2 (c)). determinism.kill_resume (G-7: the second run is the kill+resume leg, SR-RESUME-NOW). G-completion (completion): G-8 also reads the completion probe (horizon_basis pin of a century-shaped manifest; provenance receipt of a build through the real build entry).",
  "trial_classes": [
   "bereavement",
   "chronic_onset",
@@ -153,7 +153,11 @@
   "kill_resume": {
    "required": true,
    "refusal_message_contains": "digest",
-   "basis": "SR-RESUME-NOW (i)(ii) + the surrogate's condition: the kill+resume leg replaces the plain second run only because it is compared over the FULL 26-class output"
+   "basis": "SR-RESUME-NOW (i)(ii) + the surrogate's condition: the kill+resume leg replaces the plain second run only because it is compared over the FULL 26-class output; SR-RESUME-NOW (3): the source digest (writer module) and the library digest (gochara kernel and rules modules) are perturbed one at a time and each resume must refuse by name",
+   "refusal_dimensions": [
+    "source",
+    "library"
+   ]
   }
  },
  "certificate_audit": {
@@ -173,5 +177,10 @@
  "baseline_provenance": {
   "required": true,
   "basis": "SR-TR26-PLAN (b): the baseline is made on the VM at the dispatch head, in the trial's session (a run input, not a harness file)"
+ },
+ "completion": {
+  "required": true,
+  "basis": "SR-J4E-HORIZON-BASIS + SR-J4E-POSTRUN-READBACKS: the century completion gate's horizon_basis pin (completion_gate.py:146-156, teardown_gate.py:191-205) and provenance receipt (completion_gate.py:70-90) were never exercised by TR #2 (it bypassed run_asset); G-8 re-runs both predicates on the completion probe's raw readbacks",
+  "entry": "pipeline.orchestrator.asset_runner.run_asset"
  }
 }

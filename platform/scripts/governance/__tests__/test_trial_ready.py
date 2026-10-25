@@ -516,7 +516,10 @@ HARNESS_DIR = "00_ARCHITECTURE/briefs/kalayantra/fleet/trial_harness"
 # normalised by a same-process calibrated reference (a pure burn's wall per CPU second), so an ambient load cannot fail either
 # TR-26 (SR-TR26-PLAN; harness-only, no implementation digest moves): the 26-class gates/profile/baseline stage, G-7 compares the verifier's per-window verdicts on the truncated windows and the G-6 sample, the certificate-size and
 # INCONCLUSIVE-threshold checks, the TR #2 truncation audit (tests/test_tr26.py, tests/test_tr26_gates.py); previous digest 204ff29f1036293d6a2866cb36f1187cc0bacd09592385429fcb0f2744dabe66
-HARNESS_V31_DIGEST = "17a55618eacc6a34233c41749620e2c2eb64aedf8e0c70f90aebee4eabaafa87"
+# TR-26 G-completion (follow-up on PR 3912; harness-only, no implementation digest moves; SR-J4E-HORIZON-BASIS, SR-J4E-POSTRUN-READBACKS, SR-RESUME-NOW (3)): completion.py + `trial_slice.py completion-probe` (a century-shaped
+# manifest's horizon_basis pin and a provenance receipt from a build through the real entry asset_runner.run_asset), G-8 reads both from the probe's raw readbacks, the resume-probe perturbs the source and the library digest
+# one at a time (tests/test_tr26_completion.py, tests/test_tr26_completion_live.py, tests/test_tr26_resume.py); previous pin 17a55618eacc6a34233c41749620e2c2eb64aedf8e0c70f90aebee4eabaafa87
+HARNESS_V31_DIGEST = "f23c08d8a9140e16429858f5e3322e1b0fdbf24ea5c7a7eaa50578259043ebb2"
 
 
 def harness_digest(root):

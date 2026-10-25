@@ -15,6 +15,7 @@ import json
 import math
 from typing import Any
 
+import completion                               # TR-26 G-completion predicates (SR-J4E-HORIZON-BASIS): pure functions, no import-time effect
 import g5_cpu                                   # G5-CPU (SR-G5-LOAD): the attributed-CPU method of G-5; pure helpers, no import-time effect
 
 PASS, FAIL, NOT_EVALUATED = "PASS", "FAIL", "NOT_EVALUATED"
@@ -565,16 +566,29 @@ def g7_kill_resume_checks(report: dict, second: dict, profile: dict) -> list[dic
         checks.append(check("the resumed generation is byte-identical to the fresh one over every trial class (rows, per-class rows, memberships)", same,
                             {"classes": len(want), "differing_classes": diff, "rows_equal": da.get("sha256") == db.get("sha256"), "memberships_equal": da.get("memberships_sha256") == db.get("memberships_sha256")}, "equal"))
     pr = rl.get("refusal_probe")
+    needle = str(spec.get("refusal_message_contains") or "digest").lower()
     if not isinstance(pr, dict) or not pr.get("attempted"):
         checks.append(check("a resume with a different program digest refuses by name", None, "no refusal probe recorded", "refused by name"))
     else:
-        name, msg = pr.get("refusal_name"), str(pr.get("message") or "")
-        needle = str(spec.get("refusal_message_contains") or "digest").lower()
-        named = bool(name) and name not in GENERIC_REFUSALS and needle in msg.lower()
-        checks.append(check("a resume with a different program digest refuses by name", bool(pr.get("refused")) and pr.get("executed_substeps") == 0 and named,
-                            {"refused": pr.get("refused"), "refusal_name": name, "message_mentions_digest": needle in msg.lower(), "substeps_run": pr.get("executed_substeps")},
-                            "refused before any substep, by a named refusal that mentions the digest"))
+        ok, obs = refused_by_name(pr, needle)
+        checks.append(check("a resume with a different program digest refuses by name", ok, obs, "refused before any substep, by a named refusal that mentions the digest"))
+    for dim in spec.get("refusal_dimensions") or []:             # SR-RESUME-NOW (3): the source digest and the library digest are perturbed ONE AT A TIME; each must refuse by name on its own
+        rec = (pr.get("by_dimension") or {}).get(dim) if isinstance(pr, dict) else None
+        claim = f"a resume with a different {dim} digest refuses by name"
+        if not isinstance(rec, dict) or not rec.get("attempted"):
+            checks.append(check(claim, None, f"no {dim}-digest refusal probe recorded", "refused by name"))
+        else:
+            ok, obs = refused_by_name(rec, needle)
+            checks.append(check(claim, ok, obs, "refused before any substep, by a named refusal that mentions the digest"))
     return checks
+
+
+def refused_by_name(pr: dict, needle: str) -> tuple:
+    """(True | False, observed) for one refusal-probe record: the resume was refused, before any substep ran, by an exception that is not a generic one and whose message mentions the digest."""
+    name, msg = pr.get("refusal_name"), str(pr.get("message") or "")
+    named = bool(name) and name not in GENERIC_REFUSALS and needle in msg.lower()
+    ok = bool(pr.get("refused")) and pr.get("executed_substeps") == 0 and named
+    return ok, {"refused": pr.get("refused"), "refusal_name": name, "message_mentions_digest": needle in msg.lower(), "substeps_run": pr.get("executed_substeps")}
 
 
 def _demoted(report: dict) -> list | None:
@@ -874,6 +888,26 @@ def g7_noninterference_checks(report: dict, baseline: dict, table: dict) -> list
 
 # ── the digests record (PLAN v2 G-8: a later L0 / registry / ephemeris / config change invalidates the trial) ────────────────────────────
 
+def g8_completion_checks(report: dict, profile: dict) -> list[dict]:
+    """TR-26 G-completion (SR-J4E-HORIZON-BASIS, SR-J4E-POSTRUN-READBACKS): the two century completion-gate checks the trial itself never exercised, re-run on the probe's RAW readbacks by the pack's
+    own predicates (`completion.horizon_basis_check`, `completion.provenance_check`) — the probe's words are never the verdict.  With the profile's `completion.required`:
+    (1) `horizon_basis`: a century-shaped (unmarked, staged-century-config) manifest carries a non-null `horizon_basis` pin, candidate status, the TRIAL's own ruled horizon;
+    (2) `digests_equal_dry_run` receipts: a build that went through the REAL build entry (`asset_runner.run_asset`) wrote a provenance receipt whose code_digest equals the expected_code_digest and whose
+        build_id is that run.  A missing record is NOT_EVALUATED; a completed run with no receipt (a bypass of the real entry, TR #2's shape) and an unpinned manifest read FALSE."""
+    spec = _get(profile, "completion")
+    if not isinstance(spec, dict) or not spec.get("required"):
+        return []
+    hz = report.get("horizon")
+    ruled = [hz.get("start"), hz.get("end")] if isinstance(hz, dict) and isinstance(hz.get("start"), str) and isinstance(hz.get("end"), str) else None
+    sec = report.get("completion")
+    got = completion.evaluate_record(sec, ruled)
+    hb, pv = got["horizon_basis"], got["provenance"]
+    return [check("a century-shaped manifest (unmarked run, staged century config) carries a pinned horizon_basis", hb[0], hb[1], "candidate manifest, ruled horizon, horizon_basis pinned",
+                  note=None if hb[0] is not None else "not evaluated: " + hb[1]),
+            check("a build through the real build entry (asset_runner.run_asset) wrote a provenance receipt with the expected code digest and this run's build id", pv[0], pv[1],
+                  "non-empty receipts; code_digest == expected_code_digest; build_id == run id", note=None if pv[0] is not None else "not evaluated: " + pv[1])]
+
+
 def g8_digest_checks(report: dict, dispatch_digests: dict | None) -> list[dict]:
     rec = report.get("digests_record")
     comps = rec.get("components") if isinstance(rec, dict) else None
@@ -971,6 +1005,8 @@ def evaluate(report: dict, baseline: dict, profile: dict, *, second_report: dict
                          (g8, g8_digest_checks(report, dispatch_digests))):
             g["checks"] = g["checks"] + extra
             g["status"] = roll_up(g["checks"])
+    g8["checks"] = g8["checks"] + g8_completion_checks(report, profile)                              # TR-26 G-completion (profile-gated; a profile without `completion` adds nothing)
+    g8["status"] = roll_up(g8["checks"])
     g5 = g5_cpu.apply_to_gate(g5, report, profile, check=check, roll_up=roll_up, runtime_projection=runtime_projection)         # G5-CPU hook: wall | attributed_cpu | neither
     g4 = g4_verification(report, verification)
     for g, extra in ((g4, g4_inconclusive_checks(report, profile)), (g5, g5_truncated_resolve_checks(report, profile))):
