@@ -607,7 +607,48 @@ def staged_scope(req, root):
             or not re.fullmatch(r'[0-9a-f]{64}', str(scope.get('input_vector_sha256', '')))
             or not re.fullmatch(r'[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}', str(scope.get('manifest_id', '')))):
         raise Refused(('century' if century else 'measuring') + ' scope requires its actual launch, candidate manifest and input vector')
+    resumed_runs_problem(scope, root, century)
     return scope
+
+
+RESUMED_RUN_KEYS = ('run_id', 'plan_manifest_digest', 'resume_receipt', 'resume_acceptance')
+
+
+def resumed_runs_problem(scope, root, century):
+    """SR-RESUME-NOW teardown scope: a century build that was RESUMED left one more build_runs row per resume (each a new run over the same generation '5.0' chain),
+    and the century teardown deletes exactly the runs its scope names. `scope['resumed_runs']` (optional; century only) names them, each bound to the accepted
+    `century_resume` launch receipt that started it (same run id, same plan manifest digest, an actual execution of the century job). Without it a resumed
+    build's extra runs refuse the teardown by name (`only the identified staged run ... may be deleted`) and the chart could never be cleared for a fresh dispatch.
+    Raises Refused; returns None. A scope that carries no `resumed_runs` is judged exactly as before."""
+    import re
+    import uuid
+    if 'resumed_runs' not in scope:
+        return None
+    if not century:
+        raise Refused('resumed_runs belong to the century teardown scope only')
+    entries = scope['resumed_runs']
+    if not isinstance(entries, list) or not entries:
+        raise Refused('resumed_runs must be a non-empty list of the resumed runs')
+    seen = {scope.get('run_id')}
+    for entry in entries:
+        if not isinstance(entry, dict) or set(entry) != set(RESUMED_RUN_KEYS):
+            raise Refused('a resumed run names exactly ' + ', '.join(RESUMED_RUN_KEYS))
+        try:
+            canonical = str(uuid.UUID(str(entry['run_id']))) == entry['run_id']
+        except ValueError:
+            canonical = False
+        if not canonical or entry['run_id'] in seen:
+            raise Refused('a resumed run id must be a canonical UUID, distinct from every other run of the scope')
+        seen.add(entry['run_id'])
+        r, _ = accepted_receipt(root, entry['resume_receipt'], entry['resume_acceptance'], 'century_resume')
+        launch = r.get('launch') or {}
+        if (r.get('status') != 'COMPLETED' or r.get('item_id') != CENTURY_ITEM or launch.get('status') != 'LAUNCHED'
+                or launch.get('schema') != 'ky.century_launch/1' or launch.get('run_id') != entry['run_id']
+                or launch.get('chart_id') != CHART_ID or launch.get('asset_id') != ASSET_ID
+                or not re.fullmatch(r'[0-9a-f]{64}', str(entry['plan_manifest_digest']))
+                or launch.get('plan_manifest_digest') != entry['plan_manifest_digest']
+                or not re.fullmatch(r'brahma-build-pipeline-job-[a-z0-9]+(?:-[a-z0-9]+)*', str(launch.get('execution_name', '')))):
+            raise Refused('a resumed run differs from the accepted century_resume launch that started it')
 
 
 def dryrun_evidence(req, root, scope, rowset_sha256=None):
@@ -1074,9 +1115,9 @@ def century_request_problem(req, root, measure=None):
                     except Exception:
                         raise Refused('scoped content could not be measured now; the century scope is not shown to be present') from None
                 century_dryrun_evidence(req, root)
-        elif kind == 'century_resume':
-            # SR-RESUME-NOW: the ONE kind whose absence gate admits a partly present chain, and only a ledger-attested one (resume_evidence). A century_dispatch
-            # above still demands every count zero; nothing here is reachable from another kind.
+        elif kind in ('century_resume', 'century_resume_dryrun'):
+            # SR-RESUME-NOW: the ONE kind (and its staging-rollback twin) whose absence gate admits a partly present chain, and only a ledger-attested one
+            # (resume_evidence). A century_dispatch above still demands every count zero; nothing here is reachable from another kind.
             if req.get('item_id') != CENTURY_ITEM:
                 raise Refused('century resume belongs to ' + CENTURY_ITEM)
             century_args_problem(req.get('args') or {})
@@ -1196,6 +1237,16 @@ def resume_lineage(root, prior):
             raise Refused('resume lineage: the archived request of ' + str(name) + ' is not the request its receipt bound')
         prior = read_evidence(root, 'receipts', archived.get('resumes'))
     raise Refused('resume lineage is longer than ' + str(RESUME_LINEAGE_MAX))
+
+
+def resume_program_problem(req, contract):
+    """Raises Refused unless the request's program identity names the writer program the century contract declares (`image.writer_source_digest`): a resume
+    continues only the program that wrote the ledger and that the deployed image carries. Pure: `contract` is the parsed fleet/century_contract.json of the
+    reviewed tree (the executor ties the same two values at admission; the launcher and the staging rollback repeat it, so no entry point trusts the caller)."""
+    identity = req.get('program_identity')
+    declared = ((contract or {}).get('image') or {}).get('writer_source_digest') if isinstance(contract, dict) else None
+    if not (isinstance(identity, dict) and isinstance(declared, str) and declared and identity.get('writer_digest') == declared):
+        raise Refused('program_identity.writer_digest differs from the century contract writer_source_digest: a resume continues only the same program')
 
 
 def resume_evidence(req, root):

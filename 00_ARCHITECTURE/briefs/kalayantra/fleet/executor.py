@@ -83,9 +83,12 @@ remote-async production fence (REMOTE_ASYNC_KINDS), the century_contract_sha256 
 dispatch's): the request cites the launch receipt it resumes (`resumes`, `resume_run_id`) and its `program_identity`, and an accepted readback of the ledger must show ONE program,
 the request's, whose committed substeps all belong to the resumed lineage and account for exactly the rows present; `century_dispatch` keeps demanding every count zero and no
 other kind reaches this gate; (3) the request's program_identity.writer_digest must equal the century contract's writer_source_digest at the reviewed commit, so a resume of
-any other program refuses by name. `century_cancel` (+ its dry run) also cancels the execution a `century_resume` launched (CANCEL_FAMILIES `also_dispatch`). The kind SHIPS
-DISABLED: its launcher mode (`century_launch.py --resume`) and the writer's ledger table are separate items, and until they exist a request for it is refused as not enabled.
-It has no dry-run twin, so the mechanical route stays closed (dry_run_check) and a V lane's acceptance is required, besides the owner's go.
+any other program refuses by name. `century_cancel` (+ its dry run) also cancels the execution a `century_resume` launched (CANCEL_FAMILIES `also_dispatch`).
+The kind is ENABLED with its launcher mode (`century_launch.py --resume`, which starts the same Cloud Run job over the same staged century config and refuses a program identity
+other than the contract's before anything is staged) and its staging-rollback twin `century_resume_dryrun` (platform/scripts/dispatch_v5_century_resume_job.py --dry-run: it stages
+in a transaction that is rolled back, commits nothing, claims nothing and calls no cloud service; it needs no owner go). It stays fail-closed until the writer's ledger exists: the
+absence gate above admits nothing without an accepted readback of that ledger. The twin makes the mechanical route available only to a request equal to a verified pack fill for
+the kind (none exists today); a V lane's acceptance is otherwise required, besides the owner's go.
 
 Cancel lane (SR-CANCEL-LANE): every production cancel / stall-stop kind (CANCEL_LANE_KINDS, a closed allow-list) runs on its OWN single worker, never on the
 production worker, and never waits for the production fence — a cancel queued behind the very operation it must stop would never run. The lane refuses any
@@ -780,7 +783,7 @@ def century_contract_problem(req: dict) -> str | None:
     cap, timeout, image binding). The request carries `century_contract_sha256`; it is admitted only when that equals the sha256 of the file's bytes AT the request's reviewed_commit
     (read with git show, never from a working tree), the file is a ky.century_contract/1, and its launch_args are exactly the request's args. Run at the tail of validate, so again
     immediately before execution. The pack fill pins the field in its template, so a fill bound to a different contract is refused here, whatever its other fields say."""
-    if req.get("kind") not in ("century_dispatch", "century_dispatch_dryrun", "century_resume"): return None
+    if req.get("kind") not in ("century_dispatch", "century_dispatch_dryrun", "century_resume", "century_resume_dryrun"): return None
     declared, rc = req.get("century_contract_sha256"), str(req.get("reviewed_commit", ""))
     if not (isinstance(declared, str) and HEX64.fullmatch(declared)): return "century_contract_sha256 (64 lowercase hex) is required: a century dispatch binds to the committed century contract"
     if not SHA.match(rc): return "reviewed_commit required to read the century contract"
@@ -792,7 +795,7 @@ def century_contract_problem(req: dict) -> str | None:
     except ValueError: return "the century contract at the reviewed commit is not JSON"
     if not isinstance(contract, dict) or contract.get("schema") != "ky.century_contract/1": return "the century contract at the reviewed commit is not a ky.century_contract/1"
     if contract.get("launch_args") != (req.get("args") or {}): return "the request args differ from the century contract's launch_args"
-    if req.get("kind") == "century_resume":      # SR-RESUME-NOW: the program the resume would run is the one the ledger was written by, or it refuses by name (the ledger's side is judged in v5_small_test_shared.resume_evidence)
+    if req.get("kind") in ("century_resume", "century_resume_dryrun"):      # SR-RESUME-NOW: the program the resume would run is the one the ledger was written by, or it refuses by name (the ledger's side is judged in v5_small_test_shared.resume_evidence)
         identity = req.get("program_identity")
         if not isinstance(identity, dict) or identity.get("writer_digest") != (contract.get("image") or {}).get("writer_source_digest"):
             return "program_identity.writer_digest differs from the century contract's writer_source_digest at the reviewed commit: a resume continues only the same program"
@@ -1107,7 +1110,7 @@ def receipt(req: dict, status: str, reason: str = "", rc: int | None = None, out
             r["staging"] = proof
         else:
             r.update(status="FAILED", reason="bound measuring staging rollback proof missing; reconcile transaction outcome")
-    if req.get("kind") == "century_dispatch_dryrun" and status == "COMPLETED":
+    if req.get("kind") in ("century_dispatch_dryrun", "century_resume_dryrun") and status == "COMPLETED":
         try:
             proof = json.loads(out)
             manifest = proof.get("plan_manifest") or {}
@@ -1117,7 +1120,9 @@ def receipt(req: dict, status: str, reason: str = "", rc: int | None = None, out
                 and proof.get("args") == req.get("args") and manifest.get("chart_id") == CANONICAL_CHART
                 and manifest.get("scope_target") == "ka_gochara_v5"
                 and proof.get("triggered_by") == "gochara-v5-century" and "gochara_v5_test_slice" not in manifest    # a century run carries NO slice marker
-                and proof.get("plan_manifest_digest") == digest_bytes(json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode()))
+                and proof.get("plan_manifest_digest") == digest_bytes(json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode())
+                and (req["kind"] != "century_resume_dryrun"      # SR-RESUME-NOW: a resume's rollback proof names the run, receipt and program it was staged for, the request's own
+                     or proof.get("resume") == {"resumes": (req.get("resumes") or {}).get("name"), "resume_run_id": req.get("resume_run_id"), "program_identity": req.get("program_identity")}))
         except (ValueError, TypeError, AttributeError):
             valid = False
         if valid:
@@ -1217,7 +1222,7 @@ def smalltest_policy(req: dict):
 def smalltest_policy_problem(req: dict) -> str | None:
     if req.get("kind") not in ("smalltest_teardown", "smalltest_teardown_dryrun", "smalltest_dispatch", "smalltest_dispatch_dryrun",
                                "measuring_dispatch", "measuring_dispatch_dryrun", "measuring_teardown", "measuring_teardown_dryrun",
-                               "century_dispatch", "century_dispatch_dryrun", "century_resume", "century_teardown", "century_teardown_dryrun"):
+                               "century_dispatch", "century_dispatch_dryrun", "century_resume", "century_resume_dryrun", "century_teardown", "century_teardown_dryrun"):
         return None
     try:
         policy_name = {"measuring": "measuring_request_problem", "century": "century_request_problem"}.get(req["kind"].split("_")[0], "smalltest_request_problem")

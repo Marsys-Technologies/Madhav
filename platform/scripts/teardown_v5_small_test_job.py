@@ -568,19 +568,25 @@ def _bound_scope(cur, owned, req):
                 ("asset_provenance_receipts", "asset_freshness", "asset_throughput", "build_run_assets")):
             raise TeardownRefused("empty rehearsal cannot select existing rows")
         return scope
-    if owned != [scope["run_id"]]:
-        raise TeardownRefused("only the identified staged run may be deleted; additional or pruned runs refuse")
+    # SR-RESUME-NOW: a resumed century build owns one more run per resume; the scope names each (`resumed_runs`, bound to its accepted century_resume launch by
+    # shared.staged_scope) and the owned set must be EXACTLY the identified run plus those. Without `resumed_runs` this is the single-run rule, unchanged.
+    resumed = {e["run_id"]: e["plan_manifest_digest"] for e in scope.get("resumed_runs", [])}
+    if sorted(owned) != sorted([scope["run_id"], *resumed]):
+        raise TeardownRefused("only the identified staged run" + (" and its named resumed runs" if resumed else "") + " may be deleted; additional or pruned runs refuse")
     cur.execute("SELECT id, plan_manifest, plan_manifest_digest FROM build_runs WHERE id = ANY(%s::uuid[]) ORDER BY created_at DESC", (owned,))
     runs = cur.fetchall()
-    if (len(runs) != 1 or str(runs[0]["id"]) != scope["run_id"]
-            or runs[0]["plan_manifest_digest"] != scope["plan_manifest_digest"]
-            or shared.evidence_digest(runs[0]["plan_manifest"]) != scope["plan_manifest_digest"]):
+    primary = next((r for r in runs if str(r["id"]) == scope["run_id"]), None)
+    if (len(runs) != 1 + len(resumed) or primary is None
+            or primary["plan_manifest_digest"] != scope["plan_manifest_digest"]
+            or shared.evidence_digest(primary["plan_manifest"]) != scope["plan_manifest_digest"]
+            or any(str(r["id"]) != scope["run_id"] and (r["plan_manifest_digest"] != resumed.get(str(r["id"]))
+                                                           or shared.evidence_digest(r["plan_manifest"]) != resumed[str(r["id"])]) for r in runs)):
         raise TeardownRefused("staged launch UUID/manifest does not match the surviving run")
     century = req.get("kind") in CENTURY_KINDS
-    if century and _writer().TEST_SLICE_KEY in runs[0]["plan_manifest"]:
+    if century and any(_writer().TEST_SLICE_KEY in r["plan_manifest"] for r in runs):
         raise TeardownRefused("century teardown refuses a run that carries a test-slice marker (that is the small-test / measuring teardown's)")
     if req.get("kind") in ("measuring_teardown", "measuring_teardown_dryrun"):
-        marker = runs[0]["plan_manifest"].get("gochara_v5_test_slice")
+        marker = primary["plan_manifest"].get("gochara_v5_test_slice")
         try:
             validated = _writer()._validate_test_slice(marker)
             if validated.run != "all_classes_full":
@@ -595,7 +601,7 @@ def _bound_scope(cur, owned, req):
         if century:
             return scope
         try:
-            _writer()._validate_test_slice(runs[0]["plan_manifest"][_writer().TEST_SLICE_KEY])
+            _writer()._validate_test_slice(primary["plan_manifest"][_writer().TEST_SLICE_KEY])
         except Exception:
             raise TeardownRefused("surviving staged run has no valid original small-test marker") from None
         return scope
@@ -605,18 +611,24 @@ def _bound_scope(cur, owned, req):
     if not century:
         # No reconstruction: the original surviving run is the only stamp preimage.
         problem, _, _, matched = shared.prove_stamp(manifest["input_generation_vector"],
-            [(scope["run_id"], runs[0]["plan_manifest"], runs[0]["plan_manifest_digest"])], require_run=True)
+            [(scope["run_id"], primary["plan_manifest"], primary["plan_manifest_digest"])], require_run=True)
         if problem or matched != owned:
             raise TeardownRefused("candidate is not proved by the identified staged run's original marker")
-    foreign_coverage = _count(cur,
-        "SELECT count(*) AS n FROM kala_gochara_coverage WHERE chart_id = %s AND generation = %s"
-        " AND partition_kind = 'event_class' AND build_id IS DISTINCT FROM %s", (CHART_ID, GENERATION, scope["run_id"]))
+    if resumed:       # a resumed build's partitions were written by the identified run or by one of the resumed runs, never by another
+        foreign_coverage = _count(cur, RESUMED_FOREIGN_COVERAGE_SQL, (CHART_ID, GENERATION, owned))
+    else:
+        foreign_coverage = _count(cur,
+            "SELECT count(*) AS n FROM kala_gochara_coverage WHERE chart_id = %s AND generation = %s"
+            " AND partition_kind = 'event_class' AND build_id IS DISTINCT FROM %s", (CHART_ID, GENERATION, scope["run_id"]))
     if foreign_coverage:
         raise TeardownRefused("generation coverage was not created by the identified staged run")
     return scope
 
 
 CENTURY_KINDS = ("century_teardown", "century_teardown_dryrun")
+# SR-RESUME-NOW: the event_class coverage partitions of (chart, generation) written by a run outside the owned set (kala_gochara_coverage.build_id is TEXT: migration 1081)
+RESUMED_FOREIGN_COVERAGE_SQL = ("SELECT count(*) AS n FROM kala_gochara_coverage WHERE chart_id = %s AND generation = %s"
+                                " AND partition_kind = 'event_class' AND build_id <> ALL(%s::text[])")
 TEARDOWN_KINDS = ("smalltest_teardown", "measuring_teardown", "century_teardown")
 
 

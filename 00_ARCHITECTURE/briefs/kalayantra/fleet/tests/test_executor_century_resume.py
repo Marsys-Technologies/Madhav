@@ -13,7 +13,10 @@ itself (v5_small_test_shared.py) has its own oracles in platform/scripts/__tests
   X5 a resume is bound to the committed century contract (its sha at the reviewed commit, its launch_args)
   X6 the request's program identity is the century contract's writer program: a resume of any other program refuses by name
   X7 the executor judges a resume by the ledger-attested absence gate, and a dispatch by the unchanged one
-  X8 the kind ships disabled: until the launcher mode and the writer's ledger exist, a request for it is refused as not enabled
+  X10 the resume dry run (staging rollback twin) needs no go, no lease and no acceptance, is judged on the same evidence and the same program as the resume, and its rollback
+      proof is only recorded when it names the resume (receipt, run, program) the request names
+  X8 the kind is ENABLED (the launcher mode `century_launch.py --resume` exists, tests/test_century_launch_resume.py) and so is its staging-rollback twin
+     `century_resume_dryrun`, which is read-only and needs no owner go; reverting the shipped flag refuses the request as not enabled
 """
 import hashlib
 import importlib.util
@@ -43,8 +46,8 @@ def contract(writer_digest=None):
     return (json.dumps(doc, indent=2, sort_keys=True) + "\n").encode()
 
 
-def build(tmp_path, monkeypatch, mutation=None, contract_blob=None, shipped=False):
-    """The real executor on a temporary origin. `century_resume` is ENABLED in the fixture table (the shipped row is disabled, X8); the century contract is served at the
+def build(tmp_path, monkeypatch, mutation=None, contract_blob=None, shipped=False, ops_text=None):
+    """The real executor on a temporary origin. `century_resume` is ENABLED in the fixture table (as the shipped row is, X8); the century contract is served at the
     reviewed commit by a git double; the evidence policy is the working tree's v5_small_test_shared.py, exec'd the way the executor execs the reviewed one."""
     if mutation:
         old, new = mutation
@@ -54,7 +57,7 @@ def build(tmp_path, monkeypatch, mutation=None, contract_blob=None, shipped=Fals
         mutated = tmp_path / "executor_mutated.py"
         mutated.write_text(text.replace(old, new))
         monkeypatch.setattr(TT, "EXECUTOR_PY", mutated)
-    w = World(tmp_path, monkeypatch, OPS_FILE.read_text() if shipped else TT.copy_with(OPS_FILE.read_text(), "century_resume"))
+    w = World(tmp_path, monkeypatch, ops_text if ops_text is not None else OPS_FILE.read_text() if shipped else TT.copy_with(OPS_FILE.read_text(), "century_resume"))
     for d in (w.mod.REC, w.mod.DONE, w.mod.ACC):
         d.mkdir(parents=True, exist_ok=True)
     blob = contract() if contract_blob is None else contract_blob
@@ -189,14 +192,16 @@ def oracle_x7_the_executor_judges_a_resume_by_the_ledger_gate(w, table, blob):
     says(judged(w, table, dispatch), "independent absence")
 
 
-# ───────────────────────────── X8 shipped disabled ─────────────────────────────
-def oracle_x8_the_shipped_row_is_not_enabled_until_its_launcher_exists(w, table, blob):
-    assert table["century_resume"]["enabled"] is False
-    req = resume_request(w, blob)
-    refusal = judged(w, table, req)
-    says(refusal, "kind century_resume is not enabled (enabled_by J-4d)")
-    launcher = REPO / "00_ARCHITECTURE/briefs/kalayantra/fleet/century_launch.py"
-    assert "--resume" not in launcher.read_text(), "the launcher gained a --resume mode: the row can be enabled (flip `enabled`, replace this oracle, add a shard)"
+# ───────────────────────────── X8 shipped enabled ─────────────────────────────
+def oracle_x8_the_shipped_rows_are_enabled(w, table, blob):
+    """The shipped table (executor_ops.json as merged), not a fixture: the resume row is enabled and a correctly evidenced, owner-approved resume is ADMITTED by it; its
+    staging-rollback twin is enabled, read-only (`production: false`) and runs the resume staging binding in dry-run mode, never the launcher."""
+    assert table["century_resume"]["enabled"] is True
+    twin = table["century_resume_dryrun"]
+    assert (twin["enabled"], twin["production"], twin["needs"]) == (True, False, "builder")
+    assert twin["script"] == "platform/scripts/dispatch_v5_century_resume_job.py" and twin["fixed_args"] == ["--i-am-steward", "--after-settled-1", "--dry-run"]
+    assert table["century_resume"]["script"].endswith("fleet/century_launch.py") and table["century_resume"]["fixed_args"] == ["--resume"]
+    assert judged(w, table, resume_request(w, blob)) is None, "the shipped row must admit a correctly evidenced resume with the owner's go"
 
 
 # ───────────────────────────── X9 the launch evidence ─────────────────────────────
@@ -214,17 +219,44 @@ def oracle_x9_the_resume_launch_is_recorded_like_a_dispatch_launch(w, table, blo
         assert (record.get("launch") == launch) is (expected == "COMPLETED"), record
 
 
+# ───────────────────────────── X10 the resume dry run ─────────────────────────────
+def oracle_x10_the_resume_dry_run_is_free_and_its_proof_is_bound(w, table, blob):
+    live = resume_request(w, blob)
+    dry = {k: v for k, v in live.items() if k not in ("lease_id", "expires_at")}
+    dry.update(kind="century_resume_dryrun", operation_id="op-dry", idempotency_key="key-dry")
+    assert w.mod.validate(dry, table, ALL_CAPS) is None, "control failed — no go, no lease, no acceptance: a read-only staging rollback"
+    assert w.mod.owner_go_problem(dry, table["century_resume_dryrun"]) is None
+    assert w.mod.remote_async("century_resume_dryrun", table["century_resume_dryrun"]) is False
+    other = dict(dry, program_identity=dict(dry["program_identity"], writer_digest="1" * 64), operation_id="op-dry-other", idempotency_key="key-dry-other")
+    says(w.mod.validate(other, table, ALL_CAPS), "program_identity.writer_digest differs from the century contract's writer_source_digest")
+    (w.mod.KY_ROOT / "logs").mkdir(parents=True, exist_ok=True)
+    manifest = {"chart_id": TT.CANONICAL_CHART, "scope_target": "ka_gochara_v5"}
+    bound = {"resumes": dry["resumes"]["name"], "resume_run_id": dry["resume_run_id"], "program_identity": dry["program_identity"]}
+
+    def proof(resume):
+        doc = {"schema": "ky.century_staging/1", "status": "ROLLED_BACK", "rollback_confirmed": True, "operation_id": dry["operation_id"], "request_sha256": w.mod.request_digest(dry),
+               "args": dry["args"], "triggered_by": "gochara-v5-century", "plan_manifest": manifest, "plan_manifest_digest": w.mod.digest_bytes(json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode())}
+        if resume is not None:
+            doc["resume"] = resume
+        return json.dumps(doc) + "\n"
+    for resume, expected in ((bound, "COMPLETED"), (None, "FAILED"), (dict(bound, resume_run_id=S.NEW_RUN), "FAILED")):
+        w.mod.receipt(dry, "COMPLETED", "", 0, proof(resume))
+        record = json.loads((w.mod.REC / "op-dry.json").read_text())
+        assert record["status"] == expected, (resume, record)
+
+
 # claim -> (oracle, the ONE planted reversion of executor.py that must make it fail)
 ORACLES = {
     "x1": (oracle_x1_a_resume_needs_the_owners_go, ('    "century_resume",\n    "orchestrator_rebuild",\n', '    "orchestrator_rebuild",\n')),
     "x2": (oracle_x2_the_two_gos_do_not_cross, ('("kind", req.get("kind")), ', "")),
     "x3": (oracle_x3_a_resume_is_fenced_like_a_dispatch, ('    "century_resume",\n    "measuring_dispatch",\n', '    "measuring_dispatch",\n')),
     "x4": (oracle_x4_a_century_cancel_covers_a_resume, ('"also_dispatch": ("century_resume",), ', "")),
-    "x5": (oracle_x5_a_resume_is_bound_to_the_century_contract, ('"century_dispatch_dryrun", "century_resume"): return None', '"century_dispatch_dryrun"): return None')),
-    "x6": (oracle_x6_the_program_identity_is_the_contracts_writer_program, ('if req.get("kind") == "century_resume":      # SR-RESUME-NOW', 'if False:      # SR-RESUME-NOW')),
+    "x5": (oracle_x5_a_resume_is_bound_to_the_century_contract, ('"century_dispatch_dryrun", "century_resume", "century_resume_dryrun"): return None', '"century_dispatch_dryrun"): return None')),
+    "x6": (oracle_x6_the_program_identity_is_the_contracts_writer_program, ('if req.get("kind") in ("century_resume", "century_resume_dryrun"):      # SR-RESUME-NOW', 'if False:      # SR-RESUME-NOW')),
     "x7": (oracle_x7_the_executor_judges_a_resume_by_the_ledger_gate,
-           ('"century_dispatch", "century_dispatch_dryrun", "century_resume", "century_teardown", "century_teardown_dryrun"):\n        return None',
+           ('"century_dispatch", "century_dispatch_dryrun", "century_resume", "century_resume_dryrun", "century_teardown", "century_teardown_dryrun"):\n        return None',
             '"century_dispatch", "century_dispatch_dryrun", "century_teardown", "century_teardown_dryrun"):\n        return None')),
+    "x10": (oracle_x10_the_resume_dry_run_is_free_and_its_proof_is_bound, ('and (req["kind"] != "century_resume_dryrun"', 'and (True or req["kind"] != "century_resume_dryrun"')),
     "x9": (oracle_x9_the_resume_launch_is_recorded_like_a_dispatch_launch, ('"measuring_dispatch", "century_dispatch", "century_resume") and status == "COMPLETED":', '"measuring_dispatch", "century_dispatch") and status == "COMPLETED":')),
 }
 
@@ -243,6 +275,16 @@ def test_oracle_fails_on_its_planted_reversion(tmp_path, monkeypatch, claim):
         oracle(w, table, blob)
 
 
-def test_x8_the_shipped_row_is_disabled(tmp_path, monkeypatch):
+def test_x8_the_shipped_rows_are_enabled(tmp_path, monkeypatch):
     w, table, blob = build(tmp_path, monkeypatch, shipped=True)
-    oracle_x8_the_shipped_row_is_not_enabled_until_its_launcher_exists(w, table, blob)
+    oracle_x8_the_shipped_rows_are_enabled(w, table, blob)
+
+
+def test_x8_fails_on_its_planted_reversion_the_flag_flipped_back(tmp_path, monkeypatch):
+    shipped = OPS_FILE.read_text()
+    row = '"century_resume":               {"enabled": true,'
+    assert shipped.count(row) == 1
+    w, table, blob = build(tmp_path, monkeypatch, ops_text=shipped.replace(row, row.replace("true", "false")))
+    with pytest.raises(AssertionError):
+        oracle_x8_the_shipped_rows_are_enabled(w, table, blob)
+    says(judged(w, table, resume_request(w, blob)), "kind century_resume is not enabled (enabled_by J-4d)")

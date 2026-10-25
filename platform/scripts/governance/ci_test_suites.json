@@ -593,7 +593,8 @@
         "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_log_view_proof*.py",
         "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_equivalence_record*.py",
         "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_consumer_probe*.py",
-        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_dispatch_chain*.py"
+        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_dispatch_chain*.py",
+        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_century_launch*.py"
       ]
     },
     "governance-tool-tests-seal-inputs": {
