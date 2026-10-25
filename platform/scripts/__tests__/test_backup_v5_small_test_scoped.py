@@ -282,6 +282,15 @@ def test_restore_migrations_are_those_applied_after_the_bundle_that_mention_a_sc
     assert chosen[0][1] == hashlib.sha256((directory / '1500_between.sql').read_bytes()).hexdigest()
 
 
+def test_a_create_statement_that_only_appears_inside_a_comment_does_not_select_a_data_fix(backup, tmp_path, monkeypatch):
+    """Claim: the schema-object rule reads the migration with its comments stripped. A registry data-fix whose header comment describes
+    the function it replaces (a line starting CREATE OR REPLACE FUNCTION inside a block or a line comment) creates nothing and is not carried."""
+    ledger, directory = _ledger(backup, tmp_path, monkeypatch, [
+        (1, '1600_block_comment.sql', 17, "/*\n  CREATE OR REPLACE FUNCTION public.f() ... was replaced in 1394\n*/\nUPDATE public.asset_throughput SET state = state;"),
+        (2, '1601_line_comment.sql', 18, "-- CREATE TABLE public.never_created (id int);\nUPDATE public.asset_throughput SET state = state;")])
+    assert backup.derive_restore_migrations(ledger, ['public.asset_throughput'], directory) == ()
+
+
 def test_a_skipped_post_bundle_migration_is_still_hash_checked(backup, tmp_path, monkeypatch):
     """Not selecting a file does not mean not reading it: the repository must still reproduce exactly what production ran."""
     ledger, directory = _ledger(backup, tmp_path, monkeypatch, [(1, '1395_datafix.sql', 17, 'UPDATE public.t SET x = 1;')])

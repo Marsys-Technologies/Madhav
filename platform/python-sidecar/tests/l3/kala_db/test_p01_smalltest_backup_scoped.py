@@ -664,11 +664,12 @@ CENTURY_BUNDLE = """SELECT pg_catalog.set_config('search_path', '', false);
 CREATE SCHEMA public;
 CREATE TABLE public.asset_registry (asset_id text PRIMARY KEY, timeout_s integer);
 """
-# the three kinds of later migration that mention a scope table: a schema object the archived trigger needs (1394's kind;
-# unqualified, as the repository's migrations are), a registry data-fix that needs production rows (1395's kind), a grant
-# to a role the throwaway cluster does not have (1390's kind)
+# the kinds of later migration that mention a scope table: a schema object the archived trigger needs, public-qualified like the
+# real 1394 (so that with the fix reverted the run reaches the data-fix below and fails there, as the incident did), a registry
+# data-fix that needs production rows (1395's kind), a grant to a role the throwaway cluster does not have (1390's kind), and - after
+# them in ledger order - a second schema migration that is unqualified, to need the bundle's empty search_path reset (Claim B)
 CENTURY_MIGRATIONS = {
-    '9001_schema_fn.sql': """CREATE FUNCTION shape_guard() RETURNS trigger LANGUAGE plpgsql AS $$
+    '9001_schema_fn.sql': """CREATE FUNCTION public.shape_guard() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN PERFORM 1 FROM public.asset_throughput; RETURN NEW; END $$;
 """,
     '9002_registry_datafix.sql': """DO $$ BEGIN
@@ -677,13 +678,16 @@ END $$;
 UPDATE asset_registry SET timeout_s = 72000 WHERE asset_id = 'ka_gochara_v5';  -- the asset_throughput timeout
 """,
     '9003_grant_only.sql': "GRANT SELECT ON asset_throughput TO ky_no_such_verifier_role;\n",
+    '9004_schema_fn_unqualified.sql': """CREATE FUNCTION shape_guard_unqualified() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN PERFORM 1 FROM public.asset_throughput; RETURN NEW; END $$;
+""",
 }
 
 
 @pytest.fixture
 def century_shape(scoped, monkeypatch):
     """A synthetic copy of the century backup's shape: the 38 declared century tables (synthetic rows) plus 3 FK parents, a bundle
-    with an empty search_path, and a ledger with one schema migration and two that must not be applied."""
+    with an empty search_path, and a ledger with two schema migrations and two that must not be applied."""
     dsn, tmp_path, _ = scoped
     document = json.loads(Path(backup.SCOPE_PATHS['century']).read_text())
     tables = [e['table'] for e in document['written']]
@@ -701,6 +705,7 @@ def century_shape(scoped, monkeypatch):
         for name in names + list(CENTURY_PARENTS):
             conn.execute(f'DROP TABLE IF EXISTS public.{name} CASCADE')
         conn.execute('DROP FUNCTION IF EXISTS public.shape_guard() CASCADE')
+        conn.execute('DROP FUNCTION IF EXISTS public.shape_guard_unqualified() CASCADE')
         for name in CENTURY_PARENTS:
             conn.execute(f'CREATE TABLE public.{name} (id serial PRIMARY KEY, label text)')
             conn.execute(f"INSERT INTO public.{name} (label) VALUES ('{name}-1'), ('{name}-2')")
@@ -711,6 +716,7 @@ def century_shape(scoped, monkeypatch):
             conn.execute(f'CREATE TABLE public.{name} (id serial PRIMARY KEY, v text' + (f', parent_id integer REFERENCES public.{parent}(id)' if parent else '') + ')')
             conn.execute(f"INSERT INTO public.{name} (v{', parent_id' if parent else ''}) VALUES ('{name}-1'{', 1' if parent else ''}), ('{name}-2'{', 2' if parent else ''})")
         conn.execute(CENTURY_MIGRATIONS['9001_schema_fn.sql'])
+        conn.execute(CENTURY_MIGRATIONS['9004_schema_fn_unqualified.sql'])
         conn.execute('CREATE TRIGGER shape_guard BEFORE UPDATE ON public.asset_throughput FOR EACH STATEMENT EXECUTE FUNCTION shape_guard()')
         for name, body in CENTURY_MIGRATIONS.items():
             (tmp_path / 'migrations' / name).write_text(body)
@@ -721,6 +727,7 @@ def century_shape(scoped, monkeypatch):
         for name in names + list(CENTURY_PARENTS):
             conn.execute(f'DROP TABLE IF EXISTS public.{name} CASCADE')
         conn.execute('DROP FUNCTION IF EXISTS public.shape_guard() CASCADE')
+        conn.execute('DROP FUNCTION IF EXISTS public.shape_guard_unqualified() CASCADE')
 
 
 def century_capture(tmp_path):
@@ -730,15 +737,15 @@ def century_capture(tmp_path):
 
 
 def test_a_century_shaped_backup_restores_applying_the_schema_migration_and_skipping_the_data_fix_and_the_grant(century_shape):
-    """Claim A (the run-7b62d268 failure, UndefinedTable asset_registry): only the later migration that creates a function the archived
-    trigger calls is part of the base; the registry data-fix (needs production rows) and the grant-only migration (needs a role) are not.
-    The schema migration is unqualified, so it also needs the bundle's empty search_path reset (Claim B)."""
+    """Claim A (the run-7b62d268 failure, UndefinedTable asset_registry): only the later migrations that create a function are part of
+    the base; the registry data-fix (needs production rows) and the grant-only migration (needs a role) are not. With the selection
+    reverted the data-fix is applied to the bundle's schema-only copy and the restore fails with that UndefinedTable."""
     dsn, tmp_path = century_shape
     folder, label, receipt = century_capture(tmp_path)
     assert len(receipt['scope']['tables']) == 41 and len(receipt['scope']['closure']) == 3
     proof = backup.restore_verify(folder, label, 'century')
     assert proof['restore_verified'] is True and proof['measurements'] == receipt['measurements']
-    assert [m['file'] for m in proof['restore_base']['migrations']] == ['9001_schema_fn.sql']
+    assert [m['file'] for m in proof['restore_base']['migrations']] == ['9001_schema_fn.sql', '9004_schema_fn_unqualified.sql']
     assert_target_removed(dsn, label)
 
 
@@ -771,13 +778,13 @@ def without_search_path_reset(monkeypatch):
 
 def test_the_unqualified_schema_migration_needs_the_bundles_empty_search_path_reset_before_it_runs(century_shape, monkeypatch):
     """Claim B: production applied every migration with the default search_path; the bundle empties it for its session. Without the
-    RESET the (correctly selected) unqualified schema migration cannot create its function."""
+    RESET the (correctly selected) unqualified schema migration 9004 cannot create its function."""
     dsn, tmp_path = century_shape
     folder, label, _ = century_capture(tmp_path)
     without_search_path_reset(monkeypatch)
     with pytest.raises(backup.BackupRefused) as failed:
         backup.restore_verify(folder, label, 'century')
-    assert str(failed.value) == 'restore base step 9001_schema_fn.sql failed: InvalidSchemaName sqlstate=3F000'
+    assert str(failed.value) == 'restore base step 9004_schema_fn_unqualified.sql failed: InvalidSchemaName sqlstate=3F000'
     assert_target_removed(dsn, label)
 
 
