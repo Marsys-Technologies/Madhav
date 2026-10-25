@@ -360,8 +360,9 @@ def test_a_chain_without_a_horizon_basis_pin_is_non_resumable(h):
     """SR-J4E-HORIZON-BASIS: a chain whose manifest carries no pin (built before the pin was written for century runs; here the harness supplies no birth parameters, so
     none is derived) cannot be resumed by a run that COULD pin. Refused by name, nothing written. Revert: drop `require_horizon_basis` => the resume proceeds on an
     unpinned manifest and the completion gate would read FALSE at the end of it.
-    Run over the RULED century horizon (SR-3916-NB-FIX NB-2): there the horizon-derivation guards all agree, so `require_horizon_basis` is the ONLY thing that can refuse the
-    resume and the reverted run reaches no other error (over a short horizon the live-input check would raise HorizonDerivationDisagreesWithRuling and mask the revert)."""
+    Run over the RULED century horizon (SR-3916-NB-FIX NB-2): there the horizon-derivation guards all agree, so none of them refuses first (over a short horizon the
+    live-input check would raise HorizonDerivationDisagreesWithRuling and mask the revert). It is not the only possible refusal: under the revert a later guard (InputDrift)
+    can also refuse, which is why the oracle asserts the refusal BY NAME (resume_horizon_basis_unpinned), not merely that the resume was refused."""
     from services.gochara_kernel import horizon as gk_horizon
     _killed(h, kill_after=writer_mod.SNAPSHOT_SUBSTEP, horizon=gk_horizon.RULED_HORIZON)
     assert h.w.conn.execute("SELECT input_generation_vector->'horizon_basis' IS NULL FROM public.kala_gochara_publication WHERE generation = %s", (GEN,)).fetchone()[0]

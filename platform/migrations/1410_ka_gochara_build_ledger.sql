@@ -176,12 +176,15 @@ BEGIN
     END IF;
   END LOOP;
   -- amjis_app (the readback role): its read is a MEASURED, NAMED fact in exactly one of two admitted forms (SR-3916-NB-FIX-AMEND-1):
-  --   owner  -- pg_class.relowner IS amjis_app (the deploy runner connects as amjis_app, so it owns what 1410 creates; an owner reads by definition)
+  --   owner  -- pg_class.relowner IS amjis_app (the deploy runner connects as amjis_app, so it owns what 1410 creates) AND has_table_privilege SELECT is true:
+  --             both facts are measured and named, because an owner can revoke its own SELECT and then cannot read although relowner still says it owns
   --   grant  -- an explicit ACL SELECT entry for amjis_app made by a DIFFERENT role (when another role owns the table)
   -- anything else raises. No WRITE clause for amjis_app: as the owner it necessarily holds write privileges.
   IF to_regrole('amjis_app') IS NOT NULL THEN
-    IF owner_name = 'amjis_app' THEN
-      app_form := 'owner';
+    IF owner_name = 'amjis_app' AND has_table_privilege('amjis_app', 'public.ka_gochara_build_ledger', 'SELECT') THEN
+      app_form := 'owner (relowner = amjis_app, and has_table_privilege SELECT is true)';
+    ELSIF owner_name = 'amjis_app' THEN
+      RAISE EXCEPTION 'migration 1410 post-apply check failed: amjis_app OWNS the ledger but cannot read it (its own SELECT has been revoked)';
     ELSIF EXISTS (SELECT 1 FROM pg_class c, LATERAL aclexplode(c.relacl) a
                   WHERE c.oid = 'public.ka_gochara_build_ledger'::regclass
                     AND a.grantee = to_regrole('amjis_app')::oid AND a.privilege_type = 'SELECT' AND a.grantor <> a.grantee) THEN

@@ -12,6 +12,7 @@ CLAIMS, each with its own fail-on-revert oracle (the planted reversion is named 
   D. with the builder's grant reverted, the post-apply block RAISES naming data_plane_builder (its privilege counts only from the ACL)
   E. applied by the builder ITSELF (an owner) without its grant, the post-apply block RAISES: ownership never satisfies a non-owner role's grant
   F. a SELECT that reaches amjis_app only through PUBLIC is not the `grant` form: the post-apply block RAISES
+  G. an owner that revoked its own SELECT is refused: the `owner` form requires relowner = amjis_app AND has_table_privilege SELECT, and names both
 
 Runs on the guarded local disposable cluster (GOCHARA_A53_ADMIN_DSN; NOT_RUN skip when unreachable, a FAILURE under GOCHARA_A53_REQUIRE_DB=1) in a throwaway database; the
 cluster-wide roles are created only if absent and dropped again only if this test created them.
@@ -124,6 +125,20 @@ def test_applied_by_the_builder_itself_without_its_grant_the_post_apply_block_ra
         with database.transaction():
             database.execute("SET LOCAL ROLE data_plane_builder")
             database.execute(MIGRATION.read_text().replace(BUILDER_GRANT, "NULL;"))
+
+
+def test_an_owner_that_revoked_its_own_select_is_refused(database):
+    """The owner form needs BOTH facts: relowner = amjis_app AND has_table_privilege SELECT. An owner can revoke its own SELECT; relowner then still says it owns
+    while the read is denied. Planted: applied AS amjis_app with its GRANT replaced by REVOKE SELECT ... FROM amjis_app => the post-apply block must RAISE.
+    Revert: test only relowner in the owner branch => the owner form passes over a denied read and this test fails."""
+    database.execute("GRANT CREATE, USAGE ON SCHEMA public TO amjis_app")
+    database.execute("GRANT REFERENCES, SELECT ON public.charts, public.kala_gochara_publication TO amjis_app")
+    assert GRANT in MIGRATION.read_text()
+    revoked = MIGRATION.read_text().replace(GRANT, "REVOKE SELECT ON public.ka_gochara_build_ledger FROM amjis_app;")
+    with pytest.raises(Exception, match="amjis_app OWNS the ledger but cannot read it"):
+        with database.transaction():
+            database.execute("SET LOCAL ROLE amjis_app")
+            database.execute(revoked)
 
 
 def test_a_public_read_grant_is_not_the_app_roles_explicit_grant(database):
