@@ -742,7 +742,10 @@ def test_a_century_shaped_backup_restores_applying_the_schema_migration_and_skip
     reverted the data-fix is applied to the bundle's schema-only copy and the restore fails with that UndefinedTable."""
     dsn, tmp_path = century_shape
     folder, label, receipt = century_capture(tmp_path)
-    assert len(receipt['scope']['tables']) == 41 and len(receipt['scope']['closure']) == 3
+    # the expected size is DERIVED from the real century scope file (its written tables + the _migrations_applied context + the 3 FK
+    # parents), never a literal: 41 at #3915 (38 declared + 3); 42 once #3916 adds the 1410 ledger to the century scope
+    declared = len(json.loads(Path(backup.SCOPE_PATHS['century']).read_text())['written']) + 1
+    assert len(receipt['scope']['tables']) == declared + len(CENTURY_PARENTS) and len(receipt['scope']['closure']) == len(CENTURY_PARENTS)
     proof = backup.restore_verify(folder, label, 'century')
     assert proof['restore_verified'] is True and proof['measurements'] == receipt['measurements']
     assert [m['file'] for m in proof['restore_base']['migrations']] == ['9001_schema_fn.sql', '9004_schema_fn_unqualified.sql']
