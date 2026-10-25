@@ -28,7 +28,7 @@ ALL = [f for f, _m, _t in ts.OVERLAY_MIGRATIONS]
 def test_overlay_order_is_250_then_1401_then_1402(tmp_path):
     """Reversion: put 1401 before 250 in OVERLAY_MIGRATIONS (1401.sql: "n_dig <> 9 ... RAISE EXCEPTION")."""
     todo, skipped = ts.plan_overlay(_files(tmp_path, ALL), lambda t: True)
-    assert [f.split("_", 1)[0] for f in todo] == ["250", "1401", "1402", "1403"]
+    assert [f.split("_", 1)[0] for f in todo] == ["250", "1401", "1402", "1403", "1410"]       # 1410 (the build ledger) is the highest number and last
     assert skipped == {}
 
 
@@ -50,13 +50,13 @@ def test_1403_is_skipped_by_name_when_its_table_is_absent_and_applied_when_prese
     assert "1403_ka_gochara_v5_depends_on_l0_dignity.sql" not in todo
     assert list(skipped) == ["1403_ka_gochara_v5_depends_on_l0_dignity.sql"] and "asset_registry" in skipped["1403_ka_gochara_v5_depends_on_l0_dignity.sql"]
     todo, skipped = ts.plan_overlay(d, lambda t: t == "asset_registry")
-    assert todo[-1].startswith("1403_") and skipped == {}
+    assert "1403_ka_gochara_v5_depends_on_l0_dignity.sql" in todo and skipped == {}
 
 
 def test_1403_absent_from_the_checkout_is_recorded_not_fatal(tmp_path):
     """1403 reaches the integration head only with the k8edge merge; before that the overlay must still build (reversion: make 1403 mandatory → Refused here)."""
-    todo, skipped = ts.plan_overlay(_files(tmp_path, ALL[:3]), lambda t: True)
-    assert [f.split("_", 1)[0] for f in todo] == ["250", "1401", "1402"]
+    todo, skipped = ts.plan_overlay(_files(tmp_path, [f for f in ALL if not f.startswith("1403_")]), lambda t: True)
+    assert [f.split("_", 1)[0] for f in todo] == ["250", "1401", "1402", "1410"]
     assert skipped == {"1403_ka_gochara_v5_depends_on_l0_dignity.sql": "absent in the checkout"}
 
 

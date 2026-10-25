@@ -92,11 +92,16 @@ LANE_FILES = ["1305_gochara_snapshot_owns_l1_copy.sql"] + MIGRATIONS
 #: bg_graha_naisargika_friendship) raise UndefinedTable and any Form B window INSERT is unchecked.  After the stub and MIGRATIONS these real files are applied, in this order:
 #: 250 seeds the three L0 tables (9 + 72 + 8 rows), 1401 is the node-dignity correction (its guard demands the 250 rows), 1402 is the solver-certificate CHECK.
 #: 1403 edits the ka_gochara_v5 asset_registry row; the stub has no asset_registry, so it is applied only where its table exists and is otherwise RECORDED as skipped
-#: (its ledger row is the lane database's business, T23).  (name, mandatory, table the file edits)
+#: (its ledger row is the lane database's business, T23).
+#: 1410 (SR-TR26-HARNESS-1410, ruling OPTION A) creates public.ka_gochara_build_ledger, which the writer REQUIRES for a century plan and for every resume (build_ledger.load raises
+#: ResumeRefused build_ledger_absent without it).  It is MANDATORY: the REAL file is applied as production applies it, never a stand-in.  Its fail-closed prerequisite block names
+#: public.charts and public.kala_gochara_publication — the AM5 stub already has both (measured, not assumed), and the roles exist on the lane cluster, so its post-apply ACL checks run for real.
+#: (name, mandatory, table the file edits)
 OVERLAY_MIGRATIONS = (("250_bg_dignity_reference.sql", True, None),
                       ("1401_l0_node_dignity_friendship.sql", True, None),
                       ("1402_gochara_qualification_provenance_certificate.sql", True, None),
-                      ("1403_ka_gochara_v5_depends_on_l0_dignity.sql", False, "asset_registry"))
+                      ("1403_ka_gochara_v5_depends_on_l0_dignity.sql", False, "asset_registry"),
+                      ("1410_ka_gochara_build_ledger.sql", True, None))
 LANE_DB_DEFAULT = "ky_lane_head"            # TR_GAPS B4.1: the named, persistent head-chain database T10/T23/T25 read (built by the ops job, rebuilt after each integration advance)
 LANE_DB_RE = re.compile(r"ky_lane_[a-z0-9_]{1,40}")
 LANE_SHA_PROOFS = {      # the proofs job's lane.tsv (J-4c): informational drift detector for the lane's migration files
@@ -208,17 +213,20 @@ OVERLAY_EFFECTS = {      # each overlay file's OWN effect, read back as a boolea
              "('Rahu','Jupiter','friend'),('Ketu','Sun','enemy'),('Ketu','Moon','enemy'))) = 5 AND (SELECT count(*) FROM public.bg_dignity_reference WHERE (graha, moolatrikona_sign) "
              "IN (('Rahu','Gemini'),('Ketu','Sagittarius'))) = 2 AND (SELECT count(*) FROM public.bg_dignity_reference WHERE (graha, exaltation_sign) IN (('Rahu','Taurus'),('Ketu','Scorpio'))) = 2"),
     "1402": "SELECT to_regprocedure('public.ka_gochara_solver_certificate_ok(jsonb)') IS NOT NULL AND to_regprocedure('public.ka_gochara_window_qualification_ok(jsonb)') IS NOT NULL",
-    "1403": "SELECT (SELECT depends_on FROM public.asset_registry WHERE asset_id = 'ka_gochara_v5') @> ARRAY['bg_dignity_reference']::text[]"}
+    "1403": "SELECT (SELECT depends_on FROM public.asset_registry WHERE asset_id = 'ka_gochara_v5') @> ARRAY['bg_dignity_reference']::text[]",
+    "1410": ("SELECT to_regclass('public.ka_gochara_build_ledger') IS NOT NULL AND (SELECT count(*) FROM pg_constraint c WHERE c.convalidated AND c.conrelid = to_regclass('public.ka_gochara_build_ledger') "
+             "AND (c.contype = 'p' OR c.conname IN ('kgbl_ordinal_uq','kgbl_key_ck','kgbl_ordinal_ck','kgbl_rows_ck','kgbl_digests_ck','kgbl_manifest_binding_ck','kgbl_scope_ck'))) = 8")}
 
 
 #: SR-BASELINE-OVERLAY-SKIP: the code each MANDATORY overlay exists for, probed in the checkout's own production python (`platform/python-sidecar/services`, tests excluded).  A baseline of
 #: origin/main legitimately lacks an overlay file whose requiring code has not merged yet; it may skip that file only when the checkout provably lacks that code.  The probe reads what the
 #: code WRITES or READS (never a function name that a test or the harness also mentions): 250 and 1401 seed the three L0 tables the P1 loaders read; 1402 widens the window `qualification`
-#: CHECK for the two keys `combustion_inheritance` (R-4) and `solver_certificate` (R-6/R-7), which the P1 builder / window solver write.  (1403 is not mandatory: it is always skippable.)
+#: CHECK for the two keys `combustion_inheritance` (R-4) and `solver_certificate` (R-6/R-7), which the P1 builder / window solver write; 1410 creates the table `build_ledger.py` reads and writes.  (1403 is not mandatory: it is always skippable.)
 OVERLAY_REQUIRING_CODE = {
     "250_bg_dignity_reference.sql": re.compile(r"\b(?:bg_dignity_reference|bg_combustion_orbs|bg_graha_naisargika_friendship)\b"),
     "1401_l0_node_dignity_friendship.sql": re.compile(r"\b(?:bg_dignity_reference|bg_graha_naisargika_friendship)\b"),
     "1402_gochara_qualification_provenance_certificate.sql": re.compile(r"\b(?:combustion_inheritance|solver_certificate|stored_certificate|ka_gochara_solver_certificate_ok)\b"),
+    "1410_ka_gochara_build_ledger.sql": re.compile(r"\bka_gochara_build_ledger\b"),      # services/gochara_kernel/build_ledger.py: SELECT / INSERT on the table (TABLE = "ka_gochara_build_ledger")
 }
 REQUIRING_CODE_ROOT = ("platform", "python-sidecar", "services")
 
