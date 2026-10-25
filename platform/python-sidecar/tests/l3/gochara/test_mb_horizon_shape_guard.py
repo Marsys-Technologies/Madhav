@@ -455,7 +455,8 @@ def test_the_modules_that_entered_the_implementation_identity_are_named():
         # OD-1 P1C binds the P1 verifier-side input derivations (`p1_inputs`) too.
         # OD-1 P1A binds the P1 operand sources (`p1_operands`) and the L1 rule functions P1 calls by name (`ga_condition_writer`); P1B's
         # nature operands (`p1_nature_operands`) and the Form B valence (`p1_valence`) enter with the D2 binding that wires them into the build.
-        "evaluation": ("services.gochara_kernel.rehearsal_settlement", "services.gochara_kernel.horizon", "services.gochara_kernel.nd_h_tables",
+        # SR-RESUME-NOW binds the committed-substep ledger (`build_ledger`): a changed ledger rule is a changed program, so a resume across it refuses.
+        "evaluation": ("services.gochara_kernel.build_ledger", "services.gochara_kernel.rehearsal_settlement", "services.gochara_kernel.horizon", "services.gochara_kernel.nd_h_tables",
                        "services.gochara_kernel.p1_nature_operands", "services.gochara_kernel.p1_operands", "ga_writers.ga_condition_writer",
                        "services.gochara_rules.p1_inputs", "services.gochara_rules.p1_valence"),
     }, "the modules that ENTERED the identity"
@@ -525,6 +526,6 @@ def test_the_guard_is_skipped_in_a_dry_run_and_when_the_row_is_absent_for_a_mark
 
 def test_the_guard_decision_is_documented_in_the_code_as_a_deliberate_change_to_every_v5_build():
     import inspect
-    src = inspect.getsource(writer_mod.GocharaV5Writer._run_resolved_substep)      # the substep proper (run_substep resolves the config, then delegates)
+    src = inspect.getsource(writer_mod.GocharaV5Writer._execute_substep)      # the substep proper (run_substep resolves the config, _run_resolved_substep delegates, then records the century ledger row)
     i = src.index("_require_building(ctx, chart_id)")
     assert "DELIBERATE CHANGE TO EVERY v5 BUILD" in src[max(0, i - 900):i]

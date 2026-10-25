@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from . import build_ledger
 from . import ledger as gk_ledger
 from . import seal_brief
 
@@ -46,6 +47,12 @@ def _seal_with_approval(conn, *, chart_id: str, generation: str, approved_digest
     if drift:
         raise seal_brief.ApprovalMismatch(f"seal_registry_drift: the live rule registry is not the registry this candidate was built and verified "
                                           f"against — {drift}; a changed registry needs a fresh build, verification, brief and approval")
+    # (1a'') SR-RESUME-NOW (4): a generation several executions built (a resumed century build) has a gap the seal cannot yet describe — the seal brief records only
+    # the VERIFIER's identity, not the list of PRODUCER executions. Refused by name until the list is recorded (no silent gap); a one-execution or ledger-less
+    # generation is unaffected.
+    why = build_ledger.resumed_generation_problem(conn, chart_id, generation)
+    if why:
+        raise seal_brief.ApprovalMismatch(why)
     # (1b) F-R12-4: the approved digest must be the CURRENT brief the VERIFIER persisted for this candidate (the receipt's commit-time
     # trigger enforces the same; refusing here costs nothing and says why before anything is published)
     why = seal_brief.persisted_brief_problem(conn, chart_id, generation, payload["manifest"]["manifest_id"], approved_digest,

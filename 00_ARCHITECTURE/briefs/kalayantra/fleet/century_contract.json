@@ -51,7 +51,7 @@
     "project": "madhav-astrology",
     "region": "asia-south1",
     "repository": "asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline",
-    "writer_source_digest": "64fec0f87261b801917517d288b495537aef1325705bd2d339f4f3efa9c605cd"
+    "writer_source_digest": "d3cdd192fc4cc949683b1d5d2b307af96a206356e9000c266aa011eeac3dc55f"
   },
   "item": "J-4e",
   "launch_args": {
