@@ -75,6 +75,18 @@ a symlink (`directory` / `file`)). Neither a surrogate
 ruling, an earlier approval file (OWNER-CLOUD-RUNS-APPROVED), an environment flag, a lease, an acceptance receipt nor a capability replaces it; deleting the file stops a
 queued build. Trials and dry runs need no go.
 
+Century resume (SR-RESUME-NOW, ruling madhav-f9 lane 2; standing owner requirement OWNER-RESUMABLE-REQUIRED-20261025): `century_resume` continues a killed or failed century
+build over the substeps the writer's ledger has committed, instead of a teardown and a fresh dispatch. It is modelled on `century_dispatch` — the builder principal, the same
+remote-async production fence (REMOTE_ASYNC_KINDS), the century_contract_sha256 binding and the same launch evidence (ky.century_launch/1) — and differs in three things:
+(1) it needs its OWN owner go (OWNER_GO_KINDS; a go names its kind and request, so a dispatch go never opens a resume, nor a resume go a dispatch);
+(2) its absence gate admits a PARTLY present generation 5.0, and only a ledger-attested one (v5_small_test_shared.resume_evidence, loaded from the reviewed commit like the
+dispatch's): the request cites the launch receipt it resumes (`resumes`, `resume_run_id`) and its `program_identity`, and an accepted readback of the ledger must show ONE program,
+the request's, whose committed substeps all belong to the resumed lineage and account for exactly the rows present; `century_dispatch` keeps demanding every count zero and no
+other kind reaches this gate; (3) the request's program_identity.writer_digest must equal the century contract's writer_source_digest at the reviewed commit, so a resume of
+any other program refuses by name. `century_cancel` (+ its dry run) also cancels the execution a `century_resume` launched (CANCEL_FAMILIES `also_dispatch`). The kind SHIPS
+DISABLED: its launcher mode (`century_launch.py --resume`) and the writer's ledger table are separate items, and until they exist a request for it is refused as not enabled.
+It has no dry-run twin, so the mechanical route stays closed (dry_run_check) and a V lane's acceptance is required, besides the owner's go.
+
 Cancel lane (SR-CANCEL-LANE): every production cancel / stall-stop kind (CANCEL_LANE_KINDS, a closed allow-list) runs on its OWN single worker, never on the
 production worker, and never waits for the production fence — a cancel queued behind the very operation it must stop would never run. The lane refuses any
 kind that is not on the list, every one of them is signed-only, and `orchestrator_rebuild_cancel` is admitted only for the run-id of an `orchestrator_rebuild`
@@ -103,17 +115,19 @@ TEARDOWN_KINDS = (   # the committed teardowns that wait for an independent abse
     "measuring_teardown",
     "smalltest_teardown",
 )
-LAUNCH_SCHEMAS = {"smalltest_dispatch": "ky.smalltest_launch/1", "measuring_dispatch": "ky.measuring_launch/1", "century_dispatch": "ky.century_launch/1"}
+LAUNCH_SCHEMAS = {"smalltest_dispatch": "ky.smalltest_launch/1", "measuring_dispatch": "ky.measuring_launch/1", "century_dispatch": "ky.century_launch/1", "century_resume": "ky.century_launch/1"}
 RUN_OPERATION_KINDS = ("orchestrator_rebuild", "orchestrator_rebuild_cancel")      # the operations that act on a K9 rebuild run's writers
 RAN_TO_AN_END = ("COMPLETED", "FAILED", "INTERRUPTED")      # receipt statuses of an operation whose child was started and has ended (INTERRUPTED: the executor restarted; the child may live on, so only the session readback proves it)
 REMOTE_ASYNC_KINDS = frozenset({   # A8 §3.11: work continues remotely after the child returns — fenced even if a table drops `remote_async`
     "century_dispatch",
+    "century_resume",
     "measuring_dispatch",
     "smalltest_dispatch",
     "verification_job",
 })
-OWNER_GO_KINDS = frozenset({   # OWNER-BUILD-GO-REQUIRED-20261023: the actual build starts only on the owner's explicit yes; the dry-run siblings stay free
+OWNER_GO_KINDS = frozenset({   # OWNER-BUILD-GO-REQUIRED-20261023: the actual build starts only on the owner's explicit yes; the dry-run siblings stay free (SR-RESUME-NOW: a resume is a build too, with its OWN go)
     "century_dispatch",
+    "century_resume",
     "orchestrator_rebuild",
 })
 OWNER_GO_DIR = OPS / "owner_go"   # run/ops/owner_go/<operation_id>.json, written only by the owner surrogate from the owner's own words
@@ -151,7 +165,7 @@ FENCE_EXEMPT_KINDS = frozenset({   # the single production slot is taken: these 
     "scheduler_resume",
     "verification_cancel",
 })
-CANCEL_FAMILIES = {"measuring": {"item": "J-3c", "dispatch": "measuring_dispatch", "schema": "ky.measuring_cancel/1", "job": "brahma-build-pipeline-job", "execution": r"brahma-build-pipeline-job-[a-z0-9]+(?:-[a-z0-9]+)*"}, "century": {"item": "J-4e", "dispatch": "century_dispatch", "schema": "ky.century_cancel/1", "job": "brahma-build-pipeline-job", "execution": r"brahma-build-pipeline-job-[a-z0-9]+(?:-[a-z0-9]+)*"}, "verification": {"item": "J-5s", "dispatch": "verification_job", "schema": "ky.verification_cancel/1", "job": "gochara-verification-job", "execution": r"gochara-verification-job-[a-z0-9]+(?:-[a-z0-9]+)*"}}   # per family: the request item, the dispatch kind whose receipt names the target, the record schema the reviewed script prints, the Cloud Run job and its execution-name shape (the century build runs on the same job as the measuring build)
+CANCEL_FAMILIES = {"measuring": {"item": "J-3c", "dispatch": "measuring_dispatch", "schema": "ky.measuring_cancel/1", "job": "brahma-build-pipeline-job", "execution": r"brahma-build-pipeline-job-[a-z0-9]+(?:-[a-z0-9]+)*"}, "century": {"item": "J-4e", "dispatch": "century_dispatch", "also_dispatch": ("century_resume",), "schema": "ky.century_cancel/1", "job": "brahma-build-pipeline-job", "execution": r"brahma-build-pipeline-job-[a-z0-9]+(?:-[a-z0-9]+)*"}, "verification": {"item": "J-5s", "dispatch": "verification_job", "schema": "ky.verification_cancel/1", "job": "gochara-verification-job", "execution": r"gochara-verification-job-[a-z0-9]+(?:-[a-z0-9]+)*"}}   # per family: the request item, the dispatch kind whose receipt names the target (and `also_dispatch`, the kinds that launch the same job and may be cancelled the same way: SR-RESUME-NOW century_resume), the record schema the reviewed script prints, the Cloud Run job and its execution-name shape (the century build runs on the same job as the measuring build)
 CANCEL_KINDS = {f"{family}_cancel{twin}": family for family in CANCEL_FAMILIES for twin in ("", "_dryrun")}
 NO_DRYRUN_KINDS = frozenset({"backup_snapshot", "backup_restore_verify"})   # the two production kinds with no dry-run kind and no `dry_run_passed` attestation (kyd_kinds_ops.required_checks)
 PACK_NEVER_FILLED = frozenset({"kind", "chart_id", "reviewed_commit", "requested_by", "acceptance_receipt", "pack_fill"})   # a pack template pins these (or the request cannot carry them); a fill may never set them
@@ -766,7 +780,7 @@ def century_contract_problem(req: dict) -> str | None:
     cap, timeout, image binding). The request carries `century_contract_sha256`; it is admitted only when that equals the sha256 of the file's bytes AT the request's reviewed_commit
     (read with git show, never from a working tree), the file is a ky.century_contract/1, and its launch_args are exactly the request's args. Run at the tail of validate, so again
     immediately before execution. The pack fill pins the field in its template, so a fill bound to a different contract is refused here, whatever its other fields say."""
-    if req.get("kind") not in ("century_dispatch", "century_dispatch_dryrun"): return None
+    if req.get("kind") not in ("century_dispatch", "century_dispatch_dryrun", "century_resume"): return None
     declared, rc = req.get("century_contract_sha256"), str(req.get("reviewed_commit", ""))
     if not (isinstance(declared, str) and HEX64.fullmatch(declared)): return "century_contract_sha256 (64 lowercase hex) is required: a century dispatch binds to the committed century contract"
     if not SHA.match(rc): return "reviewed_commit required to read the century contract"
@@ -778,6 +792,10 @@ def century_contract_problem(req: dict) -> str | None:
     except ValueError: return "the century contract at the reviewed commit is not JSON"
     if not isinstance(contract, dict) or contract.get("schema") != "ky.century_contract/1": return "the century contract at the reviewed commit is not a ky.century_contract/1"
     if contract.get("launch_args") != (req.get("args") or {}): return "the request args differ from the century contract's launch_args"
+    if req.get("kind") == "century_resume":      # SR-RESUME-NOW: the program the resume would run is the one the ledger was written by, or it refuses by name (the ledger's side is judged in v5_small_test_shared.resume_evidence)
+        identity = req.get("program_identity")
+        if not isinstance(identity, dict) or identity.get("writer_digest") != (contract.get("image") or {}).get("writer_source_digest"):
+            return "program_identity.writer_digest differs from the century contract's writer_source_digest at the reviewed commit: a resume continues only the same program"
     return None
 
 
@@ -862,9 +880,9 @@ def measuring_cancel_problem(req: dict) -> str | None:
     dispatch = cited("receipts", req.get("dispatch_receipt"))
     if dispatch is None: return f"the cited {dispatch_kind} receipt is missing, unreadable or does not match its sha256"
     launch = dispatch.get("launch") if isinstance(dispatch.get("launch"), dict) else {}
-    if (dispatch.get("kind") != dispatch_kind or dispatch.get("status") != "COMPLETED" or dispatch.get("exit_code") != 0 or dispatch.get("item_id") != spec["item"]
+    if (dispatch.get("kind") not in (dispatch_kind, *spec.get("also_dispatch", ())) or dispatch.get("status") != "COMPLETED" or dispatch.get("exit_code") != 0 or dispatch.get("item_id") != spec["item"]
             or req["dispatch_receipt"]["name"] != f"{dispatch.get('operation_id')}.json" or launch.get("status") != "LAUNCHED"):
-        return f"the cited receipt is not the COMPLETED launch of a {spec['item']} {dispatch_kind}"
+        return f"the cited receipt is not the COMPLETED launch of a {spec['item']} {' or '.join((dispatch_kind, *spec.get('also_dispatch', ())))}"
     if launch.get("execution_name") != target: return f"the target execution is not the execution named in the cited {dispatch_kind} receipt"
     verdict = cited("verdicts", req.get("verdict"))
     if verdict is None: return "the cited ABORT/stall verdict file is missing, unreadable or does not match its sha256"
@@ -1106,7 +1124,7 @@ def receipt(req: dict, status: str, reason: str = "", rc: int | None = None, out
             r["staging"] = proof
         else:
             r.update(status="FAILED", reason="bound century staging rollback proof missing; reconcile transaction outcome")
-    if not lane_selected(req) and req.get("kind") in ("smalltest_dispatch", "measuring_dispatch", "century_dispatch") and status == "COMPLETED":
+    if not lane_selected(req) and req.get("kind") in ("smalltest_dispatch", "measuring_dispatch", "century_dispatch", "century_resume") and status == "COMPLETED":
         # A staging UUID/exit zero is never launch evidence. Only the reviewed
         # wrapper's machine record binds the exact run and remote execution.
         records = []
@@ -1199,7 +1217,7 @@ def smalltest_policy(req: dict):
 def smalltest_policy_problem(req: dict) -> str | None:
     if req.get("kind") not in ("smalltest_teardown", "smalltest_teardown_dryrun", "smalltest_dispatch", "smalltest_dispatch_dryrun",
                                "measuring_dispatch", "measuring_dispatch_dryrun", "measuring_teardown", "measuring_teardown_dryrun",
-                               "century_dispatch", "century_dispatch_dryrun", "century_teardown", "century_teardown_dryrun"):
+                               "century_dispatch", "century_dispatch_dryrun", "century_resume", "century_teardown", "century_teardown_dryrun"):
         return None
     try:
         policy_name = {"measuring": "measuring_request_problem", "century": "century_request_problem"}.get(req["kind"].split("_")[0], "smalltest_request_problem")

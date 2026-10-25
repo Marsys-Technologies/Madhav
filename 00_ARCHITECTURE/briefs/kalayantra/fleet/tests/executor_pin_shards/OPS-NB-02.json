@@ -1,0 +1,9 @@
+{
+  "schema": "ky.executor_pin_shard/2",
+  "item": "OPS-NB-02",
+  "function_hashes": {
+    "W4": {
+      "OWNER_GO_KINDS": "51ce0e0d61beef2a5943436441510d0b727872c0c921890836f62b683f4a2c69"
+    }
+  }
+}

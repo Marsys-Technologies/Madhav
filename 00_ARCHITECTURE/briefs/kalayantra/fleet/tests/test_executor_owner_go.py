@@ -119,7 +119,7 @@ def oracle_g7_dry_runs_are_not_gated(w, table):
 
 
 def oracle_g8_the_gated_set_is_the_two_build_kinds(w, table):
-    assert set(w.mod.OWNER_GO_KINDS) == set(GATED)
+    assert set(w.mod.OWNER_GO_KINDS) == set(GATED) | {"century_resume"}      # SR-RESUME-NOW: a resume is a build too, with its own go (test_executor_century_resume.py judges it; its shipped row is disabled)
     for kind in GATED:                                          # each member is gated on its own: the other's go file does not open it
         req = request(w, kind, operation_id=f"op-{kind}", idempotency_key=f"k-{kind}")
         assert judged(w, table, req) == "owner_go_missing", kind

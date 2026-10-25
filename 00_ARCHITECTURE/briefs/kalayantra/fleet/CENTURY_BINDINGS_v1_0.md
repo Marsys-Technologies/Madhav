@@ -17,6 +17,7 @@ and unsealable by construction, MEASURING_BUILD_CONTRACT_v1_0 MB-1).
 | --- | --- | --- | --- | --- |
 | `century_dispatch_dryrun` | `platform/scripts/dispatch_v5_century_job.py` | builder | false | enabled |
 | `century_dispatch` | `fleet/century_launch.py` | builder + gcloud | true, `remote_async` | enabled |
+| `century_resume` | `fleet/century_launch.py --resume` | builder + gcloud | true, `remote_async` | **disabled** (SR-RESUME-NOW: the launcher mode and the writer's ledger are separate items) |
 | `century_teardown_dryrun` | `platform/scripts/teardown_v5_small_test_job.py` | owner | false | enabled |
 | `century_teardown` | same script, `--execute --i-am-steward` | owner | true | enabled (W3W4 pack verify E1; signed-only) |
 | `century_cancel_dryrun` | `fleet/century_cancel.py` (`--dry-run`) | gcloud | false | enabled (W3W4 pack verify E1) |
@@ -44,6 +45,17 @@ The horizon pair is public (SR-HORIZON-PUBLIC: start = the writer's `DEFAULT_HOR
   fence and the merged reviewed commit. The wrapper stages once and launches exactly that run with `PUBSUB_DISABLED=1` for that execution only (so the
   J-3 log read sees the sub-step lines); `ky.century_launch/1` is the executor's launch evidence. Completion is never the launch: it is read back by
   `readback_sql` for the recorded run id, and the Cloud Run execution is observed through `cloudrun_job_readback`.
+* `century_resume` (SR-RESUME-NOW; **shipped disabled**) continues a killed or failed century build over the substeps the writer's committed-substep ledger holds, instead of a
+  teardown and a fresh dispatch. Same principal, production fence, contract binding (`century_contract_sha256`, plus `program_identity.writer_digest` = the contract's
+  `image.writer_source_digest`) and launch evidence as the dispatch; its **own** owner go (a go names its kind, so neither kind's go opens the other); no dry-run twin, so a V
+  lane's acceptance is required. Its absence gate (`v5_small_test_shared.resume_evidence`) is the only one that admits a partly present generation '5.0', and only a
+  ledger-attested one: the request cites the launch receipt it resumes (`resumes`, `resume_run_id`) and states its `program_identity` (manifest digest, writer source digest,
+  runtime library digest, horizon); an accepted `readback_sql` of `resume_readback_sql()` (`resume_receipt`, `resume_acceptance`) must show one ledger program equal to the
+  request's, every substep committed by an execution of the resumed lineage, per-table counts exactly equal to the ledger's `scope_counts` (an unattested row, or a ledger that
+  accounts for more than is present, refuses naming its table), no verification rows, and one candidate manifest. The per-substep `scope_digest` is recomputed by the writer at
+  plan time; the executor cannot. `century_cancel` also cancels a resume's execution. The ledger table and columns are the writer lane's migration 1410: the gate reads the names
+  in `RESUME_LEDGER_TABLE` / `RESUME_LEDGER_COLUMNS` (one edit reconciles the query and the gate). To enable: land the writer ledger and `century_launch.py --resume`, flip `enabled`,
+  and replace oracle X8 of `tests/test_executor_century_resume.py` (and add a pin shard).
 * `century_teardown_dryrun` / `century_teardown` (SR-TEARDOWN-AUTHORITY-GATE item 3) reuse the scoped teardown with a **run_id scope**
   (`century_scope`: run id, manifest id, input-vector digest, the accepted `century_dispatch` receipt). **Evidence that today's scope did not cover a
   century candidate:** it selects runs by the small-test trigger and proves ownership by a test-slice stamp, so it refuses a century candidate by

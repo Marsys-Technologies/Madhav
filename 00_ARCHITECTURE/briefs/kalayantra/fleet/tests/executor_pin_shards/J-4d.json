@@ -1,0 +1,62 @@
+{
+  "schema": "ky.executor_pin_shard/2",
+  "item": "J-4d",
+  "after": "century_dispatch_dryrun",
+  "entries": {
+    "century_resume": {
+      "enabled": false,
+      "needs": "builder",
+      "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/century_launch.py",
+      "fixed_args": [
+        "--resume"
+      ],
+      "allowed_args": [
+        "classes",
+        "final_rules",
+        "defer_in_build_verify",
+        "horizon",
+        "result_policy"
+      ],
+      "production": true,
+      "remote_async": true,
+      "enabled_by": "J-4d",
+      "also_needs": [
+        "gcloud"
+      ]
+    }
+  },
+  "classes": {
+    "century_resume": [
+      "remote_async"
+    ]
+  },
+  "w4_bindings": {
+    "century_resume": [
+      "builder",
+      "00_ARCHITECTURE/briefs/kalayantra/fleet/century_launch.py",
+      [
+        "--resume"
+      ],
+      [
+        "classes",
+        "final_rules",
+        "defer_in_build_verify",
+        "horizon",
+        "result_policy"
+      ],
+      true,
+      null
+    ]
+  },
+  "function_hashes": {
+    "W4": {
+      "receipt": "3158e45eb8cc69a86f31165a133766470e08b886f902f314b43f73f71d8f341b",
+      "smalltest_policy_problem": "73b1072c5e8e84d9c362f755d5f4febd01eed61d16f5c80350d52623247b0465",
+      "REMOTE_ASYNC_KINDS": "4084556c5a569a0a02d24b04e1e2839bdeedb9d397844d4fd4611b5bb60171ee",
+      "measuring_cancel_problem": "a247e838cdf38bf6f2f77365bdceddbb4d1a3d115b5677a97efc8f0477eff211",
+      "LAUNCH_SCHEMAS": "9a78cefc07f0a039d0ba36f34809ec4f6a10e37a93fcad957356ff71d4122cd5",
+      "century_contract_problem": "6c7ca4390641ba9374de4486eea10e3e15dceee5a5f7c11b4bd8e080cc02c960",
+      "CANCEL_FAMILIES": "cfc78073d20489772fe64c547550fa3fe7243071a2335f333b7f83d823a45f8e"
+    }
+  }
+}

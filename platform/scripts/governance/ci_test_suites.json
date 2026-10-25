@@ -437,6 +437,7 @@
         "scripts/__tests__/test_teardown*.py",
         "scripts/__tests__/test_p01*.py",
         "scripts/__tests__/test_backup*.py",
+        "scripts/__tests__/test_century_resume*.py",
         "scripts/__tests__/test_w4*.py"
       ],
       "path_triggers": [
