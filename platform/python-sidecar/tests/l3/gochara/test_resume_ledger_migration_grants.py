@@ -10,6 +10,8 @@ CLAIMS, each with its own fail-on-revert oracle (the planted reversion is named 
   B. applied by another owner with the grant statement reverted, the post-apply block RAISES, naming amjis_app and the owner
   C. applied by amjis_app itself (the production deploy identity), the post-apply block passes and names the `owner` form
   D. with the builder's grant reverted, the post-apply block RAISES naming data_plane_builder (its privilege counts only from the ACL)
+  E. applied by the builder ITSELF (an owner) without its grant, the post-apply block RAISES: ownership never satisfies a non-owner role's grant
+  F. a SELECT that reaches amjis_app only through PUBLIC is not the `grant` form: the post-apply block RAISES
 
 Runs on the guarded local disposable cluster (GOCHARA_A53_ADMIN_DSN; NOT_RUN skip when unreachable, a FAILURE under GOCHARA_A53_REQUIRE_DB=1) in a throwaway database; the
 cluster-wide roles are created only if absent and dropped again only if this test created them.
@@ -109,6 +111,27 @@ def test_applied_by_the_app_role_itself_the_owner_form_is_measured_and_named(dat
         database.execute(MIGRATION.read_text())
     assert database.execute("SELECT pg_get_userbyid(relowner) FROM pg_class WHERE oid = %s::regclass", (LEDGER,)).fetchone()[0] == "amjis_app"
     assert any("amjis_app reads the ledger as owner" in m for m in seen), seen
+
+
+def test_applied_by_the_builder_itself_without_its_grant_the_post_apply_block_raises(database):
+    """A non-owner role's privilege must come from an explicit ACL entry, never from ownership. Here the builder OWNS the ledger and its GRANT is planted away:
+    has_table_privilege would read true (an owner holds every privilege), the ACL has no grantor <> grantee entry for it, so the apply must RAISE.
+    Revert: put has_table_privilege back in the three-role loop, or drop `grantor <> grantee` => the owner's own privileges count and the apply passes."""
+    database.execute("GRANT CREATE, USAGE ON SCHEMA public TO data_plane_builder")
+    database.execute("GRANT REFERENCES, SELECT ON public.charts, public.kala_gochara_publication TO data_plane_builder")
+    assert BUILDER_GRANT in MIGRATION.read_text()
+    with pytest.raises(Exception, match="data_plane_builder has no explicit ACL grant of SELECT"):
+        with database.transaction():
+            database.execute("SET LOCAL ROLE data_plane_builder")
+            database.execute(MIGRATION.read_text().replace(BUILDER_GRANT, "NULL;"))
+
+
+def test_a_public_read_grant_is_not_the_app_roles_explicit_grant(database):
+    """The `grant` form is an ACL entry naming amjis_app itself. A read that reaches amjis_app only through PUBLIC must not count.
+    Revert: test the grant branch with has_table_privilege => PUBLIC SELECT satisfies it and the apply passes."""
+    assert GRANT in MIGRATION.read_text()
+    with pytest.raises(Exception, match="amjis_app can read the ledger in neither admitted form"):
+        _apply(database, MIGRATION.read_text().replace(GRANT, "GRANT SELECT ON public.ka_gochara_build_ledger TO PUBLIC;"))
 
 
 def test_with_the_builder_grant_reverted_the_post_apply_block_raises_naming_the_builder(database):
