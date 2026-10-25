@@ -59,6 +59,10 @@ its claimed upper bound (monotone pieces, pass-1 pruned cells, pass-2 dead cells
 evaluation count and the limits assumed — is returned as `SolveResult.tree`; `stored_certificate` turns it into the JSON object the window's
 `qualification` carries. A budget-exhausted blank carries the partial tree and its OPEN cells, so the independent verifier can check that the
 exhaustion was real. The verifier CHECKS the cells with its own first-order enclosure (`window_cert_check`); it never trusts a claimed bound.
+BOUNDED (SR-KGEW-QUAL-BOUND): the stored certificate is capped by the database (400 cells, 200 open cells, 262,144 bytes of jsonb text — migration 1402, not raised). `stored_certificate`
+coarsens the cells to the hard cap, measures the whole object as PostgreSQL prints it, bounds the geometry when it does not fit, and FLAGS every omission: `truncated: true` IS the ruling's
+`certificate_complete: false` (the stored key list is closed — no new top-level key exists), the omitted counts ride in `geometry.omitted`, `geometry_digest` stays the digest of the FULL geometry,
+and the verifier re-solves a truncated window instead of counting it checked. A certificate that cannot fit even bounded is the named blank `REASON_CERTIFICATE`, never an oversize one.
 
 SLIVERS (SR-P1-SLIVER-D2). When the caller gives `Problem.origin_jd`, an elementary piece shorter than one JD-double ulp at its start (`sliver_resolution_s`: the
 resolution of a stored edge — one sky event computed on two paths lands ≤ one ulp apart) is excluded from the maximum like a piece outside the joint support: it is no
@@ -111,7 +115,14 @@ H1_SPACING_S = 5.0 * 86400.0
 MAX_EVALS_WINDOW = 500_000   # ephemeris-call budget of ONE window (I: sized from S0 — 75.6 evals/record, 34,742 records, 6,629 windows)
 CERT_SCHEMA = "window_solver_certificate/1"   # the object the window's `qualification` carries under `solver_certificate` (R-7)
 MAX_OPEN_CELLS = 200         # an exhausted window's certificate lists the open cells of highest claimed bound, at most this many (`open_total` counts all)
-MAX_CERT_CELLS = 400         # a certificate is coarsened (adjacent closed cells merged, the claimed bound the max) to at most this many cells
+MAX_CERT_CELLS = 400         # a certificate is coarsened (adjacent closed cells merged, the claimed bound the max) to at most this many cells — a HARD cap (SR-KGEW-QUAL-BOUND)
+#: The database's byte cap on a stored certificate (`ka_gochara_solver_certificate_ok`, migration 1402: `octet_length(c::text) <= 262144`, measured on the jsonb TEXT OUTPUT,
+#: not on `json.dumps`) and the budget the builder fits to: the cap less a safety margin. The margin is 4096 bytes (1.6 %); `jsonb_text_octets` mirrors the database's figure
+#: exactly for every finite number the builder emits (a test compares it with `octet_length(c::text)` on the real database), so the margin is slack for a future format drift,
+#: not for a known error.
+CERT_MAX_BYTES = 262144
+CERT_BYTE_MARGIN = 4096
+CERT_BYTE_BUDGET = CERT_MAX_BYTES - CERT_BYTE_MARGIN
 
 
 class SolverRefusal(RuntimeError):
@@ -126,6 +137,15 @@ class _Blank(Exception):
 
 class BudgetExhausted(Exception):
     pass
+
+
+class CertificateUnfit(RuntimeError):
+    """The window's certificate does not fit the stored shape even in its BOUNDED form (SR-KGEW-QUAL-BOUND ruling 4): the caller stores an honest null under
+    `REASON_CERTIFICATE`, never a certificate the database would refuse. `detail` carries counts only (no chart value, no date)."""
+
+    def __init__(self, detail: str):
+        super().__init__(detail)
+        self.detail = detail
 
 
 # ── the problem ──────────────────────────────────────────────────────────────
@@ -806,10 +826,11 @@ def _exhausted_tree(problem: Problem, ctx: _Ctx) -> dict:
     return tree
 
 
-def _coarsen(cells: list, cap: int) -> tuple:
-    """At most `cap` cells: adjacent closed cells of one kind are merged (the claimed bound the larger — a bound of the union), `leaf` cells
-    only when that is not enough; if it still is not, the narrowest closed `pruned`/`dead` cells are dropped (the verifier searches an
-    uncovered stretch itself) and the result is flagged truncated. `piece` cells are never dropped."""
+def _coarsen_report(cells: list, cap: int) -> tuple:
+    """(cells, dropped): at most `cap` cells — a HARD cap, the database's (`jsonb_array_length(cells) <= 400`). Adjacent closed cells of one kind are merged (the claimed
+    bound the larger — a bound of the union, nothing is lost by a merge), `leaf` cells only when that is not enough; if it still is not, cells are DROPPED (the verifier
+    searches an uncovered stretch itself) in this order of importance: the narrowest closed `pruned`/`dead` cells first, then the narrowest `piece` cells, the `leaf` brackets
+    (where the maximum was located) last. `dropped` counts the cells removed by dropping (0 ⇒ the result still tiles what the tree closed)."""
     def merge(cs: list, kinds: tuple) -> list:
         out: list = []
         for c in sorted(cs, key=lambda c: (c[1], c[2])):
@@ -822,34 +843,107 @@ def _coarsen(cells: list, cap: int) -> tuple:
     if len(out) > cap:
         out = merge(out, ("dead", "pruned", "piece", "leaf"))
     if len(out) <= cap:
-        return out, False
-    keep = [c for c in out if c[0] in ("leaf", "piece")]
-    closed = sorted((c for c in out if c[0] in ("dead", "pruned")), key=lambda c: -(c[2] - c[1]))
-    return sorted(keep + closed[:max(0, cap - len(keep))], key=lambda c: (c[1], c[2])), True
+        return out, 0
+    rank = {"leaf": 0, "piece": 1, "dead": 2, "pruned": 2}
+    kept = sorted(sorted(out, key=lambda c: (rank.get(c[0], 3), -(c[2] - c[1])))[:cap], key=lambda c: (c[1], c[2]))
+    return kept, len(out) - len(kept)
 
 
-def stored_certificate(result: SolveResult, *, objective: str, t0_iso: str, max_evals: Optional[int] = None) -> Optional[dict]:
+def _coarsen(cells: list, cap: int) -> tuple:
+    """(cells, truncated): `_coarsen_report`'s cells, and whether any cell had to be dropped."""
+    out, dropped = _coarsen_report(cells, cap)
+    return out, dropped > 0
+
+
+def jsonb_text_octets(value) -> int:
+    """The `octet_length` of `value`'s PostgreSQL jsonb TEXT OUTPUT — the figure `ka_gochara_solver_certificate_ok` caps (`octet_length(c::text)`), which `json.dumps` does
+    NOT give: jsonb prints `{"k": v, "k2": [1, 2]}` (a space after `:` and `,`) and prints every number as a plain-decimal `numeric` (`1e-06` is `0.000001`, `1e+22` is 23
+    digits). Strings are measured as PostgreSQL escapes them (`\\"`, `\\\\`, `\\b \\f \\n \\r \\t`, other control characters as `\\u00XX`, everything else its UTF-8 bytes). A
+    non-finite number is not representable in jsonb and raises. Key order does not change the length."""
+    from decimal import Decimal
+    if value is None:
+        return 4
+    if value is True:
+        return 4
+    if value is False:
+        return 5
+    if isinstance(value, int):
+        return len(str(value))
+    if isinstance(value, float):
+        if not math.isfinite(value):
+            raise ValueError("a non-finite number has no jsonb text")
+        return len(format(Decimal(repr(value)), "f"))
+    if isinstance(value, str):
+        n = 2
+        for ch in value:
+            o = ord(ch)
+            n += 2 if ch in '"\\\b\f\n\r\t' else 6 if o < 0x20 else len(ch.encode("utf-8"))
+        return n
+    if isinstance(value, (list, tuple)):
+        return 2 + sum(jsonb_text_octets(v) for v in value) + 2 * max(0, len(value) - 1)
+    if isinstance(value, dict):
+        return 2 + sum(jsonb_text_octets(k) + 2 + jsonb_text_octets(v) for k, v in value.items()) + 2 * max(0, len(value) - 1)
+    raise TypeError(f"{type(value).__name__} has no jsonb text")
+
+
+def stored_certificate(result: SolveResult, *, objective: str, t0_iso: str, max_evals: Optional[int] = None, max_bytes: int = CERT_BYTE_BUDGET) -> Optional[dict]:
     """The JSON object a window's `qualification` carries under `solver_certificate` (R-7), or None when the result has no tree (a blank
     other than budget exhaustion). Times are SECONDS from `t0_iso` (the window start the caller used as its origin). It is split in two on
     purpose: `geometry` (cuts and piece kinds — they depend on the tents and step boundaries only, so a re-evaluation under different
     doctrine VALUES can reuse them, and the cells' time partition, as a search seed) and the value claims (`cells`' bounds, `value`,
-    `instant`), which a re-evaluation must re-check. `geometry_digest` is the sha256 of the canonical geometry."""
+    `instant`), which a re-evaluation must re-check. `geometry_digest` is the sha256 of the canonical FULL geometry.
+
+    BOUNDED (SR-KGEW-QUAL-BOUND). The stored shape is closed and capped by the database (migration 1402: at most 400 cells, 200 open cells, `octet_length(c::text) <= 262144`),
+    and a long window has far more cells and elementary pieces than that. This function never emits a certificate the database would refuse, and never truncates silently:
+
+      * cells are coarsened to `MAX_CERT_CELLS` (merge adjacent, then drop the least important — `_coarsen_report`);
+      * the whole object is measured as PostgreSQL prints it (`jsonb_text_octets`) against `max_bytes` (the cap less a margin); when it does not fit the geometry is
+        bounded in two steps — the `cuts` are dropped (the pieces' own ends repeat them), then every piece that is not `mixed` or `sliver` (the verifier and the G-6 plan
+        read exactly those two kinds from the stored geometry: the sliver audit and the top-mixed ranking must stay exact);
+      * whatever was omitted is FLAGGED: `truncated` is true, and `geometry.omitted` states the counts (`cells`, `cuts`, `pieces`) — `geometry` is the one stored object
+        that migration 1402 admits extra members in (it requires `cuts` and `pieces`, nothing else, and a closed key list governs only the top level).
+        `truncated: true` IS the ruling's `certificate_complete: false` (the top-level key list is closed, so no new key exists); `geometry_digest` stays the digest of the
+        FULL geometry, so a verifier can tell stored-partial from complete without trusting the flag. `open_total` already counts every open cell, the stored `open` list
+        being capped at `MAX_OPEN_CELLS`.
+      * a certificate that does not fit even then raises `CertificateUnfit`: the caller stores the honest null `REASON_CERTIFICATE`.
+
+    A certificate with `truncated: true` is NEVER counted as a checked certificate by the verifier (`window_cert_check`): that window is re-solved."""
     tree = result.tree
     if tree is None:
         return None
     import hashlib
     import json
-    cells, truncated = _coarsen(tree["cells"], MAX_CERT_CELLS)
-    geometry = {"cuts": tree["cuts"], "pieces": tree["pieces"]}
+    cells, cells_dropped = _coarsen_report(tree["cells"], MAX_CERT_CELLS)
+    cuts, pieces = tree["cuts"], tree["pieces"]
+    geometry = {"cuts": cuts, "pieces": pieces}
     blob = json.dumps(geometry, sort_keys=True, separators=(",", ":"), allow_nan=False)
-    return {
-        "schema": CERT_SCHEMA, "objective": objective, "t0": t0_iso, "outcome": tree["outcome"], "reason": tree["reason"], "phase": tree["phase"],
-        "value": tree["value"], "instant": tree["instant"], "upper_bound": tree["upper_bound"],
-        "evals": tree["evals"], "max_evals": tree["max_evals"] if max_evals is None else int(max_evals), "budget_scope": "window",
-        "limits": {"QUANT": QUANT, "TIE": TIE, "EPS_M": EPS_M, "TIME_TOL": TIME_TOL, "LEAF_CURV": LEAF_CURV, "H1_SPACING_S": H1_SPACING_S,
-                   "NEAR_STATION_S": NEAR_STATION_S, "NEAR_STATION_NOISE_DEG": NEAR_STATION_NOISE_DEG, "h4_used": tree["h4_used"]},
-        "geometry": geometry, "geometry_digest": hashlib.sha256(blob.encode("utf-8")).hexdigest(),
-        "cells": cells, "open": tree["open"][:MAX_OPEN_CELLS], "open_total": tree.get("open_total", len(tree["open"])), "truncated": truncated}
+
+    def assemble(geom: dict, truncated: bool) -> dict:
+        return {
+            "schema": CERT_SCHEMA, "objective": objective, "t0": t0_iso, "outcome": tree["outcome"], "reason": tree["reason"], "phase": tree["phase"],
+            "value": tree["value"], "instant": tree["instant"], "upper_bound": tree["upper_bound"],
+            "evals": tree["evals"], "max_evals": tree["max_evals"] if max_evals is None else int(max_evals), "budget_scope": "window",
+            "limits": {"QUANT": QUANT, "TIE": TIE, "EPS_M": EPS_M, "TIME_TOL": TIME_TOL, "LEAF_CURV": LEAF_CURV, "H1_SPACING_S": H1_SPACING_S,
+                       "NEAR_STATION_S": NEAR_STATION_S, "NEAR_STATION_NOISE_DEG": NEAR_STATION_NOISE_DEG, "h4_used": tree["h4_used"]},
+            "geometry": geom, "geometry_digest": hashlib.sha256(blob.encode("utf-8")).hexdigest(),
+            "cells": cells, "open": tree["open"][:MAX_OPEN_CELLS], "open_total": tree.get("open_total", len(tree["open"])), "truncated": truncated}
+
+    def omitted(n_cuts: int, n_pieces: int) -> dict:
+        return {"omitted": {"cells": cells_dropped, "cuts": n_cuts, "pieces": n_pieces}} if (cells_dropped or n_cuts or n_pieces) else {}
+
+    attempts = [({"cuts": cuts, "pieces": pieces, **omitted(0, 0)}, cells_dropped > 0)]
+    if cuts or pieces:
+        essential = [p for p in pieces if p[2] in ("mixed", "sliver")]
+        attempts.append(({"cuts": [], "pieces": pieces, **omitted(len(cuts), 0)}, True))
+        attempts.append(({"cuts": [], "pieces": essential, **omitted(len(cuts), len(pieces) - len(essential))}, True))
+    size = 0
+    for geom, truncated in attempts:
+        cert = assemble(geom, truncated)
+        size = jsonb_text_octets(cert)
+        if size <= max_bytes:
+            return cert
+    raise CertificateUnfit(f"the certificate needs {size} bytes in its most bounded form (budget {max_bytes}); {len(pieces)} elementary piece(s), {len(cuts)} cut(s), "
+                           f"{len(tree['cells'])} cell(s) before coarsening")
 
 
 def _solve(problem: Problem, ctx: _Ctx) -> SolveResult:
@@ -926,4 +1020,5 @@ __all__ = [
     "REASON_BOUNDARIES", "REASON_UNKNOWN", "REASON_UNDETERMINABLE", "REASON_TIE_ISOLATION", "QUANT", "TIE", "MAX_EVALS_WINDOW", "SolverRefusal", "BudgetExhausted", "Tent",
     "Step", "Member", "Problem", "SolveResult", "constant_step", "accel_bound_provider", "CERT_SCHEMA", "MAX_CERT_CELLS", "MAX_OPEN_CELLS",
     "A_QUIET_DEG_PER_DAY2", "H4_MARGIN", "objective_value", "sliver_resolution_s", "solve", "stored_certificate",
+    "CERT_MAX_BYTES", "CERT_BYTE_MARGIN", "CERT_BYTE_BUDGET", "CertificateUnfit", "jsonb_text_octets",
 ]
