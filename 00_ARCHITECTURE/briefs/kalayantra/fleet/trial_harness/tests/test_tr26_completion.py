@@ -323,11 +323,11 @@ def test_a_build_through_run_asset_writes_the_receipt_the_check_reads_true_and_a
 
 
 def test_the_harness_build_path_is_the_bypass_it_never_touches_the_real_entry():
-    """Static claim behind the above: trial_slice.build drives q.build_slice (build_id 'trial-slice'), and nothing in the harness imports asset_runner except the completion probe.  Reversion: route build()
+    """Static claim behind the above: trial_slice.build drives q.build_slice (build_id 'trial-slice', or — SR-TR26-G7-RESUME — the id of the century-staged build_runs row the harness itself staged; never run_asset), and nothing in the harness imports asset_runner except the completion probe.  Reversion: route build()
     through run_asset (the long main TR would then lose its per-substep deadline and defect handling) -> this and the budget arithmetic both change."""
     import inspect
     src = inspect.getsource(ts.build)
-    assert 'build_id="trial-slice"' in src and "run_asset" not in src and "_run_data_writer" not in src and "asset_runner" not in src
+    assert 'else "trial-slice"' in src and "build_id=build_id" in src and "run_asset" not in src and "_run_data_writer" not in src and "asset_runner" not in src
     assert "asset_runner.run_asset" in (fx.HARNESS / "completion.py").read_text()
 
 
