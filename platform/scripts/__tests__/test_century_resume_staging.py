@@ -3,8 +3,8 @@ dispatch_v5_small_test_job._admit.
 
 Doctrine: root CLAUDE.md §N.8 (each claim is measured by a detector that can read false) and §B.10 (no invented value). One oracle per distinct production claim; each passes on the
 real module and FAILS on a copy of it with that ONE claim's line reverted (the planted reversion). The live gate runs against the local disposable cluster (127.0.0.1:55433,
-KALA_REQUIRE_DB=1) on TEMP tables only: they shadow the real names for one session and nothing outlives the connection. The ledger is the writer lane's (migration 1410); the gate reads
-the table and the `writer_digest` column through the RESUME_* constants of v5_small_test_shared.
+KALA_REQUIRE_DB=1) on TEMP tables only: they shadow the real names for one session and nothing outlives the connection. The ledger is the writer lane's (migration 1410): its TEMP
+stand-in is built from the migration's own column names and types (ledger_migration_support), never from names stated here.
 
   S1 the live gate admits a resume only over a ledger written by the request's writer program
   S2 nothing to resume refuses by name: no candidate manifest, no ledger table, an empty ledger
@@ -12,7 +12,9 @@ the table and the `writer_digest` column through the RESUME_* constants of v5_sm
   S4 _admit's hook replaces ONLY the refusal of existing generation 5.0 output (the dispatch still refuses it) and judges the N-137 end state with the century trigger too
   S5 the staging mode and the executor kind agree, the dry run stages with --dry-run only (no launch, no cloud call, no commit) and its proof names the resume it was staged for
   S6 a request whose program identity is not the century contract's writer program refuses (pure check shared by the staging rollback and the launcher)
+  S7 the resumed run's staged manifest carries the EXPLICIT resume binding (the key the writer resumes on), built from the accepted readback, and the digest covers it
 """
+import hashlib
 import importlib.util
 import io
 import json
@@ -30,6 +32,7 @@ for folder in (SCRIPTS, SCRIPTS / "__tests__"):
         sys.path.insert(0, str(folder))
 
 import century_resume_support as S  # noqa: E402
+import ledger_migration_support as M  # noqa: E402
 import dispatch_v5_century_resume_job as binding  # noqa: E402
 import dispatch_v5_small_test_job as staging  # noqa: E402
 import v5_small_test_shared as shared  # noqa: E402
@@ -68,14 +71,32 @@ def cluster():
         pytest.skip("local cluster unreachable: deferred to CI")
 
 
-def world(conn, *, ledger=("snapshot", "inventory:career"), writer=WRITER, run_state="failed", trigger=shared.CENTURY_TRIGGERED_BY, with_ledger_table=True):
+def ledger_table(conn):
+    """The ledger's TEMP stand-in: the MIGRATION's columns and types (found and parsed by ledger_migration_support)."""
+    found = M.find_migration()
+    if found is None:
+        if os.environ.get("KALA_REQUIRE_LEDGER_MIGRATION") == "1":
+            pytest.fail("KALA_REQUIRE_LEDGER_MIGRATION=1 and no migration creates public.ka_gochara_build_ledger")
+        pytest.skip("no migration creating public.ka_gochara_build_ledger: the ledger schema was NOT measured")
+    parsed = M.parse_ledger(found[1])
+    conn.execute(f"CREATE TEMP TABLE {parsed['table']} (" + ", ".join(f"{c} {t}" for c, t in parsed["columns"].items()) + ")")
+
+
+def ledger_row(conn, key, **change):
+    identity = dict(S.IDENTITY, writer_digest=WRITER)
+    identity["horizon"] = "[" + identity["horizon"] + ")"                      # the tstzrange column takes a range literal
+    values = {"chart_id": shared.CHART_ID, "generation": "5.0", "substep_key": key, **identity, **change}
+    conn.execute(f"INSERT INTO {shared.RESUME_LEDGER_TABLE} ({', '.join(values)}) VALUES ({', '.join(['%s'] * len(values))})", list(values.values()))
+
+
+def world(conn, *, ledger=("snapshot", "inventory:career"), run_state="failed", trigger=shared.CENTURY_TRIGGERED_BY, with_ledger_table=True):
     """TEMP tables shadowing the real names for this session: the run being resumed and the writer's ledger."""
     conn.execute("CREATE TEMP TABLE build_runs (id uuid, chart_id uuid, state text, triggered_by text)")
     conn.execute("INSERT INTO build_runs VALUES (%s, %s, %s, %s)", [S.RUN, shared.CHART_ID, run_state, trigger])
     if with_ledger_table:
-        conn.execute(f"CREATE TEMP TABLE {shared.RESUME_LEDGER_TABLE} (chart_id uuid, generation text, substep_key text, writer_digest text)")
+        ledger_table(conn)
         for key in ledger:
-            conn.execute(f"INSERT INTO {shared.RESUME_LEDGER_TABLE} VALUES (%s, '5.0', %s, %s)", [shared.CHART_ID, key, writer])
+            ledger_row(conn, key)
 
 
 def gate_request(**over):
@@ -92,9 +113,11 @@ def oracle_s1_a_resume_continues_only_the_same_program(module, tmp_path):
         world(conn)
         notes = module.resume_gate(gate_request())(conn.cursor(), 4, CANDIDATE)
         assert len(notes) == 1 and "2 committed substep(s)" in notes[0] and S.RUN in notes[0], "control failed — the ledger of the request's program is admitted"
-        conn.execute(f"INSERT INTO {shared.RESUME_LEDGER_TABLE} VALUES (%s, '5.0', 'window:career:p1', %s)", [shared.CHART_ID, "1" * 64])      # one substep by another program
-        with pytest.raises(shared.Refused, match=r"1 ledger substep\(s\) were committed by a writer program other than the request's"):
-            module.resume_gate(gate_request())(conn.cursor(), 4, CANDIDATE)
+        for column in ("writer_digest", "implementation_digest", "plan_digest"):                    # one substep by another program, each identity column in turn
+            ledger_row(conn, "window:career:p1", **{column: "1" * 64})
+            with pytest.raises(shared.Refused, match=rf"1 ledger substep\(s\) were committed by a program other than the request's \({column}\)"):
+                module.resume_gate(gate_request())(conn.cursor(), 4, CANDIDATE)
+            conn.execute(f"DELETE FROM {shared.RESUME_LEDGER_TABLE} WHERE substep_key = 'window:career:p1'")
 
 
 def oracle_s2_nothing_to_resume_refuses_by_name(module, tmp_path):
@@ -217,6 +240,29 @@ def oracle_s5_the_dry_run_stages_with_dry_run_only_and_names_its_resume(module, 
     assert "launch_staged" not in Path(module.__file__).read_text(), "the staging binding never launches: that is century_launch.py's"
 
 
+# ───────────────────────────── S7 the explicit resume binding ─────────────────────────────
+def oracle_s7_the_resume_manifest_carries_the_explicit_binding(module, tmp_path, monkeypatch):
+    root, req = staged_request(tmp_path, "century_resume")
+    monkeypatch.setattr(module.shared, "evidence_root", lambda: root)
+    monkeypatch.setattr(module.shared, "operation_request", lambda: req)
+    base = {"version": "nirmana-run-manifest/v1", "chart_id": shared.CHART_ID}
+    monkeypatch.setattr(module.century, "build_century_manifest", lambda **kw: (dict(base), "0" * 64))
+    manifest, digest = module.build_century_manifest(candidate={}, slice_marker={})
+    key = shared.RESUME_BINDING_KEY
+    assert key == "gochara_v5_century_resume" and {k: v for k, v in manifest.items() if k != key} == base, "the binding is the ONE addition to the century manifest"
+    assert key in manifest, "the resume binding is staged"
+    bound = manifest[key]
+    assert bound == shared.resume_binding(req, root), "built from the accepted readback, nothing else"
+    assert bound["schema"] == "gochara_v5_century_resume/1" and bound["resumes_run_id"] == req["resume_run_id"]
+    assert bound["program"] == {"implementation_digest": S.IDENTITY["implementation_digest"], "writer_digest": WRITER, "plan_digest": S.IDENTITY["plan_digest"],
+                                "horizon": ["1998-01-01T00:00:00+00:00", "2084-02-05T00:00:00+00:00"]}
+    assert bound["ledger_substeps"] == [row["substep_key"] for row in S.ledger_rows()], "the ordered substeps the ledger held when the readback measured it"
+    assert digest == hashlib.sha256(module.staging._canonical_json(manifest).encode("utf-8")).hexdigest() and digest != "0" * 64, "the manifest digest covers the binding"
+    monkeypatch.setattr(module.century, "build_century_manifest", lambda **kw: (dict(base, **{key: {}}), "0" * 64))
+    with pytest.raises(module.shared.Refused, match="never carries a resume binding"):
+        module.build_century_manifest(candidate={}, slice_marker={})
+
+
 # ───────────────────────────── S6 the program identity ─────────────────────────────
 def oracle_s6_the_program_identity_is_the_contracts_writer_program(module, tmp_path):
     module.resume_program_problem({"program_identity": {"writer_digest": WRITER}}, CONTRACT)          # control: admitted
@@ -244,6 +290,8 @@ ORACLES = {
            ('    expected = "century_resume" if args.execute else "century_resume_dryrun"', '    expected = req.get("kind")')),
     "s6": (oracle_s6_the_program_identity_is_the_contracts_writer_program, SCRIPTS / "v5_small_test_shared.py",
            ("identity.get('writer_digest') == declared)", "True)")),
+    "s7": (oracle_s7_the_resume_manifest_carries_the_explicit_binding, RESUME_JOB,
+           ("    manifest[shared.RESUME_BINDING_KEY] = shared.resume_binding(shared.operation_request(), shared.evidence_root())\n", "")),
 }
 
 

@@ -170,7 +170,9 @@ def test_the_resume_binding_exposes_what_the_launcher_drives():
     for name in ("main", "century_shape", "build_century_manifest", "_load_inactive_candidate"):
         assert callable(getattr(binding, name)), name
     import dispatch_v5_century_job as dispatch
-    assert binding.century_shape is dispatch.century_shape and binding.build_century_manifest is dispatch.build_century_manifest
+    assert binding.century_shape is dispatch.century_shape
+    # the manifest the launcher expects is the century manifest PLUS the explicit resume binding (SR-RESUME-EXPLICIT-BINDING): the resume binding's own builder, never the dispatch's
+    assert binding.build_century_manifest is not dispatch.build_century_manifest and binding.build_century_manifest.__module__ == binding.__name__
 
 
 # ───────────────────────────── L3 the dispatch path ─────────────────────────────

@@ -10,6 +10,8 @@ Doctrine: root CLAUDE.md §N.8 and §B.10. One oracle per distinct production cl
   T3 the foreign-coverage statement a resumed scope uses runs against the real column types and counts exactly the event_class partitions of runs outside the set
   T2 the teardown deletes exactly the identified run plus the resumed runs the scope names: an unnamed extra run, a named run that no longer exists, and a surviving run whose manifest
      digest differs all refuse; a partition written by a run outside the set refuses; a scope with no resumed runs is judged exactly as before
+  T4 the teardown deletes, counts and proves absent the committed-substep ledger of the generation (migration 1410, SR-RESUME-INTEGRATION): the rows every run of a resumed build
+     wrote are deleted with the generation, so the next fresh dispatch finds none (its absence census requires the ledger at 0)
 """
 import importlib.util
 import json
@@ -204,11 +206,43 @@ def oracle_t3_the_foreign_coverage_query_runs_and_counts_runs_outside_the_set(mo
         assert count([R0, R1, FOREIGN]) == 0 and count([R0]) == 2
 
 
+class Recorder:
+    """A cursor that records every statement and answers every count with `n` rows."""
+
+    def __init__(self, n=1):
+        self.n, self.statements = n, []
+
+    def execute(self, sql, params=None):
+        self.statements.append((" ".join(sql.split()), params))
+
+    def fetchone(self):
+        return {"n": self.n}
+
+
+def oracle_t4_the_teardown_covers_the_ledger(module, tmp_path):
+    ledger = shared.LEDGER_ABSENCE_TABLE
+    assert ledger == "ka_gochara_build_ledger"
+    cur = Recorder(n=3)
+    skipped = module._delete_everything(cur, [R0, R1])
+    deletes = [(sql, params) for sql, params in cur.statements if sql.startswith("DELETE FROM")]
+    assert (f"DELETE FROM {ledger} WHERE chart_id = %s AND generation = %s", (shared.CHART_ID, "5.0")) in deletes, \
+        "the ledger rows of every run of the generation are deleted (chart x generation, not one run's)"
+    assert ledger not in skipped
+    assert [sql for sql, _ in deletes if sql.startswith(f"DELETE FROM {ledger}")] == [f"DELETE FROM {ledger} WHERE chart_id = %s AND generation = %s"]
+    counts = module._absence_counts(Recorder(n=0), [R0, R1], "gochara-v5-century")
+    assert ledger in counts, "absence of the ledger is proved after the delete, with the rest of the generation"
+    with pytest.raises(module.TeardownRefused, match=ledger):
+        module._prove_absence(Recorder(n=2), [R0, R1], "gochara-v5-century")           # a surviving ledger row refuses the teardown's success claim
+    assert ledger in [t for t, _ in module.GENERATION_TABLES]
+
+
 SHARED = SCRIPTS / "v5_small_test_shared.py"
 TEARDOWN = SCRIPTS / "teardown_v5_small_test_job.py"
 ORACLES = {
     "t1": (oracle_t1_a_resumed_run_is_bound_to_its_accepted_resume_launch, SHARED, ("launch.get('run_id') != entry['run_id']", "False")),
     "t1b": (oracle_t1b_only_a_century_scope_carries_resumed_runs, SHARED, ("    if not century:\n        raise Refused('resumed_runs belong to the century teardown scope only')\n", "")),
+    "t4": (oracle_t4_the_teardown_covers_the_ledger, TEARDOWN,
+           ("GENERATION_TABLES = CHAIN_TABLES + INVENTORY_TABLES + NEAR_MISS_TABLES + (LEDGER_TABLE, MANIFEST_TABLE)", "GENERATION_TABLES = CHAIN_TABLES + INVENTORY_TABLES + NEAR_MISS_TABLES + (MANIFEST_TABLE,)")),
     "t3": (oracle_t3_the_foreign_coverage_query_runs_and_counts_runs_outside_the_set, TEARDOWN, ("AND build_id <> ALL(%s::text[])", "AND build_id = ANY(%s::text[])")),
     "t2": (oracle_t2_the_teardown_deletes_exactly_the_named_runs, TEARDOWN,
            ('    if sorted(owned) != sorted([scope["run_id"], *resumed]):', '    if False:')),

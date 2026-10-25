@@ -10,8 +10,9 @@ by the dispatch binding and the launch expects exactly that manifest; the writer
 `--resume` (SR-RESUME-NOW, OWNER-RESUMABLE-REQUIRED-20261025; the executor kind `century_resume`) continues a killed or failed century build instead of starting it again. It
 starts the SAME Cloud Run job as the dispatch, over the SAME staged century config and horizon: the only differences are the staging binding (platform/scripts/
 dispatch_v5_century_resume_job.py, which admits a ledger-attested partial chain where the dispatch demands none) and one launcher check first — the request's program
-identity must be the writer program the century contract declares, else it refuses before anything is staged. The launcher passes the writer NO resume argument: the writer
-recognises a resume from its committed-substep ledger (migration 1410) under a century-staged run and plans only the substeps not yet committed. The durable O_EXCL claim, the
+identity must be the writer program the century contract declares, else it refuses before anything is staged. The launcher passes the writer NO resume argument: the resume binding
+(SR-RESUME-EXPLICIT-BINDING: `plan_manifest.gochara_v5_century_resume`, staged by dispatch_v5_century_resume_job.py from the accepted ledger readback) is the writer's only signal,
+and the writer plans only the substeps its committed-substep ledger (migration 1410) has not recorded, after proving the program and the rows unchanged. The durable O_EXCL claim, the
 database-clock budget, the row locks and the launch evidence (`ky.century_launch/1`) are the dispatch's, unchanged.
 """
 from __future__ import annotations

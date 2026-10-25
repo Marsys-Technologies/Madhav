@@ -3,9 +3,11 @@
 
 A resume is a new build_run over the SAME generation '5.0' chain. It is staged exactly as the century build is (dispatch_v5_century_job.py: the same plan manifest,
 the same `gochara_v5_century_config`, the same horizon, the same trigger 'gochara-v5-century', the same Cloud Run job) and launched by the same bridge
-(fleet/century_launch.py --resume). What it does NOT do is decide what to skip: the WRITER does, from its committed-substep ledger (migration 1410), the moment a
-century-staged run finds a non-empty ledger for (chart, generation). So this binding defines NO new argument or config key for the writer — the ledger of the
-generation and the staged century config ARE the signal — and it adds nothing to the staged manifest, so a resume run and a dispatch run are byte-for-byte the same shape.
+(fleet/century_launch.py --resume). What it does NOT do is decide what to skip: the WRITER does, from its committed-substep ledger (migration 1410). It does it ONLY
+on the explicit binding this module stages (SR-RESUME-EXPLICIT-BINDING): the staged plan_manifest carries ONE extra key, `shared.RESUME_BINDING_KEY`
+(`gochara_v5_century_resume`, see shared.resume_binding: the run being resumed, the program the ledger was built by, the ordered substep keys the accepted readback
+measured). A run staged WITHOUT it (a century_dispatch) that finds ledger rows refuses by name in the writer (fresh_run_found_ledger) and, before that, in the dispatch's
+absence census (ledger rows must be absent). So a resume and a dispatch differ in exactly that key (and therefore in the manifest digest).
 
 What changes is the ADMISSION, in one place, `resume_gate` (a `dispatch_v5_small_test_job._admit(cur, resume=...)`): where a dispatch refuses any existing generation
 '5.0' output, a resume requires that the output be the ledger's. All of `_admit`'s other checks stand (frozen generation, active run, registry row, N-137 end state,
@@ -13,7 +15,7 @@ dependencies, no provenance receipt); the N-137 check is judged with the century
   1. the request names the program it continues (`program_identity`) and its writer digest equals the century contract's writer_source_digest (shared.resume_program_problem);
   2. the request's accepted evidence holds (shared.century_request_problem -> resume_evidence: the accepted ledger readback bound to the launch it resumes);
   3. LIVE, inside the chart lock: the generation's manifest is a candidate, the ledger table exists and holds substeps for (chart, generation), every one of them carries the
-     request's writer digest, and the run being resumed is a century run of this chart that did not complete.
+     request's writer, implementation and plan digests (migration 1410 columns), and the run being resumed is a century run of this chart that did not complete.
 `--dry-run` stages inside the same transaction and ROLLS BACK: no commit, no claim, no Cloud Run call.
 
 Modes: `--dry-run` (the default) prints the staging proof (`ky.century_staging/1`, with the `resume` it was staged for); `--execute` commits the staged run and prints
@@ -22,6 +24,7 @@ exactly its UUID. The durable, no-retry launch is fleet/century_launch.py --resu
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import io
 import json
 from pathlib import Path
@@ -33,9 +36,18 @@ import v5_small_test_shared as shared
 
 # the reused century staging helpers, under this module's name so the launcher drives either binding through one interface
 century_shape = century.century_shape
-build_century_manifest = century.build_century_manifest
 _load_inactive_candidate = century._load_inactive_candidate
 CONTRACT = Path(__file__).resolve().parents[2] / "00_ARCHITECTURE/briefs/kalayantra/fleet/century_contract.json"
+
+
+def build_century_manifest(*, candidate, slice_marker=None):
+    """The century manifest (dispatch_v5_century_job.build_century_manifest, unchanged) PLUS the explicit resume binding, digested over the whole. The binding is built from the
+    executor's request and its accepted readback (shared.resume_binding), so the staging, its dry run and the launcher's expected manifest all compute the same manifest."""
+    manifest, _ = century.build_century_manifest(candidate=candidate, slice_marker=slice_marker)
+    if shared.RESUME_BINDING_KEY in manifest:
+        raise shared.Refused("a century manifest never carries a resume binding before the resume stages it")
+    manifest[shared.RESUME_BINDING_KEY] = shared.resume_binding(shared.operation_request(), shared.evidence_root())
+    return manifest, hashlib.sha256(staging._canonical_json(manifest).encode("utf-8")).hexdigest()
 
 
 def load_contract(path=None):
@@ -60,10 +72,11 @@ def resume_gate(req):
         if not committed:
             raise shared.Refused(f"the ledger {ledger} holds no committed substep for chart {shared.CHART_ID} generation '{shared.GENERATION}': "
                                  "nothing to resume (a clean start is a century_dispatch)")
-        other = shared.count(cur, "SELECT count(*) AS n " + where + " AND writer_digest IS DISTINCT FROM %s",
-                             (shared.CHART_ID, shared.GENERATION, identity["writer_digest"]))
-        if other:
-            raise shared.Refused(f"{other} ledger substep(s) were committed by a writer program other than the request's: a resume continues only the same program")
+        for column in ("writer_digest", "implementation_digest", "plan_digest"):
+            other = shared.count(cur, "SELECT count(*) AS n " + where + " AND " + column + " IS DISTINCT FROM %s",
+                                 (shared.CHART_ID, shared.GENERATION, identity[column]))
+            if other:
+                raise shared.Refused(f"{other} ledger substep(s) were committed by a program other than the request's ({column}): a resume continues only the same program")
         cur.execute("SELECT state, triggered_by FROM build_runs WHERE id = %s::uuid AND chart_id = %s::uuid", (req["resume_run_id"], shared.CHART_ID))
         run = cur.fetchone()
         if run is None or run["triggered_by"] != shared.CENTURY_TRIGGERED_BY or run["state"] == "completed":
