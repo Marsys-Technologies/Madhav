@@ -34,8 +34,9 @@
 --   data_plane_builder   SELECT, INSERT, UPDATE, DELETE (the writer upserts; the century teardown, which runs as the builder, deletes)
 --   gochara_verifier     SELECT only
 --   gochara_sealer       SELECT only (the sealer reads the producer-execution list)
---   amjis_app            SELECT only (SR-RESUME-INTEGRATION: the app role reads the ledger for the century resume readback; the privilege is a stated fact,
---                        never inferred from table ownership)
+--   amjis_app            SELECT (SR-RESUME-INTEGRATION: the app role reads the ledger for the century resume readback). The post-apply check MEASURES and
+--                        NAMES how it reads: as the recorded owner (relowner, the deploy runner's identity) or by an explicit grant from another role
+--                        (SR-3916-NB-FIX-AMEND-1); anything else raises. The three roles above count only by explicit ACL grants (grantor <> grantee).
 --
 -- ROUTE: public-schema DDL — a Kāla protected-window migration (derived automatically by governance/kala_protected_migrations.py).
 -- IDEMPOTENT: CREATE TABLE / INDEX IF NOT EXISTS; GRANT of a held privilege is a no-op. FAIL-CLOSED: refuses when a prerequisite is missing,
@@ -133,7 +134,7 @@ $$;
 
 -- ── 3. Post-apply presence checks (raise, never a silent skip) ───────────────
 DO $$
-DECLARE r text; missing text;
+DECLARE r text; priv text; missing text; owner_name text; app_form text;
 BEGIN
   IF to_regclass('public.ka_gochara_build_ledger') IS NULL THEN
     RAISE EXCEPTION 'migration 1410 post-apply check failed: public.ka_gochara_build_ledger is missing';
@@ -149,18 +150,24 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_constraint c WHERE c.contype = 'p' AND c.conrelid = 'public.ka_gochara_build_ledger'::regclass) THEN
     RAISE EXCEPTION 'migration 1410 post-apply check failed: the primary key (chart_id, generation, substep_key) is missing';
   END IF;
-  IF to_regrole('data_plane_builder') IS NOT NULL
-     AND NOT (has_table_privilege('data_plane_builder', 'public.ka_gochara_build_ledger', 'SELECT')
-              AND has_table_privilege('data_plane_builder', 'public.ka_gochara_build_ledger', 'INSERT')
-              AND has_table_privilege('data_plane_builder', 'public.ka_gochara_build_ledger', 'UPDATE')
-              AND has_table_privilege('data_plane_builder', 'public.ka_gochara_build_ledger', 'DELETE')) THEN
-    RAISE EXCEPTION 'migration 1410 post-apply check failed: the builder does not hold SELECT, INSERT, UPDATE and DELETE on the ledger';
-  END IF;
+  SELECT pg_get_userbyid(relowner) INTO owner_name FROM pg_class WHERE oid = 'public.ka_gochara_build_ledger'::regclass;
+  -- The three non-owner roles: every required privilege is read from the ACL ITSELF (aclexplode(relacl)) and counts only when an entry names the role as
+  -- grantee AND was made by a DIFFERENT role (grantor <> grantee) -- has_table_privilege is not used here, because ownership would satisfy it
+  -- (SR-3916-NB-FIX / -AMEND-1). None of these roles is ever the owner; if one were, its privileges would not count and the check raises.
+  FOR r, priv IN SELECT x.role_name, x.privilege FROM (VALUES
+      ('data_plane_builder', 'SELECT'), ('data_plane_builder', 'INSERT'), ('data_plane_builder', 'UPDATE'), ('data_plane_builder', 'DELETE'),
+      ('gochara_verifier', 'SELECT'), ('gochara_sealer', 'SELECT')) AS x(role_name, privilege)
+  LOOP
+    IF to_regrole(r) IS NOT NULL AND NOT EXISTS (
+         SELECT 1 FROM pg_class c, LATERAL aclexplode(c.relacl) a
+         WHERE c.oid = 'public.ka_gochara_build_ledger'::regclass
+           AND a.grantee = to_regrole(r)::oid AND a.privilege_type = priv AND a.grantor <> a.grantee) THEN
+      RAISE EXCEPTION 'migration 1410 post-apply check failed: % has no explicit ACL grant of % on the ledger (a privilege from ownership does not count; the owner is %)',
+        r, priv, owner_name;
+    END IF;
+  END LOOP;
   FOREACH r IN ARRAY ARRAY['gochara_verifier', 'gochara_sealer'] LOOP
     IF to_regrole(r) IS NOT NULL THEN
-      IF NOT has_table_privilege(r, 'public.ka_gochara_build_ledger', 'SELECT') THEN
-        RAISE EXCEPTION 'migration 1410 post-apply check failed: % cannot read the ledger', r;
-      END IF;
       IF has_table_privilege(r, 'public.ka_gochara_build_ledger', 'INSERT') OR has_table_privilege(r, 'public.ka_gochara_build_ledger', 'UPDATE')
          OR has_table_privilege(r, 'public.ka_gochara_build_ledger', 'DELETE') OR has_table_privilege(r, 'public.ka_gochara_build_ledger', 'TRUNCATE')
          OR has_any_column_privilege(r, 'public.ka_gochara_build_ledger', 'INSERT') OR has_any_column_privilege(r, 'public.ka_gochara_build_ledger', 'UPDATE') THEN
@@ -168,8 +175,21 @@ BEGIN
       END IF;
     END IF;
   END LOOP;
-  IF to_regrole('amjis_app') IS NOT NULL AND NOT has_table_privilege('amjis_app', 'public.ka_gochara_build_ledger', 'SELECT') THEN
-    RAISE EXCEPTION 'migration 1410 post-apply check failed: amjis_app cannot read the ledger (SELECT is granted explicitly, never assumed from ownership)';
+  -- amjis_app (the readback role): its read is a MEASURED, NAMED fact in exactly one of two admitted forms (SR-3916-NB-FIX-AMEND-1):
+  --   owner  -- pg_class.relowner IS amjis_app (the deploy runner connects as amjis_app, so it owns what 1410 creates; an owner reads by definition)
+  --   grant  -- an explicit ACL SELECT entry for amjis_app made by a DIFFERENT role (when another role owns the table)
+  -- anything else raises. No WRITE clause for amjis_app: as the owner it necessarily holds write privileges.
+  IF to_regrole('amjis_app') IS NOT NULL THEN
+    IF owner_name = 'amjis_app' THEN
+      app_form := 'owner';
+    ELSIF EXISTS (SELECT 1 FROM pg_class c, LATERAL aclexplode(c.relacl) a
+                  WHERE c.oid = 'public.ka_gochara_build_ledger'::regclass
+                    AND a.grantee = to_regrole('amjis_app')::oid AND a.privilege_type = 'SELECT' AND a.grantor <> a.grantee) THEN
+      app_form := 'grant';
+    ELSE
+      RAISE EXCEPTION 'migration 1410 post-apply check failed: amjis_app can read the ledger in neither admitted form (it is not the owner -- the owner is % -- and no explicit SELECT grant from another role exists)', owner_name;
+    END IF;
+    RAISE NOTICE 'migration 1410: amjis_app reads the ledger as %', app_form;
   END IF;
   RAISE NOTICE 'migration 1410: presence checks passed';
 END;

@@ -277,11 +277,11 @@ def test_kill_at_substep_n_then_resume_equals_a_fresh_build_and_does_not_rerun_r
 
 # ── C. a different program / horizon / plan / manifest refuses by name ────────────────────────────────────────────────────────────────
 
-def _killed(h, kill_after=f"record:{CLASSES[0]}:P2"):
+def _killed(h, kill_after=f"record:{CLASSES[0]}:P2", **kw):
     first = _Subset()
     first.kill_after = kill_after
     with pytest.raises(RuntimeError, match="injected kill"):
-        h.dispatch(first)
+        h.dispatch(first, **kw)
     return h.chain(), h.ledger()
 
 
@@ -359,10 +359,13 @@ def test_a_published_manifest_is_never_resumed(h):
 def test_a_chain_without_a_horizon_basis_pin_is_non_resumable(h):
     """SR-J4E-HORIZON-BASIS: a chain whose manifest carries no pin (built before the pin was written for century runs; here the harness supplies no birth parameters, so
     none is derived) cannot be resumed by a run that COULD pin. Refused by name, nothing written. Revert: drop `require_horizon_basis` => the resume proceeds on an
-    unpinned manifest and the completion gate would read FALSE at the end of it."""
-    _killed(h)
+    unpinned manifest and the completion gate would read FALSE at the end of it.
+    Run over the RULED century horizon (SR-3916-NB-FIX NB-2): there the horizon-derivation guards all agree, so `require_horizon_basis` is the ONLY thing that can refuse the
+    resume and the reverted run reaches no other error (over a short horizon the live-input check would raise HorizonDerivationDisagreesWithRuling and mask the revert)."""
+    from services.gochara_kernel import horizon as gk_horizon
+    _killed(h, kill_after=writer_mod.SNAPSHOT_SUBSTEP, horizon=gk_horizon.RULED_HORIZON)
     assert h.w.conn.execute("SELECT input_generation_vector->'horizon_basis' IS NULL FROM public.kala_gochara_publication WHERE generation = %s", (GEN,)).fetchone()[0]
-    _refused_with_nothing_written(h, "resume_horizon_basis_unpinned", ("non-resumable",), birth=True)
+    _refused_with_nothing_written(h, "resume_horizon_basis_unpinned", ("non-resumable",), birth=True, horizon=gk_horizon.RULED_HORIZON)
 
 
 def test_the_resume_reads_the_pin_back_from_the_manifest_and_checks_it_describes_the_built_horizon(h):
@@ -388,11 +391,14 @@ def test_the_resume_reads_the_pin_back_from_the_manifest_and_checks_it_describes
 
 # ── H. the century run pins its horizon_basis (SR-J4E-HORIZON-BASIS) ─────────────────────────────────────────────────────────────
 
-def _manifest_pin(h, century, monkeypatch=None, pinned_off=False):
+def _manifest_pin(h, century, monkeypatch=None, pinned_off=False, build_run_row=False):
     """Run the REAL manifest substep over the ruled century horizon with birth parameters (as the orchestrator supplies) and read back, with the gate's own expression,
-    whether the manifest's input vector carries `horizon_basis`."""
+    whether the manifest's input vector carries `horizon_basis`. `build_run_row`: give a NON-century run the `build_runs` row the production orchestrator always has
+    (the harness inserts one only for century runs), so a basis derivation CAN succeed for it."""
     from services.gochara_kernel import horizon as gk_horizon
     ctx = h._ctx(gk_horizon.RULED_HORIZON, century, birth=True)
+    if build_run_row and not century:
+        h.w.conn.execute("INSERT INTO public.build_runs (id) VALUES (%s::uuid)", (ctx.build_id,))
     writer_mod.GocharaV5Writer().run_substep(ctx, SubStep(key=writer_mod.MANIFEST_SUBSTEP, label="manifest"))
     h.conn.commit()
     return h.w.conn.execute("SELECT input_generation_vector->'horizon_basis' FROM public.kala_gochara_publication WHERE chart_id = %s AND generation = %s",
@@ -414,8 +420,10 @@ def test_a_century_run_pins_the_horizon_basis_and_the_unfixed_discriminator_read
 
 def test_an_ordinary_run_is_not_pinned_so_its_vector_is_unchanged(h):
     """MB-CODEX-1 ruling 1: an ordinary build (no staged century config, no marker) carries NO basis component — its vector stays what main wrote.
-    Revert: pin every run that has a horizon => this assertion fails (and test_mb_horizon_shape_guard / test_mb_ordinary_golden)."""
-    assert _manifest_pin(h, False) is None
+    Revert: pin every run that has a horizon => the `is None` assertion below fails (and test_mb_horizon_shape_guard / test_mb_ordinary_golden).
+    The run has its `build_runs` row and the ruled horizon (SR-3916-NB-FIX NB-3), so under that revert the basis derivation SUCCEEDS and the pin lands in the vector; without
+    the row it would die on HorizonUnderivable before reaching the assertion."""
+    assert _manifest_pin(h, False, build_run_row=True) is None
     vector = bl.manifest_identity(h.w.conn, CHART_ID, GEN)
     assert vector[3] is None
     assert "horizon_basis" not in json.loads(h.w.conn.execute("SELECT input_generation_vector::text FROM public.kala_gochara_publication").fetchone()[0])

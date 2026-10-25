@@ -1,12 +1,15 @@
-"""SR-RESUME-INTEGRATION: migration 1410 grants SELECT on the committed-substep ledger to `amjis_app`, explicitly, and its post-apply block raises without it.
+"""SR-RESUME-INTEGRATION / SR-3916-NB-FIX-AMEND-1: migration 1410's post-apply block MEASURES and NAMES how `amjis_app` reads the committed-substep ledger.
 
-The century resume readback (the executor's accepted ledger readback) runs as the app role. The ruling: "Do NOT rely on ownership ... the privilege is a stated fact." So
-the migration states it in the same existence-guarded pattern as its other grants, and the post-apply block (the migration's own detector) raises unless the role, when it
-exists, holds SELECT — a table the app role merely happens to own would read green on a privilege check only if the grant were absent AND the check were ownership-based.
+The century resume readback runs as the app role, and the deploy runner connects as that role, so in production it OWNS what 1410 creates. The ruling (amended): the read
+is a stated fact in exactly one of two admitted forms, each measured and named by the migration -- `owner` (pg_class.relowner is amjis_app) or `grant` (an explicit ACL
+SELECT entry for amjis_app made by a different role); anything else raises. The three non-owner roles count only by explicit ACL grants (grantor <> grantee), never by
+has_table_privilege, which ownership would satisfy.
 
 CLAIMS, each with its own fail-on-revert oracle (the planted reversion is named in the docstring):
-  A. applied with the role present, `has_table_privilege('amjis_app', ledger, 'SELECT')` is true (and the role holds no write privilege)
-  B. with the grant statement reverted the post-apply block RAISES, naming amjis_app
+  A. applied by another owner with the role present, amjis_app reads by `grant` (an ACL entry from a different grantor) and holds no write privilege
+  B. applied by another owner with the grant statement reverted, the post-apply block RAISES, naming amjis_app and the owner
+  C. applied by amjis_app itself (the production deploy identity), the post-apply block passes and names the `owner` form
+  D. with the builder's grant reverted, the post-apply block RAISES naming data_plane_builder (its privilege counts only from the ACL)
 
 Runs on the guarded local disposable cluster (GOCHARA_A53_ADMIN_DSN; NOT_RUN skip when unreachable, a FAILURE under GOCHARA_A53_REQUIRE_DB=1) in a throwaway database; the
 cluster-wide roles are created only if absent and dropped again only if this test created them.
@@ -64,21 +67,53 @@ def _apply(conn, text):
         conn.execute(text)
 
 
-def test_the_applied_migration_grants_select_to_the_app_role_and_no_write_privilege(database):
-    """Revert: remove the amjis_app GRANT (and its check) from 1410 => `has_table_privilege` reads false and this assertion fails."""
+BUILDER_GRANT = "GRANT SELECT, INSERT, UPDATE, DELETE ON public.ka_gochara_build_ledger TO data_plane_builder;"
+
+
+def _notices(conn):
+    seen = []
+    conn.add_notice_handler(lambda d: seen.append(d.message_primary or ""))
+    return seen
+
+
+def test_another_owner_applies_and_the_app_role_reads_by_an_explicit_grant_with_no_write_privilege(database):
+    """Revert: remove the amjis_app GRANT and the post-apply `grant` branch from 1410 => no ACL entry for amjis_app exists and the first assertion fails."""
+    seen = _notices(database)
     _apply(database, MIGRATION.read_text())
-    assert database.execute("SELECT has_table_privilege('amjis_app', %s, 'SELECT')", (LEDGER,)).fetchone()[0] is True
+    assert database.execute("SELECT pg_get_userbyid(relowner) FROM pg_class WHERE oid = %s::regclass", (LEDGER,)).fetchone()[0] != "amjis_app"
+    assert database.execute("SELECT count(*) FROM pg_class c, LATERAL aclexplode(c.relacl) a WHERE c.oid = %s::regclass AND a.grantee = 'amjis_app'::regrole::oid"
+                            " AND a.privilege_type = 'SELECT' AND a.grantor <> a.grantee", (LEDGER,)).fetchone()[0] == 1, "an explicit ACL grant from another role"
     assert database.execute("SELECT has_table_privilege('amjis_app', %s, 'INSERT') OR has_table_privilege('amjis_app', %s, 'UPDATE')"
                             " OR has_table_privilege('amjis_app', %s, 'DELETE')", (LEDGER,) * 3).fetchone()[0] is False, "the app role reads the ledger only"
-    assert database.execute("SELECT pg_get_userbyid(relowner) FROM pg_class WHERE oid = %s::regclass", (LEDGER,)).fetchone()[0] != "amjis_app", \
-        "the privilege is stated, not inherited from ownership"
+    assert any("amjis_app reads the ledger as grant" in m for m in seen), seen
 
 
-def test_with_the_app_grant_reverted_the_post_apply_block_raises_naming_the_role(database):
+def test_with_the_app_grant_reverted_the_post_apply_block_raises_naming_the_role_and_the_owner(database):
     """The migration's own detector: the grant is planted away (the one statement replaced by a no-op) and the post-apply block must RAISE, not pass.
     Revert: drop the amjis_app clause from the post-apply block => the migration applies cleanly without the grant and this test fails."""
     assert GRANT in MIGRATION.read_text(), "the migration no longer states the grant in the form this oracle reverts"
     reverted = MIGRATION.read_text().replace(GRANT, "NULL;")
-    with pytest.raises(Exception, match="amjis_app cannot read the ledger"):
+    with pytest.raises(Exception, match="amjis_app can read the ledger in neither admitted form .*the owner is "):
         _apply(database, reverted)
     assert database.execute("SELECT to_regclass(%s)", (LEDGER,)).fetchone()[0] is None, "a refused migration left the table behind (its transaction must roll back)"
+
+
+def test_applied_by_the_app_role_itself_the_owner_form_is_measured_and_named(database):
+    """The production deploy identity: the runner connects as amjis_app, which then owns the ledger. The post-apply block must PASS and name the `owner` form.
+    Revert: delete the `owner` branch (IF owner_name = 'amjis_app' ...) => the self-grant has grantor = grantee, neither form holds, and the apply raises."""
+    database.execute("GRANT CREATE, USAGE ON SCHEMA public TO amjis_app")
+    database.execute("GRANT REFERENCES, SELECT ON public.charts, public.kala_gochara_publication TO amjis_app")
+    seen = _notices(database)
+    with database.transaction():
+        database.execute("SET LOCAL ROLE amjis_app")
+        database.execute(MIGRATION.read_text())
+    assert database.execute("SELECT pg_get_userbyid(relowner) FROM pg_class WHERE oid = %s::regclass", (LEDGER,)).fetchone()[0] == "amjis_app"
+    assert any("amjis_app reads the ledger as owner" in m for m in seen), seen
+
+
+def test_with_the_builder_grant_reverted_the_post_apply_block_raises_naming_the_builder(database):
+    """The builder's privileges count only from an explicit ACL entry. Revert: check the builder with has_table_privilege again (or drop it from the ACL loop) =>
+    with its grant planted away the migration still applies only if ownership/another path satisfied it; here no path does and the RAISE must name the role."""
+    assert BUILDER_GRANT in MIGRATION.read_text(), "the migration no longer states the builder grant in the form this oracle reverts"
+    with pytest.raises(Exception, match="data_plane_builder has no explicit ACL grant of SELECT"):
+        _apply(database, MIGRATION.read_text().replace(BUILDER_GRANT, "NULL;"))
