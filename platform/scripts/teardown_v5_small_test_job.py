@@ -161,7 +161,11 @@ EXPECTED_REGISTRY_ROW = {
 }
 
 MANIFEST_TABLE = ("kala_gochara_publication", "")   # the candidate manifest: last, and only once proven to be the slice's
-GENERATION_TABLES = CHAIN_TABLES + INVENTORY_TABLES + NEAR_MISS_TABLES + (MANIFEST_TABLE,)
+# SR-RESUME-NOW (migration 1410): the century build's committed-substep ledger is part of the generation's output. It has no foreign key to the manifest (the
+# pre-manifest substeps are ledgered before the manifest exists), so it is listed here and deleted, counted and proved absent with the rest; a ledger left behind
+# would make the next fresh build "resume" a chain that no longer exists.
+LEDGER_TABLE = ("ka_gochara_build_ledger", "")
+GENERATION_TABLES = CHAIN_TABLES + INVENTORY_TABLES + NEAR_MISS_TABLES + (LEDGER_TABLE, MANIFEST_TABLE)
 # The legacy v4 ledger tables are NOT written by the v5 writer: GUARD-ONLY. A table that does not exist is skipped (named `absent`
 # in the listing); rows of '5.0' in one are not this test's, and the teardown refuses and names them.
 LEGACY_GUARD_TABLES = ("kala_gochara_windows", "kala_gochara_contacts")

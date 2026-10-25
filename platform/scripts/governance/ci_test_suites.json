@@ -485,7 +485,8 @@
       "engine": "pytest",
       "include": [
         "tests/l3/gochara/test_a55*.py",
-        "tests/l3/gochara/test_j4d*.py"
+        "tests/l3/gochara/test_j4d*.py",
+        "tests/l3/gochara/test_resume_ledger*.py"
       ]
     },
     "gochara-a55-slice-transitions-1-9": {

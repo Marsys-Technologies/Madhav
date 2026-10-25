@@ -607,7 +607,10 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # Evaluation re-pinned ONCE more, the LAST re-derivation before the TR (SR-P2-ADMISSION-VERIFIER-FIX): 66560932b makes the P2 record verifier (record_derivation, an evaluation-stage module) re-derive
     # house_from_moon from the sealed CITED set, not the adverse search plan (dc911db8... -> 16c4a524...). Verifier-only; the builder is unchanged, so no rebuild is needed. Re-derived by script from the final tree's real
     # bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (equal to input_vector.implementation_digests()); no golden component is re-captured. EQUIVALENCE_RECORD_CHANGELOG.json entry P2-ADMISSION.
-    assert got["implementation"]["evaluation"] == "16c4a5243711fd95e045dee3b9e47c5242fca07b7569d2c7a24bdf79ba7cd6cc"
+    # Evaluation re-pinned ONCE for SR-RESUME-NOW (the committed-substep ledger, migration 1410): the ka_gochara_v5 writer (ledger rows, resume plan, the century horizon_basis pin) and input_vector
+    # (`build_ledger` joins the evaluation stage) changed; a new module `build_ledger` entered the stage. The ordinary run's every other component, outcome, row count and SQL shape is
+    # asserted unchanged above (no extra statement, no horizon_basis); the prior pin 16c4a524... is main's. Re-derived from the real bytes with module_digests(IMPLEMENTATION_MODULES).
+    assert got["implementation"]["evaluation"] == "57252fb74f29f17770c6fae388b228261bd4ff8909d5bab44723bd2d5504d5ec"
     # J-4c (main, #3770): the geometry stage also moved by the Swiss-polished in-orb span edges in record_store._in_orb_span_around_root. With P06b's near_miss_verifier in the
     # geometry identity, the merged-tree digest below is re-derived the same way (main alone gives 4479243d...; evaluation and window are unchanged by J-4c itself; J-4c F-LEANNESS (d96b3bfb0) then moved record_store again, anchor-column probe once per store). No golden component is
     # re-captured: this capture's SQL shapes, counts and outcomes do not depend on the span edges' last arcsec.
@@ -719,4 +722,5 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # Window re-pinned a SECOND time (SR-TR3-SECOND-REPIN) after final TR #1 20261023T2010ZF (R-6 cap): window_solver_check (TR3 defect E: a certified-constant stretch of a
     # max-min piece is one plateau; U_CERT: bisection below the 1 ms floor) and window_verifier (U_CERT: the per-window deep-split allowance counter) move the window stage
     # (e38160c1... -> 25c5badb...); geometry and evaluation unchanged; re-derived by the same script; EQUIVALENCE_RECORD_CHANGELOG.json entry TR3-DEFECT-E-UCERT.
-    assert got["implementation"]["window"] == "25c5badbe01dc8634948295a661d107927c609c6042c060faee89895c8850661"
+    # Window re-pinned for SR-RESUME-NOW: seal_flow (the window stage's sealing step) now refuses a generation several executions produced (the prior pin 25c5badb... is main's).
+    assert got["implementation"]["window"] == "c73f547040dcd916516318505327b0a1390559e1efa54b621fcd6026dc027db9"
