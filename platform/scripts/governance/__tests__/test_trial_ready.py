@@ -519,7 +519,9 @@ HARNESS_DIR = "00_ARCHITECTURE/briefs/kalayantra/fleet/trial_harness"
 # TR-26 G-completion (follow-up on PR 3912; harness-only, no implementation digest moves; SR-J4E-HORIZON-BASIS, SR-J4E-POSTRUN-READBACKS, SR-RESUME-NOW (3)): completion.py + `trial_slice.py completion-probe` (a century-shaped
 # manifest's horizon_basis pin and a provenance receipt from a build through the real entry asset_runner.run_asset), G-8 reads both from the probe's raw readbacks, the resume-probe perturbs the source and the library digest
 # one at a time (tests/test_tr26_completion.py, tests/test_tr26_completion_live.py, tests/test_tr26_resume.py); previous pin 17a55618eacc6a34233c41749620e2c2eb64aedf8e0c70f90aebee4eabaafa87
-HARNESS_V31_DIGEST = "f23c08d8a9140e16429858f5e3322e1b0fdbf24ea5c7a7eaa50578259043ebb2"
+# TR-26 harness NB follow-up (SR-TR26-HARNESS-NB; harness-only): G-7 g6_with_verdict + NOT_EVALUATED on a vacuous G-6 sample, a structural oracle that the completion probe goes through asset_runner.run_asset (tests/test_tr26_gates.py,
+# tests/test_tr26_completion.py); previous pin f23c08d8a9140e16429858f5e3322e1b0fdbf24ea5c7a7eaa50578259043ebb2
+HARNESS_V31_DIGEST = "ac21584fa2b092f89573e45d940de9b651a9755f28f881ed6a6ab9eaf50f669f"
 
 
 def harness_digest(root):

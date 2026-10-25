@@ -329,3 +329,59 @@ def test_the_harness_build_path_is_the_bypass_it_never_touches_the_real_entry():
     src = inspect.getsource(ts.build)
     assert 'build_id="trial-slice"' in src and "run_asset" not in src and "_run_data_writer" not in src and "asset_runner" not in src
     assert "asset_runner.run_asset" in (fx.HARNESS / "completion.py").read_text()
+
+
+def test_the_completion_probe_calls_the_real_build_entry_exactly_once_for_the_staged_run_and_never_the_writer_directly(monkeypatch):
+    """NB-1 (SR-TR26-HARNESS-NB; N.8), structural and DB-free: the provenance receipt only exists if the build went through `asset_runner.run_asset`, so `_real_entry_build` is run against a spy entry and a
+    recording writer.  The spy must be called exactly once, for the run the probe staged (its id from the INSERT), the chart and ASSET, on the probe's own cursor, and the writer must be driven ONLY by it.
+    Reversion: call the writer directly in `_real_entry_build` (the TR #2 bypass) instead of run_asset -> zero spy calls, the writer driven by the probe, and this fails."""
+    import types
+    seen = {"entry": [], "writer": [], "inserts": []}
+
+    class Conn:
+        autocommit = False
+        def execute(self, sql, params=None):
+            seen["inserts"].append((sql, params))
+        def cursor(self):
+            return Cur()
+        def commit(self):
+            pass
+
+    class Cur:
+        def __init__(self):
+            self.sql = ""
+        def execute(self, sql, params=None):
+            self.sql = sql
+        def fetchone(self):
+            return {"assets": "[]", "throughput": "[]"} if "build_run_assets" in self.sql else {"r": None}
+
+    class Writer:
+        def plan_substeps(self, ctx):
+            seen["writer"].append("plan_substeps")
+            return []
+        def run_substep(self, ctx, step):
+            seen["writer"].append("run_substep")
+        def run(self, ctx):
+            seen["writer"].append("run")
+
+    def pkg(name, **attrs):
+        m = types.ModuleType(name)
+        m.__dict__.update(attrs)
+        return m
+
+    asset_runner = pkg("pipeline.orchestrator.asset_runner", run_asset=lambda *a, **k: seen["entry"].append((a, k)))
+    writer_mod = pkg("pipeline.orchestrator.writers.ka_gochara_v5", SCORED_CLASSES=("c1", "c2"), TEST_SLICE_KEY="test_slice", GocharaV5Writer=Writer)
+    writers = pkg("pipeline.orchestrator.writers", ka_gochara_v5=writer_mod, ContextSpec=lambda **kw: types.SimpleNamespace(**kw))
+    birth = pkg("pipeline.orchestrator.birth_params", fetch_birth_params=lambda conn, chart: {})
+    orch = pkg("pipeline.orchestrator", asset_runner=asset_runner, birth_params=birth, writers=writers)
+    for name, mod in (("pipeline", pkg("pipeline", orchestrator=orch)), ("pipeline.orchestrator", orch), ("pipeline.orchestrator.asset_runner", asset_runner),
+                      ("pipeline.orchestrator.birth_params", birth), ("pipeline.orchestrator.writers", writers), ("pipeline.orchestrator.writers.ka_gochara_v5", writer_mod)):
+        monkeypatch.setitem(sys.modules, name, mod)
+    out = cp._real_entry_build(Conn(), ts, EXPECTED, 30)
+    assert len(seen["entry"]) == 1, "the probe must go through the real build entry exactly once"
+    (args, kwargs), = seen["entry"]
+    staged = [p for sql, p in seen["inserts"] if sql.lstrip().upper().startswith("INSERT INTO PUBLIC.BUILD_RUNS")]
+    assert len(staged) == 1 and args[2] == staged[0][0] == out["run_id"], "run_asset must run the run the probe staged"
+    assert args[3] == ts.CHART and args[4] == cp.ASSET and kwargs["declared_deps"] == []
+    assert seen["writer"] == [], f"the writer must be driven only by the entry, never by the probe: {seen['writer']}"
+

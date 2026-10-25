@@ -101,6 +101,23 @@ def test_g7_fails_when_a_g6_sample_window_differs_even_if_no_truncated_window_do
     assert g7(a, b)["status"] == FAIL
 
 
+def test_g7_sample_comparison_is_not_evaluated_when_no_sample_window_has_a_verdict_in_both_runs_and_counts_those_that_do():
+    """NB-2 (SR-TR26-HARNESS-NB; N.8): a G-6 sample made only of exact-re-derivation windows (no solver verdict) compared absent-in-both = vacuous equality, never a pass.  Cases: 0 verdicts -> NOT_EVALUATED;
+    verdicts and one differing -> FAIL; verdicts and equal -> PASS, each with `g6_with_verdict` in observed.  Reversion: state = not differ (drop the g6_with_verdict term) -> the first case reads PASS."""
+    chk = lambda g: next(c for c in g["checks"] if "identical in both runs" in c["claim"])
+    S2 = wid(5)
+    none = {k: x for k, x in BASE.items() if k != S1}
+    a, b = pair(none, none, truncated=[T1], g6=[S1, S2])
+    g = g7(a, b)
+    assert chk(g)["status"] == NOT_EVALUATED and chk(g)["observed"]["g6_sample"] == 2 and chk(g)["observed"]["g6_with_verdict"] == 0 and g["status"] == NOT_EVALUATED
+    a, b = pair(BASE, BASE, truncated=[T1], g6=[S1, S2])                      # S1 has a verdict in both runs, S2 none: counted once
+    g = g7(a, b)
+    assert chk(g)["status"] == PASS and chk(g)["observed"]["g6_with_verdict"] == 1 and g["status"] == PASS
+    a, b = pair(BASE, {**BASE, S1: "DISAGREEMENT:111111111111"}, truncated=[T1], g6=[S1, S2])
+    g = g7(a, b)
+    assert chk(g)["status"] == FAIL and chk(g)["observed"]["differing"] == 1 and chk(g)["observed"]["g6_with_verdict"] == 1 and g["status"] == FAIL
+
+
 def test_g7_ignores_a_difference_on_a_window_outside_the_audit_set():
     """Only the audited windows gate (the ruling's scope).  Reversion: compare every verdict -> FAIL here."""
     v2 = {**BASE, wid(4): "INCONCLUSIVE:ffffffffffff"}

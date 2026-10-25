@@ -682,13 +682,14 @@
     "SR-KGEW-QUAL-BOUND-AMEND-2",
     "SR-RESUME-NOW",
     "SR-J4E-HORIZON-BASIS",
-    "SR-J4E-POSTRUN-READBACKS"
+    "SR-J4E-POSTRUN-READBACKS",
+    "SR-TR26-HARNESS-NB"
    ],
    "category": "E1",
    "part": "trial-harness digest + record/governance files; NO implementation digest",
    "base_commit": "c718a5535",
    "derived_at_head": "(this commit)",
-   "statement": "Delta from H2 c718a5535 to the TR-26 harness landing, EXACTLY: (1) trial_harness gates.py + trial_slice.py + run_trial.sh + make_baseline.sh + gate_profile.tr26.json + tests test_tr26.py / test_tr26_gates.py / test_tr26_resume.py (the 26-class universe, baseline --classes, G-7 verifier repeat on the truncated windows and the G-6 sample, G-1 certificate size + baseline provenance, G-4 INCONCLUSIVE thresholds, G-5 truncated re-solve time, the read-only certificate / TR #2 truncation audit, the kill+resume leg with its refusal probe); (1b) follow-up commit on the same PR (rulings SR-J4E-HORIZON-BASIS, SR-J4E-POSTRUN-READBACKS, SR-RESUME-NOW (3)): trial_harness completion.py (new) + gates.py (G-8 g8_completion_checks, refused_by_name, the refusal_dimensions loop) + trial_slice.py (completion-probe, evaluate --completion, resume-probe per dimension: perturbed_copy / refusal_record / combine_refusals) + gate_profile.tr26.json (completion, refusal_dimensions) + tests test_tr26_completion.py / test_tr26_completion_live.py / test_tr26_resume.py; (2) the harness-digest re-pin it implies (test_trial_ready.py, TRIAL_HARNESS_LANDED.md) and this entry. No IMPLEMENTATION_MODULES, century-writer, migration, registry, century-config or dispatch-pack file moves. The TR-26 baseline is a run input made at the dispatch head on the VM and is not a file of the pinned directory, so the trial head equals the dispatch head.",
+   "statement": "Delta from H2 c718a5535 to the TR-26 harness landing, EXACTLY: (1) trial_harness gates.py + trial_slice.py + run_trial.sh + make_baseline.sh + gate_profile.tr26.json + tests test_tr26.py / test_tr26_gates.py / test_tr26_resume.py (the 26-class universe, baseline --classes, G-7 verifier repeat on the truncated windows and the G-6 sample, G-1 certificate size + baseline provenance, G-4 INCONCLUSIVE thresholds, G-5 truncated re-solve time, the read-only certificate / TR #2 truncation audit, the kill+resume leg with its refusal probe); (1b) follow-up commit on the same PR (rulings SR-J4E-HORIZON-BASIS, SR-J4E-POSTRUN-READBACKS, SR-RESUME-NOW (3)): trial_harness completion.py (new) + gates.py (G-8 g8_completion_checks, refused_by_name, the refusal_dimensions loop) + trial_slice.py (completion-probe, evaluate --completion, resume-probe per dimension: perturbed_copy / refusal_record / combine_refusals) + gate_profile.tr26.json (completion, refusal_dimensions) + tests test_tr26_completion.py / test_tr26_completion_live.py / test_tr26_resume.py; (1c) second follow-up on the same PR (ruling SR-TR26-HARNESS-NB, review X-20261025T010530Z-review-pr3912 NB-1/NB-2): gates.py (G-7 verifier-repeat: `g6_with_verdict` in observed, the sample comparison NOT_EVALUATED when no G-6 sample window has a solver verdict in both runs) + tests test_tr26_gates.py / test_tr26_completion.py (a DB-free structural oracle that the completion probe calls asset_runner.run_asset exactly once and never the writer directly); (2) the harness-digest re-pin it implies (test_trial_ready.py, TRIAL_HARNESS_LANDED.md) and this entry. No IMPLEMENTATION_MODULES, century-writer, migration, registry, century-config or dispatch-pack file moves. The TR-26 baseline is a run input made at the dispatch head on the VM and is not a file of the pinned directory, so the trial head equals the dispatch head.",
    "implementation_digests": {
     "geometry": {
      "before": "77cde807a5e0bf6a3733bea3f48270774920acd7434f37f2c2eb73fe781d3616",
@@ -705,10 +706,14 @@
    },
    "harness_digest": {
     "before": "204ff29f1036293d6a2866cb36f1187cc0bacd09592385429fcb0f2744dabe66",
-    "after": "f23c08d8a9140e16429858f5e3322e1b0fdbf24ea5c7a7eaa50578259043ebb2"
+    "after": "ac21584fa2b092f89573e45d940de9b651a9755f28f881ed6a6ab9eaf50f669f"
    },
    "recipe": "implementation digests by input_vector_verifier.module_digests(IMPLEMENTATION_MODULES) at both trees (equal); harness digest by test_trial_ready.harness_digest() of the tree.",
    "interpretations": [
+    {
+     "choice": "(I) harness_digest.after is the digest of the tree after the SR-TR26-HARNESS-NB follow-up; the intermediate digests of this PR (17a55618..., f23c08d8...) never land on main",
+     "alternative": "separate entries per commit of the PR"
+    },
     {
      "choice": "(I) the G-completion checks are folded into G-8 (profile `completion`), no new gate id; the intermediate harness digest of the first commit of this PR (17a55618...) never lands on main, so the entry's harness_digest.after is the final one",
      "alternative": "a new entry TR26-HARNESS-COMPLETION with before = 17a55618..."

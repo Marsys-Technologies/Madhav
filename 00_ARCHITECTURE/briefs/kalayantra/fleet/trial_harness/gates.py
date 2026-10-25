@@ -629,9 +629,12 @@ def g7_verifier_repeat_checks(report: dict, second: dict, profile: dict) -> list
                         {"truncated": len(ta), "without_verdict": [w[:8] for w in never[:5]], "count": len(never)}, "all", note="a truncated window with no verdict is a detector that did not run" if never else None))
     audit = sorted(set(ta) | set(tb) | set(g6))
     differ = sorted(w for w in audit if va.get(w) != vb.get(w))
-    checks.append(check(claim, not differ, {"audited": len(audit), "truncated": len(ta), "g6_sample": len(g6),
-                                            "differing": len(differ), "examples": [{"window": w[:8], "run1": va.get(w), "run2": vb.get(w)} for w in differ[:5]]}, "0 differing",
-                        note="a window with no solver verdict (verified by exact re-derivation) is compared as absent-in-both"))
+    g6_with_verdict = sum(1 for w in set(g6) if w in va and w in vb)          # sample windows the solver check reached in BOTH runs (the rest compare absent-in-both, i.e. vacuously)
+    state = False if differ else (True if g6_with_verdict else None)          # a difference is a FAIL whatever the sample; an equal comparison over NO sample verdict is no evidence (§N.8)
+    checks.append(check(claim, state, {"audited": len(audit), "truncated": len(ta), "g6_sample": len(g6), "g6_with_verdict": g6_with_verdict,
+                                       "differing": len(differ), "examples": [{"window": w[:8], "run1": va.get(w), "run2": vb.get(w)} for w in differ[:5]]}, "0 differing, >= 1 G-6 sample window with a verdict in both runs",
+                        note="a window with no solver verdict (verified by exact re-derivation) is compared as absent-in-both; a sample with none is NOT_EVALUATED" if not g6_with_verdict else
+                        "a window with no solver verdict (verified by exact re-derivation) is compared as absent-in-both"))
     da, db = _demoted(report), _demoted(second)
     if da is None or db is None:
         checks.append(check("the windows the attestations demote (INCONCLUSIVE) are the same in both runs", None, {"run1": da is not None, "run2": db is not None}, "both recorded"))
