@@ -49,7 +49,7 @@ def test_century_real_rollback_then_exact_unmarked_staged_launch(measuring_world
     monkeypatch.setattr(backup, 'measure_scope_now', S.fixture_measure)
     monkeypatch.setenv('DATABASE_URL', dw.dsn)
     monkeypatch.setenv('KY_ROOT', str(tmp_path))
-    rr, ar = S.absence_for(tmp_path)
+    rr, ar = S.absence_for(tmp_path, century=True)      # a century dispatch's census counts the 1410 ledger too
     req = S.authorize(tmp_path, dict(kind='century_dispatch_dryrun', item_id='J-4e', operation_id='rollback', args=dict(CENTURY_ARGS),
                                      absence_receipt=rr, absence_acceptance=ar))
     monkeypatch.setenv('KY_OPERATION_REQUEST', json.dumps(req))
