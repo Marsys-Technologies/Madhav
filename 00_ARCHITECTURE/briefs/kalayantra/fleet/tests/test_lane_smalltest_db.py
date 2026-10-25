@@ -54,6 +54,10 @@ def _lane_database(prefix, tag, *, seed=None):
                     conn.execute((migrations / '1382_gochara_authority_no_truncate.sql').read_text())
             for ddl in STUB_DDL: conn.execute(ddl)
             apply_near_miss_storage(conn)       # the teardown's closed list covers the migration-1308 generation tables (as c37/c38/n18 do)
+            # SR-RESUME-NOW: the teardown's closed list (GENERATION_TABLES) and the century census also cover the migration-1410 committed-substep ledger. The lane
+            # CLIs read it only by (chart_id, generation), so these two columns are all this fixture models; the full table is the writer lane's migration (see
+            # ledger_migration_support), whose schema the executor side reads in test_century_resume_ledger_schema.
+            conn.execute('CREATE TABLE public.ka_gochara_build_ledger (chart_id uuid NOT NULL, generation text NOT NULL)')
             conn.execute('ALTER TABLE asset_registry ADD COLUMN layer text DEFAULT \'L3\', ADD COLUMN natural_key_partition text')
             conn.execute('ALTER TABLE build_runs ADD COLUMN action text, ADD COLUMN plan jsonb')
             conn.execute('ALTER TABLE build_run_assets ADD COLUMN position integer, ADD COLUMN state text')
