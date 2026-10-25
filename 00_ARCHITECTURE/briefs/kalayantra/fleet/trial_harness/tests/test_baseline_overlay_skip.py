@@ -15,12 +15,17 @@ M1402 = "1402_gochara_qualification_provenance_certificate.sql"
 M1403 = "1403_ka_gochara_v5_depends_on_l0_dignity.sql"
 
 
-def checkout(tmp_path, *, with_1402=False, services=None):
-    """A minimal checkout: the migration files (250, 1401 and optionally 1402) and the given production python files under services/."""
+M1410 = "1410_ka_gochara_build_ledger.sql"
+
+
+def checkout(tmp_path, *, with_1402=False, with_1410=True, services=None):
+    """A minimal checkout: the migration files (250, 1401, 1410 and optionally 1402) and the given production python files under services/."""
     mig = tmp_path / "platform" / "migrations"
     mig.mkdir(parents=True)
     for f, _m, _t in ts.OVERLAY_MIGRATIONS:
         if f in (M1402, M1403) and not (f == M1402 and with_1402):
+            continue
+        if f == M1410 and not with_1410:
             continue
         (mig / f).write_text("-- stub\n")
     svc = tmp_path / "platform" / "python-sidecar" / "services" / "gochara_kernel"
@@ -40,7 +45,7 @@ def test_baseline_mode_skips_1402_by_name_when_its_requiring_code_is_absent(tmp_
     """Reversion: drop the skip branch in plan_overlay (raise Refused for a mandatory file whatever the mode) → Refused here."""
     co = checkout(tmp_path, services=MAIN_LIKE)
     todo, skipped = ts.plan_overlay(co / "platform" / "migrations", lambda t: True, baseline_checkout=co)
-    assert [f.split("_", 1)[0] for f in todo] == ["250", "1401"]
+    assert [f.split("_", 1)[0] for f in todo] == ["250", "1401", "1410"]
     assert M1402 in skipped and "baseline mode" in skipped[M1402] and "no code that requires it" in skipped[M1402]
     assert skipped[M1403] == "absent in the checkout"
 
