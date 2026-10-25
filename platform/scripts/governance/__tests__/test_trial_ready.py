@@ -514,7 +514,14 @@ HARNESS_DIR = "00_ARCHITECTURE/briefs/kalayantra/fleet/trial_harness"
 # solver-carrying head (present + counts at the real window_solver; absent + counts nothing at a package copy with none) instead of asserting the pre-solver export; tests/test_g5_cpu.py test_c2 judges the
 # CPU growth against the wall GROWTH of the same experiment and retries an attempt in which the hogs did not starve the builder; test_c4 judges the wall/CPU agreement
 # normalised by a same-process calibrated reference (a pure burn's wall per CPU second), so an ambient load cannot fail either
-HARNESS_V31_DIGEST = "204ff29f1036293d6a2866cb36f1187cc0bacd09592385429fcb0f2744dabe66"
+# TR-26 (SR-TR26-PLAN; harness-only, no implementation digest moves): the 26-class gates/profile/baseline stage, G-7 compares the verifier's per-window verdicts on the truncated windows and the G-6 sample, the certificate-size and
+# INCONCLUSIVE-threshold checks, the TR #2 truncation audit (tests/test_tr26.py, tests/test_tr26_gates.py); previous digest 204ff29f1036293d6a2866cb36f1187cc0bacd09592385429fcb0f2744dabe66
+# TR-26 G-completion (follow-up on PR 3912; harness-only, no implementation digest moves; SR-J4E-HORIZON-BASIS, SR-J4E-POSTRUN-READBACKS, SR-RESUME-NOW (3)): completion.py + `trial_slice.py completion-probe` (a century-shaped
+# manifest's horizon_basis pin and a provenance receipt from a build through the real entry asset_runner.run_asset), G-8 reads both from the probe's raw readbacks, the resume-probe perturbs the source and the library digest
+# one at a time (tests/test_tr26_completion.py, tests/test_tr26_completion_live.py, tests/test_tr26_resume.py); previous pin 17a55618eacc6a34233c41749620e2c2eb64aedf8e0c70f90aebee4eabaafa87
+# TR-26 harness NB follow-up (SR-TR26-HARNESS-NB; harness-only): G-7 g6_with_verdict + NOT_EVALUATED on a vacuous G-6 sample, a structural oracle that the completion probe goes through asset_runner.run_asset (tests/test_tr26_gates.py,
+# tests/test_tr26_completion.py); previous pin f23c08d8a9140e16429858f5e3322e1b0fdbf24ea5c7a7eaa50578259043ebb2
+HARNESS_V31_DIGEST = "ac21584fa2b092f89573e45d940de9b651a9755f28f881ed6a6ab9eaf50f669f"
 
 
 def harness_digest(root):

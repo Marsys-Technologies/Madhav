@@ -1,0 +1,186 @@
+{
+ "schema": "ky.trial_gate_profile/1",
+ "profile_id": "PLACEHOLDER-TR26-PLAN-DEFAULTS-20261025",
+ "final": false,
+ "provenance": "PLACEHOLDER. gate_profile.plan_defaults.json with trial_classes = the 26 scored classes (SR-J4E-CENTURY-FAIL-1 (4): trial universe = century universe; SR-TR26-PLAN: writer fix => 26 classes, no 14-class path). Every other value is unchanged (answers q4=b q9=a, share floors, runtime, crosscheck). Owner/surrogate confirmation of the profile is pending, as for the 12-class one. TR-26 additions (all profile-gated, data): determinism.verifier_repeat (G-7 compares the verifier's per-window verdicts on the truncated windows and the G-6 sample; SR-TR26-PLAN (a)), certificate_audit (G-1: cells/bytes against the database caps, headroom per class; SR-KGEW-QUAL-BOUND-AMEND-2 (a)), verification.inconclusive_thresholds (G-4: 2 per class / 12 total accepted and disclosed, more = REFER-TO-SURROGATE; AMEND-2 (b)), runtime.truncated_resolve_report (G-5: re-solve wall time of the truncated windows reported separately; AMEND-2 (c)). determinism.kill_resume (G-7: the second run is the kill+resume leg, SR-RESUME-NOW). G-completion (completion): G-8 also reads the completion probe (horizon_basis pin of a century-shaped manifest; provenance receipt of a build through the real build entry).",
+ "trial_classes": [
+  "bereavement",
+  "chronic_onset",
+  "illness_acute",
+  "major_loss",
+  "achievement_recognition",
+  "business_launch",
+  "financial_deception",
+  "foreign_settlement",
+  "parental_event",
+  "property_acquisition",
+  "psychological_arc",
+  "spiritual_turn",
+  "career_advancement",
+  "career_change",
+  "career_entry",
+  "career_setback",
+  "childbirth",
+  "education_milestone",
+  "exam_outcome",
+  "major_gain",
+  "marriage",
+  "relocation",
+  "romantic_start",
+  "separation",
+  "surgery",
+  "travel_event"
+ ],
+ "answers": {
+  "q4": "b",
+  "q9": "a"
+ },
+ "zero_reasons": [
+  "applicability_undeclared",
+  "value_mapping_undeclared",
+  "vedha_overlay_not_bound",
+  "orb_not_ratified",
+  "dynamic_objective_solver_guarantee_not_available"
+ ],
+ "allowed_reasons": [
+  {
+   "reason": "state_boundaries_incomplete",
+   "when": {},
+   "source": "PLAN \u00a74.2 (legitimate remaining)"
+  },
+  {
+   "reason": "solver_budget_exhausted",
+   "when": {},
+   "source": "PLAN \u00a74.2; capped by solver_budget_exhausted_max_share"
+  },
+  {
+   "reason": "monotone_arc_not_established",
+   "when": {},
+   "source": "PLAN \u00a72.2 H1 / \u00a72.7 (I) INTERPRETATION: a named Q13a blank, allowed"
+  },
+  {
+   "reason": "solver_certificate_incomplete",
+   "when": {},
+   "source": "PLAN \u00a72.7 (I) INTERPRETATION: a named Q13a blank, allowed"
+  },
+  {
+   "reason": "agent_nature_node_undecided",
+   "when": {
+    "q4": [
+     "b"
+    ]
+   },
+   "source": "PLAN \u00a74.2 P1 row (Q4 b: nodes unscored)"
+  },
+  {
+   "reason": "node_obstruction_undecided",
+   "when": {
+    "q9": [
+     "a"
+    ]
+   },
+   "source": "PLAN \u00a74.3 G-2 example (only if Q9a)"
+  },
+  {
+   "reason": "node_residence_unknown",
+   "when": {
+    "q9": [
+     "a"
+    ]
+   },
+   "source": "PLAN \u00a73.4 reasons carried through"
+  },
+  {
+   "reason": "obstructor_residence_unknown",
+   "when": {
+    "q9": [
+     "a",
+     "b",
+     "c"
+    ]
+   },
+   "source": "PLAN \u00a74.2 P2 rows"
+  },
+  {
+   "reason": "no_aspect_rule_defined_at_offset",
+   "when": {},
+   "source": "SR-D6-OBJECTIVE-UNKNOWN (b)"
+  }
+ ],
+ "share_floors": {
+  "p3_p4": 0.9,
+  "p2": {
+   "by": "q9",
+   "floors": {
+    "a": 0.4,
+    "b": 0.9,
+    "c": 0.9
+   }
+  },
+  "p1": {
+   "by": "q4",
+   "floors": {
+    "a": 0.9,
+    "b": 0.2
+   }
+  }
+ },
+ "share_floors_note": "Floors are PLAN \u00a74.2 lower bounds (P3/P4 0.90; P2 0.40 under Q9a, 0.90 under Q9b; P1 0.20 under Q4b, 0.90 under Q4a). Q9 c is NOT in the plan's table: floor 0.90 is an (I) INTERPRETATION (nodes decided, as b).",
+ "solver_budget_exhausted_max_share": 0.005,
+ "runtime": {
+  "cap_s": 72000,
+  "abort_fraction": 0.8,
+  "margin": 0.75,
+  "century_classes": 26,
+  "speed_factor": 1.0,
+  "century_horizon": null,
+  "verifier_solver_check_s_per_class": 600,
+  "max_load_per_core": 1.0,
+  "max_load_per_core_ruling": "PLACEHOLDER-SURROGATE-RULING-G5-MAX-LOAD-PER-CORE: 1.0 is an (I) INTERPRETATION default (HARNESS-3.2, D-10); the final value is a surrogate ruling not yet made",
+  "truncated_resolve_report": true
+ },
+ "crosscheck": {
+  "sample_rate": 0.03,
+  "top_n_mixed": 5,
+  "dense_max_days": 3,
+  "dense_step_s": 1
+ },
+ "determinism": {
+  "verifier_repeat": {
+   "required": true,
+   "basis": "SR-TR26-PLAN (a): W4's two passes do not compare per-window verdicts, so the second run repeats the verifier and G-7 compares the verdicts"
+  },
+  "kill_resume": {
+   "required": true,
+   "refusal_message_contains": "digest",
+   "basis": "SR-RESUME-NOW (i)(ii) + the surrogate's condition: the kill+resume leg replaces the plain second run only because it is compared over the FULL 26-class output; SR-RESUME-NOW (3): the source digest (writer module) and the library digest (gochara kernel and rules modules) are perturbed one at a time and each resume must refuse by name",
+   "refusal_dimensions": [
+    "source",
+    "library"
+   ]
+  }
+ },
+ "certificate_audit": {
+  "required": true,
+  "max_cells": 400,
+  "max_bytes": 262144,
+  "source": "migration 1402 ka_gochara_solver_certificate_ok (pinned to the file by tests/test_tr26.py)"
+ },
+ "verification": {
+  "inconclusive_thresholds": {
+   "required": true,
+   "per_class_accept": 2,
+   "total_max": 12,
+   "source": "SR-KGEW-QUAL-BOUND-AMEND-2 (b)"
+  }
+ },
+ "baseline_provenance": {
+  "required": true,
+  "basis": "SR-TR26-PLAN (b): the baseline is made on the VM at the dispatch head, in the trial's session (a run input, not a harness file)"
+ },
+ "completion": {
+  "required": true,
+  "basis": "SR-J4E-HORIZON-BASIS + SR-J4E-POSTRUN-READBACKS: the century completion gate's horizon_basis pin (completion_gate.py:146-156, teardown_gate.py:191-205) and provenance receipt (completion_gate.py:70-90) were never exercised by TR #2 (it bypassed run_asset); G-8 re-runs both predicates on the completion probe's raw readbacks",
+  "entry": "pipeline.orchestrator.asset_runner.run_asset"
+ }
+}
