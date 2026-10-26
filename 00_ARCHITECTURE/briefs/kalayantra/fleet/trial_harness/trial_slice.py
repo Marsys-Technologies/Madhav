@@ -8,6 +8,8 @@ once per pending substep, final rules, strict certification, in-build verify DEF
 
   trial_slice.py run       --checkout PATH --result-policy POLICY --out DIR [--label L] [--classes a,b,..] [--budget-s N] [--keep-db] [--code-head SHA]
                            [--baseline baseline_12.json] [--gate-entry module:function] [--verify] [--crosscheck [--crosscheck-seed N]] [--cert-audit]
+                           [--century-staged | --abort-after-substep N|auto | --writer-resume]   SR-TR26-G7-RESUME: stage the build as a CENTURY run (build_runs row + staged century config), so the writer records its
+                           committed-substep ledger and a --writer-resume continues FROM it (the kill and resume flags imply it; the slice/main TR path without them is unchanged)
   trial_slice.py resume-probe --out DIR         TR-26: a resume with a perturbed program digest (source, then library, one at a time) must refuse by name (on a copy of the killed run's database)
   trial_slice.py completion-probe --checkout PATH --out DIR   TR-26 G-completion: the horizon_basis pin of a century-shaped manifest + a provenance receipt from a build through the REAL entry (asset_runner.run_asset)
   trial_slice.py cert-audit --out DIR           TR-26: the read-only certificate-size / truncation audit of a KEPT trial database (the run does it itself with --cert-audit, before the drop)
@@ -490,6 +492,35 @@ def classes_committed(plan_keys: list, done_keys, classes) -> list:
     return sorted(c for c, ks in per_class.items() if all(k in done for k in ks))
 
 
+def stage_century(conn, state: dict, *, writer_resume: bool, horizon, policy) -> str:
+    """SR-TR26-G7-RESUME (b): the build_id of the CENTURY-STAGED run this leg executes under, staged exactly as the dispatch stages one (completion.stage_run: a `build_runs` row whose plan_manifest carries the
+    unmarked `gochara_v5_century_config`, the ruled horizon, the numeric-result policy) — the one signal that makes the writer record its committed substeps and, on a resume, plan from them (the writer
+    PR's `_ledger_active`; `trial-slice` is not one, which is why a harness resume could never reach the ledger).  The harness hands the writer a run id and nothing else; what to skip is the writer's.
+
+    Kill leg (fresh): one row, no binding.  Resume leg (`writer_resume`): the killed run is closed `failed` (production allows one active run) and a SECOND row stages the explicit
+    `gochara_v5_century_resume` binding built from the ledger read back NOW (what the executor's century_resume operation stages); the writer judges it against the ledger and the running program.  A leg
+    restarted by the wall budget reuses its own row.  Recorded in `state["century"]` (ids and counts only)."""
+    import completion as cp
+    from services.gochara_kernel import build_ledger
+    cp.ensure_build_runs(conn, (EXPORT / "schema.sql").read_text())
+    ruled = [horizon[0].isoformat(), horizon[1].isoformat()]
+    use = policy or "all_null_candidate/1"                          # what build_slice names for a final-rules run with no explicit policy
+    cen = state.setdefault("century", {})
+    if not writer_resume:
+        if not cen.get("run_id"):
+            cen["run_id"] = cp.stage_century_run(conn, chart_id=CHART, ruled_horizon=ruled, result_policy=use)
+        return cen["run_id"]
+    if not cen.get("run_id"):
+        raise Refused("--writer-resume continues a CENTURY-STAGED kill: this state recorded no staged run (it was killed by an older harness): use a fresh --out")
+    if not cen.get("resume_run_id"):
+        entries = build_ledger.load(conn, CHART, GENERATION)
+        if not entries:
+            raise Refused("the killed run left no ledger rows (ka_gochara_build_ledger is empty): there is nothing for the writer to resume")
+        cen["ledger_substeps_at_resume"] = [e.substep_key for e in sorted(entries, key=lambda e: e.ordinal)]
+        cen["resume_run_id"] = cp.stage_century_run(conn, chart_id=CHART, ruled_horizon=ruled, result_policy=use, resumes=cen["run_id"], entries=entries)
+    return cen["resume_run_id"]
+
+
 def resume_leg_section(state: dict) -> dict | None:
     """The `resume_leg` section of a report (what G-7 reads from the RESUMED run, SR-RESUME-NOW): where the kill landed, which classes were committed by then, the producer-execution log (each substep
     the harness SAW the writer execute, by phase — independent of the writer's own ledger), and the refusal probe.  None when this run was not killed."""
@@ -501,7 +532,8 @@ def resume_leg_section(state: dict) -> dict | None:
     return {"schema": "ky.resume_leg/1", "killed_after_substep": state["killed_after_substep"], "abort_next_step": state.get("abort_next_step"),
             "classes_committed_at_abort": state.get("classes_committed_at_abort") or [], "plan_substeps": list(state.get("plan_substeps") or []),
             "executed_before_abort": before, "executed_after_resume": after, "rerun_after_resume": sorted(set(before) & set(after)),
-            "resumed": bool(state.get("writer_resumed")), "refusal_probe": state.get("refusal_probe")}
+            "resumed": bool(state.get("writer_resumed")), "refusal_probe": state.get("refusal_probe"), "century_staged": bool(state.get("century_staged")),
+            "ledger_substeps_at_resume": list((state.get("century") or {}).get("ledger_substeps_at_resume") or [])}
 
 
 def build(state: dict, out: Path, deadline: float | None, *, abort_after=None, writer_resume: bool = False) -> bool:
@@ -528,9 +560,20 @@ def build(state: dict, out: Path, deadline: float | None, *, abort_after=None, w
     real_run = writer_mod.GocharaV5Writer.run_substep
     plan_seen: list = []
     full_plan: list = []
+    century = bool(state.get("century_staged"))                                         # SR-TR26-G7-RESUME (b): the kill+resume build is a STAGED CENTURY run (see `stage_century`)
+    planned: dict = {}                                                                  # century: the writer's plan, asked ONCE per leg like the orchestrator does (a ledger-aware plan re-proves the whole chain)
+
+    def writer_plan(self, ctx):
+        if not century:
+            return real_plan(self, ctx)
+        if "steps" not in planned:                                                      # the writer's own (ledger-aware) answer; the harness skips nothing on top of it
+            planned["steps"] = list(real_plan(self, ctx))
+            return planned["steps"]
+        remaining = [s for s in planned["steps"] if s.key not in done]
+        return remaining if remaining else list(real_plan(self, ctx))                  # nothing left by the harness's own count: ask the writer once more, as the orchestrator confirms
 
     def next_only(self, ctx):
-        steps = [s for s in real_plan(self, ctx) if writer_mod._class_of_grain(s.key) in set(classes) | {None}]
+        steps = [s for s in writer_plan(self, ctx) if writer_mod._class_of_grain(s.key) in set(classes) | {None}]
         plan_seen[:] = [s.key for s in steps]
         if not full_plan and not writer_resume:                            # the FULL plan: what the writer plans before it has committed anything (a ledger-aware writer plans less as it goes)
             full_plan[:] = plan_seen
@@ -553,6 +596,8 @@ def build(state: dict, out: Path, deadline: float | None, *, abort_after=None, w
     clock = make_clock(state)
     meter = make_cpu_meter(state)                                                                            # G5-CPU: attributed CPU per stage (SR-G5-LOAD)
     with contextlib.closing(clock), contextlib.closing(meter), psycopg.connect(dsn, autocommit=True, connect_timeout=5) as conn:       # closing(clock) releases the lock probe's admin connection (N4)
+        build_id = stage_century(conn, state, writer_resume=writer_resume, horizon=horizon, policy=policy) if century else "trial-slice"
+        write_json(out / "state.json", state)
         while True:
             if deadline is not None and time.time() >= deadline:
                 break
@@ -562,7 +607,7 @@ def build(state: dict, out: Path, deadline: float | None, *, abort_after=None, w
             with clock.measure(lambda: "build:" + stage.get("kind", "empty")), meter.measure(lambda: "build:" + stage.get("kind", "empty")) as cpu_box:       # T17: compute and lock wait, per stage; G5-CPU
                 with probe_solver(obs["solver_calls"], state.get("solver_module") or SOLVER_MODULE) as present:
                     obs["solver_module_present"] = bool(present)
-                    res = q.build_slice(conn, chart_id=CHART, horizon=horizon, classes=classes, ephe_path=EPHE, build_id="trial-slice", final_rules=True,
+                    res = q.build_slice(conn, chart_id=CHART, horizon=horizon, classes=classes, ephe_path=EPHE, build_id=build_id, final_rules=True,
                                         result_policy=policy, on_step=lambda k, r: notes.update({k: (r.notes or "")}))
             secs = round(time.time() - t0, 2)
             state["effective_wall"] = clock.record()
@@ -1661,6 +1706,10 @@ def per_path_table(rep: dict) -> str:
     return "\n".join(lines)
 
 
+def century_requested(a) -> bool:
+    return bool(getattr(a, "century_staged", False)) or os.environ.get("TRIAL_CENTURY_STAGED") == "1"
+
+
 def collect_requested(a) -> bool:
     """HARNESS-3.3 (O-2): COLLECT is asked for explicitly (`--collect` or TRIAL_COLLECT=1); the default is stop-at-first, the TR shape."""
     return bool(getattr(a, "collect", False)) or os.environ.get("TRIAL_COLLECT") == "1"
@@ -1731,6 +1780,11 @@ def cmd_run(a) -> int:
         raise Refused("--abort-after-substep kills a FRESH run once; the continuation is a separate `run --writer-resume`")
     if state.get("killed_after_substep") is not None and not writer_resume:
         raise Refused("this state was killed on purpose (kill+resume leg): continue it with --writer-resume — a plain re-run would let the harness skip the substeps and prove nothing about the writer's resume")
+    if abort_after is not None or writer_resume or century_requested(a):
+        if state.get("steps") and not state.get("century_staged"):
+            raise Refused("this state already built substeps outside a century-staged run: a century-staged leg starts on a fresh --out")
+        state["century_staged"] = True                                          # SR-TR26-G7-RESUME: the kill+resume legs (and a fresh run that asks for it) are staged century runs
+        write_json(state_path, state)
     if writer_resume:
         if state.get("killed_after_substep") is None:
             raise Refused("--writer-resume continues a run that was killed by --abort-after-substep: this state was not")
@@ -2212,6 +2266,8 @@ def build_parser() -> argparse.ArgumentParser:
                                                                 "window-sweep substep next), keep the database and exit 77")
     r.add_argument("--writer-resume", action="store_true", help="TR-26 (env TRIAL_WRITER_RESUME=1): continue a run killed by --abort-after-substep WITHOUT the harness skipping what it already ran — the writer's own "
                                                                "ledger-aware plan decides what is left; every substep it runs is logged (producer-execution evidence)")
+    r.add_argument("--century-staged", action="store_true", help="SR-TR26-G7-RESUME (env TRIAL_CENTURY_STAGED=1): stage the build as a CENTURY run (build_runs row, staged century config, the writer's committed-substep ledger). "
+                                                                "Implied by --abort-after-substep and --writer-resume; on its own it is the fresh uninterrupted reference the resumed generation is compared with")
     r.add_argument("--probe-run", action="store_true", help=argparse.SUPPRESS)
     r.add_argument("--cert-audit", action="store_true", help="TR-26 (env TRIAL_CERT_AUDIT=1): the read-only certificate-size / TR #2 truncation audit of the trial database, before it is dropped")
     r.add_argument("--crosscheck-seed", type=int, default=None)

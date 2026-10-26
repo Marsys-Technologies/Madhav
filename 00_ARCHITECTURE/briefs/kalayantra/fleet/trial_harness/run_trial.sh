@@ -22,6 +22,8 @@
 #          TRIAL_COLLECT=1            COLLECT mode (diagnostic / PRETR): do not stop a class at its first defect; run every remaining grain, fail the class at the END with the full list (default: stop-at-first, the TR shape)
 #          TRIAL_BASELINE_MODE=1      BASELINE mode (SR-BASELINE-OVERLAY-SKIP; set only by make_baseline.sh; needs TRIAL_POLICY=default and TRIAL_LABEL=baseline, else refused): a mandatory overlay migration the
 #                                     checkout lacks is skipped BY NAME and recorded, only when the checkout also lacks the code that requires it; a trial run (any other policy) always refuses
+#          TRIAL_CENTURY_STAGED=1     SR-TR26-G7-RESUME: stage the build as a CENTURY run (a build_runs row carrying the staged century config; the writer records its committed-substep ledger).  TRIAL_ABORT_AFTER_SUBSTEP and
+#                                     TRIAL_WRITER_RESUME imply it (the kill+resume legs ARE century runs, so the resume reaches the ledger); on its own it is the fresh uninterrupted reference the resumed generation is compared with
 #          TRIAL_AMD64_DOCKER=1       AMD64-DOCKER (SR-T24-AMD64-DOCKER): run the 4-class slice of TRIAL_CODE_HEAD (REQUIRED) in a linux/amd64 DOCKER CONTAINER against a PG 15 / locale C sibling container
 #                                     on a private network; <code checkout> is a git repo holding the head (exported with git archive) or an export; TRIAL_CLASSES = a subset of the four;
 #                                     TRIAL_IMAGE_DIGEST = use that local image by digest instead of building; TRIAL_EQ_REPO/TRIAL_EQ_TOOL/TRIAL_EQ_PINNED_EXTRA as above (host side);

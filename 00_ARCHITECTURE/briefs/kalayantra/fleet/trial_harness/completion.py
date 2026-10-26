@@ -188,6 +188,59 @@ def stage_run(conn, *, chart_id: str, triggered_by: str, manifest: dict) -> str:
     return rid
 
 
+RESUME_BINDING_KEY = "gochara_v5_century_resume"          # build_ledger.RESUME_BINDING_KEY: restated here only to NAME it in a manifest the harness stages; the writer's own constant is what judges it
+RESUME_BINDING_SCHEMA = "gochara_v5_century_resume/1"
+KILL_TRIGGER, RESUME_TRIGGER = "tr26-g7-century-kill", "tr26-g7-century-resume"
+
+
+def ensure_build_runs(conn, schema_text: str) -> bool:
+    """The production `build_runs` (CREATE TABLE + its constraints and indexes, from the approved canonical-L1 export's schema.sql) in the trial database, when the lane did not carry it; True when it was
+    created.  A stub that already exists is NEVER replaced here (the lane may hold other tables' rows): it must carry the staging columns or the refusal is by name."""
+    if conn.execute("SELECT to_regclass('public.build_runs') IS NOT NULL").fetchone()[0]:
+        have = {r[0] for r in conn.execute("SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'build_runs'")}
+        need = {"id", "chart_id", "scope", "scope_target", "action", "state", "plan", "triggered_by", "plan_manifest", "plan_manifest_digest"}
+        if not need <= have:
+            raise ValueError(f"the trial database's build_runs lacks the staging column(s) {sorted(need - have)}")
+        return False
+    for stmt in orchestrator_ddl(schema_text, ("build_runs",)):
+        conn.execute(stmt)
+    return True
+
+
+def century_manifest(ruled_horizon, result_policy: str, binding: dict | None = None) -> dict:
+    """The plan_manifest of a century-staged harness run: the dispatch's staged `gochara_v5_century_config` (unmarked: no test-slice marker, the ruled horizon) and — for a RESUME run only — the explicit
+    `gochara_v5_century_resume` binding.  The same shape `_century_manifest` stages for the completion probe."""
+    m = {"version": "nirmana-run-manifest/v1", "chart_id": None, "assets": [{"asset_id": ASSET}], "gochara_v5_century_config": century_config(ruled_horizon, result_policy)}
+    if binding is not None:
+        m[RESUME_BINDING_KEY] = binding
+    return m
+
+
+def resume_binding(entries, resumes_run_id: str) -> dict:
+    """The explicit resume binding for a run that continues `resumes_run_id`, from the LEDGER the killed run left (`build_ledger.load` entries, plan order): the program identity every row carries (the first row's;
+    a row that disagrees is the writer's to refuse by name — `check_resume_binding` — never the harness's to paper over) and the ordered keys the ledger holds.  Pure.  An empty ledger is a ValueError: a run that
+    ledgered nothing has nothing to resume, and the writer's validation refuses an empty list."""
+    entries = sorted(entries, key=lambda e: e.ordinal)
+    if not entries:
+        raise ValueError("the killed run left no ledger rows: there is nothing to resume")
+    first = entries[0]
+    return {"schema": RESUME_BINDING_SCHEMA, "resumes_run_id": str(resumes_run_id),
+            "program": {"implementation_digest": first.implementation_digest, "writer_digest": first.writer_digest, "plan_digest": first.plan_digest,
+                        "horizon": [h.isoformat() for h in first.horizon]},
+            "ledger_substeps": [e.substep_key for e in entries]}
+
+
+def stage_century_run(conn, *, chart_id: str, ruled_horizon, result_policy: str, resumes: str | None = None, entries=None) -> str:
+    """One century-staged build_runs row, as the dispatch (or, for a resume, the executor's century_resume operation) stages it.  `resumes` = the id of the killed run: it is closed `failed` first (production
+    allows ONE active run per chart) and the new row carries the binding built from `entries`, the ledger the harness read back."""
+    manifest = century_manifest(ruled_horizon, result_policy, None if resumes is None else resume_binding(entries or [], resumes))
+    manifest["chart_id"] = chart_id
+    if resumes is not None:
+        conn.execute("UPDATE public.build_runs SET state = 'failed', ended_at = now(), last_error = %s WHERE id = %s AND state IN ('planned', 'running', 'paused')",
+                     ("tr26 harness: killed on purpose (kill+resume leg)", resumes))
+    return stage_run(conn, chart_id=chart_id, triggered_by=KILL_TRIGGER if resumes is None else RESUME_TRIGGER, manifest=manifest)
+
+
 def registry_row(conn, asset_id: str = ASSET, has_substeps: bool = True) -> None:
     """The asset_registry row the build entry reads (a data asset, per chart, with a writer); the NOT NULL descriptive columns carry the asset id."""
     conn.execute("INSERT INTO public.asset_registry (asset_id, layer, sort_order, sanskrit_name, english_name, english_description, storage_type, target_table, scope, is_active, "
