@@ -31,6 +31,7 @@ MIGRATIONS = SIDECAR.parent / 'migrations'
 CHAIN = ('1330_kala_layer_manifest_candidates.sql', '1334_kala_layer_verifier_conflict_read_grant.sql', '1390_kala_layer_operation_verifier_reads.sql')
 CANONICAL = '482012f1-710e-4a25-994a-93821f5871aa'
 ROLE = 'verifier_principal'
+LOGIN_SECRET = 'vp' + uuid.uuid4().hex      # per-run login secret: CI's server authenticates every TCP login (as _builder_role.py does), and no literal credential sits in the file
 
 
 @pytest.fixture(scope='module')
@@ -40,7 +41,7 @@ def cluster(isolated_kala_db_dsn):
     row = admin.execute('SELECT rolcanlogin, rolinherit, rolconnlimit FROM pg_roles WHERE rolname = %s', (ROLE,)).fetchone()
     created = row is None
     if created: admin.execute(f'CREATE ROLE {ROLE} NOLOGIN')
-    admin.execute(f'ALTER ROLE {ROLE} LOGIN NOINHERIT NOSUPERUSER NOCREATEROLE NOCREATEDB NOREPLICATION NOBYPASSRLS CONNECTION LIMIT 4')
+    admin.execute(f'ALTER ROLE {ROLE} LOGIN NOINHERIT NOSUPERUSER NOCREATEROLE NOCREATEDB NOREPLICATION NOBYPASSRLS CONNECTION LIMIT 4 PASSWORD \'{LOGIN_SECRET}\'')
     try:
         yield admin, isolated_kala_db_dsn
     finally:
@@ -51,7 +52,7 @@ def cluster(isolated_kala_db_dsn):
             admin.execute(f'DROP ROLE {ROLE}')
         else:
             login, inherit, limit = row
-            admin.execute(f"ALTER ROLE {ROLE} {'LOGIN' if login else 'NOLOGIN'} {'INHERIT' if inherit else 'NOINHERIT'} CONNECTION LIMIT {limit}")
+            admin.execute(f"ALTER ROLE {ROLE} {'LOGIN' if login else 'NOLOGIN'} {'INHERIT' if inherit else 'NOINHERIT'} CONNECTION LIMIT {limit} PASSWORD NULL")
         admin.close()
 
 
@@ -76,7 +77,7 @@ def build_chain(admin, *, skip=(), usage=True, tolerated=True, no_1330_grants=Fa
 
 
 def login(dsn):
-    return psycopg.connect(make_conninfo(dsn, user=ROLE), autocommit=False)
+    return psycopg.connect(make_conninfo(dsn, user=ROLE, password=LOGIN_SECRET), autocommit=False)
 
 
 def report(dsn):
@@ -107,7 +108,7 @@ def seed_candidate(dsn, generation):
 
 
 def run_op(module, argv, dsn, monkeypatch, capsys):
-    monkeypatch.setenv('DATABASE_URL', make_conninfo(dsn, user=ROLE))
+    monkeypatch.setenv('DATABASE_URL', make_conninfo(dsn, user=ROLE, password=LOGIN_SECRET))
     code = module.main(argv)
     out = capsys.readouterr().out.strip().splitlines()
     return code, json.loads(out[-1])
@@ -231,16 +232,17 @@ def test_the_probe_writes_nothing(cluster):
 def test_cli_prints_one_json_line_and_never_the_connection_string(cluster):
     admin, dsn = cluster
     build_chain(admin)
-    good = make_conninfo(dsn, user=ROLE)
+    good = make_conninfo(dsn, user=ROLE, password=LOGIN_SECRET)
     env = {'PATH': '/usr/bin:/bin', 'DATABASE_URL': good}
     done = subprocess.run([sys.executable, '-m', 'services.kala_core.layer_verifier_probe'], cwd=SIDECAR, env=env, capture_output=True, text=True, timeout=60)
     assert done.returncode == 0, done.stdout + done.stderr
     lines = done.stdout.strip().splitlines()
     assert len(lines) == 1 and json.loads(lines[0])['schema'] == 'ky.layer_verifier_probe/1' and json.loads(lines[0])['verdict'] == 'MATCHES'
-    bad = 'postgresql://verifier_principal:s3cretvalue@127.0.0.1:1/nowhere'
+    planted = 's3cret' + uuid.uuid4().hex      # generated per run, so no literal credential sits in the file (secret_scan.sh)
+    bad = f'postgresql://{ROLE}:{planted}@127.0.0.1:1/nowhere'
     refused = subprocess.run([sys.executable, '-m', 'services.kala_core.layer_verifier_probe'], cwd=SIDECAR, env={'PATH': '/usr/bin:/bin', 'DATABASE_URL': bad},
                              capture_output=True, text=True, timeout=60)
     assert refused.returncode == 3 and json.loads(refused.stdout)['verdict'] == 'REFUSED'
-    assert 's3cretvalue' not in refused.stdout + refused.stderr and '127.0.0.1' not in refused.stdout + refused.stderr
+    assert planted not in refused.stdout + refused.stderr and '127.0.0.1' not in refused.stdout + refused.stderr
     missing = subprocess.run([sys.executable, '-m', 'services.kala_core.layer_verifier_probe'], cwd=SIDECAR, env={'PATH': '/usr/bin:/bin'}, capture_output=True, text=True, timeout=60)
     assert missing.returncode == 2 and json.loads(missing.stdout)['verdict'] == 'REFUSED'
