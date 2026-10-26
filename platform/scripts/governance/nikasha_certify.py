@@ -19,7 +19,11 @@ REFUSALS; every PASS or N/A it can emit has a code path that could have made it 
   * `verify_ledger_census_hashes(repo, ref)` (CLI `--verify-census-hashes`, run by CI on every PR) re-reads every
     cited census file with `git show <ref>:<path>`, recomputes the sha256 and FAILS on a mismatch, a file that is not
     committed, or one outside the root; it reports NO_DETECTOR (never PASS) when there is nothing to verify;
-  * a PASS (or any verdict but NO_DETECTOR) whose criterion has `detector: NONE` is refused;
+  * a PASS (or any verdict but NO_DETECTOR) whose criterion has `detector: NONE` is refused, with ONE exception (SS N-146): a GATE's N/A that the census
+    cell itself MEASURED (not inconclusive, a registered cause) under a rule declared in `asset_census.NA_RULE_DECISIONS` with a real decision (not blank, not
+    a placeholder such as TBD / N-? / none), whose rule id starts with `<criterion>#` and whose `na.decision_id` equals the declared decision (the equality
+    E6.3's reader checks). An addition's N/A and an N/A with no census cell stay refused. The record is an ordinary N/A record (verdict N/A + `na`);
+    nothing about the schema, record version or chain changed;
   * a record with no census run id in its evidence is refused (the id is the census's own `generated` timestamp);
   * an N/A is never typed: it is recorded only when the registry computes it (applicability from the census RECORD's
     facts; a measured cause from the census cell), and only under a rule declared in `asset_census.NA_RULE_DECISIONS`
@@ -908,6 +912,32 @@ def _computed_na(criterion, layer, facts, na_rule_id, cell):
                 cause=na["cause"], facts=na["facts"])
 
 
+# SS N-146: a criterion whose registry detector is NONE has no measurement to PASS, so every measurement verdict stays refused; the ONE verdict it may
+# carry besides NO_DETECTOR is an N/A the census MEASURED (cell v N/A with a registered cause) under a registry rule declared in NA_RULE_DECISIONS with a
+# real decision: the same equality E6.3's reader checks (asset_elevation_tracker._e63_satisfies: rule id `<criterion>#...` and decision id equal to the
+# declared one). Everything else of an N/A (cause registered, rule issuable, decision text equals the declared one) is the existing `_computed_na`.
+NA_DECISION_PLACEHOLDERS = frozenset({"", "tbd", "tbc", "todo", "n-?", "n/a", "none", "null", "?", "-"})
+
+
+def _ruled_na_on_none_problem(criterion, na, cell, inconclusive):
+    """Why a computed N/A of a registry-detector-NONE criterion may NOT be recorded, or None when it may."""
+    if not isinstance(cell, dict) or cell.get("v") != "N/A":
+        return "the census holds no N/A cell for it (an applicability N/A is not enough)"
+    if inconclusive or cell.get("inconclusive"):
+        return "the census cell is INCONCLUSIVE"
+    if not isinstance(na, dict) or na.get("basis") != "measured_cause":
+        return "the N/A is not one the census measured under a cause"
+    rid, did = na.get("rule_id"), na.get("decision_id")
+    if not isinstance(rid, str) or not rid.startswith(criterion + "#"):
+        return f"rule id {rid!r} is not a rule of {criterion}"
+    declared = ac.NA_RULE_DECISIONS.get(rid)
+    if not isinstance(declared, str) or declared.strip().casefold() in NA_DECISION_PLACEHOLDERS:
+        return f"rule {rid!r} is not declared with a decision (found {declared!r})"
+    if did != declared:
+        return f"the record's decision id {did!r} is not the one declared for {rid!r}"
+    return None
+
+
 # ─────────────────────────── the record ───────────────────────────
 
 def build_record(*, asset, layer, criterion, evidence, verified_by, verdict=None, kind="gate", gate=None, detector=None,
@@ -987,8 +1017,9 @@ def build_record(*, asset, layer, criterion, evidence, verified_by, verdict=None
         gate_name, crit_version, reg_rev, reg_fp = None, criterion_version, None, None
 
     # R1 (on what the caller said; repeated below on the verdict actually derived): a NONE detector can only
-    # honestly be recorded as NO_DETECTOR
-    if det == "NONE" and verdict is not None and verdict != "NO_DETECTOR":
+    # honestly be recorded as NO_DETECTOR, with ONE exception (SS N-146): a GATE's N/A the census MEASURED and a declared rule releases (see
+    # `_ruled_na_on_none_problem`, applied once the N/A is computed). PASS / PARTIAL / FAIL / ERRORED stay refused here, and an addition's N/A too.
+    if det == "NONE" and verdict is not None and verdict != "NO_DETECTOR" and not (verdict == "N/A" and kind == "gate"):
         _refuse("detector_none", f"{criterion} has detector NONE: nothing measured it, so {verdict} is refused "
                                  "(only NO_DETECTOR can be recorded)")
 
@@ -1041,7 +1072,9 @@ def build_record(*, asset, layer, criterion, evidence, verified_by, verdict=None
             if basis is not None:
                 _refuse("bad_basis", "a basis is taken from the census cell; there is none to take it from")
             verdict = "N/A"                                  # an applicability N/A: confirmed by the registry below
-        if det == "NONE" and verdict != "NO_DETECTOR":
+        if det == "NONE" and verdict != "NO_DETECTOR" and not (verdict == "N/A" and meas is not None and meas.get("v") == "N/A"):
+            # (SS N-146: the one admitted exception is a verdict N/A read from a census CELL that itself reads N/A; an N/A with no cell, an
+            # applicability N/A, stays refused. The rest of the admission is decided after the N/A is computed, in R3.)
             _refuse("detector_none", f"{criterion} has detector NONE: nothing measured it, so {verdict} is refused "
                                      "(only NO_DETECTOR can be recorded)")
     elif basis is not None:
@@ -1127,6 +1160,11 @@ def build_record(*, asset, layer, criterion, evidence, verified_by, verdict=None
             if bad:
                 _refuse("na_coupling_unmet", bad)
         na = _computed_na(criterion, layer, cfacts, na_rule_id, meas)
+        if det == "NONE":
+            bad = _ruled_na_on_none_problem(criterion, na, meas, inconclusive)
+            if bad:
+                _refuse("detector_none", f"{criterion} has detector NONE and its N/A is not a ruled, measured one: {bad} "
+                                         "(only NO_DETECTOR, or an N/A the census measured under a declared rule, can be recorded)")
 
     # R6: what lets the record go stale
     na_measured = na is not None and na["basis"] == "measured_cause"
