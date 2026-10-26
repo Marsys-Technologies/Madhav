@@ -13,14 +13,14 @@ What one run does, in order (every refusal happens before the next step):
                 the job by the SAME contract the seal workflow uses (gochara_verification_job_readback.check): that exact image digest, the verifier service
                 account, the one verifier secret, entry point, no args, maxRetries present and 0, runner commit == reviewed_commit. Anything else REFUSES.
   3 claim       (execute only) an O_EXCL claim file per operation, fsynced before the remote call and never cleared: a timeout may mean the job started.
-  4 launch      (execute only) ONE `gcloud run jobs execute gochara-verification-job --args=--chart,<canonical>,--generation,5.0 --async`. The arguments are a
-                constant of this file; the request supplies only the generation, which must be 5.0. `--brief` and `--sealing-commit` are NEVER passed: the seal brief
+  4 launch      (execute only) ONE `gcloud run jobs execute gochara-verification-job --args=--chart,<canonical>,--generation,5.0,--final-rules --async`. The arguments are a
+                constant of this file; the request supplies only the generation, which must be 5.0. `--final-rules` is ALWAYS passed (V-1). `--brief` and `--sealing-commit` are NEVER passed: the seal brief
                 belongs to the human-approved gochara-seal-approved.yml workflow, which this kind does not replace. `--report-only` is not passed by the launch (it can
                 never reach VERIFIED); it is the dry run's one mode (step 6).
   5 readback    (execute only) the EXECUTED resource is read and judged by the same contract (image digest, exact args, no env override, no retries). A launch whose
                 executed resource does not conform, or cannot be read, still printed LAUNCHED (it was) but exits 1: it is never a green.
 
-  6 report-only (dry run only) ONE `gcloud run jobs execute gochara-verification-job --args=--chart,<canonical>,--generation,5.0,--report-only --async`, then the execution is
+  6 report-only (dry run only) ONE `gcloud run jobs execute gochara-verification-job --args=--chart,<canonical>,--generation,5.0,--final-rules,--report-only --async`, then the execution is
                 polled until it completes (never past WAIT_BUDGET_S, which is under the executor's cap), judged by the same contract with the report-only arguments,
                 and the job's ONE report line is read back from its stdout log and printed UNCHANGED after the record. The job in this mode persists nothing (verification_job.run
                 `persist=not report_only`) and reports the combined candidate gate honestly; whether the report is clean is judged by the pack's dryrun_gate, not here.
@@ -42,9 +42,14 @@ record carries no `classes`, so the report is the one report in the output). `ex
 A failure after step 3 leaves the claim in LAUNCH_PENDING and the exit non-zero: reconcile, never retry. Honest nulls (CLAUDE.md §N.7.6 / §N.8): nothing here says the
 job SUCCEEDED; the launch is not the verification. Its outcome is the execution read back later and the persisted attestations.
 
-(I) INTERPRETATION V-1 (mode): the kind starts the PERSISTING verification run, `--chart <C> --generation 5.0` — the same shape the seal workflow passes minus `--brief` — because
-  the seal brief reads the attestations this run writes. Alternative: `--final-rules` (verify the explicitly configured final-rule candidate); not passed, since the
-  workflow's own brief run does not pass it and the request cannot carry it.
+(I) INTERPRETATION V-1 (mode, SR-W4-REGISTRY-DIGEST-DISAGREE case (iii)): the kind starts the PERSISTING verification run, `--chart <C> --generation 5.0 --final-rules` — the seal workflow's
+  shape minus `--brief` — because the seal brief reads the attestations this run writes. `--final-rules` is ALWAYS passed, dispatch, report-only and every shard: the century
+  candidate was built under rule_registry.rule_profile(final_rules=True) (the writer requires `gochara_v5_final_rules`; p1_form_b is not a century-config field, so it is never set and
+  `--p1-form-b` is never passed) and bound the registry digest over all 12 sealed (path, version) refs; a verifier without the flag derives the five @1.0.0 refs (the measuring profile) and
+  refuses `stale_inputs` (gochara-verification-job-lslff). The verifier must measure the SAME rule profile the build ran; the seal workflow's brief run passes it too, and
+  `test_verifier_profile_matches_century.py` fails if either diverges from the century config. Superseded reading (V-1 as first written): measuring rules, citing that the workflow's
+  brief run omitted the flag — that was the workflow's own defect, fixed in the same change. Alternative: leave it off and rebuild the century under the measuring rules; refused, the
+  candidate is the final-rules build.
 (I) INTERPRETATION V-2 (same-commit rule): the request's `reviewed_commit` is the runner commit the job must have been defined at (the workflow's rule). Alternative:
   accept any commit the job runs; refused, it would let an older image verify a newer build.
 (I) INTERPRETATION V-3 (claim key): one claim per operation_id, under $KY_ROOT/run/ops/verification_launch. Alternative: one per (chart, generation, commit); refused, a
@@ -90,7 +95,24 @@ JOB = "gochara-verification-job"
 SECRET = "gochara-verifier-db-url"
 CLOUDSQL_INSTANCE = "madhav-astrology:asia-south1:amjis-postgres"
 KIND_EXECUTE, KIND_DRYRUN = "verification_job", "verification_job_dryrun"
-EXECUTE_ARGS = ("--chart", CHART, "--generation", GENERATION)
+def profile_args(contract_path: Path = Path(__file__).resolve().parent / "century_contract.json") -> tuple:
+    """SR-W4-VERIFIER-FINAL-RULES (c): the verifier's rule-profile flags are READ from the committed century contract's launch_args (what the century
+    build ran under), never defaulted: final_rules "true" -> --final-rules; p1_form_b "true" -> --p1-form-b. A missing contract or any value other than
+    "true"/"false" refuses at import, so a default can never substitute for the build's profile again."""
+    try:
+        launch = json.loads(contract_path.read_text())["launch_args"]
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        raise SystemExit(f"verification_launch: the century contract's launch_args are unreadable ({exc}); refusing to choose a rule profile") from None
+    flags = []
+    for key, flag in (("final_rules", "--final-rules"), ("p1_form_b", "--p1-form-b")):
+        value = launch.get(key, "false" if key == "p1_form_b" else None)
+        if value not in ("true", "false"):
+            raise SystemExit(f"verification_launch: century_contract launch_args.{key} = {value!r}: must be 'true' or 'false'")
+        if value == "true": flags.append(flag)
+    return tuple(flags)
+
+
+EXECUTE_ARGS = ("--chart", CHART, "--generation", GENERATION) + profile_args()          # V-1: the profile the century build ran under, read from its contract
 REPORT_ONLY_ARGS = EXECUTE_ARGS + ("--report-only",)
 
 

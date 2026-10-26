@@ -32,7 +32,7 @@ def prepare(definition, *, reviewed_commit, image_digest, v2_job=None):
         cloudsql_instance=CLOUDSQL_INSTANCE, timeout_seconds=28800, memory='4Gi', cpu='1', v2_job=v2_job)
     if problems:
         raise Refused('verifier definition refused: ' + '; '.join(problems))
-    expected_args = ['--chart', CHART, '--generation', '5.0']
+    expected_args = ['--chart', CHART, '--generation', '5.0', '--final-rules']
     return dict(schema='ky.j5s_verifier_launch_preparation/1', status='PREPARATION_ONLY',
         enabled=False, dry_run_passed=False, production_allocation=None,
         runtime_principal='gochara_verifier', service_account=SERVICE_ACCOUNT,

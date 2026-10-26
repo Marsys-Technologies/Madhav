@@ -259,13 +259,13 @@ def test_v2_a_production_request_without_a_chart_refuses_but_a_dry_run_may_omit_
 def test_v3_the_launch_is_exactly_the_workflows_execute_recipe_for_the_verification_job_without_brief(tmp_path):
     cloud, record, _ = go(tmp_path)
     assert cloud.writes() == [["gcloud", "run", "jobs", "execute", "gochara-verification-job", "--project=madhav-astrology", "--region=asia-south1",
-                               f"--args=--chart,{CHART},--generation,5.0", "--async", "--format=value(metadata.name)"]]
+                               f"--args=--chart,{CHART},--generation,5.0,--final-rules", "--async", "--format=value(metadata.name)"]]
     joined = " ".join(cloud.writes()[0])
-    for forbidden in ("--brief", "--sealing-commit", "--report-only", "--final-rules"):
+    for forbidden in ("--brief", "--sealing-commit", "--report-only", "--p1-form-b"):
         assert forbidden not in joined, forbidden
     seal = (WORKFLOWS / "gochara-seal-approved.yml").read_text()
     assert 'gcloud run jobs execute "$VERIFICATION_JOB" --project madhav-astrology --region "$GOOGLE_CLOUD_REGION"' in seal and "--async" in seal
-    assert record["status"] == "LAUNCHED" and record["args"] == ["--chart", CHART, "--generation", "5.0"]
+    assert record["status"] == "LAUNCHED" and record["args"] == ["--chart", CHART, "--generation", "5.0", "--final-rules"]
 
 
 @pytest.mark.parametrize("workflow", ["gochara-seal-approved.yml", "gochara-verification-job-deploy.yml"])
@@ -421,12 +421,12 @@ def test_v8_the_dry_run_validates_reads_first_and_writes_no_claim(tmp_path):
 def test_r1_the_dry_run_executes_the_job_once_in_report_only_mode_and_never_in_a_persisting_or_sealing_mode(tmp_path):
     cloud, record, _ = go(tmp_path, dry=True)
     assert cloud.writes() == [["gcloud", "run", "jobs", "execute", "gochara-verification-job", "--project=madhav-astrology", "--region=asia-south1",
-                               f"--args=--chart,{CHART},--generation,5.0,--report-only", "--async", "--format=value(metadata.name)"]]
+                               f"--args=--chart,{CHART},--generation,5.0,--final-rules,--report-only", "--async", "--format=value(metadata.name)"]]
     joined = " ".join(cloud.writes()[0])
-    for forbidden in ("--brief", "--sealing-commit", "--final-rules", "--class"):
+    for forbidden in ("--brief", "--sealing-commit", "--p1-form-b", "--class"):
         assert forbidden not in joined, forbidden
-    assert record["report_only_run"]["args"] == ["--chart", CHART, "--generation", "5.0", "--report-only"] and record["args"] == record["report_only_run"]["args"]
-    assert vl.EXECUTE_ARGS == ("--chart", CHART, "--generation", "5.0")                  # the real launch still has no --report-only (it can never reach VERIFIED)
+    assert record["report_only_run"]["args"] == ["--chart", CHART, "--generation", "5.0", "--final-rules", "--report-only"] and record["args"] == record["report_only_run"]["args"]
+    assert vl.EXECUTE_ARGS == ("--chart", CHART, "--generation", "5.0", "--final-rules")                  # the real launch still has no --report-only (it can never reach VERIFIED)
 
 
 def test_r1_the_flag_is_the_one_the_job_entrypoint_defines():

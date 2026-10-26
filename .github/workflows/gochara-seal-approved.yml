@@ -164,7 +164,7 @@ jobs:
         run: |
           set -euo pipefail
           EXECUTION="$(gcloud run jobs execute "$VERIFICATION_JOB" --project madhav-astrology --region "$GOOGLE_CLOUD_REGION" \
-            --args="--chart,${CHART_ID},--generation,${GENERATION},--brief,--sealing-commit,${GITHUB_SHA}" --async --format='value(metadata.name)')"
+            --args="--chart,${CHART_ID},--generation,${GENERATION},--final-rules,--brief,--sealing-commit,${GITHUB_SHA}" --async --format='value(metadata.name)')"
           [[ "$EXECUTION" =~ ^[a-z0-9-]+$ ]] || { echo "::error::the execution id is not a Cloud Run execution name"; exit 1; }
           echo "execution=$EXECUTION" >> "$GITHUB_OUTPUT"
           echo "started_epoch=$(date +%s)" >> "$GITHUB_OUTPUT"
@@ -319,7 +319,7 @@ jobs:
           DIGEST="$(python3 platform/scripts/gochara_seal_brief_check.py --brief-file brief.json --compact-file brief.compact.json --chart-id "$CHART_ID" --generation "$GENERATION" --sealing-commit "$GITHUB_SHA")"
           gcloud run jobs executions describe "$EXECUTION" --project madhav-astrology --region "$GOOGLE_CLOUD_REGION" --format=json > execution.json
           curl -fsS -H "Authorization: Bearer $(gcloud auth print-access-token)" "https://run.googleapis.com/v2/projects/madhav-astrology/locations/${GOOGLE_CLOUD_REGION}/jobs/${VERIFICATION_JOB}/executions/${EXECUTION}" > execution.v2.json
-          ARGS_JSON="$(python3 -c 'import json,sys; print(json.dumps(["--chart",sys.argv[1],"--generation",sys.argv[2],"--brief","--sealing-commit",sys.argv[3]]))' "$CHART_ID" "$GENERATION" "$GITHUB_SHA")"
+          ARGS_JSON="$(python3 -c 'import json,sys; print(json.dumps(["--chart",sys.argv[1],"--generation",sys.argv[2],"--final-rules","--brief","--sealing-commit",sys.argv[3]]))' "$CHART_ID" "$GENERATION" "$GITHUB_SHA")"
           python3 platform/scripts/gochara_seal_execution_check.py build-envelope --v2-execution-file execution.v2.json --execution-file execution.json --compact-file brief.compact.json --execution-name "$EXECUTION" \
             --image-repo "$PIPELINE_IMAGE_REPO" --image-digest "$IMAGE_DIGEST" --service-account "$VERIFIER_SERVICE_ACCOUNT" --secret-name "$VERIFIER_SECRET" --args-json "$ARGS_JSON" --run-id "$GITHUB_RUN_ID" \
             --attempt "$GITHUB_RUN_ATTEMPT" --sealing-commit "$GITHUB_SHA" --brief-digest "$DIGEST" --out brief.envelope.json

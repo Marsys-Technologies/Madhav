@@ -260,7 +260,7 @@ class World:
                                                 "producer": {"commit": producer_head, "execution_id": "exec-1", "image_digest": "sha256:" + "d" * 64}, "sha256": self.digest,
                                                 "status": "BRIEFED"}))
             verified = {"execution": "exec-1", "image_digest": "sha256:" + "d" * 64, "service_account": exe.VERIFIER_SERVICE_ACCOUNT, "runner_commit": self.head,
-                        "args": ["--chart", CHART, "--generation", GEN, "--brief", "--sealing-commit", self.head]}
+                        "args": ["--chart", CHART, "--generation", GEN, "--final-rules", "--brief", "--sealing-commit", self.head]}
             self.envelope.write_text(json.dumps(exe.build_envelope(verified, run_id=str(env_run), attempt=str(env_attempt), sealing_commit=self.head, brief_digest=self.digest,
                                                                    brief_id=11, producer_execution_id="exec-1"), sort_keys=True))
         self.cfg = {"chart_id": CHART, "generation": GEN, "head": self.head, "verification_operation_id": VERIF_OP, "aggregate_file": str(self.aggregate),

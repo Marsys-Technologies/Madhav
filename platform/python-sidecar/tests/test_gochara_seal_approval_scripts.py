@@ -549,7 +549,7 @@ def test_a_rejection_that_names_another_attempt_does_not_block_this_attempt():
 
 IMG = "sha256:" + "a" * 64
 SA = "gochara-verifier-runtime@madhav-astrology.iam.gserviceaccount.com"
-ARGS = ["--chart", CHART, "--generation", GEN, "--brief", "--sealing-commit", SHA]
+ARGS = ["--chart", CHART, "--generation", GEN, "--final-rules", "--brief", "--sealing-commit", SHA]
 
 
 REPO = "asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline"
