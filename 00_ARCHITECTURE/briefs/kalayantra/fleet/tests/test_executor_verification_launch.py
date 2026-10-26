@@ -552,11 +552,49 @@ def test_r5_split_entries_are_joined_in_index_order_and_only_when_every_part_is_
     cloud = Cloud()
     cloud.log_entries = [parts[2], parts[0], parts[1]]                                       # newest first, as gcloud returns them
     _, record, _ = go(tmp_path, cloud, dry=True)
-    assert record["report_only_run"]["ok"] is True and record["report_only_run"]["report_sha256"] == hashlib.sha256(report_line().encode()).hexdigest()
+    assert record["report_only_run"]["ok"] is True and record["report_only_run"]["report_sha256"] == hashlib.sha256(report_line().encode()).hexdigest() and record["report_only_run"]["report_source"] == vl.REPORT_SOURCE_TEXT
     cloud = Cloud()
     cloud.log_entries = [parts[2], parts[0]]                                                 # the middle part is missing: never guessed
     _, record, _ = go(tmp_path / "b", cloud, dry=True)
     assert record["report_only_run"]["ok"] is False and "incomplete" in record["report_only_run"]["report_problem"]
+
+
+# R6 ── a report Cloud Logging stored as a structured entry (SR-W4-REPORT-JSONPAYLOAD; hldj8) ─────────────────────────────────────
+def structured_entry(payload, insert_id):
+    # Cloud Run turns a stdout line that is one JSON object into `jsonPayload` (no textPayload), as it did for hldj8's 64 KB report
+    return {"insertId": insert_id, "jsonPayload": payload, "timestamp": "2026-10-19T10:41:41.000000Z"}
+
+
+def test_r6_a_report_stored_as_jsonpayload_is_read_and_reserialised_as_the_job_prints_it(tmp_path):
+    cloud = Cloud()
+    cloud.log_entries = [structured_entry(report_dict(), "1")]
+    _, record, _ = go(tmp_path, cloud, dry=True)
+    ran = record["report_only_run"]
+    assert ran["ok"] is True and ran["report_line"] == report_line()
+    assert ran["report_sha256"] == hashlib.sha256(report_line().encode()).hexdigest() and ran["report_source"] == vl.REPORT_SOURCE_JSONPAYLOAD
+
+
+def test_r6_a_structured_entry_without_the_report_shape_is_not_a_report(tmp_path):
+    cloud = Cloud()
+    cloud.log_entries = [structured_entry({"schema": "ky.verification_launch/1", "status": "DRY_RUN"}, "1"),
+                         structured_entry({"generation": "5.0", "classes": ["not", "an", "object"]}, "2")]
+    _, record, _ = go(tmp_path, cloud, dry=True)
+    assert record["report_only_run"]["ok"] is False and "0 verification reports" in record["report_only_run"]["report_problem"]
+
+
+def test_r6_a_structured_and_a_text_report_are_two_reports_never_one(tmp_path):
+    cloud = Cloud()
+    cloud.log_entries = [structured_entry(report_dict(), "1"), log_entry(report_line(), "2")]
+    _, record, _ = go(tmp_path, cloud, dry=True)
+    assert record["report_only_run"]["ok"] is False and "2 verification reports" in record["report_only_run"]["report_problem"]
+
+
+def test_r6_a_structured_entry_with_a_message_keeps_the_message_reading(tmp_path):
+    cloud = Cloud()
+    cloud.log_entries = [structured_entry({"message": report_line(), "severity": "INFO"}, "1")]
+    _, record, _ = go(tmp_path, cloud, dry=True)
+    assert record["report_only_run"]["ok"] is True and record["report_only_run"]["report_line"] == report_line()
+    assert record["report_only_run"]["report_source"] == vl.REPORT_SOURCE_TEXT
 
 
 # V9 ── no credential value ──────────────────────────────────────────────────────────────────────────────────────────
