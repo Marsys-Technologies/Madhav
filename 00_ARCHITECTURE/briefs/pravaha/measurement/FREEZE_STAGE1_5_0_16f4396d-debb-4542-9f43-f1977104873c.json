@@ -1,0 +1,221 @@
+{
+ "artifact": "FREEZE_STAGE1",
+ "run_id": "16f4396d-debb-4542-9f43-f1977104873c",
+ "generation": "5.0",
+ "status": "FROZEN",
+ "note": "Stage-1 configuration freeze for the 5.0 candidate (governed path, result policy window_qualification/1) and its life-event comparison. Committed on branch kalayantra/freeze-5.0 BEFORE any extract is generated. Authority: ruling SR-LIFE-EVENT-COMPARISON (a)-(c). Inputs are identified by absolute path + sha256 only; no event, date or chart value is copied here.",
+ "amendments_draft": {
+  "version": "0.26"
+ },
+ "addendum": {
+  "artifact": "EVALUATION_PROTOCOL_v2_3_ADDENDUM_SI_MAPPING",
+  "version": "1.5"
+ },
+ "registries_selected": {
+  "event_registry": "v2_3 (47 held-out: 32 timing-usable + 15 year-grain; exact 5, interval 4)",
+  "governed_registry_rows": "ka_gochara_rule_path sealed rule versions per the manifest registry census [[\"P1\", \"1.0.0\"], [\"P1\", \"1.2.0\"], [\"P1\", \"1.3.0\"], [\"P2\", \"1.0.0\"], [\"P2\", \"1.3.0\"], [\"P3\", \"1.0.0\"], [\"P3\", \"1.2.0\"], [\"P3\", \"1.3.0\"], [\"P4\", \"1.0.0\"], [\"P4\", \"1.2.0\"], [\"P4\", \"1.3.0\"], [\"P5\", \"1.0.0\"]], registry digest d93a63f1dd8bc8ecd7f9aecce88fdd765af3908607f624a346b09c6418c10115"
+ },
+ "conventions": {
+  "si_mapping": "governed '5.0': si := evidence_for of ka_gochara_eval_window (NULL stays NULL — the unqualified state, never 0); pk := peak_instant (IST civil date); SI addendum v1.5 §1/§3",
+  "utc_to_ist": "ws = (lower(interval) at time zone 'Asia/Kolkata')::date; we = ((upper(interval) - interval '1 microsecond') at time zone 'Asia/Kolkata')::date; pk = (peak_instant at time zone 'Asia/Kolkata')::date — applied in dump_extract.SQL_GOVERNED_DUMP",
+  "merge_implementation": "services/gochara_eval/candidate.py merge_candidates — protocol §4.2: overlapping/abutting same-class windows merged; representative = max si, ties (|Δ|<1e-9) -> earliest peak; a group with any unknown member has an unqualified representative. The life-event comparison does NOT merge (it needs the per-window stored valence).",
+  "stored_value_precision": "si read as NUMERIC and converted to IEEE double; JSON serialised with Python's shortest round-trip repr; dates ISO yyyy-mm-dd",
+  "tie_tolerance": 1e-09,
+  "tie_grouping": "adjacent-gap grouping for ranking and the §8.3 plateau test (SI addendum v1.3 §4), as services/gochara_eval/candidate.py",
+  "candidate_set": "protocol §4.6: merged windows of the event's class overlapping the calendar years its scored span touches, clipped to the observation mask [1998-01-01, 2026-04-17]; ONE set for N, hit and rank",
+  "horizon": {
+   "scored": "1998-01-01 -> 2026-04-17 inclusive (H = 10,334 d)",
+   "extract_assertion": "windows entirely outside [1998-01-01, 2026-04-18) (end-exclusive) are EXCLUDED and COUNTED in the extract header (windows_outside_scored_horizon_excluded), never silently dropped; build span 1998-01-01..2084-02-05"
+  }
+ },
+ "code": {
+  "adapter_commit": "375ac795267eda33341c62c2d19601aaea54b54f",
+  "scorer_commit": "375ac795267eda33341c62c2d19601aaea54b54f",
+  "files": {
+   "services/gochara_eval/candidate.py": "5fbcaccbd93ef25df22217185431d46f69601d416c8561e1d631fc0c23ac3951",
+   "services/gochara_eval/unknowns.py": "b221d5cb3fd1ba3595134b3169a82bce4e06af3f7fd3534a5db902de3db60ef1",
+   "services/gochara_eval/extract.py": "9cb436934b331cd10ea70747f20b6a98731c1a3c712442ae413049066581d447",
+   "services/gochara_eval/metrics.py": "0ae77f1102307a6496b39b227ecedcbf08dfd3f79e810d8de8cbc4ce00c0d2b0",
+   "services/gochara_eval/registry.py": "dd2aa496fdddfcc8a380d52f8eb09c1096baea1f553a9572c02c877a0e8b80a7",
+   "services/gochara_eval/controls.py": "3e174d60ba2c4dc8f9340545d312d066008e595dc8ea6281bd970874672d1322",
+   "services/gochara_eval/freeze.py": "3be9fc60e5b16ae3c96af5c897f9098bcffa60d794808c89cd556bf57a4bd587",
+   "services/gochara_eval/dump_extract.py": "f796f5876347fc2338a06e4a28eebdf8de91c968bd0acf8b9ef3f889b77087e7",
+   "services/gochara_eval/candidate_score.py": "4d1b3a51a1e24be2ac63a25f46393b661714a621cd3806cf836a677576bd355c"
+  },
+  "note": "hashes of the FROZEN_CODE_FILES at origin/main 375ac795267eda33341c62c2d19601aaea54b54f (platform/python-sidecar); the extract and scorer MUST run from a checkout of that commit"
+ },
+ "extract_generation_command": "python3 -m services.gochara_eval.dump_extract --generation 5.0 --stage1 /Users/Dev/worktrees.noindex/madhav/claude/kalayantra-freeze-5.0/00_ARCHITECTURE/briefs/pravaha/measurement/FREEZE_STAGE1_5_0_16f4396d-debb-4542-9f43-f1977104873c.json --pinned-at 2026-10-26 --out /Users/Dev/scratch.noindex/claude/madhav/20261026-kalayantra-freeze-5-0/baseline_5_0_extract_16f4396d.json",
+ "extract_generation_args": {
+  "generation": "5.0",
+  "stage1": "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-freeze-5.0/00_ARCHITECTURE/briefs/pravaha/measurement/FREEZE_STAGE1_5_0_16f4396d-debb-4542-9f43-f1977104873c.json",
+  "pinned_at": "2026-10-26",
+  "out": "/Users/Dev/scratch.noindex/claude/madhav/20261026-kalayantra-freeze-5-0/baseline_5_0_extract_16f4396d.json"
+ },
+ "extract_environment": "run from platform/python-sidecar of a checkout of origin/main 375ac795267eda33341c62c2d19601aaea54b54f; read-only role; GOCHARA_EVAL_READONLY_DSN (or --libpq-env), supplied by the cockpit, never on the command line; one SELECT in a READ ONLY REPEATABLE READ transaction after the live manifest has been reconciled with this freeze's manifest_readback; the extract lands under /Users/Dev/scratch.noindex, never in git",
+ "ephemeris_requirement": {
+  "consumed_bodies": [
+   "Sun",
+   "Moon",
+   "Mercury",
+   "Venus",
+   "Mars",
+   "Jupiter",
+   "Saturn",
+   "Rahu",
+   "Ketu"
+  ],
+  "horizon": {
+   "start": "1998-01-01",
+   "end": "2084-02-05"
+  },
+  "manifest_readback": {
+   "generation": "5.0",
+   "manifest_status": "candidate",
+   "result_policy": "window_qualification/1",
+   "ephemeris": {
+    "files": {
+     "semo_18.se1": "1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7",
+     "sepl_18.se1": "ca1393ceab3a44fbc895887cf789c68819ae6a1cbc9b22225872dbe4ccd99a66"
+    },
+    "backend": "swieph",
+    "platform": "Linux-x86_64",
+    "swe_version": "2.10.03",
+    "probe_digest": "36af6429a4a4891a33410f2081dce9a5da5b7652f1c8c1406f6dfcfc48878d7b",
+    "library_sha256": "3911614ca013be4520e355306620a3fcd27a39374a960a2063b056cfbd093338"
+   },
+   "orb_policy": {
+    "activity": {
+     "1.0.0": "undeclared",
+     "1.3.0": {
+      "orb_deg": 1.0,
+      "orb_decision_ref": "nd_orb_scale"
+     }
+    },
+    "admission_digest": "343e18f1524e29d8125f20e4872e515808d95e65270b2dea7fcadc09f09228ac"
+   },
+   "registry_digest": "d93a63f1dd8bc8ecd7f9aecce88fdd765af3908607f624a346b09c6418c10115",
+   "implementation": {
+    "window": "455ab5ade967bc299a4858fde58cce94fe5637c994106c7b9007f53f91b9fabb",
+    "geometry": "77cde807a5e0bf6a3733bea3f48270774920acd7434f37f2c2eb73fe781d3616",
+    "evaluation": "ebc2d38c14dcdd95920ea8f9e18646bb8c164147933a219470e6591a09004041"
+   },
+   "ephemeris_problems": []
+  },
+  "manifest_identity": {
+   "manifest_id": "fee279ad-45cf-47a1-9fca-d1dc9a2b02ee",
+   "created_at": "2026-10-25T23:56:14.558329+00:00",
+   "writer_asset_id": "ka_gochara_v5",
+   "source": "J-4f census receipt (operation J-4f.census-20261018T111555Z-a2, read-only) of the manifest of run 16f4396d-debb-4542-9f43-f1977104873c; the dump re-reads the live manifest and REFUSES if any of the six frozen fields differs"
+  },
+  "local_pinned_ephemeris": "/Users/Dev/kalayantra/ephe (sepl_18.se1 and semo_18.se1 sha256 equal the manifest's opened-file census)"
+ },
+ "cohort": {
+  "held_out": 47,
+  "timing_usable": 32,
+  "year_grain": 15,
+  "exact_cohort": 5,
+  "interval_grain": 4,
+  "dev_tier": "never scored (§9.4)",
+  "chart_id": "482012f1-710e-4a25-994a-93821f5871aa"
+ },
+ "controls": {
+  "file": "random_controls_v1_3.json",
+  "seed": 482012,
+  "experiment": "rolling spans at each event's own span length, 20 draws/event, any-shared-day overlap, unweighted",
+  "rule": "re-drawn from the registry + the candidate's merged windows and required to reproduce the file (controls.py)"
+ },
+ "thresholds": {
+  "t_cover": ">= 32/47, every miss named",
+  "t_time": "capped (182 d) median <= 45 d over the 5 exact events; misses counted at the cap; an unqualified peak gives the range [0,182] and cannot pass",
+  "t_rank": "median rank percentile <= 25 with >= 17 of 32 timing-usable eligible, else rank-unproven; VOID on era-fingerprint >= 50 %",
+  "t_fp_adverse": "per adverse class: admitted day-fraction <= min(1, 3*n_c*90/H) (n_c=0 -> allowance of n_c=1)",
+  "t_fp_gain": "every non-adverse non-birth_anchor class with rows: 0.5 % - 40 % of horizon days",
+  "t_honesty": "the frozen scorer is given NO coverage manifest, so its T-honesty reads UNVERIFIABLE by construction; the per-(class, year) computation coverage (protocol §6.5c, >= 50 % per scored class) is read from the kala_gochara_coverage event_class ledger (E2) and carried by the comparison record as disclosure, under both unsearched policies",
+  "random_controls": "REPRODUCED"
+ },
+ "tolerances_and_conversions": {
+  "tie_tolerance": 1e-09,
+  "percentile": "100*(avg_rank-1)/N, N = ALL admitted candidates incl. unknown",
+  "timezone": "IST civil dates (UTC+05:30)",
+  "enumeration_budget": 400000,
+  "budget_exceeded": "endpoint reported unqualified with the full [0,100] range; never guessed"
+ },
+ "coverage_manifest": "UNVERIFIABLE to the scorer (none supplied, see thresholds.t_honesty); the E2 ledger readback (e2_coverage.sql, sha256 recorded in comparison_decision_rule.e2_coverage_readback) feeds the comparison only",
+ "rerun_policy": "The scorer is deterministic: a same-input rerun must reproduce the result file byte for byte. INPUT_REJECTED / controls rejection / source-reconciliation halt write the partial result and stop — a report, not retried by editing inputs. After any candidate result has been inspected NO frozen item may change; a change is a protocol violation and is disclosed as one. A discovered defect is reported and fixed in a new, separately-dated freeze, never patched into this run.",
+ "comparison_decision_rule": {
+  "authority": "ruling SR-LIFE-EVENT-COMPARISON (a)-(c), owner-surrogate; branch kalayantra/freeze-5.0 off campaign-coordination; the Stage-2 seal and the comparison record carry the shas of both freezes; main untouched",
+  "rule_text": "Ruling SR-LIFE-EVENT-COMPARISON. (b) STRICT is the verdict: an unsearched region = UNMATCHED; horizon_only is reported beside it, labelled diagnostic, plus the count of events in unsearched regions. (c) MAPPED = inside a qualified window of its class AND peak within the protocol's timing tolerance (45 days, protocol v2.3 §6.2/§6.4) AND valence agrees; PARTLY is split into timing-fail vs valence-fail; UNMATCHED = in no qualified window of its class; reported per class and in total, and the page reports the false-positive side (T-FP endpoints per class vs allowances).",
+  "verdict_policy": "strict",
+  "diagnostic_policy": "horizon_only",
+  "strict": "an event in an unsearched region (any touched (class, year) cell with no ledger partition, a horizon that does not cover the year, or a non-null unsearched_reason) is UNMATCHED; this is the VERDICT",
+  "horizon_only": "same rules but an unsearched_reason alone does not unsearch a cell (the horizon must still cover the year); reported beside strict, LABELLED DIAGNOSTIC, never the verdict; plus the count of events in unsearched regions under each policy",
+  "MAPPED": "inside a qualified window of its class (stored si not NULL; shares >= 1 IST day with the event's scored span) AND peak within the timing tolerance (45 days, protocol §6.2/§6.4; error per §5) AND the stored outcome_valence_for_native agrees with the class polarity (adverse for the nine frozen adverse classes, else favourable) — all three on ONE window",
+  "PARTLY": "an overlapping qualified window exists but none is MAPPED; split PARTLY_timing_fail (a window agrees in valence, none in time) vs PARTLY_valence_fail (a window in time, none agrees) — plus PARTLY_both_fail where neither holds",
+  "UNMATCHED": "in no qualified window of its class (or, under the policy, in an unsearched region)",
+  "reported": "per class and totals (and by tier), for strict (verdict) and horizon_only (diagnostic); events in unsearched regions; the false-positive side = frozen-scorer T-FP per adverse class vs allowance and the gain band",
+  "tolerance_days": 45,
+  "e2_coverage_readback": {
+   "file": "e2_coverage.sql",
+   "sha256": "526ed0a72d68c36b645e2740df70238b94c8fd4eb50228527984b9a2257bd10c",
+   "consumer": "services/gochara_eval/coverage_cells.py COVERAGE_SQL / read_cells (ky.coverage_cells/1)"
+  },
+  "personal_data": "the per-event table lives only under /Users/Dev/scratch.noindex/claude/madhav/, never in git; the counts file carries counts only"
+ },
+ "comparison_implementation": {
+  "file": "life_event_compare.py",
+  "sha256": "518b7246486fab621178fe27fbf41e8cc8dba66cd8d524eed7b9b8f45c28221b",
+  "tests": "test_life_event_compare.py",
+  "tests_sha256": "c50c58808b43a1726d20e73dee70223d5ca4c9ce281e3dade72a50f3faf6e124",
+  "note": "NOT in FROZEN_CODE_FILES (freeze.py unchanged); pinned here by hash. It re-verifies this freeze (require_stage1/2, bind_scoring_run) itself and records its own sha in the comparison record. To be landed unchanged by the cockpit; any change requires a new freeze."
+ },
+ "inputs": {
+  "event_registry": {
+   "path": "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/measurement/event_registry_v2_3.json",
+   "sha256": "23633a244c97275f9005983e61f2243919d626088e560101f240dce3b176edee"
+  },
+  "random_controls": {
+   "path": "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/measurement/random_controls_v1_3.json",
+   "sha256": "eea40fe8ba743a15291c8ec885b1f9dc0c5591a03ebf8bfb70cbefe414f6cb94"
+  },
+  "baseline_3_0_extract": {
+   "path": "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/measurement/baseline_3_0_extract_v1_0.json",
+   "sha256": "70ba61421915db2ec3fcf3d1a23bc0ad80d43055b0d0bcc656e5a89079ef84ff"
+  },
+  "scorer_3_0": {
+   "path": "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/measurement/rerun_3_0_v2_3_scorer.py",
+   "sha256": "4456efa548d8551faa66c54d09c4cc0721fed19104a10e3ce6c282b59a846e71"
+  },
+  "recorded_result_3_0": {
+   "path": "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/measurement/rerun_result_v2_3.json",
+   "sha256": "8322e915bc7f13bf36f2a84ff27892902b6fd0303cb54c598abe9ec0622a3984"
+  },
+  "recorded_per_event_3_0": {
+   "path": "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/measurement/rerun_per_event_v2_3.json",
+   "sha256": "9984627e2aada36f1c65ca311f2f8391739ad559dd053062569698dee5b74345"
+  },
+  "evaluation_protocol": {
+   "path": "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/measurement/EVALUATION_PROTOCOL_v2_3.md",
+   "sha256": "a8353dc48563e08710f1fc6815ace2f15b7e9db5eec5d4ebea1e6dde1120514e"
+  },
+  "si_addendum": {
+   "path": "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/measurement/EVALUATION_PROTOCOL_v2_3_ADDENDUM_SI_MAPPING_v1_5.md",
+   "sha256": "f9e3fb5685fe81b8c2c3a4761bea2b4d020798458b1259b22e216fbb8ae953bb"
+  },
+  "bounds_model": {
+   "path": "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/measurement/unknown_competitor_bounds_model.py",
+   "sha256": "063bbe8766f557a756a286f06ec2bfe030ae6059d005f5923b27e0a11fed0f96"
+  },
+  "design_specs": {
+   "path": "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/design/GOCHARA_DESIGN_SPECS_v1_4.md",
+   "sha256": "d5097ca18a721d8005cab593f3c3865227d22ff1435b8adc9973275d3f786a47"
+  },
+  "test_oracles": {
+   "path": "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/design/GOCHARA_TEST_ORACLES_v1_4.json",
+   "sha256": "19951b06ce672ac4cff82d74fb6c7bb7babe4315582ec1c142a0a7871752c277"
+  },
+  "amendments_draft": {
+   "path": "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/design/GOCHARA_SPECS_V1_5_AMENDMENTS_DRAFT.md",
+   "sha256": "edf1a0de454996451334396473154592de7856ee0a134b724dd67fbde6cbcabd"
+  }
+ }
+}
