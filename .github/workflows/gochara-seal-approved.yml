@@ -122,6 +122,11 @@ jobs:
           test "$CHART_ID" = "482012f1-710e-4a25-994a-93821f5871aa"
           test "$GENERATION" = "5.0"
 
+      - name: Python 3.11 (the interpreter CI and the image use; the runner's system Python is 3.12 and may refuse a system-wide pip install)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
       - name: Smoke the sealing job's dependencies (S-DEP) — install and import at the sealing commit, BEFORE any approval is requested
         run: |
           set -euo pipefail
@@ -416,6 +421,11 @@ jobs:
             sleep 1
           done
           test "$ready" = true
+
+      - name: Python 3.11 (same as the brief job's smoke)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
       - name: Install the sidecar dependencies
         run: pip install -r platform/python-sidecar/requirements-ci.txt --quiet
