@@ -1,0 +1,275 @@
+{
+ "asset_id": "mi_bhara",
+ "collected_utc": "2026-10-03T12:30:56.134011Z",
+ "chart": "482012f1-710e-4a25-994a-93821f5871aa",
+ "registry": {
+  "rung": "R5",
+  "layer": "mimamsa",
+  "scope": "per_chart",
+  "domain": "chart",
+  "asset_id": "mi_bhara",
+  "size_sql": "SELECT pg_total_relation_size('kala_field_skill')",
+  "count_sql": "SELECT COUNT(*) FROM kala_field_skill WHERE chart_id = $1",
+  "dead_flag": null,
+  "is_active": true,
+  "asset_kind": "data",
+  "asset_type": "data",
+  "created_at": "2026-07-30T19:56:28.823137+00:00",
+  "depends_on": [
+   "ka_kshetra"
+  ],
+  "has_writer": true,
+  "layer_name": "M\u012bm\u0101\u1e43s\u0101",
+  "sort_order": 13,
+  "layer_index": "L5",
+  "clear_tables": null,
+  "english_name": "Field Weight Calibration",
+  "has_substeps": false,
+  "health_probe": null,
+  "storage_type": "postgres_table",
+  "target_floor": 0,
+  "target_table": "kala_field_skill",
+  "provides_apis": null,
+  "sanskrit_name": "K\u0101la Bh\u0101ra",
+  "superseded_by": null,
+  "catalog_status": "CURRENT",
+  "service_health": null,
+  "last_invoked_at": null,
+  "selftest_detail": null,
+  "data_disposition": null,
+  "last_selftest_at": null,
+  "estimated_seconds": 17,
+  "volume_explanation": "One skill row per scored event class plus one chart-level aggregate; grows only as the LEL grows. A chart with no LEL correctly produces the structural-prior state with skill_state = underpowered \u2014 an honest zero, not an error.",
+  "english_description": "Stage 9 of the temporal-field pipeline: fits the hazard field's weights against this chart's recorded life events (blocked forward-chaining CV, shrinkage to the classical structural priors), publishes a new versioned weights artifact, and reports the temporal skill score and the time-rescaling goodness-of-fit. The ONLY stage permitted to read the LEL (CIRCULARITY GUARD). \u1e62A\u1e0c-DAR\u015aANA items 21/39.",
+  "integrity_check_sql": "\nSELECT\n  NOT EXISTS (\n    SELECT 1 FROM kala_field_skill s\n    GROUP BY s.chart_id\n    HAVING count(DISTINCT (s.event_class, s.weights_version, s.field_snapshot_id)) <> count(*)\n        OR count(*) FILTER (WHERE NOT EXISTS (SELECT 1 FROM kala_field_weight_versions v\n                                               WHERE v.version_id = s.weights_version)) > 0\n        OR count(*) FILTER (WHERE s.field_snapshot_id = 'unpinned'\n                              AND EXISTS (SELECT 1 FROM kala_field f\n                                           WHERE f.chart_id = s.chart_id\n                                             AND f.field_snapshot_id IS NOT NULL)) > 0\n        OR count(*) FILTER (WHERE s.n_events <> s.n_prospective + s.n_backfill\n                              OR s.n_prospective < 0 OR s.n_backfill < 0) > 0\n        OR count(*) FILTER (WHERE s.skill_lo > s.skill_score OR s.skill_score > s.skill_hi) > 0\n        OR count(*) FILTER (WHERE s.null_replicates < 1 OR s.bootstrap_resamples < 1\n                              OR s.bootstrap_seed IS NULL OR s.released_at IS NULL\n                              OR btrim(coalesce(s.skill_state, '')) = ''\n                              OR btrim(coalesce(s.field_snapshot_id, '')) = '') > 0\n  )\n  AND NOT EXISTS (\n    SELECT 1 FROM kala_field_skill s\n    GROUP BY s.chart_id, s.weights_version, s.field_snapshot_id\n    HAVING count(*) FILTER (WHERE s.event_class IS NULL) > 1\n        OR (count(*) FILTER (WHERE s.event_class IS NULL) = 1\n            AND sum(s.n_events) FILTER (WHERE s.event_class IS NULL)\n                <> coalesce(sum(s.n_events) FILTER (WHERE s.event_class IS NOT NULL), 0))\n  )\n  AND NOT EXISTS (\n    SELECT 1 FROM kala_field_gof g\n    GROUP BY g.chart_id\n    HAVING count(DISTINCT (g.event_class, g.weights_version, g.field_snapshot_id)) <> count(*)\n        OR count(*) FILTER (WHERE NOT EXISTS (SELECT 1 FROM kala_field_weight_versions v\n                                               WHERE v.version_id = g.weights_version)) > 0\n        OR count(*) FILTER (WHERE g.n IS DISTINCT FROM\n              (SELECT s2.n_events FROM kala_field_skill s2\n                WHERE s2.chart_id = g.chart_id\n                  AND s2.event_class IS NOT DISTINCT FROM g.event_class\n                  AND s2.weights_version = g.weights_version\n                  AND s2.field_snapshot_id = g.field_snapshot_id)) > 0\n        OR count(*) FILTER (WHERE g.n < 1\n                              OR g.ks_band_95 IS DISTINCT FROM 1.36 / sqrt(g.n)\n                              OR (g.ks_p IS NOT NULL AND g.ks_p NOT BETWEEN 0 AND 1)\n                              OR (g.ks_statistic IS NOT NULL AND g.ks_statistic < 0)\n                              OR (g.ljung_box_p IS NOT NULL AND g.ljung_box_p NOT BETWEEN 0 AND 1)\n                              OR g.computed_at IS NULL\n                              OR btrim(coalesce(g.gof_state, '')) = ''\n                              OR btrim(coalesce(g.field_snapshot_id, '')) = '') > 0\n  )\n",
+  "natural_key_partition": null,
+  "rebuild_on_probe_fail": false,
+  "expected_volume_inputs": {
+   "note": "a chart with no Life Event Log correctly yields the structural-prior state (skill_state=underpowered), an honest zero",
+   "partition": "chart_id",
+   "derivation": "one kala_field_skill row per scored event class, plus one chart-level aggregate row",
+   "chart_scoped": true,
+   "observed_2026_09_05": {
+    "total": 7,
+    "classes": 6,
+    "aggregate": 1
+   }
+  },
+  "writer_timeout_seconds": 10800,
+  "expected_volume_formula": "COUNT(DISTINCT event_class scored for the chart) + 1"
+ },
+ "throughput": {
+  "state": "error",
+  "history": [],
+  "asset_id": "mi_bhara",
+  "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+  "last_error": "BLOCKED: upstream dependency(ies) timeout:600s did not complete in this run; skipped to avoid building on incomplete data",
+  "rows_written": 0,
+  "expected_rows": null,
+  "last_built_at": "2026-08-21T02:28:16.524173+00:00",
+  "rows_per_second": null,
+  "duration_seconds": null,
+  "last_measured_at": null,
+  "measurement_count": 0,
+  "last_measured_build_id": null,
+  "built_against_writer_hash": "",
+  "built_against_upstream_hash": "53be7fa0ef18347d"
+ },
+ "runs_summary": [
+  {
+   "n": 4,
+   "last": null,
+   "state": "aborted",
+   "disposition": null
+  },
+  {
+   "n": 34,
+   "last": "2026-08-07T23:04:05.811085+00:00",
+   "state": "complete",
+   "disposition": null
+  },
+  {
+   "n": 14,
+   "last": "2026-08-12T17:12:37.224067+00:00",
+   "state": "error",
+   "disposition": "blocked_dependency"
+  },
+  {
+   "n": 5,
+   "last": "2026-08-21T02:28:16.524173+00:00",
+   "state": "error",
+   "disposition": null
+  },
+  {
+   "n": 7,
+   "last": null,
+   "state": "queued",
+   "disposition": null
+  }
+ ],
+ "last_runs": [
+  {
+   "error": "BLOCKED: upstream dependency(ies) timeout:600s did not complete in this run; skipped to avoid building on incomplete data",
+   "scope": "asset_set",
+   "state": "error",
+   "run_id": "257eb0c2-cc41-4e1e-a37e-e54aa40bae9c",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-08-21T02:28:16.524173+00:00",
+   "started_at": "2026-08-21T02:18:20.008328+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": "TypeError: float() argument must be a string or a real number, not 'NoneType'\nTraceback (most recent call last):\n  File \"/app/platform/python-sidecar/pipeline/orchestrator/asset_runner.py\", line 562, in _run_data_writer\n    rows_inserted, rows_updated = _drive_substeps(conn, cur, run_id, chart_id, a",
+   "scope": "asset_set",
+   "state": "error",
+   "run_id": "cbd6ea44-3c09-4ce5-9b21-d22fb0eeccf6",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-08-13T01:02:31.824568+00:00",
+   "started_at": "2026-08-13T01:02:31.759203+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": "TypeError: float() argument must be a string or a real number, not 'NoneType'\nTraceback (most recent call last):\n  File \"/app/platform/python-sidecar/pipeline/orchestrator/asset_runner.py\", line 562, in _run_data_writer\n    rows_inserted, rows_updated = _drive_substeps(conn, cur, run_id, chart_id, a",
+   "scope": "asset_set",
+   "state": "error",
+   "run_id": "e24e06c1-d557-4d99-a188-e5bb5829541d",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-08-12T23:40:12.184365+00:00",
+   "started_at": "2026-08-12T23:40:11.70867+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": "TypeError: float() argument must be a string or a real number, not 'NoneType'\nTraceback (most recent call last):\n  File \"/Users/Dev/Vibe-Coding/Apps/Madhav/platform/python-sidecar/pipeline/orchestrator/asset_runner.py\", line 562, in _run_data_writer\n    rows_inserted, rows_updated = _drive_substeps(",
+   "scope": "asset_set",
+   "state": "error",
+   "run_id": "efebbbbf-72d0-4f7c-ac40-efd12c25941d",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-08-12T15:57:21.422183+00:00",
+   "started_at": "2026-08-12T15:57:20.903725+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": "TypeError: float() argument must be a string or a real number, not 'NoneType'\nTraceback (most recent call last):\n  File \"/Users/Dev/Vibe-Coding/Apps/Madhav/platform/python-sidecar/pipeline/orchestrator/asset_runner.py\", line 562, in _run_data_writer\n    rows_inserted, rows_updated = _drive_substeps(",
+   "scope": "asset_set",
+   "state": "error",
+   "run_id": "84790929-7258-4e46-8697-bfd85d9728ca",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-08-12T15:25:42.770458+00:00",
+   "started_at": "2026-08-12T15:25:42.437037+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "global",
+   "state": "complete",
+   "run_id": "9fc3e49d-8c24-4be7-80f0-29c8cff726e8",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-08-07T23:04:05.811085+00:00",
+   "started_at": "2026-08-07T23:04:00.676251+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "global",
+   "state": "complete",
+   "run_id": "a17e9167-03c0-4664-998b-ed52f8d1f481",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-08-07T21:05:00.036773+00:00",
+   "started_at": "2026-08-07T21:04:54.972211+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "56d43cd3-5b11-4b9b-a8f3-127cc16a1919",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-08-07T19:10:20.656115+00:00",
+   "started_at": "2026-08-07T19:10:13.210436+00:00",
+   "disposition": null,
+   "output_changed": null
+  }
+ ],
+ "last_runs_canonical": [
+  {
+   "error": "BLOCKED: upstream dependency(ies) timeout:600s did not complete in this run; skipped to avoid building on incomplete data",
+   "state": "error",
+   "run_id": "257eb0c2-cc41-4e1e-a37e-e54aa40bae9c",
+   "ended_at": "2026-08-21T02:28:16.524173+00:00",
+   "started_at": "2026-08-21T02:18:20.008328+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": "TypeError: float() argument must be a string or a real number, not 'NoneType'\nTraceback (most recent call last):\n  File \"/app/platform/python-sidecar/pipeline/orchestrator/asset_runner.py\", line 562, in _run_data_writer\n    rows_inserted, rows_updated = _drive_substeps(conn, cur, run_id, chart_id, a",
+   "state": "error",
+   "run_id": "cbd6ea44-3c09-4ce5-9b21-d22fb0eeccf6",
+   "ended_at": "2026-08-13T01:02:31.824568+00:00",
+   "started_at": "2026-08-13T01:02:31.759203+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": "TypeError: float() argument must be a string or a real number, not 'NoneType'\nTraceback (most recent call last):\n  File \"/app/platform/python-sidecar/pipeline/orchestrator/asset_runner.py\", line 562, in _run_data_writer\n    rows_inserted, rows_updated = _drive_substeps(conn, cur, run_id, chart_id, a",
+   "state": "error",
+   "run_id": "e24e06c1-d557-4d99-a188-e5bb5829541d",
+   "ended_at": "2026-08-12T23:40:12.184365+00:00",
+   "started_at": "2026-08-12T23:40:11.70867+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": "TypeError: float() argument must be a string or a real number, not 'NoneType'\nTraceback (most recent call last):\n  File \"/Users/Dev/Vibe-Coding/Apps/Madhav/platform/python-sidecar/pipeline/orchestrator/asset_runner.py\", line 562, in _run_data_writer\n    rows_inserted, rows_updated = _drive_substeps(",
+   "state": "error",
+   "run_id": "efebbbbf-72d0-4f7c-ac40-efd12c25941d",
+   "ended_at": "2026-08-12T15:57:21.422183+00:00",
+   "started_at": "2026-08-12T15:57:20.903725+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": "TypeError: float() argument must be a string or a real number, not 'NoneType'\nTraceback (most recent call last):\n  File \"/Users/Dev/Vibe-Coding/Apps/Madhav/platform/python-sidecar/pipeline/orchestrator/asset_runner.py\", line 562, in _run_data_writer\n    rows_inserted, rows_updated = _drive_substeps(",
+   "state": "error",
+   "run_id": "84790929-7258-4e46-8697-bfd85d9728ca",
+   "ended_at": "2026-08-12T15:25:42.770458+00:00",
+   "started_at": "2026-08-12T15:25:42.437037+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "9fc3e49d-8c24-4be7-80f0-29c8cff726e8",
+   "ended_at": "2026-08-07T23:04:05.811085+00:00",
+   "started_at": "2026-08-07T23:04:00.676251+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "a17e9167-03c0-4664-998b-ed52f8d1f481",
+   "ended_at": "2026-08-07T21:05:00.036773+00:00",
+   "started_at": "2026-08-07T21:04:54.972211+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "56d43cd3-5b11-4b9b-a8f3-127cc16a1919",
+   "ended_at": "2026-08-07T19:10:20.656115+00:00",
+   "started_at": "2026-08-07T19:10:13.210436+00:00",
+   "disposition": null,
+   "output_changed": null
+  }
+ ],
+ "live_count": "count\n7\n(1 row)"
+}
