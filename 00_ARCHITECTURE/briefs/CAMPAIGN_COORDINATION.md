@@ -9393,3 +9393,10 @@ Answers the KĀLA-YANTRA request of 2026-10-16T17:50Z. Measured read-only by Suv
 - Authority: owner requested isolated page-preview setup and explicitly approved one additional workspace beyond the existing copy limit in this chat.
 - Scope: local preview configuration, launcher, fixture-host UI and scoped verification/docs only; reuse application components without changing their production behavior.
 - Exclusions: no production reservation, deploy, merge, migrations, credentials, data or engine/registry/corpus mutations, paid resources or foreign-worktree edits. The existing Kala W4 production lease remains exclusively its holder’s.
+
+
+## L-MADHAV-WEB-PREVIEW-20261026 — setup reservation released
+
+- Holder: Codex desktop; status: RELEASED_LOCAL_PREVIEW_READY; released 2026-10-26T13:24:54.985713+00:00.
+- Result: isolated codex/web-preview worktree retained for ongoing owner page work; ten real-component fixture screens at loopback port 3100; browser render, sample consultation, automatic refresh, stop/start, lint and HTTP boundaries verified. Source edits remain local and uncommitted.
+- Retained: own active preview job and scratch runtime/cache/logs for the ongoing preview. Temporary coordination-index/readback files removed after this record. No production lock acquired, deploy/merge/production-data/credential/cloud-resource action or foreign-worktree edit performed. Existing Kala W4 lease unchanged.
