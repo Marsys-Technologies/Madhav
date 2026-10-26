@@ -523,7 +523,8 @@ HARNESS_DIR = "00_ARCHITECTURE/briefs/kalayantra/fleet/trial_harness"
 # tests/test_tr26_completion.py); previous pin f23c08d8a9140e16429858f5e3322e1b0fdbf24ea5c7a7eaa50578259043ebb2
 # TR-26 harness fix (SR-TR26-HARNESS-1410, ruling OPTION A; harness-only, no implementation digest and not the writer d3cdd192 moves): the trial database carries migration 1410 (the committed-substep
 # ledger) as a MANDATORY overlay file with its effect read-back and its SR-BASELINE-OVERLAY-SKIP probe (trial_slice.py; tests/test_harness_1410.py); previous pin ac21584fa2b092f89573e45d940de9b651a9755f28f881ed6a6ab9eaf50f669f
-HARNESS_V31_DIGEST = "2f5b5420474708505e1c762d11a6432a647990e799ef381a59efaf1843168a72"
+# #3919 (SR-TR26-G7-RESUME (b)): the kill+resume leg is a staged century run (trial_slice.py, completion.py, run_trial.sh, tests); previous pin 2f5b5420474708505e1c762d11a6432a647990e799ef381a59efaf1843168a72 (#3918)
+HARNESS_V31_DIGEST = "f95c3b09feadd49ee3070f5f2981c05c18835970876798aeab582cf78a865c2e"
 
 
 def harness_digest(root):
