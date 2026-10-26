@@ -173,6 +173,9 @@ CANCEL_KINDS = {f"{family}_cancel{twin}": family for family in CANCEL_FAMILIES f
 NO_DRYRUN_KINDS = frozenset({"backup_snapshot", "backup_restore_verify"})   # the two production kinds with no dry-run kind and no `dry_run_passed` attestation (kyd_kinds_ops.required_checks)
 PACK_NEVER_FILLED = frozenset({"kind", "chart_id", "reviewed_commit", "requested_by", "acceptance_receipt", "pack_fill"})   # a pack template pins these (or the request cannot carry them); a fill may never set them
 DRYRUN_IDENTITY_FIELDS = ("item_id", "chart_id", "reviewed_commit", "args")   # what "the same request" means between a `<kind>_dryrun` request and its production request
+SIBLING_DRYRUN_RULING = "SR-W4-SIBLING-DRYRUN-ADMISSION"   # the one ruling that lets a W4 shard's `verification_job` cite the SAME window's V01 dry run (option B): the request must name it
+SIBLING_DRYRUN_SHARD = "V01"   # the shard whose dry run is the window's rehearsal
+SIBLING_IMAGE_DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 SCHEDULER_JOB = "watchdog-reaper"   # platform/scripts/provision_watchdog_scheduler.sh creates exactly this job ...
 SCHEDULER_PROJECT = "madhav-astrology"   # ... in this project (GCP_PROJECT default) ...
@@ -560,12 +563,84 @@ def pack_fill_check(req: dict) -> tuple[str | None, dict]:
     return None, {"pack_manifest_sha256": manifest, "template_sha256": template_sha, "fill_sha256": declared, "verify_job": entry["verify_job"]}
 
 
+def sibling_request_problem(req: dict) -> str | None:
+    """SR-W4-SIBLING-DRYRUN-ADMISSION, the request side: `sibling_dryrun` is exactly {ruling, image_digest}, names THE ruling and a sha256 image digest, and the request is
+    one shard (args exactly {generation, shard}, shard V<nn>) of the pinned partition. (I) a whole-generation request (no shard) never rides on V01's four classes."""
+    sibling, args = req.get("sibling_dryrun"), req.get("args")
+    if not (isinstance(sibling, dict) and set(sibling) == {"ruling", "image_digest"}): return "sibling_dryrun must carry exactly ruling and image_digest"
+    if sibling["ruling"] != SIBLING_DRYRUN_RULING: return f"sibling_dryrun must name the ruling {SIBLING_DRYRUN_RULING}"
+    if not (isinstance(sibling["image_digest"], str) and SIBLING_IMAGE_DIGEST.fullmatch(sibling["image_digest"])): return "sibling_dryrun image_digest must be sha256:<64 lowercase hex>"
+    if not (isinstance(args, dict) and set(args) == {"generation", "shard"} and isinstance(args["shard"], str) and re.fullmatch(r"V\d{2}", args["shard"])):
+        return "a sibling dry run admits only a request for one shard (args exactly generation and shard)"
+    return None
+
+
+def sibling_window_problem(dry_oid: str, rec: dict) -> str | None:
+    """(I) INTERPRETATION "same window": the cited V01 dry run is the LATEST verification_job_dryrun attempt of V01 in this executor's receipts - no V01 dry-run receipt of
+    any status, head or image is newer. A receipt of that kind whose archived request cannot be read is unclassifiable, so it refuses (fail closed). Pure reads."""
+    try: cited = utc_time(rec["ts"])
+    except (KeyError, TypeError, ValueError): return "the V01 dry-run receipt carries no readable ts, so the window cannot be established"
+    for path in sorted(REC.glob("*.json")):
+        try: other = json.loads(path.read_text())
+        except (OSError, ValueError): continue
+        if not (isinstance(other, dict) and other.get("kind") == "verification_job_dryrun") or other.get("operation_id") == dry_oid: continue
+        try:
+            archived = json.loads((DONE / f"{other['operation_id']}.json").read_text())
+            if (archived.get("args") or {}).get("shard") != SIBLING_DRYRUN_SHARD: continue
+            newer = utc_time(other["ts"]) >= cited
+        except (OSError, ValueError, KeyError, TypeError, AttributeError): return f"receipt {path.name} cannot be classified, so the latest V01 dry run cannot be established"
+        if newer: return f"a newer V01 dry run exists ({path.name}): the cited one is not this window's latest"
+    return None
+
+
+def sibling_proof_problem(sibling: dict, rec: dict, dry_oid: str, output: bytes) -> str | None:
+    """The dry run's own launch record (the ONE ky.verification_launch/1 line of its complete output) shows the job definition CONFORMS at the named image digest and the
+    report-only run ok; it binds the cited operation and request digest. An exit status alone proves nothing."""
+    found = []
+    for line in output.decode("utf-8", "replace").splitlines():
+        try: value = json.loads(line)
+        except ValueError: continue
+        if isinstance(value, dict) and value.get("schema") == "ky.verification_launch/1": found.append(value)
+    if len(found) != 1: return "the V01 dry run's output does not carry exactly one verification launch record"
+    launch, ran = found[0], found[0].get("report_only_run")
+    if not (launch.get("status") == "DRY_RUN" and launch.get("operation_id") == dry_oid and launch.get("request_sha256") == rec.get("request_sha256")):
+        return "the V01 dry run's launch record does not bind that operation and its request"
+    if launch.get("definition_check") != "CONFORMS": return "the V01 dry run did not find the job definition CONFORMING"
+    if not (isinstance(ran, dict) and ran.get("ok") is True and ran.get("report_only") is True): return "the V01 dry run's report-only run was not ok"
+    if launch.get("image_digest") != sibling["image_digest"]: return "the V01 dry run ran at another image digest than sibling_dryrun names"
+    return None
+
+
+def sibling_dry_run_check(req: dict, table: dict) -> tuple[str | None, dict | None]:
+    """SR-W4-SIBLING-DRYRUN-ADMISSION (owner surrogate ruling, option B): a W4 shard's `verification_job` is admitted on the SAME window's V01 dry run. The rule is narrow -
+    the request names the ruling and the image digest; the cited dry run is judged by dry_run_check itself on this request's identity with only the shard replaced by V01
+    (so it COMPLETED exit 0 with its complete output, bound archived request, same item, chart, generation and reviewed_commit); then its own launch record shows the job
+    definition CONFORMS at that image digest with the report-only run ok (sibling_proof_problem), and it is the latest V01 dry run of the receipts (sibling_window_problem).
+    The real pass keeps its meter, G-5 and the 0.75x rule: nothing here touches them. The launcher refuses at the dispatch when the job was redefined since."""
+    if req["kind"] != "verification_job": return "sibling_dryrun is admitted only for kind verification_job", None
+    why = sibling_request_problem(req)
+    if why: return why, None
+    probe = {k: v for k, v in req.items() if k != "sibling_dryrun"}
+    probe["args"] = {**req["args"], "shard": SIBLING_DRYRUN_SHARD}
+    why, evidence = dry_run_check(probe, table)
+    if why: return why, None
+    try:
+        rec = json.loads((REC / req["dryrun_receipt"]["name"]).read_bytes()); output = (REC / f"{evidence['operation_id']}.output.txt").read_bytes()
+        if digest_bytes(output) != evidence["output_sha256"]: raise ValueError("output changed")
+    except (OSError, ValueError, KeyError, TypeError): return "the V01 dry run's receipt or output cannot be read again", None
+    why = sibling_proof_problem(req["sibling_dryrun"], rec, evidence["operation_id"], output) or sibling_window_problem(evidence["operation_id"], rec)
+    if why: return why, None
+    return None, {**evidence, "sibling_dryrun": {"ruling": req["sibling_dryrun"]["ruling"], "image_digest": req["sibling_dryrun"]["image_digest"], "shard": SIBLING_DRYRUN_SHARD}}
+
+
 def dry_run_check(req: dict, table: dict) -> tuple[str | None, dict | None]:
     """(problem, evidence): did this kind's `<kind>_dryrun` COMPLETE OK for the same request identity? The executor reads ITS OWN receipt
     (run/ops/receipts, cited by `dryrun_receipt` {name, sha256}) and the archived dry-run request — never a signer's attestation. Same identity = the
     dry-run request and this one agree on DRYRUN_IDENTITY_FIELDS, and the receipt binds that archived request (digest) and its complete output (digest).
-    The two kinds with no dry-run kind need none (evidence None)."""
+    The two kinds with no dry-run kind need none (evidence None). A request carrying `sibling_dryrun` takes the one narrow path of sibling_dry_run_check instead
+    (SR-W4-SIBLING-DRYRUN-ADMISSION); every other request is judged exactly as above."""
     kind = req["kind"]
+    if "sibling_dryrun" in req: return sibling_dry_run_check(req, table)
     if kind in NO_DRYRUN_KINDS: return None, None
     dry_kind = kind + "_dryrun"; entry = table.get(dry_kind) or {}
     if not entry.get("enabled") or entry.get("production") is not False:

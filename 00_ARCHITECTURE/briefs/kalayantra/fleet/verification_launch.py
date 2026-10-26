@@ -33,6 +33,8 @@ shard -> classes map is read from the pinned file, never from the request, and i
 rehearsal (`verification_job_dryrun --shard V03`) and the dispatch (`verification_job --shard V03`) run the same classes. Every row a shard persists carries its generation, head, image
 digest, execution and classes (the job stamps them); the seal brief and the seal read only the generation-wide AGGREGATE, which refuses unless every class is attested at one head.
 A dry run's record carries `report_only_run.capacity` (G-5, per shard: measured wall <= 0.75 x the task timeout; `verification_shards.py capacity` projects the 26-class total).
+SR-W4-SIBLING-DRYRUN-ADMISSION: a shard request the executor admitted on the window's V01 dry run carries `sibling_dryrun` {ruling, image_digest}; this launcher then refuses (definition_check) unless the job's image digest is that
+digest, so a job or image redefined after the dry run never launches. Without the field nothing changes.
 A request with no `shard` launches the whole generation exactly as before (a small generation, a rehearsal); it is not the way to verify 26 classes.
 
 Prints a `ky.verification_launch/1` JSON record (status DRY_RUN | LAUNCHED). A launch prints that one line; a dry run prints it and then the job's report line (the
@@ -195,6 +197,9 @@ def definition_check(request: dict, runner, fetch) -> dict:
         raise Refused(f"the verification job definition could not be judged: {exc}") from None
     if problems:
         raise Refused("the verification job is not defined as launched here: " + "; ".join(problems))
+    sibling = request.get("sibling_dryrun")      # SR-W4-SIBLING-DRYRUN-ADMISSION: this request was admitted on the window's V01 dry run at that image; a job redefined since refuses
+    if "sibling_dryrun" in request and not (isinstance(sibling, dict) and sibling.get("image_digest") == digest):
+        raise Refused("the verification job's image digest is not the one sibling_dryrun names: the job was redefined after the V01 dry run")
     return {"image_digest": digest, "status": "CONFORMS"}
 
 
