@@ -90,6 +90,12 @@ in a transaction that is rolled back, commits nothing, claims nothing and calls 
 absence gate above admits nothing without an accepted readback of that ledger. The twin makes the mechanical route available only to a request equal to a verified pack fill for
 the kind (none exists today); a V lane's acceptance is otherwise required, besides the owner's go.
 
+K9 rebuild staging (SR-PREP-LANES-1 (2), item K9-4b): `k9_rebuild_stage` creates, in production, the frozen build_runs row and the ONE open candidate that
+`orchestrator_rebuild` requires (services.kala_core.rebuild_stage, an executor child under the builder DSN; nothing else in this table stages them). It is a production
+write (lease, signer or pack-fill acceptance, its dry run `k9_rebuild_stage_dryrun`, which stages in a transaction it rolls back), it needs its OWN owner go (OWNER_GO_KINDS) and
+it is admitted only with an accepted, fresh absence readback and exposure readback of the fixed queries in fleet/k9_stage_policy.py (`absence_readback`, `exposure_readback`).
+It is neither a deletion nor a serving change, so it is not signed-only; the child refuses by name whatever already exists and never stages a second run or candidate.
+
 Cancel lane (SR-CANCEL-LANE): every production cancel / stall-stop kind (CANCEL_LANE_KINDS, a closed allow-list) runs on its OWN single worker, never on the
 production worker, and never waits for the production fence — a cancel queued behind the very operation it must stop would never run. The lane refuses any
 kind that is not on the list, every one of them is signed-only, and `orchestrator_rebuild_cancel` is admitted only for the run-id of an `orchestrator_rebuild`
@@ -131,6 +137,7 @@ REMOTE_ASYNC_KINDS = frozenset({   # A8 §3.11: work continues remotely after th
 OWNER_GO_KINDS = frozenset({   # OWNER-BUILD-GO-REQUIRED-20261023: the actual build starts only on the owner's explicit yes; the dry-run siblings stay free (SR-RESUME-NOW: a resume is a build too, with its OWN go)
     "century_dispatch",
     "century_resume",
+    "k9_rebuild_stage",
     "orchestrator_rebuild",
 })
 OWNER_GO_DIR = OPS / "owner_go"   # run/ops/owner_go/<operation_id>.json, written only by the owner surrogate from the owner's own words
@@ -1250,6 +1257,30 @@ def head_policy_problem(req: dict) -> str | None:
         return "reviewed head evidence policy unavailable or invalid"
 
 
+def k9_stage_policy(req: dict):
+    """Load the K9-4b staging policy (absence / exposure gates) from the operation's exact reviewed source, as head_policy does: no import from a working tree."""
+    source = git("show", f"{req['reviewed_commit']}:00_ARCHITECTURE/briefs/kalayantra/fleet/k9_stage_policy.py")
+    if source.returncode or not getattr(source, "stdout", ""):
+        raise ValueError("reviewed K9 staging policy unavailable")
+    namespace = {"__name__": "reviewed_k9_stage_policy", "__file__": "reviewed_k9_stage_policy.py"}
+    exec(compile(source.stdout, "reviewed K9 staging policy", "exec"), namespace)
+    return namespace
+
+
+def k9_rebuild_stage_problem(req: dict, table: dict) -> str | None:
+    """K9-4b admission for `k9_rebuild_stage` (and its dry run's argument shape), run at the tail of validate (so on both routes, signed or mechanical, and again immediately
+    before execution): the staging of the production run and candidate is admitted only with (1) THIS executor's own receipt of a COMPLETED `k9_rebuild_stage_dryrun` for the same
+    identity (dry_run_check: a signer's attestation alone never admits it) and (2) an ACCEPTED, fresh absence readback and exposure readback of the fixed queries in the reviewed
+    policy. The owner's go, the lease and the signer or pack-fill acceptance are the generic production gates and are judged elsewhere."""
+    if req.get("kind") not in ("k9_rebuild_stage", "k9_rebuild_stage_dryrun"): return None
+    try:
+        why = k9_stage_policy(req)["request_problem"](req, OPS, accepted_readback)
+    except Exception:
+        return "reviewed K9 staging policy unavailable or invalid"
+    if why or req["kind"] != "k9_rebuild_stage": return why
+    return dry_run_check(req, table)[0]
+
+
 def signer_acceptance_problem(req: dict) -> str | None:
     """A8 §3.9: the SIGNED route to a production write — ONE verifier lane's (v1..v4) acceptance receipt, bound to the complete request, carrying the
     attestations the kind needs. Unchanged by OWNER-MINIMAL-PROTECTION-NOW; deletions and serving changes can only be admitted this way."""
@@ -1325,6 +1356,7 @@ def validate(req: dict, table: dict, caps: dict, reserved: bool = False) -> str 
     for check in (   # evaluated in this order, first problem wins; one per line, sorted. Each check is gated on its own kinds and only century_contract_problem and smalltest_policy_problem overlap (century_dispatch[_dryrun]): the century contract's reason is reported first, as before
         lambda: century_contract_problem(req),
         lambda: head_policy_problem(req),
+        lambda: k9_rebuild_stage_problem(req, table),
         lambda: measuring_cancel_problem(req),
         lambda: orchestrator_rebuild_cancel_problem(req),
         lambda: orchestrator_rebuild_dryrun_problem(req, table),
