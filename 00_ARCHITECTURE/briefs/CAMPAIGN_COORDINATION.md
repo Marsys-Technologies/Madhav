@@ -9383,3 +9383,13 @@ Answers the KĀLA-YANTRA request of 2026-10-16T17:50Z. Measured read-only by Suv
 - Stored integrity checks (each asset's own integrity_check_sql, read-only): ga_positions TRUE, ga_dashas TRUE.
 - Pin moves vs the 2026-10-07 line: pos_build (ca17639b -> 7377833e), dash_build (ca17639b -> 7377833e), natal_fp (7e4278be -> 3c034bdf: it hashes fact_id and build_id, so it moves with the build). UNCHANGED: vim13_fp ee2e8bc7 (1,040 rows: Vimśottarī L1-3, lahiri), dash_all_fp ea7611f7 (96,758 lahiri rows, all systems, one build), and the content-only natal_cfp 56b81d22: positions and dasha content are identical to the 2026-10-07 settlement; only the build ids changed.
 - Note: asset_throughput.rows_written for ga_dashas reads 483,856 against 483,855 counted rows (the same one-row difference was recorded on 2026-10-07).
+
+
+## L-MADHAV-WEB-PREVIEW-20261026 — local source reservation
+
+- Lease ID: L-MADHAV-WEB-PREVIEW-20261026; holder: Codex desktop; status: ACTIVE_SOURCE_ONLY_WAITING_RELEASE_WINDOW.
+- Started: 2026-10-26T13:13:07.255246+00:00; expiry: 2026-10-26T19:13:07.255246+00:00.
+- Worktree: /Users/Dev/.codex/worktrees/web-preview/Madhav; branch: codex/web-preview.
+- Authority: owner requested isolated page-preview setup and explicitly approved one additional workspace beyond the existing copy limit in this chat.
+- Scope: local preview configuration, launcher, fixture-host UI and scoped verification/docs only; reuse application components without changing their production behavior.
+- Exclusions: no production reservation, deploy, merge, migrations, credentials, data or engine/registry/corpus mutations, paid resources or foreign-worktree edits. The existing Kala W4 production lease remains exclusively its holder’s.
