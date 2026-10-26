@@ -27,7 +27,8 @@ What one run does, in order (every refusal happens before the next step):
 
 SHARDS (SR-OD1 R8, RECONCILIATION R-8): one whole-generation execution of the 26 classes cannot fit the job's 28,800 s task timeout, so a launch may name ONE shard of the pinned
 partition (`fleet/VERIFY_SHARDS.json`, `ky.verification_shards/1`): the request carries the second argument `shard` (V01..), equal to the command line's `--shard`, and the job is
-launched with `--class <c>` once per class of that shard (the Cloud Run `--args` list is comma-joined, so a comma-separated class list is not usable; the job's flag is repeated). The
+launched with `--class=<c>` once per class of that shard (the Cloud Run `--args` list is comma-joined, so a comma-separated class list is not usable; the job's flag is repeated, in the
+`--class=<c>` form because gcloud's --args (ArgList + UpdateAction) refuses any repeated identical item, so `--class,c1,--class,c2` never reaches the API). The
 shard -> classes map is read from the pinned file, never from the request, and its sha256 is in the record. Each shard is its own execution, its own operation and its own claim; the
 rehearsal (`verification_job_dryrun --shard V03`) and the dispatch (`verification_job --shard V03`) run the same classes. Every row a shard persists carries its generation, head, image
 digest, execution and classes (the job stamps them); the seal brief and the seal read only the generation-wide AGGREGATE, which refuses unless every class is attested at one head.
@@ -92,8 +93,9 @@ REPORT_ONLY_ARGS = EXECUTE_ARGS + ("--report-only",)
 
 
 def build_job_args(shard_classes=None, report_only: bool = False) -> tuple:
-    """The job's argument list: the constants, then `--class <c>` for each class of the shard (shard_classes comes only from the pinned file), then `--report-only` for a dry run."""
-    base = EXECUTE_ARGS + tuple(a for c in (shard_classes or ()) for a in ("--class", c))
+    """The job's argument list: the constants, then `--class=<c>` for each class of the shard (shard_classes comes only from the pinned file), then `--report-only` for a dry run.
+    One `--class=<c>` item per class: gcloud's --args parser (ArgList + UpdateAction) refuses a repeated identical item, so a repeated bare `--class` is refused client-side."""
+    base = EXECUTE_ARGS + tuple(f"--class={c}" for c in (shard_classes or ()))
     return base + (("--report-only",) if report_only else ())
 WAIT_BUDGET_S = 21000          # under the executor's MAX_TIMEOUT (6 h = 21600): the refusal names the execution instead of the executor killing us silently
 POLL_INTERVAL_S = 30
