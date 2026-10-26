@@ -1,0 +1,762 @@
+[
+ {
+  "id": 1,
+  "rule_type": "favourable",
+  "graha": "sun",
+  "primary_house": 3,
+  "vedha_house": 9,
+  "phala": "Courage, travel, gain from siblings",
+  "classical_citation": "Phaladipika Adh. XXVI, Sloka 3 — phaladeepika:PG322:C1 (Sastri trans. 1950)",
+  "rule_notes": "Vedha from 9th house transit nullifies result. Exception (sl. 3): a Saturn transit through the vedha house does not nullify — L0 repair item 2 Sec.4; bg_transit_rules has no exception column, declared here as an honest precision limit, not silently resolved."
+ },
+ {
+  "id": 2,
+  "rule_type": "favourable",
+  "graha": "sun",
+  "primary_house": 6,
+  "vedha_house": 12,
+  "phala": "Defeat of enemies, health improvement",
+  "classical_citation": "Phaladipika Adh. XXVI, Sloka 3 — phaladeepika:PG322:C1 (Sastri trans. 1950)",
+  "rule_notes": "Vedha from 12th house transit nullifies result. Exception (sl. 3): a Saturn transit through the vedha house does not nullify — L0 repair item 2 Sec.4; bg_transit_rules has no exception column, declared here as an honest precision limit, not silently resolved."
+ },
+ {
+  "id": 3,
+  "rule_type": "favourable",
+  "graha": "sun",
+  "primary_house": 10,
+  "vedha_house": 4,
+  "phala": "Career success, fame, royal favour",
+  "classical_citation": "Phaladipika Adh. XXVI, Sloka 3 — phaladeepika:PG322:C1 (Sastri trans. 1950)",
+  "rule_notes": "Vedha from 4th house transit nullifies result. Exception (sl. 3): a Saturn transit through the vedha house does not nullify — L0 repair item 2 Sec.4; bg_transit_rules has no exception column, declared here as an honest precision limit, not silently resolved."
+ },
+ {
+  "id": 4,
+  "rule_type": "favourable",
+  "graha": "sun",
+  "primary_house": 11,
+  "vedha_house": 5,
+  "phala": "Financial gains, fulfillment of desires",
+  "classical_citation": "Phaladipika Adh. XXVI, Sloka 3 — phaladeepika:PG322:C1 (Sastri trans. 1950)",
+  "rule_notes": "Vedha from 5th house transit nullifies result. Exception (sl. 3): a Saturn transit through the vedha house does not nullify — L0 repair item 2 Sec.4; bg_transit_rules has no exception column, declared here as an honest precision limit, not silently resolved."
+ },
+ {
+  "id": 5,
+  "rule_type": "unfavourable",
+  "graha": "sun",
+  "primary_house": 1,
+  "vedha_house": null,
+  "phala": "Ill health, loss of position, eye trouble",
+  "classical_citation": "BPHS Ch.29 (Gochara Phala — Transit Results)",
+  "rule_notes": "Generally inauspicious for health and status"
+ },
+ {
+  "id": 6,
+  "rule_type": "unfavourable",
+  "graha": "sun",
+  "primary_house": 5,
+  "vedha_house": null,
+  "phala": "Trouble with children, loss of intelligence",
+  "classical_citation": "BPHS Ch.29 (Gochara Phala — Transit Results)",
+  "rule_notes": "Afflicts progeny and wisdom matters"
+ },
+ {
+  "id": 7,
+  "rule_type": "unfavourable",
+  "graha": "sun",
+  "primary_house": 8,
+  "vedha_house": null,
+  "phala": "Disease, obstacle, conflict with authority",
+  "classical_citation": "BPHS Ch.29 (Gochara Phala — Transit Results)",
+  "rule_notes": "Transit through 8th from Moon — serious affliction"
+ },
+ {
+  "id": 8,
+  "rule_type": "favourable",
+  "graha": "moon",
+  "primary_house": 1,
+  "vedha_house": 5,
+  "phala": "Good health, mental peace, bodily comforts",
+  "classical_citation": "Phaladipika Adh. XXVI, Sloka 4 — phaladeepika:PG322:C1 (Sastri trans. 1950)",
+  "rule_notes": "Vedha from 5th house nullifies result. Exception (sl. 4): a Mercury transit through the vedha house does not nullify — L0 repair item 2 Sec.4; bg_transit_rules has no exception column, declared here as an honest precision limit, not silently resolved."
+ },
+ {
+  "id": 9,
+  "rule_type": "favourable",
+  "graha": "moon",
+  "primary_house": 3,
+  "vedha_house": 9,
+  "phala": "Gain from siblings, short journeys, enterprise",
+  "classical_citation": "Phaladipika Adh. XXVI, Sloka 4 — phaladeepika:PG322:C1 (Sastri trans. 1950)",
+  "rule_notes": "Vedha from 9th nullifies result. Exception (sl. 4): a Mercury transit through the vedha house does not nullify — L0 repair item 2 Sec.4; bg_transit_rules has no exception column, declared here as an honest precision limit, not silently resolved."
+ },
+ {
+  "id": 10,
+  "rule_type": "favourable",
+  "graha": "moon",
+  "primary_house": 6,
+  "vedha_house": 12,
+  "phala": "Defeat of enemies, good health",
+  "classical_citation": "Phaladipika Adh. XXVI, Sloka 4 — phaladeepika:PG322:C1 (Sastri trans. 1950)",
+  "rule_notes": "Vedha from 12th nullifies result. Exception (sl. 4): a Mercury transit through the vedha house does not nullify — L0 repair item 2 Sec.4; bg_transit_rules has no exception column, declared here as an honest precision limit, not silently resolved."
+ },
+ {
+  "id": 11,
+  "rule_type": "favourable",
+  "graha": "moon",
+  "primary_house": 7,
+  "vedha_house": 2,
+  "phala": "Gain in partnership, conjugal happiness",
+  "classical_citation": "Phaladipika Adh. XXVI, Sloka 4 — phaladeepika:PG322:C1 (Sastri trans. 1950)",
+  "rule_notes": "Vedha from 2nd nullifies result. Exception (sl. 4): a Mercury transit through the vedha house does not nullify — L0 repair item 2 Sec.4; bg_transit_rules has no exception column, declared here as an honest precision limit, not silently resolved."
+ },
+ {
+  "id": 12,
+  "rule_type": "favourable",
+  "graha": "moon",
+  "primary_house": 10,
+  "vedha_house": 4,
+  "phala": "Professional success, recognition",
+  "classical_citation": "Phaladipika Adh. XXVI, Sloka 4 — phaladeepika:PG322:C1 (Sastri trans. 1950)",
+  "rule_notes": "Vedha from 4th nullifies result. Exception (sl. 4): a Mercury transit through the vedha house does not nullify — L0 repair item 2 Sec.4; bg_transit_rules has no exception column, declared here as an honest precision limit, not silently resolved."
+ },
+ {
+  "id": 13,
+  "rule_type": "favourable",
+  "graha": "moon",
+  "primary_house": 11,
+  "vedha_house": 8,
+  "phala": "Gains, fulfilment of wishes",
+  "classical_citation": "Phaladipika Adh. XXVI, Sloka 4 — phaladeepika:PG322:C1 (Sastri trans. 1950)",
+  "rule_notes": "Vedha from 8th nullifies result. Exception (sl. 4): a Mercury transit through the vedha house does not nullify — L0 repair item 2 Sec.4; bg_transit_rules has no exception column, declared here as an honest precision limit, not silently resolved."
+ },
+ {
+  "id": 14,
+  "rule_type": "unfavourable",
+  "graha": "moon",
+  "primary_house": 8,
+  "vedha_house": null,
+  "phala": "Fear, sorrow, ill health",
+  "classical_citation": "BPHS Ch.29 (Gochara Phala — Transit Results)",
+  "rule_notes": "Moon in 8th from natal Moon is afflictive"
+ },
+ {
+  "id": 15,
+  "rule_type": "favourable",
+  "graha": "mars",
+  "primary_house": 3,
+  "vedha_house": 12,
+  "phala": "Courage, bravery, victory over enemies",
+  "classical_citation": "Phaladipika Adh. XXVI, Sloka 5 — phaladeepika:PG322:C1 (Sastri trans. 1950)",
+  "rule_notes": "Vedha from 12th nullifies result"
+ },
+ {
+  "id": 16,
+  "rule_type": "favourable",
+  "graha": "mars",
+  "primary_house": 6,
+  "vedha_house": 9,
+  "phala": "Defeat of enemies, liberation from debts",
+  "classical_citation": "Phaladipika Adh. XXVI, Sloka 5 — phaladeepika:PG322:C1 (Sastri trans. 1950)",
+  "rule_notes": "Vedha from 9th nullifies result"
+ },
+ {
+  "id": 17,
+  "rule_type": "favourable",
+  "graha": "mars",
+  "primary_house": 11,
+  "vedha_house": 5,
+  "phala": "Financial gains, political success",
+  "classical_citation": "Phaladipika Adh. XXVI, Sloka 5 — phaladeepika:PG322:C1 (Sastri trans. 1950)",
+  "rule_notes": "Vedha from 5th nullifies result"
+ },
+ {
+  "id": 18,
+  "rule_type": "unfavourable",
+  "graha": "mars",
+  "primary_house": 1,
+  "vedha_house": null,
+  "phala": "Fever, accidents, injury, quarrels",
+  "classical_citation": "BPHS Ch.29 (Gochara Phala — Transit Results)",
+  "rule_notes": "Mars transiting natal Moon sign — danger and conflict"
+ },
+ {
+  "id": 19,
+  "rule_type": "unfavourable",
+  "graha": "mars",
+  "primary_house": 4,
+  "vedha_house": null,
+  "phala": "Domestic strife, trouble to mother, property loss",
+  "classical_citation": "BPHS Ch.29 (Gochara Phala — Transit Results)",
+  "rule_notes": "Mars 4th from Moon — family and home afflictions"
+ },
+ {
+  "id": 20,
+  "rule_type": "unfavourable",
+  "graha": "mars",
+  "primary_house": 8,
+  "vedha_house": null,
+  "phala": "Danger, accidents, surgical risk",
+  "classical_citation": "BPHS Ch.29 (Gochara Phala — Transit Results)",
+  "rule_notes": "Mars 8th from Moon — severe affliction"
+ },
+ {
+  "id": 21,
+  "rule_type": "favourable",
+  "graha": "mercury",
+  "primary_house": 2,
+  "vedha_house": 5,
+  "phala": "Eloquence, financial gain through communication",
+  "classical_citation": "Phaladipika Adh. XXVI, Sloka 6 — phaladeepika:PG323:C1 (Sastri trans. 1950)",
+  "rule_notes": "Vedha from 5th nullifies result. Exception (sl. 6): a Moon transit through the vedha house does not nullify — L0 repair item 2 Sec.4; bg_transit_rules has no exception column, declared here as an honest precision limit, not silently resolved."
+ },
+ {
+  "id": 22,
+  "rule_type": "favourable",
+  "graha": "mercury",
+  "primary_house": 4,
+  "vedha_house": 3,
+  "phala": "Good education, domestic happiness, vehicles",
+  "classical_citation": "Phaladipika Adh. XXVI, Sloka 6 — phaladeepika:PG323:C1 (Sastri trans. 1950)",
+  "rule_notes": "Vedha from 3rd nullifies result. Exception (sl. 6): a Moon transit through the vedha house does not nullify — L0 repair item 2 Sec.4; bg_transit_rules has no exception column, declared here as an honest precision limit, not silently resolved."
+ },
+ {
+  "id": 23,
+  "rule_type": "favourable",
+  "graha": "mercury",
+  "primary_house": 6,
+  "vedha_house": 9,
+  "phala": "Victory over enemies, success in disputes",
+  "classical_citation": "Phaladipika Adh. XXVI, Sloka 6 — phaladeepika:PG323:C1 (Sastri trans. 1950)",
+  "rule_notes": "Vedha from 9th nullifies result. Exception (sl. 6): a Moon transit through the vedha house does not nullify — L0 repair item 2 Sec.4; bg_transit_rules has no exception column, declared here as an honest precision limit, not silently resolved."
+ },
+ {
+  "id": 24,
+  "rule_type": "favourable",
+  "graha": "mercury",
+  "primary_house": 10,
+  "vedha_house": 8,
+  "phala": "Success in trade, professional recognition",
+  "classical_citation": "Phaladipika Adh. XXVI, Sloka 6 — phaladeepika:PG323:C1 (Sastri trans. 1950)",
+  "rule_notes": "Vedha from 8th nullifies result. Exception (sl. 6): a Moon transit through the vedha house does not nullify — L0 repair item 2 Sec.4; bg_transit_rules has no exception column, declared here as an honest precision limit, not silently resolved."
+ },
+ {
+  "id": 25,
+  "rule_type": "favourable",
+  "graha": "mercury",
+  "primary_house": 11,
+  "vedha_house": 12,
+  "phala": "Financial gains, accomplishment of desires",
+  "classical_citation": "Phaladipika Adh. XXVI, Sloka 6 — phaladeepika:PG323:C1 (Sastri trans. 1950)",
+  "rule_notes": "Vedha from 12th nullifies result. Exception (sl. 6): a Moon transit through the vedha house does not nullify — L0 repair item 2 Sec.4; bg_transit_rules has no exception column, declared here as an honest precision limit, not silently resolved."
+ },
+ {
+  "id": 26,
+  "rule_type": "favourable",
+  "graha": "jupiter",
+  "primary_house": 2,
+  "vedha_house": 12,
+  "phala": "Wealth accumulation, family happiness",
+  "classical_citation": "Phaladipika Adh. XXVI, Sloka 7 — phaladeepika:PG323:C1 (Sastri trans. 1950)",
+  "rule_notes": "Jupiter 2nd from Moon — dhana yoga; vedha from 12th"
+ },
+ {
+  "id": 27,
+  "rule_type": "favourable",
+  "graha": "jupiter",
+  "primary_house": 5,
+  "vedha_house": 4,
+  "phala": "Good children, happiness, wisdom, spiritual gains",
+  "classical_citation": "Phaladipika Adh. XXVI, Sloka 7 — phaladeepika:PG323:C1 (Sastri trans. 1950)",
+  "rule_notes": "Jupiter 5th from Moon; vedha from 4th"
+ },
+ {
+  "id": 28,
+  "rule_type": "favourable",
+  "graha": "jupiter",
+  "primary_house": 7,
+  "vedha_house": 3,
+  "phala": "Marital happiness, partnership gains",
+  "classical_citation": "Phaladipika Adh. XXVI, Sloka 7 — phaladeepika:PG323:C1 (Sastri trans. 1950)",
+  "rule_notes": "Jupiter 7th from Moon; vedha from 3rd"
+ },
+ {
+  "id": 29,
+  "rule_type": "favourable",
+  "graha": "jupiter",
+  "primary_house": 9,
+  "vedha_house": 10,
+  "phala": "Dharmic activity, father's wellbeing, fortune",
+  "classical_citation": "Phaladipika Adh. XXVI, Sloka 7 — phaladeepika:PG323:C1 (Sastri trans. 1950)",
+  "rule_notes": "Jupiter 9th from Moon; vedha from 10th"
+ },
+ {
+  "id": 30,
+  "rule_type": "favourable",
+  "graha": "jupiter",
+  "primary_house": 11,
+  "vedha_house": 8,
+  "phala": "Major gains, fulfilment of wishes, income rise",
+  "classical_citation": "Phaladipika Adh. XXVI, Sloka 7 — phaladeepika:PG323:C1 (Sastri trans. 1950)",
+  "rule_notes": "Jupiter 11th from Moon — best transit; vedha from 8th"
+ },
+ {
+  "id": 31,
+  "rule_type": "unfavourable",
+  "graha": "jupiter",
+  "primary_house": 4,
+  "vedha_house": null,
+  "phala": "Domestic trouble, loss of comforts, mother's illness",
+  "classical_citation": "BPHS Ch.29 (Gochara Phala — Transit Results)",
+  "rule_notes": "Ashtama Guru precedes the 5th favourable transit"
+ },
+ {
+  "id": 32,
+  "rule_type": "unfavourable",
+  "graha": "jupiter",
+  "primary_house": 8,
+  "vedha_house": null,
+  "phala": "Obstacles, loss of position, health issues",
+  "classical_citation": "BPHS Ch.29 (Gochara Phala — Transit Results)",
+  "rule_notes": "Jupiter 8th from Moon — significant affliction"
+ },
+ {
+  "id": 33,
+  "rule_type": "favourable",
+  "graha": "venus",
+  "primary_house": 1,
+  "vedha_house": 8,
+  "phala": "Good health, pleasures, marital happiness",
+  "classical_citation": "Phaladipika Adh. XXVI, Sloka 8 — phaladeepika:PG323:C1 (Sastri trans. 1950)",
+  "rule_notes": "Venus 1st from Moon; vedha from 8th"
+ },
+ {
+  "id": 34,
+  "rule_type": "favourable",
+  "graha": "venus",
+  "primary_house": 2,
+  "vedha_house": 7,
+  "phala": "Wealth, food, comforts, family happiness",
+  "classical_citation": "Phaladipika Adh. XXVI, Sloka 8 — phaladeepika:PG323:C1 (Sastri trans. 1950)",
+  "rule_notes": "Venus 2nd from Moon; vedha from 7th"
+ },
+ {
+  "id": 35,
+  "rule_type": "favourable",
+  "graha": "venus",
+  "primary_house": 3,
+  "vedha_house": 1,
+  "phala": "Gains from siblings, short journeys, new ventures",
+  "classical_citation": "Phaladipika Adh. XXVI, Sloka 8 — phaladeepika:PG323:C1 (Sastri trans. 1950)",
+  "rule_notes": "Venus 3rd from Moon; vedha from 1st"
+ },
+ {
+  "id": 36,
+  "rule_type": "favourable",
+  "graha": "saturn",
+  "primary_house": 3,
+  "vedha_house": 12,
+  "phala": "Courage, perseverance, enterprise, gains from effort",
+  "classical_citation": "Phaladipika Adh. XXVI, Sloka 5 — phaladeepika:PG322:C1 (Sastri trans. 1950)",
+  "rule_notes": "Saturn 3rd from Moon — best transit; vedha from 12th. Exception (sl. 5): a Sun transit through the vedha house does not nullify — L0 repair item 2 Sec.4; bg_transit_rules has no exception column, declared here as an honest precision limit, not silently resolved."
+ },
+ {
+  "id": 37,
+  "rule_type": "favourable",
+  "graha": "saturn",
+  "primary_house": 6,
+  "vedha_house": 9,
+  "phala": "Victory over enemies, servants, legal gains",
+  "classical_citation": "Phaladipika Adh. XXVI, Sloka 5 — phaladeepika:PG322:C1 (Sastri trans. 1950)",
+  "rule_notes": "Saturn 6th from Moon; vedha from 9th nullifies. Exception (sl. 5): a Sun transit through the vedha house does not nullify — L0 repair item 2 Sec.4; bg_transit_rules has no exception column, declared here as an honest precision limit, not silently resolved."
+ },
+ {
+  "id": 38,
+  "rule_type": "favourable",
+  "graha": "saturn",
+  "primary_house": 11,
+  "vedha_house": 5,
+  "phala": "Sustained income, gains through persistence",
+  "classical_citation": "Phaladipika Adh. XXVI, Sloka 5 — phaladeepika:PG322:C1 (Sastri trans. 1950)",
+  "rule_notes": "Saturn 11th from Moon; vedha from 5th nullifies. Exception (sl. 5): a Sun transit through the vedha house does not nullify — L0 repair item 2 Sec.4; bg_transit_rules has no exception column, declared here as an honest precision limit, not silently resolved."
+ },
+ {
+  "id": 39,
+  "rule_type": "unfavourable",
+  "graha": "saturn",
+  "primary_house": 1,
+  "vedha_house": null,
+  "phala": "Sade Sati peak — hardship, health issues, delays",
+  "classical_citation": "Phaladeepika Ch.26 (Gochara Vedha and Transit Phala)",
+  "rule_notes": "Central phase of Sade Sati (7.5 year Saturn affliction cycle)"
+ },
+ {
+  "id": 40,
+  "rule_type": "unfavourable",
+  "graha": "saturn",
+  "primary_house": 4,
+  "vedha_house": null,
+  "phala": "Domestic troubles, loss of property, mother's illness",
+  "classical_citation": "BPHS Ch.29 (Gochara Phala — Transit Results)",
+  "rule_notes": "Kantaka Saturn (4th) — classic obstacle transit"
+ },
+ {
+  "id": 41,
+  "rule_type": "unfavourable",
+  "graha": "saturn",
+  "primary_house": 8,
+  "vedha_house": null,
+  "phala": "Serious illness, accidents, prolonged suffering",
+  "classical_citation": "BPHS Ch.29 (Gochara Phala — Transit Results)",
+  "rule_notes": "Ashtama Shani — worst Saturn transit position"
+ },
+ {
+  "id": 42,
+  "rule_type": "favourable",
+  "graha": "venus",
+  "primary_house": 4,
+  "vedha_house": 10,
+  "phala": "Domestic happiness, comforts, mother's well-being",
+  "classical_citation": "Phaladipika Adh. XXVI, Sloka 8 — phaladeepika:PG323:C1 (Sastri trans. 1950)",
+  "rule_notes": "Venus 4th from Moon; vedha from 10th"
+ },
+ {
+  "id": 43,
+  "rule_type": "favourable",
+  "graha": "venus",
+  "primary_house": 5,
+  "vedha_house": 9,
+  "phala": "Children, romance, creativity, speculative gains",
+  "classical_citation": "Phaladipika Adh. XXVI, Sloka 8 — phaladeepika:PG323:C1 (Sastri trans. 1950)",
+  "rule_notes": "Venus 5th from Moon; vedha from 9th"
+ },
+ {
+  "id": 44,
+  "rule_type": "favourable",
+  "graha": "venus",
+  "primary_house": 8,
+  "vedha_house": 5,
+  "phala": "Longevity support, gains through inheritance or partner",
+  "classical_citation": "Phaladipika Adh. XXVI, Sloka 8 — phaladeepika:PG323:C1 (Sastri trans. 1950)",
+  "rule_notes": "Venus 8th from Moon; vedha from 5th"
+ },
+ {
+  "id": 45,
+  "rule_type": "favourable",
+  "graha": "venus",
+  "primary_house": 9,
+  "vedha_house": 11,
+  "phala": "Dharmic fortune, prosperity, guru's grace",
+  "classical_citation": "Phaladipika Adh. XXVI, Sloka 8 — phaladeepika:PG323:C1 (Sastri trans. 1950)",
+  "rule_notes": "Venus 9th from Moon; vedha from 11th"
+ },
+ {
+  "id": 46,
+  "rule_type": "unfavourable",
+  "graha": "venus",
+  "primary_house": 6,
+  "vedha_house": null,
+  "phala": "Mishap; disputes and ill-health",
+  "classical_citation": "Phaladeepika Adh. XXVI, Slokas 2, 8 & 21 (Gochara — Sastri trans. 1950)",
+  "rule_notes": "Venus 6th from Moon — unfavourable transit"
+ },
+ {
+  "id": 47,
+  "rule_type": "unfavourable",
+  "graha": "venus",
+  "primary_house": 7,
+  "vedha_house": null,
+  "phala": "Trouble to wife; marital and partnership stress",
+  "classical_citation": "Phaladeepika Adh. XXVI, Slokas 2, 8 & 21 (Gochara — Sastri trans. 1950)",
+  "rule_notes": "Venus 7th from Moon — unfavourable despite Venus being karaka of 7th"
+ },
+ {
+  "id": 48,
+  "rule_type": "unfavourable",
+  "graha": "venus",
+  "primary_house": 10,
+  "vedha_house": null,
+  "phala": "Quarrel; professional friction",
+  "classical_citation": "Phaladeepika Adh. XXVI, Slokas 2, 8 & 21 (Gochara — Sastri trans. 1950)",
+  "rule_notes": "Venus 10th from Moon — unfavourable transit"
+ },
+ {
+  "id": 133,
+  "rule_type": "double_transit",
+  "graha": "Jupiter",
+  "primary_house": 2,
+  "vedha_house": null,
+  "phala": "Jupiter + Saturn in 2H simultaneously: wealth and stability gains amplified; Dhana yoga catalyst.",
+  "classical_citation": "Phaladeepika ch.26 §double-gochara; Saravali ch.28",
+  "rule_notes": "Applies only when BOTH Jupiter and Saturn transit 2H from natal Moon within 30° window."
+ },
+ {
+  "id": 134,
+  "rule_type": "double_transit",
+  "graha": "Jupiter",
+  "primary_house": 5,
+  "vedha_house": null,
+  "phala": "Jupiter + Saturn in 5H: putra karaka + karma lord in progeny house — children-related events, creative fruition.",
+  "classical_citation": "Phaladeepika ch.26 §double-gochara",
+  "rule_notes": "Saturn alone in 5H is unfavourable; Jupiter co-presence mitigates and transforms."
+ },
+ {
+  "id": 135,
+  "rule_type": "double_transit",
+  "graha": "Jupiter",
+  "primary_house": 7,
+  "vedha_house": null,
+  "phala": "Jupiter + Saturn in 7H: relationship events crystallise; partnerships formalised or resolved.",
+  "classical_citation": "Phaladeepika ch.26 §double-gochara; BPHS ch.29",
+  "rule_notes": null
+ },
+ {
+  "id": 136,
+  "rule_type": "double_transit",
+  "graha": "Jupiter",
+  "primary_house": 9,
+  "vedha_house": null,
+  "phala": "Jupiter + Saturn in 9H: dharmic milestones; pilgrimage, guru connection, institutional advancement.",
+  "classical_citation": "Phaladeepika ch.26 §double-gochara",
+  "rule_notes": "Most auspicious double-transit combination per classical consensus."
+ },
+ {
+  "id": 137,
+  "rule_type": "double_transit",
+  "graha": "Jupiter",
+  "primary_house": 11,
+  "vedha_house": null,
+  "phala": "Jupiter + Saturn in 11H: significant gain period — labha amplified by both benefic + discipline.",
+  "classical_citation": "Phaladeepika ch.26 §double-gochara; Jataka Parijata",
+  "rule_notes": null
+ },
+ {
+  "id": 138,
+  "rule_type": "double_transit",
+  "graha": "Saturn",
+  "primary_house": 4,
+  "vedha_house": null,
+  "phala": "Jupiter + Saturn in 4H: domestic disruption + karmic pressure; home/vehicle events likely.",
+  "classical_citation": "Phaladeepika ch.26 §double-gochara",
+  "rule_notes": "Jupiter mitigates isolation but Saturn delays resolution."
+ },
+ {
+  "id": 139,
+  "rule_type": "double_transit",
+  "graha": "Saturn",
+  "primary_house": 8,
+  "vedha_house": null,
+  "phala": "Jupiter + Saturn in 8H: transformation event; inheritance, hidden matters, health threshold.",
+  "classical_citation": "Phaladeepika ch.26 §double-gochara; BPHS ch.29 §8H gochara",
+  "rule_notes": "Rare and intense. Jupiter here expands the 8H matters rather than protecting."
+ },
+ {
+  "id": 179,
+  "rule_type": "favourable",
+  "graha": "venus",
+  "primary_house": 11,
+  "vedha_house": 3,
+  "phala": "Gains, fulfilment of desires, elder sibling prosperity",
+  "classical_citation": "Phaladipika Adh. XXVI, Sloka 8 — phaladeepika:PG323:C1 (Sastri trans. 1950)",
+  "rule_notes": "Venus 11th from Moon; vedha from 3rd"
+ },
+ {
+  "id": 180,
+  "rule_type": "favourable",
+  "graha": "venus",
+  "primary_house": 12,
+  "vedha_house": 6,
+  "phala": "Pleasures of the bed, foreign travel, liberation-tending",
+  "classical_citation": "Phaladipika Adh. XXVI, Sloka 8 — phaladeepika:PG323:C1 (Sastri trans. 1950)",
+  "rule_notes": "Venus 12th from Moon; vedha from 6th"
+ },
+ {
+  "id": 187,
+  "rule_type": "favourable",
+  "graha": "rahu",
+  "primary_house": 3,
+  "vedha_house": 9,
+  "phala": "Enterprise, travel, gain through courage; sibling support",
+  "classical_citation": "UNSOURCED — no house-transit vedha doctrine for Rahu/Ketu found anywhere in the served corpus (Phaladipika Adh. XXVI slokas 3-8, phaladeepika:PG322:C1-PG323:C1, name only the seven classical grahas; BPHS Ch.29 does not exist in this corpus). Retained per B.10 (writers emit, serve-time governs; never silently dropped) and Gochara N-14 (no graha-drishti cast from the nodes) — see KSHETRA_L0_VEDHA_ROW_FIXES_v1_0.md Sec.5.",
+  "rule_notes": "Rahu 3rd from Moon — gain and initiative. L0 repair item 3: vedha_house retained, disposition unsourced (never a claimed-cited nullification)."
+ },
+ {
+  "id": 188,
+  "rule_type": "favourable",
+  "graha": "rahu",
+  "primary_house": 6,
+  "vedha_house": 12,
+  "phala": "Defeat of enemies, legal victories, health improvement",
+  "classical_citation": "UNSOURCED — no house-transit vedha doctrine for Rahu/Ketu found anywhere in the served corpus (Phaladipika Adh. XXVI slokas 3-8, phaladeepika:PG322:C1-PG323:C1, name only the seven classical grahas; BPHS Ch.29 does not exist in this corpus). Retained per B.10 (writers emit, serve-time governs; never silently dropped) and Gochara N-14 (no graha-drishti cast from the nodes) — see KSHETRA_L0_VEDHA_ROW_FIXES_v1_0.md Sec.5.",
+  "rule_notes": "Rahu 6th from Moon — ari-bhava placement aids in enemy removal. L0 repair item 3: vedha_house retained, disposition unsourced (never a claimed-cited nullification)."
+ },
+ {
+  "id": 189,
+  "rule_type": "favourable",
+  "graha": "rahu",
+  "primary_house": 11,
+  "vedha_house": 5,
+  "phala": "Financial gains, labha, fulfillment of desires through unconventional means",
+  "classical_citation": "UNSOURCED — no house-transit vedha doctrine for Rahu/Ketu found anywhere in the served corpus (Phaladipika Adh. XXVI slokas 3-8, phaladeepika:PG322:C1-PG323:C1, name only the seven classical grahas; BPHS Ch.29 does not exist in this corpus). Retained per B.10 (writers emit, serve-time governs; never silently dropped) and Gochara N-14 (no graha-drishti cast from the nodes) — see KSHETRA_L0_VEDHA_ROW_FIXES_v1_0.md Sec.5.",
+  "rule_notes": "Rahu 11th from Moon — labha amplified; shadow planet in gain house. L0 repair item 3: vedha_house retained, disposition unsourced (never a claimed-cited nullification)."
+ },
+ {
+  "id": 190,
+  "rule_type": "unfavourable",
+  "graha": "rahu",
+  "primary_house": 1,
+  "vedha_house": null,
+  "phala": "Ill health, confusion, loss of clarity; fear and anxiety",
+  "classical_citation": "BPHS Ch.29 (Gochara Phala — Transit Results)",
+  "rule_notes": "Rahu over natal Moon — mental disturbance; Sade-Sati-class affliction for Rahu."
+ },
+ {
+  "id": 191,
+  "rule_type": "unfavourable",
+  "graha": "rahu",
+  "primary_house": 2,
+  "vedha_house": null,
+  "phala": "Speech affliction, family disputes, financial drain",
+  "classical_citation": "BPHS Ch.29 (Gochara Phala — Transit Results)",
+  "rule_notes": "Rahu 2nd from Moon — kutumba and dhana affliction."
+ },
+ {
+  "id": 192,
+  "rule_type": "unfavourable",
+  "graha": "rahu",
+  "primary_house": 4,
+  "vedha_house": null,
+  "phala": "Domestic troubles, property loss, mother's health affected",
+  "classical_citation": "BPHS Ch.29 (Gochara Phala — Transit Results)",
+  "rule_notes": "Rahu 4th from Moon — Kantaka-class obstruction; home and sukha affliction."
+ },
+ {
+  "id": 193,
+  "rule_type": "unfavourable",
+  "graha": "rahu",
+  "primary_house": 7,
+  "vedha_house": null,
+  "phala": "Partnership conflicts, danger in travel, hidden adversaries",
+  "classical_citation": "Phaladeepika Ch.26 (Gochara Vedha and Transit Phala)",
+  "rule_notes": "Rahu 7th from Moon — kalatra and travel affliction."
+ },
+ {
+  "id": 194,
+  "rule_type": "unfavourable",
+  "graha": "rahu",
+  "primary_house": 8,
+  "vedha_house": null,
+  "phala": "Accidents, sudden illness, hidden dangers; fear of death",
+  "classical_citation": "BPHS Ch.29 (Gochara Phala — Transit Results)",
+  "rule_notes": "Rahu 8th from Moon — randhra affliction; severe; longevity concern."
+ },
+ {
+  "id": 195,
+  "rule_type": "unfavourable",
+  "graha": "rahu",
+  "primary_house": 12,
+  "vedha_house": null,
+  "phala": "Hidden expenditure, foreign travel under duress, separation",
+  "classical_citation": "Phaladeepika Ch.26 (Gochara Vedha and Transit Phala)",
+  "rule_notes": "Rahu 12th from Moon — vyaya affliction; loss and isolation."
+ },
+ {
+  "id": 196,
+  "rule_type": "favourable",
+  "graha": "ketu",
+  "primary_house": 3,
+  "vedha_house": 9,
+  "phala": "Moderate gain through effort; spiritual enterprise; sibling support",
+  "classical_citation": "UNSOURCED — no house-transit vedha doctrine for Rahu/Ketu found anywhere in the served corpus (Phaladipika Adh. XXVI slokas 3-8, phaladeepika:PG322:C1-PG323:C1, name only the seven classical grahas; BPHS Ch.29 does not exist in this corpus). Retained per B.10 (writers emit, serve-time governs; never silently dropped) and Gochara N-14 (no graha-drishti cast from the nodes) — see KSHETRA_L0_VEDHA_ROW_FIXES_v1_0.md Sec.5.",
+  "rule_notes": "Ketu 3rd from Moon — paurushabala enterprise; less potent than Rahu here. L0 repair item 3: vedha_house retained, disposition unsourced (never a claimed-cited nullification)."
+ },
+ {
+  "id": 197,
+  "rule_type": "favourable",
+  "graha": "ketu",
+  "primary_house": 6,
+  "vedha_house": 12,
+  "phala": "Enemies subdued; disease removal; spiritual purification",
+  "classical_citation": "UNSOURCED — no house-transit vedha doctrine for Rahu/Ketu found anywhere in the served corpus (Phaladipika Adh. XXVI slokas 3-8, phaladeepika:PG322:C1-PG323:C1, name only the seven classical grahas; BPHS Ch.29 does not exist in this corpus). Retained per B.10 (writers emit, serve-time governs; never silently dropped) and Gochara N-14 (no graha-drishti cast from the nodes) — see KSHETRA_L0_VEDHA_ROW_FIXES_v1_0.md Sec.5.",
+  "rule_notes": "Ketu 6th from Moon — moksha-karak in ari-bhava aids liberation from obstacles. L0 repair item 3: vedha_house retained, disposition unsourced (never a claimed-cited nullification)."
+ },
+ {
+  "id": 198,
+  "rule_type": "favourable",
+  "graha": "ketu",
+  "primary_house": 11,
+  "vedha_house": 5,
+  "phala": "Spiritual gains, gains through research or occult; modest material labha",
+  "classical_citation": "UNSOURCED — no house-transit vedha doctrine for Rahu/Ketu found anywhere in the served corpus (Phaladipika Adh. XXVI slokas 3-8, phaladeepika:PG322:C1-PG323:C1, name only the seven classical grahas; BPHS Ch.29 does not exist in this corpus). Retained per B.10 (writers emit, serve-time governs; never silently dropped) and Gochara N-14 (no graha-drishti cast from the nodes) — see KSHETRA_L0_VEDHA_ROW_FIXES_v1_0.md Sec.5.",
+  "rule_notes": "Ketu 11th from Moon — gains oriented toward karmic fulfilment. L0 repair item 3: vedha_house retained, disposition unsourced (never a claimed-cited nullification)."
+ },
+ {
+  "id": 199,
+  "rule_type": "favourable",
+  "graha": "ketu",
+  "primary_house": 12,
+  "vedha_house": null,
+  "phala": "Spiritual liberation, moksha progress, renunciation; retreat and deep contemplation",
+  "classical_citation": "BPHS Ch.29 (Gochara Phala — Transit Results)",
+  "rule_notes": "Ketu 12th from Moon — moksha-karaka in vyaya: uniquely auspicious for spiritual seekers."
+ },
+ {
+  "id": 200,
+  "rule_type": "unfavourable",
+  "graha": "ketu",
+  "primary_house": 1,
+  "vedha_house": null,
+  "phala": "Bodily affliction, confusion, spiritual restlessness; detachment from self",
+  "classical_citation": "BPHS Ch.29 (Gochara Phala — Transit Results)",
+  "rule_notes": "Ketu over natal Moon — dissociation and health disturbance."
+ },
+ {
+  "id": 201,
+  "rule_type": "unfavourable",
+  "graha": "ketu",
+  "primary_house": 2,
+  "vedha_house": null,
+  "phala": "Financial loss, family separation, speech affliction",
+  "classical_citation": "Phaladeepika Ch.26 (Gochara Vedha and Transit Phala)",
+  "rule_notes": "Ketu 2nd from Moon — kutumba and dhana affliction."
+ },
+ {
+  "id": 202,
+  "rule_type": "unfavourable",
+  "graha": "ketu",
+  "primary_house": 4,
+  "vedha_house": null,
+  "phala": "Home disruption, loss of comforts, mother's health concerns",
+  "classical_citation": "BPHS Ch.29 (Gochara Phala — Transit Results)",
+  "rule_notes": "Ketu 4th from Moon — Kantaka-class; domestic troubles and vehicle accidents."
+ },
+ {
+  "id": 203,
+  "rule_type": "unfavourable",
+  "graha": "ketu",
+  "primary_house": 7,
+  "vedha_house": null,
+  "phala": "Marital friction, separation, hidden adversary in partnership",
+  "classical_citation": "Phaladeepika Ch.26 (Gochara Vedha and Transit Phala)",
+  "rule_notes": "Ketu 7th from Moon — kalatra affliction; relationships tested."
+ },
+ {
+  "id": 204,
+  "rule_type": "unfavourable",
+  "graha": "ketu",
+  "primary_house": 8,
+  "vedha_house": null,
+  "phala": "Surgery, accidents, sudden health crisis; karmic debt activation",
+  "classical_citation": "BPHS Ch.29 (Gochara Phala — Transit Results)",
+  "rule_notes": "Ketu 8th from Moon — randhra + moksha karak: severe; karmic reckoning."
+ },
+ {
+  "id": 569,
+  "rule_type": "favourable",
+  "graha": "mercury",
+  "primary_house": 8,
+  "vedha_house": 1,
+  "phala": "Success in trade or profession through resourcefulness",
+  "classical_citation": "Phaladipika Adh. XXVI, Sloka 6 — phaladeepika:PG323:C1 (Sastri trans. 1950)",
+  "rule_notes": "L0 repair item 2 Sec.3 (KSHETRA_L0_VEDHA_ROW_FIXES_v1_0.md): the text's sixth Mercury pair, absent from this table until this INSERT — phala phrasing follows this writer's existing Mercury convention (e.g. ids for houses 10/11), not invented. Vedha from 1st nullifies result. Exception (sl. 6): a Moon transit through the vedha house does not nullify — bg_transit_rules has no exception column, declared here as an honest precision limit, not silently resolved."
+ }
+]
