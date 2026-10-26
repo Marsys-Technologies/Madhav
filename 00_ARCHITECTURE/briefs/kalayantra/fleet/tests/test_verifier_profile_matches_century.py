@@ -88,3 +88,44 @@ def test_g4_the_job_reads_those_flags_into_the_rule_profile():
     assert {FINAL, P1B} <= declared
     src = JOB.read_text()
     assert "rule_registry.rule_profile(final_rules=args.final_rules" in src and '{"p1_form_b": True} if args.p1_form_b' in src
+
+
+# SR-W4-VERIFIER-FINAL-RULES (c): the launcher READS its profile flags from the century contract (verification_launch.profile_args); a default never substitutes.
+import json as _json
+import pytest as _pytest
+
+
+def _vl():
+    import importlib.util, sys
+    from pathlib import Path
+    here = Path(__file__).resolve().parents[1]
+    sys.path.insert(0, str(here))
+    spec = importlib.util.spec_from_file_location("verification_launch_profile_under_test", here / "verification_launch.py")
+    mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)
+    return mod
+
+
+def _contract(tmp_path, **launch):
+    p = tmp_path / "century_contract.json"; p.write_text(_json.dumps({"launch_args": launch})); return p
+
+
+def test_p1_the_execute_args_carry_exactly_the_flags_the_committed_contract_names():
+    vl = _vl()
+    assert vl.EXECUTE_ARGS[4:] == vl.profile_args() and "--final-rules" in vl.EXECUTE_ARGS       # revert: hard-code the args without the contract -> a contract change goes unseen
+
+
+@_pytest.mark.parametrize("launch,flags", [({"final_rules": "true"}, ("--final-rules",)), ({"final_rules": "false"}, ()),
+                                           ({"final_rules": "true", "p1_form_b": "true"}, ("--final-rules", "--p1-form-b"))])
+def test_p2_profile_args_follow_the_contract(tmp_path, launch, flags):
+    assert _vl().profile_args(_contract(tmp_path, **launch)) == flags
+
+
+@_pytest.mark.parametrize("launch", [{}, {"final_rules": "yes"}, {"final_rules": True}, {"final_rules": "true", "p1_form_b": "maybe"}])
+def test_p3_an_unreadable_or_unclear_profile_refuses_instead_of_defaulting(tmp_path, launch):
+    with _pytest.raises(SystemExit, match="refusing|must be"):
+        _vl().profile_args(_contract(tmp_path, **launch))
+
+
+def test_p4_a_missing_contract_refuses(tmp_path):
+    with _pytest.raises(SystemExit, match="unreadable"):
+        _vl().profile_args(tmp_path / "absent.json")

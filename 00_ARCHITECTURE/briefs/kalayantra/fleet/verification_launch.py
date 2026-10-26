@@ -95,7 +95,24 @@ JOB = "gochara-verification-job"
 SECRET = "gochara-verifier-db-url"
 CLOUDSQL_INSTANCE = "madhav-astrology:asia-south1:amjis-postgres"
 KIND_EXECUTE, KIND_DRYRUN = "verification_job", "verification_job_dryrun"
-EXECUTE_ARGS = ("--chart", CHART, "--generation", GENERATION, "--final-rules")        # V-1: the century build ran the final rules; the verifier must bind the same registry digest
+def profile_args(contract_path: Path = Path(__file__).resolve().parent / "century_contract.json") -> tuple:
+    """SR-W4-VERIFIER-FINAL-RULES (c): the verifier's rule-profile flags are READ from the committed century contract's launch_args (what the century
+    build ran under), never defaulted: final_rules "true" -> --final-rules; p1_form_b "true" -> --p1-form-b. A missing contract or any value other than
+    "true"/"false" refuses at import, so a default can never substitute for the build's profile again."""
+    try:
+        launch = json.loads(contract_path.read_text())["launch_args"]
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        raise SystemExit(f"verification_launch: the century contract's launch_args are unreadable ({exc}); refusing to choose a rule profile") from None
+    flags = []
+    for key, flag in (("final_rules", "--final-rules"), ("p1_form_b", "--p1-form-b")):
+        value = launch.get(key, "false" if key == "p1_form_b" else None)
+        if value not in ("true", "false"):
+            raise SystemExit(f"verification_launch: century_contract launch_args.{key} = {value!r}: must be 'true' or 'false'")
+        if value == "true": flags.append(flag)
+    return tuple(flags)
+
+
+EXECUTE_ARGS = ("--chart", CHART, "--generation", GENERATION) + profile_args()          # V-1: the profile the century build ran under, read from its contract
 REPORT_ONLY_ARGS = EXECUTE_ARGS + ("--report-only",)
 
 
