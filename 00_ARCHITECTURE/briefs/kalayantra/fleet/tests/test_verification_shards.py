@@ -79,7 +79,7 @@ def test_s2_a_partition_that_is_not_exact_is_refused_by_the_loader(tmp_path, mut
 
 def test_s3_a_shard_launch_passes_one_class_flag_per_class_of_that_shard_and_records_the_pinned_files_digest(tmp_path):
     cloud, record, _ = go_shard(tmp_path)
-    expected = ["--chart", base.CHART, "--generation", "5.0"] + [f"--class={c}" for c in V02]
+    expected = ["--chart", base.CHART, "--generation", "5.0", "--final-rules"] + [f"--class={c}" for c in V02]
     assert cloud.writes() == [["gcloud", "run", "jobs", "execute", "gochara-verification-job", "--project=madhav-astrology", "--region=asia-south1",
                                "--args=" + ",".join(expected), "--async", "--format=value(metadata.name)"]]
     import hashlib

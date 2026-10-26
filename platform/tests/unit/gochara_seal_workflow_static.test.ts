@@ -100,7 +100,7 @@ describe('gochara-seal-approved.yml', () => {
   })
   it('asks the verification job for the brief (always chunked since a289b38eb) and carries BOTH brief files (the brief bytes and the compact result) to the gated job', () => {
     const exec = briefSteps.find((s) => String(s.run ?? '').includes('gcloud run jobs execute'))
-    expect(String(exec.run)).toContain('--brief,--sealing-commit')
+    expect(String(exec.run)).toContain('--final-rules,--brief,--sealing-commit')
     expect(String(exec.run)).not.toContain('--brief-chunks')                          // Stream A a289b38eb: the chunk transport is ALWAYS on; the flag no longer exists
     const extract = (brief.steps as any[]).find((s) => String(s.run ?? '').includes('gochara_seal_brief_extract.py'))
     expect(String(extract.run)).toContain('--out-brief brief.json --out-compact brief.compact.json')
@@ -122,6 +122,7 @@ describe('gochara-seal-approved.yml', () => {
     expect(run(image)).toContain('gochara_seal_execution_check.py job-image')
     expect(run(image)).toContain('--image-repo "$PIPELINE_IMAGE_REPO"')
     expect(run(image)).toContain('--runner-commit "$GITHUB_SHA" --secret-name "$VERIFIER_SECRET"')
+    expect(run(check)).toContain('"--generation",sys.argv[2],"--final-rules","--brief","--sealing-commit"')   // the retained envelope pins the SAME args the execution ran (SR-W4-REGISTRY-DIGEST-DISAGREE: the final rules the century was built under)
     expect(run(exec)).toContain('--async')                                               // the execution id is recorded BEFORE the wait, so a cancelled wait can still cancel it
     expect(run(exec)).not.toContain('--wait')
     expect(wait['timeout-minutes']).toBeLessThanOrEqual(briefStart['timeout-minutes'])

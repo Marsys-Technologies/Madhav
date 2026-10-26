@@ -30,12 +30,12 @@ def test_prepared_binding_is_disabled_and_pins_full_verification_not_report_or_b
     assert out['enabled'] is False and out['dry_run_passed'] is False
     assert out['status'] == 'PREPARATION_ONLY' and out['production_allocation'] is None
     assert out['runtime_principal'] == 'gochara_verifier'
-    assert out['expected_args'] == ['--chart', m.CHART, '--generation', '5.0']
+    assert out['expected_args'] == ['--chart', m.CHART, '--generation', '5.0', '--final-rules']
     expected_digest = hashlib.sha256(json.dumps(job(), sort_keys=True, separators=(',', ':')).encode()).hexdigest()
     assert out['definition_sha256'] == expected_digest
     assert out['reviewed_commit'] == SHA and out['image_digest'] == DIG
     assert out['argv'] == ['gcloud', 'run', 'jobs', 'execute', 'gochara-verification-job', '--project',
-        'madhav-astrology', '--region', 'asia-south1', '--args=--chart,' + m.CHART + ',--generation,5.0',
+        'madhav-astrology', '--region', 'asia-south1', '--args=--chart,' + m.CHART + ',--generation,5.0,--final-rules',
         '--async', '--format=value(metadata.name)']
     assert {'P06b', 'campaign-coordination', 'backup_restore_verified', 'dry_run_passed',
             'one_build_slot', 'independent_pre_acceptance', 'reviewed_launcher_allocation'} <= set(out['activation_requires'])

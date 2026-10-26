@@ -232,7 +232,7 @@ def main(argv=None) -> int:
                 brief_id = ((json.load(f) or {}).get("persisted") or {}).get("brief_id")
             if (a.chart_id is None) != (a.generation is None):
                 raise Refused("chart-id and generation must be supplied together")
-            expected_args = (["--chart", a.chart_id, "--generation", a.generation, "--brief", "--sealing-commit", a.sealing_commit]
+            expected_args = (["--chart", a.chart_id, "--generation", a.generation, "--final-rules", "--brief", "--sealing-commit", a.sealing_commit]
                              if a.chart_id is not None else None)
             check_envelope(envelope, run_id=a.run_id, attempt=a.attempt, sealing_commit=a.sealing_commit, brief_digest=a.brief_digest, brief_id=str(brief_id), expected_args=expected_args)
             print(brief_id, envelope["producer_execution_id"])

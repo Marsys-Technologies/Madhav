@@ -47,8 +47,10 @@ def test_l2_the_jobs_argparse_reads_back_exactly_the_shards_classes(sid, report_
     ap = argparse.ArgumentParser()                      # the job's own declarations (platform/python-sidecar/pipeline/orchestrator/verification_job.py)
     ap.add_argument("--chart", required=True); ap.add_argument("--generation")
     ap.add_argument("--class", dest="classes", action="append", default=None); ap.add_argument("--report-only", action="store_true")
+    ap.add_argument("--final-rules", action="store_true"); ap.add_argument("--p1-form-b", action="store_true")
     ns = ap.parse_args(_args_items(shard, report_only))
     assert ns.classes == shard["classes"] and ns.report_only is report_only and ns.chart == vl.CHART
+    assert ns.final_rules is True and ns.p1_form_b is False      # the century build ran the final rules (test_verifier_profile_matches_century.py)
 
 
 def _gcloud_arg_parsers():
