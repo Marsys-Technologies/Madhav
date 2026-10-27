@@ -150,7 +150,7 @@ def test_permission_zero_when_no_systems_active():
 
 # ── FOURQ-CLOSURE-20261027: generator #10 is SWITCHED OFF ─────────────────────
 #
-# The specimen-dated test that stood here ("fires for the real marriage house",
+# The specimen-dated test that stood here ("fires for the native's specimen house",
 # pinned to a recorded event of the native) was the acceptance criterion the
 # provenance audit identified as the leakage mechanism. It is removed with the
 # rule. The replacements are synthetic: a fixture target, a neutral epoch, and

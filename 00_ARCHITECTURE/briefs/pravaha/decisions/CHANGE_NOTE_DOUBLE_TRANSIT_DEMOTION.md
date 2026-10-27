@@ -116,7 +116,7 @@ DVI tier admits nothing anywhere. The document is left as is.
 
 Removed (they encoded a recorded event of the native as the acceptance criterion — the leakage pattern the ledger now forbids —
 or tested deleted code): `test_gochara_grammar.py::test_composition_2_double_transit_<specimen>`, `…2b_…end_to_end_rasi_fix`,
-`…2c_double_transit_mixed_…`; `test_gochara_intensity.py::test_permission_guru_shani_double_transit_fires_for_real_marriage_house`.
+`…2c_double_transit_mixed_…`; `test_gochara_intensity.py::test_permission_guru_shani_double_transit_fires_for_<specimen>_house`.
 Retained (primitive-level, the primitive stays): the `sign_occupation` and `drishti_contact` rasi-fallback tests.
 
 Adapted (they pinned P4 as planned/included or the composition operator as present): `test_a53_window_evaluator.py`,
