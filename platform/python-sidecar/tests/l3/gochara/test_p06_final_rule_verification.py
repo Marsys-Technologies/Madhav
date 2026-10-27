@@ -376,10 +376,18 @@ def test_the_final_rule_annotations_are_stored_verbatim_in_the_frozen_inventory_
         (fixture.CHART_ID, '5.38', 'achievement_recognition')).fetchall()
     assert {(str(iv.ob_id), iv.start, iv.end): iv.detail for iv in plan.intervals} == {
         (oid, lo, hi): detail for oid, lo, hi, detail in rows}
-    p4 = {o.ob_id for pin in plan.pins if pin.path_id == 'P4' and pin.rule_version == '1.2.0' for o in pin.obligations}
-    detail = next(iv.detail for iv in plan.intervals if iv.ob_id in p4)
-    assert len(detail['final_rule_context']['dvi_absorbed_by_core']) == 4
-    assert detail['record_factors']
+    # P4 is switched off (FOURQ-CLOSURE-20261027): it plans no obligation, so it stores no interval. P4 was this
+    # class's only path with DVI edges absorbed by CORE; the remaining paths still store the context verbatim.
+    assert not [o for pin in plan.pins if pin.path_id == 'P4' for o in pin.obligations]
+    from services.gochara_kernel.evaluator import final_rule_context
+    by_ob = {o.ob_id: pin for pin in plan.pins for o in pin.obligations}
+    annotated = [(by_ob[iv.ob_id], iv.detail) for iv in plan.intervals if 'final_rule_context' in (iv.detail or {})]
+    assert annotated
+    for pin, detail in annotated:
+        assert pin.path_id != 'P4'
+        assert detail['final_rule_context'] == final_rule_context('achievement_recognition', pin.path_id, fixture.CHART, pin.rule_version)
+        assert isinstance(detail['record_factors'], dict)
+    assert any(detail['record_factors'] for _, detail in annotated)
 
 
 @pytest.fixture(autouse=True)

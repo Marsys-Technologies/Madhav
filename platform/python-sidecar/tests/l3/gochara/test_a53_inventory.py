@@ -750,7 +750,9 @@ def test_the_verifier_reproduces_the_inventory_and_ledger_digests_with_p1_role_t
     from services.gochara_kernel import inventory_verifier as ver
     paths = [("P1", "1.0.0"), ("P3", "1.0.0"), ("P4", "1.0.0"), ("P5", "1.0.0")]
     ruled = {"p5": {"reason": "tier_withheld_by_ruling", "basis": "ruling:ST-P5-HOLD-20261001",
-                    "ruling_ref": "ST-P5-HOLD-20261001"}}
+                    "ruling_ref": "ST-P5-HOLD-20261001"},
+             "p4": {"reason": "tier_withheld_by_ruling", "basis": "ruling:FOURQ-CLOSURE-20261027",
+                    "ruling_ref": "FOURQ-CLOSURE-20261027"}}
     store, sky, _ = _boot(am5, "5.12")
     p5, hu = inv.standing_exclusions()
     for cls in ("marriage", "bereavement", "separation"):
