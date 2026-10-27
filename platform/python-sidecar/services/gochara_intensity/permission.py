@@ -40,17 +40,22 @@ This module evaluates 12 independent generators at a given instant t:
        count without adding a genuinely independent timing system.
   9. sade_sati_phase — reuses `gochara_grammar.primitives.sade_sati_phase`
      (itself reading `chart_facts` sade_sati_cycle/phase rows).
- 10. guru_shani_double_transit — Jupiter+Saturn simultaneous drishti/degree
-     contact on a resonance target, reusing `primitives.drishti_contact` /
-     `primitives.degree_contact` restricted to those two grahas, composed
-     via `composition.double_transit`'s own `is_guru_shani_double_transit`
-     flag (the ONE double-transit pairing this codebase has a live cited
-     `bg_transit_rules` row for). RED-D follow-up (2026-07-20): ALSO
-     reuses `primitives.sign_occupation` + `composition.double_transit_
-     mixed` so one graha occupying the target house and the other
-     aspecting it (not both aspecting it) is detected too -- see this
-     module's guru-shani block comment and `double_transit_mixed`'s own
-     module comment for the citation judgment call this makes.
+ 10. guru_shani_double_transit — SWITCHED OFF (FOURQ-CLOSURE-20261027; provenance
+     audit DOUBLE-TRANSIT-PROVENANCE-20261027). The generator stays REGISTERED so
+     the 12-row weight table, `systems_considered` and every consumer's counts are
+     stable, but its body evaluates nothing and emits an EMPTY result: a row with
+     `active False`, `weight 0.0`, `status retired_pending_reauthor` and an
+     `empty_reason` naming the ruling (§N.7.6: an honest null with a reason, never
+     a fabricated value). Its declared structural-prior share (0.10) stays in
+     `SYSTEM_WEIGHTS` and therefore in the denominator, so the other eleven
+     generators' contributions are byte-identical (no silent re-scaling); the
+     maximum attainable PERMISSION is 0.90. The audit found no classical source for
+     the rule (migration 565 CORPUS_GAP; sealed Pravāha v3.0: modern K.N. Rao
+     practice, uncited_extension) and one confirmed instance of its detection logic
+     being widened so a known specimen would fire (the former
+     `composition.double_transit_mixed` leg, 2026-07-20); both composition operators
+     are deleted. Re-admission only via a panel-verified classical citation and a
+     forward-only test.
  11. av_threshold_state — reuses `primitives.av_threshold_state`
      (aṣṭakavarga-threshold transit gates from `bg_transit_av_gates`).
  12. planetary_return — reuses `primitives.planetary_return`, restricted to
@@ -85,7 +90,7 @@ from typing import Any, Optional
 
 from services.gochara_grammar import dasha_data as DD
 from services.gochara_grammar import primitives as P
-from services.gochara_grammar import composition as CO
+from services.gochara_grammar import citations as C
 from services.gochara_grammar.models import ResonanceTarget
 from services.gochara_grammar.read_tier_policy import tier_evidence
 from pipeline.transit_search import _jd_to_ist_iso
@@ -113,6 +118,44 @@ SYSTEM_WEIGHTS: dict[str, float] = {
     "planetary_return": 0.07,
 }
 assert abs(sum(SYSTEM_WEIGHTS.values()) - 1.0) < 1e-9
+
+# Generators SWITCHED OFF (FOURQ-CLOSURE-20261027). A retired generator stays
+# registered (B.10: never silently dropped from the table a consumer counts) but
+# is NOT evaluated and emits an empty row: active False, weight 0.0, a status and
+# an empty_reason naming the ruling. Its SYSTEM_WEIGHTS entry is NOT removed and
+# NOT redistributed: the denominator stays the full declared table, so every
+# scored generator's absolute contribution is byte-identical to before (the
+# engine's N-15 pattern of renormalising the denominator was deliberately NOT
+# used -- it would scale the eleven live generators by 1/0.90 and change their
+# declared structural priors).
+RETIRED_SYSTEM_IDS: frozenset[str] = frozenset({"guru_shani_double_transit"})
+RETIRED_SYSTEM_RULINGS: dict[str, str] = {"guru_shani_double_transit": C.FOURQ_CLOSURE_RULING_REF}
+STATUS_RETIRED = C.STATUS_RETIRED_PENDING_REAUTHOR
+#: the live weight table -- SYSTEM_WEIGHTS less the retired generators; sums to 0.90
+SCORED_SYSTEM_WEIGHTS: dict[str, float] = {
+    sid: w for sid, w in SYSTEM_WEIGHTS.items() if sid not in RETIRED_SYSTEM_IDS
+}
+
+
+def scored_weight(system_id: str) -> float:
+    """The weight a generator contributes to the scored sum when active: its
+    declared prior for a live generator, 0.0 for a retired one."""
+    return 0.0 if system_id in RETIRED_SYSTEM_IDS else SYSTEM_WEIGHTS[system_id]
+
+
+def retired_system_row(system_id: str) -> dict[str, Any]:
+    """The empty result a RETIRED generator emits (shared with the gochara_v3
+    mirror): never active, weight 0.0, declared prior disclosed, the status and
+    the reason stated -- an honest null, never a fabricated value (§N.7.6)."""
+    if system_id not in RETIRED_SYSTEM_IDS:
+        raise ValueError(f"{system_id!r} is not a retired generator")
+    reason = (f"{system_id} not evaluated: {C.DOUBLE_TRANSIT_RETIRED_REASON}"
+              if system_id == "guru_shani_double_transit" else
+              f"{system_id} not evaluated: {STATUS_RETIRED} (ruling {RETIRED_SYSTEM_RULINGS[system_id]})")
+    return {"system_id": system_id, "active": False, "state": STATUS_RETIRED,
+            "weight": 0.0, "declared_prior_weight": SYSTEM_WEIGHTS[system_id],
+            "status": STATUS_RETIRED, "ruling_ref": RETIRED_SYSTEM_RULINGS[system_id],
+            "empty_reason": reason, "detail": {"empty_reason": reason}}
 
 # LIVE-VERIFIED chart_dashas.system_id values (2026-07-19, chart 482012f1) --
 # NOT G-2's DD.DASHA_SYSTEMS tuple, see module docstring's "IMPORTANT
@@ -333,50 +376,10 @@ def compute_permission(
         sade_sati_entry["detail"] = {"empty_reason": sade_sati_empty_reason}
     systems.append(sade_sati_entry)
 
-    # 9: Guru-Sani double transit (Jupiter+Saturn only, per module docstring).
-    #
-    # RED-D follow-up CORRECTION (2026-07-20): the original guard below --
-    # `if target.target_longitude_deg is None: continue` -- skipped EVERY
-    # bhava/span target before ever calling drishti_contact/degree_contact,
-    # so even after those primitives gained their rasi-drishti fallback
-    # (target_sign-only reachability), this generator itself never reached
-    # a bhava target to exercise it. Fixed: a target now contributes
-    # `contact_sentences` whenever EITHER anchor is available (drishti_
-    # contact/degree_contact each honestly no-op internally for whichever
-    # anchor they don't have), and ADDITIONALLY contributes
-    # `occupation_sentences` (via the new `sign_occupation` primitive) for
-    # bhava/span targets, so `CO.double_transit_mixed` can pair one
-    # graha's occupation of the target house against the other graha's
-    # aspect onto it -- the native's own worked marriage-specimen
-    # configuration (transiting Saturn occupying natal Saturn's 7th house
-    # in Libra; transiting Jupiter's 5th special drishti onto that same
-    # Libra from Gemini), which pure aspect+aspect `CO.double_transit`
-    # structurally cannot represent (see composition.py's own comment on
-    # `double_transit_mixed`).
-    gsdt_active = False
-    gsdt_detail: dict = {}
-    try:
-        with savepoint_scope(conn, "guru_shani_double_transit"):
-            contact_sentences = []
-            occupation_sentences = []
-            for target in targets:
-                if target.target_longitude_deg is not None or target.target_sign is not None:
-                    contact_sentences += P.drishti_contact(swe, chart_id, target, start_jd, end_jd, planets=["Jupiter", "Saturn"])
-                    contact_sentences += P.degree_contact(swe, chart_id, target, start_jd, end_jd, planets=["Jupiter", "Saturn"])
-                if target.target_sign is not None:
-                    occupation_sentences += P.sign_occupation(swe, chart_id, target, start_jd, end_jd, planets=["Jupiter", "Saturn"])
-            comps = CO.double_transit(contact_sentences, window_days=window_days)
-            comps += CO.double_transit_mixed(contact_sentences + occupation_sentences, window_days=window_days)
-            for c in comps:
-                if c.detail.get("is_guru_shani_double_transit"):
-                    gsdt_active = True
-                    gsdt_detail = {"target_ref": c.detail.get("target_ref"), "event_datetime_ist": c.event_datetime_ist,
-                                    "operator": c.operator}
-                    break
-    except Exception as exc:  # noqa: BLE001
-        logger.info("[permission] guru_shani_double_transit check failed: %s", exc)
-    systems.append({"system_id": "guru_shani_double_transit", "active": gsdt_active,
-                     "weight": SYSTEM_WEIGHTS["guru_shani_double_transit"], "detail": gsdt_detail})
+    # 9: Guru-Sani double transit -- SWITCHED OFF (FOURQ-CLOSURE-20261027). Registered,
+    # never evaluated: no primitive is called, no composition is formed, no sentence is
+    # emitted; the row states its status and the reason (see `retired_system_row`).
+    systems.append(retired_system_row("guru_shani_double_transit"))
 
     # 10: AV-threshold transit gates (bhava targets only).
     av_active = False
@@ -416,6 +419,8 @@ def compute_permission(
     systems.append({"system_id": "planetary_return", "active": return_active,
                      "weight": SYSTEM_WEIGHTS["planetary_return"], "detail": return_detail})
 
+    # a retired row is never active and weighs 0.0; the denominator is the FULL declared
+    # table (see RETIRED_SYSTEM_IDS -- no renormalisation, no re-scaling)
     active_weight = sum(s["weight"] for s in systems if s["active"])
     total_weight = sum(SYSTEM_WEIGHTS.values())
     permission = active_weight / total_weight if total_weight else 0.0
@@ -438,6 +443,12 @@ def compute_permission(
         "systems_active": systems_active,
         "systems_considered": [s["system_id"] for s in systems],
         "system_count_active": len(systems_active),
+        # §N.7.6: the retired generator is an honest null WITH its reason, never a fabricated value
+        "retired_systems": {s["system_id"]: {"status": s["status"], "ruling_ref": s["ruling_ref"],
+                                             "empty_reason": s["empty_reason"],
+                                             "declared_prior_weight": s["declared_prior_weight"]}
+                            for s in systems if s.get("status") == STATUS_RETIRED},
+        "scored_weight_total": round(sum(SCORED_SYSTEM_WEIGHTS.values()), 9),
         "t_datetime_ist": t_iso,
         "window_days": window_days,
         "calibration_state": "structural_prior",
@@ -445,4 +456,5 @@ def compute_permission(
     return permission, detail
 
 
-__all__ = ["SYSTEM_WEIGHTS", "DASHA_SYSTEM_IDS", "compute_permission"]
+__all__ = ["SYSTEM_WEIGHTS", "SCORED_SYSTEM_WEIGHTS", "RETIRED_SYSTEM_IDS", "RETIRED_SYSTEM_RULINGS",
+           "STATUS_RETIRED", "scored_weight", "retired_system_row", "DASHA_SYSTEM_IDS", "compute_permission"]

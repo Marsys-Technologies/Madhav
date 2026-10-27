@@ -67,11 +67,16 @@ PERIOD_ROLE_LEVEL = {"md": 1, "ad": 2, "pd": 3}
 
 
 def standing_exclusions() -> tuple[dict, "Exclusion", ]:
-    """The two standing rulings as the planner's exclusion inputs:
-    ({path_id: Exclusion} for P5, the H-unknown Exclusion)."""
+    """The standing rulings as the planner's exclusion inputs:
+    ({path_id: Exclusion} for P5 (held) and for every path the registry switches off
+    (`registry.DISABLED_PATHS` — P4 under FOURQ-CLOSURE-20261027), the H-unknown Exclusion).
+    An excluded path is pinned `excluded / tier_withheld_by_ruling / ruling:<id>` BEFORE any
+    enumeration: no obligation, interval, record or window of it is planned or built."""
+    paths = {"P5": Exclusion("tier_withheld_by_ruling", f"ruling:{P5_HOLD_RULING}", P5_HOLD_RULING)}
+    for path_id, ruling in sorted(_rules.DISABLED_PATHS.items()):
+        paths[path_id] = Exclusion(ruling["reason"], f"ruling:{ruling['ruling_ref']}", ruling["ruling_ref"])
     return (
-        {"P5": Exclusion("tier_withheld_by_ruling", f"ruling:{P5_HOLD_RULING}",
-                         P5_HOLD_RULING)},
+        paths,
         Exclusion("inputs_unavailable", f"ruling:{H_UNKNOWN_RULING}", H_UNKNOWN_RULING),
     )
 

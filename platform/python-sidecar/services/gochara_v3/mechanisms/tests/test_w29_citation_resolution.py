@@ -7,7 +7,7 @@ Acceptance criteria (VERIFIER will recheck independently):
        sources (citations.py constants, primitives.py families, bg_transit_rules
        dynamic entries).
 
-  AC2. All 14 constants in citations.__all__ are represented in the catalog
+  AC2. All constants in citations.__all__ (13 since 2026-10-27) are represented in the catalog
        (source='citations_py').
 
   AC3. Both primitives_py (cited families) and uncited_extension families are
@@ -96,7 +96,7 @@ class TestCatalogIsNonempty:
 
 
 # ---------------------------------------------------------------------------
-# AC2: all 14 citations.__all__ constants are represented
+# AC2: all citations.__all__ constants (13 since 2026-10-27) are represented
 # ---------------------------------------------------------------------------
 
 class TestAllSourcesRepresented:
@@ -345,9 +345,15 @@ class TestI2NoV1ModulesEdited:
         )
 
     def test_citations_all_count_unchanged(self):
-        """citations.__all__ must still have 14 entries (not grown/shrunk by import)."""
-        assert len(_C.__all__) == 14, (
-            f"citations.__all__ has {len(_C.__all__)} entries; expected 14"
+        """citations.__all__ must still have 13 entries (not grown/shrunk by import).
+
+        14 -> 13 on 2026-10-27: DOUBLE_GOCHARA_PHALADEEPIKA_26 was struck under
+        ruling DOUBLE-TRANSIT-PROVENANCE-20261027 (the passage it named does not
+        exist in the corpus; migration 565 CORPUS_GAP). Its replacement is an
+        ATTRIBUTION string, deliberately kept out of __all__ so it never enters
+        this citation catalog."""
+        assert len(_C.__all__) == 13, (
+            f"citations.__all__ has {len(_C.__all__)} entries; expected 13"
         )
 
     def test_toggle_key_matches_mechanism_id(self):

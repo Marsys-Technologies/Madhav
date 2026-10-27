@@ -2115,7 +2115,8 @@ rules:
       In practice, Jupiter and Saturn double transits over 1H/5H/9H or 1H/7H/10H
       from natal Moon are the most frequently cited implementation of this rule
       (K.N. Rao's double transit theory is a modern development of this classical root).
-    verified: true
+    verified: null
+    verification_note: "LLM-extracted paraphrase; no page-anchored quote in corpus (audit 2026-10-27)"
     stub: false
     stub_reason: null
 

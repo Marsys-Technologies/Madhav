@@ -108,7 +108,6 @@ TRANSIT_ACTIVATIONS: list[dict[str, Any]] = [
     # Rahu in Gemini over natal 3H 2001-2002: Rahu 3H activation
     {"label": "TRS.RAHU.GEMINI.3H", "start": "2001-07-21", "end": "2003-01-07",
      "weight": 0.65, "factor_type": "transit_conjunction"},
-    # Jupiter transit over natal Saturn in Libra 2004: Guru-Shani activation
     {"label": "TRS.JUPITER.LIBRA.SATURN", "start": "2004-09-25", "end": "2005-10-26",
      "weight": 0.65, "factor_type": "transit_conjunction"},
     # Saturn in Libra (natal exaltation sign 7H) 2009-2012: Saturn exaltation activation
@@ -160,7 +159,6 @@ SIGNAL_ACTIVATION_EVENTS: list[dict[str, Any]] = [
     # Saturn-Rahu conjunction 2016-01 in Scorpio: dual shadow-planet activation
     {"label": "SIG.SATURN.RAHU.CONJ.2016", "date": "2016-01-30",
      "weight": 0.70, "factor_type": "signal_activation"},
-    # Jupiter-Saturn opposition 2010 amplifying Mercury MD opening
     {"label": "SIG.JUPITER.SATURN.OPP.2010", "date": "2010-05-23",
      "weight": 0.65, "factor_type": "transit_conjunction"},
     # Ketu in Aquarius over natal Moon 2020 — Ketu drishti natal Moon

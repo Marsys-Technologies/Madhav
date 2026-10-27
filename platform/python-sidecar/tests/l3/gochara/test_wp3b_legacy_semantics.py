@@ -250,6 +250,17 @@ class TestFactorGoldenCases:
         both = LS.compute_permission({"vimshottari": True, "sade_sati": True})
         assert both == pytest.approx(0.26)
 
+    def test_permission_retired_generator_contributes_zero_without_rescaling(self):
+        # FOURQ-CLOSURE-20261027 (mirrors permission.py): guru_shani_double_transit is SWITCHED OFF --
+        # still one of the 12 ids and still in the denominator (SYSTEM_WEIGHTS unchanged, sum 1.0),
+        # contributing 0.0 even if a caller marks it active.
+        assert set(LS.PERMISSION_SYSTEM_IDS) - set(LS.SCORED_PERMISSION_SYSTEM_IDS) == {"guru_shani_double_transit"}
+        assert LS.RETIRED_SYSTEM_IDS == frozenset({"guru_shani_double_transit"})
+        assert LS.SYSTEM_WEIGHTS["guru_shani_double_transit"] == 0.10
+        assert LS.compute_permission({"guru_shani_double_transit": True}) == 0.0
+        assert LS.compute_permission({"vimshottari": True, "guru_shani_double_transit": True}) == pytest.approx(0.16)
+        assert LS.compute_permission({s: True for s in LS.PERMISSION_SYSTEM_IDS}) == pytest.approx(0.90)
+
     def test_tara_modifier_table(self):
         # w23_tara_bala.py:22-31 table, hand-checks:
         # natal nak 1, transit nak 3 -> position ((3-1) % 27) % 9 + 1 = 3 -> vipat 0.75

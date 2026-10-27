@@ -172,6 +172,8 @@ def _papa_kartari_sandwich(
 
 
 # ── T-5.2: Guru-Śani (Jupiter+Saturn) double-transit — additive ──────────────
+# DOUBLE-TRANSIT-PROVENANCE-20261027: demoted to commentarial-practice testimony; this current stays UNWIRED
+# (ka_sangam.py no longer stores an admitted weight for it) — do not wire without a panel-verified classical citation.
 
 def guru_shani_double_transit(
     target_lon: Optional[float],
@@ -529,11 +531,16 @@ def compute_trigger_currents(
     keys on each side scores best on the train split (train_score=0.312,
     +0.024 vs the v1 baseline) — genuinely tuned, not the module's own
     defaults. A caller wiring the ADMITTED score MUST pass
-    `additive_weights={'guru_shani_double_transit': 0.2, 'saham_activation': 0.2}`
-    and `suppressive_weights={'malefic_transit_over_mechanism': 0.2,
+    `additive_weights={'saham_activation': 0.2}` and
+    `suppressive_weights={'malefic_transit_over_mechanism': 0.2,
     'papa_kartari_sandwich': 0.2}` explicitly — omitting these falls back to
     the module's own unratified 0.5/0.6 defaults, which is correct for
     standalone/exploratory use but WRONG for the admitted composite score.
+    DOUBLE-TRANSIT-PROVENANCE-20261027: the admitted additive weight for
+    `guru_shani_double_transit` (0.2, a fitted artefact with no consumer) was
+    DELETED from ka_sangam.py; a weights dict that omits the key simply leaves
+    that current out of the saturating combine (its component score is still
+    reported).
     """
     if not chart_id:
         raise ValueError("compute_trigger_currents: chart_id is REQUIRED (CR-87) — no default")

@@ -93,14 +93,26 @@ class TestBuildMechanismRows:
         unfav = next(r for r in rows if r["target_ref"] == "venus:unfavourable:h7")
         assert unfav["weight"] == -1.0
 
-    def test_double_transit_weight(self):
+    def test_double_transit_rows_are_retired_and_never_served_with_the_reason_recorded(self):
+        """FOURQ-CLOSURE-20261027: a double_transit row produces NO resonance target -- by rule_type
+        (a database that has not yet applied migration 1412) and by the RETIRED_PENDING_REAUTHOR
+        citation prefix (one that has); the skip is recorded with its ruling, never silent."""
+        report = {"retired_skipped": 0, "retired_ids": [], "reason": None}
         rows = _build_mechanism_rows("major_gain", [
             {"id": 133, "rule_type": "double_transit", "graha": "Jupiter", "primary_house": 2,
              "classical_citation": "Phaladeepika ch.26 §double-gochara"},
-        ])
-        assert rows[0]["weight"] == 0.75
-        # graha is lowercased in target_ref regardless of source casing
-        assert rows[0]["target_ref"] == "jupiter:double_transit:h2"
+            {"id": 134, "rule_type": "double_transit", "graha": "Saturn", "primary_house": 8,
+             "classical_citation": "RETIRED_PENDING_REAUTHOR (FOURQ-CLOSURE-20261027) — Modern practice ..."},
+            {"id": 34, "rule_type": "favourable", "graha": "venus", "primary_house": 2,
+             "classical_citation": "BPHS Ch.29 (Gochara Phala — Transit Results)"},
+        ], report=report)
+        assert [r["target_ref"] for r in rows] == ["venus:favourable:h2"]
+        assert report["retired_skipped"] == 2 and report["retired_ids"] == [133, 134]
+        assert "FOURQ-CLOSURE-20261027" in report["reason"] and "retired_pending_reauthor" in report["reason"]
+        # without a report the output is identical (the skip is not report-dependent)
+        assert [r["target_ref"] for r in _build_mechanism_rows("major_gain", [
+            {"id": 133, "rule_type": "double_transit", "graha": "Jupiter", "primary_house": 2,
+             "classical_citation": "x"}])] == []
 
     def test_empty_transit_rules(self):
         assert _build_mechanism_rows("marriage", []) == []

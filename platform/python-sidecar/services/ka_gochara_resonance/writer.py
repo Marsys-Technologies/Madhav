@@ -165,6 +165,7 @@ import re as _re
 from typing import Any, Iterable
 
 from brahmagyan.graha_vocabulary import norm_graha, to_title
+from services.gochara_grammar import citations as _CIT  # FOURQ-CLOSURE-20261027 retired-row vocabulary
 from services.gochara_grammar.derived_points import (
     M6_EVENT_CLASSES,
     MANDI_DISTANCE_AGENT,
@@ -324,7 +325,7 @@ _MECHANISM_WEIGHTS: dict[str, float] = {
     "favourable": 1.0,
     "unfavourable": -1.0,
     "vedha": 0.3,
-    "double_transit": 0.75,
+    "double_transit": 0.75,   # unreachable: retired rows are skipped (FOURQ-CLOSURE-20261027); kept so the table is stable
 }
 
 # karaka (Title Case planet name, as used in brahma_event_ontology.signature_model)
@@ -476,11 +477,34 @@ def _build_karaka_rows(event_class: str, karakas: Iterable[Any], citation: str |
     return rows
 
 
-def _build_mechanism_rows(event_class: str, transit_rule_rows: Iterable[dict]) -> list[dict]:
+# FOURQ-CLOSURE-20261027: the Jupiter–Saturn double transit is SWITCHED OFF (retired_pending_reauthor). The seven
+# migration-owned `double_transit` rows of bg_transit_rules are never served as resonance targets: skipped by
+# rule_type (so a database that has not yet applied migration 1412 serves none either) and by the status prefix the
+# migration writes into their citation. The skip is recorded WITH its reason (§N.7.6) -- never a silent drop.
+_RETIRED_RULE_TYPES: frozenset[str] = frozenset({"double_transit"})
+_RETIRED_REASON = (f"{_CIT.STATUS_RETIRED_PENDING_REAUTHOR}: double_transit rows are switched off "
+                   f"(ruling {_CIT.FOURQ_CLOSURE_RULING_REF}; provenance {_CIT.DOUBLE_TRANSIT_RULING_REF}) -- not served")
+
+
+def _is_retired_rule(r: dict) -> bool:
+    return (str(r.get("rule_type")) in _RETIRED_RULE_TYPES
+            or str(r.get("classical_citation") or "").startswith(_CIT.RETIRED_CITATION_PREFIX))
+
+
+def _build_mechanism_rows(event_class: str, transit_rule_rows: Iterable[dict],
+                          report: dict | None = None) -> list[dict]:
     """transit_rule_rows: rows already fetched from bg_transit_rules
-    (id, rule_type, graha, primary_house, classical_citation)."""
+    (id, rule_type, graha, primary_house, classical_citation). A retired row
+    (`_is_retired_rule`) produces NO target; `report` (optional) records each skip
+    with the ruling, so the build record says why the row is absent."""
     rows = []
     for r in transit_rule_rows or []:
+        if _is_retired_rule(r):
+            if report is not None:
+                report["retired_skipped"] += 1
+                report["retired_ids"].append(r.get("id"))
+                report["reason"] = _RETIRED_REASON
+            continue
         graha = str(r["graha"]).strip().lower()
         rule_type = str(r["rule_type"])
         house = r["primary_house"]
@@ -770,6 +794,7 @@ def build_resonance_rows(
         report.setdefault("bhava_arudha", {"rows": 0, "unavailable": 0})
         report.setdefault("yoga_constituent", {"validated_ids": set(), "constituents": {}})
         report.setdefault("roots", {"discarded": 0, "details": []})
+        report.setdefault("mechanism", {"retired_skipped": 0, "retired_ids": [], "reason": None})
 
     house_ints = _parse_house_ints(houses)
 
@@ -777,7 +802,8 @@ def build_resonance_rows(
     rows += _build_bhava_rows(event_class, houses, ontology_citation)
     rows += _build_lord_rows(event_class, lords, ontology_citation)
     rows += _build_karaka_rows(event_class, karakas, ontology_citation)
-    rows += _build_mechanism_rows(event_class, transit_rule_rows)
+    rows += _build_mechanism_rows(
+        event_class, transit_rule_rows, report=report.get("mechanism") if report else None)
     rows += _build_sensitive_degree_rows(
         event_class, sensitive_fact_rows, report=report.get("sensitive_degree") if report else None)
     rows += _build_arudha_rows(

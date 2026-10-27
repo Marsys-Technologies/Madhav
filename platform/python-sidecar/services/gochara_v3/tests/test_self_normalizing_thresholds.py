@@ -656,11 +656,15 @@ class TestI2NoGrammarModified:
             )
 
     def test_composition_module_intact(self):
-        """gochara_grammar.composition still exports double_transit."""
+        """gochara_grammar.composition still exports its surviving operators.
+
+        `double_transit` is no longer the sentinel: the Jupiter–Saturn double-transit
+        operators were DELETED by ruling FOURQ-CLOSURE-20261027 (P4 switched off), not by
+        this mechanism -- AC6 is checked on the five operators that remain."""
         from services.gochara_grammar import composition as CO
-        assert hasattr(CO, "double_transit"), (
-            "gochara_grammar.composition missing double_transit — AC6 violation."
-        )
+        for name in ("simultaneity", "kartari", "cancellation", "amplification", "dasha_coincidence"):
+            assert hasattr(CO, name), f"gochara_grammar.composition missing {name!r} — AC6 violation."
+        assert not hasattr(CO, "double_transit") and not hasattr(CO, "double_transit_mixed")
 
 
 # ---------------------------------------------------------------------------

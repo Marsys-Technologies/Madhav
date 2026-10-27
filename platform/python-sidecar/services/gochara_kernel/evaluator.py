@@ -473,6 +473,12 @@ def enumerate_p4_edges(event_class: str, chart: dict,
     uncited_extension) — keeping P3's path_id on a P4 grain's records is a
     COMMIT-time F5 failure on the real DB (membership ≠ the record's path)."""
     p4 = rules_registry.RULE_PATHS[("P4", rule_version)]
+    # FOURQ-CLOSURE-20261027: P4 is switched off. The planner never reaches this enumerator (the standing exclusion
+    # pins P4 `excluded / tier_withheld_by_ruling` before any enumeration — `inventory.standing_exclusions`); the
+    # registered disabled row itself stamps NO edge. The sealed rows' enumeration below is unchanged so the sealed
+    # generation stays re-derivable (B.8: a sealed row is never edited).
+    if p4.get("disabled"):
+        return []
     text, page = _class_citation(event_class, "P4", rule_version)
     # the edge's ruling: an ND-H class row's own (ND-H-20261005); otherwise the double-transit rule's (D-P4) — a
     # class that is not an ND-H class never inherits the ND-H stamp from the 1.2.0 path row

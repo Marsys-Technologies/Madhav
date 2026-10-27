@@ -249,3 +249,38 @@ def test_h_unknown_classes_unqualified(chart):
                 "property_acquisition", "psychological_arc", "spiritual_turn"):
         assert signature_houses(cls, chart) is None
         assert p3_admit("Jupiter", 306.87, cls, chart) == UNQUALIFIED
+
+
+# ── FOURQ-CLOSURE-20261027: P4 switched off — a registered, NOT bound row and a standing ruling ──
+def test_p4_is_switched_off_by_a_registered_row_and_a_standing_ruling_with_the_sealed_rows_untouched():
+    """B.8 / the registry's own rule ("NEW immutable rows, never an edit of a sealed one"): the switch-off
+    is (a) the registry datum `DISABLED_PATHS["P4"]` that the planner turns into a standing exclusion and
+    (b) a NEW P4 row carrying the status -- not an edit of P4@1.0.0..1.3.0 (persisted insert-if-absent,
+    bound into the century build's identity). The row is registered only: not bound, not selected under
+    either rule profile, in no supersession table -- every bound catalogue, selection and digest is
+    byte-identical."""
+    from services.gochara_rules import registry as reg
+    from services.gochara_kernel import rule_registry as rr
+    assert reg.FOURQ_CLOSURE_RULING == "FOURQ-CLOSURE-20261027"
+    assert reg.path_disabled("P4") == reg.DISABLED_PATHS["P4"] and reg.path_disabled("P3") is None
+    assert reg.DISABLED_PATHS["P4"]["status"] == "retired_pending_reauthor"
+    assert reg.DISABLED_PATHS["P4"]["ruling_ref"] == "FOURQ-CLOSURE-20261027"
+    assert reg.DISABLED_PATHS["P4"]["reason"] == "tier_withheld_by_ruling"
+    row = RULE_PATHS[("P4", reg.P4_TESTIMONY_VERSION)]
+    assert reg.P4_TESTIMONY_VERSION == "1.4.0"
+    assert row["disabled"] is True and row["status"] == "retired_pending_reauthor"
+    assert row["operator_role"] == "testimony" and row["provenance"] == "uncited_extension"
+    assert row["ruling_ref"] == "FOURQ-CLOSURE-20261027"
+    assert row["agent_set"] == ["Jupiter", "Saturn"]
+    # the sealed rows are as authored
+    assert RULE_PATHS[("P4", "1.0.0")]["operator_role"] == "scored" and RULE_PATHS[("P4", "1.0.0")]["ruling_ref"] == "D-P4"
+    assert RULE_PATHS[("P4", reg.DOCTRINE_VERSION)]["operator_role"] == "scored"
+    assert not any(r.get("disabled") for (pid, ver), r in RULE_PATHS.items() if ver != reg.P4_TESTIMONY_VERSION)
+    for final in (False, True):
+        with rr.rule_profile(final_rules=final):
+            assert ("P4", reg.P4_TESTIMONY_VERSION) not in rr.bound_path_refs()
+            assert dict(rr.default_selection_refs())["P4"] != reg.P4_TESTIMONY_VERSION
+            assert all(v != reg.P4_TESTIMONY_VERSION for v in rr.CLASS_SELECTION_OVERRIDES.values())
+    chains = list(reg.SUPERSEDED_PATHS.items()) + list(reg.DOCTRINE_SUPERSEDED_PATHS.items())
+    assert all(key != ("P4", reg.P4_TESTIMONY_VERSION) and tuple(v["superseded_by"]) != ("P4", reg.P4_TESTIMONY_VERSION)
+               for key, v in chains)

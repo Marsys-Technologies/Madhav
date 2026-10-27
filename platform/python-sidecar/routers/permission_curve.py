@@ -159,6 +159,7 @@ def post_permission_curve(req: PermissionCurveRequest) -> dict[str, Any]:
             sid: [] for sid in PERMISSION_SYSTEM_IDS if wanted_systems is None or sid in wanted_systems
         }
         combined_points: list[dict[str, Any]] = []
+        retired_systems: dict[str, Any] = {}
 
         t_jd = t_start_jd
         points_computed = 0
@@ -169,17 +170,24 @@ def post_permission_curve(req: PermissionCurveRequest) -> dict[str, Any]:
                 ayanamsha_id=req.ayanamsha_id,
             )
             t_iso = detail["t_datetime_ist"]
+            retired_systems = dict(detail.get("retired_systems") or {})
             for s in detail["systems"]:
                 sid = s["system_id"]
                 if sid not in systems_out:
                     continue
-                systems_out[sid].append({
+                point = {
                     "t_jd": t_jd,
                     "t_datetime_ist": t_iso,
                     "active": bool(s["active"]),
                     "intensity": 1.0 if s["active"] else 0.0,
                     "weight": s["weight"],
-                })
+                }
+                if "status" in s:
+                    # a RETIRED generator (FOURQ-CLOSURE-20261027) is served as an honest null WITH its
+                    # reason (§N.7.6) -- never as a silently flat curve
+                    point["status"] = s["status"]
+                    point["empty_reason"] = s["empty_reason"]
+                systems_out[sid].append(point)
             combined_points.append({
                 "t_jd": t_jd, "t_datetime_ist": t_iso, "combined_permission": permission,
                 "system_count_active": detail["system_count_active"],
@@ -210,6 +218,8 @@ def post_permission_curve(req: PermissionCurveRequest) -> dict[str, Any]:
             "target_count": len(targets),
             "system_ids": list(systems_out.keys()),
             "systems": systems_out,
+            # every registered generator that is switched off, with its status and reason (empty when none is)
+            "retired_systems": retired_systems,
             "combined_permission_series": combined_points,
             "calibration_state": "structural_prior",
             "notes": notes,

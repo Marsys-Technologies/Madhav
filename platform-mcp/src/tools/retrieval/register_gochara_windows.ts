@@ -2429,9 +2429,9 @@ const ElectionAvoidanceInputSchema = z.object({
 
 export function dominantGraha(row: GocharaWindowRow): string | null {
   const active = (row.contributing_systems ?? []).filter((s) => s.active)
-  // Prefer a graha-double-transit system's own detail (guru_shani_double_transit
-  // names a real graha pair); otherwise fall back to the highest-weight active
-  // dasha lord if the detail carries one (best-effort, never fabricated).
+  // Read the first active system whose detail names a graha (the dasha lord, or a
+  // natal planet); best-effort, never fabricated. guru_shani_double_transit is switched
+  // off (FOURQ-CLOSURE-20261027) and is never active, so it never supplies the graha.
   for (const s of active) {
     const detail = s.detail as Record<string, unknown> | undefined
     const lord = detail?.['lord_graha'] ?? detail?.['natural_planet'] ?? detail?.['natal_planet']

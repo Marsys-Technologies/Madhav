@@ -79,7 +79,12 @@ def test_testimony_mode_renormalises_and_reports_lift(monkeypatch):
 
     system_ids = [s["system_id"] for s in detail["systems"]]
     assert "sade_sati" not in system_ids
-    assert all(s["weight"] > 0.0 for s in detail["systems"])
+    # every LIVE row keeps a positive weight; the guru_shani_double_transit row is SWITCHED OFF
+    # (FOURQ-CLOSURE-20261027): still registered, weight 0.0, never active, its reason stated
+    assert all(s["weight"] > 0.0 for s in detail["systems"] if "status" not in s)
+    gsdt = next(s for s in detail["systems"] if s["system_id"] == "guru_shani_double_transit")
+    assert gsdt["status"] == "retired_pending_reauthor" and gsdt["weight"] == 0.0 and gsdt["active"] is False
+    assert "FOURQ-CLOSURE-20261027" in gsdt["empty_reason"]
     assert "sade_sati" not in detail["systems_considered"]
 
     testimony = detail["sade_sati_testimony"]

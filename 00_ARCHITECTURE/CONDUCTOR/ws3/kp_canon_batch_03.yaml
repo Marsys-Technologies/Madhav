@@ -812,7 +812,8 @@ rules:
       and Saturn. Given their different orbital speeds, such simultaneous nakshatra
       transit of supportive nakshatras is relatively rare and thus a particularly
       reliable timing indicator when it occurs.
-    verified: true
+    verified: null
+    verification_note: "LLM-extracted paraphrase; no page-anchored quote in corpus (audit 2026-10-27)"
     stub: false
     stub_reason: null
 

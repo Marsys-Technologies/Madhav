@@ -27,7 +27,10 @@ from services.gochara_grammar import resonance_map as RM
 from services.gochara_grammar import dasha_data as DD
 from services.gochara_intensity.models import IntensityResult, CalibrationDisclosureError
 from services.gochara_intensity.promise import compute_promise
-from services.gochara_intensity.permission import compute_permission, SYSTEM_WEIGHTS, DASHA_SYSTEM_IDS
+from services.gochara_intensity.permission import (
+    compute_permission, SYSTEM_WEIGHTS, DASHA_SYSTEM_IDS, SCORED_SYSTEM_WEIGHTS, RETIRED_SYSTEM_IDS,
+    STATUS_RETIRED, scored_weight, retired_system_row,
+)
 from services.gochara_intensity.configuration_activity import compute_x_t
 from services.gochara_intensity.suppression import compute_suppression, SUPPRESSION_WEIGHTS
 from services.gochara_intensity.beta_priors import beta_for, DEFAULT_BETA
@@ -145,42 +148,72 @@ def test_permission_zero_when_no_systems_active():
     assert detail["systems_active"] == []
 
 
-def test_permission_guru_shani_double_transit_fires_for_real_marriage_house():
-    """THE actual acceptance bar for the RED-D fix, at the level that
-    actually matters -- `compute_permission` itself, the real production
-    consumer named by the RED-D finding ('PERMISSION generator #9
-    guru_shani_double_transit ... shows as inactive'). target_ref='7'
-    (Libra, chart 482012f1's real 7th/marriage house), target_sign only (no
-    target_longitude_deg -- exactly `gochara_intensity.enrichment.
-    enrich_target`'s live output shape for a bhava target), t_jd pinned to
-    the real 2013-12-11 LEL marriage event date, default window_days=15.0
-    (the generator's own production default, deliberately NOT widened for
-    this test -- proving the fix works at the window width production
-    actually uses, not just a generously widened test window).
+# ── FOURQ-CLOSURE-20261027: generator #10 is SWITCHED OFF ─────────────────────
+#
+# The specimen-dated test that stood here ("fires for the real marriage house",
+# pinned to a recorded event of the native) was the acceptance criterion the
+# provenance audit identified as the leakage mechanism. It is removed with the
+# rule. The replacements are synthetic: a fixture target, a neutral epoch, and
+# primitives that FAIL if called -- no ephemeris, chart value or event date is
+# an acceptance target.
 
-    Before the RED-D fix: drishti_contact/degree_contact required
-    target_longitude_deg, permanently unreachable for a bhava target. Before
-    THIS follow-up fix: even with drishti_contact's rasi-drishti fallback,
-    this generator's own `if target.target_longitude_deg is None: continue`
-    guard skipped bhava targets before ever calling it, AND pure aspect+
-    aspect `double_transit` could not represent Saturn's occupation of
-    Libra (as opposed to aspecting it) regardless. All three gaps are fixed
-    together here."""
+def _primitive_must_not_run(*a, **k):
+    raise AssertionError("a retired generator must not evaluate any primitive")
+
+
+def test_permission_guru_shani_double_transit_is_switched_off_and_emits_an_empty_result_with_reason(monkeypatch):
+    """Generator #10 stays REGISTERED (12 rows, stable weight table) but is never
+    evaluated: no primitive runs, no composition sentence of kind double_transit is
+    produced, the row is an honest null WITH its reason (§N.7.6), and nothing is scored."""
+    import services.gochara_intensity.permission as PERM
+
+    t_jd = 2451545.0  # J2000.0 -- a neutral epoch, not a chart or event date
     target = ResonanceTarget(
         chart_id=CHART_ID, event_class="marriage", target_type="bhava",
-        target_ref="7", weight=0.9, classical_citation="TEST FIXTURE",
-        target_sign="Libra",
+        target_ref="test-target", weight=0.5, classical_citation="TEST FIXTURE",
+        target_sign="Virgo",
     )
-    t_jd = _jd(2013, 12, 11)
+    monkeypatch.setattr(PERM.P, "drishti_contact", _primitive_must_not_run)
+    monkeypatch.setattr(PERM.P, "degree_contact", _primitive_must_not_run)
+    monkeypatch.setattr(PERM.P, "sign_occupation", _primitive_must_not_run)
+    monkeypatch.setattr(PERM.P, "av_threshold_state", lambda *a, **k: [])
+
     permission, detail = compute_permission(
         swe, None, CHART_ID, "marriage", [target], t_jd, dasha_periods=[],
     )
     gsdt = next(s for s in detail["systems"] if s["system_id"] == "guru_shani_double_transit")
-    assert gsdt["active"] is True
-    assert gsdt["detail"]["target_ref"] == "7"
-    assert gsdt["detail"]["operator"] == "double_transit_mixed"
-    assert "guru_shani_double_transit" in detail["systems_active"]
-    assert permission > 0.0
+    assert gsdt["active"] is False and gsdt["weight"] == 0.0
+    assert gsdt["status"] == STATUS_RETIRED == "retired_pending_reauthor"
+    assert gsdt["ruling_ref"] == "FOURQ-CLOSURE-20261027"
+    assert "FOURQ-CLOSURE-20261027" in gsdt["empty_reason"] and "not evaluated" in gsdt["empty_reason"]
+    assert gsdt["detail"] == {"empty_reason": gsdt["empty_reason"]}
+    assert gsdt["declared_prior_weight"] == SYSTEM_WEIGHTS["guru_shani_double_transit"] == 0.10
+    assert len(detail["systems_considered"]) == 12                      # still registered
+    assert "guru_shani_double_transit" not in detail["systems_active"]
+    assert detail["retired_systems"] == {"guru_shani_double_transit": {
+        "status": STATUS_RETIRED, "ruling_ref": "FOURQ-CLOSURE-20261027",
+        "empty_reason": gsdt["empty_reason"], "declared_prior_weight": 0.10}}
+    assert detail["scored_weight_total"] == pytest.approx(0.90)
+    assert permission == 0.0
+    # no served sentence / operator of kind double_transit anywhere in the result (the retired row carries
+    # only its reason text)
+    details = [s["detail"] for s in detail["systems"]]
+    assert not any(d.get("operator") in ("double_transit", "double_transit_mixed") or "is_guru_shani_double_transit" in d
+                   or "event_datetime_ist" in d for d in details)
+    assert gsdt == retired_system_row("guru_shani_double_transit")
+
+
+def test_system_weights_retired_split_leaves_every_live_prior_unchanged():
+    """The switch-off removes a generator from the SCORED sum, not from the
+    declared table: no other generator's weight moves, nothing is renormalised."""
+    assert RETIRED_SYSTEM_IDS == frozenset({"guru_shani_double_transit"})
+    assert set(SYSTEM_WEIGHTS) - set(SCORED_SYSTEM_WEIGHTS) == {"guru_shani_double_transit"}
+    assert all(SCORED_SYSTEM_WEIGHTS[s] == SYSTEM_WEIGHTS[s] for s in SCORED_SYSTEM_WEIGHTS)
+    assert sum(SCORED_SYSTEM_WEIGHTS.values()) == pytest.approx(0.90)
+    assert scored_weight("guru_shani_double_transit") == 0.0
+    assert scored_weight("vimshottari") == SYSTEM_WEIGHTS["vimshottari"]
+    with pytest.raises(ValueError):
+        retired_system_row("vimshottari")
 
 
 def test_permission_dasha_system_ids_cover_live_verified_names():

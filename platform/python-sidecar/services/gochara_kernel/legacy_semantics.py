@@ -127,6 +127,14 @@ DASHA_SYSTEM_IDS: tuple[str, ...] = (
 PERMISSION_SYSTEM_IDS: tuple[str, ...] = DASHA_SYSTEM_IDS + (
     "sade_sati", "guru_shani_double_transit", "av_threshold", "planetary_return",
 )
+# FOURQ-CLOSURE-20261027 (mirrors permission.py RETIRED_SYSTEM_IDS / SCORED_SYSTEM_WEIGHTS):
+# guru_shani_double_transit is SWITCHED OFF (retired_pending_reauthor) -- still one of
+# the 12 pinned ids and still in the denominator (SYSTEM_WEIGHTS is unchanged, so no
+# live generator is re-scaled), but it is never active and contributes 0.0.
+RETIRED_SYSTEM_IDS: frozenset[str] = frozenset({"guru_shani_double_transit"})
+SCORED_PERMISSION_SYSTEM_IDS: tuple[str, ...] = tuple(
+    s for s in PERMISSION_SYSTEM_IDS if s not in RETIRED_SYSTEM_IDS
+)
 
 # engine.py:107, engine.py:118 — mechanism toggles as served (BOTH enabled).
 W30_NODAL_DRISHTI_ENABLED: bool = True
@@ -306,14 +314,18 @@ def compute_promise(target_weights: list[float]) -> tuple[float, dict]:
 def compute_permission(systems_active: dict[str, bool]) -> float:
     """Reproduces engine.py:1241-1243 (which mirrors permission.py:362-364).
 
-    permission = sum(SYSTEM_WEIGHTS[s] for s active) / sum(SYSTEM_WEIGHTS).
+    permission = sum(SYSTEM_WEIGHTS[s] for s active AND scored) / sum(SYSTEM_WEIGHTS).
     The denominator is the full 12-system table (sums to 1.0,
     permission.py:100-114), so PERMISSION is a weighted fraction in [0,1].
     Unknown system ids in `systems_active` are ignored (the legacy engine
     only ever iterates the 12 pinned ids, engine.py:1187-1239).
+    FOURQ-CLOSURE-20261027: a RETIRED id (RETIRED_SYSTEM_IDS) contributes 0.0
+    even if a caller marks it active -- the numerator iterates
+    SCORED_PERMISSION_SYSTEM_IDS; the denominator is unchanged, so the
+    maximum is 0.90 and every live id's contribution is as before.
     """
     active_weight = sum(
-        SYSTEM_WEIGHTS[s] for s in PERMISSION_SYSTEM_IDS if systems_active.get(s, False)
+        SYSTEM_WEIGHTS[s] for s in SCORED_PERMISSION_SYSTEM_IDS if systems_active.get(s, False)
     )
     total_weight = sum(SYSTEM_WEIGHTS.values())
     return active_weight / total_weight if total_weight else 0.0
@@ -1386,6 +1398,7 @@ __all__ = [
     "LAMBDA_V3_FORMULA", "TERM_BREAKDOWN_FORMULA", "ACTIVITY_MAX_ORB_DEG",
     "ACTIVITY_PRIMITIVES", "VALENCE_TENSION_THRESHOLD",
     "VEDHA_GRADE_SUPPRESSION", "SYSTEM_WEIGHTS", "PERMISSION_SYSTEM_IDS",
+    "RETIRED_SYSTEM_IDS", "SCORED_PERMISSION_SYSTEM_IDS",
     "W30_NODAL_DRISHTI_ENABLED", "W23_TARA_BALA_ENABLED",
     "TARA_QUALITY", "TARA_MODIFIERS", "W30_SIGN_NAMES", "W30_ASPECT_MODIFIERS",
     "PEAK_SCAN_STRIDE_DAYS", "ADMISSION_PERCENTILE", "MIN_PEAK_SEPARATION_DAYS",

@@ -508,11 +508,16 @@ class TestI2NoV1ModulesEdited:
             )
 
     def test_composition_module_is_importable(self):
-        """The v1 composition module must import correctly."""
+        """The v1 composition module must import correctly, with its surviving operators.
+
+        `double_transit` is no longer the sentinel: the Jupiter–Saturn double-transit
+        operators were DELETED by ruling FOURQ-CLOSURE-20261027 (P4 switched off; see
+        composition.py docstring item 2), not by a v3 edit -- I2 is checked on the five
+        operators that remain, and the deletion itself is pinned."""
         from services.gochara_grammar import composition as CO
-        assert hasattr(CO, "double_transit"), (
-            "gochara_grammar.composition missing double_transit — I2 violation"
-        )
+        for name in ("simultaneity", "kartari", "cancellation", "amplification", "dasha_coincidence"):
+            assert hasattr(CO, name), f"gochara_grammar.composition missing {name!r} — I2 violation"
+        assert not hasattr(CO, "double_transit") and not hasattr(CO, "double_transit_mixed")
 
     def test_promise_module_is_importable(self):
         """The v1 promise module must import correctly."""

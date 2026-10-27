@@ -962,122 +962,13 @@ def test_composition_1_simultaneity():
     assert out[0].uncited_extension is True
 
 
-def test_composition_2_double_transit_marriage_specimen():
-    """
-    The wave's named double-transit specimen: two grahas' drishti/contact on
-    one natal target simultaneously, near 2013-12-11 (chart 482012f1's
-    marriage event per BRIEF_D5 §2). event_jd/event_dt below are pinned to
-    2013-12-11 exactly (jd 2456637.5 = swe.julday(2013,12,11,0.0), confirmed
-    via `python3 -c "import swisseph as swe; print(swe.julday(2013,12,11,0.0))"`
-    at implementation time) -- the member sentences are hand-built
-    ConfigurationSentence fixtures (two different grahas contacting the same
-    target_ref on that date), demonstrating the OPERATOR's pairing/detection
-    logic. This is NOT a live re-derivation against chart 482012f1's real
-    natal Venus/7th-lord degree (no DB reachable in this sandbox -- see
-    test_db_reachability_probe_and_sarvatobhadra_2025_05_live_attempt) --
-    that live re-derivation is a G-3/G-4/gate-time integration check.
-    """
-    jd_marriage = swe.julday(2013, 12, 11, 0.0)
-    sentences = [
-        _mk_sentence("drishti_contact", "venus_natal", jd_marriage, "Jupiter",
-                     detail={"signed_offset_from_target_deg": 2.1}),
-        _mk_sentence("drishti_contact", "venus_natal", jd_marriage + 0.3, "Saturn",
-                     detail={"signed_offset_from_target_deg": -1.4}),
-    ]
-    out = CO.double_transit(sentences, window_days=1.0)
-    assert len(out) >= 1
-    pair_planets = {out[0].detail["planet_a"], out[0].detail["planet_b"]}
-    assert pair_planets == {"Jupiter", "Saturn"}
-    # Jupiter+Saturn pairing -> the one double-transit combination this
-    # codebase has a live cited bg_transit_rules row for (migration 397).
-    assert out[0].uncited_extension is False
-    assert out[0].classical_citation is not None
-
-
-def test_composition_2b_double_transit_marriage_specimen_end_to_end_rasi_fix():
-    """RED-D end-to-end positive control: unlike
-    `test_composition_2_double_transit_marriage_specimen` above (hand-built
-    ConfigurationSentence fixtures demonstrating the operator alone), this
-    drives the REAL `P.drishti_contact` primitive -- the actual RED-D fix --
-    for both Jupiter and Saturn against a bhava target, target_sign only (no
-    target_longitude_deg, exactly the live enrichment shape), across the
-    real Nov-Dec 2013 window, then feeds the resulting sentences through the
-    real `CO.double_transit` operator.
-
-    Target sign is Sagittarius (not Libra): while chart 482012f1's natal
-    Saturn sits IN Libra (the 7th house), transiting Saturn's Nov-Dec 2013
-    presence THERE is itself an OCCUPATION of Libra, not a drishti (aspect
-    at a distance) onto it -- classically distinct techniques (occupation is
-    `sign_ingress`'s domain, already unaffected by RED-D; drishti_contact is
-    an aspect-from-elsewhere primitive and cannot legitimately claim a
-    planet aspects its own occupied sign). The genuine BOTH-legs-via-drishti
-    double-transit this same real Nov-Dec 2013 sky configuration produces is
-    onto Sagittarius (9th house from Aries lagna): transiting Jupiter in
-    Gemini casts its classical 7th-house aspect onto Sagittarius, AND
-    transiting Saturn in Libra casts its classical 3rd-house special aspect
-    (BPHS Ch.26, SPECIAL_DRISHTI_DEG) onto Sagittarius too -- verified live
-    via `_signs_casting_drishti_onto` at fix time. Before this fix, BOTH legs
-    were structurally undetectable (bhava target, no target_longitude_deg),
-    so this pipeline could never have produced a guru_shani_double_transit
-    hit for any bhava target at all -- this test reproduces that gap with an
-    astronomically real, verifiable configuration."""
-    target = ResonanceTarget(
-        chart_id=CHART_ID, event_class="marriage", target_type="bhava",
-        target_ref="9", weight=0.9, classical_citation="TEST FIXTURE",
-        target_sign="Sagittarius",
-    )
-    start_jd, end_jd = _jd(2013, 6, 1), _jd(2014, 6, 1)
-    contact_sentences = (
-        P.drishti_contact(swe, CHART_ID, target, start_jd, end_jd, planets=["Jupiter", "Saturn"])
-        + P.degree_contact(swe, CHART_ID, target, start_jd, end_jd, planets=["Jupiter", "Saturn"])
-    )
-    comps = CO.double_transit(contact_sentences, window_days=200.0)
-    guru_shani_hits = [c for c in comps if c.detail.get("is_guru_shani_double_transit")]
-    assert len(guru_shani_hits) >= 1
-    hit = guru_shani_hits[0]
-    assert hit.uncited_extension is False
-    assert hit.classical_citation is not None
-    assert hit.detail["target_ref"] == "9"
-
-
-def test_composition_2c_double_transit_mixed_marriage_specimen_real_libra_house():
-    """THE actual acceptance bar (coordinator follow-up, 2026-07-20): the
-    REAL marriage house (Libra, target_ref='7') across the real Nov-Dec
-    2013 window, target_sign only -- no target_longitude_deg, exactly the
-    live enrichment shape. Unlike `test_composition_2b` above (which had to
-    stand in with Sagittarius because pure aspect+aspect `double_transit`
-    structurally cannot represent Saturn's OCCUPATION of Libra), this drives
-    the real `sign_occupation` (Saturn's leg) + `drishti_contact` (Jupiter's
-    leg) primitives through the new `CO.double_transit_mixed` operator and
-    confirms guru_shani_double_transit fires for target_ref='7' itself --
-    the native's own worked example, not a substitute."""
-    target = ResonanceTarget(
-        chart_id=CHART_ID, event_class="marriage", target_type="bhava",
-        target_ref="7", weight=0.9, classical_citation="TEST FIXTURE",
-        target_sign="Libra",
-    )
-    start_jd, end_jd = _jd(2013, 6, 1), _jd(2014, 6, 1)
-    aspect_sentences = (
-        P.drishti_contact(swe, CHART_ID, target, start_jd, end_jd, planets=["Jupiter", "Saturn"])
-        + P.degree_contact(swe, CHART_ID, target, start_jd, end_jd, planets=["Jupiter", "Saturn"])
-    )
-    occupation_sentences = P.sign_occupation(swe, CHART_ID, target, start_jd, end_jd, planets=["Jupiter", "Saturn"])
-    comps = CO.double_transit_mixed(aspect_sentences + occupation_sentences, window_days=200.0)
-    guru_shani_hits = [c for c in comps if c.detail.get("is_guru_shani_double_transit")]
-    assert len(guru_shani_hits) >= 1
-    hit = guru_shani_hits[0]
-    assert hit.operator == "double_transit_mixed"
-    assert hit.uncited_extension is False
-    assert hit.classical_citation is not None
-    assert hit.detail["target_ref"] == "7"
-    assert hit.detail["occupying_planet"] == "Saturn"
-    assert hit.detail["aspecting_planet"] == "Jupiter"
-
-    # Regression: pure double_transit (aspect+aspect only) still finds
-    # NOTHING on this exact target -- proving double_transit_mixed is a
-    # genuinely additive capability, not a duplicate of the existing path.
-    pure_aspect_comps = CO.double_transit(aspect_sentences, window_days=200.0)
-    assert not any(c.detail.get("is_guru_shani_double_transit") for c in pure_aspect_comps)
+# ── #2 double_transit: the three specimen-dated tests that stood here (hand-built
+# fixtures pinned to a recorded event date of the native; a real-ephemeris run over
+# that event's window; and the deleted `double_transit_mixed` operator) were removed
+# under DOUBLE-TRANSIT-PROVENANCE-20261027: a specimen is not an acceptance criterion,
+# and the mixed leg they proved was the leaked detection widening. The operator's
+# contract (uncited testimony with attribution for Jupiter+Saturn) is covered by the
+# synthetic tests at the end of this module.
 
 
 def test_composition_3_kartari():
@@ -1463,3 +1354,28 @@ def test_mr41_reachability_gather_configuration_sentences_families_honest_per_pk
     )
     reason = P._gochara_vedha_pair_moon_frame_gap_reason(None)
     assert reason is not None and reason["follow_on_lane"] == "MR-43"
+
+
+# ── FOURQ-CLOSURE-20261027: the double-transit operators are DELETED ─────────
+
+def test_double_transit_operators_are_deleted_not_relabelled():
+    """P4 is switched off: neither the Jupiter–Saturn operator nor its 2026-07-20
+    `double_transit_mixed` sibling exists; no live generator can produce a
+    composition sentence of kind double_transit."""
+    assert not hasattr(CO, "double_transit") and not hasattr(CO, "double_transit_mixed")
+    assert "double_transit" not in CO.__all__ and "double_transit_mixed" not in CO.__all__
+    import services.gochara_intensity.permission as PERM
+    assert not hasattr(PERM, "CO")                      # the generator no longer imports composition at all
+
+
+def test_no_citation_constant_names_the_nonexistent_double_gochara_passage():
+    """The struck constant is gone, no citation string names the passage, and the
+    attribution the seven retired rows carry is NOT a member of __all__ (it is an
+    attribution, not a citation: the W2.9 catalog must never list it)."""
+    strings = [v for v in vars(C).values() if isinstance(v, str)]
+    assert strings and not any("§double-gochara" in v for v in strings)
+    assert not hasattr(C, "DOUBLE_GOCHARA_PHALADEEPIKA_26")
+    assert "DOUBLE_TRANSIT_COMMENTARIAL_ATTRIBUTION" not in C.__all__
+    assert all("double-gochara" not in getattr(C, name) for name in C.__all__)
+    assert C.FOURQ_CLOSURE_RULING_REF == "FOURQ-CLOSURE-20261027"
+    assert C.RETIRED_CITATION_PREFIX == C.STATUS_RETIRED_PENDING_REAUTHOR.upper() == "RETIRED_PENDING_REAUTHOR"

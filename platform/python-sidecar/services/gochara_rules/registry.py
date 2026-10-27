@@ -1641,3 +1641,67 @@ for _pid in DOCTRINE_PATHS:
     _row["score_rule"] = (f"{_row['score_rule']}; H table {H_TABLE_VERSIONS[DOCTRINE_VERSION]}@{DOCTRINE_VERSION} "
                           f"sha256:{h_table_sha256(DOCTRINE_VERSION)}")
 del _pid, _row
+
+
+# ══ FOURQ-CLOSURE-20261027 — P4 SWITCHED OFF: a NEW immutable row (registered, NOT bound) and a standing exclusion ═══
+# The provenance audit DOUBLE-TRANSIT-PROVENANCE-20261027 (DOUBLE_TRANSIT_PROVENANCE_v0_1.md) found no classical source
+# for the Jupiter–Saturn double-transit rule (the "Phaladeepika ch.26 §double-gochara" passage migration 397 cited does
+# not exist in the corpus — migration 565 CORPUS_GAP; Pravāha v3.0 already labels P4 modern K.N. Rao practice,
+# uncited_extension) and one confirmed instance of its detection logic being widened so a known specimen would fire.
+# The panel closure FOURQ-CLOSURE-20261027 switches P4 OFF entirely: status `retired_pending_reauthor`, not evaluated,
+# nothing admitted or scored; re-admission only via a panel-verified classical citation and a forward-only test.
+# HOW the kernel is switched off (the mechanism P5's hold already uses, never an edit of a sealed row — B.8; the P4 rows
+# 1.0.0–1.3.0 are persisted under migration 1154's insert-if-absent contract and bound into the century build's identity):
+#   * `DISABLED_PATHS` below is the registry DATUM; `gochara_kernel.inventory.standing_exclusions()` turns it into the
+#     planner's `excluded / tier_withheld_by_ruling / ruling:FOURQ-CLOSURE-20261027` pin for P4 in EVERY class, BEFORE any
+#     enumeration — so no P4 obligation, interval, record or window is planned, built, admitted or served; the verifier is
+#     told the same independently (`ka_gochara_v5.VERIFIER_PATH_RULINGS`) and the ruling enters the build identity
+#     (`_applicable_rulings`). The P4 enumerator is unreachable from every build/serve path; `enumerate_p4_edges` also
+#     returns [] for the disabled row below.
+#   * The row P4@1.4.0 carries the status in the catalogue: operator_role `testimony` (pending re-authoring; the only
+#     non-scoring value of the closed vocabulary), ruling FOURQ-CLOSURE-20261027, `disabled` True. It is REGISTERED only
+#     (SR-B1-Q3C-JOB pattern): in neither `rule_registry.BOUND_PATH_REFS` nor `DOCTRINE_PATH_REFS`, not selected, in no
+#     supersession table — every bound catalogue, selection and digest is byte-identical.
+#   * GOCHARA_DESIGN_SPECS_v1_4.md line 314 ("P4 … scored") is FROZEN and not edited: it is amended by the decision record
+#     DECISION_RECORD_P4_DEMOTION travelling with the PR (see CHANGE_NOTE_DOUBLE_TRANSIT_DEMOTION.md §Spec amendment).
+DOUBLE_TRANSIT_PROVENANCE_RULING = "DOUBLE-TRANSIT-PROVENANCE-20261027"
+FOURQ_CLOSURE_RULING = "FOURQ-CLOSURE-20261027"
+STATUS_RETIRED_PENDING_REAUTHOR = "retired_pending_reauthor"
+FOURQ_CLOSURE_RULING_TEXT = (
+    "FOURQ-CLOSURE-20261027 (panel closure, 2026-10-27: the Jupiter–Saturn double transit — permission generator #10, the "
+    "composition operators, kernel path P4 and the seven bg_transit_rules rows — is switched OFF, status "
+    "retired_pending_reauthor: not evaluated, not served, not scored; provenance DOUBLE-TRANSIT-PROVENANCE-20261027 — "
+    "commentarial practice (K.N. Rao school, 20th c.), no page-anchored classical statement in corpus, sole joint precedent "
+    "claimed Phaladīpikā XVII.12 unverified, detection logic once widened so a known specimen would fire; re-admission "
+    "only via a panel-verified classical citation and a forward-only test)")
+#: {path_id: the standing ruling that withholds it} — read by `gochara_kernel.inventory.standing_exclusions()`
+DISABLED_PATHS: dict[str, dict] = {
+    "P4": {"status": STATUS_RETIRED_PENDING_REAUTHOR, "ruling_ref": FOURQ_CLOSURE_RULING,
+           "reason": "tier_withheld_by_ruling", "provenance_ruling_ref": DOUBLE_TRANSIT_PROVENANCE_RULING},
+}
+
+
+def path_disabled(path_id: str) -> dict | None:
+    """The standing ruling that switches `path_id` off, or None."""
+    return DISABLED_PATHS.get(path_id)
+
+
+P4_TESTIMONY_VERSION = "1.4.0"
+# the retired row reads the SAME cited H table as 1.3.0 (its copied h_table_version / h_table_sha256 say so);
+# registering the version here is what lets `signature_houses(..., "1.4.0")` resolve instead of raising
+H_TABLE_VERSIONS[P4_TESTIMONY_VERSION] = H_TABLE_VERSIONS[DOCTRINE_VERSION]
+_p4_doctrine = RULE_PATHS[composite_ref("P4", DOCTRINE_VERSION)]
+RULE_PATHS[composite_ref("P4", P4_TESTIMONY_VERSION)] = {
+    **_p4_doctrine, "rule_version": P4_TESTIMONY_VERSION,
+    "operator_role": "testimony",
+    "ruling_ref": FOURQ_CLOSURE_RULING,
+    "status": STATUS_RETIRED_PENDING_REAUTHOR,
+    "disabled": True,
+    "score_rule": ("disabled: not evaluated, nothing admitted or scored on P4 "
+                   f"({FOURQ_CLOSURE_RULING_TEXT})"),
+    "note": (f"{FOURQ_CLOSURE_RULING}: P4 switched off ({STATUS_RETIRED_PENDING_REAUTHOR}); operator_role testimony "
+             "is pending re-authoring, never a licence to score; registered, not bound, not selected "
+             "(DECISION_RECORD_P4_DEMOTION)"
+             + (f"; {_p4_doctrine['note']}" if _p4_doctrine.get("note") else "")),
+}
+del _p4_doctrine

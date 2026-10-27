@@ -56,7 +56,12 @@ from panchang_engine.swiss_backend import records_swiss_backend
 # services.kala_trigger.trigger's own unratified 0.5/0.6 defaults. T-4
 # PERMISSION was admission-REJECTED (degrades train score) and is
 # deliberately NOT wired into this score anywhere in this file.
-TRIGGER_ADMITTED_ADDITIVE_WEIGHTS = {'guru_shani_double_transit': 0.2, 'saham_activation': 0.2}
+# DOUBLE-TRANSIT-PROVENANCE-20261027: the admitted additive weight for
+# `guru_shani_double_transit` (0.2) was a fitted artefact of a rule the
+# provenance audit demoted to testimony; it had no consumer (the additive side
+# is never applied here) and is DELETED, not relabelled. The current itself is
+# still computed and reported by compute_trigger_currents; it carries no weight.
+TRIGGER_ADMITTED_ADDITIVE_WEIGHTS = {'saham_activation': 0.2}
 TRIGGER_ADMITTED_SUPPRESSIVE_WEIGHTS = {'malefic_transit_over_mechanism': 0.2, 'papa_kartari_sandwich': 0.2}
 
 

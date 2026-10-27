@@ -174,12 +174,16 @@ SNAPSHOT_SUBSTEP = "snapshot"
 INVENTORY_SUBSTEP_PREFIX = "inventory:"
 VERIFY_SUBSTEP_PREFIX = "verify:"
 
-# The VERIFIER's own copy of the two standing rulings — deliberately NOT imported from
+# The VERIFIER's own copy of the standing rulings — deliberately NOT imported from
 # the builder's inventory module: the verifier is told its rulings independently of the
-# code it checks (draft §AM-5 item 4 / O-RP-9).
+# code it checks (draft §AM-5 item 4 / O-RP-9). P4 is switched OFF by the panel closure
+# FOURQ-CLOSURE-20261027 (retired_pending_reauthor; provenance DOUBLE-TRANSIT-PROVENANCE-20261027).
 VERIFIER_PATH_RULINGS = {"p5": {"reason": "tier_withheld_by_ruling",
                                 "basis": "ruling:ST-P5-HOLD-20261001",
-                                "ruling_ref": "ST-P5-HOLD-20261001"}}
+                                "ruling_ref": "ST-P5-HOLD-20261001"},
+                         "p4": {"reason": "tier_withheld_by_ruling",
+                                "basis": "ruling:FOURQ-CLOSURE-20261027",
+                                "ruling_ref": "FOURQ-CLOSURE-20261027"}}
 VERIFIER_H_UNKNOWN_RULING = {"reason": "inputs_unavailable",
                              "basis": "ruling:ST-H-UNKNOWN-20261002",
                              "ruling_ref": "ST-H-UNKNOWN-20261002"}
