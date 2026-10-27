@@ -613,7 +613,7 @@ coordination lease that produced it.
 - **Authority:** `SR-XC-FREEZE-482012f1` in the campaign ledger (`run/DECISIONS_SURROGATE.jsonl`), under `SR-BEFORE-SEAL` item 4; context `BEFORE_SEAL` B-03.
 - **Supersession:** none; append-only entry.
 
-## CCD-029 — Amendment of frozen GOCHARA_DESIGN_SPECS v1.4 §P4: Jupiter–Saturn double transit from scored to testimony (NR-P4-DEMOTION-20261027)
+## CCD-029 — Amendment of frozen GOCHARA_DESIGN_SPECS v1.4 §P4: Jupiter–Saturn double transit switched off (scored → off, testimony pending re-authoring) (NR-P4-DEMOTION-20261027)
 
 - **Date/tool/session:** 2026-10-27; Claude Code (KĀLA-YANTRA owner surrogate, session madhav-f9); cockpit item GP-13.
 - **Decision identifier:** `NR-P4-DEMOTION-20261027` — native direction recorded in `00_ARCHITECTURE/briefs/pravaha/decisions/D-SPECS_AMENDMENT_P4_v1_0.md` (status RECORDED_NATIVE_DIRECTION: the native's verbatim delegation to the surrogate after an AI-panel consultation, and the surrogate's closure `FOURQ-CLOSURE-20261027`: P4 switched off entirely, not merely demoted).

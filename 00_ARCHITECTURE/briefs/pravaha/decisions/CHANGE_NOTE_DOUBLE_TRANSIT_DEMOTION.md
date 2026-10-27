@@ -86,7 +86,7 @@ registered disabled row stamps no edge. **Boundary, stated plainly:** the enumer
 unchanged and remains callable directly (tests and the verifier's re-derivation do call it); no build or serving path reaches it.
 A global "P4 enumerates nothing at every version" would rewrite the kernel's DVI tier, final-rule contexts, inventory intervals
 and the verifier's independent P4 derivation across ~10 modules and dozens of sealed tests on an inert asset — not done
-(cockpit: minimal diff, no rebuild). **Consequence either way:** the sealed century build's P4 inventory pins and records were
+(cockpit: minimal diff, no rebuild). **Consequence either way:** the unsealed 5.0 candidate rows' P4 inventory pins and records were
 produced with P4 included; its next re-verification under the current code will report the P4 grains as disagreeing with the
 stored generation. That is the ruling taking effect, not a defect; no rebuild or backfill is triggered by this PR (owner stop
 order), and none is required for the served effect (§2 live engines).
@@ -143,7 +143,7 @@ excludes P4 for a **synthetic chart** under both profiles, disabled row stamps n
 
 ## 8. Not verified / left undone (plainly)
 * Migration 1412 has NOT been applied to any real database; its behaviour is proven on a disposable cluster against the reconstructed table only. The production rows' pre-state must be 1320's (the migration refuses anything else).
-* The sealed century build's next re-verification will report P4 (§4). Not re-run here; no rebuild.
+* The unsealed 5.0 candidate rows' next re-verification will report P4 (§4). Not re-run here; no rebuild.
 * The kernel's P4 enumerator for sealed versions remains directly callable (§4).
 * The citation census (`asset_census` Ldgr detector) may now read the seven rows as unsourced/placeholder-prefixed — that is accurate; not run here.
 * `GOCHARA_DESIGN_SPECS_v1_4.md` line 314 is amended by reference by D-SPECS_AMENDMENT_P4_v1_0 (§6); the spec file stays byte-identical.

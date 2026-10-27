@@ -21,7 +21,7 @@ changelog:
   - "1.0: Record the native's direction to shut off the Jupiter–Saturn double transit (P4), his delegation of the closure to the surrogate after an AI-panel consultation (Gemini Argon, GPT-6-Astra), the surrogate's closure (P4 off entirely) and the provenance grounds; amend the frozen spec's P4 role from scored to off by reference."
 ---
 
-# Amendment to GOCHARA_DESIGN_SPECS v1.4 §P4 — double transit moves from scored to testimony
+# Amendment to GOCHARA_DESIGN_SPECS v1.4 §P4 — Jupiter–Saturn double transit switched off (scored → off, testimony pending re-authoring)
 
 ## Native direction
 
