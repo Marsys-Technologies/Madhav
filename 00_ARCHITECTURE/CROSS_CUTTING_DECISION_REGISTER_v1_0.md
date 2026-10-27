@@ -612,3 +612,13 @@ coordination lease that produced it.
 - **Start and end:** the START event is recorded in the KĀLA-YANTRA ledger at dispatch, and the W3W4 lease row carries the same note. The END event is recorded at seal, or at an abandoned/aborted window. Until the START event exists, the freeze is announced, not in force.
 - **Authority:** `SR-XC-FREEZE-482012f1` in the campaign ledger (`run/DECISIONS_SURROGATE.jsonl`), under `SR-BEFORE-SEAL` item 4; context `BEFORE_SEAL` B-03.
 - **Supersession:** none; append-only entry.
+
+## CCD-029 — Amendment of frozen GOCHARA_DESIGN_SPECS v1.4 §P4: Jupiter–Saturn double transit from scored to testimony (NR-P4-DEMOTION-20261027)
+
+- **Date/tool/session:** 2026-10-27; Claude Code (KĀLA-YANTRA owner surrogate, session madhav-f9); cockpit item GP-13.
+- **Decision identifier:** `NR-P4-DEMOTION-20261027` — native direction recorded in `00_ARCHITECTURE/briefs/pravaha/decisions/D-SPECS_AMENDMENT_P4_v1_0.md` (status RECORDED_NATIVE_DIRECTION: the native's verbatim delegation to the surrogate after an AI-panel consultation, and the surrogate's closure `FOURQ-CLOSURE-20261027`: P4 switched off entirely, not merely demoted).
+- **Why cross-cutting:** amends a frozen Pravāha design spec (`GOCHARA_DESIGN_SPECS_v1_4.md` §P4, frozen sha256 `d5097ca18a…786a47`, by reference — the file stays byte-identical) and changes gochara rule semantics used by open PRs in the Suvarṇa/L0 and L3 lanes.
+- **Content:** P4 `operator_role` scored → off (disabled, unserved, testimony pending blind re-authoring by the panel); `double_transit_mixed` and its OR-combination deleted; legacy aspect-only operator retired; permission generator #10 and mirrors emit nothing; the seven `double_transit` rows relabelled `RETIRED_PENDING_REAUTHOR` by migration 1412 (false citation struck, count kept at 7, serving consumers skip them); unwired fitted weight deleted; WS-3 canon rows `verified` nulled. No Gochara 5.0 rebuild (OWNER-STOP-5_0-EXECUTION-20261027).
+- **Grounds (ids only):** provenance audit `DOUBLE_TRANSIT_PROVENANCE_v0_1`; PR #651; migrations 397/565; Pravāha v3.0 sealed doctrine (P4 `uncited_extension`); independent red-teams `FABLE-REDTEAM-RULEBOOK-RESULT-20261027`, `ARGON-REDTEAM-RULEBOOK-RESULT-20261027`.
+- **Implementation:** branch `kalayantra/demote-double-transit-testimony` (commit afcbd67; migration 1412), change note `00_ARCHITECTURE/briefs/pravaha/decisions/CHANGE_NOTE_DOUBLE_TRANSIT_DEMOTION.md`; routed through the cockpit's normal PR route after the native's confirmation.
+- **Re-admission:** only via the Rule Book panel protocol with a page-anchored pre-modern quotation; accuracy claims only via the public-chart track.

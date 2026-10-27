@@ -103,8 +103,8 @@ order), and none is required for the served effect (§2 live engines).
 ## 6. Spec amendment
 
 `00_ARCHITECTURE/GOCHARA_DESIGN_SPECS_v1_4.md` line 314 defines P4 as "scored". That file is FROZEN and is **not edited** by this
-PR. Line 314 is amended by the decision record **DECISION_RECORD_P4_DEMOTION** travelling with this PR (placeholder path, supplied
-by the surrogate: `00_ARCHITECTURE/decisions/DECISION_RECORD_P4_DEMOTION.md`), which records FOURQ-CLOSURE-20261027: P4 is
+PR. Line 314 is amended by the decision record **D-SPECS_AMENDMENT_P4_v1_0** travelling with this PR
+(`00_ARCHITECTURE/briefs/pravaha/decisions/D-SPECS_AMENDMENT_P4_v1_0.md`; register entry CCD-029), which records FOURQ-CLOSURE-20261027: P4 is
 disabled (`retired_pending_reauthor`), its `operator_role` left as `testimony` pending re-authoring, nothing admitted or scored.
 The registry's P4@1.4.0 row and `DISABLED_PATHS["P4"]` cite the record in their comments.
 
@@ -115,7 +115,7 @@ DVI tier admits nothing anywhere. The document is left as is.
 ## 7. Tests
 
 Removed (they encoded a recorded event of the native as the acceptance criterion — the leakage pattern the ledger now forbids —
-or tested deleted code): `test_gochara_grammar.py::test_composition_2_double_transit_marriage_specimen`, `…2b_…end_to_end_rasi_fix`,
+or tested deleted code): `test_gochara_grammar.py::test_composition_2_double_transit_<specimen>`, `…2b_…end_to_end_rasi_fix`,
 `…2c_double_transit_mixed_…`; `test_gochara_intensity.py::test_permission_guru_shani_double_transit_fires_for_real_marriage_house`.
 Retained (primitive-level, the primitive stays): the `sign_occupation` and `drishti_contact` rasi-fallback tests.
 
@@ -146,7 +146,7 @@ excludes P4 for a **synthetic chart** under both profiles, disabled row stamps n
 * The sealed century build's next re-verification will report P4 (§4). Not re-run here; no rebuild.
 * The kernel's P4 enumerator for sealed versions remains directly callable (§4).
 * The citation census (`asset_census` Ldgr detector) may now read the seven rows as unsourced/placeholder-prefixed — that is accurate; not run here.
-* `GOCHARA_DESIGN_SPECS_v1_4.md` line 314 stands until DECISION_RECORD_P4_DEMOTION is filed (§6).
+* `GOCHARA_DESIGN_SPECS_v1_4.md` line 314 is amended by reference by D-SPECS_AMENDMENT_P4_v1_0 (§6); the spec file stays byte-identical.
 * Documents naming the rule (Pravāha sealed set, D-5 briefs, `SHAD_DARSHANA_BRIEF_v2_0.md`, `plan_model.json` D-P4/RQ-8) are not edited.
 * This note sits at the worktree root per the brief; ROOT_FILE_POLICY §1 would place it under `00_ARCHITECTURE/briefs/`.
 
