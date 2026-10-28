@@ -625,10 +625,15 @@ class TestI2NoGrammarModified:
             )
 
     def test_composition_module_unchanged(self):
-        """gochara_grammar.composition still exposes double_transit."""
+        """gochara_grammar.composition still exposes its five live operators. `double_transit` is ABSENT by ruling:
+        FOURQ-CLOSURE-20261027 (PR #3928) deleted it, not W1.5 work."""
         from services.gochara_grammar import composition as CO
-        assert hasattr(CO, "double_transit"), (
-            "gochara_grammar.composition missing double_transit — AC6/I2 violation"
+        for fn_name in ("simultaneity", "kartari", "cancellation", "amplification", "dasha_coincidence"):
+            assert hasattr(CO, fn_name), (
+                f"gochara_grammar.composition missing {fn_name!r} — AC6/I2 violation"
+            )
+        assert not hasattr(CO, "double_transit"), (
+            "double_transit was deleted under FOURQ-CLOSURE-20261027; it must not come back without a panel-verified citation"
         )
 
     def test_w15_engine_fields_not_in_grammar_modules(self):

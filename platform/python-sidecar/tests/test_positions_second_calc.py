@@ -120,7 +120,10 @@ def test_the_tolerances_and_boundary_rule_are_the_declared_ones():
         if d["kind"] in ("circular_deg", "circular_30", "linear"):
             assert d["tol"] == V.TOL_DEG, col
         assert V._kind(col) == d["kind"], col
-    assert {c: (b["width"], b["cells"]) for c, b in spec["boundary"].items()} == pytest.approx(V._BOUNDARY)
+    declared = {c: (b["width"], b["cells"]) for c, b in spec["boundary"].items()}
+    assert declared.keys() == V._BOUNDARY.keys()
+    for c, pair in declared.items():                                  # pytest 9.2 refuses approx() over a dict of tuples
+        assert pair == pytest.approx(V._BOUNDARY[c]), c
     assert spec["conventions"]["position_model"]["value"] == "true_geometric"
     assert spec["conventions"]["node_model"]["value"] == "mean_node"
 

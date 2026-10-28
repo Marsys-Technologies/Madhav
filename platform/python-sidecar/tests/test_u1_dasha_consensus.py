@@ -156,7 +156,7 @@ class TestGLadderMultiplier:
         (0, 0.5),   # 0/7=0 → floor at 0.5
         (1, 0.5),   # 1/7≈0.143 → floor at 0.5
         (3, 0.5),   # 3/7≈0.429 → floor at 0.5
-        (4, pytest.approx(4/7, rel=0.01)),  # 4/7≈0.571 > 0.5
+        (4, 4/7),   # 4/7≈0.571 > 0.5 (the 1% tolerance is applied by the assertion; a pre-built approx() here breaks pytest 9.2)
         (7, 1.0),   # 7/7=1.0
     ])
     def test_g_ladder_multiplier(self, count, expected_mult):
