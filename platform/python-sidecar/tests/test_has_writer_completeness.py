@@ -68,6 +68,8 @@ KNOWN_HAS_WRITER_TRUE: frozenset[str] = frozenset({
     "bg_yogas",
     # K-CERT-2: migration 1362 pairs registration with the registry flip.
     "bg_gochara_citation_resolution",
+    # Rule Book engine E2: migration 1413's asset_registry INSERT carries has_writer=true.
+    "bg_rule_book",
     # ── L0 Brahmagyan — migrations 387-389 (BA-P3A) ──────────────────────────
     "bg_class_priors",
     "bg_ghatana",

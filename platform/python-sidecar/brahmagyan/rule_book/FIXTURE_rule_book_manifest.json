@@ -1,0 +1,136 @@
+{
+  "card_file": "FIXTURE_rule_book_cards.json",
+  "card_file_sha256": "20a1918a0fb0554475947f95415ca549a853ca15f381688a30162f882a2720b5",
+  "cards": [
+    {
+      "card_id": "FIX-NATAL-1",
+      "card_sha256": "56bf2947bef2e8ed2305a68f18993ca71dcdda085ff7c2042fb223a721a7e934",
+      "ratification_sha256": "56bf2947bef2e8ed2305a68f18993ca71dcdda085ff7c2042fb223a721a7e934",
+      "redaction_map": []
+    },
+    {
+      "card_id": "FIX-DASHA-1",
+      "card_sha256": "4ba4c5524e7c9dbd766bc1ef436635da8c46c775d8832fcbb3d8d19113cd099b",
+      "ratification_sha256": "4ba4c5524e7c9dbd766bc1ef436635da8c46c775d8832fcbb3d8d19113cd099b",
+      "redaction_map": []
+    },
+    {
+      "card_id": "FIX-TESTIMONY-1",
+      "card_sha256": "29f8d63b878d0cd49972ae84a4943c658e70a72a0f94cf96d5af5c3685a065f7",
+      "ratification_sha256": "29f8d63b878d0cd49972ae84a4943c658e70a72a0f94cf96d5af5c3685a065f7",
+      "redaction_map": []
+    },
+    {
+      "card_id": "FIX-QUAR-MEAN-1",
+      "card_sha256": "161169bb06e53601a0510a6fc5ab4e9d8cc7d40fd68db67247c51b3094a513e7",
+      "ratification_sha256": "161169bb06e53601a0510a6fc5ab4e9d8cc7d40fd68db67247c51b3094a513e7",
+      "redaction_map": []
+    },
+    {
+      "card_id": "FIX-WITHDRAWN-1",
+      "card_sha256": "1208fc1105ab8f2a4f90cb12a559319cb2f97eec841b6bf48655f899ccd34253",
+      "ratification_sha256": "1208fc1105ab8f2a4f90cb12a559319cb2f97eec841b6bf48655f899ccd34253",
+      "redaction_map": [],
+      "status": "withdrawn",
+      "withdrawn_reason": "FIXTURE: panel withdrew the card (no comparator in the verse)"
+    },
+    {
+      "card_id": "FIX-REDACTED-1",
+      "card_sha256": "a9bf21a3387bda90ea5ed9d7e50c6583210e34c2fbb81b0e238435c3e539eb57",
+      "ratification_sha256": "bb1d3bcb53005fe499a9f6f388d509f3af4dedce34a0855aa0ce8e35227beff4",
+      "redaction_map": [
+        {
+          "path": "/field1_citation",
+          "quote_sha256": "a32c01303e823e1fc2e9a26cf07122481341b8d089ed73c893a70978968ce6dd",
+          "text_id": "phaladeepika"
+        }
+      ]
+    },
+    {
+      "card_id": "FIX-HASH-1",
+      "card_sha256": "ad5bf89cd95ca0f04d489a3c087d315dc822192a3af9258e5c87386149978ad8",
+      "ratification_sha256": "ad5bf89cd95ca0f04d489a3c087d315dc822192a3af9258e5c87386149978ad8",
+      "redaction_map": [],
+      "text_attestation": {
+        "ast_version": "rulebook-ast-v1.0",
+        "attestation_schema": "rule-book-text-attestation-v1",
+        "card_sha256": "ad5bf89cd95ca0f04d489a3c087d315dc822192a3af9258e5c87386149978ad8",
+        "compiler_version": "rulebook-compiler-v1.0",
+        "ir": {
+          "assessability": "evaluable",
+          "ast_version": "rulebook-ast-v1.0",
+          "bhava_groups_version": "bhava-groups-v1.0",
+          "card_id": "FIX-HASH-1",
+          "category": "natal_promise",
+          "citation": {
+            "chunk_id": "synthtext_pg9003_c01",
+            "frame_passage_ids": [],
+            "locus": "FIXTURE.3",
+            "passage_ids": [
+              "synthtext_pg9003_c01:en:p001"
+            ],
+            "quote_sha256": "e5a68ac7a33155ba75042d23cab865f0d6a45bf0c456b5c21d5c9e355eb2414f",
+            "text_id": "synthtext"
+          },
+          "class_groups": [
+            "major_gain"
+          ],
+          "compiler_version": "rulebook-compiler-v1.0",
+          "convention_pending": [],
+          "counting": {
+            "counts_toward_n": true,
+            "testimony": false
+          },
+          "exceptions": [],
+          "frame": {
+            "attested": false,
+            "declared": "janma_lagna",
+            "frame_role": null,
+            "frames_py_kind": "lagna",
+            "reference_sign_source": "CF(graha_position, LAGNA, sign)",
+            "relevance": "invariant",
+            "role_operand": null
+          },
+          "gate": {
+            "bhava_group": null,
+            "bhavas": [],
+            "comparison": null,
+            "frame": "janma_lagna",
+            "graha": "shukra",
+            "graha_class": null,
+            "node": "pred",
+            "node_model": null,
+            "obstructors": null,
+            "operand_id": "ven_r",
+            "plane": "natal",
+            "relation": "retrograde",
+            "role": "natal_graha",
+            "source": {
+              "key": "graha_position.<SUBJ>.retrograde_flag",
+              "status": "ok",
+              "table": "chart_facts"
+            },
+            "target_role": null
+          },
+          "graha_class_table_version": "graha-class-v1.0",
+          "polarity": "promotive",
+          "provenance": "verse_cited",
+          "quarantine": [],
+          "schema_version": "rule-card-v1.2",
+          "status": "active",
+          "unused_operands": []
+        },
+        "ir_sha256": "7286e7b692aa3b44fb87f4ae78e40e95220c4407c9c0d4a7dd885f30024afaf5",
+        "quarantine_reason": null,
+        "status": "active"
+      }
+    }
+  ],
+  "change_register_ids": [
+    "FIXTURE-CR-0"
+  ],
+  "fixture": true,
+  "manifest_schema": "rule-book-manifest-v1",
+  "note": "FIXTURE ONLY. The writer refuses this manifest unless rule_book_allow_fixture is set; the DB forbids a FIXTURE- version from becoming current.",
+  "rulebook_version": "FIXTURE-0.1"
+}
