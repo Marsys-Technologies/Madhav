@@ -70,7 +70,8 @@ def _builder_flow(w):
         w.boot()
         w.seed("saturn", [(180.0, _t(1, 10)), (210.0, _t(2, 20))])
         counts = _materialise(w, "P3", {"saturn": (_t(1, 10), _t(2, 20))})
-        out = {p: w.step(f"window:{CLS}:{p}") for p in ("P1", "P2", "P3", "P4")}      # the BUILDER's steps only
+        # the BUILDER's steps only; P4 has no window step (switched off, FOURQ-CLOSURE-20261027: the writer's plan is P1-P3)
+        out = {p: w.step(f"window:{CLS}:{p}") for p in ("P1", "P2", "P3")}
     return counts, out
 
 

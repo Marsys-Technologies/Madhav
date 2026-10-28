@@ -65,7 +65,7 @@ def test_a_staged_century_config_reaches_the_writer_config_and_the_rule_profile(
     assert resolved.config["gochara_v5_defer_in_build_verify"] is defer
     assert resolved.config["horizon"] == HORIZON and writer_mod._effective_horizon(resolved, None) == HORIZON
     assert resolved.config["result_policy"] == "window_qualification/1"                  # OD-1: the staged policy reaches the manifest step's `ctx.config.get("result_policy")`
-    assert len(writer_mod.GocharaV5Writer().plan_substeps(_ctx(manifest))) == 298            # the full, unsliced plan
+    assert len(writer_mod.GocharaV5Writer().plan_substeps(_ctx(manifest))) == 246            # the full, unsliced plan (P4 off, FOURQ-CLOSURE-20261027: was 298)
 
     seen = {}
     monkeypatch.setattr(writer_mod, "_ephe_path", lambda ctx: "ephe")
@@ -100,9 +100,9 @@ def test_an_unmarked_run_without_a_horizon_refuses_by_name(monkeypatch, config):
 def test_an_unmarked_run_naming_both_is_not_refused_and_a_dry_run_executes_nothing_so_is_not_guarded():
     named = _ctx({}, gochara_v5_final_rules=False, horizon=HORIZON)
     assert writer_mod._resolve_run_config(named) is named                           # nothing staged, nothing to overlay
-    assert len(writer_mod.GocharaV5Writer().plan_substeps(named)) == 298
+    assert len(writer_mod.GocharaV5Writer().plan_substeps(named)) == 246   # P4 off (FOURQ-CLOSURE-20261027): was 298
     bare_dry_run = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b", db_conn=None, config={"chart_id": CHART_ID}, dry_run=True)
-    assert len(writer_mod.GocharaV5Writer().plan_substeps(bare_dry_run)) == 298
+    assert len(writer_mod.GocharaV5Writer().plan_substeps(bare_dry_run)) == 246   # P4 off (FOURQ-CLOSURE-20261027): was 298
 
 
 def test_the_refusal_comes_after_the_configuration_checks_so_a_misprovisioned_job_still_fails_before_any_database_use():
@@ -124,7 +124,7 @@ def test_a_test_slice_needs_neither_profile_nor_horizon_and_takes_no_century_con
     """Claim 4: the measuring build (a test slice) sets its scope in its marker and always runs the measuring rules, exactly as before."""
     marked = {writer_mod.TEST_SLICE_KEY: _marker()}
     plan = writer_mod.GocharaV5Writer().plan_substeps(_ctx(marked))
-    assert 0 < len(plan) < 298
+    assert 0 < len(plan) < 246   # P4 off (FOURQ-CLOSURE-20261027): was 298
     monkeypatch.setattr(writer_mod, "_ephe_path", lambda ctx: "ephe")
     seen = {}
     monkeypatch.setattr(writer_mod.GocharaV5Writer, "_run_resolved_substep",
@@ -194,7 +194,7 @@ def test_a_century_config_edited_after_dispatch_is_refused_not_read():
         writer_mod.GocharaV5Writer().plan_substeps(ctx)
     ok = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b", db_conn=_ManifestConn(manifest, digest=stored_digest),
                      config={"chart_id": CHART_ID}, dry_run=False)
-    assert len(writer_mod.GocharaV5Writer().plan_substeps(ok)) == 298
+    assert len(writer_mod.GocharaV5Writer().plan_substeps(ok)) == 246   # P4 off (FOURQ-CLOSURE-20261027): was 298
 
 
 # ── 8. OD-1: the numeric-result policy is explicit on a final-rules run ───────────────────────────────────────────────────────────────────────

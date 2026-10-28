@@ -360,6 +360,72 @@ def _follow_ndh_in_place_manifest(vector: dict) -> dict:
     return out
 
 
+# FOURQ-CLOSURE-20261027 (owner-approved): the Jupiter-Saturn double-transit path P4 is switched OFF (registry DISABLED_PATHS; `inventory.standing_exclusions()` pins it
+# `excluded / tier_withheld_by_ruling` in EVERY class before any enumeration). The accepted P06 capture searched P4, so a P4-off build legitimately differs from it in exactly the
+# observations below, and in nothing else; the stored golden is NOT edited. Each pin is asserted on the golden EXACTLY as captured (never silent or vacuous) and compared strictly
+# at its new value; the counts are the P4 contribution (also seen independently as the 8 P4 "declared edges" of the coverage note, 165 -> 157), and the one ordered-statement hash
+# that moves is the inventory substep's, whose transcript loses exactly those 8 obligation + 8 interval INSERTs (shape counts and total count are derived below, only the order hash
+# is a literal, re-derived by script from this test's own capture exactly as NDH_RULES_SEQUENCE_SHA256 is). The P5 hold, every other path, every outcome of every other substep,
+# every other row count and every other SQL shape stay compared to the golden unchanged.
+P4_OFF_OBLIGATIONS, P4_OFF_INTERVALS = 8, 8
+GOLDEN_OBLIGATIONS, GOLDEN_INTERVALS, GOLDEN_COVERAGE_EDGES = 126, 138, 165
+P4_OFF_INVENTORY_SEQUENCE_SHA256 = "74831aa2cfffee7f5f3f254357c0b03c5c5c8d9da6699969a77868aae8af4413"
+FOURQ_CLOSURE_RULING = "FOURQ-CLOSURE-20261027"
+
+
+def _follow_p4_off(golden: dict) -> dict:
+    """The golden with the observations P4 being switched off (FOURQ-CLOSURE-20261027) changes: the inventory's P4 pin reads excluded (8 fewer obligations and intervals), the coverage note's
+    declared-edge count, the two search-table row counts from the inventory onward, and the inventory substep's INSERT shape counts / total / ordered-statement hash."""
+    out = json.loads(json.dumps(golden))
+    ob, iv_ = GOLDEN_OBLIGATIONS - P4_OFF_OBLIGATIONS, GOLDEN_INTERVALS - P4_OFF_INTERVALS
+    seen_inventory = False
+    for sub in out["substeps"]:
+        key = sub["key"]
+        if key == f"{writer_mod.INVENTORY_SUBSTEP_PREFIX}{CLASS}":
+            seen_inventory = True
+            outcome = sub["outcome"]
+            assert outcome["rows_inserted"] == 134 and f"{GOLDEN_OBLIGATIONS} obligations, {GOLDEN_INTERVALS} intervals" in outcome["notes"], "the golden names its inventory outcome"
+            assert "P4:included,P4:excluded" in outcome["notes"], "the golden searched P4 (its first P4 pin was included)"
+            outcome["rows_inserted"] = 134 - P4_OFF_OBLIGATIONS        # 134 = 126 obligations + 8 path pins; the interval rows are not counted in it
+            outcome["notes"] = outcome["notes"].replace(f"{GOLDEN_OBLIGATIONS} obligations, {GOLDEN_INTERVALS} intervals", f"{ob} obligations, {iv_} intervals").replace(
+                "P4:included,P4:excluded", "P4:excluded,P4:excluded")
+            st = sub["statements"]
+            shapes = st["shapes"]
+            ob_shape = next(k for k in shapes if k.startswith("13|INSERT INTO public.ka_gochara_search_obligation "))
+            iv_shape = next(k for k in shapes if k.startswith("8|INSERT INTO public.ka_gochara_search_interval "))
+            assert (shapes[ob_shape], shapes[iv_shape]) == (GOLDEN_OBLIGATIONS, GOLDEN_INTERVALS), "the golden inserts one row per obligation and per interval"
+            shapes[ob_shape], shapes[iv_shape] = ob, iv_
+            assert st["count"] == 315, "the golden names the inventory transcript's statement count"
+            st["count"] -= P4_OFF_OBLIGATIONS + P4_OFF_INTERVALS
+            st["sequence_sha256"] = P4_OFF_INVENTORY_SEQUENCE_SHA256
+        if key == f"{writer_mod.COVERAGE_SUBSTEP_PREFIX}{CLASS}":
+            old = f"{GOLDEN_COVERAGE_EDGES} declared edges over P1–P4"
+            assert old in sub["outcome"]["notes"], "the golden names the coverage note's declared-edge count"
+            sub["outcome"]["notes"] = sub["outcome"]["notes"].replace(old, f"{GOLDEN_COVERAGE_EDGES - P4_OFF_OBLIGATIONS} declared edges over P1–P4")
+        if seen_inventory:
+            assert (sub["counts"]["ka_gochara_search_obligation"], sub["counts"]["ka_gochara_search_interval"]) == (GOLDEN_OBLIGATIONS, GOLDEN_INTERVALS), key
+            sub["counts"]["ka_gochara_search_obligation"], sub["counts"]["ka_gochara_search_interval"] = ob, iv_
+        else:
+            assert (sub["counts"]["ka_gochara_search_obligation"], sub["counts"]["ka_gochara_search_interval"]) == (0, 0), key
+    assert seen_inventory
+    return out
+
+
+def _follow_p4_off_manifest(vector: dict, rulings: list) -> dict:
+    """The golden's manifest vector with the ONE component P4 being switched off moves: `rulings_digest`. The build applies the standing exclusion ruling (AM-16: the rulings are part of the
+    identity), so the head's applied rulings are the golden's plus exactly one record, FOURQ-CLOSURE-20261027's. `rulings` is the head's applied list; the golden's is proven here to be that list
+    without the one record (its digest is the golden's stored digest), so the new digest is derived, not pasted."""
+    from services.gochara_kernel import input_vector as iv
+
+    record = {"id": FOURQ_CLOSURE_RULING, "reason": "tier_withheld_by_ruling", "basis": f"ruling:{FOURQ_CLOSURE_RULING}"}
+    assert rulings.count(record) == 1, "the head applies the P4 switch-off ruling exactly once"
+    before = [r for r in rulings if r != record]
+    assert iv.rulings_digest(before) == vector["rulings_digest"], "without that one record the head's rulings are the golden's (vacuity guard)"
+    out = json.loads(json.dumps(vector))
+    out["rulings_digest"] = iv.rulings_digest([*before, record])
+    return out
+
+
 # SR-OD1 I1 (OD-1 D2 / P1a): two READ shapes of the window and rule-registry stages gained one selected column each, and (SR-F4-STORE-EXACT) three of the window stage's reads gained float8 casts. The accepted P06 capture predates both, so its two
 # shapes are compared through this adaptation and nothing else is relaxed: each pair below is (the golden's fragment, the head's fragment); every statement is otherwise
 # byte-compared, in order, with the same parameter counts, and the head must issue the new fragment EXACTLY as often as the golden issued the old one (never silently or vacuously).
@@ -443,7 +509,7 @@ def head(template):
 
 def test_every_substep_kind_of_a_markerless_run_equals_mains_except_the_one_read_only_state_guard_select(head):
     got, raw = head
-    want = _follow_ndh_in_place_rows(_follow_p1_ledger(_follow_settlement(_load())))
+    want = _follow_p4_off(_follow_ndh_in_place_rows(_follow_p1_ledger(_follow_settlement(_load()))))
     assert [s["key"] for s in got["substeps"]] == [s["key"] for s in want["substeps"]]
     adapted = [0] * len(OD1_READ_ADAPTATIONS)
     kinds = {s["key"].split(":")[0].split(" ")[0] for s in want["substeps"]}
@@ -507,7 +573,9 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
 
     No `horizon_basis` or `test_slice` component may appear in an ordinary run.
     """
-    got, want = head[0]["manifest_vector"], _follow_ndh_in_place_manifest(_load()["manifest_vector"])
+    with _pre_doctrine_final_profile():                  # the profile the golden's rulings were captured under (the same one the template is seeded on)
+        applied_rulings = writer_mod._applicable_rulings()
+    got, want = head[0]["manifest_vector"], _follow_p4_off_manifest(_follow_ndh_in_place_manifest(_load()["manifest_vector"]), applied_rulings)
     assert "horizon_basis" not in got and "test_slice" not in got
     # OD-1 / D-FLIP F-10: the ONE component added since the golden was captured — the scored edge, derived from the protocol's H1 (2026-04-17, inclusive IST) → the next IST midnight.
     # It is asserted here by value and set aside below; every other component is still compared to the accepted baseline unchanged.
@@ -614,7 +682,11 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # check_resume_binding, check_not_a_fresh_run_over_a_ledger) and the ka_gochara_v5 writer (the binding is read from the staged plan_manifest; a century run without it that finds
     # ledger rows refuses fresh_run_found_ledger) changed the evaluation stage's bytes (57252fb7... -> ebc2d38c...; main's own pin is 16c4a524...). The ordinary run's every component, outcome and SQL shape is
     # asserted unchanged above. Re-derived from the merged tree's real bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES); EQUIVALENCE_RECORD_CHANGELOG.json entry CENTURY-RESUME-WRITER.
-    assert got["implementation"]["evaluation"] == "ebc2d38c14dcdd95920ea8f9e18646bb8c164147933a219470e6591a09004041"
+    # Evaluation re-pinned for FOURQ-CLOSURE-20261027 (PR #3928, P4 switched off): the ka_gochara_v5 writer (plan paths, the verifier's path rulings, the ruling in the build identity),
+    # the gochara_rules registry (DISABLED_PATHS, the P4@1.4.0 testimony row) and the kernel inventory (standing exclusions) are evaluation-stage modules and moved (ebc2d38c... -> f7b6792d...).
+    # Geometry and window are asserted unchanged (77cde807..., 455ab5ad...). Re-derived from the tree's real bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES);
+    # the P4-off observations that DO differ from the golden are followed explicitly by `_follow_p4_off` / `_follow_p4_off_manifest`, and no golden component is re-captured.
+    assert got["implementation"]["evaluation"] == "f7b6792d532854db313ac9119be627581dba65fd85841ea429ae5a085af9dc68"
     # J-4c (main, #3770): the geometry stage also moved by the Swiss-polished in-orb span edges in record_store._in_orb_span_around_root. With P06b's near_miss_verifier in the
     # geometry identity, the merged-tree digest below is re-derived the same way (main alone gives 4479243d...; evaluation and window are unchanged by J-4c itself; J-4c F-LEANNESS (d96b3bfb0) then moved record_store again, anchor-column probe once per store). No golden component is
     # re-captured: this capture's SQL shapes, counts and outcomes do not depend on the span edges' last arcsec.

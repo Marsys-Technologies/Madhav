@@ -944,7 +944,7 @@ def test_a_boundary_that_really_moved_is_still_named_a_move_when_the_lord_and_or
 
 def test_every_runnable_substep_after_the_snapshot_runs_with_live_L1_gone_not_only_inventory_and_coverage(g12):
     """Codex round 2, P2-6: the single-capture guard must exercise the COMPUTATIONAL substeps, not a hand-picked pair. Every substep the writer plans for the marriage
-    class after the snapshot that this stub world can run (inventory, coverage, the four record phases, the P1 and P2 window geometry; the P3/P4 window geometry and
+    class after the snapshot that this stub world can run (inventory, coverage, the three record phases (P4 is switched off — FOURQ-CLOSURE-20261027 — and not planned), the P1 and P2 window geometry; the P3 window geometry and
     the generation verify need a real sky — the control run without the drop fails there too, on member geometry) is run with chart_facts and chart_dashas DROPPED:
     any read of live L1 anywhere in the writer or kernel call graph fails with 'relation does not exist'. The verifier half is test_the_generation_verifies_even_when_
     live_L1_is_gone_entirely."""
@@ -953,8 +953,8 @@ def test_every_runnable_substep_after_the_snapshot_runs_with_live_L1_gone_not_on
     ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-g12-plan", db_conn=conn, config={"chart_id": CHART_ID, "gochara_v5_final_rules": False, "horizon": (H0, H1), "ephe_path": None}, dry_run=False)
     planned = [x.key for x in w.plan_substeps(ctx)]
     after = planned[planned.index(writer_mod.SNAPSHOT_SUBSTEP) + 1:]
-    runnable = [k for k in after if ":marriage" in k and k not in ("window:marriage:P3", "window:marriage:P4", "verify:marriage")]
-    assert runnable == ["inventory:marriage", "coverage:marriage", "record:marriage:P1", "record:marriage:P2", "record:marriage:P3", "record:marriage:P4",
+    runnable = [k for k in after if ":marriage" in k and k not in ("window:marriage:P3", "verify:marriage")]
+    assert runnable == ["inventory:marriage", "coverage:marriage", "record:marriage:P1", "record:marriage:P2", "record:marriage:P3",
                         "window:marriage:P1", "window:marriage:P2"], runnable
     conn.execute("DROP TABLE public.chart_dashas CASCADE")
     conn.execute("DROP TABLE public.chart_facts CASCADE")

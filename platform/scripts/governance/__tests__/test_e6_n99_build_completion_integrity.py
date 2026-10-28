@@ -504,6 +504,7 @@ DERIVED_ONLY_MIGRATIONS = {"1026_nirmana_l3_ka_service_selftest_clock_timestamp_
                            "1397_k8_registry_remainder.sql",
                            "1405_kala_convergence_generation.sql",
                            "1406_kala_obstruction_generation_scope.sql",
+                           "1412_bg_transit_rules_double_transit_testimony_reseal.sql",     # a read-modify-write reseal like 1320-1322: replace(integrity_check_sql, prior_pin, new_pin)
                            "902_nirmana_l1_ga_condition_integrity_check_scope.sql"}
 
 

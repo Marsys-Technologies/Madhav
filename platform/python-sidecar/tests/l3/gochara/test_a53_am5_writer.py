@@ -153,7 +153,9 @@ def test_an_h_unknown_class_plans_under_the_standing_ruling(run):
         " ORDER BY path_id", (GEN,)).fetchall()
     assert rows == [("P1", "inputs_unavailable", "ST-H-UNKNOWN-20261002"),
                     ("P3", "inputs_unavailable", "ST-H-UNKNOWN-20261002"),
-                    ("P4", "inputs_unavailable", "ST-H-UNKNOWN-20261002"),
+                    # P4 is switched off for EVERY class by FOURQ-CLOSURE-20261027 (registry DISABLED_PATHS): the standing exclusion is
+                    # applied BEFORE the H-unknown rule, so the H-unknown class reads P4 as withheld by that ruling, not as unavailable inputs
+                    ("P4", "tier_withheld_by_ruling", "FOURQ-CLOSURE-20261027"),
                     ("P5", "tier_withheld_by_ruling", "ST-P5-HOLD-20261001")]
 
 
@@ -182,15 +184,20 @@ def test_an_h_unknown_class_selects_final_rows_under_the_final_rules_and_its_leg
                     ("P1", "1.3.0", "not_applicable_to_class", None),
                     ("P3", "1.0.0", "superseded_by_version", None),
                     ("P3", "1.3.0", "not_applicable_to_class", None),
-                    ("P4", "1.0.0", "superseded_by_version", None),
-                    ("P4", "1.3.0", "not_applicable_to_class", None),
+                    # P4: switched off for every class and EVERY rule version (FOURQ-CLOSURE-20261027) — withheld by the ruling, which
+                    # takes precedence over the version-supersession and class-applicability dispositions the other paths show
+                    ("P4", "1.0.0", "tier_withheld_by_ruling", "FOURQ-CLOSURE-20261027"),
+                    ("P4", "1.2.0", "tier_withheld_by_ruling", "FOURQ-CLOSURE-20261027"),
+                    ("P4", "1.3.0", "tier_withheld_by_ruling", "FOURQ-CLOSURE-20261027"),
                     ("P5", "1.0.0", "tier_withheld_by_ruling", "ST-P5-HOLD-20261001")]
     selected = conn.execute(
         "SELECT path_id, disposition FROM public.ka_gochara_search_path_pin"
         " WHERE generation = %s AND event_class = 'spiritual_turn' AND rule_version = '1.2.0'"
         " ORDER BY path_id", (GEN,)).fetchall()
     assert [p for p, _d in selected] == ["P1", "P3", "P4"]
-    assert all(d in ("included", "computed_empty") for _p, d in selected)
+    # P4 is pinned excluded at 1.2.0 too (FOURQ-CLOSURE-20261027); only P1 and P3 are searched
+    assert all(d in ("included", "computed_empty") for p, d in selected if p != "P4")
+    assert dict(selected)["P4"] == "excluded"
 
 
 def test_coverage_refuses_when_the_inventory_has_not_run(run):
