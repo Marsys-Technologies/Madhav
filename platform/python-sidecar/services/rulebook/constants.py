@@ -75,6 +75,30 @@ NODE_MODEL_BY_PLANE = MappingProxyType(
 
 # ── planes ──────────────────────────────────────────────────────────────────
 CATEGORIES = ("natal_promise", "dasha", "transit")
+# Class groups, in schema order: the 7 Wave-0/1 groups, then the 13 Wave-2 groups
+# (ledger CR-007-WAVE2-ENABLEMENT-20261028). Filing labels; must equal the v1.2 schema enum.
+CLASS_GROUPS = (
+    "illness_chronic_surgery",
+    "relocation_travel",
+    "major_gain",
+    "major_loss",
+    "career_adv_change_entry",
+    "business_launch",
+    "cross_cutting",
+    "marriage_relationship_begin",
+    "separation_relationship_end",
+    "bereavement_parent",
+    "childbirth_progeny",
+    "education_learning",
+    "achievement_recognition",
+    "deception_fraud",
+    "foreign_residence",
+    "parent_affairs_non_death",
+    "property_acquisition",
+    "mental_distress",
+    "spiritual_renunciation",
+    "career_setback",
+)
 POLARITIES = ("promotive", "obstructive")
 PROVENANCES = ("verse_cited", "commentarial_practice")
 

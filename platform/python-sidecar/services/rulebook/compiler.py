@@ -60,17 +60,7 @@ _RELATIONS = frozenset(
         "in_bhava_group",
     }
 )
-_CLASS_GROUPS = frozenset(
-    {
-        "illness_chronic_surgery",
-        "relocation_travel",
-        "major_gain",
-        "major_loss",
-        "career_adv_change_entry",
-        "business_launch",
-        "cross_cutting",
-    }
-)
+_CLASS_GROUPS = frozenset(C.CLASS_GROUPS)
 _PASSAGE_TEXT_RE = re.compile(r"^([a-z0-9_]+?)(?:_v\d+)?_pg\d{4}_c\d{2}:")
 
 

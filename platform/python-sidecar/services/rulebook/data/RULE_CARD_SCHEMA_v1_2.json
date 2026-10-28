@@ -64,7 +64,20 @@
         "major_loss",
         "career_adv_change_entry",
         "business_launch",
-        "cross_cutting"
+        "cross_cutting",
+        "marriage_relationship_begin",
+        "separation_relationship_end",
+        "bereavement_parent",
+        "childbirth_progeny",
+        "education_learning",
+        "achievement_recognition",
+        "deception_fraud",
+        "foreign_residence",
+        "parent_affairs_non_death",
+        "property_acquisition",
+        "mental_distress",
+        "spiritual_renunciation",
+        "career_setback"
        ]
       },
       "category": {
@@ -95,7 +108,20 @@
          "major_loss",
          "career_adv_change_entry",
          "business_launch",
-         "cross_cutting"
+         "cross_cutting",
+         "marriage_relationship_begin",
+         "separation_relationship_end",
+         "bereavement_parent",
+         "childbirth_progeny",
+         "education_learning",
+         "achievement_recognition",
+         "deception_fraud",
+         "foreign_residence",
+         "parent_affairs_non_death",
+         "property_acquisition",
+         "mental_distress",
+         "spiritual_renunciation",
+         "career_setback"
         ]
        },
        "description": "filing label (exempt from quote_terms); v1.2 only"
