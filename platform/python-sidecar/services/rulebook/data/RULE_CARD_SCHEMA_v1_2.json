@@ -1,7 +1,7 @@
 {
  "$schema": "https://json-schema.org/draft/2020-12/schema",
  "$id": "urn:marsys-jis:rulebook:rule-card:v1.2",
- "title": "Rule Card v1.2 (proposal v0.2; CR-006 surrogate rulings on the Grok 4.7 review)",
+ "title": "Rule Card v1.2 (schema amendment proposal v0.2, change register CR-006)",
  "description": "Rule Card v1.1 plus the v1.2 amendment. A v1.1 card (schema_version rule-card-v1 or rule-card-v1.1) is valid unchanged; the new keys are admitted only on schema_version rule-card-v1.2. Every new value is verse-sourced: it carries quote_terms (clear words of the cited passages, or witnesses: passage id plus token offsets). No field has a default: a missing optional key means 'not stated' and evaluates to NOT_ASSESSED or quarantines; it is never filled in. Filing labels (card_id, drafter, round, class_group(s), classical_descriptors, confidence_notes) are exempt from the quote_terms rule. Cross-field rules JSON Schema cannot state are listed in RULE_CARD_SCHEMA_v1_2_PROPOSAL_v0_2.md section 3 and enforced by services/rulebook/schema.py and the harness verifier.",
  "type": "array",
  "items": {
