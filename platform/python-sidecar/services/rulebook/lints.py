@@ -7,6 +7,7 @@ Severity:
 
 Lints read the raw card and/or the compiled IR. They never resolve a value.
 """
+
 from __future__ import annotations
 
 import itertools
@@ -36,8 +37,13 @@ class LintFinding:
     detail: str
 
     def to_json(self) -> dict:
-        return {"lint": self.lint, "code": self.code, "severity": self.severity,
-                "card_id": self.card_id, "detail": self.detail}
+        return {
+            "lint": self.lint,
+            "code": self.code,
+            "severity": self.severity,
+            "card_id": self.card_id,
+            "detail": self.detail,
+        }
 
 
 # ── P4 (D4): never require Jupiter and Saturn in transit on a shared target ──
@@ -86,8 +92,9 @@ def _shared(j: _Atom, s: _Atom) -> bool:
 def _clause_violations(clauses: Iterable[FrozenSet[_Atom]]) -> List[str]:
     out = []
     for clause in clauses:
-        transit = [a for a in clause if a.role == "transiting_graha" and a.relation in _P4_RELATIONS
-                   and a.graha in _P4_GRAHAS]
+        transit = [
+            a for a in clause if a.role == "transiting_graha" and a.relation in _P4_RELATIONS and a.graha in _P4_GRAHAS
+        ]
         jup = [a for a in transit if a.graha == "guru"]
         sat = [a for a in transit if a.graha == "shani"]
         for j, s in itertools.product(jup, sat):
@@ -111,8 +118,9 @@ def p4_violations_ast(nodes: Iterable[Node]) -> List[str]:
         return n.args
 
     def atom_of(p: Pred) -> _Atom:
-        return _Atom(p.operand_id, p.role, p.relation, p.graha, p.frame,
-                     _houses(p.bhavas, p.bhava_group), p.target_role)
+        return _Atom(
+            p.operand_id, p.role, p.relation, p.graha, p.frame, _houses(p.bhavas, p.bhava_group), p.target_role
+        )
 
     out: List[str] = []
     for n in nodes:
@@ -144,8 +152,15 @@ def p4_violations_card(card: Mapping[str, Any]) -> List[str]:
     def atom_of(e: Mapping[str, Any]) -> _Atom:
         op = ops.get(e["operand"]) or {}
         bl = ([op["bhava"]] if op.get("bhava") else []) + list(op.get("target_bhavas") or [])
-        return _Atom(e["operand"], op.get("role", ""), op.get("relation", ""), op.get("doctrinal_graha"),
-                     frame, _houses(bl, op.get("bhava_group")), op.get("target_role"))
+        return _Atom(
+            e["operand"],
+            op.get("role", ""),
+            op.get("relation", ""),
+            op.get("doctrinal_graha"),
+            frame,
+            _houses(bl, op.get("bhava_group")),
+            op.get("target_role"),
+        )
 
     exprs = [(card.get("field4_necessary_gate") or {}).get("expr")]
     exprs += [exc.get("condition") for exc in card.get("field6_exceptions") or []]
@@ -176,7 +191,8 @@ def lint_vedha(card: Mapping[str, Any]) -> List[LintFinding]:
     for exc in card.get("field6_exceptions") or []:
         ops.extend(exc.get("operands") or [])
     is_gochara = (card.get("field2_target_scope") or {}).get("category") == "transit" or any(
-        o.get("role") == "transiting_graha" for o in ops)
+        o.get("role") == "transiting_graha" for o in ops
+    )
     quote = (card.get("field1_citation") or {}).get("quote") or ""
     if not is_gochara or not _VEDHA_RE.search(quote):
         return []
@@ -194,8 +210,15 @@ def lint_vedha(card: Mapping[str, Any]) -> List[LintFinding]:
         used |= refs(exc.get("condition"))
     if vedha_ids & used:
         return []
-    return [LintFinding("vedha", "VEDHA_CLAUSE_MISSING", PANEL_RETURN, cid,
-                        "cited verse carries a vedha clause; the card encodes no vedha_by in its gate or field-6")]
+    return [
+        LintFinding(
+            "vedha",
+            "VEDHA_CLAUSE_MISSING",
+            PANEL_RETURN,
+            cid,
+            "cited verse carries a vedha clause; the card encodes no vedha_by in its gate or field-6",
+        )
+    ]
 
 
 # ── frame ───────────────────────────────────────────────────────────────────
@@ -207,14 +230,28 @@ def lint_frame(card: Mapping[str, Any], result: Any) -> List[LintFinding]:
         return [LintFinding("frame", "FRAME_MISSING", PANEL_RETURN, cid, "no frame; never defaulted")]
     cat = (card.get("field2_target_scope") or {}).get("category")
     if cat == "dasha" and f3.get("frame") == "sign_of_transit_only":
-        out.append(LintFinding("frame", "FRAME_PROPOSE_SIGN_INTRINSIC", PANEL_RETURN, cid,
-                               "dasha card on sign_of_transit_only; propose sign_intrinsic (F-S3)"))
+        out.append(
+            LintFinding(
+                "frame",
+                "FRAME_PROPOSE_SIGN_INTRINSIC",
+                PANEL_RETURN,
+                cid,
+                "dasha card on sign_of_transit_only; propose sign_intrinsic (F-S3)",
+            )
+        )
     ir = getattr(result, "ir", None)
     if ir is not None:
         fr = ir["frame"]
         if fr["relevance"] == "relevant" and not fr["attested"]:
-            out.append(LintFinding("frame", "FRAME_UNATTESTED", PANEL_RETURN, cid,
-                                   f"frame {fr['declared']} counts the predicate but no frame_terms/frame_citation states it"))
+            out.append(
+                LintFinding(
+                    "frame",
+                    "FRAME_UNATTESTED",
+                    PANEL_RETURN,
+                    cid,
+                    f"frame {fr['declared']} counts the predicate but no frame_terms/frame_citation states it",
+                )
+            )
     return out
 
 
@@ -225,18 +262,36 @@ def lint_testimony(ir: Mapping[str, Any]) -> List[LintFinding]:
     counting = ir.get("counting") or {}
     testimony = ir.get("provenance") != "verse_cited"
     if testimony and counting.get("counts_toward_n") is not False:
-        out.append(LintFinding("testimony", "TESTIMONY_COUNTED", BUILD_FAIL, cid,
-                               "commentarial_practice card would increment N"))
+        out.append(
+            LintFinding(
+                "testimony", "TESTIMONY_COUNTED", BUILD_FAIL, cid, "commentarial_practice card would increment N"
+            )
+        )
     if counting.get("testimony") is not testimony:
-        out.append(LintFinding("testimony", "TESTIMONY_FLAG_INCONSISTENT", BUILD_FAIL, cid,
-                               "counting.testimony disagrees with provenance"))
+        out.append(
+            LintFinding(
+                "testimony",
+                "TESTIMONY_FLAG_INCONSISTENT",
+                BUILD_FAIL,
+                cid,
+                "counting.testimony disagrees with provenance",
+            )
+        )
     if ir.get("status") != "active" and counting.get("counts_toward_n") is not False:
-        out.append(LintFinding("testimony", "QUARANTINED_COUNTED", BUILD_FAIL, cid,
-                               "a non-active card would increment N"))
+        out.append(
+            LintFinding("testimony", "QUARANTINED_COUNTED", BUILD_FAIL, cid, "a non-active card would increment N")
+        )
     for e in ir.get("exceptions") or []:
         if e.get("effect") in C.NOTE_ONLY_EFFECTS and e.get("increments_n") is not False:
-            out.append(LintFinding("testimony", "NOTE_EFFECT_COUNTED", BUILD_FAIL, cid,
-                                   f"{e.get('effect')} exception would increment N"))
+            out.append(
+                LintFinding(
+                    "testimony",
+                    "NOTE_EFFECT_COUNTED",
+                    BUILD_FAIL,
+                    cid,
+                    f"{e.get('effect')} exception would increment N",
+                )
+            )
     return out
 
 
@@ -273,22 +328,44 @@ def lint_licence(card: Mapping[str, Any], allowlist: Optional[Mapping[str, Any]]
     out = []
     for path, _q, texts, edition in _walk_quotes(card, top_text, "card"):
         if not texts:
-            out.append(LintFinding("licence", "QUOTE_EDITION_UNKNOWN", BUILD_FAIL, cid,
-                                   f"{path}: quote text with no identifiable edition"))
+            out.append(
+                LintFinding(
+                    "licence",
+                    "QUOTE_EDITION_UNKNOWN",
+                    BUILD_FAIL,
+                    cid,
+                    f"{path}: quote text with no identifiable edition",
+                )
+            )
             continue
         for t in sorted(texts):
             if t not in pd:
-                out.append(LintFinding("licence", "QUOTE_RESTRICTED_EDITION", BUILD_FAIL, cid,
-                                       f"{path}: quote text for {t}, which is not on the public-domain allowlist"))
+                out.append(
+                    LintFinding(
+                        "licence",
+                        "QUOTE_RESTRICTED_EDITION",
+                        BUILD_FAIL,
+                        cid,
+                        f"{path}: quote text for {t}, which is not on the public-domain allowlist",
+                    )
+                )
             elif edition and pd[t] and edition != pd[t]:
-                out.append(LintFinding("licence", "QUOTE_EDITION_MISMATCH", BUILD_FAIL, cid,
-                                       f"{path}: edition differs from the allowlisted {t} edition"))
+                out.append(
+                    LintFinding(
+                        "licence",
+                        "QUOTE_EDITION_MISMATCH",
+                        BUILD_FAIL,
+                        cid,
+                        f"{path}: edition differs from the allowlisted {t} edition",
+                    )
+                )
     return out
 
 
 # ── runner ──────────────────────────────────────────────────────────────────
-def run_lints(card: Mapping[str, Any], result: Any, *, allowlist: Optional[Mapping[str, Any]] = None
-              ) -> List[LintFinding]:
+def run_lints(
+    card: Mapping[str, Any], result: Any, *, allowlist: Optional[Mapping[str, Any]] = None
+) -> List[LintFinding]:
     out: List[LintFinding] = []
     out += lint_p4(card, result)
     out += lint_vedha(card)

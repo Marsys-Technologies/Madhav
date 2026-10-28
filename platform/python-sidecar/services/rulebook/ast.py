@@ -18,6 +18,7 @@ reproduce: Kleene truth tables, the exception table of plan §2.4 and the N
 tally of plan §3. These operate on truth values supplied by the caller; they
 never look anything up.
 """
+
 from __future__ import annotations
 
 import enum
@@ -100,8 +101,8 @@ COMPARATORS = ("eq", "ge", "le", "gt", "lt")
 
 @dataclass(frozen=True)
 class Comparison:
-    kind: str            # field-7 kind; v1 admits bindus_of_8 only
-    op: str              # one of COMPARATORS
+    kind: str  # field-7 kind; v1 admits bindus_of_8 only
+    op: str  # one of COMPARATORS
     value: int
     count_convention: str  # e.g. "benefic_points"; never defaulted
 
@@ -114,21 +115,25 @@ class Comparison:
             raise ValueError("bindus_of_8 value must be an int 0..8")
 
     def to_json(self) -> dict:
-        return {"kind": self.kind, "op": self.op, "value": self.value,
-                "count_convention": self.count_convention}
+        return {"kind": self.kind, "op": self.op, "value": self.value, "count_convention": self.count_convention}
 
 
 @dataclass(frozen=True)
 class ObstructorSet:
     """Vedha obstructors. ``undeclared`` members make an occupancy NA, never F."""
+
     primary: str
     certain: Tuple[str, ...]
     undeclared: Tuple[str, ...]
     exempt: Tuple[str, ...]  # always empty in v1.1: the schema cannot encode it
 
     def to_json(self) -> dict:
-        return {"primary": self.primary, "certain": list(self.certain),
-                "undeclared": list(self.undeclared), "exempt": list(self.exempt)}
+        return {
+            "primary": self.primary,
+            "certain": list(self.certain),
+            "undeclared": list(self.undeclared),
+            "exempt": list(self.exempt),
+        }
 
 
 @dataclass(frozen=True)
@@ -136,9 +141,9 @@ class Pred:
     operand_id: str
     role: str
     relation: str
-    plane: str                      # natal | dasha | transit (where the value comes from)
-    frame: str                      # the card's declared frame; never defaulted
-    source: Mapping[str, Any]       # E0 matrix descriptor (table, key, status, ...)
+    plane: str  # natal | dasha | transit (where the value comes from)
+    frame: str  # the card's declared frame; never defaulted
+    source: Mapping[str, Any]  # E0 matrix descriptor (table, key, status, ...)
     graha: Optional[str] = None
     graha_class: Optional[str] = None
     bhavas: Tuple[int, ...] = ()
@@ -150,11 +155,19 @@ class Pred:
 
     def to_json(self) -> dict:
         out: dict = {
-            "node": "pred", "operand_id": self.operand_id, "role": self.role,
-            "relation": self.relation, "plane": self.plane, "frame": self.frame,
-            "source": dict(self.source), "graha": self.graha, "graha_class": self.graha_class,
-            "bhavas": list(self.bhavas), "bhava_group": self.bhava_group,
-            "target_role": self.target_role, "node_model": self.node_model,
+            "node": "pred",
+            "operand_id": self.operand_id,
+            "role": self.role,
+            "relation": self.relation,
+            "plane": self.plane,
+            "frame": self.frame,
+            "source": dict(self.source),
+            "graha": self.graha,
+            "graha_class": self.graha_class,
+            "bhavas": list(self.bhavas),
+            "bhava_group": self.bhava_group,
+            "target_role": self.target_role,
+            "node_model": self.node_model,
         }
         out["comparison"] = self.comparison.to_json() if self.comparison else None
         out["obstructors"] = self.obstructors.to_json() if self.obstructors else None
@@ -196,10 +209,10 @@ Node = Union[Pred, And, Or, Not]
 @dataclass(frozen=True)
 class ExceptionNode:
     condition: Node
-    effect: str            # cancels | reduces | reverses_polarity | delays
+    effect: str  # cancels | reduces | reverses_polarity | delays
     school_scope: str
     scope_texts: Tuple[str, ...]
-    default_served: bool   # False for nadi/kerala/tajaka (drill-down alternates)
+    default_served: bool  # False for nadi/kerala/tajaka (drill-down alternates)
     passage_ids: Tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
@@ -211,10 +224,15 @@ class ExceptionNode:
         return self.effect not in C.NOTE_ONLY_EFFECTS
 
     def to_json(self) -> dict:
-        return {"condition": self.condition.to_json(), "effect": self.effect,
-                "school_scope": self.school_scope, "scope_texts": list(self.scope_texts),
-                "default_served": self.default_served, "increments_n": self.increments_n,
-                "passage_ids": list(self.passage_ids)}
+        return {
+            "condition": self.condition.to_json(),
+            "effect": self.effect,
+            "school_scope": self.school_scope,
+            "scope_texts": list(self.scope_texts),
+            "default_served": self.default_served,
+            "increments_n": self.increments_n,
+            "passage_ids": list(self.passage_ids),
+        }
 
 
 def iter_preds(node: Node) -> Iterable[Pred]:
@@ -257,15 +275,16 @@ def evaluate(node: Node, assignment: Mapping[str, Tri]) -> Tri:
 class CardOutcome:
     card_id: str
     category: str
-    polarity: str                 # after any reverses_polarity
+    polarity: str  # after any reverses_polarity
     state: Tri
-    increments_n: bool            # False for testimony and for reduces/delays
+    increments_n: bool  # False for testimony and for reduces/delays
     testimony: bool
     notes: Tuple[str, ...] = field(default=())
 
 
-def card_outcome(ir: Mapping[str, Any], gate: Node, exceptions: Sequence[ExceptionNode],
-                 assignment: Mapping[str, Tri]) -> CardOutcome:
+def card_outcome(
+    ir: Mapping[str, Any], gate: Node, exceptions: Sequence[ExceptionNode], assignment: Mapping[str, Tri]
+) -> CardOutcome:
     """Apply plan §2.4 to one compiled card.
 
     ``ir`` is the compiled IR dict (status, category, polarity, provenance);

@@ -10,6 +10,7 @@ Lexical checks read only words the card itself carries (quote_terms and the
 cited quote), using the closed patterns in constants.py. Quote text never
 enters the IR; the IR carries passage_ids and the quote sha256.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -20,27 +21,61 @@ from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 from . import constants as C
 from .ast import And, Comparison, ExceptionNode, Node, Not, ObstructorSet, Or, Pred, iter_preds
+from .lints import p4_violations_ast
 from .quarantine import Finding, Reason
 
-_RE = {name: re.compile(getattr(C, name), re.IGNORECASE) for name in (
-    "MEAN_TERMS_RE", "TRUE_NODE_TERMS_RE", "VEDHA_TERMS_RE", "VEDHA_EXEMPTION_RE",
-    "VERSE_DISJUNCTION_RE", "OBSTRUCTOR_CLASS_RE", "REKHA_TERMS_RE", "DOT_TERMS_RE",
-    "SELF_DECLARED_BENEFIC_RE")}
+_RE = {
+    name: re.compile(getattr(C, name), re.IGNORECASE)
+    for name in (
+        "MEAN_TERMS_RE",
+        "TRUE_NODE_TERMS_RE",
+        "VEDHA_TERMS_RE",
+        "VEDHA_EXEMPTION_RE",
+        "VERSE_DISJUNCTION_RE",
+        "OBSTRUCTOR_CLASS_RE",
+        "REKHA_TERMS_RE",
+        "DOT_TERMS_RE",
+        "SELF_DECLARED_BENEFIC_RE",
+    )
+}
 
 _ROLES = frozenset(C.ROLE_PLANE)
-_RELATIONS = frozenset({
-    "occupies", "transits", "aspects", "conjoins", "lord_of", "is_dasha_lord", "is_antardasha_lord",
-    "exalted", "debilitated", "own_sign", "combust", "retrograde", "vedha_by", "bindus", "in_bhava_group"})
-_CLASS_GROUPS = frozenset({
-    "illness_chronic_surgery", "relocation_travel", "major_gain", "major_loss",
-    "career_adv_change_entry", "business_launch", "cross_cutting"})
+_RELATIONS = frozenset(
+    {
+        "occupies",
+        "transits",
+        "aspects",
+        "conjoins",
+        "lord_of",
+        "is_dasha_lord",
+        "is_antardasha_lord",
+        "exalted",
+        "debilitated",
+        "own_sign",
+        "combust",
+        "retrograde",
+        "vedha_by",
+        "bindus",
+        "in_bhava_group",
+    }
+)
+_CLASS_GROUPS = frozenset(
+    {
+        "illness_chronic_surgery",
+        "relocation_travel",
+        "major_gain",
+        "major_loss",
+        "career_adv_change_entry",
+        "business_launch",
+        "cross_cutting",
+    }
+)
 _PASSAGE_TEXT_RE = re.compile(r"^([a-z0-9_]+?)(?:_v\d+)?_pg\d{4}_c\d{2}:")
 
 
 # ── canonical hashing ──────────────────────────────────────────────────────
 def canonical_json(obj: Any) -> bytes:
-    return json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
-                      allow_nan=False).encode("utf-8")
+    return json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False).encode("utf-8")
 
 
 def sha256_hex(obj: Any) -> str:
@@ -56,7 +91,7 @@ def text_id_of_passage(passage_id: str) -> Optional[str]:
 @dataclass
 class CompileResult:
     card_id: str
-    status: str                                   # active | quarantined_not_evaluable
+    status: str  # active | quarantined_not_evaluable
     findings: List[Finding]
     ir: Optional[Dict[str, Any]] = None
     ir_sha256: Optional[str] = None
@@ -74,10 +109,14 @@ class CompileResult:
         return sorted({f.reason.value for f in self.findings})
 
     def to_json(self) -> dict:
-        return {"card_id": self.card_id, "status": self.status,
-                "findings": [f.to_json() for f in self.findings],
-                "ir_sha256": self.ir_sha256, "logic_sha256": self.logic_sha256,
-                "convention_pending": list(self.convention_pending)}
+        return {
+            "card_id": self.card_id,
+            "status": self.status,
+            "findings": [f.to_json() for f in self.findings],
+            "ir_sha256": self.ir_sha256,
+            "logic_sha256": self.logic_sha256,
+            "convention_pending": list(self.convention_pending),
+        }
 
 
 class _Unbuildable(Exception):
@@ -110,10 +149,12 @@ class _CardCompiler:
         except _Unbuildable:
             gate = None
         excs = self._exceptions()
+        # the *_of_role frame's reference operand is typed like any predicate
+        fr = self.f3.get("frame_role")
+        self.frame_role_pred = self._pred(fr) if self.frame in C.FRAMES_OF_ROLE and fr in self.ops else None
         if gate is not None:
             self._plane_roles(gate)
             self._tautologies(gate)
-            from .lints import p4_violations_ast  # local import: lints imports compiler helpers
             for viol in p4_violations_ast([gate] + [e.condition for e in excs]):
                 self.q(Reason.P4_DOUBLE_TRANSIT, None, viol)
         return self._result(gate, excs if gate is not None else (), self.referenced)
@@ -121,9 +162,18 @@ class _CardCompiler:
     # structure ---------------------------------------------------------------
     def _structure(self) -> bool:
         card = self.card
-        required = ("card_id", "schema_version", "field1_citation", "field2_target_scope",
-                    "field4_necessary_gate", "field5_typed_operands", "field6_exceptions",
-                    "field7_discrete_arithmetic", "polarity", "provenance")
+        required = (
+            "card_id",
+            "schema_version",
+            "field1_citation",
+            "field2_target_scope",
+            "field4_necessary_gate",
+            "field5_typed_operands",
+            "field6_exceptions",
+            "field7_discrete_arithmetic",
+            "polarity",
+            "provenance",
+        )
         missing = [k for k in required if k not in card]
         if missing:
             self.q(Reason.SCHEMA_INVALID, None, f"missing fields: {', '.join(missing)}")
@@ -178,7 +228,12 @@ class _CardCompiler:
             self.ops[oid] = op
         for item in card["field7_discrete_arithmetic"] or []:
             if not isinstance(item, Mapping) or item.get("kind") not in (
-                    "rasi_binary", "kakshya_cell", "drishti_pada", "bindus_of_8", "combustion_orb_int"):
+                "rasi_binary",
+                "kakshya_cell",
+                "drishti_pada",
+                "bindus_of_8",
+                "combustion_orb_int",
+            ):
                 self.q(Reason.SCHEMA_INVALID, None, "field7 item kind not in the v1.1 enum")
                 return False
         self.referenced: set = set()
@@ -270,8 +325,9 @@ class _CardCompiler:
 
         # mean / node model
         node_model = None
-        may_be_node = (graha in C.NODES) or (graha is None and role in (
-            "dasha_lord", "antardasha_lord", "transiting_graha", "natal_graha", "bhava_lord"))
+        may_be_node = (graha in C.NODES) or (
+            graha is None and role in ("dasha_lord", "antardasha_lord", "transiting_graha", "natal_graha", "bhava_lord")
+        )
         if may_be_node:
             node_model = C.NODE_MODEL_BY_PLANE[plane]
         says_mean = bool(_RE["MEAN_TERMS_RE"].search(terms))
@@ -279,8 +335,11 @@ class _CardCompiler:
         if graha in C.NODES:
             if (says_mean and node_model != "mean") or (says_true and node_model != "true"):
                 stated = "mean" if says_mean else "true"
-                self.q(Reason.NODE_MODEL_MISMATCH, oid,
-                       f"verse states the {stated} node; the {plane} source is {node_model}")
+                self.q(
+                    Reason.NODE_MODEL_MISMATCH,
+                    oid,
+                    f"verse states the {stated} node; the {plane} source is {node_model}",
+                )
         elif says_mean:
             self.q(Reason.MEAN_OPERAND, oid, "madhya/mean position named; no mean-motion source in v1")
 
@@ -294,8 +353,11 @@ class _CardCompiler:
             if group not in C.BHAVA_GROUPS:
                 self.q(Reason.SCHEMA_INVALID, oid, f"bhava_group {group!r} unknown")
             elif group in C.BHAVA_GROUPS_DF02_OPEN:
-                self.q(Reason.BHAVA_GROUP_DF02_OPEN, oid,
-                       f"{group}: cockpit DF-02 open (L0 group incomplete); package set is cited but held")
+                self.q(
+                    Reason.BHAVA_GROUP_DF02_OPEN,
+                    oid,
+                    f"{group}: cockpit DF-02 open (L0 group incomplete); package set is cited but held",
+                )
         if rel == "in_bhava_group" and group is None:
             self.q(Reason.TARGET_UNBOUND, oid, "in_bhava_group without bhava_group")
         tr = op.get("target_role")
@@ -315,10 +377,22 @@ class _CardCompiler:
         obstructors = None
         if rel == "vedha_by":
             obstructors = self._vedha(oid, op, terms)
-        return Pred(operand_id=oid, role=role, relation=rel, plane=plane, frame=self.frame,
-                    source=source, graha=graha, graha_class=gclass, bhavas=bhavas,
-                    bhava_group=group, target_role=tr, node_model=node_model,
-                    comparison=comparison, obstructors=obstructors)
+        return Pred(
+            operand_id=oid,
+            role=role,
+            relation=rel,
+            plane=plane,
+            frame=self.frame,
+            source=source,
+            graha=graha,
+            graha_class=gclass,
+            bhavas=bhavas,
+            bhava_group=group,
+            target_role=tr,
+            node_model=node_model,
+            comparison=comparison,
+            obstructors=obstructors,
+        )
 
     def _graha_class(self, oid: str, gclass: Optional[str]) -> None:
         entry = C.GRAHA_CLASS_TABLE.get(gclass) if gclass else None
@@ -329,8 +403,11 @@ class _CardCompiler:
             self.q(Reason.GRAHA_CLASS_SENSE_UNPINNED, oid, f"{gclass}: natural vs functional not pinned")
         # Every class admits the Moon and Mercury only under a condition; v1.1
         # has no field to carry the verse's condition (DF-01).
-        self.q(Reason.GRAHA_CLASS_CONDITION_MISSING, oid,
-               f"{gclass}: Moon/Mercury membership needs the verse's condition (paksha / association); DF-01")
+        self.q(
+            Reason.GRAHA_CLASS_CONDITION_MISSING,
+            oid,
+            f"{gclass}: Moon/Mercury membership needs the verse's condition (paksha / association); DF-01",
+        )
 
     def _bindus(self, oid: str, op: Mapping[str, Any], terms: str) -> Optional[Comparison]:
         if not op.get("target_role") and not op.get("bhava"):
@@ -348,8 +425,11 @@ class _CardCompiler:
             elif _RE["DOT_TERMS_RE"].search(haystack):
                 meaning = (text_conv.get("dot") or {}).get("meaning")
         if meaning is None:
-            self.q(Reason.BINDU_CONVENTION_UNDECLARED, oid,
-                   f"count term not declared for text {self.text_id!r} in bindu_conventions.json")
+            self.q(
+                Reason.BINDU_CONVENTION_UNDECLARED,
+                oid,
+                f"count term not declared for text {self.text_id!r} in bindu_conventions.json",
+            )
         # comparator: exactly one bindus_of_8 for exactly one bindus operand
         items = [i for i in (self.card["field7_discrete_arithmetic"] or []) if i.get("kind") == "bindus_of_8"]
         n_bindu_ops = sum(1 for o in self.ops.values() if o.get("relation") == "bindus")
@@ -357,24 +437,37 @@ class _CardCompiler:
             self.q(Reason.MISSING_COMPARATOR, oid, "no field-7 bindus_of_8; no threshold is supplied")
             return None
         if len(items) != 1 or n_bindu_ops != 1:
-            self.q(Reason.AMBIGUOUS_COMPARATOR_BINDING, oid,
-                   f"{len(items)} comparator(s) for {n_bindu_ops} bindus operand(s)")
+            self.q(
+                Reason.AMBIGUOUS_COMPARATOR_BINDING,
+                oid,
+                f"{len(items)} comparator(s) for {n_bindu_ops} bindus operand(s)",
+            )
             return None
         if meaning is None:
             return None
-        return Comparison(kind="bindus_of_8", op=items[0]["comparator"], value=int(items[0]["bindus"]),
-                          count_convention=f"{meaning}_points")
+        return Comparison(
+            kind="bindus_of_8",
+            op=items[0]["comparator"],
+            value=int(items[0]["bindus"]),
+            count_convention=f"{meaning}_points",
+        )
 
     def _vedha(self, oid: str, op: Mapping[str, Any], terms: str) -> Optional[ObstructorSet]:
         primary = op.get("doctrinal_graha")
         if not op.get("target_bhavas"):
             self.q(Reason.TARGET_UNBOUND, oid, "vedha_by without the vedha place (target_bhavas)")
         if _RE["VEDHA_EXEMPTION_RE"].search(terms) or (
-                _RE["VEDHA_TERMS_RE"].search(self.quote) and _RE["VEDHA_EXEMPTION_RE"].search(self.quote)):
-            self.q(Reason.VEDHA_EXEMPTION_NOT_ENCODABLE, oid,
-                   "cited verse exempts an obstructor; v1.1 has no exemption field (schema v1.2 proposal)")
+            _RE["VEDHA_TERMS_RE"].search(self.quote) and _RE["VEDHA_EXEMPTION_RE"].search(self.quote)
+        ):
+            self.q(
+                Reason.VEDHA_EXEMPTION_NOT_ENCODABLE,
+                oid,
+                "cited verse exempts an obstructor; v1.1 has no exemption field (schema v1.2 proposal)",
+            )
         if not primary:
-            self.q(Reason.UNDECLARED_OBSTRUCTOR_SET, oid, "vedha primary graha unbound; obstructor set cannot be formed")
+            self.q(
+                Reason.UNDECLARED_OBSTRUCTOR_SET, oid, "vedha primary graha unbound; obstructor set cannot be formed"
+            )
             return None
         if _RE["OBSTRUCTOR_CLASS_RE"].search(terms):
             self.q(Reason.UNDECLARED_OBSTRUCTOR_SET, oid, "obstructors named as a class; the set is not declared")
@@ -408,6 +501,7 @@ class _CardCompiler:
                     walk(a)
             elif isinstance(n, Not):
                 walk(n.arg)
+
         walk(gate)
 
     def _exceptions(self) -> Tuple[ExceptionNode, ...]:
@@ -415,7 +509,8 @@ class _CardCompiler:
         for i, exc in enumerate(self.card["field6_exceptions"] or []):
             effect, scope = exc.get("effect"), exc.get("school_scope")
             if effect not in C.EXCEPTION_EFFECTS or scope not in (
-                    set(C.SCHOOL_SCOPE_TEXTS) | set(C.NON_DEFAULT_SCOPES)):
+                set(C.SCHOOL_SCOPE_TEXTS) | set(C.NON_DEFAULT_SCOPES)
+            ):
                 self.fatal(Reason.SCHEMA_INVALID, None, f"exception {i}: effect/school_scope not in the enum")
                 continue
             ecite = exc.get("citation") or {}
@@ -432,12 +527,22 @@ class _CardCompiler:
                 if listed == "card_text":
                     texts, served = ((self.text_id,) if self.text_id else ()), True
                 else:
-                    self.q(Reason.SCHOOL_SCOPE_TEXTS_UNDECLARED, None,
-                           f"exception {i}: scope {scope} has no explicit text list (Q10)")
+                    self.q(
+                        Reason.SCHOOL_SCOPE_TEXTS_UNDECLARED,
+                        None,
+                        f"exception {i}: scope {scope} has no explicit text list (Q10)",
+                    )
                     texts, served = (), True
-            out.append(ExceptionNode(condition=cond, effect=effect, school_scope=scope, scope_texts=texts,
-                                     default_served=served,
-                                     passage_ids=tuple(ecite.get("passage_ids") or ())))
+            out.append(
+                ExceptionNode(
+                    condition=cond,
+                    effect=effect,
+                    school_scope=scope,
+                    scope_texts=texts,
+                    default_served=served,
+                    passage_ids=tuple(ecite.get("passage_ids") or ()),
+                )
+            )
         return tuple(out)
 
     # assembly --------------------------------------------------------------------
@@ -455,17 +560,35 @@ class _CardCompiler:
         logic = _alpha_rename({"gate": ir["gate"], "exceptions": ir["exceptions"]}, names)
         logic.update({k: ir[k] for k in ("category", "polarity", "provenance")})
         logic["frame"] = ir["frame"]["declared"]
-        return CompileResult(self.card_id, status, findings, ir=ir, ir_sha256=sha256_hex(ir),
-                             logic_sha256=sha256_hex(logic), gate=gate, exceptions=tuple(excs),
-                             convention_pending=pending)
+        return CompileResult(
+            self.card_id,
+            status,
+            findings,
+            ir=ir,
+            ir_sha256=sha256_hex(ir),
+            logic_sha256=sha256_hex(logic),
+            gate=gate,
+            exceptions=tuple(excs),
+            convention_pending=pending,
+        )
 
-    def _ir(self, gate: Node, excs: Sequence[ExceptionNode], status: str, findings: List[Finding],
-            pending: List[str], referenced: set) -> Dict[str, Any]:
+    def _ir(
+        self,
+        gate: Node,
+        excs: Sequence[ExceptionNode],
+        status: str,
+        findings: List[Finding],
+        pending: List[str],
+        referenced: set,
+    ) -> Dict[str, Any]:
         card = self.card
         verse = card["provenance"] == "verse_cited"
         preds = list(iter_preds(gate))
-        relevant = self.frame in C.FRAMES_OF_ROLE or self.frame == "sign_of_transit_only" or any(
-            p.bhavas or p.bhava_group or p.obstructors or p.target_role for p in preds)
+        relevant = (
+            self.frame in C.FRAMES_OF_ROLE
+            or self.frame == "sign_of_transit_only"
+            or any(p.bhavas or p.bhava_group or p.obstructors or p.target_role for p in preds)
+        )
         fc = self.f3.get("frame_citation") or {}
         kind, ref_src = C.FRAME_SOURCES.get(self.frame, (None, None))
         gap = any(p.source.get("status") == "gap" for p in preds)
@@ -489,6 +612,7 @@ class _CardCompiler:
                 "relevance": "relevant" if relevant else "invariant",
                 "frames_py_kind": kind,
                 "reference_sign_source": ref_src,
+                "role_operand": self.frame_role_pred.to_json() if self.frame_role_pred else None,
             },
             "citation": {
                 "text_id": self.text_id,
