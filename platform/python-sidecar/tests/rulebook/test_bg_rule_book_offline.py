@@ -17,6 +17,7 @@ from services.rulebook import constants as RC
 from services.rulebook.compiler import sha256_hex
 from services.rulebook.lints import lint_licence
 from tests.rulebook import _cards as K
+from tests.rulebook._hash_form import to_hash_form
 from tests.rulebook._rule_book_versions import fixture_cards, write_version
 
 SIDECAR = Path(__file__).resolve().parents[2]
@@ -80,6 +81,7 @@ def test_fixture_loads_with_expected_statuses():
     got = {r.card_id: r.status for r in src.rows}
     assert got == {
         "FIX-DASHA-1": "active",
+        "FIX-HASH-1": "active",
         "FIX-NATAL-1": "active",
         "FIX-QUAR-MEAN-1": "quarantined_not_evaluable",
         "FIX-REDACTED-1": "quarantined_not_evaluable",
@@ -95,7 +97,7 @@ def test_fixture_loads_with_expected_statuses():
     for r in src.rows:
         assert (r.status == "active") == (r.quarantine_reason is None)
         if r.status == "active":
-            assert r.result.ir is not None and r.result.ir["status"] == "active"
+            assert r.ir is not None and r.ir["status"] == "active"
 
 
 def test_fixture_has_no_restricted_quote_text():
@@ -132,8 +134,9 @@ def test_licence_refuses_restricted_quote_and_writes_nothing(tmp_path):
     bad["field1_citation"]["passage_ids"] = ["phaladeepika_pg9001_c01:en:p001"]
     path = write_version(tmp_path, "TEST-LIC", cards, redact=False)
     conn = _RecordingConn()
-    with pytest.raises(RB.RuleBookLicenceRefused, match="QUOTE_RESTRICTED_EDITION"):
+    with pytest.raises(RB.RuleBookLicenceRefused, match="QUOTE_RESTRICTED_EDITION") as exc:
         RB.seed_rule_book(conn, manifest_path=path)
+    assert f"{bad['card_id']}: QUOTE_RESTRICTED_EDITION" in str(exc.value)  # the error names the card
     assert conn.calls == []
 
 
@@ -243,6 +246,96 @@ def test_p4_double_transit_refuses_the_version(tmp_path):
 
 
 # ── writer contract (no DB) ──────────────────────────────────────────────────
+# ── hash form (restricted editions stored as quote_sha256 + witnesses) ───────
+def _hash_version(tmp_path, clear, *, attest=True, name="TEST-HASH"):
+    card, wt = to_hash_form(clear)
+    atts = {card["card_id"]: RB.attest_text_compile(card, wt)} if attest else None
+    return write_version(tmp_path, name, [card], attestations=atts), card, wt
+
+
+def test_hash_form_restricted_card_is_active(tmp_path):
+    path, card, _ = _hash_version(tmp_path, K.natal_card())  # synthtext: a restricted edition
+    assert lint_licence(card) == []
+    row = RB.load_source(path).rows[0]
+    assert row.status == "active" and row.quarantine_reason is None and row.text_attested
+    assert row.ir["status"] == "active" and sha256_hex(row.ir) == row.ir_sha256
+    assert row.ir["citation"]["quote_sha256"] == card["field1_citation"]["quote_sha256"]
+    assert "quote" not in json.dumps(row.card).replace('"quote_', "")  # no clear words stored
+
+
+def test_hash_form_with_verse_or_is_active(tmp_path):
+    path, _, _ = _hash_version(tmp_path, K.dasha_card())
+    assert RB.load_source(path).rows[0].status == "active"
+
+
+def test_hash_form_without_attestation_is_never_active(tmp_path):
+    path, _, _ = _hash_version(tmp_path, K.natal_card(), attest=False)
+    row = RB.load_source(path).rows[0]
+    assert row.status == "quarantined_not_evaluable" and "TEXT_UNRESOLVED" in row.quarantine_reason
+
+
+def test_hash_form_word_checks_still_apply_through_the_attestation(tmp_path):
+    clear = K.natal_card()
+    clear["field1_citation"]["quote"] = "The test planet by its mean place in backward motion gives good results."
+    clear["field5_typed_operands"][0]["quote_terms"] = ["test planet", "mean place", "backward motion"]
+    path, _, _ = _hash_version(tmp_path, clear)
+    row = RB.load_source(path).rows[0]
+    assert row.status == "quarantined_not_evaluable" and "MEAN_OPERAND" in row.quarantine_reason
+
+
+def test_hash_form_structural_finding_quarantines_whatever_the_attestation(tmp_path):
+    clear = K.natal_card()
+    clear["field3_reference_frame"]["frame"] = "surya_lagna"  # deferred frame: needs no words to rule out
+    card, wt = to_hash_form(clear)
+    att = RB.attest_text_compile(card, wt)
+    att = dict(att, status="active", quarantine_reason=None)  # even a (forged) active attestation
+    row = RB.load_source(write_version(tmp_path, "TEST-HS", [card], attestations={card["card_id"]: att})).rows[0]
+    assert row.status == "quarantined_not_evaluable" and "FRAME_UNSUPPORTED_V1" in row.quarantine_reason
+
+
+@pytest.mark.parametrize("tamper,match", [
+    (lambda a: a["ir"].update(polarity="obstructive"), "ir_sha256"),
+    (lambda a: a.update(card_sha256="0" * 64), "another card"),
+    (lambda a: a.update(attestation_schema="x"), "text_attestation must be"),
+    (lambda a: a.update(status="active", quarantine_reason="x"), "disagree"),
+])
+def test_tampered_attestation_refuses_the_version(tmp_path, tamper, match):
+    card, wt = to_hash_form(K.natal_card())
+    att = json.loads(json.dumps(RB.attest_text_compile(card, wt)))
+    tamper(att)
+    with pytest.raises(RB.RuleBookSourceError, match=match):
+        RB.load_source(write_version(tmp_path, "TEST-TAMP", [card], attestations={card["card_id"]: att}))
+
+
+def test_attestation_from_another_card_refused(tmp_path):
+    card, wt = to_hash_form(K.natal_card())
+    other, owt = to_hash_form(K.dasha_card())
+    att = dict(RB.attest_text_compile(other, owt), card_sha256=sha256_hex(card))
+    with pytest.raises(RB.RuleBookSourceError, match="structural projection"):
+        RB.load_source(write_version(tmp_path, "TEST-OTHER", [card], attestations={card["card_id"]: att}))
+
+
+def test_stale_attestation_is_quarantined(tmp_path):
+    card, wt = to_hash_form(K.natal_card())
+    att = dict(RB.attest_text_compile(card, wt), compiler_version="rulebook-compiler-v0.9")
+    row = RB.load_source(write_version(tmp_path, "TEST-STALE", [card], attestations={card["card_id"]: att})).rows[0]
+    assert row.status == "quarantined_not_evaluable" and "stale" in row.quarantine_reason
+
+
+def test_attestation_on_clear_card_refused(tmp_path):
+    card, wt = to_hash_form(K.natal_card())
+    att = RB.attest_text_compile(card, wt)
+    clear = _pd(K.natal_card())
+    with pytest.raises(RB.RuleBookSourceError, match="clear-form"):
+        RB.load_source(write_version(tmp_path, "TEST-CLR", [clear], attestations={clear["card_id"]: att}))
+
+
+def test_public_domain_clear_card_is_active(tmp_path):
+    row = RB.load_source(write_version(tmp_path, "TEST-PD", [_pd(K.natal_card())])).rows[0]
+    assert row.status == "active" and not row.text_attested and row.redaction_map == []
+    assert row.ratification_sha256 == row.card_sha256
+
+
 def test_writer_registered_and_never_commits_on_dry_run():
     from pipeline.orchestrator.writers import ContextSpec, get_writer
     from pipeline.orchestrator.writers.bg_rule_book import RuleBookWriter
@@ -253,7 +346,7 @@ def test_writer_registered_and_never_commits_on_dry_run():
                       config={"rule_book_manifest": str(RB.FIXTURE_MANIFEST), "rule_book_allow_fixture": True,
                               "chart_id": "00000000-0000-0000-0000-000000000000"})
     res = RuleBookWriter().run(ctx)
-    assert res.rows_inserted == 6 and "[dry run]" in res.notes
+    assert res.rows_inserted == 7 and "[dry run]" in res.notes
     assert [c[0] for c in conn.calls] == ["execute"]  # the frozen-version probe only
     assert not any(c[0] in ("commit", "rollback", "close") for c in conn.calls)
 

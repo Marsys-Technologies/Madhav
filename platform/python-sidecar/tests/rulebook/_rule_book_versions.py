@@ -31,6 +31,7 @@ def write_version(
     full_cards: Iterable[Mapping[str, Any]],
     *,
     withdrawn: Optional[Dict[str, str]] = None,
+    attestations: Optional[Dict[str, Mapping[str, Any]]] = None,
     redact: bool = True,
     fixture: bool = False,
 ) -> Path:
@@ -50,6 +51,8 @@ def write_version(
             "ratification_sha256": rat,
             "redaction_map": rmap,
         }
+        if attestations and card["card_id"] in attestations:
+            entry["text_attestation"] = attestations[card["card_id"]]
         if card["card_id"] in withdrawn:
             entry["status"] = "withdrawn"
             entry["withdrawn_reason"] = withdrawn[card["card_id"]]

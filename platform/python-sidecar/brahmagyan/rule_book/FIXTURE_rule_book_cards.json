@@ -316,6 +316,67 @@
       "polarity": "promotive",
       "provenance": "verse_cited",
       "schema_version": "rule-card-v1.1"
+    },
+    {
+      "card_id": "FIX-HASH-1",
+      "confidence_notes": "FIXTURE",
+      "field1_citation": {
+        "chunk_id": "synthtext_pg9003_c01",
+        "locus": "FIXTURE.3",
+        "passage_ids": [
+          "synthtext_pg9003_c01:en:p001"
+        ],
+        "quote_form": "sha256",
+        "quote_language": "en",
+        "quote_sha256": "e5a68ac7a33155ba75042d23cab865f0d6a45bf0c456b5c21d5c9e355eb2414f",
+        "text_id": "synthtext",
+        "witnesses": [
+          {
+            "passage_id": "synthtext_pg9003_c01:en:p001",
+            "token_end": 18,
+            "token_start": 0
+          }
+        ],
+        "work": "FIXTURE: invented test prose; not a quotation of any text"
+      },
+      "field2_target_scope": {
+        "category": "natal_promise",
+        "class_group": "major_gain"
+      },
+      "field3_reference_frame": {
+        "frame": "janma_lagna"
+      },
+      "field4_necessary_gate": {
+        "expr": {
+          "operand": "ven_r"
+        },
+        "gate_term": "when"
+      },
+      "field5_typed_operands": [
+        {
+          "doctrinal_graha": "shukra",
+          "id": "ven_r",
+          "quote_terms": [
+            {
+              "passage_id": "synthtext_pg9003_c01:en:p001",
+              "token_end": 3,
+              "token_start": 1
+            },
+            {
+              "passage_id": "synthtext_pg9003_c01:en:p001",
+              "token_end": 6,
+              "token_start": 4
+            }
+          ],
+          "relation": "retrograde",
+          "role": "natal_graha"
+        }
+      ],
+      "field6_exceptions": [],
+      "field7_discrete_arithmetic": [],
+      "polarity": "promotive",
+      "provenance": "verse_cited",
+      "schema_version": "rule-card-v1.2"
     }
   ],
   "note": "FIXTURE ONLY. Synthetic Rule Cards with invented prose for the bg_rule_book writer tests. No real card, verse, quote, chart value or birth data.",

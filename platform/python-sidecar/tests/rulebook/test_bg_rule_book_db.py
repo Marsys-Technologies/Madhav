@@ -28,6 +28,7 @@ from services.rulebook import schema as rb_schema  # noqa: E402
 from services.rulebook.compiler import sha256_hex  # noqa: E402
 from tests.l3._disposable_db_guard import assert_disposable_connection, validate_disposable_dsn  # noqa: E402
 from tests.rulebook import _cards as K  # noqa: E402
+from tests.rulebook._hash_form import to_hash_form  # noqa: E402
 from tests.rulebook._rule_book_versions import fixture_cards, write_version  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[4]
@@ -176,12 +177,12 @@ def test_builder_role_granted_dml_only(conn):
 def test_writer_fixture_rows_and_idempotency(clean):
     conn = clean
     r1 = _run(conn, RB.FIXTURE_MANIFEST, rule_book_allow_fixture=True)
-    assert (r1.rows_inserted, r1.rows_updated) == (6, 0)
+    assert (r1.rows_inserted, r1.rows_updated) == (7, 0)
     snap1 = conn.execute(
         "SELECT card_id, card_sha256, ir_sha256, status, quarantine_reason FROM l0_rule_book_cards ORDER BY card_id").fetchall()
     classes1 = conn.execute("SELECT * FROM l0_rule_book_card_classes ORDER BY 1,2,3").fetchall()
     r2 = _run(conn, RB.FIXTURE_MANIFEST, rule_book_allow_fixture=True)
-    assert (r2.rows_inserted, r2.rows_updated) == (0, 6)
+    assert (r2.rows_inserted, r2.rows_updated) == (0, 7)
     assert conn.execute(
         "SELECT card_id, card_sha256, ir_sha256, status, quarantine_reason FROM l0_rule_book_cards ORDER BY card_id").fetchall() == snap1
     assert conn.execute("SELECT * FROM l0_rule_book_card_classes ORDER BY 1,2,3").fetchall() == classes1
@@ -222,7 +223,7 @@ def test_stored_columns_are_the_cards_own(clean):
     _run(conn, RB.FIXTURE_MANIFEST, rule_book_allow_fixture=True)
     rows = conn.execute(
         "SELECT card_id, card_json, card_sha256, ir_json, ir_sha256, verdict, provenance FROM l0_rule_book_cards").fetchall()
-    assert len(rows) == 6
+    assert len(rows) == 7
     for cid, card, csha, ir, isha, verdict, prov in rows:
         assert sha256_hex(card) == csha, cid
         assert (ir is None and isha is None) or sha256_hex(ir) == isha, cid
@@ -232,7 +233,7 @@ def test_stored_columns_are_the_cards_own(clean):
         assert got == sorted(rb_schema.class_groups(card)), cid
     v = conn.execute("SELECT manifest_sha256, card_count FROM l0_rule_book_versions").fetchone()
     src = RB.load_source(RB.FIXTURE_MANIFEST, allow_fixture=True)
-    assert v == (src.manifest_sha256, 6)
+    assert v == (src.manifest_sha256, 7)
 
 
 def test_rerun_drops_cards_removed_from_unfrozen_version(clean, tmp_path):
@@ -295,13 +296,35 @@ def test_check_ties_extracted_columns_to_card_json(clean):
     conn.rollback()
 
 
+# ── hash form ────────────────────────────────────────────────────────────────
+def test_hash_form_restricted_card_stored_active_and_counted(clean, tmp_path):
+    conn = clean
+    hashed, wt = to_hash_form(K.natal_card())  # synthtext: restricted; stored as witnesses + sha only
+    hashed["card_id"] = "SYN-HASH-1"
+    unattested, _ = to_hash_form(K.dasha_card())
+    unattested["card_id"] = "SYN-HASH-NOATT"
+    att = RB.attest_text_compile(hashed, wt)
+    path = write_version(tmp_path, "TEST-HASH", [hashed, unattested, _pd_cards()[0]], attestations={"SYN-HASH-1": att})
+    _run(conn, path)
+    rows = {r[0]: r[1:] for r in conn.execute(
+        "SELECT card_id, status, ir_sha256, card_json -> 'field1_citation' ? 'quote', quarantine_reason "
+        "FROM l0_rule_book_cards WHERE rulebook_version = 'TEST-HASH'").fetchall()}
+    assert rows["SYN-HASH-1"][:3] == ("active", att["ir_sha256"], False)
+    assert rows["SYN-HASH-NOATT"][0] == "quarantined_not_evaluable" and "TEXT_UNRESOLVED" in rows["SYN-HASH-NOATT"][3]
+    assert rows["SYN-NATAL-1"][0] == "active"  # public-domain clear card
+    _freeze(conn, "TEST-HASH")
+    conn.execute("UPDATE l0_rule_book_versions SET is_current = true WHERE rulebook_version = 'TEST-HASH'")
+    conn.commit()
+    assert _count_sql(conn) == 2
+
+
 # ── licence ──────────────────────────────────────────────────────────────────
 def test_licence_refusal_writes_nothing(clean, tmp_path):
     conn = clean
     cards = fixture_cards()
     cards[0]["field1_citation"].update(text_id="bphs", passage_ids=["bphs_pg9001_c01:en:p001"])
     path = write_version(tmp_path, "TEST-LIC", cards, redact=False)
-    with pytest.raises(RB.RuleBookLicenceRefused):
+    with pytest.raises(RB.RuleBookLicenceRefused, match=cards[0]["card_id"]):
         RuleBookWriter().run(_ctx(conn, path))
     conn.rollback()
     assert conn.execute("SELECT COUNT(*) FROM l0_rule_book_versions").fetchone()[0] == 0
@@ -329,7 +352,7 @@ def test_frozen_version_refused_by_trigger(clean):
                          "passage_ids, 'withdrawn', 'x', build_id, now() FROM l0_rule_book_cards WHERE card_id='FIX-NATAL-1'")
     _expect_frozen(conn, "DELETE FROM l0_rule_book_card_classes WHERE card_id='FIX-NATAL-1'")
     _expect_frozen(conn, "INSERT INTO l0_rule_book_card_classes VALUES ('FIXTURE-0.1','FIX-NATAL-1','major_loss')")
-    _expect_frozen(conn, "UPDATE l0_rule_book_versions SET card_count = 7")
+    _expect_frozen(conn, "UPDATE l0_rule_book_versions SET card_count = card_count + 1")
     _expect_frozen(conn, "UPDATE l0_rule_book_versions SET frozen_at = NULL")
     _expect_frozen(conn, "UPDATE l0_rule_book_versions SET change_register_ids = '{X}'")
     _expect_frozen(conn, "DELETE FROM l0_rule_book_versions")
@@ -346,7 +369,7 @@ def test_frozen_version_refused_by_trigger(clean):
                 "category": "natal_promise", "polarity": "promotive", "provenance": "verse_cited", "verdict": "scored",
                 "passage_ids": src.rows[1].passage_ids, "status": "active", "reason": None, "b": "x"})
     conn.rollback()
-    assert conn.execute("SELECT COUNT(*) FROM l0_rule_book_cards").fetchone()[0] == 6
+    assert conn.execute("SELECT COUNT(*) FROM l0_rule_book_cards").fetchone()[0] == 7
 
 
 def test_freeze_time_checks_and_insert_unfrozen_only(clean):

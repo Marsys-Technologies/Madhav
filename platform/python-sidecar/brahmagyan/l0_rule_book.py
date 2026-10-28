@@ -22,6 +22,21 @@ What it does, in order (nothing is written unless every step passes):
    refuses the version. A ``panel_return`` lint (vedha clause, frame) stores
    the card as ``quarantined_not_evaluable`` with the lint code as the reason:
    a card owed back to the panel is never counted.
+5a. HASH FORM (schema v1.2 quote_form "sha256": restricted editions, CR-006
+   §2.5, plan Q7). The card carries witnesses and quote_sha256, never words,
+   so it passes the licence lint. The compiler's lexical checks need the words,
+   which exist only in the owner's bank, so they run THERE:
+   ``attest_text_compile(card, witness_text)`` compiles with the bank resolver
+   and records the outcome (status, reasons, IR, ir_sha256, compiler version)
+   as the manifest entry's ``text_attestation``. Here, without the bank, the
+   writer compiles the card again (every structural rule runs; only the
+   word checks report TEXT_UNRESOLVED) and accepts the attestation only if it
+   is bound to this card_sha256, its IR hashes to ir_sha256, it was made by
+   the deployed compiler version, and its IR describes the same card as the
+   local compile (identity, citation hashes, frame, operands, exceptions).
+   A hash-form card with no attestation is stored quarantined, never active;
+   a stale one (older compiler) likewise. A structural finding here always
+   quarantines, whatever the attestation says.
 6. Locks the version row, refuses a FROZEN version (the DB trigger refuses it
    too), then upserts the version and its cards ON CONFLICT DO UPDATE and
    replaces the version's class rows and drops cards no longer in the
@@ -44,7 +59,7 @@ from psycopg.types.json import Jsonb
 
 from services.rulebook import constants as RC
 from services.rulebook import schema as rb_schema
-from services.rulebook.compiler import CompileResult, compile_card, sha256_hex
+from services.rulebook.compiler import CompileResult, WitnessText, compile_card, sha256_hex
 from services.rulebook.lints import BUILD_FAIL, PANEL_RETURN, lint_licence, run_lints
 
 logger = logging.getLogger(__name__)
@@ -56,6 +71,11 @@ DATA_DIR = Path(__file__).resolve().parent / "rule_book"
 DEFAULT_MANIFEST = DATA_DIR / "rule_book_manifest.json"
 FIXTURE_MANIFEST = DATA_DIR / "FIXTURE_rule_book_manifest.json"
 FIXTURE_PREFIX = "FIXTURE-"
+
+ATTESTATION_SCHEMA = "rule-book-text-attestation-v1"
+# findings that only say "the words were not available here" (resolved by the attestation)
+TEXT_ONLY_REASONS = frozenset({"TEXT_UNRESOLVED"})
+TEXT_ONLY_LINTS = frozenset({"VEDHA_TEXT_UNRESOLVED"})
 
 STATUS_ACTIVE = "active"
 STATUS_QUARANTINED = "quarantined_not_evaluable"
@@ -171,6 +191,9 @@ class CardRow:
     ratification_sha256: str
     redaction_map: List[Dict[str, Any]]
     result: CompileResult
+    ir: Optional[Dict[str, Any]]
+    ir_sha256: Optional[str]
+    text_attested: bool
     status: str
     quarantine_reason: Optional[str]
     category: str
@@ -210,6 +233,124 @@ def _quarantine_reason(result: CompileResult) -> str:
         oid = f"[{f.operand_id}]" if f.operand_id else ""
         parts.append(f"{f.reason.value}{oid}: {f.detail}")
     return " | ".join(parts) if parts else "compiler: not evaluable (no IR)"
+
+
+def _decide(result: CompileResult, lints: Sequence[Any]) -> Tuple[str, Optional[str]]:
+    """active / quarantined + reason from one compile and its lints (build_fail is handled by the caller)."""
+    if result.status != STATUS_ACTIVE:
+        return STATUS_QUARANTINED, _quarantine_reason(result)
+    panel = [lf for lf in lints if lf.severity == PANEL_RETURN]
+    if panel:
+        return STATUS_QUARANTINED, " | ".join(f"PANEL_RETURN:{lf.code}: {lf.detail}" for lf in panel)
+    return STATUS_ACTIVE, None
+
+
+def is_hash_form(card: Mapping[str, Any]) -> bool:
+    return (card.get("field1_citation") or {}).get("quote_form") == "sha256"
+
+
+def _has_key(obj: Any, key: str) -> bool:
+    if isinstance(obj, Mapping):
+        return key in obj or any(_has_key(v, key) for v in obj.values())
+    if isinstance(obj, list):
+        return any(_has_key(v, key) for v in obj)
+    return False
+
+
+def _operand_ids(obj: Any) -> List[str]:
+    out: List[str] = []
+    if isinstance(obj, Mapping):
+        if isinstance(obj.get("operand_id"), str):
+            out.append(obj["operand_id"])
+        for v in obj.values():
+            out.extend(_operand_ids(v))
+    elif isinstance(obj, list):
+        for v in obj:
+            out.extend(_operand_ids(v))
+    return out
+
+
+def _projection(ir: Mapping[str, Any]) -> Dict[str, Any]:
+    """What the IR says about the card that does NOT depend on the verse's words."""
+    cit = ir.get("citation") or {}
+    fr = ir.get("frame") or {}
+    return {
+        "card": [ir.get(k) for k in ("card_id", "schema_version", "category", "polarity", "provenance")],
+        "class_groups": ir.get("class_groups"),
+        "frame": [fr.get("declared"), fr.get("frame_role")],
+        "citation": [cit.get(k) for k in ("text_id", "passage_ids", "quote_sha256", "frame_passage_ids")],
+        "testimony": (ir.get("counting") or {}).get("testimony"),
+        "gate_operands": sorted(_operand_ids(ir.get("gate"))),
+        "exceptions": [[e.get("effect"), e.get("school_scope"), sorted(_operand_ids(e))] for e in ir.get("exceptions") or []],
+    }
+
+
+def attest_text_compile(
+    card: Mapping[str, Any], witness_text: WitnessText, *, allowlist: Optional[Mapping[str, Any]] = None
+) -> Dict[str, Any]:
+    """Owner-session step for a hash-form card: compile WITH the bank resolver and record the outcome.
+
+    The result goes into the manifest entry as ``text_attestation``. It carries no words: the
+    IR never holds quote text (asserted). A build_fail lint refuses, as in the writer.
+    """
+    if not is_hash_form(card):
+        raise RuleBookSourceError(f"{card.get('card_id')}: only a hash-form card needs a text attestation")
+    result = compile_card(card, witness_text=witness_text)
+    lints = run_lints(card, result, allowlist=allowlist, witness_text=witness_text)
+    bad = [f"{lf.code}: {lf.detail}" for lf in lints if lf.severity == BUILD_FAIL]
+    if bad:
+        raise RuleBookBuildLintRefused(f"{card.get('card_id')}: " + "; ".join(bad))
+    if result.ir is None:
+        raise RuleBookSourceError(f"{card.get('card_id')}: no IR to attest ({_quarantine_reason(result)})")
+    if _has_key(result.ir, "quote"):
+        raise RuleBookSourceError(f"{card.get('card_id')}: IR carries a quote key; refusing to attest")
+    status, why = _decide(result, lints)
+    return {
+        "attestation_schema": ATTESTATION_SCHEMA,
+        "compiler_version": RC.COMPILER_VERSION,
+        "ast_version": RC.AST_VERSION,
+        "card_sha256": sha256_hex(card),
+        "status": status,
+        "quarantine_reason": why,
+        "ir": result.ir,
+        "ir_sha256": result.ir_sha256,
+    }
+
+
+def _apply_attestation(
+    cid: str, card_sha: str, result: CompileResult, att: Any
+) -> Tuple[str, Optional[str], Optional[Dict[str, Any]], Optional[str], bool]:
+    """Verify a hash-form card's text attestation against this card and the local (word-less) compile."""
+    if att is None:
+        return (STATUS_QUARANTINED,
+                "TEXT_UNRESOLVED: hash-form card has no owner-session text_attestation in the manifest",
+                result.ir, result.ir_sha256, False)
+    if not isinstance(att, Mapping) or att.get("attestation_schema") != ATTESTATION_SCHEMA:
+        raise RuleBookSourceError(f"{cid}: text_attestation must be {ATTESTATION_SCHEMA!r}")
+    if att.get("card_sha256") != card_sha:
+        raise RuleBookSourceError(f"{cid}: text_attestation is bound to another card (card_sha256 differs)")
+    ir = att.get("ir")
+    if not isinstance(ir, Mapping) or sha256_hex(ir) != att.get("ir_sha256"):
+        raise RuleBookSourceError(f"{cid}: text_attestation IR does not hash to its ir_sha256")
+    if _has_key(ir, "quote"):
+        raise RuleBookSourceError(f"{cid}: text_attestation IR carries a quote key")
+    if result.ir is None or _projection(ir) != _projection(result.ir):
+        raise RuleBookSourceError(f"{cid}: text_attestation IR does not describe this card (structural projection differs)")
+    if (att.get("compiler_version"), att.get("ast_version")) != (RC.COMPILER_VERSION, RC.AST_VERSION):
+        return (STATUS_QUARANTINED,
+                f"TEXT_UNRESOLVED: stale text_attestation ({att.get('compiler_version')}/{att.get('ast_version')}); "
+                f"re-attest with {RC.COMPILER_VERSION}/{RC.AST_VERSION}",
+                result.ir, result.ir_sha256, False)
+    status, why = att.get("status"), att.get("quarantine_reason")
+    if status == STATUS_ACTIVE:
+        if why is not None or ir.get("status") != STATUS_ACTIVE:
+            raise RuleBookSourceError(f"{cid}: text_attestation says active but its IR/reason disagree")
+    elif status == STATUS_QUARANTINED:
+        if not (isinstance(why, str) and why.strip()):
+            raise RuleBookSourceError(f"{cid}: a quarantined text_attestation needs its reason")
+    else:
+        raise RuleBookSourceError(f"{cid}: text_attestation status {status!r} not allowed")
+    return status, why, dict(ir), att["ir_sha256"], True
 
 
 def load_source(
@@ -304,12 +445,14 @@ def load_source(
             if not isinstance(e.get("quote_sha256"), str) or len(e["quote_sha256"]) != 64:
                 raise RuleBookSourceError(f"{cid}: redaction entry {e['path']} has no quote_sha256")
 
-        result = compile_card(card)
+        result = compile_card(card)  # no bank here: a hash-form card's word checks report TEXT_UNRESOLVED
         lints = run_lints(card, result, allowlist=allowlist)
         for lf in lints:
             if lf.severity == BUILD_FAIL:
                 build_fail.append(f"{cid}: {lf.code}: {lf.detail}")
-        panel = [lf for lf in lints if lf.severity == PANEL_RETURN]
+        hashed = is_hash_form(card)
+        if not hashed and entry.get("text_attestation") is not None:
+            raise RuleBookSourceError(f"{cid}: text_attestation given for a clear-form card")
 
         scope = card.get("field2_target_scope") or {}
         provenance = card.get("provenance")
@@ -328,13 +471,18 @@ def load_source(
             status, why = STATUS_WITHDRAWN, f"withdrawn: {reason}"
         elif entry.get("status") not in (None, STATUS_ACTIVE):
             raise RuleBookSourceError(f"{cid}: manifest status {entry.get('status')!r} not allowed (only withdrawn may be declared)")
-        elif result.status != STATUS_ACTIVE:
-            status, why = STATUS_QUARANTINED, _quarantine_reason(result)
-        elif panel:
-            status = STATUS_QUARANTINED
-            why = " | ".join(f"PANEL_RETURN:{lf.code}: {lf.detail}" for lf in panel)
         else:
-            status, why = STATUS_ACTIVE, None
+            status, why = _decide(result, lints)
+        ir, ir_sha, attested = result.ir, result.ir_sha256, False
+        if hashed:
+            structural = [f for f in result.findings if f.reason.value not in TEXT_ONLY_REASONS]
+            structural_lints = [lf for lf in lints if lf.severity == PANEL_RETURN and lf.code not in TEXT_ONLY_LINTS]
+            if structural or structural_lints or result.ir is None:
+                pass  # quarantined by a rule that needs no words; no attestation can lift it
+            else:
+                a_status, a_why, ir, ir_sha, attested = _apply_attestation(cid, card_sha, result, entry.get("text_attestation"))
+                if status != STATUS_WITHDRAWN:
+                    status, why = a_status, a_why
 
         src.rows.append(
             CardRow(
@@ -344,6 +492,9 @@ def load_source(
                 ratification_sha256=rat_sha,
                 redaction_map=list(rmap),
                 result=result,
+                ir=ir,
+                ir_sha256=ir_sha,
+                text_attested=attested,
                 status=status,
                 quarantine_reason=why,
                 category=scope.get("category"),
@@ -432,7 +583,7 @@ def write_source(conn: Any, src: RuleBookSource, *, build_id: Optional[str] = No
         )
         counts["deleted"] = cur.rowcount
         for r in src.rows:
-            ir = r.result.ir
+            ir = r.ir
             cur.execute(
                 _UPSERT_CARD,
                 {
@@ -443,7 +594,7 @@ def write_source(conn: Any, src: RuleBookSource, *, build_id: Optional[str] = No
                     "rat": r.ratification_sha256,
                     "rmap": Jsonb(r.redaction_map),
                     "ir_json": Jsonb(ir) if ir is not None else None,
-                    "ir_sha256": r.result.ir_sha256 if ir is not None else None,
+                    "ir_sha256": r.ir_sha256 if ir is not None else None,
                     "category": r.category,
                     "polarity": r.polarity,
                     "provenance": r.provenance,
