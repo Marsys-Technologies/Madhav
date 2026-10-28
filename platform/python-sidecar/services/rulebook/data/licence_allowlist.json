@@ -1,0 +1,31 @@
+{
+  "version": "licence-allowlist-v1.0",
+  "date": "2026-10-28",
+  "rule": "Quote text may appear in git or the production DB only for an edition listed under public_domain. Every other edition, and every edition not listed at all, is restricted: store passage_ids and the quote sha256 only (ENGINE_PLAN v0.2 section 1, M5, Q7). Only clearly public-domain editions are listed; every unsure edition is restricted.",
+  "key": "bank text_id (the bank pins one edition per text_id); when a citation also names an edition it must equal the allowlisted edition string",
+  "public_domain": [
+    {
+      "text_id": "sarvartha_chintamani",
+      "edition": "Trans. B. Suryanarayana Row, 1899, Aryan Press, Bellary (1st English ed.)",
+      "basis": "Published 1899; translator died 1937, so the Indian term (life + 60, Copyright Act 1957 s.22) ended 1997; pre-1929 US publication. Bank licence_status pd_confirmed."
+    }
+  ],
+  "restricted": [
+    {"text_id": "bphs", "reason": "R. Santhanam translation (Ranjan); copyrighted modern translation; owner-licensed copy is personal use only"},
+    {"text_id": "phaladeepika", "reason": "V. Subrahmanya Sastri translation, 2nd ed. 1950; translator death year not established; owner-licensed copy"},
+    {"text_id": "hora_sara", "reason": "R. Santhanam translation; copyrighted"},
+    {"text_id": "jataka_parijata", "reason": "V. Subrahmanya Sastri translation 1932-33; translator death year not established; owner-licensed copy"},
+    {"text_id": "saravali", "reason": "translation attributed to R. Santhanam, SUVRATSUT compilation; CC BY-ND tag the uploader could not grant; licence uncertain"},
+    {"text_id": "brihat_jataka", "reason": "V. Subrahmanya Sastri translation; translator death year not established"},
+    {"text_id": "brihat_samhita", "reason": "V. Subrahmanya Sastri translation 1946; translator death year not established"},
+    {"text_id": "bphs_jaimini", "reason": "1949 3rd revised ed. with B. V. Raman foreword; reviser and rights not established"},
+    {"text_id": "jaimini_sutram", "reason": "catalogue row only; edition not verified"},
+    {"text_id": "muhurta_chintamani", "reason": "Khemraj print; licence_uncertain in the bank"},
+    {"text_id": "tajaka_neelakanthi", "reason": "Shrikrishnadas print with Hindi translation; licence_uncertain in the bank"},
+    {"text_id": "uttara_kalamrita", "reason": "P. S. Sastri translation (Ranjan); copyrighted"},
+    {"text_id": "yavana_jataka", "reason": "D. Pingree, Harvard Oriental Series 1978; copyrighted"},
+    {"text_id": "bhrigu_nandi_nadi", "reason": "R. G. Rao, Ranjan c.1986; copyrighted"},
+    {"text_id": "nadi_navamsa_patel", "reason": "C. S. Patel, Sagar 1996; copyrighted"},
+    {"text_id": "sa_wikisource_*", "reason": "Sanskrit Wikisource transcriptions are CC BY-SA 4.0 with share-alike terms; not public domain as published"}
+  ]
+}

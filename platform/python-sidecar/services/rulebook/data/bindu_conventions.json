@@ -1,0 +1,14 @@
+{
+  "version": "bindu-conventions-v1.0",
+  "date": "2026-10-28",
+  "stored_value": "chart_facts ashtakavarga_bindu_sign.bindus holds BENEFIC-point counts 0..8 (E0 section 3). No malefic-count row exists.",
+  "rule": "A card's bindus operand is evaluable only when its count term is declared for its text here, or the term itself says benefic (e.g. 'benefic dots'). A text that counts malefic points would need 8 - value, and must be declared here first. Undeclared means quarantine (BINDU_CONVENTION_UNDECLARED). No threshold is ever supplied here.",
+  "texts": {
+    "bphs": {
+      "rekha": {"meaning": "benefic", "basis": "BPHS (Santhanam) uses 'rekha' for the benefic points (ENGINE_PLAN v0.2 section 2.1; E0 section 3; F-S2)"}
+    }
+  },
+  "self_declaring": {
+    "benefic_dot": {"meaning": "benefic", "basis": "the verse's own words name the points benefic"}
+  }
+}
