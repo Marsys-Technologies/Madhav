@@ -9,6 +9,15 @@ descriptor of E0's matrix for E3/E4 to resolve later.
 Lexical checks read only words the card itself carries (quote_terms and the
 cited quote), using the closed patterns in constants.py. Quote text never
 enters the IR; the IR carries passage_ids and the quote sha256.
+
+Hash form (schema v1.2 quote_form "sha256", CR-006 §2.5) is a STORAGE form for
+restricted editions, not a new doctrinal field: the card's logic is the clear
+card's. Its words are witnesses (passage id + token offsets). Given a
+``witness_text`` resolver (the owner's bank), witnesses resolve to text, the
+citation's quote_sha256 is verified, and every lexical check runs exactly as on
+a clear card. Without a resolver a lexical check cannot run, so each one that
+would read text records TEXT_UNRESOLVED and the card is quarantined: never a
+silent pass.
 """
 
 from __future__ import annotations
@@ -17,7 +26,7 @@ import hashlib
 import json
 import re
 from dataclasses import dataclass, field
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 from . import constants as C
 from . import schema as rb_schema
@@ -61,6 +70,9 @@ _RELATIONS = frozenset(
     }
 )
 _CLASS_GROUPS = frozenset(C.CLASS_GROUPS)
+# v1.2 features that are a storage form, not a doctrinal field: evaluated (CR-006 §2.5).
+STORAGE_FORM_FEATURES = frozenset({"quote_form:sha256", "witness_terms"})
+WitnessText = Callable[[Mapping[str, Any]], str]
 _PASSAGE_TEXT_RE = re.compile(r"^([a-z0-9_]+?)(?:_v\d+)?_pg\d{4}_c\d{2}:")
 
 
@@ -116,8 +128,9 @@ class _Unbuildable(Exception):
 
 # ── compiler ───────────────────────────────────────────────────────────────
 class _CardCompiler:
-    def __init__(self, card: Mapping[str, Any]):
+    def __init__(self, card: Mapping[str, Any], witness_text: Optional[WitnessText] = None):
         self.card = card
+        self.witness_text = witness_text
         self.findings: List[Finding] = []
         self.pending: set = set()
         self.card_id = str(card.get("card_id") or "<missing card_id>")
@@ -130,6 +143,21 @@ class _CardCompiler:
     def fatal(self, reason: Reason, operand_id: Optional[str], detail: str) -> None:
         self.q(reason, operand_id, detail)
         self.unbuildable = True
+
+    # text (clear, or hash-form witnesses resolved by witness_text) ------------
+    def _cite_quote(self, cite: Mapping[str, Any]) -> Optional[str]:
+        """The citation's quote text; None when it is hash form and no resolver was given."""
+        if cite.get("quote_form") != "sha256":
+            return cite.get("quote") or ""
+        if self.witness_text is None:
+            return None
+        text = " ".join(self.witness_text(w) for w in cite.get("witnesses") or [])
+        if hashlib.sha256(text.encode("utf-8")).hexdigest() != cite.get("quote_sha256"):
+            self.q(Reason.QUOTE_SHA256_MISMATCH, None, "resolved witness text does not hash to quote_sha256")
+        return text
+
+    def _unresolved(self, operand_id: Optional[str], check: str) -> None:
+        self.q(Reason.TEXT_UNRESOLVED, operand_id, f"{check}: hash-form witnesses not resolved (no witness_text)")
 
     # entry -------------------------------------------------------------------
     def run(self) -> CompileResult:
@@ -184,7 +212,7 @@ class _CardCompiler:
                 "; ".join(errs[:6]) + (f" (+{len(errs) - 6} more)" if len(errs) > 6 else ""),
             )
             return False
-        feats = rb_schema.v12_features(card)
+        feats = [f for f in rb_schema.v12_features(card) if f not in STORAGE_FORM_FEATURES]
         if feats:
             # validated, but not evaluated: the evaluator for v1.2 fields does not exist yet
             self.q(Reason.V12_FIELD_NOT_EVALUATED, None, "v1.2 field(s) validated, not evaluated: " + ", ".join(feats))
@@ -200,10 +228,11 @@ class _CardCompiler:
             return False
         cite = card["field1_citation"] or {}
         self.cite = cite
-        self.quote = cite.get("quote") or ""
+        self.hash_form = cite.get("quote_form") == "sha256"
+        self.quote = self._cite_quote(cite)  # None: hash form, unresolved
         pids = list(cite.get("passage_ids") or [])
         self.text_id = cite.get("text_id") or (text_id_of_passage(pids[0]) if pids else None)
-        if card["provenance"] == "verse_cited" and (not pids or not self.quote):
+        if card["provenance"] == "verse_cited" and (not pids or not (self.quote or self.hash_form)):
             self.q(Reason.SCHEMA_INVALID, None, "verse_cited card needs passage_ids and quote")
             return False
         # frame: never defaulted
@@ -291,13 +320,25 @@ class _CardCompiler:
         built = tuple(self._build(a, quote, where) for a in args)
         if op == "AND":
             return And(built)
+        if quote is None:
+            self._unresolved(None, f"{where}: OR needs the cited disjunction")
+            return Or(built, verse_disjunction=True)
         if not _RE["VERSE_DISJUNCTION_RE"].search(quote or ""):
             self.fatal(Reason.OR_NOT_VERSE_STATED, None, f"{where}: OR without a disjunction in the cited quote")
             raise _Unbuildable
         return Or(built, verse_disjunction=True)
 
-    def _terms(self, op: Mapping[str, Any]) -> str:
-        return " | ".join(str(t) for t in (op.get("quote_terms") or []))
+    def _terms(self, op: Mapping[str, Any]) -> Optional[str]:
+        """The operand's quote terms as text; None if a witness term cannot be resolved."""
+        out = []
+        for t in op.get("quote_terms") or []:
+            if isinstance(t, Mapping):
+                if self.witness_text is None:
+                    return None
+                out.append(self.witness_text(t))
+            else:
+                out.append(str(t))
+        return " | ".join(out)
 
     def _pred(self, oid: str) -> Pred:
         op = self.ops[oid]
@@ -306,6 +347,10 @@ class _CardCompiler:
         gclass = op.get("graha_class")
         plane = C.ROLE_PLANE[role]
         terms = self._terms(op)
+        terms_known = terms is not None
+        if not terms_known:
+            self._unresolved(oid, "operand terms (mean / node / vedha / bindu words)")
+            terms = ""
 
         # source (E0 matrix)
         source = C.OPERAND_SOURCES.get((role, rel))
@@ -381,10 +426,10 @@ class _CardCompiler:
 
         comparison = None
         if rel == "bindus":
-            comparison = self._bindus(oid, op, terms)
+            comparison = self._bindus(oid, op, terms if terms_known else None)
         obstructors = None
         if rel == "vedha_by":
-            obstructors = self._vedha(oid, op, terms)
+            obstructors = self._vedha(oid, op, terms if terms_known else None)
         return Pred(
             operand_id=oid,
             role=role,
@@ -417,14 +462,16 @@ class _CardCompiler:
             f"{gclass}: Moon/Mercury membership needs the verse's condition (paksha / association); DF-01",
         )
 
-    def _bindus(self, oid: str, op: Mapping[str, Any], terms: str) -> Optional[Comparison]:
+    def _bindus(self, oid: str, op: Mapping[str, Any], terms: Optional[str]) -> Optional[Comparison]:
         if not op.get("target_role") and not op.get("bhava"):
             self.q(Reason.BINDU_TARGET_UNLINKED, oid, "no target_role/bhava naming the sign whose bindus are read")
         # convention
         conv_map = C.bindu_conventions()
-        haystack = terms
+        haystack = terms or ""
         meaning = None
-        if _RE["SELF_DECLARED_BENEFIC_RE"].search(haystack):
+        if terms is None:
+            pass  # TEXT_UNRESOLVED already recorded for this operand; the convention cannot be read
+        elif _RE["SELF_DECLARED_BENEFIC_RE"].search(haystack):
             meaning = conv_map["self_declaring"]["benefic_dot"]["meaning"]
         else:
             text_conv = (conv_map.get("texts") or {}).get(self.text_id or "", {})
@@ -437,7 +484,7 @@ class _CardCompiler:
                 Reason.BINDU_CONVENTION_UNDECLARED, oid, "malefic-count convention: no 8 - n rewrite exists (CR-006)"
             )
             meaning = None
-        elif meaning != "benefic":
+        elif meaning != "benefic" and terms is not None:
             meaning = None  # absent or 'undeclared' in the map: typed absence, never a polarity
             self.q(
                 Reason.BINDU_CONVENTION_UNDECLARED,
@@ -466,11 +513,15 @@ class _CardCompiler:
             count_convention=f"{meaning}_points",
         )
 
-    def _vedha(self, oid: str, op: Mapping[str, Any], terms: str) -> Optional[ObstructorSet]:
+    def _vedha(self, oid: str, op: Mapping[str, Any], terms: Optional[str]) -> Optional[ObstructorSet]:
         primary = op.get("doctrinal_graha")
         if not op.get("target_bhavas"):
             self.q(Reason.TARGET_UNBOUND, oid, "vedha_by without the vedha place (target_bhavas)")
-        if _RE["VEDHA_EXEMPTION_RE"].search(terms) or (
+        if terms is None or self.quote is None:
+            if self.quote is None:
+                self._unresolved(oid, "vedha exemption / obstructor-class words")
+            terms = terms or ""
+        elif _RE["VEDHA_EXEMPTION_RE"].search(terms) or (
             _RE["VEDHA_TERMS_RE"].search(self.quote) and _RE["VEDHA_EXEMPTION_RE"].search(self.quote)
         ):
             self.q(
@@ -528,7 +579,7 @@ class _CardCompiler:
                 self.fatal(Reason.SCHEMA_INVALID, None, f"exception {i}: effect/school_scope not in the enum")
                 continue
             ecite = exc.get("citation") or {}
-            equote = ecite.get("quote") or self.quote
+            equote = self._cite_quote(ecite) if (ecite.get("quote") or ecite.get("quote_form") == "sha256") else self.quote
             try:
                 cond = self._build(exc.get("condition"), equote, f"exception {i}")
             except _Unbuildable:
@@ -633,7 +684,11 @@ class _CardCompiler:
                 "chunk_id": self.cite.get("chunk_id"),
                 "locus": self.cite.get("locus"),
                 "passage_ids": list(self.cite.get("passage_ids") or []),
-                "quote_sha256": hashlib.sha256(self.quote.encode("utf-8")).hexdigest() if self.quote else None,
+                "quote_sha256": (
+                    self.cite.get("quote_sha256")
+                    if self.hash_form
+                    else (hashlib.sha256(self.quote.encode("utf-8")).hexdigest() if self.quote else None)
+                ),
                 "frame_passage_ids": list(fc.get("passage_ids") or []),
             },
             "gate": gate.to_json(),
@@ -659,10 +714,14 @@ def _alpha_rename(obj: Any, names: Dict[str, str]) -> Any:
     return obj
 
 
-def compile_card(card: Mapping[str, Any]) -> CompileResult:
-    """Compile one Rule Card v1.1 dict. Pure, deterministic, no I/O beyond the package data files."""
-    return _CardCompiler(card).run()
+def compile_card(card: Mapping[str, Any], *, witness_text: Optional[WitnessText] = None) -> CompileResult:
+    """Compile one Rule Card dict. Pure, deterministic, no I/O beyond the package data files.
+
+    ``witness_text`` resolves a hash-form witness {passage_id, token_start, token_end} to its
+    token text (the owner's bank). Clear cards never need it.
+    """
+    return _CardCompiler(card, witness_text).run()
 
 
-def compile_cards(cards: Iterable[Mapping[str, Any]]) -> List[CompileResult]:
-    return [compile_card(c) for c in cards]
+def compile_cards(cards: Iterable[Mapping[str, Any]], *, witness_text: Optional[WitnessText] = None) -> List[CompileResult]:
+    return [compile_card(c, witness_text=witness_text) for c in cards]

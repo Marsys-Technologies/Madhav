@@ -51,6 +51,9 @@ class Reason(str, enum.Enum):
     P4_DOUBLE_TRANSIT = "P4_DOUBLE_TRANSIT"
     # schema v1.2 (validated only; CR-006)
     V12_FIELD_NOT_EVALUATED = "V12_FIELD_NOT_EVALUATED"
+    # hash-form (quote_form sha256) storage: witnesses whose text was not resolved
+    TEXT_UNRESOLVED = "TEXT_UNRESOLVED"
+    QUOTE_SHA256_MISMATCH = "QUOTE_SHA256_MISMATCH"
 
 
 REASON_HELP: Mapping[Reason, str] = {
@@ -82,6 +85,8 @@ REASON_HELP: Mapping[Reason, str] = {
     Reason.SCHOOL_SCOPE_TEXTS_UNDECLARED: "exception scope has no explicit text list yet (Q10)",
     Reason.V12_FIELD_NOT_EVALUATED: "card uses a v1.2 field; it validates but the evaluator does not read v1.2 yet",
     Reason.P4_DOUBLE_TRANSIT: "requires Jupiter and Saturn in transit on a shared target (D4: P4 is not evaluated)",
+    Reason.TEXT_UNRESOLVED: "hash-form card compiled without a witness resolver: a check that reads the verse's words could not run",
+    Reason.QUOTE_SHA256_MISMATCH: "the resolved witness text does not hash to the citation's quote_sha256",
 }
 
 

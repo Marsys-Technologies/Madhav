@@ -194,8 +194,10 @@ def test_each_reason_quarantines(reason, factory, mutate):
 
 
 def test_every_reason_has_a_case():
-    # V12_FIELD_NOT_EVALUATED is covered in test_rulebook_schema_v12.py
-    assert {c[0] for c in CASES} | {Reason.V12_FIELD_NOT_EVALUATED} == set(Reason)
+    # V12_FIELD_NOT_EVALUATED is covered in test_rulebook_schema_v12.py;
+    # TEXT_UNRESOLVED and QUOTE_SHA256_MISMATCH in test_rulebook_hash_form.py
+    covered_elsewhere = {Reason.V12_FIELD_NOT_EVALUATED, Reason.TEXT_UNRESOLVED, Reason.QUOTE_SHA256_MISMATCH}
+    assert {c[0] for c in CASES} | covered_elsewhere == set(Reason)
 
 
 def test_frame_never_defaulted():

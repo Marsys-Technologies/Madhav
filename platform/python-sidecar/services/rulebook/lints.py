@@ -184,8 +184,12 @@ def lint_p4(card: Mapping[str, Any], result: Any = None) -> List[LintFinding]:
 
 
 # ── vedha ───────────────────────────────────────────────────────────────────
-def lint_vedha(card: Mapping[str, Any]) -> List[LintFinding]:
-    """A gochara card whose cited verse carries vedha must encode it."""
+def lint_vedha(card: Mapping[str, Any], witness_text: Any = None) -> List[LintFinding]:
+    """A gochara card whose cited verse carries vedha must encode it.
+
+    A hash-form citation is read through ``witness_text``; without it the verse's words are
+    unknown, so a gochara card gets VEDHA_TEXT_UNRESOLVED (panel_return), never a silent pass.
+    """
     cid = str(card.get("card_id"))
     ops = list(card.get("field5_typed_operands") or [])
     for exc in card.get("field6_exceptions") or []:
@@ -193,7 +197,23 @@ def lint_vedha(card: Mapping[str, Any]) -> List[LintFinding]:
     is_gochara = (card.get("field2_target_scope") or {}).get("category") == "transit" or any(
         o.get("role") == "transiting_graha" for o in ops
     )
-    quote = (card.get("field1_citation") or {}).get("quote") or ""
+    cite = card.get("field1_citation") or {}
+    if cite.get("quote_form") == "sha256":
+        if witness_text is None:
+            if not is_gochara:
+                return []
+            return [
+                LintFinding(
+                    "vedha",
+                    "VEDHA_TEXT_UNRESOLVED",
+                    PANEL_RETURN,
+                    cid,
+                    "hash-form gochara card: the cited verse's words are not resolved, so a vedha clause cannot be ruled out",
+                )
+            ]
+        quote = " ".join(witness_text(w) for w in cite.get("witnesses") or [])
+    else:
+        quote = cite.get("quote") or ""
     if not is_gochara or not _VEDHA_RE.search(quote):
         return []
     vedha_ids = {o.get("id") for o in ops if o.get("relation") == "vedha_by"}
@@ -364,11 +384,15 @@ def lint_licence(card: Mapping[str, Any], allowlist: Optional[Mapping[str, Any]]
 
 # ── runner ──────────────────────────────────────────────────────────────────
 def run_lints(
-    card: Mapping[str, Any], result: Any, *, allowlist: Optional[Mapping[str, Any]] = None
+    card: Mapping[str, Any],
+    result: Any,
+    *,
+    allowlist: Optional[Mapping[str, Any]] = None,
+    witness_text: Any = None,
 ) -> List[LintFinding]:
     out: List[LintFinding] = []
     out += lint_p4(card, result)
-    out += lint_vedha(card)
+    out += lint_vedha(card, witness_text)
     out += lint_frame(card, result)
     if getattr(result, "ir", None) is not None:
         out += lint_testimony(result.ir)

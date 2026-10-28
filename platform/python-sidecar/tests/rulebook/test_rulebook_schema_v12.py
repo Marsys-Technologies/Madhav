@@ -91,7 +91,7 @@ def test_v12_keys_rejected_on_v11_versions(name, make):
 
 
 # ── v1.2 fixtures: valid, validated only ──────────────────────────────────
-@pytest.mark.parametrize("factory", V12_FACTORIES)
+@pytest.mark.parametrize("factory", [f for f in V12_FACTORIES if f is not K.v12_hash_card])
 def test_v12_fixtures_valid_but_not_evaluated(factory):
     card = factory()
     assert validate_card(card) == [], validate_card(card)
