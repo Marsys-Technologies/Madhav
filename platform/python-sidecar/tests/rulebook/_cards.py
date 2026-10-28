@@ -223,3 +223,92 @@ def two_transit_card(j: dict, s: dict, op: str = "AND", frame: str = "chandra_la
 
 def clone(card: dict) -> dict:
     return copy.deepcopy(card)
+
+
+# ── schema v1.2 fixtures (synthetic) ───────────────────────────────────────
+def v12(card: dict) -> dict:
+    card = copy.deepcopy(card)
+    card["schema_version"] = "rule-card-v1.2"
+    return card
+
+
+def v12_vedha_card() -> dict:
+    card = v12(venus_vedha_card())
+    vv = card["field5_typed_operands"][1]
+    del vv["target_bhavas"]
+    vv["vedha"] = {
+        "vedha_pairs": [{"transit_bhava": 5, "vedha_bhava": 9, "quote_terms": ["fifth sign", "ninth sign"]}],
+        "obstructor_relation": {"relation": "occupies", "quote_terms": ["planets in the ninth"]},
+        "obstructors": [],
+        "universal": {"operator": "all_seven_grahas_except_listed_exempt", "quote_terms": ["from planets"]},
+        "exemption": {"stated": False, "clause_span": ["struck by vedha from planets in the ninth sign"]},
+    }
+    return card
+
+
+def v12_exempt_card() -> dict:
+    """Vedha with a verse-stated exemption (synthetic wording)."""
+    card = v12_vedha_card()
+    card["field1_citation"]["quote"] = (
+        "If the test planet passes through the fifth sign it brings trouble when "
+        "that place is struck by vedha from planets other than the slow one."
+    )
+    vv = card["field5_typed_operands"][1]["vedha"]
+    vv["obstructors"] = [{"graha": "shani", "status": "exempt", "quote_terms": ["other than the slow one"]}]
+    vv["exemption"] = {"stated": True, "clause_span": ["struck by vedha from planets other than the slow one"]}
+    return card
+
+
+def v12_av_card() -> dict:
+    card = v12(av_card())
+    card["field7_discrete_arithmetic"] = []
+    av = card["field5_typed_operands"][1]
+    av["bindu_gate"] = {
+        "varga_owner": "shani",
+        "varga_owner_terms": ["its own chart of points"],
+        "reads_sign_of": "sat_t",
+        "comparator": "eq",
+        "value": 0,
+        "value_terms": ["no benefic dots"],
+        "count_term": "benefic_dot",
+        "count_term_quote_terms": ["benefic dots"],
+        "count_convention": "benefic",
+        "convention_terms": ["benefic dots"],
+        "sodhana_stage": "undeclared",
+    }
+    return card
+
+
+def v12_sign_card() -> dict:
+    card = v12(dasha_card())
+    card["card_id"] = "SYN-SIGN-1"
+    card["field1_citation"]["quote"] = (
+        "When the great planet in his transit reaches the root trine sign of the "
+        "planet whose sub period runs, good things come to the native."
+    )
+    card["field3_reference_frame"] = {"frame": "sign_intrinsic", "frame_terms": ["root trine sign of the planet"]}
+    card["field5_typed_operands"] = [
+        {"id": "ad", "role": "antardasha_lord", "relation": "is_antardasha_lord", "quote_terms": ["sub period"]},
+        {
+            "id": "ju",
+            "role": "transiting_graha",
+            "doctrinal_graha": "guru",
+            "relation": "moolatrikona",
+            "quote_terms": ["great planet", "root trine sign"],
+            "target_sign": {"of_role": "ad", "locus": "transit", "locus_terms": ["in his transit"]},
+        },
+    ]
+    card["field4_necessary_gate"]["expr"] = {"op": "AND", "args": [{"operand": "ad"}, {"operand": "ju"}]}
+    card["polarity"] = "promotive"
+    return card
+
+
+def v12_hash_card() -> dict:
+    card = v12(natal_card())
+    cite = card["field1_citation"]
+    del cite["quote"]
+    cite.update(
+        quote_form="sha256", quote_sha256="0" * 64, witnesses=[{"passage_id": PID, "token_start": 0, "token_end": 14}]
+    )
+    card["field5_typed_operands"][0]["quote_terms"] = [{"passage_id": PID, "token_start": 1, "token_end": 3}]
+    return card

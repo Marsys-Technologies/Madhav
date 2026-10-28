@@ -1,7 +1,7 @@
 ---
 artifact: RULE_CARD_SCHEMA_v1_2_PROPOSAL_v0_1.md
 version: 0.1
-status: PROPOSAL (doc only; goes to the panel as a change-register amendment)
+status: SUPERSEDED by RULE_CARD_SCHEMA_v1_2_PROPOSAL_v0_2.md (CR-006)
 date: 2026-10-28
 authored_by: Claude (Rule Book engine packet E1 builder)
 parent: Rule Card schema v1.1; ENGINE_PLAN v0.2 §2.1; E0 operand coverage v0.1 §5; E1 quarantine census v0.1

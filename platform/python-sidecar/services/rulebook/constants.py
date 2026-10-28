@@ -26,7 +26,7 @@ from typing import Any, Mapping
 
 AST_VERSION = "rulebook-ast-v1.0"
 COMPILER_VERSION = "rulebook-compiler-v1.0"
-SUPPORTED_SCHEMA_VERSIONS = ("rule-card-v1", "rule-card-v1.1")
+SUPPORTED_SCHEMA_VERSIONS = ("rule-card-v1", "rule-card-v1.1", "rule-card-v1.2")
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
 

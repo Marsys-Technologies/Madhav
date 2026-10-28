@@ -194,7 +194,8 @@ def test_each_reason_quarantines(reason, factory, mutate):
 
 
 def test_every_reason_has_a_case():
-    assert {c[0] for c in CASES} == set(Reason)
+    # V12_FIELD_NOT_EVALUATED is covered in test_rulebook_schema_v12.py
+    assert {c[0] for c in CASES} | {Reason.V12_FIELD_NOT_EVALUATED} == set(Reason)
 
 
 def test_frame_never_defaulted():
@@ -218,12 +219,11 @@ def test_card_stated_comparator_is_carried_verbatim():
     assert av["comparison"] == {"kind": "bindus_of_8", "op": "eq", "value": 0, "count_convention": "benefic_points"}
 
 
-def test_bphs_rekha_convention_declared():
+def test_self_declared_benefic_dots_convention():
     card = K.av_card()
     card["field1_citation"]["text_id"] = "bphs"
     card["field1_citation"]["passage_ids"] = ["bphs_pg0001_c01:en:p001"]
-    next(o for o in card["field5_typed_operands"] if o["id"] == "sat_av")["quote_terms"] = ["without rekhas"]
-    assert compile_card(card).status == "active"
+    assert compile_card(card).status == "active"  # 'benefic dots': the verse states the polarity
 
 
 def test_venus_vedha_obstructor_set_partial_na():

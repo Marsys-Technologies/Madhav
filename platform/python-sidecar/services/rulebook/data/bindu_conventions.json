@@ -1,11 +1,12 @@
 {
-  "version": "bindu-conventions-v1.0",
+  "version": "bindu-conventions-v1.1",
   "date": "2026-10-28",
   "stored_value": "chart_facts ashtakavarga_bindu_sign.bindus holds BENEFIC-point counts 0..8 (E0 section 3). No malefic-count row exists.",
-  "rule": "A card's bindus operand is evaluable only when its count term is declared for its text here, or the term itself says benefic (e.g. 'benefic dots'). A text that counts malefic points would need 8 - value, and must be declared here first. Undeclared means quarantine (BINDU_CONVENTION_UNDECLARED). No threshold is ever supplied here.",
+  "rule": "A bindus operand is evaluable only when the cited passage (or its frame_citation) states the polarity of the counted points, e.g. 'benefic dots'. This map asserts NO text-wide polarity: the reviewers disagree on the BPHS rekha/bindu polarity (Grok 4.7 vs Fable 5.1, CR-006), so every text is undeclared until a verse states it. There is no 8 - n rewrite: a malefic-count verse stays quarantined. No threshold is ever supplied here.",
   "texts": {
     "bphs": {
-      "rekha": {"meaning": "benefic", "basis": "BPHS (Santhanam) uses 'rekha' for the benefic points (ENGINE_PLAN v0.2 section 2.1; E0 section 3; F-S2)"}
+      "rekha": {"meaning": "undeclared", "basis": "CR-006: reviewers disagree on BPHS rekha/bindu polarity; no text-wide assertion"},
+      "bindu": {"meaning": "undeclared", "basis": "CR-006: as above"}
     }
   },
   "self_declaring": {

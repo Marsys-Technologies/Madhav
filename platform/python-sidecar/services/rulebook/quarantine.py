@@ -49,6 +49,8 @@ class Reason(str, enum.Enum):
     SCHOOL_SCOPE_TEXTS_UNDECLARED = "SCHOOL_SCOPE_TEXTS_UNDECLARED"
     # build-failing semantics
     P4_DOUBLE_TRANSIT = "P4_DOUBLE_TRANSIT"
+    # schema v1.2 (validated only; CR-006)
+    V12_FIELD_NOT_EVALUATED = "V12_FIELD_NOT_EVALUATED"
 
 
 REASON_HELP: Mapping[Reason, str] = {
@@ -78,6 +80,7 @@ REASON_HELP: Mapping[Reason, str] = {
     Reason.VEDHA_EXEMPTION_NOT_ENCODABLE: "cited verse exempts an obstructor; v1.1 has no field to encode it",
     Reason.UNDECLARED_OBSTRUCTOR_SET: "vedha obstructor set is a class or unbound; the set cannot be formed",
     Reason.SCHOOL_SCOPE_TEXTS_UNDECLARED: "exception scope has no explicit text list yet (Q10)",
+    Reason.V12_FIELD_NOT_EVALUATED: "card uses a v1.2 field; it validates but the evaluator does not read v1.2 yet",
     Reason.P4_DOUBLE_TRANSIT: "requires Jupiter and Saturn in transit on a shared target (D4: P4 is not evaluated)",
 }
 

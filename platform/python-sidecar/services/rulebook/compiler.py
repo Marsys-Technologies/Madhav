@@ -20,6 +20,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 from . import constants as C
+from . import schema as rb_schema
 from .ast import And, Comparison, ExceptionNode, Node, Not, ObstructorSet, Or, Pred, iter_preds
 from .lints import p4_violations_ast
 from .quarantine import Finding, Reason
@@ -181,10 +182,27 @@ class _CardCompiler:
         if card["schema_version"] not in C.SUPPORTED_SCHEMA_VERSIONS:
             self.q(Reason.SCHEMA_INVALID, None, f"schema_version {card['schema_version']!r} unsupported")
             return False
+        f3 = card.get("field3_reference_frame")
+        if not isinstance(f3, Mapping) or not f3.get("frame"):
+            self.q(Reason.FRAME_MISSING, None, "field3_reference_frame.frame absent; no default is applied")
+            return False
+        errs = rb_schema.validate_card(card)
+        if errs:
+            self.q(
+                Reason.SCHEMA_INVALID,
+                None,
+                "; ".join(errs[:6]) + (f" (+{len(errs) - 6} more)" if len(errs) > 6 else ""),
+            )
+            return False
+        feats = rb_schema.v12_features(card)
+        if feats:
+            # validated, but not evaluated: the evaluator for v1.2 fields does not exist yet
+            self.q(Reason.V12_FIELD_NOT_EVALUATED, None, "v1.2 field(s) validated, not evaluated: " + ", ".join(feats))
+            return False
         scope = card["field2_target_scope"] or {}
         self.category = scope.get("category")
-        self.class_group = scope.get("class_group")
-        if self.category not in C.CATEGORIES or self.class_group not in _CLASS_GROUPS:
+        self.class_groups = rb_schema.class_groups(card) or []
+        if self.category not in C.CATEGORIES or not self.class_groups or not set(self.class_groups) <= _CLASS_GROUPS:
             self.q(Reason.SCHEMA_INVALID, None, "field2 category/class_group not in the v1.1 enums")
             return False
         if card["polarity"] not in C.POLARITIES or card["provenance"] not in C.PROVENANCES:
@@ -424,7 +442,13 @@ class _CardCompiler:
                 meaning = (text_conv.get("rekha") or {}).get("meaning")
             elif _RE["DOT_TERMS_RE"].search(haystack):
                 meaning = (text_conv.get("dot") or {}).get("meaning")
-        if meaning is None:
+        if meaning == "malefic":
+            self.q(
+                Reason.BINDU_CONVENTION_UNDECLARED, oid, "malefic-count convention: no 8 - n rewrite exists (CR-006)"
+            )
+            meaning = None
+        elif meaning != "benefic":
+            meaning = None  # absent or 'undeclared' in the map: typed absence, never a polarity
             self.q(
                 Reason.BINDU_CONVENTION_UNDECLARED,
                 oid,
@@ -604,7 +628,7 @@ class _CardCompiler:
             "polarity": card["polarity"],
             "provenance": card["provenance"],
             "counting": {"counts_toward_n": bool(verse and status == "active"), "testimony": not verse},
-            "class_groups": [self.class_group],
+            "class_groups": sorted(self.class_groups),
             "frame": {
                 "declared": self.frame,
                 "frame_role": self.f3.get("frame_role"),
