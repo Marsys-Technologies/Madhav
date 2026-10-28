@@ -373,7 +373,12 @@ def test_unavailable_changes_no_permission_value_and_marks_the_result_partial():
     assert {u["system_id"] for u in d_part["systems_unavailable"]} == (
         set(perm.DASHA_SYSTEM_IDS) - {"mudda", "narayana"})
     # SS N-412 (6): the sade_sati entry reports state "no_data" (with an explicit empty_reason) when its facts were not read;
-    # every dasha-system entry still carries one of the three honest states.
+    # every dasha-system entry still carries one of the three honest states. FOURQ-CLOSURE-20261027: the retired
+    # guru_shani_double_transit generator reports state "retired_pending_reauthor" with its status and an explicit
+    # empty_reason -- never "unavailable" (it was not unreadable: it is switched off), never counted as partial.
     assert all(s["state"] in ("active", "inactive", "unavailable")
                or (s["state"] == "no_data" and s["system_id"] == "sade_sati" and s.get("empty_reason"))
+               or (s["state"] == "retired_pending_reauthor" and s["system_id"] == "guru_shani_double_transit"
+                   and s.get("status") == "retired_pending_reauthor" and s.get("empty_reason"))
                for s in d_part["systems"] if "state" in s)
+    assert "guru_shani_double_transit" not in {u["system_id"] for u in d_part["systems_unavailable"]}

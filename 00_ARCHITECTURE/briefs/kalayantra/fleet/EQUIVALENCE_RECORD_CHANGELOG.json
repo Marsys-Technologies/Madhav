@@ -852,6 +852,58 @@
     }
    ],
    "closed": true
+  },
+  {
+   "id": "P4-OFF-FOURQ-CLOSURE",
+   "rulings": [
+    "FOURQ-CLOSURE-20261027",
+    "OWNER-DIRECT-GP13-20261027"
+   ],
+   "category": "E1",
+   "part": "implementation.evaluation (golden pin); geometry and window unchanged; century_contract.json image.writer_source_digest",
+   "base_commit": "a1a6a9e73",
+   "derived_at_head": "(this commit)",
+   "cause": {
+    "commit": "PR #3928 (kalayantra/demote-double-transit-testimony)",
+    "modules": [
+     "ka_gochara_v5",
+     "gochara_rules.registry",
+     "gochara_kernel.inventory"
+    ]
+   },
+   "statement": "PR #3928 switches the Jupiter-Saturn double transit (kernel path P4) OFF under FOURQ-CLOSURE-20261027. The 5.0 writer builds RECORD_PATHS/WINDOW_PATHS from the registry (a path the registry disables is a plan-level absence, as P5 is), the registry carries DISABLED_PATHS and the P4@1.4.0 testimony row, and the kernel inventory pins P4 excluded / tier_withheld_by_ruling; all three are evaluation-stage modules. The default 5.0 plan therefore has 246 substeps (298 minus 26 record and 26 window steps) and a new plan digest. Geometry and window stages are unchanged. The ordinary run's every other observable is followed explicitly by the golden adapters `_follow_p4_off` / `_follow_p4_off_manifest` in test_mb_ordinary_golden.py; no golden component is re-captured. Not covered here and owed before 5.0 execution restarts: services/gochara_kernel/measuring_delivery.py still expects a 298-step plan.",
+   "implementation_digests": {
+    "geometry": {
+     "before": "77cde807a5e0bf6a3733bea3f48270774920acd7434f37f2c2eb73fe781d3616",
+     "after": "77cde807a5e0bf6a3733bea3f48270774920acd7434f37f2c2eb73fe781d3616"
+    },
+    "evaluation": {
+     "before": "ebc2d38c14dcdd95920ea8f9e18646bb8c164147933a219470e6591a09004041",
+     "after": "f7b6792d532854db313ac9119be627581dba65fd85841ea429ae5a085af9dc68"
+    },
+    "window": {
+     "before": "455ab5ade967bc299a4858fde58cce94fe5637c994106c7b9007f53f91b9fabb",
+     "after": "455ab5ade967bc299a4858fde58cce94fe5637c994106c7b9007f53f91b9fabb"
+    }
+   },
+   "writer_source_digest": {
+    "before": "d3cdd192fc4cc949683b1d5d2b307af96a206356e9000c266aa011eeac3dc55f",
+    "after": "562d27ab69fb05a49218384c9ee2f88d8ab66f91400888cff5845a0b70461050"
+   },
+   "requalification": {
+    "row": "E1.inside",
+    "action": "none_while_5_0_execution_is_stopped",
+    "plan": "5.0 execution is stopped (OWNER-STOP-5_0-EXECUTION-20261027); any restart re-qualifies on the P4-off plan",
+    "after": "owner restart of 5.0 execution"
+   },
+   "recipe": "input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) on the PR tree (after) and on origin/main a1a6a9e73 (before); writer_source_digest = pipeline.orchestrator.writer_runtime_support.get_writer_source_hash('ka_gochara_v5'). Module-level hashes are not recorded in this entry.",
+   "interpretations": [
+    {
+     "choice": "(I) stage-level digests only, no per-module hashes",
+     "alternative": "the CENTURY-RESUME-WRITER entry's per-module before/after hashes; omitted because the stage digests and the writer digest are what the tests and the century contract bind"
+    }
+   ],
+   "closed": true
   }
  ]
 }

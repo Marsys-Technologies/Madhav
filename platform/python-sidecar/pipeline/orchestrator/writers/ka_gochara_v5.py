@@ -98,6 +98,7 @@ from services.gochara_kernel.dasha_read import LEVEL_N, load_pinned_vimshottari
 from services.gochara_kernel.inventory_store import InventoryStore
 from services.gochara_kernel import rule_registry as gk_rule_registry
 from services.gochara_kernel.rule_registry import BOUND_PATHS, RuleRegistryStore
+from services.gochara_rules import registry as gk_rules_registry
 from services.gochara_kernel.substrate import (SUBSTRATE_BODIES, production_arc_index,
                                                SUBSTRATE_DOMAIN_END,
                                                SUBSTRATE_DOMAIN_START,
@@ -174,12 +175,16 @@ SNAPSHOT_SUBSTEP = "snapshot"
 INVENTORY_SUBSTEP_PREFIX = "inventory:"
 VERIFY_SUBSTEP_PREFIX = "verify:"
 
-# The VERIFIER's own copy of the two standing rulings — deliberately NOT imported from
+# The VERIFIER's own copy of the standing rulings — deliberately NOT imported from
 # the builder's inventory module: the verifier is told its rulings independently of the
-# code it checks (draft §AM-5 item 4 / O-RP-9).
+# code it checks (draft §AM-5 item 4 / O-RP-9). P4 is switched OFF by the panel closure
+# FOURQ-CLOSURE-20261027 (retired_pending_reauthor; provenance DOUBLE-TRANSIT-PROVENANCE-20261027).
 VERIFIER_PATH_RULINGS = {"p5": {"reason": "tier_withheld_by_ruling",
                                 "basis": "ruling:ST-P5-HOLD-20261001",
-                                "ruling_ref": "ST-P5-HOLD-20261001"}}
+                                "ruling_ref": "ST-P5-HOLD-20261001"},
+                         "p4": {"reason": "tier_withheld_by_ruling",
+                                "basis": "ruling:FOURQ-CLOSURE-20261027",
+                                "ruling_ref": "FOURQ-CLOSURE-20261027"}}
 VERIFIER_H_UNKNOWN_RULING = {"reason": "inputs_unavailable",
                              "basis": "ruling:ST-H-UNKNOWN-20261002",
                              "ruling_ref": "ST-H-UNKNOWN-20261002"}
@@ -189,7 +194,15 @@ GENERATION = "5.0"
 # 'av_qualifier' joins the kgrr vocabulary only at the v1.5 contract fold;
 # brief §interval_sweep + the batch list). The hold is a plan-level absence,
 # never a silent skip: the substep labels say so.
-RECORD_PATHS = tuple(p for p in BOUND_PATHS if p != "P5")
+# A path the registry switches off (P4 — FOURQ-CLOSURE-20261027) is a plan-level absence too: the inventory pins it
+# `excluded / tier_withheld_by_ruling`, so a record or window step for it would build a grain the inventory does not
+# include and the generation-wide output check (`window_gate.generation_output_problems`) would refuse the whole class.
+def _record_paths() -> tuple[str, ...]:
+    """The bound paths with a record grain: P5 held, and any path the registry switches off — read at call time."""
+    return tuple(p for p in BOUND_PATHS if p != "P5" and gk_rules_registry.path_disabled(p) is None)
+
+
+RECORD_PATHS = _record_paths()
 # Window grains: the paths the sweep has an evaluator for (P1–P4; P5 is held). A path absent here
 # is a plan-level absence — never a silent skip inside a grain.
 WINDOW_PATHS = tuple(p for p in RECORD_PATHS if p in gk_window_sweep.SWEEP_PATHS)

@@ -64,10 +64,38 @@ ASHTAKAVARGA_AV_GATES = "BPHS Ch.66–68 (Ashtakavarga) — bg_transit_av_gates;
 # computation)" and inline "per BPHS Ch.26 Parasari — this is classically correct".
 ASHTAKAVARGA_BPHS_26 = "BPHS Ch.26 — Ashtakavarga (sarvashtakavarga bindu system; 337-bindu Parashara constant)"
 
-# Source: platform/supabase/migrations/397_bg_transit_av_gates.sql double_transit
-# rows, e.g. "Phaladeepika ch.26 §double-gochara; Saravali ch.28" /
-# "Phaladeepika ch.26 §double-gochara; BPHS ch.29".
-DOUBLE_GOCHARA_PHALADEEPIKA_26 = "Phaladeepika Ch.26 §double-gochara (Jupiter+Saturn simultaneous transit); BPHS Ch.29"
+# ── Jupiter–Saturn double transit: RETIRED (switched off), attribution only ───
+# The former constant here (DOUBLE_GOCHARA_PHALADEEPIKA_26, "Phaladeepika Ch.26
+# §double-gochara ...") was copied from migration 397's seed rows; the passage it
+# named does not exist in the corpus (migration 565 records the CORPUS_GAP; three
+# independent reviews 2026-09-29 and the sealed Pravāha v3.0 doctrine label the
+# rule modern K.N. Rao practice, `uncited_extension`). Struck under the provenance
+# audit DOUBLE-TRANSIT-PROVENANCE-20261027; the rule itself (permission generator
+# #10, composition operator, kernel path P4, the seven bg_transit_rules rows) is
+# SWITCHED OFF under the panel closure FOURQ-CLOSURE-20261027: status
+# `retired_pending_reauthor`, nothing served, nothing scored, re-admission only via
+# a panel-verified classical citation and a forward-only test. The attribution
+# string is what the seven retired rows carry in place of the struck citation (the
+# migration's text is byte-identical to it); it is never a `classical_citation` in
+# code because it cites no classical locus (B.10 / §N.7.6). None of these are in
+# __all__: they are not citation strings and must not enter the W2.9 catalog.
+DOUBLE_TRANSIT_COMMENTARIAL_ATTRIBUTION = (
+    "Modern practice (K.N. Rao school, 20th c.); no page-anchored classical "
+    "statement in corpus (migration 565 CORPUS_GAP); sole joint precedent claimed: "
+    "Phaladīpikā XVII.12 — unverified"
+)
+DOUBLE_TRANSIT_RULING_REF = "DOUBLE-TRANSIT-PROVENANCE-20261027"   # the provenance audit
+FOURQ_CLOSURE_RULING_REF = "FOURQ-CLOSURE-20261027"                # the panel closure: switched off
+STATUS_RETIRED_PENDING_REAUTHOR = "retired_pending_reauthor"
+#: the seven bg_transit_rules double_transit rows START with this (migration 1412) -- the table has no status column,
+#: so the status rides as a citation prefix (the precedent: node vedha rows start with UNSOURCED, migration 1320);
+#: every consumer that reads bg_transit_rules for serving skips a row whose citation starts with it
+RETIRED_CITATION_PREFIX = "RETIRED_PENDING_REAUTHOR"
+DOUBLE_TRANSIT_RETIRED_REASON = (
+    f"{STATUS_RETIRED_PENDING_REAUTHOR}: the Jupiter–Saturn double transit is switched off "
+    f"(ruling {FOURQ_CLOSURE_RULING_REF}; provenance {DOUBLE_TRANSIT_RULING_REF}) — not evaluated, "
+    "not served, not scored; re-admission only via a panel-verified classical citation and a forward-only test"
+)
 
 # Source: platform/python-sidecar/panchang_engine/tara_bala.py module docstring:
 # "Source: Muhurta Chintamani §Tara Bala; Brihat Parashara Hora Shastra §Tara;
@@ -113,7 +141,6 @@ __all__ = [
     "KAKSHYA_BPHS_66",
     "ASHTAKAVARGA_AV_GATES",
     "ASHTAKAVARGA_BPHS_26",
-    "DOUBLE_GOCHARA_PHALADEEPIKA_26",
     "TARA_BALA_MUHURTA_CHINTAMANI",
     "SADE_SATI_BPHS_71",
     "SARVATOBHADRA_MUHURTA_CHINTAMANI",

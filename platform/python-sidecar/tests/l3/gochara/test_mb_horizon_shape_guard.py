@@ -106,7 +106,7 @@ def test_an_ordinary_build_with_an_explicit_horizon_keeps_it_and_never_reads_the
     assert tuple(writer_mod.DEFAULT_HORIZON) == OLD_DEFAULT
     assert tuple(writer_mod._effective_horizon(ctx, None)) == OLD_DEFAULT
     assert writer_mod._test_slice(ctx) is None and writer_mod._horizon_basis(ctx, None) is None
-    assert len(writer_mod.GocharaV5Writer().plan_substeps(ctx)) == 298
+    assert len(writer_mod.GocharaV5Writer().plan_substeps(ctx)) == 246   # P4 off (FOURQ-CLOSURE-20261027): was 298
     assert not [sql for sql, _ in conn.statements if "life_events" in sql or "kala_gochara_publication" in sql], "an ordinary build never reads the log or the pinned basis"
     assert writer_mod._effective_horizon(_ctx(horizon=FULL), None) is FULL                                    # an explicit config horizon: as given, as on main
     with pytest.raises(writer_mod.RunHorizonRefusal, match="run_horizon_required"):
@@ -276,7 +276,7 @@ def test_the_ruling_guard_refuses_a_different_configured_pair_at_plan_time():
     ctx = _ctx(_Conn(manifest=manifest), birth_params=BIRTH_PARAMS, horizon=(datetime(2007, 1, 1, tzinfo=UTC), FULL[1]))
     with pytest.raises(hz.HorizonDerivationDisagreesWithRuling, match="horizon_derivation_disagrees_with_ruling"):
         writer_mod.GocharaV5Writer().plan_substeps(ctx)
-    assert len(writer_mod.GocharaV5Writer().plan_substeps(_ctx(_Conn(manifest=manifest), birth_params=BIRTH_PARAMS))) == 298
+    assert len(writer_mod.GocharaV5Writer().plan_substeps(_ctx(_Conn(manifest=manifest), birth_params=BIRTH_PARAMS))) == 246   # P4 off (FOURQ-CLOSURE-20261027): was 298
 
 
 def test_verify_live_and_verify_replay_carry_the_stored_basis_unless_the_caller_gives_one():
@@ -325,7 +325,7 @@ def test_the_all_classes_full_plan_is_the_whole_default_plan():
     manifest = {writer_mod.TEST_SLICE_KEY: _marker()}
     sliced = [s.key for s in writer_mod.GocharaV5Writer().plan_substeps(_ctx(_Conn(manifest=manifest), horizon=FULL))]
     default = [s.key for s in writer_mod.GocharaV5Writer().plan_substeps(_ctx(_Conn(), horizon=FULL))]
-    assert sliced == default and len(sliced) == 298
+    assert sliced == default and len(sliced) == 246   # P4 off (FOURQ-CLOSURE-20261027): was 298
 
 
 # ── (d) the state guard ───────────────────────────────────────────────────────────────────────────────────────────────────────────────

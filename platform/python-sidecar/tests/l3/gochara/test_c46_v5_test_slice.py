@@ -4,9 +4,9 @@ What this file proves:
 
   (a) ABSENT marker = today's behaviour BYTE-IDENTICAL: with no build_runs row,
       with a manifest that lacks the key, and with a manifest carrying only
-      other keys, plan_substeps returns the pinned golden plan (298 substeps,
-      key+label digest computed from the pre-change writer at
-      origin/pravaha/a53-am5-inventory);
+      other keys, plan_substeps returns the pinned golden plan (246 substeps — P4 off,
+      FOURQ-CLOSURE-20261027 — key+label digest; the pre-change 298-step plan
+      was origin/pravaha/a53-am5-inventory);
   (b) both run shapes: 'one_class_full' narrows the plan to exactly the one
       class over the full DEFAULT_HORIZON; 'all_classes_1y' keeps all 26
       scored classes over the marker's 1-year horizon (the runtime horizon is
@@ -46,10 +46,14 @@ from services.gochara_kernel import input_vector as iv  # noqa: E402
 
 CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 
-#: The golden plan of the pre-change writer (origin/pravaha/a53-am5-inventory,
-#: 298 substeps) — sha256 of the canonical JSON of [[key, label], ...].
-GOLDEN_PLAN_DIGEST = "0a7298509d92fc32d485113aed85a3f0c296e1ddb2db170b43f89d4d4695069a"
-GOLDEN_PLAN_STEPS = 298
+#: The golden default plan — sha256 of the canonical JSON of [[key, label], ...].
+#: FOURQ-CLOSURE-20261027 switches P4 OFF (registry DISABLED_PATHS): the writer plans no P4 record or window step, so the
+#: default plan is the pre-change writer's 298 substeps (origin/pravaha/a53-am5-inventory, digest
+#: 0a7298509d92fc32d485113aed85a3f0c296e1ddb2db170b43f89d4d4695069a) minus P4's 26 record + 26 window steps = 246.
+#: The 246-step digest was computed the way `_plan_digest` does and cross-checked: re-adding P4 to the writer's path tuples in a
+#: throwaway process reproduces the old 298-step digest exactly, so the two plans differ by the P4 steps and nothing else.
+GOLDEN_PLAN_DIGEST = "7ba165c44afa7f06d5b3f7210940f0b7ceb926d94f41c1af1c49fcc49bd26bb6"
+GOLDEN_PLAN_STEPS = 246
 
 
 def _digest_of(manifest):
@@ -170,8 +174,9 @@ def test_one_class_full_plans_exactly_one_class():
     per = 1 + 1 + len(writer_mod.RECORD_PATHS) + len(writer_mod.WINDOW_PATHS) + 1
     assert len(rest) == per
     assert rest[0] == f"inventory:{cls}" and rest[1] == f"coverage:{cls}"
-    assert rest[2:6] == [f"record:{cls}:{p}" for p in writer_mod.RECORD_PATHS]
-    assert rest[6:-1] == [f"window:{cls}:{p}" for p in writer_mod.WINDOW_PATHS]
+    n_rec = 2 + len(writer_mod.RECORD_PATHS)       # P4 is off (FOURQ-CLOSURE-20261027): the record grains are P1-P3 (three), not four
+    assert rest[2:n_rec] == [f"record:{cls}:{p}" for p in writer_mod.RECORD_PATHS]
+    assert rest[n_rec:-1] == [f"window:{cls}:{p}" for p in writer_mod.WINDOW_PATHS]
     assert rest[-1] == f"verify:{cls}"
     others = [c for c in writer_mod.SCORED_CLASSES if c != cls]
     assert not any(k for k in keys for c in others if k.endswith(f":{c}") or f":{c}:" in k)

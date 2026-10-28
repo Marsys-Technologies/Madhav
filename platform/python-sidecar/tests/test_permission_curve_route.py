@@ -159,3 +159,50 @@ def test_live_permission_curve_never_writes():
     finally:
         conn.close()
     assert before == after
+
+
+# ── FOURQ-CLOSURE-20261027: the served route carries the retired generator as an honest null with its reason ──
+
+def test_route_serves_the_retired_generator_as_an_empty_series_with_status_and_reason(monkeypatch):
+    """Golden shape (§N.7.6): generator #10 is switched off. The route still names it in `system_ids`
+    (the 12-generator contract is unchanged), its series is an honest null -- every point inactive,
+    intensity 0.0, weight 0.0, `status` retired_pending_reauthor and an `empty_reason` naming the
+    ruling -- and the response carries `retired_systems`. No exception, no fallback default.
+    Synthetic: a fixture target, a neutral epoch, stubbed DB reads; the REAL compute_permission runs."""
+    import routers.permission_curve as route_mod
+    import services.gochara_intensity.permission as PERM
+    from services.gochara_grammar.models import ResonanceTarget
+
+    target = ResonanceTarget(chart_id="synthetic-chart", event_class="marriage", target_type="bhava",
+                             target_ref="fixture-target", weight=0.5, classical_citation="TEST FIXTURE",
+                             target_sign="Virgo")
+    import types
+    real = PERM.compute_permission
+    monkeypatch.setattr(route_mod, "_get_conn", lambda: types.SimpleNamespace(close=lambda: None))
+    monkeypatch.setattr(route_mod.RM, "fetch_resonance_targets", lambda conn, chart_id, event_class: [target])
+    monkeypatch.setattr(route_mod, "enrich_targets", lambda conn, raw, ayanamsha_id: list(raw))
+    monkeypatch.setattr(route_mod.DD, "fetch_dasha_periods", lambda *a, **k: [])
+    monkeypatch.setattr(route_mod, "compute_permission", lambda swe_, conn, *a, **k: real(swe_, None, *a, **k))
+    monkeypatch.setattr(PERM.P, "av_threshold_state", lambda *a, **k: [])
+    for name in ("drishti_contact", "degree_contact", "sign_occupation"):
+        monkeypatch.setattr(PERM.P, name, lambda *a, **k: (_ for _ in ()).throw(AssertionError("retired generator ran a primitive")))
+
+    resp = client.post("/api/compute/permission_curve", json={
+        "chart_id": "synthetic-chart", "event_class": "marriage",
+        "t_start": "2000-01-01T00:00:00Z", "t_end": "2000-01-11T00:00:00Z", "step_days": 5,
+    })
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["points_computed"] == 3 and len(body["system_ids"]) == 12
+    series = body["systems"]["guru_shani_double_transit"]
+    assert len(series) == 3
+    for pt in series:
+        assert pt["active"] is False and pt["intensity"] == 0.0 and pt["weight"] == 0.0
+        assert pt["status"] == "retired_pending_reauthor"
+        assert "FOURQ-CLOSURE-20261027" in pt["empty_reason"] and "not evaluated" in pt["empty_reason"]
+    assert set(body["retired_systems"]) == {"guru_shani_double_transit"}
+    retired = body["retired_systems"]["guru_shani_double_transit"]
+    assert retired["status"] == "retired_pending_reauthor" and retired["ruling_ref"] == "FOURQ-CLOSURE-20261027"
+    assert retired["declared_prior_weight"] == SYSTEM_WEIGHTS["guru_shani_double_transit"]
+    # the live generators are served without a status key (nothing else is retired)
+    assert all("status" not in pt for sid, pts in body["systems"].items() if sid != "guru_shani_double_transit" for pt in pts)

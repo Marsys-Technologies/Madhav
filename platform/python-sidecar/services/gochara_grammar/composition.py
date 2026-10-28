@@ -11,19 +11,15 @@ Citation-or-uncited decision per operator (B.10):
   1. simultaneity        -> uncited_extension (a G-2 grammar-level composition
      concept; BPHS discusses combined/multiple influences qualitatively but no
      codebase-attested citation names a "simultaneity operator" as such).
-  2. double_transit       -> BPHS Ch.29 + Phaladeepika Ch.26 §double-gochara
-     when the pair is Jupiter+Saturn (the one double-transit combination this
-     codebase has a live, cited `bg_transit_rules` row for -- migration 397);
-     uncited_extension for any other two-graha pairing (still detected, just
-     honestly unattributed to the JUPITER+SATURN-specific classical rule).
-  2b. double_transit_mixed -> same Phaladeepika Ch.26 §double-gochara citation
-     as #2 for Jupiter+Saturn, but on an explicit JUDGMENT CALL (not a
-     codebase-attested citation naming the mixed case specifically) that
-     "simultaneous transit" covers one leg occupying + one leg aspecting the
-     same house, not only both aspecting it -- see this operator's own
-     module comment for the full reasoning, stated so a reviewer can
-     disagree. RED-D follow-up (2026-07-20): added because #2 above cannot
-     represent a planet's own occupation of the target house at all.
+  2. double_transit       -> DELETED under FOURQ-CLOSURE-20261027 (panel closure): the
+     Jupiter–Saturn double-transit rule is switched off (status retired_pending_reauthor;
+     provenance audit DOUBLE-TRANSIT-PROVENANCE-20261027 found no classical source --
+     the "Phaladeepika Ch.26 §double-gochara" passage its former citation named does
+     not exist in the corpus, migration 565 CORPUS_GAP -- and one confirmed widening of
+     its detection logic so a known specimen would fire, the 2026-07-20
+     `double_transit_mixed` leg). No live generator invokes either operator, so both
+     are deleted, not relabelled. Re-admission only via a panel-verified classical
+     citation and a forward-only test.
   3. kartari              -> uncited_extension (kartari/pincer is classically
      attested as a NATAL yoga-formation concept — BPHS discusses graha kartari
      yoga — but no codebase-attested citation covers the TRANSIT/gochara
@@ -45,7 +41,6 @@ Citation-or-uncited decision per operator (B.10):
 from __future__ import annotations
 
 import logging
-from itertools import combinations
 
 from .models import ConfigurationSentence, CompositionSentence
 from .dasha_data import period_contains
@@ -108,127 +103,11 @@ def simultaneity(
     return out
 
 
-# ── #2 — double-transit ─────────────────────────────────────────────────────
-
-def double_transit(
-    sentences: list[ConfigurationSentence],
-    window_days: float = _JD_WINDOW_DEFAULT,
-    contact_primitives: tuple[str, ...] = ("drishti_contact", "degree_contact"),
-) -> list[CompositionSentence]:
-    """Two DIFFERENT grahas' drishti/contact on ONE natal target
-    simultaneously -- the wave's named double-transit specimen (marriage,
-    2013-12-11, BRIEF_D5 §2)."""
-    out: list[CompositionSentence] = []
-    for target_ref, group in _group_by_target(sentences).items():
-        contact_sentences = [s for s in group if s.primitive in contact_primitives]
-        for cluster in _cluster_by_window(contact_sentences, window_days):
-            planets_seen: dict[str, ConfigurationSentence] = {}
-            for s in cluster:
-                if s.transit_planet and s.transit_planet not in planets_seen:
-                    planets_seen[s.transit_planet] = s
-            if len(planets_seen) < 2:
-                continue
-            for planet_a, planet_b in combinations(sorted(planets_seen.keys()), 2):
-                pair_members = [planets_seen[planet_a], planets_seen[planet_b]]
-                is_guru_shani = {planet_a, planet_b} == {"Jupiter", "Saturn"}
-                out.append(CompositionSentence(
-                    operator="double_transit",
-                    chart_id=pair_members[0].chart_id,
-                    event_jd=pair_members[0].event_jd,
-                    event_datetime_ist=pair_members[0].event_datetime_ist,
-                    temporal_shape="point",
-                    member_sentences=pair_members,
-                    classical_citation=C.DOUBLE_GOCHARA_PHALADEEPIKA_26 if is_guru_shani else None,
-                    uncited_extension=not is_guru_shani,
-                    detail={"target_ref": target_ref, "planet_a": planet_a, "planet_b": planet_b,
-                            "is_guru_shani_double_transit": is_guru_shani, "window_days": window_days},
-                ))
-    return out
-
-
-# ── #2b — double-transit, MIXED occupation+aspect legs (RED-D follow-up) ────
-#
-# Added 2026-07-20 after the native's own worked example for chart
-# 482012f1's 2013-12-11 marriage specimen turned out to be structurally
-# UNREACHABLE by `double_transit` above even after `drishti_contact`'s
-# rasi-drishti fix: the native's example is ONE leg occupation (transiting
-# Saturn sitting IN Libra, the 7th house itself, conjunct natal Saturn) and
-# ONE leg aspect (transiting Jupiter's 5th special drishti FROM Gemini ONTO
-# Libra) -- `double_transit`'s `contact_primitives` tuple only ever accepts
-# aspect-shaped sentences (`drishti_contact`/`degree_contact`) on BOTH legs,
-# so a planet's own occupation of the target house can never satisfy either
-# leg no matter how `drishti_contact` itself is fixed.
-#
-# Citation note (stated explicitly per BRIEF_D5 §6 disclosure discipline,
-# not silently assumed): `DOUBLE_GOCHARA_PHALADEEPIKA_26`
-# ("Phaladeepika Ch.26 double-gochara -- Jupiter+Saturn simultaneous
-# transit") is reused here for the Jupiter+Saturn mixed case on the
-# judgment that "simultaneous transit" in that citation's own wording does
-# not restrict itself to "simultaneous ASPECT" -- a graha's occupation of a
-# house is itself a classical gochara-phala influence on that house (BPHS
-# Ch.29, the same base doctrine `sign_occupation`/`sign_ingress` cite),
-# distinct from but complementary to drishti onto it, so "Jupiter and
-# Saturn both classically influencing the same house simultaneously, one by
-# sitting in it and one by aspecting it" is a reasonable reading of
-# "simultaneous transit" rather than a stretch of "simultaneous aspect".
-# This is this module's own judgment call, not a codebase-attested citation
-# naming the mixed occupation+aspect case specifically -- flagged here
-# explicitly (rather than silently reused) so a reviewer can disagree and
-# override it without archaeology. Any non-guru-shani pairing still gets
-# `uncited_extension=True`, exactly mirroring `double_transit`'s own
-# pattern above.
-
-def double_transit_mixed(
-    sentences: list[ConfigurationSentence],
-    window_days: float = _JD_WINDOW_DEFAULT,
-    aspect_primitives: tuple[str, ...] = ("drishti_contact", "degree_contact"),
-    occupation_primitives: tuple[str, ...] = ("sign_occupation",),
-) -> list[CompositionSentence]:
-    """One graha's occupation of a target sign (`occupation_primitives`,
-    e.g. `sign_occupation`) paired with a DIFFERENT graha's drishti/contact
-    onto the SAME target (`aspect_primitives`) within window_days -- the
-    mixed-leg sibling to `double_transit` (which requires BOTH legs
-    aspect-shaped). See module comment above for why this exists and the
-    citation judgment call it makes."""
-    out: list[CompositionSentence] = []
-    for target_ref, group in _group_by_target(sentences).items():
-        aspect_sentences = [s for s in group if s.primitive in aspect_primitives]
-        occupation_sentences = [s for s in group if s.primitive in occupation_primitives]
-        if not aspect_sentences or not occupation_sentences:
-            continue
-        combined = sorted(
-            aspect_sentences + occupation_sentences,
-            key=lambda s: s.event_jd if s.event_jd is not None else 0.0,
-        )
-        for cluster in _cluster_by_window(combined, window_days):
-            asp_in_cluster = [s for s in cluster if s.primitive in aspect_primitives]
-            occ_in_cluster = [s for s in cluster if s.primitive in occupation_primitives]
-            if not asp_in_cluster or not occ_in_cluster:
-                continue
-            for asp in asp_in_cluster:
-                for occ in occ_in_cluster:
-                    if asp.transit_planet == occ.transit_planet:
-                        continue  # a planet cannot supply both legs of its own double-transit
-                    is_guru_shani = {asp.transit_planet, occ.transit_planet} == {"Jupiter", "Saturn"}
-                    out.append(CompositionSentence(
-                        operator="double_transit_mixed",
-                        chart_id=asp.chart_id,
-                        event_jd=asp.event_jd if asp.event_jd is not None else occ.event_jd,
-                        event_datetime_ist=asp.event_datetime_ist or occ.event_datetime_ist,
-                        temporal_shape="interval",
-                        member_sentences=[asp, occ],
-                        classical_citation=C.DOUBLE_GOCHARA_PHALADEEPIKA_26 if is_guru_shani else None,
-                        uncited_extension=not is_guru_shani,
-                        detail={
-                            "target_ref": target_ref,
-                            "aspecting_planet": asp.transit_planet,
-                            "occupying_planet": occ.transit_planet,
-                            "is_guru_shani_double_transit": is_guru_shani,
-                            "window_days": window_days,
-                            "leg_shapes": {"aspect": asp.primitive, "occupation": occ.primitive},
-                        },
-                    ))
-    return out
+# ── #2 — double-transit: DELETED (FOURQ-CLOSURE-20261027) ──────────────────────
+# The Jupiter–Saturn double-transit operator (and its 2026-07-20 `double_transit_mixed`
+# sibling) is switched off: no live generator invokes it (permission generator #10 and
+# the gochara_v3 mirror emit an empty result), so the code is deleted rather than
+# relabelled -- see composition docstring item 2 and services/gochara_grammar/citations.py.
 
 
 # ── #3 — kartari (pincer) ───────────────────────────────────────────────────
@@ -380,8 +259,6 @@ def dasha_coincidence(
 
 __all__ = [
     "simultaneity",
-    "double_transit",
-    "double_transit_mixed",
     "kartari",
     "cancellation",
     "amplification",

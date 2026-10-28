@@ -179,7 +179,7 @@ def test_the_sealer_runs_the_window_gate_and_the_replay_check(rworld):
         n = w.conn.execute("SELECT count(*) FROM public.ka_gochara_window_verification_replay_violations(%s::uuid, %s)",
                            (CHART_ID, GEN)).fetchone()[0]
         assert n == 0
-        assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_eval_window_verification").fetchone()[0] == 4
+        assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_eval_window_verification").fetchone()[0] == 3
         import psycopg
         with pytest.raises(psycopg.errors.InsufficientPrivilege):                       # the sealer never writes it
             w.conn.execute("DELETE FROM public.ka_gochara_eval_window_verification")
@@ -397,7 +397,7 @@ def test_when_the_session_role_cannot_write_the_result_the_substeps_record_the_p
     """verification_pending_verifier_principal: never an error, never a builder-written row; the gate stays closed."""
     w = rworld
     _boot_p3(w)
-    out = {p: w.step(f"window:{CLS}:{p}") for p in ("P1", "P2", "P3", "P4")}     # the BUILDER's steps only (R9-6.1)
+    out = {p: w.step(f"window:{CLS}:{p}") for p in ("P1", "P2", "P3")}     # the BUILDER's steps only (R9-6.1)
     assert all("verification_pending_verifier_principal" in r.notes and "candidate gate stays closed" in r.notes
                for r in out.values()), [r.notes for r in out.values()]
     assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_eval_window_verification").fetchone()[0] == 0

@@ -2,7 +2,7 @@
 
 Ruling (DECISIONS_SURROGATE SR-W3-SHAPE 3; evidence DESIGN_NOTE_W3 §C): under a strict-boolean config key
 `gochara_v5_defer_in_build_verify`, `verify:<class>` returns the NAMED no-op `deferred_to_independent_verification`;
-the substep stays in the plan (298 substeps, index = total); the flag is bound into the manifest input vector so a
+the substep stays in the plan (246 substeps, index = total); the flag is bound into the manifest input vector so a
 build that skipped the self-check is distinguishable (§N.8); the flag is refused for any test_slice or measuring run
 (there the in-build verify is the only producer of STRETCH_SINK/1). The deferral is safe because the in-build verify
 persists nothing (writer `verify:<class>`: "the builder NEVER persists a verification row", R9-6.1) and the separate
@@ -16,7 +16,7 @@ What this file proves (each claim fails on its single planted reversion):
   C2 flag absent: `verify:<class>` runs as today — the inventory digest IS re-derived — and the vector carries no
      `in_build_verify` key (byte-identical to a build before the flag) (DB, real chain);
   C3 §N.8 binding: a run whose flag disagrees with its manifest drifts by name at the next substep (DB, real chain);
-  C4 the plan is unchanged by the flag: 298 substeps, the same keys and labels as the golden plan;
+  C4 the plan is unchanged by the flag: 246 substeps (P4 off, FOURQ-CLOSURE-20261027; was 298), the same keys and labels as the golden plan;
   C5 the flag is refused under every test-slice run shape, the measuring build (`all_classes_full`) included;
   C6 the flag is refused for a build that is not on the final rules ("final builds only");
   C7 a non-boolean flag value is refused, never coerced.
@@ -51,9 +51,9 @@ def _plan(ctx):
 
 # ── C4: the plan never changes ──────────────────────────────────────────────────────────────────────────────────────
 
-def test_c4_the_flag_leaves_the_plan_byte_identical_298_substeps_verify_included():
+def test_c4_the_flag_leaves_the_plan_byte_identical_246_substeps_verify_included():
     steps, digest = _plan(_slice_ctx(None, gochara_v5_final_rules=True, result_policy="all_null_candidate/1", **{FLAG: True}))
-    assert len(steps) == GOLDEN_PLAN_STEPS == 298
+    assert len(steps) == GOLDEN_PLAN_STEPS == 246   # P4 off (FOURQ-CLOSURE-20261027): was 298
     assert digest == GOLDEN_PLAN_DIGEST
     assert sum(s.key.startswith(writer_mod.VERIFY_SUBSTEP_PREFIX) for s in steps) == len(writer_mod.SCORED_CLASSES)
 

@@ -497,8 +497,7 @@ def sign_ingress(
     return sentences
 
 
-# ── sign-occupation (RED-D mixed-leg addendum, not one of the 12 numbered
-# families) ──────────────────────────────────────────────────────────────
+# ── sign-occupation (RED-D addendum, not one of the 12 numbered families) ──
 
 def sign_occupation(
     swe,
@@ -510,21 +509,16 @@ def sign_occupation(
 ) -> list[ConfigurationSentence]:
     """CONTINUOUS occupation of target.target_sign by a transiting graha --
     distinct from `sign_ingress` (#3 above), which only reports the INSTANT
-    of entry. Added at D-5 RED-D follow-up (2026-07-20) so
-    `composition.double_transit_mixed` has an occupation-shaped sentence to
-    pair against a drishti/degree-contact sentence: the native's own
-    worked example for chart 482012f1's 2013-12-11 marriage specimen is
-    ONE leg occupation (transiting Saturn sitting in Libra, conjunct natal
-    Saturn, IN the 7th house itself) and ONE leg aspect (transiting Jupiter
-    in Gemini casting its 5th special drishti onto Libra) -- `sign_ingress`
-    alone cannot represent the occupation leg here because Saturn had
-    already been resident in Libra since Nov 2011, well before this
-    window opens, so no ingress CROSSING falls inside any realistic query
-    window (the same class of gap `_drishti_contact_rasi` fixes for the
-    aspect side, addressed here for the occupation side via the identical
-    pattern: an ingress-event scan PLUS a `_get_planet_pos` sample at
+    of entry: an ingress-event scan PLUS a `_get_planet_pos` sample at
     `start_jd` to catch a planet already resident when the window opens,
-    disclosed via `detail['resident_at_window_start']`).
+    disclosed via `detail['resident_at_window_start']` (the same class of
+    gap `_drishti_contact_rasi` fixes for the aspect side). Added at the
+    D-5 RED-D follow-up (2026-07-20) as the occupation leg of the former
+    `composition.double_transit_mixed` operator; that operator was DELETED
+    under DOUBLE-TRANSIT-PROVENANCE-20261027 (a provenance audit found its
+    detection logic had been widened so a known specimen would fire), and
+    no PERMISSION generator calls this primitive any more. It stays as a
+    generic, cited primitive.
 
     Same target-sign contract as `sign_ingress` (bhava/span targets, no
     `target_longitude_deg` needed or used) and the SAME citation

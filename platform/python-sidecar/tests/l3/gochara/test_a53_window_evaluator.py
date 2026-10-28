@@ -443,3 +443,57 @@ def test_record_uuid_is_uuid8_over_the_canonical_natural_key():
     # any natural-key change moves the id
     key2 = dict(key, agent="venus")
     assert ev.record_uuid(key2) != rid
+
+
+# ── FOURQ-CLOSURE-20261027: no served edge of kind P4 / double_transit for a synthetic chart ──
+
+
+# a SYNTHETIC chart: arbitrary longitudes (Ketu opposite Rahu), not any native's
+SYNTHETIC_CHART = {
+    "lagna_deg": 100.0,
+    "natal": {"Sun": 10.0, "Moon": 47.0, "Mars": 84.0, "Mercury": 121.0, "Jupiter": 158.0,
+              "Venus": 195.0, "Saturn": 232.0, "Rahu": 269.0, "Ketu": 89.0},
+}
+
+
+def test_p4_is_switched_off_the_planner_excludes_it_by_ruling_and_the_disabled_row_stamps_no_edge():
+    """P4 is switched off (FOURQ-CLOSURE-20261027) through the kernel's own mechanism for a path
+    withheld by ruling: the planner pins P4 `excluded / tier_withheld_by_ruling / ruling:FOURQ-...`
+    for EVERY class BEFORE any enumeration, so no P4 obligation, interval, record or window is
+    planned or built; the verifier is told the same independently; the registered disabled row
+    stamps no edge at all. The sealed rows' enumerator is unchanged (a sealed row is never edited)
+    and is unreachable from every build / serve path."""
+    import datetime as dt
+    from services.gochara_kernel import inventory as inv
+    from services.gochara_kernel import rule_registry as rr
+    from services.gochara_rules import registry as rules_registry
+    from pipeline.orchestrator.writers import ka_gochara_v5 as writer_mod
+    paths, h_unknown = inv.standing_exclusions()
+    assert paths["P4"].reason == "tier_withheld_by_ruling"
+    assert paths["P4"].ruling_ref == "FOURQ-CLOSURE-20261027" and paths["P4"].basis == "ruling:FOURQ-CLOSURE-20261027"
+    assert writer_mod.VERIFIER_PATH_RULINGS["p4"] == {"reason": "tier_withheld_by_ruling",
+                                                      "basis": "ruling:FOURQ-CLOSURE-20261027",
+                                                      "ruling_ref": "FOURQ-CLOSURE-20261027"}
+    lo, hi = dt.datetime(2000, 1, 1, tzinfo=dt.timezone.utc), dt.datetime(2001, 1, 1, tzinfo=dt.timezone.utc)
+    for final in (False, True):
+        with rr.rule_profile(final_rules=final):
+            for cls in ("marriage", "bereavement", "childbirth", "achievement_recognition"):
+                plan = inv.plan_class_inventory(
+                    event_class=cls, chart=SYNTHETIC_CHART, horizon=(lo, hi), sealed_paths=rr.bound_path_refs(),
+                    selected_versions=rr.selected_versions_for(cls),
+                    capability=inv.SearchCapability(position_probe=True, arc_index=True),
+                    path_exclusions=paths, h_unknown_exclusion=h_unknown, dasha_rows=[])
+                p4_pins = [p for p in plan.pins if p.path_id == "P4"]
+                assert p4_pins and all(p.disposition == "excluded" for p in p4_pins), (final, cls)
+                selected = [p for p in p4_pins if p.rule_version == rr.selected_versions_for(cls)["P4"]]
+                assert selected and selected[0].exclusion_reason == "tier_withheld_by_ruling"
+                assert selected[0].ruling_ref == "FOURQ-CLOSURE-20261027"
+                assert not any(o for p in p4_pins for o in p.obligations)
+                by_ob = {o.ob_id for p in plan.pins for o in p.obligations if p.path_id == "P4"}
+                assert not [i for i in plan.intervals if i.ob_id in by_ob]
+    # the disabled row stamps nothing, for the stored and the ephemeral tier alike
+    for cls in ("marriage", "bereavement", "childbirth"):
+        assert ev.enumerate_edges(cls, "P4", SYNTHETIC_CHART, rule_version=rules_registry.P4_TESTIMONY_VERSION) == []
+        assert ev.ephemeral_tier_edges(cls, "P4", SYNTHETIC_CHART, rule_version=rules_registry.P4_TESTIMONY_VERSION) == []
+    # the ruling is part of the build identity
+    assert {"FOURQ-CLOSURE-20261027", "ST-P5-HOLD-20261001"} <= {r["id"] for r in writer_mod._applicable_rulings()}

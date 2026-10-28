@@ -313,8 +313,12 @@ def _set_wall(w, wall_s, path=None):
 
 
 def _second_execution(w):
-    _bypass(w, ("UPDATE public.ka_gochara_eval_window_verification SET runner_identity = jsonb_set(runner_identity, '{verification_shard,execution_id}', to_jsonb('executions/e2'::text))"
-                " WHERE path_id = 'P4'", ()))
+    # With P4 retired, this one-class world has only P3 included. Give the wall-rule
+    # corruption fixture a second counted grain; its existing empty P1 attestation
+    # remains real, and only this aggregate-only test changes the pin disposition.
+    _bypass(w, ("UPDATE public.ka_gochara_search_path_pin SET disposition = 'included' WHERE path_id = 'P1'", ()),
+            ("UPDATE public.ka_gochara_eval_window_verification SET runner_identity = jsonb_set(runner_identity, '{verification_shard,execution_id}', to_jsonb('executions/e2'::text))"
+                " WHERE path_id = 'P1'", ()))
 
 
 def test_b4_the_verdict_records_the_wall_rules_decision_and_refuses_a_generation_verified_the_other_way(built_numbers, one_class_universe):
@@ -322,7 +326,7 @@ def test_b4_the_verdict_records_the_wall_rules_decision_and_refuses_a_generation
     assert _run_with(w)["status"] == "VERIFIED"
     rows = [r[0] if isinstance(r[0], dict) else json.loads(r[0]) for r in w.conn.execute("SELECT runner_identity FROM public.ka_gochara_eval_window_verification ORDER BY path_id").fetchall()]
     walls = [r[nwg.WALL_KEY] for r in rows]
-    assert len(walls) == 4 and len({json.dumps(x, sort_keys=True) for x in walls}) == 1 and walls[0]["class"] == CLS          # one measurement per class, carried by every grain
+    assert len(walls) == 3 and len({json.dumps(x, sort_keys=True) for x in walls}) == 1 and walls[0]["class"] == CLS          # one measurement per class, carried by every grain
     assert walls[0]["wall_ms"] == walls[0]["lock_wait_ms"] + walls[0]["compute_ms"] and walls[0]["compute_ms"] > 0 and all(isinstance(v, int) for k, v in walls[0].items() if k != "class")
     verdict = nwg.generation_verdict(w.conn, CHART_ID, GEN)
     rule = verdict["aggregate"]["wall_rule"]

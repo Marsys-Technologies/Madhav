@@ -82,7 +82,7 @@ def test_a_verified_candidate_yields_a_complete_deterministic_payload_read_with_
     assert p["manifest"]["status"] == "candidate" and p["manifest"]["manifest_id"] and p["result_policy"]
     assert p["candidate_gate"]["violations"] == [] and "candidate_adapter" in p["candidate_gate"]["source"]
     (cls,) = p["classes"]
-    assert cls["event_class"] == CLS and {g["path_id"] for g in cls["grains"]} == {"P1", "P2", "P3", "P4"}
+    assert cls["event_class"] == CLS and {g["path_id"] for g in cls["grains"]} == {"P1", "P2", "P3"}     # P4 is switched off (FOURQ-CLOSURE-20261027)
     assert all(g["status"] == "VERIFIED" and g["runner"]["commit"] and g["derivation_inputs_digest"] for g in cls["grains"])
     assert set(p["generation_output_identity"]["tables"]) == set(sb.OUTPUT_TABLES)
     assert p["generation_output_identity"]["tables"]["ka_gochara_contact"]["rows"] >= 1
@@ -181,7 +181,7 @@ def test_a_failure_after_publication_rolls_back_the_publication_the_seal_and_the
     assert w.conn.execute("SELECT status FROM public.kala_gochara_publication").fetchone()[0] == "candidate"
     assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_generation_seal").fetchone()[0] == 0
     assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_seal_approval").fetchone()[0] == 0
-    assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_eval_window_verification").fetchone()[0] == 4
+    assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_eval_window_verification").fetchone()[0] == 3
 
 
 def test_the_entry_points_brief_mode_ends_in_a_compact_line_carries_the_brief_by_file_or_chunks_and_refuses_when_not_approvable(built, monkeypatch, capsys, tmp_path):

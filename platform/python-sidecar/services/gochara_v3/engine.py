@@ -92,7 +92,7 @@ from services.gochara_intensity.models import IntensityResult
 from services.gochara_intensity.suppression import compute_suppression, SUPPRESSION_WEIGHTS
 from services.gochara_intensity.configuration_activity import compute_x_t
 from services.gochara_intensity.permission import (
-    SYSTEM_WEIGHTS, DASHA_SYSTEM_IDS,
+    SYSTEM_WEIGHTS, DASHA_SYSTEM_IDS, retired_system_row,
     _relevant_grahas, _relevant_signs, _lord_matches, YOGINI_LORD_TO_GRAHA,
 )
 from services.gochara_intensity.beta_priors import beta_for
@@ -1886,7 +1886,9 @@ def _compute_permission_from_context(
     The 12 generators:
       1-8: chart_dashas systems — from context.dasha_periods (pre-fetched)
       9:   sade_sati — from context.sade_sati_phases (pre-fetched)
-      10:  guru_shani_double_transit — ephemeris only (no DB)
+      10:  guru_shani_double_transit — SWITCHED OFF (FOURQ-CLOSURE-20261027):
+           registered, never evaluated, emits an empty row with its reason
+           (weight 0.0, denominator unchanged; mirrors permission.py)
       11:  av_threshold — from context.av_gate_rows (pre-fetched)
       12:  planetary_return — ephemeris only (no DB)
 
@@ -1930,17 +1932,9 @@ def _compute_permission_from_context(
         "detail": sade_sati_detail,
     })
 
-    # 10: Guru-Shani double transit (ephemeris only — no DB)
-    gsdt_active, gsdt_detail = _check_guru_shani_from_context(
-        swe, context, targets, start_jd, end_jd,
-        window_days=window_days,
-    )
-    systems.append({
-        "system_id": "guru_shani_double_transit",
-        "active": gsdt_active,
-        "weight": SYSTEM_WEIGHTS["guru_shani_double_transit"],
-        "detail": gsdt_detail,
-    })
+    # 10: Guru-Shani double transit — SWITCHED OFF (FOURQ-CLOSURE-20261027), mirroring
+    # permission.py: registered, never evaluated, an empty row with its reason.
+    systems.append(retired_system_row("guru_shani_double_transit"))
 
     # 11: AV threshold (pre-fetched gate rows + ephemeris for planet sign)
     av_active, av_detail = _check_av_threshold_from_context(
@@ -1964,6 +1958,8 @@ def _compute_permission_from_context(
         "detail": return_detail,
     })
 
+    # the retired row is never active and weighs 0.0; the denominator is the FULL
+    # declared table (no re-scaling), exactly as permission.py
     active_weight = sum(s["weight"] for s in systems if s["active"])
     total_weight = sum(SYSTEM_WEIGHTS.values())
     permission = active_weight / total_weight if total_weight else 0.0
@@ -1972,6 +1968,9 @@ def _compute_permission_from_context(
     detail = {
         "systems": systems,
         "systems_active": systems_active,
+        "retired_systems": {s["system_id"]: {"status": s["status"], "ruling_ref": s["ruling_ref"],
+                                             "empty_reason": s["empty_reason"]}
+                            for s in systems if "status" in s},
         "systems_considered": [s["system_id"] for s in systems],
         "system_count_active": len(systems_active),
         "dasha_horizon_exhausted": DD.horizon_exhausted_entries(systems),
@@ -2128,52 +2127,13 @@ def _check_guru_shani_from_context(
     end_jd: float,
     window_days: float = 15.0,
 ) -> tuple[bool, dict]:
-    """Guru-Shani double transit — ephemeris only, no DB needed.
-
-    Same logic as v1's permission.py guru-shani block, but using
-    ephemeris-only primitives (drishti_contact, degree_contact,
-    sign_occupation all take swe + target, no conn needed for the
-    ephemeris calls themselves).
-
-    IMPORTANT: window_days passed to CO.double_transit/double_transit_mixed
-    must match v1's compute_permission, which passes its own window_days
-    parameter (default 15.0), NOT the span of the search window
-    (2*window_days). The search window is for primitive scanning; the
-    clustering window for composition is separate.
-    """
-    try:
-        contact_sentences = []
-        occupation_sentences = []
-        for target in targets:
-            if target.target_longitude_deg is not None or target.target_sign is not None:
-                contact_sentences += P.drishti_contact(
-                    swe, context.chart_id, target, start_jd, end_jd,
-                    planets=["Jupiter", "Saturn"],
-                )
-                contact_sentences += P.degree_contact(
-                    swe, context.chart_id, target, start_jd, end_jd,
-                    planets=["Jupiter", "Saturn"],
-                )
-            if target.target_sign is not None:
-                contact_sentences += P.sign_occupation(
-                    swe, context.chart_id, target, start_jd, end_jd,
-                    planets=["Jupiter", "Saturn"],
-                )
-        comps = CO.double_transit(contact_sentences, window_days=window_days)
-        comps += CO.double_transit_mixed(
-            contact_sentences + occupation_sentences, window_days=window_days,
-        )
-        for c in comps:
-            if c.detail.get("is_guru_shani_double_transit"):
-                return True, {
-                    "target_ref": c.detail.get("target_ref"),
-                    "event_datetime_ist": c.event_datetime_ist,
-                    "operator": c.operator,
-                }
-    except Exception as exc:  # noqa: BLE001
-        logger.debug("[v3.engine] guru_shani_double_transit check failed: %s", exc)
-
-    return False, {}
+    """Guru-Shani double transit — SWITCHED OFF (FOURQ-CLOSURE-20261027; provenance audit
+    DOUBLE-TRANSIT-PROVENANCE-20261027). Kept so the generator stays registered; the body
+    evaluates nothing (no primitive, no composition, no ephemeris) and returns the empty
+    result with its reason. `_compute_permission_from_context` emits the registered row
+    through `permission.retired_system_row`."""
+    row = retired_system_row("guru_shani_double_transit")
+    return False, dict(row["detail"])
 
 
 def _check_av_threshold_from_context(

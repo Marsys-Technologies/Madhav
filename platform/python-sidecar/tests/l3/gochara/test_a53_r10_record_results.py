@@ -49,7 +49,7 @@ def test_a_numeric_record_result_is_refused_by_the_verifier_before_it_persists(b
 def test_a_qualified_valence_or_severity_is_refused_by_the_verifier(built):
     w = built
     _bypass(w, ("UPDATE public.ka_gochara_relationship_record SET outcome_valence_for_native = 'adverse', severity = 0.5"
-                " WHERE path_id = 'P4' AND contact_id IS NOT NULL", ()))
+                " WHERE path_id = 'P3' AND contact_id IS NOT NULL", ()))      # P4 is switched off (FOURQ-CLOSURE-20261027): P3 carries the records
     status, stage, detail = _stage(_run(w))
     assert (status, stage) == ("DISAGREE", "generation_output") and "numeric result or a qualified valence" in detail
 

@@ -100,7 +100,7 @@ def test_an_ordinary_build_and_the_two_older_slice_shapes_need_no_life_events_ta
     expected = tuple(old) if shape != "all_classes_1y" else tuple(sl.horizon)
     assert tuple(writer_mod._effective_horizon(ctx, sl)) == expected
     plan = writer_mod.GocharaV5Writer().plan_substeps(ctx)
-    assert (len(plan) == 298) if shape != "one_class_full" else (0 < len(plan) < 298)
+    assert (len(plan) == 246) if shape != "one_class_full" else (0 < len(plan) < 246)   # P4 off (FOURQ-CLOSURE-20261027): was 298
     with w.conn.transaction():
         writer_mod.GocharaV5Writer().run_substep(ctx, SubStep(key=writer_mod.MANIFEST_SUBSTEP, label="manifest"))
     horizon = _row(w, "SELECT lower(horizon), upper(horizon) FROM public.kala_gochara_publication WHERE chart_id = %s AND generation = '5.0'", CHART_ID)

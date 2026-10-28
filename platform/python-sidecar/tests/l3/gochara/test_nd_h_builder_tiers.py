@@ -440,14 +440,25 @@ def _plan(cls):
     return {(p.path_id, p.rule_version): p for p in plan.pins}
 
 
+def _assert_p4_switched_off(pins):
+    """FOURQ-CLOSURE-20261027: P4 is a standing exclusion -- pinned `excluded / tier_withheld_by_ruling` with the
+    ruling at EVERY sealed version, before any enumeration (so a CORE/DVI lord collision inside P4 can no longer
+    arise, and no version of P4 is `included` or `superseded_by_version`)."""
+    p4 = {k: v for k, v in pins.items() if k[0] == "P4"}
+    assert p4
+    for pin in p4.values():
+        assert (pin.disposition, pin.exclusion_reason, pin.ruling_ref, pin.basis) == (
+            "excluded", "tier_withheld_by_ruling", "FOURQ-CLOSURE-20261027", "ruling:FOURQ-CLOSURE-20261027")
+        assert not pin.obligations
+
+
 @pytest.mark.parametrize("cls", EIGHT)
 def test_an_nd_h_class_plans_1_2_0_included_and_1_0_0_superseded_for_that_class(cls):
-    if cls in P4_COLLIDES:
-        with pytest.raises(ev.TierIdentityCollision):     # the class cannot be planned on this chart until ruled
-            _plan(cls)
-        return
+    # FOURQ-CLOSURE-20261027: P4 is switched off, so the P4_COLLIDES classes (a CORE/DVI lord collision inside P4's
+    # enumeration) plan without raising -- the collision is never reached
     pins = _plan(cls)
-    for pid in ("P1", "P3", "P4"):
+    _assert_p4_switched_off(pins)
+    for pid in ("P1", "P3"):
         assert pins[(pid, V)].disposition == "included" and pins[(pid, V)].obligations
         old = pins[(pid, "1.0.0")]
         assert (old.disposition, old.exclusion_reason, old.basis, old.ruling_ref) == (
@@ -461,7 +472,8 @@ def test_an_nd_h_class_plans_1_2_0_included_and_1_0_0_superseded_for_that_class(
 
 def test_a_class_outside_the_eight_plans_exactly_as_before_and_accounts_1_2_0_as_not_applicable():
     pins = _plan("marriage")
-    for pid in ("P1", "P3", "P4"):
+    _assert_p4_switched_off(pins)                   # FOURQ-CLOSURE-20261027
+    for pid in ("P1", "P3"):
         # SR-OD1 V1: the class searches the 1.3.0 doctrine row; 1.0.0 is superseded by it (non-degrading)
         assert pins[(pid, "1.3.0")].disposition == "included"
         assert (pins[(pid, "1.0.0")].disposition, pins[(pid, "1.0.0")].exclusion_reason) == (
@@ -473,9 +485,9 @@ def test_a_class_outside_the_eight_plans_exactly_as_before_and_accounts_1_2_0_as
     def unversioned(canonical: str) -> str:               # the obligation 9-tuple without its rule_version field
         parts = canonical.split("|")
         return "|".join(parts[:2] + parts[3:])
-    want = {unversioned(o.canonical_bytes) for p in ("P3", "P4")
+    want = {unversioned(o.canonical_bytes) for p in ("P3",)
             for o in map(inv.obligation_of_edge, ev.enumerate_edges("marriage", p, CHART, rule_version="1.0.0"))}
-    assert {unversioned(o.canonical_bytes) for p in ("P3", "P4") for o in pins[(p, "1.3.0")].obligations} == want
+    assert {unversioned(o.canonical_bytes) for p in ("P3",) for o in pins[(p, "1.3.0")].obligations} == want
 
 
 def test_p2_emits_no_parental_event_row_once_the_class_runs_under_its_nd_h_rows():
@@ -657,7 +669,8 @@ def test_rule_3_carries_no_orb_the_band_is_the_built_one_degree_convention():
 
 def test_rule_3_inventory_bereavement_p3_p4_included_at_1_2_0_and_1_0_0_superseded_under_nd_p2():
     pins = _plan("bereavement")
-    for pid in ("P3", "P4"):
+    _assert_p4_switched_off(pins)                   # FOURQ-CLOSURE-20261027: P4 is off; P3 carries the ND-P2 rule-3 target
+    for pid in ("P3",):
         assert pins[(pid, V)].disposition == "included"
         assert [o for o in pins[(pid, V)].obligations if o.object_role == "karaka"]
         old = pins[(pid, "1.0.0")]

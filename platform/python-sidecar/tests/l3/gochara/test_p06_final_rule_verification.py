@@ -82,7 +82,10 @@ def test_whole_bound_catalogue_has_independent_dispositions(event_class):
         capability=inventory.SearchCapability(position_probe=True, arc_index=True),
         path_exclusions=exclusions, h_unknown_exclusion=h_unknown, dasha_rows=[])
     v_exclusions = {'p5': {'reason': 'tier_withheld_by_ruling', 'basis': 'ruling:ST-P5-HOLD-20261001',
-                          'ruling_ref': 'ST-P5-HOLD-20261001'}}
+                          'ruling_ref': 'ST-P5-HOLD-20261001'},
+                    # FOURQ-CLOSURE-20261027: P4 is switched off -- the verifier is told so independently
+                    'p4': {'reason': 'tier_withheld_by_ruling', 'basis': 'ruling:FOURQ-CLOSURE-20261027',
+                          'ruling_ref': 'FOURQ-CLOSURE-20261027'}}
     v_unknown = {'reason': 'inputs_unavailable', 'basis': 'ruling:ST-H-UNKNOWN-20261002',
                  'ruling_ref': 'ST-H-UNKNOWN-20261002'}
     checked = verifier.derive_class_pins(event_class, VCHART, rr.bound_path_refs(),
@@ -255,21 +258,25 @@ def test_fb50_absorbed_keys_disclose_that_the_dvi_lord_adds_no_edges():
     assert 'DVI house edges remain distinct' in row['dvi_absorption_note']
 
 
-def test_the_inventory_persists_exact_absorption_context_without_changing_identity():
+def test_the_inventory_plans_no_p4_interval_once_p4_is_switched_off_by_ruling():
+    """FOURQ-CLOSURE-20261027: P4 is a standing exclusion (`tier_withheld_by_ruling`), so the planner
+    pins it `excluded` with the ruling BEFORE enumerating -- no P4 obligation, interval or absorption
+    context is planned (the test that stood here asserted the P4 intervals' absorption context; that
+    context is now never produced because the path is off)."""
     from services.gochara_kernel import rule_registry as rr
     from datetime import datetime, timezone
     exclusions, unknown = inventory.standing_exclusions()
+    assert exclusions['P4'].ruling_ref == 'FOURQ-CLOSURE-20261027'
     plan = inventory.plan_class_inventory(event_class='achievement_recognition', chart=CHART,
         horizon=(datetime(2025, 1, 1, tzinfo=timezone.utc), datetime(2025, 2, 1, tzinfo=timezone.utc)),
         sealed_paths=rr.bound_path_refs(), selected_versions=rr.selected_versions_for('achievement_recognition'),
         capability=inventory.SearchCapability(position_probe=True, arc_index=True),
         path_exclusions=exclusions, h_unknown_exclusion=unknown, dasha_rows=[])
+    p4 = [p for p in plan.pins if p.path_id == 'P4']
+    assert p4 and all(p.disposition == 'excluded' and p.exclusion_reason == 'tier_withheld_by_ruling'
+                      and p.ruling_ref == 'FOURQ-CLOSURE-20261027' and not p.obligations for p in p4)
     by_ob = {o.ob_id: p for p in plan.pins for o in p.obligations}
-    intervals = [i for i in plan.intervals if by_ob[i.ob_id].path_id == 'P4']
-    assert intervals
-    for iv in intervals:
-        assert iv.detail['final_rule_context'] == verifier.derive_final_rule_context(
-            'achievement_recognition', 'P4', VCHART, '1.2.0')
+    assert not [i for i in plan.intervals if by_ob[i.ob_id].path_id == 'P4']
 
 
 
@@ -369,10 +376,18 @@ def test_the_final_rule_annotations_are_stored_verbatim_in_the_frozen_inventory_
         (fixture.CHART_ID, '5.38', 'achievement_recognition')).fetchall()
     assert {(str(iv.ob_id), iv.start, iv.end): iv.detail for iv in plan.intervals} == {
         (oid, lo, hi): detail for oid, lo, hi, detail in rows}
-    p4 = {o.ob_id for pin in plan.pins if pin.path_id == 'P4' and pin.rule_version == '1.2.0' for o in pin.obligations}
-    detail = next(iv.detail for iv in plan.intervals if iv.ob_id in p4)
-    assert len(detail['final_rule_context']['dvi_absorbed_by_core']) == 4
-    assert detail['record_factors']
+    # P4 is switched off (FOURQ-CLOSURE-20261027): it plans no obligation, so it stores no interval. P4 was this
+    # class's only path with DVI edges absorbed by CORE; the remaining paths still store the context verbatim.
+    assert not [o for pin in plan.pins if pin.path_id == 'P4' for o in pin.obligations]
+    from services.gochara_kernel.evaluator import final_rule_context
+    by_ob = {o.ob_id: pin for pin in plan.pins for o in pin.obligations}
+    annotated = [(by_ob[iv.ob_id], iv.detail) for iv in plan.intervals if 'final_rule_context' in (iv.detail or {})]
+    assert annotated
+    for pin, detail in annotated:
+        assert pin.path_id != 'P4'
+        assert detail['final_rule_context'] == final_rule_context('achievement_recognition', pin.path_id, fixture.CHART, pin.rule_version)
+        assert isinstance(detail['record_factors'], dict)
+    assert any(detail['record_factors'] for _, detail in annotated)
 
 
 @pytest.fixture(autouse=True)

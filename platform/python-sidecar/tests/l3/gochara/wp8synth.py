@@ -449,8 +449,10 @@ def factor_row(results: list) -> dict:
         "tara": sum(r.x_t_detail["tara_modifier"] for r in results) / n,
         "w30": sum(r.x_t_detail["w30_modifier"] for r in results) / n,
         "quality_gates": sum(r.x_t_detail["quality_gates"] for r in results) / n,
+        # the engine's denominator is the DECLARED prior table: a testimony row (DOUBLE-TRANSIT-PROVENANCE-20261027)
+        # is emitted with weight 0.0 but keeps its declared prior share in the denominator
         "permission_denominator": sum(
-            sum(s["weight"] for s in r.permission_detail["systems"])
+            sum(s.get("declared_prior_weight", s["weight"]) for s in r.permission_detail["systems"])
             for r in results
         ) / n,
     }
