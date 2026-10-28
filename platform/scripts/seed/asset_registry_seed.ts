@@ -1049,6 +1049,31 @@ export const ASSETS: AssetDef[] = [
     writer_timeout_seconds: 60,
   },
   {
+    // Rule Book engine E2 · migration 1413 (OWNER-APPROVAL-ENGINE-NATIVE-ITEMS-20261028, item 1).
+    // INERT (is_active: false) until a ratified card file is committed — only a FIXTURE is in git.
+    // count_sql must stay byte-identical to migration 1413 (test_bg_rule_book_offline.py pins it).
+    asset_id: 'bg_rule_book',
+    layer: 'brahmagyan', sort_order: 81,
+    catalog_status: 'CURRENT',
+    sanskrit_name: 'Niyama-Grantha',
+    english_name: 'Rule Book (ratified Rule Cards, versioned and frozen)',
+    english_description: 'Rule Book engine E2 (OWNER-APPROVAL-ENGINE-NATIVE-ITEMS-20261028): the ratified, verse-cited Rule Cards as chart-agnostic L0 rows, one set per rulebook_version. Each card is stored in canonical redacted form (no quote text for an edition outside the public-domain allowlist) with card_sha256, ratification_sha256, its compiled closed-AST IR and ir_sha256, its class groups, and a status (active | quarantined_not_evaluable | withdrawn). A version is frozen by its freeze stamp, after which a database trigger refuses every change by the writer and any non-owner role. The writer reads the committed card file and manifest, runs the rulebook compiler and its licence lint, and refuses a frozen version.',
+    storage_type: 'postgres_table',
+    target_table: 'l0_rule_book_cards',
+    count_sql: "SELECT COUNT(*) FROM l0_rule_book_cards c JOIN l0_rule_book_versions v ON v.rulebook_version = c.rulebook_version WHERE v.is_current AND v.frozen_at IS NOT NULL AND c.status = 'active'",
+    size_sql: "SELECT pg_total_relation_size('l0_rule_book_cards') + pg_total_relation_size('l0_rule_book_card_classes') + pg_total_relation_size('l0_rule_book_versions')",
+    target_floor: 0,
+    expected_volume_formula: null,
+    expected_volume_inputs: null,
+    volume_explanation: 'Active cards of the current frozen rule-book version. 0 until a ratified version is written and frozen (E8); floors are aspirational and set to the achieved count (§N.4), never estimated.',
+    depends_on: [],
+    scope: 'global', is_active: false, estimated_seconds: null,
+    asset_kind: 'data',
+    has_writer: true,
+    has_substeps: false,
+    writer_timeout_seconds: 120,
+  },
+  {
     // ṢAḌ-DARŚANA W2G (GOCHARA-2.0, item 19) · migration 538. The
     // CHART-INDEPENDENT half of the 2.0 transit engine, and the reason W2G is
     // the campaign's production-scalability keystone: when Saturn reaches

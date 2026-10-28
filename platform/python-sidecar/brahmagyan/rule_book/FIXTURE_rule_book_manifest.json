@@ -1,0 +1,57 @@
+{
+  "card_file": "FIXTURE_rule_book_cards.json",
+  "card_file_sha256": "aca58c9e1fa8a6ddd72154f976553c1f3b3705ba210ccd238f970462a54451ac",
+  "cards": [
+    {
+      "card_id": "FIX-NATAL-1",
+      "card_sha256": "56bf2947bef2e8ed2305a68f18993ca71dcdda085ff7c2042fb223a721a7e934",
+      "ratification_sha256": "56bf2947bef2e8ed2305a68f18993ca71dcdda085ff7c2042fb223a721a7e934",
+      "redaction_map": []
+    },
+    {
+      "card_id": "FIX-DASHA-1",
+      "card_sha256": "4ba4c5524e7c9dbd766bc1ef436635da8c46c775d8832fcbb3d8d19113cd099b",
+      "ratification_sha256": "4ba4c5524e7c9dbd766bc1ef436635da8c46c775d8832fcbb3d8d19113cd099b",
+      "redaction_map": []
+    },
+    {
+      "card_id": "FIX-TESTIMONY-1",
+      "card_sha256": "29f8d63b878d0cd49972ae84a4943c658e70a72a0f94cf96d5af5c3685a065f7",
+      "ratification_sha256": "29f8d63b878d0cd49972ae84a4943c658e70a72a0f94cf96d5af5c3685a065f7",
+      "redaction_map": []
+    },
+    {
+      "card_id": "FIX-QUAR-MEAN-1",
+      "card_sha256": "161169bb06e53601a0510a6fc5ab4e9d8cc7d40fd68db67247c51b3094a513e7",
+      "ratification_sha256": "161169bb06e53601a0510a6fc5ab4e9d8cc7d40fd68db67247c51b3094a513e7",
+      "redaction_map": []
+    },
+    {
+      "card_id": "FIX-WITHDRAWN-1",
+      "card_sha256": "1208fc1105ab8f2a4f90cb12a559319cb2f97eec841b6bf48655f899ccd34253",
+      "ratification_sha256": "1208fc1105ab8f2a4f90cb12a559319cb2f97eec841b6bf48655f899ccd34253",
+      "redaction_map": [],
+      "status": "withdrawn",
+      "withdrawn_reason": "FIXTURE: panel withdrew the card (no comparator in the verse)"
+    },
+    {
+      "card_id": "FIX-REDACTED-1",
+      "card_sha256": "a9bf21a3387bda90ea5ed9d7e50c6583210e34c2fbb81b0e238435c3e539eb57",
+      "ratification_sha256": "bb1d3bcb53005fe499a9f6f388d509f3af4dedce34a0855aa0ce8e35227beff4",
+      "redaction_map": [
+        {
+          "path": "/field1_citation",
+          "quote_sha256": "a32c01303e823e1fc2e9a26cf07122481341b8d089ed73c893a70978968ce6dd",
+          "text_id": "phaladeepika"
+        }
+      ]
+    }
+  ],
+  "change_register_ids": [
+    "FIXTURE-CR-0"
+  ],
+  "fixture": true,
+  "manifest_schema": "rule-book-manifest-v1",
+  "note": "FIXTURE ONLY. The writer refuses this manifest unless rule_book_allow_fixture is set; the DB forbids a FIXTURE- version from becoming current.",
+  "rulebook_version": "FIXTURE-0.1"
+}
