@@ -120,7 +120,7 @@ def test_a_lock_following_builder_is_serialised_behind_the_verifier_and_the_atte
     report = _race(w, _protocol_replace, expect_blocked=True, where=where, monkeypatch=monkeypatch)
     assert report["status"] == "VERIFIED", report["classes"]
     assert report["classes"][CLS]["fingerprint"]                       # the report names the data it checked
-    assert _verification_rows(w)["ka_gochara_eval_window_verification"] == 4
+    assert _verification_rows(w)["ka_gochara_eval_window_verification"] == 3     # P1-P3: P4 is switched off (FOURQ-CLOSURE-20261027)
     # the replacement came AFTER the attestation: the seal gate sees the checked state is no longer the stored one
     assert ("P1", "window_verification_inputs_changed") in _gate(w)
 

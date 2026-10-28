@@ -198,8 +198,8 @@ def test_plan_is_rules_then_convention_then_eight_bodies_moon_excluded():
 
 def test_plan_then_interleaves_class_inventory_coverage_records_and_verification():
     """Per class: the AM-5 inventory FIRST (the partition is aligned to it), then the
-    coverage partition, the P1–P4 record grains (P5 held — D7), the window grains of the paths
-    the sweep has an evaluator for (P1–P4), then the independent verification.
+    coverage partition, the P1–P3 record grains (P5 held — D7; P4 switched off — FOURQ-CLOSURE-20261027), the
+    window grains of the paths the sweep has an evaluator for (P1–P3), then the independent verification.
     manifest → snapshot precede every class; birth_anchor is not planned."""
     w = writer_mod.GocharaV5Writer()
     keys = [s.key for s in w.plan_substeps(_ctx())]
@@ -207,19 +207,43 @@ def test_plan_then_interleaves_class_inventory_coverage_records_and_verification
     rest = keys[12:]
     classes = writer_mod.SCORED_CLASSES
     assert len(classes) == 26 and "birth_anchor" not in classes
-    assert writer_mod.WINDOW_PATHS == ("P1", "P2", "P3", "P4")
+    assert writer_mod.WINDOW_PATHS == ("P1", "P2", "P3") and writer_mod.RECORD_PATHS == ("P1", "P2", "P3")
     per = 1 + 1 + len(writer_mod.RECORD_PATHS) + len(writer_mod.WINDOW_PATHS) + 1
     assert len(rest) == len(classes) * per
     for i, event_class in enumerate(classes):
         block = rest[i * per:(i + 1) * per]
         assert block[0] == f"inventory:{event_class}"
         assert block[1] == f"coverage:{event_class}"
-        assert block[2:6] == [f"record:{event_class}:{pid}" for pid in ("P1", "P2", "P3", "P4")]
+        assert block[2:5] == [f"record:{event_class}:{pid}" for pid in ("P1", "P2", "P3")]
         # a window grain is planned only AFTER the records it reads
-        assert block[6:-1] == [f"window:{event_class}:{pid}" for pid in ("P1", "P2", "P3", "P4")]
+        assert block[5:-1] == [f"window:{event_class}:{pid}" for pid in ("P1", "P2", "P3")]
         assert block[-1] == f"verify:{event_class}"
     assert not any(":P5" in k for k in keys)
+    # P4 is switched off (FOURQ-CLOSURE-20261027): no record or window step builds a grain the inventory pins excluded
+    assert not any(k.endswith(":P4") for k in keys)
 
+
+
+def test_the_p4_switch_is_earned_a_disabled_path_plans_no_grain_and_a_test_only_registry_restores_it(monkeypatch):
+    """FOURQ-CLOSURE-20261027: the absence of P4 rows is the registry's ruling, not a hard-coded omission. Under the real
+    registry P4 plans no record or window step; with the ruling emptied in a TEST-ONLY copy of the registry the same code
+    plans both again (the registry itself and L0 are untouched)."""
+    from services.gochara_rules import registry as rules_registry
+
+    def p4_keys():
+        monkeypatch.setattr(writer_mod, "RECORD_PATHS", writer_mod._record_paths())
+        monkeypatch.setattr(writer_mod, "WINDOW_PATHS",
+                            tuple(p for p in writer_mod.RECORD_PATHS if p in writer_mod.gk_window_sweep.SWEEP_PATHS))
+        return [s.key for s in writer_mod.GocharaV5Writer().plan_substeps(_ctx()) if s.key.endswith(":P4")]
+
+    assert rules_registry.path_disabled("P4") is not None
+    assert p4_keys() == []
+    monkeypatch.setattr(rules_registry, "DISABLED_PATHS", {})        # test-only: the ruling lifted in a private copy
+    restored = p4_keys()
+    classes = writer_mod.SCORED_CLASSES
+    assert sorted(restored) == sorted([f"record:{c}:P4" for c in classes] + [f"window:{c}:P4" for c in classes])
+    assert {k.split(":")[0] for k in restored} == {"record", "window"}
+    assert len(restored) == 2 * len(classes)
 
 # ── (d2) interval_sweep substep behaviour ────────────────────────────────────
 
@@ -487,7 +511,7 @@ def test_the_coverage_partition_of_parental_event_declares_no_p2_edge(_record_ph
     w.run_substep(_final_ctx(), SubStep(key="coverage:parental_event", label=""))
     (kw,) = _record_phase_fakes["coverage"]
     assert kw["class_edges"] and not [e for e in kw["class_edges"] if e.path_id == "P2"]
-    assert {e.path_id for e in kw["class_edges"]} == {"P1", "P3", "P4"}
+    assert {e.path_id for e in kw["class_edges"]} == {"P1", "P3"}      # P4 is switched off (FOURQ-CLOSURE-20261027)
     assert {e.rule_version for e in kw["class_edges"]} == {"1.2.0"}
 
 

@@ -76,7 +76,7 @@ def test_every_window_verification_row_carries_the_actual_runner_identity(built,
     vector = w.conn.execute("SELECT input_generation_vector FROM public.kala_gochara_publication").fetchone()[0]
     pinned = hashlib.sha256(wg._canon(vector["implementation"]).encode("utf-8")).hexdigest()
     rows = w.conn.execute("SELECT runner_identity FROM public.ka_gochara_eval_window_verification").fetchall()
-    assert len(rows) == 4
+    assert len(rows) == 3  # P1-P3: P4 is switched off (FOURQ-CLOSURE-20261027)
     for (rid,) in rows:
         assert rid["commit"] == "deadbeefcafe0123" and rid["implementation_digest"] == pinned
         assert rid["login"] == "gochara_verifier" and rid["python"] and rid["implementation"]

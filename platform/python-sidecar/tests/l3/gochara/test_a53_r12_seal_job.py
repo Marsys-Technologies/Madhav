@@ -435,7 +435,7 @@ def _declared_kernel_rows(self, path, version):
 
 @pytest.fixture()
 def built_numbers(rworld, request, monkeypatch):
-    """`built`, under `window_qualification/1`, with rows that declare applicability: the P3 and P4 windows come out NUMBERED, P1/P2 stay honest nulls."""
+    """`built`, under `window_qualification/1`, with rows that declare applicability: the P3 windows come out NUMBERED, P1/P2 stay honest nulls (P4 is switched off, FOURQ-CLOSURE-20261027: no P4 grain)."""
     from datetime import datetime, timedelta, timezone
     rworld.result_policy = rp.POLICY_QUALIFICATION
     monkeypatch.setattr(writer_mod.RuleRegistryStore, "bound_factor_rows", _declared_kernel_rows)
@@ -480,10 +480,10 @@ def test_n1_the_job_persists_a_passed_attestation_per_grain_and_the_verdict_coun
     verdict = report["numerical_window_gate"]
     peaks = w.conn.execute("SELECT count(peak_instant), count(*) FROM public.ka_gochara_eval_window").fetchone()
     assert verdict["status"] == "PASSED" and (verdict["numbered_windows"], verdict["windows"]) == tuple(peaks) and verdict["numbered_windows"] >= 1
-    assert verdict["valence_of_numbered"] == {"favourable": verdict["numbered_windows"]} and verdict["grains"] == 4
+    assert verdict["valence_of_numbered"] == {"favourable": verdict["numbered_windows"]} and verdict["grains"] == 3
     assert verdict["judgment_flags"] == []
     rows = _gate_rows(w)
-    assert len(rows) == 4 and all(r["numerical_window_gate"]["status"] == "PASSED" and r["numerical_window_gate"]["table"] == nwg.table_binding() for r in rows)
+    assert len(rows) == 3 and all(r["numerical_window_gate"]["status"] == "PASSED" and r["numerical_window_gate"]["table"] == nwg.table_binding() for r in rows)
     assert nwg.generation_verdict(w.conn, CHART_ID, GEN)["status"] == "PASSED"
 
 

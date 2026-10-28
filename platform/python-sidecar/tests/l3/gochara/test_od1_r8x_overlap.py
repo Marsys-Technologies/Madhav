@@ -77,7 +77,7 @@ def test_t17a_a_class_that_waits_for_the_chart_lock_reports_the_wait_apart_from_
         total = time.monotonic() - t0
     assert release.wait(10) and report["status"] == "VERIFIED", report["classes"]
     walls = _walls(w)
-    assert len(walls) == 4 and all(x is not None and x["class"] == CLS for x in walls)
+    assert len(walls) == 3 and all(x is not None and x["class"] == CLS for x in walls)
     wall = walls[0]
     hold_ms = round((HOLD_S - 0.4) * 1000)
     assert wall["lock_wait_ms"] >= hold_ms, wall                                              # the class waited for the sibling's lock and says so

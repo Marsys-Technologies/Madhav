@@ -82,7 +82,7 @@ def test_a7_a_shard_run_stamps_every_row_and_the_aggregate_reads_the_stamps(buil
     rows = _stamps(w)
     head, epoch = rows[0]["commit"], nwg.current_epoch(w.conn, CHART_ID, GEN)
     assert len(epoch) == 64
-    assert len(rows) == 4 and all(r[nwg.SHARD_KEY] == {"generation": GEN, "epoch": epoch, "head": head, "image_digest": IMAGE, "execution_id": EXECUTION, "classes": [CLS]} for r in rows), rows
+    assert len(rows) == 3 and all(r[nwg.SHARD_KEY] == {"generation": GEN, "epoch": epoch, "head": head, "image_digest": IMAGE, "execution_id": EXECUTION, "classes": [CLS]} for r in rows), rows
     assert report["shard"] == rows[0][nwg.SHARD_KEY]
     verdict = nwg.generation_verdict(w.conn, CHART_ID, GEN)
     assert verdict["status"] == "PASSED", verdict["problems"]
@@ -119,7 +119,7 @@ def test_a3_two_shards_at_different_heads_are_refused_naming_both(built_numbers,
     head = _stamps(w)[0]["commit"]
     other = "f" * 40
     _bypass(w, ("UPDATE public.ka_gochara_eval_window_verification SET runner_identity = jsonb_set(jsonb_set(runner_identity, '{commit}', to_jsonb(%s::text)),"
-                " '{verification_shard,head}', to_jsonb(%s::text)) WHERE path_id = 'P4'", (other, other)))
+                " '{verification_shard,head}', to_jsonb(%s::text)) WHERE path_id = 'P3'", (other, other)))
     verdict = nwg.generation_verdict(w.conn, CHART_ID, GEN)
     msg = [p for p in verdict["problems"] if "different heads" in p]
     assert verdict["status"] == "FAILED" and msg and head in msg[0] and other in msg[0], verdict["problems"]
@@ -151,7 +151,7 @@ def test_a6_shards_on_different_images_are_refused(built_numbers, monkeypatch):
     w = built_numbers
     _verified_shard(w, monkeypatch)
     _bypass(w, ("UPDATE public.ka_gochara_eval_window_verification SET runner_identity = jsonb_set(runner_identity, '{verification_shard,image_digest}',"
-                " to_jsonb(%s::text)) WHERE path_id = 'P4'", ("sha256:" + "2" * 64,)))
+                " to_jsonb(%s::text)) WHERE path_id = 'P3'", ("sha256:" + "2" * 64,)))
     verdict = nwg.generation_verdict(w.conn, CHART_ID, GEN)
     assert verdict["status"] == "FAILED" and any("different images" in p for p in verdict["problems"]), verdict["problems"]
 

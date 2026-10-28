@@ -86,7 +86,7 @@ def test_a_ten_second_boundary_error_on_a_smooth_degree_per_day_crossing_is_acce
     w = built
     report = _job(w, _smooth(w, entry_offset_s=10.0))
     assert report["status"] == "VERIFIED", _stage(report)
-    assert _verification_rows(w)["ka_gochara_eval_window_verification"] == 4
+    assert _verification_rows(w)["ka_gochara_eval_window_verification"] == 3  # P1-P3: P4 is switched off (FOURQ-CLOSURE-20261027)
 
 
 def test_a_large_boundary_error_at_a_slow_crossing_is_accepted_because_the_tolerance_scales_with_inverse_speed(built):

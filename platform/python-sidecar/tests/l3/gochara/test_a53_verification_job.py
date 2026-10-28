@@ -141,13 +141,13 @@ def built(rworld):
     w = rworld
     _boot_complete(w)
     # R10-1: the verifier now derives EVERY record the obligations × certified contacts imply, so the world must hold
-    # them: Saturn's Libra residence is also a P1 reading (its own exaltation sign, anchors md/ad/pd) and a P4 record
+    # them: Saturn's Libra residence is also a P1 reading (its own exaltation sign, anchors md/ad/pd)
     from .test_a53_window_verification_gate import _materialise
     _materialise(w, "P3", {"saturn": (_t(1, 10), _t(2, 20))}, with_natal=True)      # + the natal māraka rows
     _materialise(w, "P1", {"saturn": (_t(1, 10), _t(2, 20))})
-    # P4 is the Jupiter × Saturn double transit: both are SEARCHED (Jupiter is simply nowhere near Libra in the horizon)
-    _materialise(w, "P4", {"saturn": (_t(1, 10), _t(2, 20)), "jupiter": (_t(12, 1), _t(12, 2))})
-    for p in ("P1", "P2", "P3", "P4"):
+    # P4 (the Jupiter × Saturn double transit) is switched off (FOURQ-CLOSURE-20261027): the planner pins it excluded, so the
+    # world holds no P4 record, window or verification row — a hand-built P4 record would be a grain the inventory does not include
+    for p in ("P1", "P2", "P3"):
         w.step(f"window:{CLS}:{p}")                        # the builder's steps only: it persists no verification row
     _provision(w)
     return w
@@ -191,7 +191,7 @@ def test_the_verifier_writes_exactly_the_two_verification_tables_and_the_gate_pa
     assert report["status"] == "VERIFIED" and report["gate"] == [] and report["exit_code"] == vj.EXIT_OK, (report["gate"], report["gate_outside_scope"])
     assert report["identity"]["separate"] is True and "VERIFIED (policy" in report["cockpit"]
     after = _counts(w.conn, vj.VERIFICATION_TABLES)
-    assert after["ka_gochara_search_inventory_verification"] == 1 and after["ka_gochara_eval_window_verification"] == 4
+    assert after["ka_gochara_search_inventory_verification"] == 1 and after["ka_gochara_eval_window_verification"] == 3
     assert _counts(w.conn, BUILDER) == before                                  # nothing the builder wrote moved
     assert "contact geometry" in json.dumps(report["classes"][CLS]["geometry"]["named_limit"]) or True
 
@@ -204,7 +204,7 @@ def test_a_rerun_replaces_and_report_only_writes_nothing(built):
         again = vj.run(conn, chart_id=CHART_ID, generation=GEN, **kw)
         assert again["status"] == "VERIFIED"
         assert _counts(w.conn, vj.VERIFICATION_TABLES) == {"ka_gochara_search_inventory_verification": 1,
-                                                             "ka_gochara_eval_window_verification": 4}   # replaced, not accreted
+                                                             "ka_gochara_eval_window_verification": 3}   # replaced, not accreted (P1-P3: P4 is switched off, FOURQ-CLOSURE-20261027)
         w.conn.execute("DELETE FROM public.ka_gochara_eval_window_verification")          # (superuser clean-up for the dry run)
         w.conn.execute("DELETE FROM public.ka_gochara_search_inventory_verification")
         dry = vj.run(conn, chart_id=CHART_ID, generation=GEN, report_only=True, **kw)
@@ -350,7 +350,7 @@ def test_the_runner_records_the_window_verifications_first_and_the_inventory_row
     monkeypatch.setattr(inv_v, "write_verification", lambda *a, **k: (order.append(("inventory", None)), real_i(*a, **k))[1])
     with login(w, "gochara_verifier") as conn:
         assert vj.run(conn, chart_id=CHART_ID, generation=GEN, **_kwargs(w, _job_position(w, [LIBRA])))["status"] == "VERIFIED"
-    assert order == [("window", "P1"), ("window", "P2"), ("window", "P3"), ("window", "P4"), ("inventory", None)]
+    assert order == [("window", "P1"), ("window", "P2"), ("window", "P3"), ("inventory", None)]
 
 
 def test_the_verifier_holds_no_delete_on_the_inventory_verification_table_and_a_rerun_still_works(built):
@@ -499,8 +499,8 @@ def _live_l1_reads_fail():
 
 @pytest.fixture()
 def built_joint(rworld):
-    """A world in which EVERY windowed path P1..P4 holds a POPULATED window (round 6, R5; Codex round 4 for the joint window).
-      P3 / P4: a REAL joint Jupiter x Saturn window — Saturn in Libra [01-10, 02-20) and Jupiter in Libra [01-15, 02-10), so the P4 double transit intersects.
+    """A world in which EVERY windowed path P1..P3 (P4 is switched off, FOURQ-CLOSURE-20261027) holds a POPULATED window (round 6, R5; Codex round 4 for the joint window).
+      P3: Saturn in Libra [01-10, 02-20); Jupiter also visits Libra [01-15, 02-10), but the retired P4 remains absent.
       P2:      Jupiter's (and Venus's) own residence, houses counted from the natal Moon.
       P1:      an ADMITTED period-lord reading. Saturn's P1 records are honestly NOT admitted in this chart (Saturn has no natal relationship with the 7th house:
                `natal_bhava_relationship` is false), which is why the round-5 world had ZERO P1 windows and the guard ran over an empty path. Venus owns the 7th
@@ -519,17 +519,15 @@ def built_joint(rworld):
     for body, (lo, hi) in spans.items():
         SPANS[body] = [(lo, hi)]
         w.seed(body, [(180.0, lo), (210.0, hi)])                                                       # the sign ingress/egress sky events the contacts are derived from
-    both = {k: spans[k] for k in ("saturn", "jupiter")}
     _materialise(w, "P3", spans, with_natal=True)
     _materialise(w, "P1", spans)
-    _materialise(w, "P4", both)
     signs = ["aries", "taurus", "gemini", "cancer", "leo", "virgo", "libra", "scorpio", "sagittarius", "capricorn", "aquarius", "pisces"]
     from .test_a53_inventory import CHART
 
     def moon_house(edge, sign):                                                                       # P2's houses are counted from the natal MOON
         return (signs.index(sign.lower()) - int(CHART["natal"]["Moon"] // 30)) % 12 + 1
     _materialise(w, "P2", {k: spans[k] for k in ("jupiter", "venus")}, house_for=moon_house)           # P2 reads each planet's own residence (the individual-planet rules)
-    for p in ("P1", "P2", "P3", "P4"):
+    for p in ("P1", "P2", "P3"):                                                                      # P4 is switched off (FOURQ-CLOSURE-20261027): no P4 record or window
         w.step(f"window:{CLS}:{p}")
     _provision(w)
     try:
@@ -541,17 +539,17 @@ def built_joint(rworld):
             SPANS.pop(k, None) if v is None else SPANS.__setitem__(k, v)
 
 
-def test_the_complete_computational_boundary_populated_windows_p1_to_p4_and_the_verification_job_reads_no_live_L1(built_joint, monkeypatch, capsys):
-    """Windows P1-P4 with a POPULATED joint P4 window (asserted below, not assumed), the persisted window verification and the REAL verification job as the verifier login, all run
+def test_the_complete_computational_boundary_populated_windows_p1_to_p3_and_the_verification_job_reads_no_live_L1(built_joint, monkeypatch, capsys):
+    """Windows P1-P3 with POPULATED windows (asserted below, not assumed; P4 is switched off, FOURQ-CLOSURE-20261027), the persisted window verification and the REAL verification job as the verifier login, all run
     with live chart_facts/chart_dashas reads made to FAIL at the driver (composed queries included)."""
     w = built_joint
     kw = {k: v for k, v in _kwargs(w, _job_position(w, [LIBRA], jupiter_spans=[(_t(1, 15), _t(2, 10))], venus_spans=[(_t(1, 12), _t(2, 15))])).items() if k != "classes"}            # test-helper reads happen BEFORE the guard
     w.conn.execute(f"ALTER ROLE gochara_verifier LOGIN PASSWORD '{PASSWORD}'")
     try:
         with _live_l1_reads_fail() as seen:
-            for path in ("P1", "P2", "P3", "P4"):
+            for path in ("P1", "P2", "P3"):
                 w.step(f"window:{CLS}:{path}")                                                         # the builder's window geometry (the consistent sky of this suite)
-            persist_window_verification(w.conn, writer_mod, event_class=CLS, generation=GEN, paths=("P1", "P2", "P3", "P4"))
+            persist_window_verification(w.conn, writer_mod, event_class=CLS, generation=GEN, paths=("P1", "P2", "P3"))
             populated = {r[0]: r[1] for r in w.conn.execute(
                 "SELECT path_id, windows_expected FROM public.ka_gochara_eval_window_verification WHERE event_class = %s", (CLS,)).fetchall()}
             monkeypatch.setattr(writer_mod, "calc_sidereal_lon", lambda body, jd, ephe: (195.0, 2))      # the job's sky, as in _run_entry_as_verifier
@@ -563,8 +561,8 @@ def test_the_complete_computational_boundary_populated_windows_p1_to_p4_and_the_
     finally:
         w.conn.execute("ALTER ROLE gochara_verifier NOLOGIN PASSWORD NULL")
     # round 6, R5: EVERY guarded path is populated — a path with zero windows would pass the guard without exercising a single populated-window read
-    assert set(populated) == {"P1", "P2", "P3", "P4"} and all(populated[p] >= 1 for p in ("P1", "P2", "P3", "P4")), \
-        f"every guarded path P1..P4 must contain at least one POPULATED window: {populated}"
+    assert set(populated) == {"P1", "P2", "P3"} and all(populated[p] >= 1 for p in ("P1", "P2", "P3")), \
+        f"every guarded path P1..P3 must contain at least one POPULATED window: {populated}"
     assert code == 0, out
 
 
@@ -582,3 +580,15 @@ def test_the_connection_level_guard_really_trips_on_a_live_read_in_any_helper_it
         with pytest.raises(AssertionError, match="live L1 read"):
             built.conn.cursor().execute(composed)
         built.conn.execute("SELECT 1")                                                                   # an unrelated statement still runs
+
+
+def test_a_retired_p4_record_is_refused_without_persisting_attestations(built):
+    """FOURQ-CLOSURE-20261027 / D-SPECS_AMENDMENT_P4_v1_0: exclusion is enforced, even for hand-built output."""
+    w = built
+    _materialise(w, "P4", {"saturn": (_t(1, 10), _t(2, 20)), "jupiter": (_t(12, 1), _t(12, 2))})
+    with login(w, "gochara_verifier") as conn:
+        report = vj.run(conn, chart_id=CHART_ID, generation=GEN, **_kwargs(w, _job_position(w, [LIBRA])))
+    assert report["status"] == "DISAGREE"
+    claim = report["classes"][CLS]
+    assert claim["stage"] == "generation_output" and "marriage/P4@1.0.0" in claim["detail"]
+    assert _counts(w.conn, vj.VERIFICATION_TABLES) == {t: 0 for t in vj.VERIFICATION_TABLES}

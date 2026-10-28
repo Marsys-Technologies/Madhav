@@ -89,7 +89,7 @@ def _boot_p3(w):
     return counts
 
 
-def _windows(w, paths=("P1", "P2", "P3", "P4")):
+def _windows(w, paths=("P1", "P2", "P3")):      # P4 is switched off (FOURQ-CLOSURE-20261027): no included P4 pin, window or verification row
     """The builder's window steps, then what the SEPARATE verification job persists (R9-6.1: the builder writes no
     verification row; this fixture connects as a superuser, so the job's window half is run on it explicitly)."""
     from ._verification_persist import persist_window_verification
@@ -124,8 +124,7 @@ def test_the_window_phase_persists_a_verified_result_for_every_included_grain_an
     assert all("NOT persisted by the builder" in r.notes for r in out.values()), [r.notes for r in out.values()]
     assert _rows(w) == [("P1", "VERIFIED", 0, 0, 0, 0, "window_qualification/1"),
                         ("P2", "VERIFIED", 0, 0, 0, 0, "window_qualification/1"),
-                        ("P3", "VERIFIED", 1, 1, 1, 0, "window_qualification/1"),
-                        ("P4", "VERIFIED", 0, 0, 0, 0, "window_qualification/1")]
+                        ("P3", "VERIFIED", 1, 1, 1, 0, "window_qualification/1")]      # no P4 row: P4 is switched off (FOURQ-CLOSURE-20261027), the planner includes no included P4 pin
     assert _violations(w) == set() and _db_violations(w) == set()
     wg.require_candidate_gate(w.conn, CHART_ID, GEN, CLS)                       # does not raise
 
@@ -212,7 +211,7 @@ def test_a_grain_with_no_verification_at_all_is_missing_for_every_included_pin(w
     # every included pin is missing its verification; P3 also holds an admitted record that sits in no window yet (the
     # windows were not built) — the R9-2 membership check says so, it is not a verification gap
     assert _violations(w) == {("P1", "window_verification_missing"), ("P2", "window_verification_missing"),
-                              ("P3", "window_verification_missing"), ("P4", "window_verification_missing"),
+                              ("P3", "window_verification_missing"),
                               ("P3", "window_membership_not_expected")}
 
 
@@ -301,8 +300,14 @@ def test_the_python_expected_set_equals_the_databases_recomputation_for_p3_and_p
     w.seed("jupiter", [(180.0, _t(1, 10)), (210.0, _t(2, 20))])
     SPANS["saturn"], SPANS["jupiter"] = [(_t(1, 25), _t(3, 10))], [(_t(1, 10), _t(2, 20))]
     _materialise(w, "P3", {"saturn": (_t(1, 25), _t(3, 10))})
+    # FOURQ-CLOSURE-20261027 (D-SPECS_AMENDMENT_P4_v1_0): P4 is excluded even when both bodies overlap.
+    pin = w.conn.execute("SELECT disposition, ruling_ref FROM public.ka_gochara_search_path_pin WHERE path_id = 'P4'").fetchone()
+    assert pin == ('excluded', 'FOURQ-CLOSURE-20261027')
+    # Keep the historical intersection oracle: deliberately hand-build the retired output,
+    # then prove both the old arithmetic and the current generation's refusal of that output.
     _materialise(w, "P4", {"jupiter": (_t(1, 10), _t(2, 20)), "saturn": (_t(1, 25), _t(3, 10))})
     _windows(w)
+    assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_eval_window WHERE path_id = 'P4'").fetchone()[0] == 0
     for path, n in (("P3", 1), ("P4", 1)):
         grain = dict(chart_id=CHART_ID, generation=GEN, event_class=CLS, path_id=path, rule_version="1.0.0")
         py = wg.expected_windows(w.conn, **grain)
@@ -313,11 +318,10 @@ def test_the_python_expected_set_equals_the_databases_recomputation_for_p3_and_p
         assert wg.intervals_digest(wg.stored_windows(w.conn, **grain)) == w.conn.execute(
             "SELECT public.ka_gochara_eval_window_stored_digest(%s::uuid,%s,%s,%s,%s)",
             (CHART_ID, GEN, CLS, path, "1.0.0")).fetchone()[0]
-    # P4's window is the INTERSECTION: [Jan 25, Feb 20), not the union
-    (lo, hi), = wg.expected_windows(w.conn, chart_id=CHART_ID, generation=GEN, event_class=CLS, path_id="P4",
-                                    rule_version="1.0.0")
+    (lo, hi), = wg.expected_windows(w.conn, chart_id=CHART_ID, generation=GEN, event_class=CLS,
+                                    path_id="P4", rule_version="1.0.0")
     assert (lo, hi) == (_t(1, 25), _t(2, 20))
-    assert _violations(w) == set()
+    assert _violations(w) == {("P4", "output_grain_not_permitted")}
 
 
 # ── the table's own contract ────────────────────────────────────────────────────────────────────────────
