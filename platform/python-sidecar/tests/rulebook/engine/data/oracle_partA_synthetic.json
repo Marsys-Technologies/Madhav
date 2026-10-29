@@ -1,0 +1,5138 @@
+{
+"author": "claude-oracle-e3a",
+"cases": [
+{
+"card": {
+"card_id": "SYN-ORA-T01",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "When the bright planet moves through the eleventh or the twelfth house from the lunar sign the person finds joy.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "transit",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "chandra_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"operand": "v_t"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"bhava": 11,
+"doctrinal_graha": "shukra",
+"id": "v_t",
+"quote_terms": [
+"bright planet",
+"eleventh",
+"twelfth"
+],
+"relation": "transits",
+"role": "transiting_graha",
+"target_bhavas": [
+12
+]
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "promotive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-T01-venus-multi-house-chandra",
+"days": {
+"2024-01-07": "N",
+"2024-01-08": "F",
+"2024-01-13": "F",
+"2024-01-14": "T",
+"2024-01-21": "T",
+"2024-01-22": "T",
+"2024-01-30": "T",
+"2024-01-31": "F",
+"2024-02-01": "N",
+"2024-02-02": "N"
+},
+"fixture": "fx1",
+"note": "ref=Moon sign 2; Venus rows start 01-08T00:00 so 01-07 is before the first row (N); Aq(11)->house 10 F, Pis(12)->11 T, Ari(1)->12 T, Tau(2)->1 F (row 01-30T12:00 is after that day's 00:30 sunrise so 01-30 is still Aries); 02-01 sunrise 00:30 > coverage_end 02-01T00:00 -> N"
+},
+{
+"card": {
+"card_id": "SYN-ORA-T02",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "When the bright planet moves through the eleventh or the twelfth house from the ascending sign the person finds joy.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "transit",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "janma_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"operand": "v_t"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"bhava": 11,
+"doctrinal_graha": "shukra",
+"id": "v_t",
+"quote_terms": [
+"bright planet",
+"eleventh",
+"twelfth"
+],
+"relation": "transits",
+"role": "transiting_graha",
+"target_bhavas": [
+12
+]
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "promotive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-T02-venus-multi-house-janma",
+"days": {
+"2024-01-07": "N",
+"2024-01-13": "F",
+"2024-01-21": "F",
+"2024-01-30": "F",
+"2024-01-31": "T",
+"2024-02-01": "N"
+},
+"fixture": "fx1",
+"note": "ref=lagna sign 4; Venus houses Aq 11->8, Pis 12->9, Ari 1->10, Tau 2->((2-4)%12)+1=11 in {11,12} only from 01-31"
+},
+{
+"card": {
+"card_id": "SYN-ORA-T03",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "When the red planet is found in the houses of loss reckoned from the lunar sign the person is troubled.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "transit",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "chandra_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"operand": "m_g"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"bhava_group": "dusthana",
+"doctrinal_graha": "mangala",
+"id": "m_g",
+"quote_terms": [
+"red planet",
+"houses of loss"
+],
+"relation": "in_bhava_group",
+"role": "transiting_graha"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "promotive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-T03-mars-group-dusthana-chandra",
+"days": {
+"2024-01-12": "F",
+"2024-01-13": "T",
+"2024-01-20": "T",
+"2024-01-31": "T",
+"2024-02-01": "N"
+},
+"fixture": "fx1",
+"note": "ref=2; Mars Scorpio(8)->house 7 not in {6,8,12} F; Sagittarius(9) row 01-13T00:00 <= sunrise -> house 8 T from 01-13"
+},
+{
+"card": {
+"card_id": "SYN-ORA-T04",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "When the red planet sits in a house of the trine from the ascending sign the person gains land.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "transit",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "janma_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"operand": "m_o"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"bhava_group": "trikona",
+"doctrinal_graha": "mangala",
+"id": "m_o",
+"quote_terms": [
+"red planet",
+"house of the trine"
+],
+"relation": "occupies",
+"role": "transiting_graha"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "promotive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-T04-mars-group-trikona-janma",
+"days": {
+"2024-01-02": "T",
+"2024-01-12": "T",
+"2024-01-13": "F",
+"2024-01-31": "F",
+"2024-02-01": "N"
+},
+"fixture": "fx1",
+"note": "ref=4; Scorpio(8)->house 5 in {1,5,9} T; Sagittarius(9)->house 6 F from 01-13"
+},
+{
+"card": {
+"card_id": "SYN-ORA-T05",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "When the cool planet passes the third house from the lunar sign the person is cheerful.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "transit",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "chandra_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"operand": "mo_3"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"bhava": 3,
+"doctrinal_graha": "chandra",
+"id": "mo_3",
+"quote_terms": [
+"cool planet",
+"third house"
+],
+"relation": "transits",
+"role": "transiting_graha"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "promotive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-T05-moon-ingress-3min-after-sunrise",
+"days": {
+"2024-01-02": "N",
+"2024-01-03": "F",
+"2024-01-09": "F",
+"2024-01-10": "F",
+"2024-01-11": "T",
+"2024-01-12": "T",
+"2024-01-13": "F"
+},
+"fixture": "fx1",
+"note": "ref=2; Moon rows start 01-02T06:00 so 01-02 sunrise is before first row N; Cancer(4)->house 3 but its row is 01-10T00:33, 3 minutes AFTER the 00:30 sunrise, so 01-10 still Gemini(3)->house 2 F; 01-11 Cancer T; 01-13 Leo->4 F"
+},
+{
+"card": {
+"card_id": "SYN-ORA-T06",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "When the cool planet passes the fourth house from the lunar sign the person is steady.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "transit",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "chandra_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"operand": "mo_4"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"bhava": 4,
+"doctrinal_graha": "chandra",
+"id": "mo_4",
+"quote_terms": [
+"cool planet",
+"fourth house"
+],
+"relation": "transits",
+"role": "transiting_graha"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "promotive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-T06-moon-ingress-3min-before-sunrise",
+"days": {
+"2024-01-12": "F",
+"2024-01-13": "T",
+"2024-01-14": "T",
+"2024-01-15": "T",
+"2024-01-16": "F"
+},
+"fixture": "fx1",
+"note": "ref=2; Leo(5)->house 4; Leo row 01-13T00:27 is 3 minutes BEFORE the 00:30 sunrise so 01-13 already Leo T; Virgo row 01-15T12:00 is later than sunrise so 01-15 still Leo T; 01-16 Virgo->5 F"
+},
+{
+"card": {
+"card_id": "SYN-ORA-T07",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "When the messenger planet moves in the tenth house from the lunar sign the person prospers.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "transit",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "chandra_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"operand": "me_10"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"bhava": 10,
+"doctrinal_graha": "budha",
+"id": "me_10",
+"quote_terms": [
+"messenger planet",
+"tenth house"
+],
+"relation": "transits",
+"role": "transiting_graha"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "promotive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-T07-mercury-retrograde-reentry",
+"days": {
+"2024-01-02": "F",
+"2024-01-03": "F",
+"2024-01-04": "F",
+"2024-01-13": "F",
+"2024-01-14": "T",
+"2024-01-19": "T",
+"2024-01-20": "F",
+"2024-01-26": "F",
+"2024-01-27": "F",
+"2024-01-28": "T",
+"2024-01-31": "T",
+"2024-02-01": "N"
+},
+"fixture": "fx1",
+"note": "ref=2; Mercury Sag(9)->8 F, Cap(10)->9 F, Aqu(11)->10 T (rows 01-14T00:00..); row 01-20T00:00 sends it BACK to Cap (retrograde re-entry) F; Aqu again at 01-27T12:00 so 01-27 (00:30) is still Cap F and 01-28 (sunrise 12:00) T"
+},
+{
+"card": {
+"card_id": "SYN-ORA-T08",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "When the slow planet occupies the ninth house from the ascending sign the person is serious.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "transit",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "janma_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"operand": "sa_9"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"bhava": 9,
+"doctrinal_graha": "shani",
+"id": "sa_9",
+"quote_terms": [
+"slow planet",
+"ninth house"
+],
+"relation": "occupies",
+"role": "transiting_graha"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "promotive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-T08-saturn-reentry-janma",
+"days": {
+"2024-01-02": "F",
+"2024-01-17": "F",
+"2024-01-18": "T",
+"2024-01-25": "T",
+"2024-01-26": "F",
+"2024-01-31": "F",
+"2024-02-01": "N"
+},
+"fixture": "fx1",
+"note": "ref=4; Aqu(11)->8 F; Pisces(12)->9 T from row 01-18T00:00; row 01-26T00:00 back to Aqu F"
+},
+{
+"card": {
+"card_id": "SYN-ORA-T09",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "When the cool planet passes the tenth house from the lunar sign the person is honoured.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "transit",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "chandra_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"operand": "mo_10"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"bhava": 10,
+"doctrinal_graha": "chandra",
+"id": "mo_10",
+"quote_terms": [
+"cool planet",
+"tenth house"
+],
+"relation": "transits",
+"role": "transiting_graha"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "promotive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-T09-moon-ingress-exactly-at-sunrise",
+"days": {
+"2024-01-27": "F",
+"2024-01-28": "T",
+"2024-01-29": "T",
+"2024-01-30": "T",
+"2024-01-31": "F"
+},
+"fixture": "fx1",
+"note": "ref=2; Aqu(11)->house 10; Aqu row is 2024-01-28T12:00:00Z = JD 2460338.0 exactly equal to JD of the 01-28 sunrise (12:00:00Z), row <= t so already Aquarius: T; 01-27 Cap->9 F; Pisces row 01-30T18:00 after sunrise so 01-30 still T, 01-31 Pisces->11 F"
+},
+{
+"card": {
+"card_id": "SYN-ORA-T10",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "When the northern shadow body occupies the seventh house from the lunar sign the person has quarrels.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "transit",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "chandra_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"operand": "ra_7"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"bhava": 7,
+"doctrinal_graha": "rahu",
+"id": "ra_7",
+"quote_terms": [
+"shadow body",
+"seventh house"
+],
+"relation": "occupies",
+"role": "transiting_graha"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "promotive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-T10-rahu-transit-excluded",
+"expect": "EXCLUDED",
+"fixture": "fx1",
+"note": "gate reads the transit position of Rahu: node excluded"
+},
+{
+"card": {
+"card_id": "SYN-ORA-T11",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "If the bright planet moves across the fifth sign it brings trouble when that place is struck by vedha from planets in the ninth sign.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "transit",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "chandra_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"args": [
+{
+"operand": "ven_t"
+},
+{
+"operand": "ven_v"
+}
+],
+"op": "AND"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"bhava": 5,
+"doctrinal_graha": "shukra",
+"id": "ven_t",
+"quote_terms": [
+"bright planet",
+"fifth sign"
+],
+"relation": "transits",
+"role": "transiting_graha"
+},
+{
+"doctrinal_graha": "shukra",
+"id": "ven_v",
+"quote_terms": [
+"struck by vedha",
+"planets in the ninth"
+],
+"relation": "vedha_by",
+"role": "transiting_graha",
+"target_bhavas": [
+9
+]
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "obstructive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-T11-vedha-obstructor-set-excluded",
+"expect": "EXCLUDED",
+"fixture": "fx1",
+"note": "vedha_by with no declared obstructor set: the set includes nodes (spec 7) so excluded (see AMBIGUITIES)"
+},
+{
+"card": {
+"card_id": "SYN-ORA-T12",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "When the sun is in the eighth house or the bright planet is in the eleventh house from the lunar sign there is distress.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "transit",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "chandra_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"args": [
+{
+"operand": "su_8"
+},
+{
+"operand": "ve_11"
+}
+],
+"op": "OR"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"bhava": 8,
+"doctrinal_graha": "surya",
+"id": "su_8",
+"quote_terms": [
+"sun is in the eighth"
+],
+"relation": "transits",
+"role": "transiting_graha"
+},
+{
+"bhava": 11,
+"doctrinal_graha": "shukra",
+"id": "ve_11",
+"quote_terms": [
+"bright planet is in the eleventh"
+],
+"relation": "transits",
+"role": "transiting_graha"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "obstructive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-T12-or-true-with-unknown",
+"days": {
+"2024-01-07": "T",
+"2024-01-12": "F",
+"2024-01-14": "T",
+"2024-02-01": "N"
+},
+"fixture": "fx1",
+"note": "ref=2; 01-07: Sun Sag(9)->8 T, Venus before first row N -> OR(T,N)=T; 01-12: Sun Cap(10)->9 F, Venus Aq(11)->10 F -> F; 01-14: Sun F, Venus Pis(12)->11 T -> T; 02-01 both beyond coverage N"
+},
+{
+"card": {
+"card_id": "SYN-ORA-T13a",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "When the bright planet is in the tenth house and the sun is in the eighth house from the lunar sign there is loss.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "transit",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "chandra_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"args": [
+{
+"operand": "ve_10"
+},
+{
+"operand": "su_8"
+}
+],
+"op": "AND"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"bhava": 10,
+"doctrinal_graha": "shukra",
+"id": "ve_10",
+"quote_terms": [
+"bright planet is in the tenth"
+],
+"relation": "transits",
+"role": "transiting_graha"
+},
+{
+"bhava": 8,
+"doctrinal_graha": "surya",
+"id": "su_8",
+"quote_terms": [
+"sun is in the eighth"
+],
+"relation": "transits",
+"role": "transiting_graha"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "obstructive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-T13a-and-true-with-unknown",
+"days": {
+"2024-01-07": "N",
+"2024-01-08": "T",
+"2024-01-11": "F",
+"2024-01-14": "F"
+},
+"fixture": "fx1",
+"note": "ref=2; 01-07: Venus N, Sun Sag->8 T -> AND(N,T)=N; 01-08: Venus Aq->10 T, Sun 8 T -> T; 01-11: Sun Cap->9 F -> F; 01-14: Venus Pis->11 F -> F"
+},
+{
+"card": {
+"card_id": "SYN-ORA-T13b",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "When the bright planet is in the tenth house and the sun is in the ninth house from the lunar sign there is loss.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "transit",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "chandra_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"args": [
+{
+"operand": "ve_10"
+},
+{
+"operand": "su_9"
+}
+],
+"op": "AND"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"bhava": 10,
+"doctrinal_graha": "shukra",
+"id": "ve_10",
+"quote_terms": [
+"bright planet is in the tenth"
+],
+"relation": "transits",
+"role": "transiting_graha"
+},
+{
+"bhava": 9,
+"doctrinal_graha": "surya",
+"id": "su_9",
+"quote_terms": [
+"sun is in the ninth"
+],
+"relation": "transits",
+"role": "transiting_graha"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "obstructive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-T13b-and-false-with-unknown",
+"days": {
+"2024-01-07": "F",
+"2024-01-08": "F",
+"2024-01-11": "T",
+"2024-01-14": "F"
+},
+"fixture": "fx1",
+"note": "ref=2; 01-07: Venus N, Sun Sag->8 not 9 F -> AND(N,F)=F; 01-08: Venus T, Sun F -> F; 01-11: Venus Aq->10 T, Sun Cap->9 T -> T; 01-14: Venus 11 F -> F"
+},
+{
+"card": {
+"card_id": "SYN-ORA-N01",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "The sun in the fifth house and the Moon in the eleventh house give a bright life.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "natal_promise",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "janma_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"args": [
+{
+"operand": "su_5"
+},
+{
+"operand": "mo_11"
+}
+],
+"op": "AND"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"bhava": 5,
+"doctrinal_graha": "surya",
+"id": "su_5",
+"quote_terms": [
+"sun in the fifth"
+],
+"relation": "occupies",
+"role": "natal_graha"
+},
+{
+"doctrinal_graha": "chandra",
+"id": "mo_11",
+"quote_terms": [
+"Moon in the eleventh"
+],
+"relation": "occupies",
+"role": "natal_graha",
+"target_bhavas": [
+11
+]
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "promotive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-N01-natal-occupies",
+"days": {
+"2024-01-10": "T",
+"2024-01-20": "T"
+},
+"fixture": "fx1",
+"note": "Sun sign 8 -> ((8-4)%12)+1=5 in {5}; Moon sign 2 -> ((2-4)%12)+1=11 in {11}; both T"
+},
+{
+"card": {
+"card_id": "SYN-ORA-N02a",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "The great planet in a pillar house gives wide fame.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "natal_promise",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "janma_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"operand": "gu_k"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"bhava_group": "kendra",
+"doctrinal_graha": "guru",
+"id": "gu_k",
+"quote_terms": [
+"great planet",
+"pillar house"
+],
+"relation": "in_bhava_group",
+"role": "natal_graha"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "promotive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-N02a-in-group-true",
+"days": {
+"2024-01-10": "T",
+"2024-01-20": "T"
+},
+"fixture": "fx1",
+"note": "Jupiter sign 1 -> house ((1-4)%12)+1=10 in kendra {1,4,7,10}: T"
+},
+{
+"card": {
+"card_id": "SYN-ORA-N02b",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "The slow planet in a house of the trine gives long sorrow.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "natal_promise",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "janma_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"operand": "sa_t"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"bhava_group": "trikona",
+"doctrinal_graha": "shani",
+"id": "sa_t",
+"quote_terms": [
+"slow planet",
+"house of the trine"
+],
+"relation": "in_bhava_group",
+"role": "natal_graha"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "obstructive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-N02b-in-group-false",
+"days": {
+"2024-01-10": "F",
+"2024-01-20": "F"
+},
+"fixture": "fx1",
+"note": "Saturn sign 1 -> house 10 not in trikona {1,5,9}: F"
+},
+{
+"card": {
+"card_id": "SYN-ORA-N03a",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "The red planet looking at the eleventh house gives gain of friends.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "natal_promise",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "janma_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"operand": "ma_a"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"doctrinal_graha": "mangala",
+"id": "ma_a",
+"quote_terms": [
+"red planet looking",
+"eleventh house"
+],
+"relation": "aspects",
+"role": "natal_graha",
+"target_bhavas": [
+11
+]
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "promotive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-N03a-aspects-house-true",
+"days": {
+"2024-01-10": "T",
+"2024-01-20": "T"
+},
+"fixture": "fx1",
+"note": "target house 11 sign ((4+11-2)%12)+1=2; Mars aspected houses [8,11,12] -> signs 11,2,3 contain 2: T"
+},
+{
+"card": {
+"card_id": "SYN-ORA-N03b",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "The great planet looking at the fifth house gives sons.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "natal_promise",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "janma_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"operand": "gu_a"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"bhava": 5,
+"doctrinal_graha": "guru",
+"id": "gu_a",
+"quote_terms": [
+"great planet looking",
+"fifth house"
+],
+"relation": "aspects",
+"role": "natal_graha"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "promotive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-N03b-aspects-house-false",
+"days": {
+"2024-01-10": "F",
+"2024-01-20": "F"
+},
+"fixture": "fx1",
+"note": "house 5 sign ((4+5-2)%12)+1=8; Jupiter aspected houses [2,4,6] -> signs 5,7,9; 8 absent: F"
+},
+{
+"card": {
+"card_id": "SYN-ORA-N04a",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "The Moon in the eleventh house with the red planet looking at it gives wealth.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "natal_promise",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "janma_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"args": [
+{
+"operand": "mo_o"
+},
+{
+"operand": "ma_r"
+}
+],
+"op": "AND"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"bhava": 11,
+"doctrinal_graha": "chandra",
+"id": "mo_o",
+"quote_terms": [
+"Moon in the eleventh"
+],
+"relation": "occupies",
+"role": "natal_graha"
+},
+{
+"doctrinal_graha": "mangala",
+"id": "ma_r",
+"quote_terms": [
+"red planet looking at it"
+],
+"relation": "aspects",
+"role": "natal_graha",
+"target_role": "mo_o"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "promotive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-N04a-aspects-target-role-true",
+"days": {
+"2024-01-10": "T",
+"2024-01-20": "T"
+},
+"fixture": "fx1",
+"note": "Moon house 11 T; Moon sign 2; Mars aspected houses [8,11,12] -> signs 11,2,3 contain 2: T; AND T"
+},
+{
+"card": {
+"card_id": "SYN-ORA-N04b",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "The great planet in a pillar house with the slow planet looking at it gives fear.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "natal_promise",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "janma_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"args": [
+{
+"operand": "gu_o"
+},
+{
+"operand": "sa_r"
+}
+],
+"op": "AND"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"bhava_group": "kendra",
+"doctrinal_graha": "guru",
+"id": "gu_o",
+"quote_terms": [
+"great planet in a pillar house"
+],
+"relation": "in_bhava_group",
+"role": "natal_graha"
+},
+{
+"doctrinal_graha": "shani",
+"id": "sa_r",
+"quote_terms": [
+"slow planet looking at it"
+],
+"relation": "aspects",
+"role": "natal_graha",
+"target_role": "gu_o"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "obstructive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-N04b-aspects-target-role-false",
+"days": {
+"2024-01-10": "F",
+"2024-01-20": "F"
+},
+"fixture": "fx1",
+"note": "Jupiter kendra T; Jupiter sign 1; Saturn aspected houses [4,7,12] -> signs 7,10,3; 1 absent -> F; AND(T,F)=F"
+},
+{
+"card": {
+"card_id": "SYN-ORA-N05a",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "The sun in the fifth house joined by the red planet gives a hot temper.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "natal_promise",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "janma_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"args": [
+{
+"operand": "su_o"
+},
+{
+"operand": "ma_c"
+}
+],
+"op": "AND"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"bhava": 5,
+"doctrinal_graha": "surya",
+"id": "su_o",
+"quote_terms": [
+"sun in the fifth"
+],
+"relation": "occupies",
+"role": "natal_graha"
+},
+{
+"doctrinal_graha": "mangala",
+"id": "ma_c",
+"quote_terms": [
+"joined by the red planet"
+],
+"relation": "conjoins",
+"role": "natal_graha",
+"target_role": "su_o"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "obstructive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-N05a-conjoins-true",
+"days": {
+"2024-01-10": "T",
+"2024-01-20": "T"
+},
+"fixture": "fx1",
+"note": "Sun house 5 T; Mars sign 8 == Sun sign 8: T"
+},
+{
+"card": {
+"card_id": "SYN-ORA-N05c",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "The great planet in a pillar house joined by the slow planet gives delay.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "natal_promise",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "janma_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"args": [
+{
+"operand": "gu_o"
+},
+{
+"operand": "sa_c"
+}
+],
+"op": "AND"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"bhava_group": "kendra",
+"doctrinal_graha": "guru",
+"id": "gu_o",
+"quote_terms": [
+"great planet in a pillar house"
+],
+"relation": "in_bhava_group",
+"role": "natal_graha"
+},
+{
+"doctrinal_graha": "shani",
+"id": "sa_c",
+"quote_terms": [
+"joined by the slow planet"
+],
+"relation": "conjoins",
+"role": "natal_graha",
+"target_role": "gu_o"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "obstructive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-N05c-conjoins-same-sign-true",
+"days": {
+"2024-01-10": "T",
+"2024-01-20": "T"
+},
+"fixture": "fx1",
+"note": "Jupiter house 10 kendra T; Saturn sign 1 == Jupiter sign 1: T"
+},
+{
+"card": {
+"card_id": "SYN-ORA-N06a",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "The bright planet moving backward and exalted gives rare luck.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "natal_promise",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "janma_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"args": [
+{
+"operand": "ve_r"
+},
+{
+"operand": "ve_e"
+}
+],
+"op": "AND"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"doctrinal_graha": "shukra",
+"id": "ve_r",
+"quote_terms": [
+"bright planet moving backward"
+],
+"relation": "retrograde",
+"role": "natal_graha"
+},
+{
+"doctrinal_graha": "shukra",
+"id": "ve_e",
+"quote_terms": [
+"and exalted"
+],
+"relation": "exalted",
+"role": "natal_graha"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "promotive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-N06a-retrograde-exalted-true",
+"days": {
+"2024-01-10": "T",
+"2024-01-20": "T"
+},
+"fixture": "fx1",
+"note": "Venus fixture flags retrograde=true, exalted=true: T"
+},
+{
+"card": {
+"card_id": "SYN-ORA-N06b",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "The slow planet fallen and the messenger planet moving backward give loss.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "natal_promise",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "janma_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"args": [
+{
+"operand": "sa_d"
+},
+{
+"operand": "me_r"
+}
+],
+"op": "AND"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"doctrinal_graha": "shani",
+"id": "sa_d",
+"quote_terms": [
+"slow planet fallen"
+],
+"relation": "debilitated",
+"role": "natal_graha"
+},
+{
+"doctrinal_graha": "budha",
+"id": "me_r",
+"quote_terms": [
+"messenger planet moving backward"
+],
+"relation": "retrograde",
+"role": "natal_graha"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "obstructive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-N06b-debilitated-retrograde-false",
+"days": {
+"2024-01-10": "F",
+"2024-01-20": "F"
+},
+"fixture": "fx1",
+"note": "Saturn debilitated=true T; Mercury retrograde=false F; AND F"
+},
+{
+"card": {
+"card_id": "SYN-ORA-N07a",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "The red planet in its home sign gives courage.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "natal_promise",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "janma_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"operand": "ma_s"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"doctrinal_graha": "mangala",
+"id": "ma_s",
+"quote_terms": [
+"red planet in its home sign"
+],
+"relation": "own_sign",
+"role": "natal_graha"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "promotive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-N07a-own-sign-true",
+"days": {
+"2024-01-10": "T",
+"2024-01-20": "T"
+},
+"fixture": "fx1",
+"note": "Mars sign 8 -> house idx (8-4)%12+1=5 -> house_lord[5]=mangala == Mars, state 'own' consistent: T"
+},
+{
+"card": {
+"card_id": "SYN-ORA-N07b",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "The messenger planet in its home sign gives skill.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "natal_promise",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "janma_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"operand": "me_s"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"doctrinal_graha": "budha",
+"id": "me_s",
+"quote_terms": [
+"messenger planet in its home sign"
+],
+"relation": "own_sign",
+"role": "natal_graha"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "promotive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-N07b-own-sign-state-contradicts-lord",
+"days": {
+"2024-01-10": "N",
+"2024-01-20": "N"
+},
+"fixture": "fx1",
+"note": "Mercury sign 3 -> idx (3-4)%12+1=12 -> house_lord[12]=budha == Mercury, but dignity_state 'neutral' contradicts lordship: N"
+},
+{
+"card": {
+"card_id": "SYN-ORA-N07c",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "The sun in its home sign gives authority.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "natal_promise",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "janma_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"operand": "su_s"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"doctrinal_graha": "surya",
+"id": "su_s",
+"quote_terms": [
+"sun in its home sign"
+],
+"relation": "own_sign",
+"role": "natal_graha"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "promotive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-N07c-own-state-but-lord-differs",
+"days": {
+"2024-01-10": "N",
+"2024-01-20": "N"
+},
+"fixture": "fx1",
+"note": "Sun sign 8 -> house_lord[5]=mangala != Sun while dignity_state is 'own': contradiction N"
+},
+{
+"card": {
+"card_id": "SYN-ORA-N07d",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "The slow planet in its home sign gives patience.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "natal_promise",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "janma_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"operand": "sa_s"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"doctrinal_graha": "shani",
+"id": "sa_s",
+"quote_terms": [
+"slow planet in its home sign"
+],
+"relation": "own_sign",
+"role": "natal_graha"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "promotive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-N07d-own-sign-false",
+"days": {
+"2024-01-10": "F",
+"2024-01-20": "F"
+},
+"fixture": "fx1",
+"note": "Saturn sign 1 -> idx (1-4)%12+1=10 -> house_lord[10]=mangala != Saturn, state 'debilitated' not 'own': F"
+},
+{
+"card": {
+"card_id": "SYN-ORA-B1a",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "The lord of the first house being the cool planet gives a gentle nature.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "natal_promise",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "janma_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"operand": "l1"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"bhava": 1,
+"doctrinal_graha": "chandra",
+"id": "l1",
+"quote_terms": [
+"lord of the first house",
+"cool planet"
+],
+"relation": "lord_of",
+"role": "bhava_lord"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "promotive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-B1a-bhava-lord-of-true",
+"days": {
+"2024-01-10": "T",
+"2024-01-20": "T"
+},
+"fixture": "fx1",
+"note": "house 1 sign 4 -> house_lord[1]=chandra == chandra: T"
+},
+{
+"card": {
+"card_id": "SYN-ORA-B1b",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "The lord of the first house being the red planet gives a bold nature.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "natal_promise",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "janma_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"operand": "l1"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"bhava": 1,
+"doctrinal_graha": "mangala",
+"id": "l1",
+"quote_terms": [
+"lord of the first house",
+"red planet"
+],
+"relation": "lord_of",
+"role": "bhava_lord"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "promotive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-B1b-bhava-lord-of-false",
+"days": {
+"2024-01-10": "F",
+"2024-01-20": "F"
+},
+"fixture": "fx1",
+"note": "house_lord[1]=chandra != mangala: F"
+},
+{
+"card": {
+"card_id": "SYN-ORA-B2a",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "The lord of the fifth house standing in the fifth house gives learning.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "natal_promise",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "janma_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"operand": "l5"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"bhava": 5,
+"id": "l5",
+"quote_terms": [
+"lord of the fifth house",
+"standing in the fifth"
+],
+"relation": "occupies",
+"role": "bhava_lord",
+"target_bhavas": [
+5
+]
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "promotive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-B2a-bhava-lord-occupies-true",
+"days": {
+"2024-01-10": "T",
+"2024-01-20": "T"
+},
+"fixture": "fx1",
+"note": "lord of house 5 = mangala (sign 8) -> its house ((8-4)%12)+1=5 in {5}: T (bhava names the lord's house, not the target)"
+},
+{
+"card": {
+"card_id": "SYN-ORA-B2b",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "The lord of the ninth house standing in the fourth house gives a change of home.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "natal_promise",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "janma_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"operand": "l9"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"bhava": 9,
+"id": "l9",
+"quote_terms": [
+"lord of the ninth house",
+"standing in the fourth"
+],
+"relation": "occupies",
+"role": "bhava_lord",
+"target_bhavas": [
+4
+]
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "promotive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-B2b-bhava-lord-occupies-false",
+"days": {
+"2024-01-10": "F",
+"2024-01-20": "F"
+},
+"fixture": "fx1",
+"note": "lord of house 9 = guru (sign 1) -> house 10 not in {4}: F"
+},
+{
+"card": {
+"card_id": "SYN-ORA-B3a",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "The lord of the second house in a house of the trine gives wealth.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "natal_promise",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "janma_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"operand": "l2"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"bhava": 2,
+"bhava_group": "trikona",
+"id": "l2",
+"quote_terms": [
+"lord of the second house",
+"house of the trine"
+],
+"relation": "in_bhava_group",
+"role": "bhava_lord"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "promotive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-B3a-bhava-lord-in-group-true",
+"days": {
+"2024-01-10": "T",
+"2024-01-20": "T"
+},
+"fixture": "fx1",
+"note": "lord of house 2 = surya (sign 8) -> house 5 in {1,5,9}: T"
+},
+{
+"card": {
+"card_id": "SYN-ORA-B3b",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "The lord of the seventh house in a house of loss gives sorrow.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "natal_promise",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "janma_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"operand": "l7"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"bhava": 7,
+"bhava_group": "dusthana",
+"id": "l7",
+"quote_terms": [
+"lord of the seventh house",
+"house of loss"
+],
+"relation": "in_bhava_group",
+"role": "bhava_lord"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "obstructive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-B3b-bhava-lord-in-group-false",
+"days": {
+"2024-01-10": "F",
+"2024-01-20": "F"
+},
+"fixture": "fx1",
+"note": "lord of house 7 = shani (sign 1) -> house 10 not in {6,8,12}: F"
+},
+{
+"card": {
+"card_id": "SYN-ORA-B3c",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "The lord of the fourth house, if it is the red planet, in a pillar house gives comfort.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "natal_promise",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "janma_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"operand": "l4"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"bhava": 4,
+"bhava_group": "kendra",
+"doctrinal_graha": "mangala",
+"id": "l4",
+"quote_terms": [
+"lord of the fourth house",
+"red planet"
+],
+"relation": "in_bhava_group",
+"role": "bhava_lord"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "promotive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-B3c-bhava-lord-named-graha-differs",
+"days": {
+"2024-01-10": "F",
+"2024-01-20": "F"
+},
+"fixture": "fx1",
+"note": "lord of house 4 = shukra but the card names mangala: identity fails -> F"
+},
+{
+"card": {
+"card_id": "SYN-ORA-B4a",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "The lord of the sign of the Moon standing in the eleventh house from the lunar sign gives gain.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "natal_promise",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "chandra_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"operand": "l1m"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"bhava": 1,
+"id": "l1m",
+"quote_terms": [
+"lord of the sign of the Moon",
+"eleventh house"
+],
+"relation": "occupies",
+"role": "bhava_lord",
+"target_bhavas": [
+11
+]
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "promotive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-B4a-bhava-lord-chandra-frame-true",
+"days": {
+"2024-01-10": "T",
+"2024-01-20": "T"
+},
+"fixture": "fx1",
+"note": "ref = Moon sign 2; sign of house 1 from ref = 2 -> house_lord[(2-4)%12+1=11]=shukra (sign 12) -> house from ref ((12-2)%12)+1=11 in {11}: T"
+},
+{
+"card": {
+"card_id": "SYN-ORA-B4b",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "The lord of the sign of the Moon standing in the twelfth house from the lunar sign gives loss.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "natal_promise",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "chandra_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"operand": "l1m"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"bhava": 1,
+"id": "l1m",
+"quote_terms": [
+"lord of the sign of the Moon",
+"twelfth house"
+],
+"relation": "occupies",
+"role": "bhava_lord",
+"target_bhavas": [
+12
+]
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "obstructive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-B4b-bhava-lord-chandra-frame-false",
+"days": {
+"2024-01-10": "F",
+"2024-01-20": "F"
+},
+"fixture": "fx1",
+"note": "same lord shukra at house 11 from Moon, target {12}: F"
+},
+{
+"card": {
+"card_id": "SYN-ORA-X1",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "The red planet joined by the southern shadow body gives pain.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "natal_promise",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "janma_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"args": [
+{
+"operand": "ke_o"
+},
+{
+"operand": "ma_k"
+}
+],
+"op": "AND"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"bhava": 2,
+"doctrinal_graha": "ketu",
+"id": "ke_o",
+"quote_terms": [
+"southern shadow body"
+],
+"relation": "occupies",
+"role": "natal_graha"
+},
+{
+"doctrinal_graha": "mangala",
+"id": "ma_k",
+"quote_terms": [
+"red planet joined"
+],
+"relation": "conjoins",
+"role": "natal_graha",
+"target_role": "ke_o"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "obstructive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-X1-natal-conjunction-with-ketu-excluded",
+"expect": "EXCLUDED",
+"fixture": "fx1",
+"note": "gate reads the natal position of Ketu: excluded"
+},
+{
+"card": {
+"card_id": "SYN-ORA-N09",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "The great planet in a pillar house gives wide fame.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "natal_promise",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "janma_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"operand": "gu_k"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"bhava_group": "kendra",
+"doctrinal_graha": "guru",
+"id": "gu_k",
+"quote_terms": [
+"great planet",
+"pillar house"
+],
+"relation": "in_bhava_group",
+"role": "natal_graha"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "promotive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-N09-missing-natal-fact",
+"days": {
+"2024-01-10": "N",
+"2024-01-20": "N"
+},
+"fixture": "fx2",
+"note": "fx2 omits Jupiter's sign: predicate N never F"
+},
+{
+"card": {
+"card_id": "SYN-ORA-K1",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "The sun in the ninth house and the great planet in the tenth house give a hard life.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "natal_promise",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "janma_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"args": [
+{
+"operand": "su_9"
+},
+{
+"operand": "gu_10"
+}
+],
+"op": "AND"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"bhava": 9,
+"doctrinal_graha": "surya",
+"id": "su_9",
+"quote_terms": [
+"sun in the ninth"
+],
+"relation": "occupies",
+"role": "natal_graha"
+},
+{
+"bhava": 10,
+"doctrinal_graha": "guru",
+"id": "gu_10",
+"quote_terms": [
+"great planet in the tenth"
+],
+"relation": "occupies",
+"role": "natal_graha"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "obstructive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-K1-and-false-unknown",
+"days": {
+"2024-01-10": "F",
+"2024-01-20": "F"
+},
+"fixture": "fx2",
+"note": "Sun house 5 not 9 -> F; Jupiter sign missing N; AND(F,N)=F"
+},
+{
+"card": {
+"card_id": "SYN-ORA-K2",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "The sun in the fifth house and the great planet in the tenth house give a rich life.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "natal_promise",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "janma_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"args": [
+{
+"operand": "su_5"
+},
+{
+"operand": "gu_10"
+}
+],
+"op": "AND"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"bhava": 5,
+"doctrinal_graha": "surya",
+"id": "su_5",
+"quote_terms": [
+"sun in the fifth"
+],
+"relation": "occupies",
+"role": "natal_graha"
+},
+{
+"bhava": 10,
+"doctrinal_graha": "guru",
+"id": "gu_10",
+"quote_terms": [
+"great planet in the tenth"
+],
+"relation": "occupies",
+"role": "natal_graha"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "promotive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-K2-and-true-unknown",
+"days": {
+"2024-01-10": "N",
+"2024-01-20": "N"
+},
+"fixture": "fx2",
+"note": "Sun house 5 T; Jupiter missing N; AND(T,N)=N"
+},
+{
+"card": {
+"card_id": "SYN-ORA-K3",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "The sun in the fifth house or the great planet in the tenth house gives fame.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "natal_promise",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "janma_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"args": [
+{
+"operand": "su_5"
+},
+{
+"operand": "gu_10"
+}
+],
+"op": "OR"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"bhava": 5,
+"doctrinal_graha": "surya",
+"id": "su_5",
+"quote_terms": [
+"sun in the fifth"
+],
+"relation": "occupies",
+"role": "natal_graha"
+},
+{
+"bhava": 10,
+"doctrinal_graha": "guru",
+"id": "gu_10",
+"quote_terms": [
+"great planet in the tenth"
+],
+"relation": "occupies",
+"role": "natal_graha"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "promotive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-K3-or-true-unknown",
+"days": {
+"2024-01-10": "T",
+"2024-01-20": "T"
+},
+"fixture": "fx2",
+"note": "Sun house 5 T; Jupiter missing N; OR(T,N)=T"
+},
+{
+"card": {
+"card_id": "SYN-ORA-K4",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "The sun in the ninth house or the great planet in the tenth house gives fame.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "natal_promise",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "janma_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"args": [
+{
+"operand": "su_9"
+},
+{
+"operand": "gu_10"
+}
+],
+"op": "OR"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"bhava": 9,
+"doctrinal_graha": "surya",
+"id": "su_9",
+"quote_terms": [
+"sun in the ninth"
+],
+"relation": "occupies",
+"role": "natal_graha"
+},
+{
+"bhava": 10,
+"doctrinal_graha": "guru",
+"id": "gu_10",
+"quote_terms": [
+"great planet in the tenth"
+],
+"relation": "occupies",
+"role": "natal_graha"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "promotive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-K4-or-false-unknown",
+"days": {
+"2024-01-10": "N",
+"2024-01-20": "N"
+},
+"fixture": "fx2",
+"note": "Sun house 5 not 9 F; Jupiter missing N; OR(F,N)=N"
+},
+{
+"card": {
+"card_id": "SYN-ORA-K5",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "It is not so that the great planet stands in a pillar house; then the person is free.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "natal_promise",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "janma_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"args": [
+{
+"operand": "gu_k"
+}
+],
+"op": "NOT"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"bhava_group": "kendra",
+"doctrinal_graha": "guru",
+"id": "gu_k",
+"quote_terms": [
+"great planet stands in a pillar house"
+],
+"relation": "in_bhava_group",
+"role": "natal_graha"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "promotive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-K5-not-unknown",
+"days": {
+"2024-01-10": "N",
+"2024-01-20": "N"
+},
+"fixture": "fx2",
+"note": "Jupiter missing -> kendra predicate N; NOT N = N"
+},
+{
+"card": {
+"card_id": "SYN-ORA-K6",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "It is not so that the sun stands in the ninth house; then the person is free.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "natal_promise",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "janma_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"args": [
+{
+"operand": "su_9"
+}
+],
+"op": "NOT"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"bhava": 9,
+"doctrinal_graha": "surya",
+"id": "su_9",
+"quote_terms": [
+"sun stands in the ninth"
+],
+"relation": "occupies",
+"role": "natal_graha"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "promotive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-K6-not-false",
+"days": {
+"2024-01-10": "T",
+"2024-01-20": "T"
+},
+"fixture": "fx2",
+"note": "Sun house 5 not 9 -> F; NOT F = T"
+},
+{
+"card": {
+"card_id": "SYN-ORA-D01",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "In the major period of the slow planet the person suffers.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "dasha",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "janma_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"operand": "md_s"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"doctrinal_graha": "shani",
+"id": "md_s",
+"quote_terms": [
+"major period",
+"slow planet"
+],
+"relation": "is_dasha_lord",
+"role": "dasha_lord"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "obstructive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-D01-md-identity-boundary",
+"days": {
+"2024-01-02": "N",
+"2024-01-03": "N",
+"2024-01-04": "T",
+"2024-01-07": "T",
+"2024-01-08": "T",
+"2024-01-13": "T",
+"2024-01-14": "T",
+"2024-01-19": "T",
+"2024-01-20": "F",
+"2024-02-02": "F",
+"2024-02-03": "F",
+"2024-02-19": "F",
+"2024-02-20": "F",
+"2024-02-21": "F",
+"2025-01-02": "N"
+},
+"fixture": "fx1",
+"note": "(MD,AD) by day: 01-02,01-03 before birth_utc 01-03T03:30 (N); 01-04..01-07 shani/mangala; 01-08,01-13 shani/rahu; 01-14,01-19 shani/guru; 01-20 ketu/ketu (t_D 00:30:00 == MD and AD start exactly); 02-02 ketu/ketu; 02-03,02-19 ketu/shukra; 02-20,02-21 shukra/shukra; 2025-01-02 after last row end (N). MD identity shani: T on shani rows, F otherwise; boundary day 01-20 is in the ketu row (half-open) -> F"
+},
+{
+"card": {
+"card_id": "SYN-ORA-D02",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "In the sub period of the great planet the person is helped.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "dasha",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "janma_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"operand": "ad_g"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"doctrinal_graha": "guru",
+"id": "ad_g",
+"quote_terms": [
+"sub period",
+"great planet"
+],
+"relation": "is_antardasha_lord",
+"role": "antardasha_lord"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "promotive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-D02-ad-identity-boundary",
+"days": {
+"2024-01-02": "N",
+"2024-01-03": "N",
+"2024-01-04": "F",
+"2024-01-07": "F",
+"2024-01-08": "F",
+"2024-01-13": "F",
+"2024-01-14": "T",
+"2024-01-19": "T",
+"2024-01-20": "F",
+"2024-02-02": "F",
+"2024-02-03": "F",
+"2024-02-19": "F",
+"2024-02-20": "F",
+"2024-02-21": "F",
+"2025-01-02": "N"
+},
+"fixture": "fx1",
+"note": "(MD,AD) by day: 01-02,01-03 before birth_utc 01-03T03:30 (N); 01-04..01-07 shani/mangala; 01-08,01-13 shani/rahu; 01-14,01-19 shani/guru; 01-20 ketu/ketu (t_D 00:30:00 == MD and AD start exactly); 02-02 ketu/ketu; 02-03,02-19 ketu/shukra; 02-20,02-21 shukra/shukra; 2025-01-02 after last row end (N). AD identity guru: T 01-14,01-19 only; 01-20 AD already ketu (guru row ends exactly 01-20T00:30 exclusive): F"
+},
+{
+"card": {
+"card_id": "SYN-ORA-D03",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "In the major period of the southern shadow body the person wanders.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "dasha",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "janma_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"operand": "md_k"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"doctrinal_graha": "ketu",
+"id": "md_k",
+"quote_terms": [
+"major period",
+"southern shadow body"
+],
+"relation": "is_dasha_lord",
+"role": "dasha_lord"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "obstructive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-D03-md-identity-ketu",
+"days": {
+"2024-01-02": "N",
+"2024-01-03": "N",
+"2024-01-04": "F",
+"2024-01-07": "F",
+"2024-01-08": "F",
+"2024-01-13": "F",
+"2024-01-14": "F",
+"2024-01-19": "F",
+"2024-01-20": "T",
+"2024-02-02": "T",
+"2024-02-03": "T",
+"2024-02-19": "T",
+"2024-02-20": "F",
+"2024-02-21": "F",
+"2025-01-02": "N"
+},
+"fixture": "fx1",
+"note": "(MD,AD) by day: 01-02,01-03 before birth_utc 01-03T03:30 (N); 01-04..01-07 shani/mangala; 01-08,01-13 shani/rahu; 01-14,01-19 shani/guru; 01-20 ketu/ketu (t_D 00:30:00 == MD and AD start exactly); 02-02 ketu/ketu; 02-03,02-19 ketu/shukra; 02-20,02-21 shukra/shukra; 2025-01-02 after last row end (N). identity on a node is evaluated: ketu MD rows 01-20..02-19 T, others F"
+},
+{
+"card": {
+"card_id": "SYN-ORA-D04",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "In the sub period of the northern shadow body the person is confused.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "dasha",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "janma_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"operand": "ad_r"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"doctrinal_graha": "rahu",
+"id": "ad_r",
+"quote_terms": [
+"sub period",
+"northern shadow body"
+],
+"relation": "is_antardasha_lord",
+"role": "antardasha_lord"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "obstructive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-D04-ad-identity-rahu",
+"days": {
+"2024-01-02": "N",
+"2024-01-03": "N",
+"2024-01-04": "F",
+"2024-01-07": "F",
+"2024-01-08": "T",
+"2024-01-13": "T",
+"2024-01-14": "F",
+"2024-01-19": "F",
+"2024-01-20": "F",
+"2024-02-02": "F",
+"2024-02-03": "F",
+"2024-02-19": "F",
+"2024-02-20": "F",
+"2024-02-21": "F",
+"2025-01-02": "N"
+},
+"fixture": "fx1",
+"note": "(MD,AD) by day: 01-02,01-03 before birth_utc 01-03T03:30 (N); 01-04..01-07 shani/mangala; 01-08,01-13 shani/rahu; 01-14,01-19 shani/guru; 01-20 ketu/ketu (t_D 00:30:00 == MD and AD start exactly); 02-02 ketu/ketu; 02-03,02-19 ketu/shukra; 02-20,02-21 shukra/shukra; 2025-01-02 after last row end (N). AD rahu only 01-08,01-13 T"
+},
+{
+"card": {
+"card_id": "SYN-ORA-D05",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "During the period when the sub lord stands sixth or eighth from the major lord the person meets obstacles.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "dasha",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "dasha_lord_natal_position",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"args": [
+{
+"operand": "md"
+},
+{
+"args": [
+{
+"operand": "ad6"
+},
+{
+"operand": "ad8"
+}
+],
+"op": "OR"
+}
+],
+"op": "AND"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"id": "md",
+"quote_terms": [
+"major lord"
+],
+"relation": "is_dasha_lord",
+"role": "dasha_lord"
+},
+{
+"bhava": 6,
+"id": "ad6",
+"quote_terms": [
+"sub lord",
+"sixth"
+],
+"relation": "occupies",
+"role": "antardasha_lord",
+"target_role": "md"
+},
+{
+"bhava": 8,
+"id": "ad8",
+"quote_terms": [
+"sub lord",
+"eighth"
+],
+"relation": "occupies",
+"role": "antardasha_lord",
+"target_role": "md"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "obstructive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-D05-ad-6-or-8-from-md-lord",
+"days": {
+"2024-01-02": "N",
+"2024-01-03": "N",
+"2024-01-04": "T",
+"2024-01-07": "T",
+"2024-01-08": "N",
+"2024-01-13": "N",
+"2024-01-14": "F",
+"2024-01-19": "F",
+"2024-01-20": "N",
+"2024-02-02": "N",
+"2024-02-03": "N",
+"2024-02-19": "N",
+"2024-02-20": "F",
+"2024-02-21": "F",
+"2025-01-02": "N"
+},
+"fixture": "fx1",
+"note": "(MD,AD) by day: 01-02,01-03 before birth_utc 01-03T03:30 (N); 01-04..01-07 shani/mangala; 01-08,01-13 shani/rahu; 01-14,01-19 shani/guru; 01-20 ketu/ketu (t_D 00:30:00 == MD and AD start exactly); 02-02 ketu/ketu; 02-03,02-19 ketu/shukra; 02-20,02-21 shukra/shukra; 2025-01-02 after last row end (N). ref=MD lord natal sign (shani 1): mangala sign 8 -> house 8 -> ad8 T -> T; AD rahu -> position unread N,N -> OR N, AND(T,N)=N; guru sign 1 -> house 1 F,F -> F; MD ketu -> no reference sign, ad ops N, md identity T -> N; MD shukra (12), AD shukra sign 12 -> house 1 -> F; pre-birth/after-table md N -> N"
+},
+{
+"card": {
+"card_id": "SYN-ORA-D06",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "During the period when the sub lord stands in a pillar house from the major lord the person prospers.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "dasha",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "dasha_lord_natal_position",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"args": [
+{
+"operand": "md"
+},
+{
+"operand": "adk"
+}
+],
+"op": "AND"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"id": "md",
+"quote_terms": [
+"major lord"
+],
+"relation": "is_dasha_lord",
+"role": "dasha_lord"
+},
+{
+"bhava_group": "kendra",
+"id": "adk",
+"quote_terms": [
+"sub lord",
+"pillar house"
+],
+"relation": "in_bhava_group",
+"role": "antardasha_lord",
+"target_role": "md"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "promotive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-D06-ad-in-kendra-from-md-lord",
+"days": {
+"2024-01-02": "N",
+"2024-01-03": "N",
+"2024-01-04": "F",
+"2024-01-07": "F",
+"2024-01-08": "N",
+"2024-01-13": "N",
+"2024-01-14": "T",
+"2024-01-19": "T",
+"2024-01-20": "N",
+"2024-02-02": "N",
+"2024-02-03": "N",
+"2024-02-19": "N",
+"2024-02-20": "T",
+"2024-02-21": "T",
+"2025-01-02": "N"
+},
+"fixture": "fx1",
+"note": "(MD,AD) by day: 01-02,01-03 before birth_utc 01-03T03:30 (N); 01-04..01-07 shani/mangala; 01-08,01-13 shani/rahu; 01-14,01-19 shani/guru; 01-20 ketu/ketu (t_D 00:30:00 == MD and AD start exactly); 02-02 ketu/ketu; 02-03,02-19 ketu/shukra; 02-20,02-21 shukra/shukra; 2025-01-02 after last row end (N). shani/mangala: house 8 not in {1,4,7,10} F; rahu AD N; shani/guru: house 1 in kendra T; ketu MD: reference unknown N; shukra/shukra: house 1 T"
+},
+{
+"card": {
+"card_id": "SYN-ORA-D07",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "In a period of a fallen major lord the person has fear.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "dasha",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "dasha_lord_natal_position",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"operand": "dl_d"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"id": "dl_d",
+"quote_terms": [
+"fallen major lord"
+],
+"relation": "debilitated",
+"role": "dasha_lord"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "obstructive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-D07-md-lord-debilitated-flag",
+"days": {
+"2024-01-02": "N",
+"2024-01-03": "N",
+"2024-01-04": "T",
+"2024-01-07": "T",
+"2024-01-08": "T",
+"2024-01-13": "T",
+"2024-01-14": "T",
+"2024-01-19": "T",
+"2024-01-20": "N",
+"2024-02-02": "N",
+"2024-02-03": "N",
+"2024-02-19": "N",
+"2024-02-20": "F",
+"2024-02-21": "F",
+"2025-01-02": "N"
+},
+"fixture": "fx1",
+"note": "(MD,AD) by day: 01-02,01-03 before birth_utc 01-03T03:30 (N); 01-04..01-07 shani/mangala; 01-08,01-13 shani/rahu; 01-14,01-19 shani/guru; 01-20 ketu/ketu (t_D 00:30:00 == MD and AD start exactly); 02-02 ketu/ketu; 02-03,02-19 ketu/shukra; 02-20,02-21 shukra/shukra; 2025-01-02 after last row end (N). flag of the MD lord: shani debilitated=true T; ketu MD (flag unread) N; shukra debilitated=false F"
+},
+{
+"card": {
+"card_id": "SYN-ORA-D08",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "In a period of a backward moving major lord the person is delayed.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "dasha",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "dasha_lord_natal_position",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"operand": "dl_r"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"id": "dl_r",
+"quote_terms": [
+"backward moving major lord"
+],
+"relation": "retrograde",
+"role": "dasha_lord"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "obstructive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-D08-md-lord-retrograde-flag",
+"days": {
+"2024-01-02": "N",
+"2024-01-03": "N",
+"2024-01-04": "F",
+"2024-01-07": "F",
+"2024-01-08": "F",
+"2024-01-13": "F",
+"2024-01-14": "F",
+"2024-01-19": "F",
+"2024-01-20": "N",
+"2024-02-02": "N",
+"2024-02-03": "N",
+"2024-02-19": "N",
+"2024-02-20": "T",
+"2024-02-21": "T",
+"2025-01-02": "N"
+},
+"fixture": "fx1",
+"note": "(MD,AD) by day: 01-02,01-03 before birth_utc 01-03T03:30 (N); 01-04..01-07 shani/mangala; 01-08,01-13 shani/rahu; 01-14,01-19 shani/guru; 01-20 ketu/ketu (t_D 00:30:00 == MD and AD start exactly); 02-02 ketu/ketu; 02-03,02-19 ketu/shukra; 02-20,02-21 shukra/shukra; 2025-01-02 after last row end (N). shani retrograde=false F; ketu MD N (node flag true in fixture must not be read); shukra retrograde=true T"
+},
+{
+"card": {
+"card_id": "SYN-ORA-D09",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "In the sub period of a backward moving lord the person is delayed.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "dasha",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "janma_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"operand": "al_r"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"id": "al_r",
+"quote_terms": [
+"backward moving lord"
+],
+"relation": "retrograde",
+"role": "antardasha_lord"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "obstructive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-D09-ad-lord-retrograde-flag",
+"days": {
+"2024-01-02": "N",
+"2024-01-03": "N",
+"2024-01-04": "F",
+"2024-01-07": "F",
+"2024-01-08": "N",
+"2024-01-13": "N",
+"2024-01-14": "F",
+"2024-01-19": "F",
+"2024-01-20": "N",
+"2024-02-02": "N",
+"2024-02-03": "T",
+"2024-02-19": "T",
+"2024-02-20": "T",
+"2024-02-21": "T",
+"2025-01-02": "N"
+},
+"fixture": "fx1",
+"note": "(MD,AD) by day: 01-02,01-03 before birth_utc 01-03T03:30 (N); 01-04..01-07 shani/mangala; 01-08,01-13 shani/rahu; 01-14,01-19 shani/guru; 01-20 ketu/ketu (t_D 00:30:00 == MD and AD start exactly); 02-02 ketu/ketu; 02-03,02-19 ketu/shukra; 02-20,02-21 shukra/shukra; 2025-01-02 after last row end (N). AD flags: mangala F, rahu N, guru F, ketu N, shukra T (nodes' retrograde=true in fixture is never read)"
+},
+{
+"card": {
+"card_id": "SYN-ORA-D10",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "In the sub period of a fallen lord the person has fear.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "dasha",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "janma_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"operand": "al_d"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"id": "al_d",
+"quote_terms": [
+"fallen lord"
+],
+"relation": "debilitated",
+"role": "antardasha_lord"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "obstructive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-D10-ad-lord-debilitated-flag",
+"days": {
+"2024-01-02": "N",
+"2024-01-03": "N",
+"2024-01-04": "F",
+"2024-01-07": "F",
+"2024-01-08": "N",
+"2024-01-13": "N",
+"2024-01-14": "F",
+"2024-01-19": "F",
+"2024-01-20": "N",
+"2024-02-02": "N",
+"2024-02-03": "F",
+"2024-02-19": "F",
+"2024-02-20": "F",
+"2024-02-21": "F",
+"2025-01-02": "N"
+},
+"fixture": "fx1",
+"note": "(MD,AD) by day: 01-02,01-03 before birth_utc 01-03T03:30 (N); 01-04..01-07 shani/mangala; 01-08,01-13 shani/rahu; 01-14,01-19 shani/guru; 01-20 ketu/ketu (t_D 00:30:00 == MD and AD start exactly); 02-02 ketu/ketu; 02-03,02-19 ketu/shukra; 02-20,02-21 shukra/shukra; 2025-01-02 after last row end (N). AD debilitated flags: mangala F, guru F, shukra F; node AD days N"
+},
+{
+"card": {
+"card_id": "SYN-ORA-D11",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "In the major period of the slow planet, if it stands in a pillar house, the person rules.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "dasha",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "janma_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"operand": "dl_k"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"bhava_group": "kendra",
+"doctrinal_graha": "shani",
+"id": "dl_k",
+"quote_terms": [
+"major period of the slow planet",
+"pillar house"
+],
+"relation": "in_bhava_group",
+"role": "dasha_lord"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "promotive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-D11-md-named-graha-differs-is-false",
+"days": {
+"2024-01-02": "N",
+"2024-01-03": "N",
+"2024-01-04": "T",
+"2024-01-07": "T",
+"2024-01-08": "T",
+"2024-01-13": "T",
+"2024-01-14": "T",
+"2024-01-19": "T",
+"2024-01-20": "F",
+"2024-02-02": "F",
+"2024-02-03": "F",
+"2024-02-19": "F",
+"2024-02-20": "F",
+"2024-02-21": "F",
+"2025-01-02": "N"
+},
+"fixture": "fx1",
+"note": "(MD,AD) by day: 01-02,01-03 before birth_utc 01-03T03:30 (N); 01-04..01-07 shani/mangala; 01-08,01-13 shani/rahu; 01-14,01-19 shani/guru; 01-20 ketu/ketu (t_D 00:30:00 == MD and AD start exactly); 02-02 ketu/ketu; 02-03,02-19 ketu/shukra; 02-20,02-21 shukra/shukra; 2025-01-02 after last row end (N). named shani: shani MD -> Saturn house ((1-4)%12)+1=10 in kendra T; ketu and shukra MD rows: lord differs from the named graha -> identity fails F (not N even on ketu days)"
+},
+{
+"card": {
+"card_id": "SYN-ORA-D12",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "In the sub period of the great planet, if it stands in the tenth house, the person is honoured.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "dasha",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "janma_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"operand": "al_g"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"bhava": 10,
+"doctrinal_graha": "guru",
+"id": "al_g",
+"quote_terms": [
+"sub period of the great planet",
+"tenth house"
+],
+"relation": "occupies",
+"role": "antardasha_lord"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "promotive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-D12-ad-named-graha-differs-is-false",
+"days": {
+"2024-01-02": "N",
+"2024-01-03": "N",
+"2024-01-04": "F",
+"2024-01-07": "F",
+"2024-01-08": "F",
+"2024-01-13": "F",
+"2024-01-14": "T",
+"2024-01-19": "T",
+"2024-01-20": "F",
+"2024-02-02": "F",
+"2024-02-03": "F",
+"2024-02-19": "F",
+"2024-02-20": "F",
+"2024-02-21": "F",
+"2025-01-02": "N"
+},
+"fixture": "fx1",
+"note": "(MD,AD) by day: 01-02,01-03 before birth_utc 01-03T03:30 (N); 01-04..01-07 shani/mangala; 01-08,01-13 shani/rahu; 01-14,01-19 shani/guru; 01-20 ketu/ketu (t_D 00:30:00 == MD and AD start exactly); 02-02 ketu/ketu; 02-03,02-19 ketu/shukra; 02-20,02-21 shukra/shukra; 2025-01-02 after last row end (N). named guru: AD guru rows 01-14,01-19 -> Jupiter house 10 T; every other AD (mangala, rahu, ketu, shukra) differs -> F"
+},
+{
+"card": {
+"card_id": "SYN-ORA-D13",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "In the major period of the golden planet with a backward moving sub lord the person is troubled.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "dasha",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "janma_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"args": [
+{
+"operand": "md_v"
+},
+{
+"operand": "ad_r"
+}
+],
+"op": "AND"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"doctrinal_graha": "shukra",
+"id": "md_v",
+"quote_terms": [
+"major period of the golden planet"
+],
+"relation": "is_dasha_lord",
+"role": "dasha_lord"
+},
+{
+"id": "ad_r",
+"quote_terms": [
+"backward moving sub lord"
+],
+"relation": "retrograde",
+"role": "antardasha_lord"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "obstructive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-D13-and-false-with-node-unknown",
+"days": {
+"2024-01-02": "N",
+"2024-01-03": "N",
+"2024-01-04": "F",
+"2024-01-07": "F",
+"2024-01-08": "F",
+"2024-01-13": "F",
+"2024-01-14": "F",
+"2024-01-19": "F",
+"2024-01-20": "F",
+"2024-02-02": "F",
+"2024-02-03": "F",
+"2024-02-19": "F",
+"2024-02-20": "T",
+"2024-02-21": "T",
+"2025-01-02": "N"
+},
+"fixture": "fx1",
+"note": "(MD,AD) by day: 01-02,01-03 before birth_utc 01-03T03:30 (N); 01-04..01-07 shani/mangala; 01-08,01-13 shani/rahu; 01-14,01-19 shani/guru; 01-20 ketu/ketu (t_D 00:30:00 == MD and AD start exactly); 02-02 ketu/ketu; 02-03,02-19 ketu/shukra; 02-20,02-21 shukra/shukra; 2025-01-02 after last row end (N). 01-08,01-13: MD shani F, AD rahu N -> AND(F,N)=F; 01-20: MD ketu F, AD ketu N -> F; 02-03: MD F, AD shukra retro T -> F; 02-20,02-21: MD shukra T, AD shukra retro T -> T; 01-02,01-03,2025-01-02 both N"
+},
+{
+"card": {
+"card_id": "SYN-ORA-D14",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "In the major period of the southern shadow body with a backward moving sub lord the person is troubled.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "dasha",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "janma_lagna",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"args": [
+{
+"operand": "md_k"
+},
+{
+"operand": "ad_r"
+}
+],
+"op": "AND"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"doctrinal_graha": "ketu",
+"id": "md_k",
+"quote_terms": [
+"major period of the southern shadow body"
+],
+"relation": "is_dasha_lord",
+"role": "dasha_lord"
+},
+{
+"id": "ad_r",
+"quote_terms": [
+"backward moving sub lord"
+],
+"relation": "retrograde",
+"role": "antardasha_lord"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "obstructive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-D14-and-true-with-node-unknown",
+"days": {
+"2024-01-02": "N",
+"2024-01-03": "N",
+"2024-01-04": "F",
+"2024-01-07": "F",
+"2024-01-08": "F",
+"2024-01-13": "F",
+"2024-01-14": "F",
+"2024-01-19": "F",
+"2024-01-20": "N",
+"2024-02-02": "N",
+"2024-02-03": "T",
+"2024-02-19": "T",
+"2024-02-20": "F",
+"2024-02-21": "F",
+"2025-01-02": "N"
+},
+"fixture": "fx1",
+"note": "(MD,AD) by day: 01-02,01-03 before birth_utc 01-03T03:30 (N); 01-04..01-07 shani/mangala; 01-08,01-13 shani/rahu; 01-14,01-19 shani/guru; 01-20 ketu/ketu (t_D 00:30:00 == MD and AD start exactly); 02-02 ketu/ketu; 02-03,02-19 ketu/shukra; 02-20,02-21 shukra/shukra; 2025-01-02 after last row end (N). 01-20,02-02: MD ketu T, AD ketu flag unread N -> AND(T,N)=N; 02-03,02-19: MD ketu T, AD shukra retro T -> T; shani/shukra MD rows F"
+},
+{
+"card": {
+"card_id": "SYN-ORA-D16",
+"confidence_notes": "synthetic oracle card, invented prose",
+"field1_citation": {
+"chunk_id": "synthtext_pg0001_c01",
+"locus": "T.1",
+"passage_ids": [
+"synthtext_pg0001_c01:en:p001"
+],
+"quote": "During the period when the sub lord stands eighth from the major lord the person meets obstacles.",
+"quote_language": "en",
+"text_id": "synthtext",
+"work": "Synthetic Test Text"
+},
+"field2_target_scope": {
+"category": "dasha",
+"class_group": "cross_cutting"
+},
+"field3_reference_frame": {
+"frame": "natal_position_of_role",
+"frame_role": "md",
+"frame_terms": [
+"synthetic frame words"
+]
+},
+"field4_necessary_gate": {
+"expr": {
+"args": [
+{
+"operand": "md"
+},
+{
+"operand": "bk8"
+}
+],
+"op": "AND"
+},
+"gate_term": "when"
+},
+"field5_typed_operands": [
+{
+"id": "md",
+"quote_terms": [
+"major lord"
+],
+"relation": "is_dasha_lord",
+"role": "dasha_lord"
+},
+{
+"bhava": 8,
+"id": "bk8",
+"quote_terms": [
+"sub lord",
+"eighth"
+],
+"relation": "occupies",
+"role": "antardasha_lord"
+}
+],
+"field6_exceptions": [],
+"field7_discrete_arithmetic": [],
+"polarity": "obstructive",
+"provenance": "verse_cited",
+"schema_version": "rule-card-v1.1"
+},
+"case_id": "A-D16-frame-natal-position-of-md-role",
+"days": {
+"2024-01-02": "N",
+"2024-01-03": "N",
+"2024-01-04": "T",
+"2024-01-07": "T",
+"2024-01-08": "N",
+"2024-01-13": "N",
+"2024-01-14": "F",
+"2024-01-19": "F",
+"2024-01-20": "N",
+"2024-02-02": "N",
+"2024-02-03": "N",
+"2024-02-19": "N",
+"2024-02-20": "F",
+"2024-02-21": "F",
+"2025-01-02": "N"
+},
+"fixture": "fx1",
+"note": "(MD,AD) by day: 01-02,01-03 before birth_utc 01-03T03:30 (N); 01-04..01-07 shani/mangala; 01-08,01-13 shani/rahu; 01-14,01-19 shani/guru; 01-20 ketu/ketu (t_D 00:30:00 == MD and AD start exactly); 02-02 ketu/ketu; 02-03,02-19 ketu/shukra; 02-20,02-21 shukra/shukra; 2025-01-02 after last row end (N). frame natal_position_of_role with frame_role = the dasha_lord operand without a graha -> ref = MD lord natal sign (shani 1): mangala house 8 T; guru house 1 F; rahu AD N; ketu MD ref unknown N; shukra MD ref 12, AD shukra sign 12 -> house 1 F"
+}
+],
+"fixtures": {
+"fx1": {
+"chart": {
+"aspected_houses": {
+"budha": [
+6
+],
+"chandra": [
+5
+],
+"guru": [
+2,
+4,
+6
+],
+"ketu": [
+8
+],
+"mangala": [
+8,
+11,
+12
+],
+"rahu": [
+2
+],
+"shani": [
+4,
+7,
+12
+],
+"shukra": [
+3
+],
+"surya": [
+11
+]
+},
+"birth": {
+"birth_utc": "2024-01-03T03:30:00Z",
+"date": "2024-01-03",
+"lat": 20.3,
+"lon": 85.8,
+"time_local": "09:00:00",
+"zone": "Asia/Kolkata"
+},
+"chart_key": "synthA1",
+"dasha": {
+"antardasha": [
+{
+"end_utc": "2024-01-08T00:00:00Z",
+"lord": "mangala",
+"start_utc": "2024-01-03T03:30:00Z"
+},
+{
+"end_utc": "2024-01-14T00:00:00Z",
+"lord": "rahu",
+"start_utc": "2024-01-08T00:00:00Z"
+},
+{
+"end_utc": "2024-01-20T00:30:00Z",
+"lord": "guru",
+"start_utc": "2024-01-14T00:00:00Z"
+},
+{
+"end_utc": "2024-02-03T00:00:00Z",
+"lord": "ketu",
+"start_utc": "2024-01-20T00:30:00Z"
+},
+{
+"end_utc": "2024-02-20T00:00:00Z",
+"lord": "shukra",
+"start_utc": "2024-02-03T00:00:00Z"
+},
+{
+"end_utc": "2025-01-01T00:00:00Z",
+"lord": "shukra",
+"start_utc": "2024-02-20T00:00:00Z"
+}
+],
+"mahadasha": [
+{
+"end_utc": "2024-01-20T00:30:00Z",
+"lord": "shani",
+"start_utc": "2024-01-03T03:30:00Z"
+},
+{
+"end_utc": "2024-02-20T00:00:00Z",
+"lord": "ketu",
+"start_utc": "2024-01-20T00:30:00Z"
+},
+{
+"end_utc": "2025-01-01T00:00:00Z",
+"lord": "shukra",
+"start_utc": "2024-02-20T00:00:00Z"
+}
+]
+},
+"fixture_schema": "rulebook-engine-fixture-v1",
+"graha": {
+"budha": {
+"debilitated": false,
+"dignity_state": "neutral",
+"exalted": false,
+"retrograde": false,
+"sign": 3
+},
+"chandra": {
+"debilitated": false,
+"dignity_state": "exalted",
+"exalted": true,
+"retrograde": false,
+"sign": 2
+},
+"guru": {
+"debilitated": false,
+"dignity_state": "neutral",
+"exalted": false,
+"retrograde": false,
+"sign": 1
+},
+"ketu": {
+"debilitated": false,
+"dignity_state": "neutral",
+"exalted": false,
+"retrograde": true,
+"sign": 5
+},
+"mangala": {
+"debilitated": false,
+"dignity_state": "own",
+"exalted": false,
+"retrograde": false,
+"sign": 8
+},
+"rahu": {
+"debilitated": false,
+"dignity_state": "neutral",
+"exalted": false,
+"retrograde": true,
+"sign": 11
+},
+"shani": {
+"debilitated": true,
+"dignity_state": "debilitated",
+"exalted": false,
+"retrograde": false,
+"sign": 1
+},
+"shukra": {
+"debilitated": false,
+"dignity_state": "exalted",
+"exalted": true,
+"retrograde": true,
+"sign": 12
+},
+"surya": {
+"debilitated": false,
+"dignity_state": "own",
+"exalted": false,
+"retrograde": false,
+"sign": 8
+}
+},
+"house_lord": {
+"1": "chandra",
+"10": "mangala",
+"11": "shukra",
+"12": "budha",
+"2": "surya",
+"3": "budha",
+"4": "shukra",
+"5": "mangala",
+"6": "guru",
+"7": "shani",
+"8": "shani",
+"9": "guru"
+},
+"lagna_sign": 4
+},
+"sky": {
+"coverage_end_jd": 2460341.5,
+"rows": [
+{
+"event_jd": 2460264.5,
+"event_type": "ingress",
+"id": 9000,
+"primary_body": "Sun",
+"sign": "Scorpio"
+},
+{
+"event_jd": 2460295.0,
+"event_type": "ingress",
+"id": 9001,
+"primary_body": "Sun",
+"sign": "Sagittarius"
+},
+{
+"event_jd": 2460320.5,
+"event_type": "ingress",
+"id": 9002,
+"primary_body": "Sun",
+"sign": "Capricorn"
+},
+{
+"event_jd": 2460311.75,
+"event_type": "ingress",
+"id": 9003,
+"primary_body": "Moon",
+"sign": "Aries"
+},
+{
+"event_jd": 2460314.25,
+"event_type": "ingress",
+"id": 9004,
+"primary_body": "Moon",
+"sign": "Taurus"
+},
+{
+"event_jd": 2460317.0,
+"event_type": "ingress",
+"id": 9005,
+"primary_body": "Moon",
+"sign": "Gemini"
+},
+{
+"event_jd": 2460319.5229166667,
+"event_type": "ingress",
+"id": 9006,
+"primary_body": "Moon",
+"sign": "Cancer"
+},
+{
+"event_jd": 2460322.51875,
+"event_type": "ingress",
+"id": 9007,
+"primary_body": "Moon",
+"sign": "Leo"
+},
+{
+"event_jd": 2460325.0,
+"event_type": "ingress",
+"id": 9008,
+"primary_body": "Moon",
+"sign": "Virgo"
+},
+{
+"event_jd": 2460327.5,
+"event_type": "ingress",
+"id": 9009,
+"primary_body": "Moon",
+"sign": "Libra"
+},
+{
+"event_jd": 2460330.0,
+"event_type": "ingress",
+"id": 9010,
+"primary_body": "Moon",
+"sign": "Scorpio"
+},
+{
+"event_jd": 2460332.75,
+"event_type": "ingress",
+"id": 9011,
+"primary_body": "Moon",
+"sign": "Sagittarius"
+},
+{
+"event_jd": 2460335.25,
+"event_type": "ingress",
+"id": 9012,
+"primary_body": "Moon",
+"sign": "Capricorn"
+},
+{
+"event_jd": 2460338.0,
+"event_type": "ingress",
+"id": 9013,
+"primary_body": "Moon",
+"sign": "Aquarius"
+},
+{
+"event_jd": 2460340.25,
+"event_type": "ingress",
+"id": 9014,
+"primary_body": "Moon",
+"sign": "Pisces"
+},
+{
+"event_jd": 2460207.5,
+"event_type": "ingress",
+"id": 9015,
+"primary_body": "Mars",
+"sign": "Libra"
+},
+{
+"event_jd": 2460259.0,
+"event_type": "ingress",
+"id": 9016,
+"primary_body": "Mars",
+"sign": "Scorpio"
+},
+{
+"event_jd": 2460322.5,
+"event_type": "ingress",
+"id": 9017,
+"primary_body": "Mars",
+"sign": "Sagittarius"
+},
+{
+"event_jd": 2460306.5,
+"event_type": "ingress",
+"id": 9018,
+"primary_body": "Mercury",
+"sign": "Sagittarius"
+},
+{
+"event_jd": 2460313.0,
+"event_type": "ingress",
+"id": 9019,
+"primary_body": "Mercury",
+"sign": "Capricorn"
+},
+{
+"event_jd": 2460323.5,
+"event_type": "ingress",
+"id": 9020,
+"primary_body": "Mercury",
+"sign": "Aquarius"
+},
+{
+"event_jd": 2460329.5,
+"event_type": "ingress",
+"id": 9021,
+"primary_body": "Mercury",
+"sign": "Capricorn"
+},
+{
+"event_jd": 2460337.0,
+"event_type": "ingress",
+"id": 9022,
+"primary_body": "Mercury",
+"sign": "Aquarius"
+},
+{
+"event_jd": 2460065.5,
+"event_type": "ingress",
+"id": 9023,
+"primary_body": "Jupiter",
+"sign": "Aries"
+},
+{
+"event_jd": 2460324.5,
+"event_type": "ingress",
+"id": 9024,
+"primary_body": "Jupiter",
+"sign": "Taurus"
+},
+{
+"event_jd": 2460333.5,
+"event_type": "ingress",
+"id": 9025,
+"primary_body": "Jupiter",
+"sign": "Aries"
+},
+{
+"event_jd": 2460339.5,
+"event_type": "ingress",
+"id": 9026,
+"primary_body": "Jupiter",
+"sign": "Taurus"
+},
+{
+"event_jd": 2458849.5,
+"event_type": "ingress",
+"id": 9027,
+"primary_body": "Saturn",
+"sign": "Capricorn"
+},
+{
+"event_jd": 2460004.5,
+"event_type": "ingress",
+"id": 9028,
+"primary_body": "Saturn",
+"sign": "Aquarius"
+},
+{
+"event_jd": 2460327.5,
+"event_type": "ingress",
+"id": 9029,
+"primary_body": "Saturn",
+"sign": "Pisces"
+},
+{
+"event_jd": 2460335.5,
+"event_type": "ingress",
+"id": 9030,
+"primary_body": "Saturn",
+"sign": "Aquarius"
+},
+{
+"event_jd": 2460317.5,
+"event_type": "ingress",
+"id": 9031,
+"primary_body": "Venus",
+"sign": "Aquarius"
+},
+{
+"event_jd": 2460323.5,
+"event_type": "ingress",
+"id": 9032,
+"primary_body": "Venus",
+"sign": "Pisces"
+},
+{
+"event_jd": 2460331.5,
+"event_type": "ingress",
+"id": 9033,
+"primary_body": "Venus",
+"sign": "Aries"
+},
+{
+"event_jd": 2460340.0,
+"event_type": "ingress",
+"id": 9034,
+"primary_body": "Venus",
+"sign": "Taurus"
+},
+{
+"event_jd": 2459366.5,
+"event_type": "ingress",
+"id": 9035,
+"primary_body": "Rahu",
+"sign": "Taurus"
+},
+{
+"event_jd": 2459853.5,
+"event_type": "ingress",
+"id": 9036,
+"primary_body": "Rahu",
+"sign": "Aries"
+},
+{
+"event_jd": 2460035.5,
+"event_type": "ingress",
+"id": 9037,
+"primary_body": "Rahu",
+"sign": "Pisces"
+},
+{
+"event_jd": 2459366.5,
+"event_type": "ingress",
+"id": 9038,
+"primary_body": "Ketu",
+"sign": "Scorpio"
+},
+{
+"event_jd": 2459853.5,
+"event_type": "ingress",
+"id": 9039,
+"primary_body": "Ketu",
+"sign": "Libra"
+},
+{
+"event_jd": 2460035.5,
+"event_type": "ingress",
+"id": 9040,
+"primary_body": "Ketu",
+"sign": "Virgo"
+}
+]
+},
+"sunrise": {
+"2024-01-02": "2024-01-02T00:30:00Z",
+"2024-01-03": "2024-01-03T00:30:00Z",
+"2024-01-04": "2024-01-04T00:30:00Z",
+"2024-01-07": "2024-01-07T00:30:00Z",
+"2024-01-08": "2024-01-08T00:30:00Z",
+"2024-01-09": "2024-01-09T00:30:00Z",
+"2024-01-10": "2024-01-10T00:30:00Z",
+"2024-01-11": "2024-01-11T00:30:00Z",
+"2024-01-12": "2024-01-12T00:30:00Z",
+"2024-01-13": "2024-01-13T00:30:00Z",
+"2024-01-14": "2024-01-14T00:30:00Z",
+"2024-01-15": "2024-01-15T00:30:00Z",
+"2024-01-16": "2024-01-16T00:30:00Z",
+"2024-01-17": "2024-01-17T00:30:00Z",
+"2024-01-18": "2024-01-18T00:30:00Z",
+"2024-01-19": "2024-01-19T00:30:00Z",
+"2024-01-20": "2024-01-20T00:30:00Z",
+"2024-01-21": "2024-01-21T00:30:00Z",
+"2024-01-22": "2024-01-22T00:30:00Z",
+"2024-01-25": "2024-01-25T00:30:00Z",
+"2024-01-26": "2024-01-26T00:30:00Z",
+"2024-01-27": "2024-01-27T00:30:00Z",
+"2024-01-28": "2024-01-28T12:00:00Z",
+"2024-01-29": "2024-01-29T00:30:00Z",
+"2024-01-30": "2024-01-30T00:30:00Z",
+"2024-01-31": "2024-01-31T00:30:00Z",
+"2024-02-01": "2024-02-01T00:30:00Z",
+"2024-02-02": "2024-02-02T00:30:00Z",
+"2024-02-03": "2024-02-03T00:30:00Z",
+"2024-02-19": "2024-02-19T00:30:00Z",
+"2024-02-20": "2024-02-20T00:30:00Z",
+"2024-02-21": "2024-02-21T00:30:00Z",
+"2025-01-02": "2025-01-02T00:30:00Z"
+}
+},
+"fx2": {
+"chart": {
+"aspected_houses": {
+"budha": [
+6
+],
+"chandra": [
+5
+],
+"guru": [
+2,
+4,
+6
+],
+"ketu": [
+8
+],
+"mangala": [
+8,
+11,
+12
+],
+"rahu": [
+2
+],
+"shani": [
+4,
+7,
+12
+],
+"shukra": [
+3
+],
+"surya": [
+11
+]
+},
+"birth": {
+"birth_utc": "2024-01-03T03:30:00Z",
+"date": "2024-01-03",
+"lat": 20.3,
+"lon": 85.8,
+"time_local": "09:00:00",
+"zone": "Asia/Kolkata"
+},
+"chart_key": "synthA2_missing_guru_sign",
+"dasha": {
+"antardasha": [
+{
+"end_utc": "2024-01-08T00:00:00Z",
+"lord": "mangala",
+"start_utc": "2024-01-03T03:30:00Z"
+},
+{
+"end_utc": "2024-01-14T00:00:00Z",
+"lord": "rahu",
+"start_utc": "2024-01-08T00:00:00Z"
+},
+{
+"end_utc": "2024-01-20T00:30:00Z",
+"lord": "guru",
+"start_utc": "2024-01-14T00:00:00Z"
+},
+{
+"end_utc": "2024-02-03T00:00:00Z",
+"lord": "ketu",
+"start_utc": "2024-01-20T00:30:00Z"
+},
+{
+"end_utc": "2024-02-20T00:00:00Z",
+"lord": "shukra",
+"start_utc": "2024-02-03T00:00:00Z"
+},
+{
+"end_utc": "2025-01-01T00:00:00Z",
+"lord": "shukra",
+"start_utc": "2024-02-20T00:00:00Z"
+}
+],
+"mahadasha": [
+{
+"end_utc": "2024-01-20T00:30:00Z",
+"lord": "shani",
+"start_utc": "2024-01-03T03:30:00Z"
+},
+{
+"end_utc": "2024-02-20T00:00:00Z",
+"lord": "ketu",
+"start_utc": "2024-01-20T00:30:00Z"
+},
+{
+"end_utc": "2025-01-01T00:00:00Z",
+"lord": "shukra",
+"start_utc": "2024-02-20T00:00:00Z"
+}
+]
+},
+"fixture_schema": "rulebook-engine-fixture-v1",
+"graha": {
+"budha": {
+"debilitated": false,
+"dignity_state": "neutral",
+"exalted": false,
+"retrograde": false,
+"sign": 3
+},
+"chandra": {
+"debilitated": false,
+"dignity_state": "exalted",
+"exalted": true,
+"retrograde": false,
+"sign": 2
+},
+"guru": {
+"debilitated": false,
+"dignity_state": "neutral",
+"exalted": false,
+"retrograde": false,
+"sign": null
+},
+"ketu": {
+"debilitated": false,
+"dignity_state": "neutral",
+"exalted": false,
+"retrograde": true,
+"sign": 5
+},
+"mangala": {
+"debilitated": false,
+"dignity_state": "own",
+"exalted": false,
+"retrograde": false,
+"sign": 8
+},
+"rahu": {
+"debilitated": false,
+"dignity_state": "neutral",
+"exalted": false,
+"retrograde": true,
+"sign": 11
+},
+"shani": {
+"debilitated": true,
+"dignity_state": "debilitated",
+"exalted": false,
+"retrograde": false,
+"sign": 1
+},
+"shukra": {
+"debilitated": false,
+"dignity_state": "exalted",
+"exalted": true,
+"retrograde": true,
+"sign": 12
+},
+"surya": {
+"debilitated": false,
+"dignity_state": "own",
+"exalted": false,
+"retrograde": false,
+"sign": 8
+}
+},
+"house_lord": {
+"1": "chandra",
+"10": "mangala",
+"11": "shukra",
+"12": "budha",
+"2": "surya",
+"3": "budha",
+"4": "shukra",
+"5": "mangala",
+"6": "guru",
+"7": "shani",
+"8": "shani",
+"9": "guru"
+},
+"lagna_sign": 4
+},
+"sky": {
+"coverage_end_jd": 2460341.5,
+"rows": [
+{
+"event_jd": 2460264.5,
+"event_type": "ingress",
+"id": 9000,
+"primary_body": "Sun",
+"sign": "Scorpio"
+},
+{
+"event_jd": 2460295.0,
+"event_type": "ingress",
+"id": 9001,
+"primary_body": "Sun",
+"sign": "Sagittarius"
+},
+{
+"event_jd": 2460320.5,
+"event_type": "ingress",
+"id": 9002,
+"primary_body": "Sun",
+"sign": "Capricorn"
+},
+{
+"event_jd": 2460311.75,
+"event_type": "ingress",
+"id": 9003,
+"primary_body": "Moon",
+"sign": "Aries"
+},
+{
+"event_jd": 2460314.25,
+"event_type": "ingress",
+"id": 9004,
+"primary_body": "Moon",
+"sign": "Taurus"
+},
+{
+"event_jd": 2460317.0,
+"event_type": "ingress",
+"id": 9005,
+"primary_body": "Moon",
+"sign": "Gemini"
+},
+{
+"event_jd": 2460319.5229166667,
+"event_type": "ingress",
+"id": 9006,
+"primary_body": "Moon",
+"sign": "Cancer"
+},
+{
+"event_jd": 2460322.51875,
+"event_type": "ingress",
+"id": 9007,
+"primary_body": "Moon",
+"sign": "Leo"
+},
+{
+"event_jd": 2460325.0,
+"event_type": "ingress",
+"id": 9008,
+"primary_body": "Moon",
+"sign": "Virgo"
+},
+{
+"event_jd": 2460327.5,
+"event_type": "ingress",
+"id": 9009,
+"primary_body": "Moon",
+"sign": "Libra"
+},
+{
+"event_jd": 2460330.0,
+"event_type": "ingress",
+"id": 9010,
+"primary_body": "Moon",
+"sign": "Scorpio"
+},
+{
+"event_jd": 2460332.75,
+"event_type": "ingress",
+"id": 9011,
+"primary_body": "Moon",
+"sign": "Sagittarius"
+},
+{
+"event_jd": 2460335.25,
+"event_type": "ingress",
+"id": 9012,
+"primary_body": "Moon",
+"sign": "Capricorn"
+},
+{
+"event_jd": 2460338.0,
+"event_type": "ingress",
+"id": 9013,
+"primary_body": "Moon",
+"sign": "Aquarius"
+},
+{
+"event_jd": 2460340.25,
+"event_type": "ingress",
+"id": 9014,
+"primary_body": "Moon",
+"sign": "Pisces"
+},
+{
+"event_jd": 2460207.5,
+"event_type": "ingress",
+"id": 9015,
+"primary_body": "Mars",
+"sign": "Libra"
+},
+{
+"event_jd": 2460259.0,
+"event_type": "ingress",
+"id": 9016,
+"primary_body": "Mars",
+"sign": "Scorpio"
+},
+{
+"event_jd": 2460322.5,
+"event_type": "ingress",
+"id": 9017,
+"primary_body": "Mars",
+"sign": "Sagittarius"
+},
+{
+"event_jd": 2460306.5,
+"event_type": "ingress",
+"id": 9018,
+"primary_body": "Mercury",
+"sign": "Sagittarius"
+},
+{
+"event_jd": 2460313.0,
+"event_type": "ingress",
+"id": 9019,
+"primary_body": "Mercury",
+"sign": "Capricorn"
+},
+{
+"event_jd": 2460323.5,
+"event_type": "ingress",
+"id": 9020,
+"primary_body": "Mercury",
+"sign": "Aquarius"
+},
+{
+"event_jd": 2460329.5,
+"event_type": "ingress",
+"id": 9021,
+"primary_body": "Mercury",
+"sign": "Capricorn"
+},
+{
+"event_jd": 2460337.0,
+"event_type": "ingress",
+"id": 9022,
+"primary_body": "Mercury",
+"sign": "Aquarius"
+},
+{
+"event_jd": 2460065.5,
+"event_type": "ingress",
+"id": 9023,
+"primary_body": "Jupiter",
+"sign": "Aries"
+},
+{
+"event_jd": 2460324.5,
+"event_type": "ingress",
+"id": 9024,
+"primary_body": "Jupiter",
+"sign": "Taurus"
+},
+{
+"event_jd": 2460333.5,
+"event_type": "ingress",
+"id": 9025,
+"primary_body": "Jupiter",
+"sign": "Aries"
+},
+{
+"event_jd": 2460339.5,
+"event_type": "ingress",
+"id": 9026,
+"primary_body": "Jupiter",
+"sign": "Taurus"
+},
+{
+"event_jd": 2458849.5,
+"event_type": "ingress",
+"id": 9027,
+"primary_body": "Saturn",
+"sign": "Capricorn"
+},
+{
+"event_jd": 2460004.5,
+"event_type": "ingress",
+"id": 9028,
+"primary_body": "Saturn",
+"sign": "Aquarius"
+},
+{
+"event_jd": 2460327.5,
+"event_type": "ingress",
+"id": 9029,
+"primary_body": "Saturn",
+"sign": "Pisces"
+},
+{
+"event_jd": 2460335.5,
+"event_type": "ingress",
+"id": 9030,
+"primary_body": "Saturn",
+"sign": "Aquarius"
+},
+{
+"event_jd": 2460317.5,
+"event_type": "ingress",
+"id": 9031,
+"primary_body": "Venus",
+"sign": "Aquarius"
+},
+{
+"event_jd": 2460323.5,
+"event_type": "ingress",
+"id": 9032,
+"primary_body": "Venus",
+"sign": "Pisces"
+},
+{
+"event_jd": 2460331.5,
+"event_type": "ingress",
+"id": 9033,
+"primary_body": "Venus",
+"sign": "Aries"
+},
+{
+"event_jd": 2460340.0,
+"event_type": "ingress",
+"id": 9034,
+"primary_body": "Venus",
+"sign": "Taurus"
+},
+{
+"event_jd": 2459366.5,
+"event_type": "ingress",
+"id": 9035,
+"primary_body": "Rahu",
+"sign": "Taurus"
+},
+{
+"event_jd": 2459853.5,
+"event_type": "ingress",
+"id": 9036,
+"primary_body": "Rahu",
+"sign": "Aries"
+},
+{
+"event_jd": 2460035.5,
+"event_type": "ingress",
+"id": 9037,
+"primary_body": "Rahu",
+"sign": "Pisces"
+},
+{
+"event_jd": 2459366.5,
+"event_type": "ingress",
+"id": 9038,
+"primary_body": "Ketu",
+"sign": "Scorpio"
+},
+{
+"event_jd": 2459853.5,
+"event_type": "ingress",
+"id": 9039,
+"primary_body": "Ketu",
+"sign": "Libra"
+},
+{
+"event_jd": 2460035.5,
+"event_type": "ingress",
+"id": 9040,
+"primary_body": "Ketu",
+"sign": "Virgo"
+}
+]
+},
+"sunrise": {
+"2024-01-10": "2024-01-10T00:30:00Z",
+"2024-01-20": "2024-01-20T00:30:00Z"
+}
+}
+},
+"oracle_schema": "rulebook-oracle-v1",
+"part": "A"
+}
