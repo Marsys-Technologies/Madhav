@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 from . import constants as K
+from .birthrecord import L1_BIRTH_MISMATCH, ChartExcluded, ResolvedBirth
 from .chart import (
     Birth,
     ChartDataError,
@@ -127,7 +128,7 @@ def load_sky(conn: ReadOnlyConnection) -> SkyTable:
 _FACT_SQL = (
     "SELECT fact_id, fact_category, fact_subject, fact_key, fact_value_text, fact_value_num, fact_value_jsonb "
     "FROM chart_facts WHERE chart_id = %s AND ayanamsha_id = %s AND "
-    "((fact_category = 'graha_position' AND fact_key IN ('sign','retrograde_flag')) "
+    "((fact_category = 'graha_position' AND fact_key IN ('sign','retrograde_flag','longitude_sidereal')) "
     "OR (fact_category = 'graha_special_state_rollup' AND fact_key IN ('is_exalted','is_debilitated')) "
     "OR (fact_category = 'graha_dignity_per_varga' AND fact_key = 'dignity_state' AND fact_subject LIKE 'D1\\_%%') "
     "OR (fact_category = 'aspect_parashari_given') "
@@ -135,8 +136,13 @@ _FACT_SQL = (
 )
 
 
-def load_chart(conn: ReadOnlyConnection, chart_id: str) -> NatalChart:
-    """Load one chart's natal operands and Vimśottarī L1/L2 rows. Read-only."""
+def load_chart(conn: ReadOnlyConnection, chart_id: str, resolved: Optional[ResolvedBirth] = None) -> NatalChart:
+    """Load one chart's natal operands and Vimśottarī L1/L2 rows. Read-only.
+
+    ``resolved`` (explicit-offset path, see ``birthrecord``): the birth instant comes from the source
+    record's stated UT offset, not from ``charts.timezone_id``. The stored chart row must describe the
+    same local birth, else the chart is excluded (L1_BIRTH_MISMATCH).
+    """
     with conn.cursor() as cur:
         cur.execute(
             "SELECT birth_date, birth_time, birth_lat, birth_lng, timezone_id, ayanamsa FROM charts WHERE chart_id = %s",
@@ -165,6 +171,13 @@ def load_chart(conn: ReadOnlyConnection, chart_id: str) -> NatalChart:
         lon=float(lng),
         zone=tz,
     )
+    if resolved is not None:
+        r = resolved.record
+        stored_t = birth.birth_time_local if birth.birth_time_local.count(":") == 2 else birth.birth_time_local + ":00"
+        want_t = r.local_time if r.local_time.count(":") == 2 else r.local_time + ":00"
+        if bdate != r.local_date or stored_t != want_t or abs(birth.lat - r.lat) > 1e-3 or abs(birth.lon - r.lon) > 1e-3:
+            raise ChartExcluded(L1_BIRTH_MISMATCH, "the stored chart row is not the record's local birth")
+        birth = resolved.birth()
     return build_chart(chart_id, birth, facts, dasha_rows)
 
 
@@ -223,7 +236,9 @@ def build_chart(
             if retro is None:
                 diag["unknown_retrograde_vocabulary"] = diag.get("unknown_retrograde_vocabulary", 0) + 1
         dg = one("graha_dignity_per_varga", f"D1_{subj}", "dignity_state")
+        lr = one("graha_position", subj, "longitude_sidereal")
         grahas[g] = GrahaFacts(
+            longitude=float(lr[5]) if lr is not None and lr[5] is not None else None,
             sign=sign_of(subj),
             retrograde=retro,
             exalted=flag("graha_special_state_rollup", subj, "is_exalted"),

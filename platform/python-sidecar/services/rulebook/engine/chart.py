@@ -50,7 +50,10 @@ class Birth:
     lat: float
     lon: float
     zone: Optional[str]
-    birth_utc: Optional[datetime] = None  # filled by the calendar module once the zone is validated
+    birth_utc: Optional[datetime] = None  # filled by the day-atom module once the zone is validated
+    # Explicit-offset path (foreign births): the UT offset the SOURCE RECORD states, in minutes east of UT.
+    # When set, ``birth_utc`` is local time minus this offset and no zone name is needed or consulted.
+    utc_offset_minutes: Optional[int] = None
 
     def to_json(self) -> dict:
         return {
@@ -60,6 +63,7 @@ class Birth:
             "lon": self.lon,
             "zone": self.zone,
             "birth_utc": self.birth_utc.isoformat() if self.birth_utc else None,
+            "utc_offset_minutes": self.utc_offset_minutes,
         }
 
 
@@ -70,6 +74,7 @@ class GrahaFacts:
     exalted: Optional[bool] = None
     debilitated: Optional[bool] = None
     dignity_state: Optional[str] = None  # L1 D1 dignity_state vocabulary; None if absent
+    longitude: Optional[float] = None  # L1 sidereal longitude (degrees); used only by the birth-instant guards
 
 
 @dataclass
@@ -237,6 +242,7 @@ def chart_from_fixture(doc: Mapping[str, Any]) -> NatalChart:
         lon=float(b["lon"]),
         zone=b.get("zone"),
         birth_utc=parse_utc(b["birth_utc"]) if b.get("birth_utc") else None,
+        utc_offset_minutes=b.get("utc_offset_minutes"),
     )
     grahas: Dict[str, GrahaFacts] = {}
     for g, f in (doc.get("graha") or {}).items():
@@ -249,6 +255,7 @@ def chart_from_fixture(doc: Mapping[str, Any]) -> NatalChart:
             exalted=_opt_bool(f.get("exalted")),
             debilitated=_opt_bool(f.get("debilitated")),
             dignity_state=f.get("dignity_state"),
+            longitude=f.get("longitude"),
         )
     asp: Dict[str, Optional[FrozenSet[int]]] = {}
     for g, hs in (doc.get("aspected_houses") or {}).items():

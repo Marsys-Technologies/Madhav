@@ -61,7 +61,7 @@ class EvalContext:
         s = self._body.get(graha)
         if s is None:
             body = K.L0_BODY[graha]
-            s = Series.from_values([self.sky.sign_at(body, jd) for jd in self.grid.sunrise_jd])
+            s = Series.from_values([None if jd is None else self.sky.sign_at(body, jd) for jd in self.grid.sunrise_jd])
             self._body[graha] = s
         return s
 
@@ -71,7 +71,9 @@ class EvalContext:
             table = self.chart.md if level == K.DASHA_LEVEL_MD else self.chart.ad
             vals: List[Optional[str]] = []
             for jd in self.grid.sunrise_jd:
-                if self.birth_jd is not None and jd < self.birth_jd:
+                if jd is None:
+                    vals.append(None)  # no sunrise that date: the day has no state
+                elif self.birth_jd is not None and jd < self.birth_jd:
                     vals.append(None)  # before the birth instant: no daśā
                 else:
                     vals.append(table.lord_at(jd))

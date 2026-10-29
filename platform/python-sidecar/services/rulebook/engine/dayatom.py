@@ -31,7 +31,7 @@ class TimeZoneNotSupported(ValueError):
 class SunriseProvider(Protocol):
     name: str
 
-    def sunrise_utc(self, d: date) -> datetime: ...
+    def sunrise_utc(self, d: date) -> Optional[datetime]: ...
 
 
 def tzdb_version() -> str:
@@ -132,15 +132,67 @@ class PanchangEngineSunrise:
         return rise
 
 
+class SolarSunrise:
+    """Sunrise in UT from latitude and longitude alone; the civil date is the LOCAL SOLAR date.
+
+    For civil date D at the birthplace, the day that starts at sunrise on D is found like this:
+    local solar midnight of D is 00:00 UT of D minus longitude/15 hours; the first sunrise after
+    it is accepted if its own local solar date (UT + longitude/15 h) is D. No time zone and no tz
+    database is consulted (SUR-RB-6; YARDSTICK 3.1). If the Sun does not rise on D (polar day or
+    night) the result is None and the day reads NOT_ASSESSED. Works at any longitude, including the
+    far east and far west where the sunrise falls on a different UT date from D.
+    """
+
+    name = "swisseph.rise_trans@local-solar-date(lon/15h)"
+
+    def __init__(self, lat: float, lon: float):
+        import math
+
+        if not (math.isfinite(lat) and math.isfinite(lon)) or abs(lat) > 90 or abs(lon) > 180:
+            raise ValueError("latitude/longitude out of range")
+        self.lat, self.lon = float(lat), float(lon)
+        self._cache: Dict[date, Optional[datetime]] = {}
+
+    def sunrise_utc(self, d: date) -> Optional[datetime]:
+        if d in self._cache:
+            return self._cache[d]
+        out = self._compute(d)
+        self._cache[d] = out
+        return out
+
+    def _compute(self, d: date) -> Optional[datetime]:
+        import swisseph as swe
+        from panchang_engine.swiss_state import serialized_swiss_state
+
+        @serialized_swiss_state
+        def rise(jd_start: float):
+            return swe.rise_trans(jd_start, swe.SUN, swe.CALC_RISE, (self.lon, self.lat, 0.0), 1013.25, 10.0)
+
+        jd_mid = swe.julday(d.year, d.month, d.day, 0.0) - self.lon / 360.0  # local solar midnight of D, in UT
+        res = rise(jd_mid)
+        if res[0] == -2:
+            return None  # the Sun does not rise (circumpolar)
+        jd_rise = res[1][0]
+        y, m, dd, _h = swe.revjul(jd_rise + self.lon / 360.0)
+        if date(int(y), int(m), int(dd)) != d:
+            return None  # the first sunrise after solar midnight belongs to a later solar date: none on D
+        secs = round((jd_rise - K.JD_UNIX_EPOCH) * K.SECONDS_PER_DAY)
+        return datetime(1970, 1, 1, tzinfo=timezone.utc) + timedelta(seconds=secs)
+
+
 @dataclass
 class DayGrid:
-    """Consecutive civil dates and the sunrise instant that starts each."""
+    """Consecutive civil dates and the sunrise instant that starts each (None = the Sun does not rise that date)."""
 
     first: date
     n: int
-    sunrise_jd: List[float]
-    sunrise_utc: List[datetime]
+    sunrise_jd: List[Optional[float]]
+    sunrise_utc: List[Optional[datetime]]
     provider: str
+
+    @property
+    def no_sunrise_days(self) -> int:
+        return sum(1 for j in self.sunrise_jd if j is None)
 
     def date_at(self, i: int) -> date:
         return self.first + timedelta(days=i)
@@ -154,15 +206,20 @@ def build_grid(first: date, last: date, provider: SunriseProvider) -> DayGrid:
     if last < first:
         raise ValueError("empty date range")
     n = (last - first).days + 1
-    utcs: List[datetime] = []
-    jds: List[float] = []
+    utcs: List[Optional[datetime]] = []
+    jds: List[Optional[float]] = []
     for i in range(n):
         u = provider.sunrise_utc(first + timedelta(days=i))
+        if u is None:
+            utcs.append(None)
+            jds.append(None)
+            continue
         if u.tzinfo is None:
             raise ChartDataError("sunrise provider returned a naive datetime")
         utcs.append(u.astimezone(timezone.utc))
         jds.append(utc_to_jd(u))
-    for a, b in zip(jds, jds[1:]):
+    known = [j for j in jds if j is not None]
+    for a, b in zip(known, known[1:]):
         if not b > a:
             raise ChartDataError("sunrise instants are not strictly increasing")
     return DayGrid(first=first, n=n, sunrise_jd=jds, sunrise_utc=utcs, provider=provider.name)

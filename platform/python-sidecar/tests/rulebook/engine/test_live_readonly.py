@@ -51,3 +51,31 @@ def test_two_independent_sources_agree_at_the_birth_instant():
     for g in K.GRAHAS:
         if g not in K.NODES:
             assert sky.sign_at(K.L0_BODY[g], jd) == chart.sign_of(g), g
+
+
+def test_explicit_offset_path_accepts_a_real_ist_chart_and_its_stored_facts_pass_the_tripwires():
+    """Feed the chart's own birth row back as a source record with the stated IST offset: the stated UT must equal the IST path's,
+    and the stored L1 facts must pass the sky-sign and Vimshottari-start tripwires on real data."""
+    from services.rulebook.engine import birthcheck, dayatom, dbload
+    from services.rulebook.engine import birthrecord as B
+
+    conn = dbload.connect_readonly()
+    try:
+        ist = dbload.load_chart(conn, CHART)
+        rec = B.parse_birth_record(
+            {
+                "local_date": ist.birth.birth_date.isoformat(),
+                "local_time": ist.birth.birth_time_local,
+                "lat": ist.birth.lat,
+                "lon": ist.birth.lon,
+                "utc_offset_minutes": 330,
+                "tz_iana": "Asia/Kolkata",
+            }
+        )
+        resolved = B.resolve_birth(rec)
+        chart = dbload.load_chart(conn, CHART, resolved)
+        sky = dbload.load_sky(conn)
+    finally:
+        conn.close()
+    assert resolved.utc == dayatom.birth_utc(ist.birth)
+    assert birthcheck.utc_consistency_problems(chart, sky) == []

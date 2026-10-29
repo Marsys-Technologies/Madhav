@@ -19,6 +19,8 @@ from typing import Any, Dict, List, Mapping
 
 from ..ast import NOT_ASSESSED, Tri, k_or
 from . import constants as K
+from .birthcheck import require_consistent, utc_consistency_problems
+from .birthrecord import ChartRefused
 from .chart import NatalChart, readiness
 from .dayatom import SunriseProvider, build_grid, birth_utc, require_ist, tzdb_version
 from .evaluator import combine_member_cards, evaluate_plan
@@ -34,11 +36,27 @@ class ScanRefused(RuntimeError):
 
 
 def prepare_chart(chart: NatalChart, first: date, last: date) -> NatalChart:
-    """Fail closed on the zone, and fix the birth instant (IST only)."""
-    require_ist(chart.birth.zone, min(first, chart.birth.birth_date), last)
+    """Fix the birth instant, failing closed.
+
+    Explicit-offset path (``birth.utc_offset_minutes`` set, from the source record): the instant must
+    already be local time minus that offset; no zone is consulted. Otherwise the IST path: the zone
+    must be an IST zone for the whole run (DF-04), anything else raises.
+    """
+    b = chart.birth
+    if b.utc_offset_minutes is not None:
+        from datetime import datetime, time as dtime, timedelta, timezone
+
+        parts = [int(x) for x in b.birth_time_local.split(":")]
+        while len(parts) < 3:
+            parts.append(0)
+        want = (datetime.combine(b.birth_date, dtime(*parts)) - timedelta(minutes=b.utc_offset_minutes)).replace(tzinfo=timezone.utc)
+        if b.birth_utc is None or b.birth_utc != want:
+            raise ChartRefused("OFFSET_BIRTH_INSTANT_INCONSISTENT", "birth_utc is not local time minus the stated offset")
+        return chart
+    require_ist(b.zone, min(first, b.birth_date), last)
     from dataclasses import replace
 
-    chart.birth = replace(chart.birth, birth_utc=birth_utc(chart.birth))
+    chart.birth = replace(b, birth_utc=birth_utc(b))
     return chart
 
 
@@ -79,6 +97,8 @@ def scan(
     if manifest.get("bundle_sha256") != bundle_sha256:
         raise ScanRefused("the manifest does not name this bundle (bundle_sha256 differs)")
     chart = prepare_chart(chart, first, last)
+    if chart.birth.utc_offset_minutes is not None:
+        require_consistent(chart, sky)  # the L1 facts must belong to the stated UT (raises ChartExcluded)
     grid = build_grid(first, last, provider)
     ctx = EvalContext(chart, sky, grid)
 
@@ -127,7 +147,7 @@ def scan(
             }
     saturation = _saturation(series_by_member, meta_by_member, sat_cards, grid.n)
 
-    sun_bytes = ",".join(f"{u.timestamp():.0f}" for u in grid.sunrise_utc).encode("ascii")
+    sun_bytes = ",".join("NA" if u is None else f"{u.timestamp():.0f}" for u in grid.sunrise_utc).encode("ascii")
     doc: Dict[str, Any] = {
         "states_schema": K.STATES_SCHEMA,
         "engine_version": K.ENGINE_VERSION,
@@ -140,9 +160,15 @@ def scan(
             "zone": chart.birth.zone,
             "tzdb": tzdb_version(),
             "birth_utc": chart.birth.birth_utc.isoformat() if chart.birth.birth_utc else None,
+            "birth_instant_source": "explicit_utc_offset_from_source_record" if chart.birth.utc_offset_minutes is not None else "ist_zone",
+            "utc_offset_minutes": chart.birth.utc_offset_minutes,
         },
         "range": {"first": first.isoformat(), "last": last.isoformat(), "days": grid.n},
-        "sunrise": {"provider": grid.provider, "utc_epoch_seconds_sha256": hashlib.sha256(sun_bytes).hexdigest()},
+        "sunrise": {
+            "provider": grid.provider,
+            "utc_epoch_seconds_sha256": hashlib.sha256(sun_bytes).hexdigest(),
+            "no_sunrise_days": grid.no_sunrise_days,
+        },
         "coverage": {
             "sky_coverage_end_jd": sky.coverage_end_jd,
             "sky_fingerprint_sha256": sky.fingerprint(),
@@ -155,11 +181,12 @@ def scan(
         "ledger": {k: sorted(set(v)) for k, v in chart.ledger.items()},
         "diagnostics": dict(sorted(chart.diagnostics.items())),
         "readiness_problems": readiness(chart),
+        "birth_consistency_problems": utc_consistency_problems(chart, sky),
         "members": members,
         "saturation": saturation,
     }
     if include_sunrise:
-        doc["sunrise"]["utc_epoch_seconds"] = [int(u.timestamp()) for u in grid.sunrise_utc]
+        doc["sunrise"]["utc_epoch_seconds"] = [None if u is None else int(u.timestamp()) for u in grid.sunrise_utc]
     return doc
 
 
