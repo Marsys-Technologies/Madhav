@@ -236,67 +236,110 @@ def apply_effect(
     rng: np.random.Generator,
     occ: Sequence[Occurrence],
     q: float,
-    target: ChartTimelineSet,
+    target: "ChartTimelineSet",
     sparse: bool = False,
 ) -> List[Occurrence]:
-    """Move a share ``q`` of the occurrences onto TRUE days of the target family's rules (see module text)."""
+    """Planted effect, defined on the real timelines (v1.2 K9). With probability ``q`` an episode is placed,
+    uniformly, among the windows of its grade's length inside the target family's horizon in which the mean TRUE
+    coverage of its applicable units lies in the top 20% of that chart's windows (for that unit set); otherwise it
+    keeps its null-model (N4) placement. ``sparse``: only a random 20% of the units carry the effect, so the
+    coverage is taken over those units alone and an episode none of them applies to is not moved (v1.1 F4)."""
     if q <= 0:
         return list(occ)
-    ctx_units = target.units
-    active = list(ctx_units)
+    ids = [u.unit_id for u in target.ctx.units]
+    active: Optional[Tuple[str, ...]] = None
     if sparse:
-        k = max(1, int(round(0.2 * len(ctx_units))))
-        idx = rng.permutation(len(ctx_units))[:k]
-        active = [ctx_units[i] for i in sorted(idx.tolist())]
+        k = max(1, int(round(0.2 * len(ids))))
+        active = tuple(sorted(ids[i] for i in rng.permutation(len(ids))[:k].tolist()))
+    local: Dict[Tuple[Any, ...], Optional[Tuple[np.ndarray, np.ndarray]]] = {}
     out: List[Occurrence] = []
     for o in occ:
         if rng.random() >= q:
             out.append(o)
             continue
-        tl = target.tls[o.chart]
-        pol = C.POLARITY_OF_DIRECTION[o.direction]
-        cand = []
-        for u in active:
-            if u.polarity != pol:
-                continue
-            v = u.variant(o.area, moon_ok=(o.grade == C.G1))
-            if v is not None and o.grade not in target.gate_drop.get(u.unit_id, frozenset()):
-                cand.append(v)
-        moved = None
-        for _try in range(30):
-            if not cand:
-                break
-            v = cand[int(rng.integers(0, len(cand)))]
-            rid = v.groups[int(rng.integers(0, len(v.groups)))]
-            rid = rid[int(rng.integers(0, len(rid)))]
-            days = target.true_days(o.chart, rid)
-            if days.size == 0:
-                cand = [c for c in cand if c is not v]
-                continue
-            day = tl.h_start + int(days[int(rng.integers(0, days.size))])
-            w = _window(day, o.grade)
-            if _inside(w, tl):
-                moved = Occurrence(o.chart, o.area, o.direction, o.grade, w[0], w[1])
-                break
-        out.append(moved or o)
+        klass = (C.POLARITY_OF_DIRECTION[o.direction], o.area, o.grade)
+        key = (o.chart, klass)
+        cache = local if sparse else target.windows_cache
+        if key not in cache:
+            cache[key] = target.top_windows(o.chart, klass, active)
+        cand = cache[key]
+        if cand is None or cand[0].size == 0:
+            out.append(o)
+            continue
+        j = int(rng.integers(0, cand[0].size))
+        out.append(Occurrence(o.chart, o.area, o.direction, o.grade, int(cand[0][j]), int(cand[1][j])))
     return out
 
 
 class ChartTimelineSet:
-    """The target family's timelines and units for effect placement; caches each member's TRUE-day list."""
+    """The target family's context, for placing the planted effect on its real timelines."""
 
-    def __init__(self, tls: Sequence[ChartTimeline], units: Sequence[UnitSpec], gate_drop: Mapping[str, Any]):
-        self.tls = list(tls)
-        self.units = list(units)
-        self.gate_drop = dict(gate_drop)
-        self._days: Dict[Tuple[int, str], np.ndarray] = {}
+    TOP_SHARE = 0.20
 
-    def true_days(self, chart: int, rid: str) -> np.ndarray:
-        k = (chart, rid)
-        if k not in self._days:
-            a = self.tls[chart].states.get(rid)
-            self._days[k] = np.nonzero(a == 1)[0] if a is not None else np.zeros(0, dtype=np.int64)
-        return self._days[k]
+    def __init__(self, ctx: Any):
+        self.ctx = ctx
+        self.windows_cache: Dict[Tuple[Any, ...], Optional[Tuple[np.ndarray, np.ndarray]]] = {}
+        self._months: Dict[int, Tuple[np.ndarray, np.ndarray]] = {}
+
+    def _month_windows(self, chart: int) -> Tuple[np.ndarray, np.ndarray]:
+        """Calendar months lying wholly inside the chart's horizon, as absolute (lo, hi) date ordinals."""
+        if chart not in self._months:
+            t = self.ctx.tl[chart]
+            los, his = [], []
+            d0 = date.fromordinal(t.h_start)
+            y, m = (d0.year, d0.month) if d0.day == 1 else ((d0.year + (d0.month == 12)), d0.month % 12 + 1)
+            while True:
+                lo = date(y, m, 1).toordinal()
+                ny, nm = (y + 1, 1) if m == 12 else (y, m + 1)
+                hi = date(ny, nm, 1).toordinal() - 1
+                if hi > t.h_end:
+                    break
+                los.append(lo)
+                his.append(hi)
+                y, m = ny, nm
+            self._months[chart] = (np.array(los, dtype=np.int64), np.array(his, dtype=np.int64))
+        return self._months[chart]
+
+    def top_windows(self, chart: int, klass: Tuple[str, str, str], active: Optional[Sequence[str]]) -> Optional[Tuple[np.ndarray, np.ndarray]]:
+        """(lo, hi) of the windows of the grade's length whose coverage by the applicable units (restricted to
+        ``active`` when given) is in the chart's top 20% (and above zero). None when no unit applies."""
+        ctx = self.ctx
+        t = ctx.tl[chart]
+        variants = [v for v in ctx.klass_variants(klass) if active is None or v.unit_id in active]
+        if not variants:
+            return None
+        dT = np.zeros(t.n_days)
+        dA = np.zeros(t.n_days)
+        for v in variants:
+            comps = v.components()
+            w = 1.0 / len(comps)
+            for comp in comps:
+                val = ctx.comp_vals(chart, comp)
+                ok = ~np.isnan(val)
+                dT += w * np.where(ok, val, 0.0)
+                dA += w * ok
+        CT = np.concatenate([[0.0], np.cumsum(dT)])
+        CA = np.concatenate([[0.0], np.cumsum(dA)])
+        W = float(len(variants))
+        if klass[2] == C.G1:
+            s = np.arange(0, t.n_days - C.G1_WINDOW_DAYS + 1)
+            lo_rel, hi_rel = s, s + C.G1_WINDOW_DAYS - 1
+        else:
+            mlo, mhi = self._month_windows(chart)
+            lo_rel, hi_rel = mlo - t.h_start, mhi - t.h_start
+        if lo_rel.size == 0:
+            return None
+        L = hi_rel - lo_rel + 1
+        num = CT[hi_rel + 1] - CT[lo_rel]
+        den = CA[hi_rel + 1] - CA[lo_rel]
+        ok = (den > 0) & (den * 2.0 >= W * L)
+        if not ok.any():
+            return None
+        cov = np.full(lo_rel.size, -1.0)
+        cov[ok] = num[ok] / den[ok]
+        thr = np.quantile(cov[ok], 1.0 - self.TOP_SHARE)
+        sel = ok & (cov >= thr) & (cov > 0)
+        return (lo_rel[sel] + t.h_start, hi_rel[sel] + t.h_start)
 
 
 def to_episodes(occ: Sequence[Occurrence], tls: Sequence[ChartTimeline]) -> List[Episode]:

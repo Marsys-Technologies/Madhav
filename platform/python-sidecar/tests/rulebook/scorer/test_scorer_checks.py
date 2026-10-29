@@ -139,20 +139,24 @@ def test_chart_with_fewer_than_five_eligible_donors_is_left_out_and_listed():
 # ── level under the null, power under a planted effect ──────────────────────────────────
 def test_p_values_hold_their_level_under_the_null():
     rej = {"p1": 0, "p2": 0, "p3": 0, "p_dir": 0}
+    seen = {k: 0 for k in rej}
     n_studies = 240
     ctx = None
     for study in range(n_studies):
         if study % 20 == 0:
-            tls, units = toy_world(2000 + study // 20, n_charts=10, years=25)
+            tls, units = toy_world(2000 + study // 20, n_charts=16, years=25)
             ctx = FamilyContext(C.FAMILY_DASHA, tls, units)
-        eps = random_episodes(np.random.default_rng(study), tls, 8, AREAS)
+        eps = random_episodes(np.random.default_rng(study), tls, 10, AREAS)
         r = score_family(ctx, eps, C.ScoreConfig(draws=300, seed=study))
         for k in rej:
-            rej[k] += r[k] <= 0.05
+            if r[k] is not None:  # p_dir is not testable below 100 episodes in 15 charts (v1.2 K4)
+                seen[k] += 1
+                rej[k] += r[k] <= 0.05
     for k, v in rej.items():
-        assert v / n_studies <= 0.10, (k, v / n_studies)  # nominal 5% (min-p is conservative); Monte Carlo band
+        assert seen[k] >= 0.8 * n_studies, (k, seen[k])
+        assert v / seen[k] <= 0.10, (k, v / seen[k])  # nominal 5% (min-p is conservative); Monte Carlo band
     # and the tests are not dead: the mean rejection is not far below nominal for the single-statistic checks
-    assert rej["p2"] / n_studies > 0.01
+    assert rej["p2"] / seen["p2"] > 0.01
 
 
 def test_a_planted_effect_is_found():
@@ -180,11 +184,11 @@ def test_Z25_sees_a_sparse_effect_better_than_T():
 def test_direction_check_separates_own_polarity_from_opposite():
     # an effect that lights both polarities equally is a timing association that is not direction-specific
     rng = np.random.default_rng(8)
-    tls, units = toy_world(80, n_charts=14, years=25, n_units=8)
+    tls, units = toy_world(80, n_charts=18, years=25, n_units=8)
     ctx = FamilyContext(C.FAMILY_DASHA, tls, units)
-    eps = planted_episodes(rng, tls, units, 10, 0.6, AREAS)
+    eps = planted_episodes(rng, tls, units, 12, 0.6, AREAS)
     r = score_family(ctx, eps, C.ScoreConfig(draws=600, seed=1))
-    assert r["p_dir"] <= 0.05 and r["T_dir"] > 0
+    assert r["dir_testable"] and r["p_dir"] <= 0.05 and r["T_dir"] > 0
     # make every opposite-polarity member copy its own-polarity partner: no direction left to find
     for t in tls:
         for k in range(1, 8, 2):

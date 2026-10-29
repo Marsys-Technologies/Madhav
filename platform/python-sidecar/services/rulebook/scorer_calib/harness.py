@@ -65,7 +65,7 @@ class Calibration:
         for a, b in zip(self.tls[C.FAMILY_DASHA], self.tls[C.FAMILY_TRANSIT]):
             assert a.code == b.code and a.h_start >= b.h_start and a.h_end == b.h_end
         self.pmfs = [O._DayPmf(t) for t in self.tls[C.FAMILY_TRANSIT]]
-        self.eff = {f: O.ChartTimelineSet(self.tls[f], self.ctx[f].units, self.ctx[f].gate_drop) for f in FAMS}
+        self.eff = {f: O.ChartTimelineSet(self.ctx[f]) for f in FAMS}
 
     def warm(self, n: int = 150) -> None:
         """Run ``n`` throwaway studies so the curve caches are filled BEFORE the worker pool forks (pages are then
@@ -73,19 +73,27 @@ class Calibration:
         for i in range(n):
             self.run_study("N4", 10_000_000 + i)
 
-    def usable_filter(self, occ: Sequence[O.Occurrence], min_usable: int) -> List[O.Occurrence]:
-        """v1.0 7.4 item 5 / v1.1 A6: drop every chart with fewer than ``min_usable`` usable episodes, an episode
-        being usable when it is scored in the primary set of at least one family."""
+    def admit(self, eps_by_family: Mapping[str, Sequence[Any]], min_usable: int) -> Tuple[Dict[str, List[Any]], Dict[str, Optional[List[int]]]]:
+        """v1.2 K8: exclusion 5 per family. A chart with fewer than ``min_usable`` usable (scored, primary-scheme)
+        episodes in a family is excluded from that family only: its episodes are dropped there and it is not a donor
+        there. ``min_usable`` 0 admits every chart."""
         from ..scorer.core import scorable_mask
 
-        usable: Dict[int, set] = {}
+        out: Dict[str, List[Any]] = {}
+        adm: Dict[str, Optional[List[int]]] = {}
         for f in FAMS:
-            eps = O.to_episodes(occ, self.tls[f])
+            eps = list(eps_by_family[f])
+            if not min_usable:
+                out[f], adm[f] = eps, None
+                continue
+            usable: Dict[int, int] = {}
             for e, ok in zip(eps, scorable_mask(self.ctx[f], eps)):
                 if ok:
-                    usable.setdefault(e.chart, set()).add((e.lo, e.hi, e.area, e.direction))
-        keep = {c for c, s in usable.items() if len(s) >= min_usable}
-        return [o for o in occ if o.chart in keep]
+                    usable[e.chart] = usable.get(e.chart, 0) + 1
+            keep = sorted(c for c, n in usable.items() if n >= min_usable)
+            ks = set(keep)
+            out[f], adm[f] = [e for e in eps if e.chart in ks], keep
+        return out, adm
 
     def run_study(self, model: str, index: int, q: float = 0.0, target: str = C.FAMILY_DASHA, sparse: bool = False, min_usable: int = 0) -> Dict[str, Any]:
         mi = O.MODELS.index(model)
@@ -93,13 +101,12 @@ class Calibration:
         occ = O.place_study(rng, self.profile, self.tls[C.FAMILY_TRANSIT], self.pmfs, model)
         if q > 0:
             occ = O.apply_effect(rng, occ, q, self.eff[target], sparse)
-        if min_usable:
-            occ = self.usable_filter(occ, min_usable)
         cfg = C.ScoreConfig(draws=self.draws, seed=int(rng.integers(1, 2**31 - 1)))
+        eps_f, adm = self.admit({f: O.to_episodes(occ, self.tls[f]) for f in FAMS}, min_usable)
         res: Dict[str, Dict[str, Any]] = {}
         for f in FAMS:
-            res[f] = score_family(self.ctx[f], O.to_episodes(occ, self.tls[f]), cfg)
-        p1 = {f: res[f]["p1"] for f in FAMS if res[f].get("p1") is not None}
+            res[f] = score_family(self.ctx[f], eps_f[f], cfg, admitted=adm[f])
+        p1 = {f: res[f]["p1"] for f in FAMS if res[f].get("p1") is not None and res[f].get("donor_floor_ok", True)}
         adj = holm_adjust(p1) if p1 else {}
         out: Dict[str, Any] = {"model": model, "i": index, "q": q, "target": target, "sparse": sparse, "min_usable": min_usable}
         for f in FAMS:
@@ -112,6 +119,8 @@ class Calibration:
                 "p2": r.get("p2"),
                 "p3": r.get("p3"),
                 "pd": r.get("p_dir"),
+                "dir_ok": r.get("dir_testable"),
+                "floor_ok": r.get("donor_floor_ok"),
                 "T": r.get("T"),
                 "flags": flags(adj.get(f), r),
             }
@@ -195,3 +204,27 @@ def f2_gate(by_model: Mapping[str, Sequence[Mapping[str, Any]]], min_studies: in
         rows[m] = {"rates": r, "per_family_ok": fam_ok, "overall_ok": over_ok, "enough_studies": enough, "pass": bool(fam_ok and over_ok and enough)}
         ok_all &= rows[m]["pass"]
     return {"pass": bool(ok_all and rows), "models": rows}
+
+
+# ── v1.2 K12: remedies triggered by check (a) alone ───────────────────────────────────────────────────────
+K12_LIMIT = 0.035
+K12_STEP = 0.025
+
+
+def k12_check(by_model: Mapping[str, Sequence[Mapping[str, Any]]]) -> Dict[str, Any]:
+    """Rate of p1 <= 0.025 for (a) alone, per family and model (nominal 0.025). Trigger: under N1 or N4 in any
+    family -> F3 step 1 (age-adjusted coverage), then step 2; under N2 in the transit family -> F3 step 3."""
+    rows: Dict[str, Any] = {}
+    triggers: List[str] = []
+    for m, res in by_model.items():
+        rows[m] = {}
+        for f in FAMS:
+            v = [r[f]["p1"] for r in res if r[f]["p1"] is not None]
+            rate = (sum(1 for x in v if x <= K12_STEP) / len(v)) if v else None
+            rows[m][f] = {"rate_p1_le_0.025": rate, "n": len(v)}
+            if rate is not None and rate > K12_LIMIT:
+                if m in ("N1", "N4"):
+                    triggers.append(f"{m}/{f}: F3 step 1 (age adjustment) then step 2")
+                if m == "N2" and f == C.FAMILY_TRANSIT:
+                    triggers.append(f"{m}/{f}: F3 step 3 (whole-year shifts in 10-year blocks)")
+    return {"limit": K12_LIMIT, "nominal": K12_STEP, "rows": rows, "triggers": triggers, "triggered": bool(triggers)}

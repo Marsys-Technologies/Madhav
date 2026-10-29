@@ -46,6 +46,8 @@ def _load(args) -> H.Calibration:
         ctx, rep = build_family_context(f, tl[f], units[f])
         gate[f] = ctx.gate_drop
     prof = O.declared_profile(len(tl[C.FAMILY_DASHA]), mean=args.mean_per_chart)
+    if getattr(args, "counts_file", None):
+        prof = O.profile_from_counts_file(args.counts_file, [t.code for t in tl[C.FAMILY_TRANSIT]])
     cal = H.Calibration(tl, units, gate, prof, draws=args.draws, seed=args.seed)
     cal.warm(args.warm)
     return cal
@@ -72,12 +74,15 @@ def cmd_gate(a) -> int:
         p = out / f"studies_{m}_q0.jsonl"
         if p.exists():
             p.unlink()
-        by_model[m] = H.run_many(cal, [(m, i, 0.0, C.FAMILY_DASHA, False) for i in range(a.studies)], a.workers, str(p))
+        by_model[m] = H.run_many(cal, [(m, i, 0.0, C.FAMILY_DASHA, False, a.threshold) for i in range(a.studies)], a.workers, str(p))
         os.chmod(p, 0o600)
         print(m, "done", round(time.time() - t0), "s", flush=True)
     res = H.f2_gate(by_model, min_studies=min(a.studies, C.GATE_MIN_STUDIES) if a.allow_fewer else C.GATE_MIN_STUDIES)
-    _write(out / "F2_GATE.json", {"draws": a.draws, "studies_per_model": a.studies, "mean_per_chart": a.mean_per_chart, "gate": res})
-    _hashes(out, {"draws": a.draws, "studies": a.studies, "seed": a.seed})
+    k12 = H.k12_check(by_model)
+    status = "FINAL_INPUTS" if a.step5_hash else "PROVISIONAL_NOT_STEP5_INPUTS"
+    _write(out / "F2_GATE.json", {"status": status, "step5_hash": a.step5_hash, "threshold": a.threshold, "draws": a.draws, "studies_per_model": a.studies, "mean_per_chart": a.mean_per_chart, "gate": res, "k12": k12})
+    _hashes(out, {"draws": a.draws, "studies": a.studies, "seed": a.seed, "status": status, "threshold": a.threshold})
+    print("K12 remedies:", k12["triggers"] or "not triggered")
     print(json.dumps({m: {k: v for k, v in r["rates"].items() if k != "n"} for m, r in res["models"].items()}, indent=1, default=float))
     print("F2 GATE", "PASS" if res["pass"] else "FAIL")
     return 0 if res["pass"] else 2
@@ -128,7 +133,7 @@ def cmd_a6(a) -> int:
         print(t, rows[str(t)], flush=True)
     ok = [t for t in (3, 5, 8) if rows[str(t)]["meets_A7"]]
     best = max(ok, key=lambda t: (round(rows[str(t)]["dasha_strong_rate_q10"], 12), t)) if ok else None
-    _write(out / "A6_THRESHOLD.json", {"provisional": True, "counts": "declared stand-in profile", "studies": a.studies, "rows": rows, "chosen": best})
+    _write(out / "A6_THRESHOLD.json", {"provisional": not a.step5_hash, "counts": "K2 aggregates" if a.counts_file else "declared stand-in profile", "q_definition": "v1.2 K9 (top 20% coverage windows)", "studies": a.studies, "rows": rows, "chosen": best})
     _hashes(out, {"draws": a.draws, "studies": a.studies, "seed": a.seed})
     print("A6 threshold:", best)
     return 0
@@ -165,6 +170,9 @@ def main(argv=None) -> int:
         p.add_argument("--mean-per-chart", type=float, default=O.DECLARED_MEAN_PER_CHART)
         p.add_argument("--seed", type=int, default=20261030)
         p.add_argument("--warm", type=int, default=150)
+        p.add_argument("--counts-file", default=None, help="K2 aggregate counts (chart_code,area,direction,grade,count); else the declared stand-in")
+        p.add_argument("--step5-hash", default=None, help="hash of the step-5 admission artefacts; without it every output is labelled PROVISIONAL")
+        p.add_argument("--threshold", type=int, default=0, help="exclusion-5 threshold (3, 5, 8) applied per family; 0 = none")
     g = sub.add_parser("gate"); common(g, C.GATE_MIN_STUDIES)
     g.add_argument("--models", default=",".join(O.MODELS)); g.add_argument("--allow-fewer", action="store_true"); g.set_defaults(fn=cmd_gate)
     p = sub.add_parser("power"); common(p, 400)

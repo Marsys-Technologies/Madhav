@@ -219,24 +219,91 @@ def test_profile_from_counts_file_reads_counts_only(tmp_path):
 
 
 # ── planted effect ────────────────────────────────────────────────────────────────────────────────────
-def test_planted_effect_puts_episodes_on_true_days_of_a_unit_that_applies():
+def _cov(ctx, chart, klass, lo, hi, units=None):
+    """Pooled coverage of the applicable units (optionally only ``units``) over [lo, hi]: share of TRUE days."""
+    t = ctx.tl[chart]
+    tr = asd = 0.0
+    for v in ctx.klass_variants(klass):
+        if units is not None and v.unit_id not in units:
+            continue
+        comps = v.components()
+        for comp in comps:
+            val = ctx.comp_vals(chart, comp)[lo - t.h_start : hi - t.h_start + 1]
+            ok = ~np.isnan(val)
+            tr += np.where(ok, val, 0.0).sum() / len(comps)
+            asd += ok.sum() / len(comps)
+    return tr / asd if asd else np.nan
+
+
+def test_planted_effect_uses_the_top_20_percent_coverage_windows_of_the_chart():
+    from services.rulebook.scorer.core import FamilyContext
+
     tls, units = toy_world(2, n_charts=6, years=40, n_units=6, duty=0.1)
+    ctx = FamilyContext(C.FAMILY_DASHA, tls, units)
     pm = [O._DayPmf(t) for t in tls]
-    prof = O.CountsProfile(tuple(tuple([("career_adv_change_entry", C.FAVOURABLE, C.G1)] * 30) for _ in tls))
+    one = tuple([("career_adv_change_entry", C.FAVOURABLE, C.G1)] * 15 + [("career_adv_change_entry", C.FAVOURABLE, C.G2)] * 15)
+    prof = O.CountsProfile(tuple(one for _ in tls))
     occ = O.place_study(np.random.default_rng(1), prof, tls, pm, "N0")
-    target = O.ChartTimelineSet(tls, units, {})
+    target = O.ChartTimelineSet(ctx)
     moved = O.apply_effect(np.random.default_rng(2), occ, 1.0, target)
-    prom = [u for u in units if u.polarity == "promotive" and u.variant("career_adv_change_entry", True)]
-    on_true = 0
+    assert len(moved) == len(occ)
     for o in moved:
-        mid = (o.lo + o.hi) // 2 - tls[o.chart].h_start
-        if any(tls[o.chart].states[m.rid][mid] == 1 for u in prom for m in u.members()):
-            on_true += 1
-    assert on_true == len(moved)  # q = 1: every episode sits on a TRUE day
+        klass = ("promotive", o.area, o.grade)
+        t = tls[o.chart]
+        assert o.lo >= t.h_start and o.hi <= t.h_end
+        # compare the window with ALL windows of that grade in the chart: it must be in the top 20% and above zero
+        if o.grade == C.G1:
+            allw = [(d, d + 2) for d in range(t.h_start, t.h_end - 1, 7)]
+        else:
+            mlo, mhi = target._month_windows(o.chart)
+            allw = list(zip(mlo.tolist(), mhi.tolist()))
+        covs = np.array([_cov(ctx, o.chart, klass, a, b) for a, b in allw])
+        thr = np.nanquantile(covs, 0.8)
+        mine = _cov(ctx, o.chart, klass, o.lo, o.hi)
+        assert mine > 0 and mine >= thr - 1e-9
     assert O.apply_effect(np.random.default_rng(2), occ, 0.0, target) == list(occ)
-    # sparse: only 20% of the units carry the effect
-    sp = O.apply_effect(np.random.default_rng(3), occ, 1.0, target, sparse=True)
-    assert len(sp) == len(occ)
+
+
+def test_q_is_the_share_moved_and_the_rest_keep_their_null_placement():
+    from services.rulebook.scorer.core import FamilyContext
+
+    tls, units = toy_world(3, n_charts=4, years=30, n_units=6, duty=0.1)
+    ctx = FamilyContext(C.FAMILY_DASHA, tls, units)
+    pm = [O._DayPmf(t) for t in tls]
+    prof = O.CountsProfile(tuple(tuple([("career_adv_change_entry", C.FAVOURABLE, C.G2)] * 100) for _ in tls))
+    occ = O.place_study(np.random.default_rng(1), prof, tls, pm, "N0")
+    moved = O.apply_effect(np.random.default_rng(5), occ, 0.25, O.ChartTimelineSet(ctx))
+    same = sum(1 for a, b in zip(occ, moved) if a == b)
+    assert 0.65 < same / len(occ) < 0.85  # ~75% unchanged (a moved episode can also land where it was)
+
+
+def test_sparse_effect_uses_only_a_random_fifth_of_the_units():
+    from services.rulebook.scorer.core import FamilyContext
+
+    tls, units = toy_world(4, n_charts=4, years=30, n_units=10, duty=0.1)
+    ctx = FamilyContext(C.FAMILY_DASHA, tls, units)
+    pm = [O._DayPmf(t) for t in tls]
+    prof = O.CountsProfile(tuple(tuple([("career_adv_change_entry", C.FAVOURABLE, C.G2)] * 60) for _ in tls))
+    occ = O.place_study(np.random.default_rng(1), prof, tls, pm, "N0")
+    target = O.ChartTimelineSet(ctx)
+    a = O.apply_effect(np.random.default_rng(7), occ, 1.0, target, sparse=True)
+    b = O.apply_effect(np.random.default_rng(8), occ, 1.0, target, sparse=True)
+    assert a != b  # a different random 20% of the units each time
+    # with 10 units the active set is 2 units: moved windows are top-20% for THOSE units only
+    assert len(target.windows_cache) == 0  # sparse choices are never cached across studies
+
+
+def test_k12_trigger_arithmetic():
+    def mk(rate_dasha, rate_transit, n=1000):
+        out = []
+        for i in range(n):
+            out.append({"dasha": {"p1": 0.02 if i < rate_dasha * n else 0.5}, "transit": {"p1": 0.02 if i < rate_transit * n else 0.5}})
+        return out
+
+    ok = H.k12_check({"N1": mk(0.03, 0.03), "N2": mk(0.03, 0.03), "N4": mk(0.034, 0.02)})
+    assert ok["triggered"] is False
+    bad = H.k12_check({"N1": mk(0.04, 0.02), "N2": mk(0.04, 0.036), "N4": mk(0.02, 0.02), "N0": mk(0.05, 0.05)})
+    assert bad["triggers"] == ["N1/dasha: F3 step 1 (age adjustment) then step 2", "N2/transit: F3 step 3 (whole-year shifts in 10-year blocks)"]
 
 
 def test_to_episodes_keeps_what_falls_inside_the_family_horizon():

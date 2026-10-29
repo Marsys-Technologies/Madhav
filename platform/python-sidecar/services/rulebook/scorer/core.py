@@ -26,7 +26,7 @@ The observed value and the draws pass through the same arithmetic, so ties are e
 from __future__ import annotations
 
 import math
-from typing import Any, Dict, FrozenSet, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Dict, FrozenSet, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -438,8 +438,7 @@ def assemble(ctx: FamilyContext, scheme: str, episodes: Sequence[Episode], want_
                 uc = ctx.unit_curve(scheme, c, bi, e.L, v)
                 us_slice = uc[e.off + smin : e.off + smax + 1][vi]
                 p = upos[v.unit_id]
-                if np.isfinite(uc[e.off]):
-                    n_obs_unit[p] += 1
+                n_obs_unit[p] += 1  # applicable episodes (v1.3 L1 item 2: applicability only, informative or not)
                 fin = np.isfinite(us_slice)
                 ent = us.get(p)
                 if ent is None:
@@ -461,6 +460,7 @@ def run_scheme(
     rng: np.random.Generator,
     want_dir: bool,
     want_fallback: bool,
+    z25_units: Optional[Iterable[str]] = None,
 ) -> SchemeResult:
     """Check (a) under one block scheme. ``episodes`` are the scored ones."""
     res = SchemeResult()
@@ -473,7 +473,13 @@ def run_scheme(
     TP = np.zeros(pool)
     DP = np.zeros(pool) if asm.has_dir else None
     NP = np.zeros(pool) if asm.has_ns else None
-    elig = [p for p in range(len(asm.unit_ids)) if asm.n_obs_unit[p] >= C.Z25_MIN_UNIT_EPISODES]
+    # Z25 units (v1.2 K5): those with at least 10 applicable episodes; D7 may fix the list from the K2 counts (v1.3)
+    allowed = None if z25_units is None else set(z25_units)
+    elig = [
+        p
+        for p in range(len(asm.unit_ids))
+        if (asm.n_obs_unit[p] >= C.Z25_MIN_UNIT_EPISODES if allowed is None else asm.unit_ids[p] in allowed)
+    ]
     epos = {p: i for i, p in enumerate(elig)}
     SS = np.zeros((len(elig), pool))
     CC = np.zeros((len(elig), pool))
@@ -511,7 +517,7 @@ def run_scheme(
         res.pools["_dir"] = DP
     if NP is not None:
         res.fallback_pool = NP
-    if elig:
+    if len(elig) >= C.Z25_MIN_UNITS:
         with np.errstate(invalid="ignore", divide="ignore"):
             score = np.where(CC > 0, SS / np.maximum(CC, 1.0), np.nan)
             mu = np.nanmean(score[:, 1:], axis=1, keepdims=True)
@@ -526,18 +532,77 @@ def run_scheme(
 
 
 # ── checks (b) and (c): donor timelines ──────────────────────────────────────
+def _donor_geometry(ctx: FamilyContext, eps: Sequence[Episode], c: int, age_matched: bool):
+    """Window positions of chart c's episodes on every timeline: calendar-matched (same dates) or age-matched
+    (same days since birth). Returns (dlo, dhi, inside) with shapes (episodes, charts)."""
+    births = np.array([t.birth for t in ctx.tl], dtype=np.int64)
+    hs = np.array([t.h_start for t in ctx.tl], dtype=np.int64)
+    he = np.array([t.h_end for t in ctx.tl], dtype=np.int64)
+    lo = np.array([e.lo for e in eps], dtype=np.int64)
+    hi = np.array([e.hi for e in eps], dtype=np.int64)
+    delta = (births - births[c]) if age_matched else np.zeros(len(ctx.tl), dtype=np.int64)
+    dlo = lo[:, None] + delta[None, :]
+    dhi = hi[:, None] + delta[None, :]
+    inside = (dlo >= hs[None, :]) & (dhi <= he[None, :])
+    return dlo, dhi, inside, hs, he
+
+
+def _admitted_mask(ctx: FamilyContext, admitted: Optional[Iterable[int]]) -> np.ndarray:
+    m = np.zeros(len(ctx.tl), dtype=bool)
+    if admitted is None:
+        m[:] = True
+    else:
+        m[list(admitted)] = True
+    return m
+
+
+def donor_eligibility_counts(ctx: FamilyContext, episodes: Sequence[Episode], admitted: Optional[Iterable[int]] = None) -> Dict[str, int]:
+    """v1.2 K11 / K2: how many charts have at least MIN_ELIGIBLE_DONORS eligible donors for check (b) and for check
+    (c). A donor is eligible when it is an admitted chart of the family whose horizon covers all of the chart's
+    episode windows (calendar dates for (b), the same ages for (c)). Horizons only: no state, no statistic."""
+    adm = _admitted_mask(ctx, admitted)
+    by_chart: Dict[int, List[Episode]] = {}
+    for ep in episodes:
+        by_chart.setdefault(ep.chart, []).append(ep)
+    out = {"b": 0, "c": 0}
+    for c, eps in by_chart.items():
+        if not adm[c]:
+            continue
+        for key, age in (("b", False), ("c", True)):
+            _lo, _hi, inside, _hs, _he = _donor_geometry(ctx, eps, c, age)
+            ok = inside.all(axis=0) & adm
+            ok[c] = False
+            if int(ok.sum()) >= C.MIN_ELIGIBLE_DONORS:
+                out[key] += 1
+    return out
+
+
+def direction_counts(ctx: FamilyContext, episodes: Sequence[Episode]) -> Dict[str, int]:
+    """v1.2 K4: episodes with at least one applicable opposite-polarity unit, and the charts they sit in."""
+    n = 0
+    charts = set()
+    for ep in episodes:
+        okl = (C.POLARITY_OF_DIRECTION[C.OPPOSITE_DIRECTION[ep.direction]], ep.area, ep.grade)
+        if ctx.klass_variants(okl):
+            n += 1
+            charts.add(ep.chart)
+    return {"episodes": n, "charts": len(charts), "testable": bool(n >= C.DIR_MIN_EPISODES and len(charts) >= C.DIR_MIN_CHARTS)}
+
+
 def run_donor_check(
     ctx: FamilyContext,
     episodes: Sequence[Episode],
     draws: int,
     rng: np.random.Generator,
     age_matched: bool,
+    admitted: Optional[Iterable[int]] = None,
 ) -> Dict[str, Any]:
     """T2 (calendar-matched, ``age_matched`` False) or T3 (age-matched, True), its pool and p.
 
     Episode coverage on a timeline = weighted share of assessed class-days that are TRUE in the window. T =
     mean over included charts of mean over its episodes of (coverage on the drawn timeline - mean coverage over
-    the chart's eligible donors, own chart excluded). Observed: the chart's own timeline.
+    the chart's eligible donors, own chart excluded). Observed: the chart's own timeline. Donors are the
+    ADMITTED charts of the family only (v1.2 K6).
 
     EPISODE SET. ``episodes`` are ALL episodes of the family with an applicable unit; an episode counts for a
     chart if its coverage is defined on the chart's own timeline (at least half the weighted class-days
@@ -548,23 +613,17 @@ def run_donor_check(
     every null model).
     """
     nch = len(ctx.tl)
+    adm = _admitted_mask(ctx, admitted)
     by_chart: Dict[int, List[int]] = {}
     for i, ep in enumerate(episodes):
-        by_chart.setdefault(ep.chart, []).append(i)
-    births = np.array([t.birth for t in ctx.tl], dtype=np.int64)
-    hs = np.array([t.h_start for t in ctx.tl], dtype=np.int64)
-    he = np.array([t.h_end for t in ctx.tl], dtype=np.int64)
+        if adm[ep.chart]:
+            by_chart.setdefault(ep.chart, []).append(i)
     included: List[int] = []
     excluded: List[int] = []
     V: Dict[int, Tuple[np.ndarray, np.ndarray]] = {}  # chart -> (donor ids incl. self first, values)
     for c, ids in sorted(by_chart.items()):
         eps = [episodes[i] for i in ids]
-        lo = np.array([e.lo for e in eps], dtype=np.int64)
-        hi = np.array([e.hi for e in eps], dtype=np.int64)
-        delta = (births - births[c]) if age_matched else np.zeros(nch, dtype=np.int64)
-        dlo = lo[:, None] + delta[None, :]  # (episodes, donors)
-        dhi = hi[:, None] + delta[None, :]
-        inside = (dlo >= hs[None, :]) & (dhi <= he[None, :])
+        dlo, dhi, inside, hs, he = _donor_geometry(ctx, eps, c, age_matched)
         M = np.full((len(eps), nch), np.nan)
         for j, e in enumerate(eps):
             klass = (C.POLARITY_OF_DIRECTION[e.direction], e.area, e.grade)
@@ -583,7 +642,7 @@ def run_donor_check(
         if not keep.any():
             continue
         M, inside = M[keep], inside[keep]
-        elig_mask = inside.all(axis=0)
+        elig_mask = inside.all(axis=0) & adm
         elig_mask[c] = False
         elig = np.nonzero(elig_mask)[0]
         if elig.size < C.MIN_ELIGIBLE_DONORS:
@@ -614,7 +673,13 @@ def run_donor_check(
 FAMILY_STREAM = {C.FAMILY_DASHA: 1, C.FAMILY_TRANSIT: 2}
 
 
-def score_family(ctx: FamilyContext, episodes: Sequence[Episode], cfg: C.ScoreConfig) -> Dict[str, Any]:
+def score_family(
+    ctx: FamilyContext,
+    episodes: Sequence[Episode],
+    cfg: C.ScoreConfig,
+    admitted: Optional[Iterable[int]] = None,
+    d7: Optional[Mapping[str, Any]] = None,
+) -> Dict[str, Any]:
     """All statistics and p-values of one family for one episode set. Pure given (ctx, episodes, cfg)."""
     for ep in episodes:
         ep.validate()
@@ -634,6 +699,15 @@ def score_family(ctx: FamilyContext, episodes: Sequence[Episode], cfg: C.ScoreCo
         out.update(status="no_scored_episodes", p1=None, p2=None, p3=None, p_dir=None)
         return out
     stream = FAMILY_STREAM[ctx.family]
+    dircount = direction_counts(ctx, scored)  # v1.2 K4: decided from counts, before any p-value
+    z25_units = None
+    if d7 is not None:  # v1.3: the D7 decisions made from the sealed count_blind aggregates override the recount
+        if "dir_testable" in d7:
+            dircount = dict(dircount, testable=bool(d7["dir_testable"]))
+        z25_units = d7.get("z25_units")
+    out["dir_testable"] = dircount["testable"]
+    out["dir_episodes"] = dircount["episodes"]
+    out["dir_charts"] = dircount["charts"]
     pools: Dict[str, np.ndarray] = {}
     primary: Optional[SchemeResult] = None
     for si, (scheme, _bd, _mb) in enumerate(ctx.schemes):
@@ -641,7 +715,7 @@ def score_family(ctx: FamilyContext, episodes: Sequence[Episode], cfg: C.ScoreCo
         sc = scored if si == 0 else [e for e, ok in zip(episodes, scorable_mask(ctx, episodes, scheme)) if ok]
         if not sc:
             continue
-        res = run_scheme(ctx, scheme, sc, cfg.draws, rng, want_dir=(si == 0), want_fallback=(si == 0 and cfg.fallback_primary_set))
+        res = run_scheme(ctx, scheme, sc, cfg.draws, rng, want_dir=(si == 0 and dircount["testable"]), want_fallback=(si == 0 and cfg.fallback_primary_set), z25_units=z25_units)
         if si == 0:
             primary = res
         pools["T-" + scheme] = res.pools["T"]
@@ -665,11 +739,13 @@ def score_family(ctx: FamilyContext, episodes: Sequence[Episode], cfg: C.ScoreCo
         npool = primary.fallback_pool
         out["T_nonschedulable"] = float(npool[0]) if npool is not None else None
         out["nonschedulable_above_null_mean"] = bool(npool is not None and npool[0] > npool[1:].mean())
-    rb = run_donor_check(ctx, list(episodes), cfg.draws, np.random.default_rng([cfg.seed, stream, 90]), age_matched=False)
-    rc = run_donor_check(ctx, list(episodes), cfg.draws, np.random.default_rng([cfg.seed, stream, 91]), age_matched=True)
+    adm = None if admitted is None else list(admitted)
+    rb = run_donor_check(ctx, list(episodes), cfg.draws, np.random.default_rng([cfg.seed, stream, 90]), age_matched=False, admitted=adm)
+    rc = run_donor_check(ctx, list(episodes), cfg.draws, np.random.default_rng([cfg.seed, stream, 91]), age_matched=True, admitted=adm)
     out.update(
         T2=rb["T"], p2=rb["p"], b_charts=len(rb["included_charts"]), b_excluded=len(rb["excluded_charts"]),
         T3=rc["T"], p3=rc["p"], c_charts=len(rc["included_charts"]), c_excluded=len(rc["excluded_charts"]),
+        donor_floor_ok=bool(len(rb["included_charts"]) >= C.DONOR_FLOOR_CHARTS and len(rc["included_charts"]) >= C.DONOR_FLOOR_CHARTS),
         b_excluded_codes=[ctx.tl[i].code for i in rb["excluded_charts"]],
         c_excluded_codes=[ctx.tl[i].code for i in rc["excluded_charts"]],
     )

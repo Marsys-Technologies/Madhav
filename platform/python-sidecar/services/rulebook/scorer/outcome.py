@@ -11,6 +11,7 @@ MIDDLE = "MIDDLE"
 CHANCE = "CHANCE-LEVEL"
 
 LABEL_NOT_DIRECTION = "timing association, not direction-specific"
+LABEL_DIR_UNTESTABLE = "direction not testable"
 LABEL_CHOSEN_DATES = "could reflect chosen dates"
 LABEL_INCLUDES_CHOSEN = "includes dates that could have been chosen"
 LABEL_CONFLICT_DRIVEN = "driven by variant-conflict readings"
@@ -57,6 +58,7 @@ def decide(
             "strong_core": bool(core5),
             "middle_core": bool(core10),
             "fails_only_direction": bool(core5 and not dir_ok and cons_ok),
+            "direction_untestable": bool(r.get("dir_testable") is False),  # v1.2 K4: cannot be STRONG, is MIDDLE
             "fails_only_consistency": bool(core5 and dir_ok and not cons_ok),
         }
     labels: List[str] = []
@@ -65,7 +67,9 @@ def decide(
     elif any(v["middle_core"] for v in per.values()):
         outcome = MIDDLE
         if any(v["strong_core"] and not v["strong"] for v in per.values()):
-            if any(v["fails_only_direction"] for v in per.values()):
+            if any(v["fails_only_direction"] and v["direction_untestable"] for v in per.values()):
+                labels.append(LABEL_DIR_UNTESTABLE)
+            if any(v["fails_only_direction"] and not v["direction_untestable"] for v in per.values()):
                 labels.append(LABEL_NOT_DIRECTION)
             if any(v["fails_only_consistency"] for v in per.values()):
                 labels.append(LABEL_CHOSEN_DATES)

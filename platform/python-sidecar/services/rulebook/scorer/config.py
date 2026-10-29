@@ -14,6 +14,7 @@ from typing import Dict, Tuple
 SCORER_VERSION = "rulebook-scorer-v1.0"
 YARDSTICK_V10_SHA256 = "6e2dc5f3e42f0a357c2f15fae7210427bbab2c37182d69c3774974b4d9a34591"
 YARDSTICK_V11_SHA256 = "8071d944dfa858d4d1e7d6b226589d8ef0eb470cc3faa3eaa3cd9e8a6ad4efbd"
+YARDSTICK_V12_SHA256 = "387526b683e000b20d57592fd5f76402d7d57d73bc6c7e380e1bb3a5e3f0fa3e"
 CLUSTER_TABLE_SHA256 = "b3e0a6b9f31e41dbd974f667c3507af6d2681b180ba78b694d6aeccddf79499f"  # SUR-RB-23
 
 # ── planes / families (v1.1 B4: F-N dropped, m <= 2) ────────────────────────
@@ -40,7 +41,7 @@ MIN_ASSESSED_SHARE = 0.5  # v1.0 section 0: a window with fewer than half its da
 BLOCK_DAYS_5Y = 1826
 BLOCK_DAYS_15Y = 5479
 MERGE_BELOW_5Y = 913  # a final block under this merges into the previous one (v1.0 4.1)
-MERGE_BELOW_15Y = BLOCK_DAYS_15Y // 2  # AMBIGUITY (flagged): v1.1 D1 gives no merge threshold for the 15y scheme; half a block, as 913 is half of 1826
+MERGE_BELOW_15Y = 2740  # v1.2 K10: a final block shorter than half the block length merges (913 and 2,740 days); a short horizon is one block
 
 SCHEMES: Dict[str, Tuple[Tuple[str, int, int], ...]] = {
     # family -> ((scheme name, block days, merge-below days), ...); the first scheme is the primary one
@@ -50,13 +51,17 @@ SCHEMES: Dict[str, Tuple[Tuple[str, int, int], ...]] = {
 
 # ── statistics (v1.1 D2) ───────────────────────────────────────────────────
 Z25_MIN_UNIT_EPISODES = 10
-Z25_TOP_FRACTION = 0.25  # the mean of the top quartile of unit z-scores; k = ceil(0.25 * n_units), at least 1
+Z25_TOP_FRACTION = 0.25  # the top quartile of the n eligible units: k = ceil(n / 4) (v1.2 K5)
+Z25_MIN_UNITS = 8  # v1.2 K5: with fewer than 8 eligible units Z25 is dropped from the family's min-p set
 
 # ── draws (v1.1 D1, D3, D4) ────────────────────────────────────────────────
 DRAWS_PRODUCTION = 100_000
 DRAW_CHUNK = 4_000  # draws are generated in chunks of this size (memory); part of the definition of the random stream
 MIN_DRAWS_CALIBRATION = 2_000  # v1.1 F2: at least 2,000 draws per check in the calibration
 MIN_ELIGIBLE_DONORS = 5  # v1.1 D3
+DONOR_FLOOR_CHARTS = 15  # v1.2 K11: a family is testable only if >= 15 charts have >= 5 eligible donors, for (b) AND for (c)
+DIR_MIN_EPISODES = 100  # v1.2 K4: p_dir needs >= 100 episodes (with an applicable opposite-polarity unit) in >= 15 charts
+DIR_MIN_CHARTS = 15
 
 # ── footprint gate and testability (v1.0 4.4 as changed by v1.1 D7, D8) ─────
 TOUCH_RATE_GATE = 0.60

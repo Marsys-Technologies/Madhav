@@ -101,10 +101,18 @@ def pooled_touch(touch: Mapping[str, Mapping[str, Optional[float]]]) -> Dict[str
 
 
 def family_testable(
-    ctx: FamilyContext, scored: Sequence[Episode], min_episodes: int = C.TESTABLE_MIN_EPISODES, min_charts: int = C.TESTABLE_MIN_CHARTS
+    ctx: FamilyContext,
+    scored: Sequence[Episode],
+    min_episodes: int = C.TESTABLE_MIN_EPISODES,
+    min_charts: int = C.TESTABLE_MIN_CHARTS,
+    admitted: Optional[Sequence[int]] = None,
 ) -> Dict[str, Any]:
-    """v1.1 D7.2: at least 250 scored primary episodes in at least 15 charts, and at least half the family's
-    evaluable units surviving the footprint gate in at least one used window class."""
+    """v1.1 D7.2 with v1.2 K4 and K11, from counts and horizons only (no state, no p-value):
+    at least 250 scored primary episodes in at least 15 charts; at least half the family's evaluable units
+    surviving the footprint gate in at least one used window class; at least 15 charts with at least 5 eligible
+    donors for check (b) AND for check (c). Direction testability (K4) and Z25 availability (K5) are reported
+    here as well: they decide STRONG's reachability and the min-p set, not the family's testability."""
+    from .core import direction_counts, donor_eligibility_counts
     charts = len({e.chart for e in scored})
     used = {e.grade for e in scored}
     survivors = 0
@@ -115,12 +123,27 @@ def family_testable(
     n_units = len(ctx.units)
     ok_ep = len(scored) >= min_episodes and charts >= min_charts
     ok_units = n_units > 0 and survivors * 2 >= n_units * 1  # survivors >= half of the units
+    donors = donor_eligibility_counts(ctx, scored, admitted)
+    ok_donors = donors["b"] >= C.DONOR_FLOOR_CHARTS and donors["c"] >= C.DONOR_FLOOR_CHARTS
+    dirc = direction_counts(ctx, scored)
     reasons = []
+    if not ok_donors:
+        reasons.append(f"charts with at least {C.MIN_ELIGIBLE_DONORS} eligible donors: (b) {donors['b']}, (c) {donors['c']} (need {C.DONOR_FLOOR_CHARTS} each)")
     if not ok_ep:
         reasons.append(f"episodes {len(scored)} (need {min_episodes}) in {charts} charts (need {min_charts})")
     if not ok_units:
         reasons.append(f"units surviving the gate {survivors} of {n_units} (need at least half)")
-    return {"testable": bool(ok_ep and ok_units), "episodes": len(scored), "charts": charts, "units": n_units, "units_surviving": survivors, "reasons": reasons}
+    return {
+        "testable": bool(ok_ep and ok_units and ok_donors),
+        "episodes": len(scored),
+        "charts": charts,
+        "units": n_units,
+        "units_surviving": survivors,
+        "donor_charts_b": donors["b"],
+        "donor_charts_c": donors["c"],
+        "direction": dirc,
+        "reasons": reasons,
+    }
 
 
 def descriptive_hits(ctx: FamilyContext, scored: Sequence[Episode], scheme: Optional[str] = None) -> Dict[str, Any]:
