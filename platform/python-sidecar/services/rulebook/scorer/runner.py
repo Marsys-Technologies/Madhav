@@ -19,7 +19,7 @@ from typing import Any, Dict, List, Mapping, Optional, Sequence
 import numpy as np
 
 from . import config as C
-from .core import FamilyContext, score_family, scorable_mask
+from .core import FamilyContext, applicable_mask, score_family, scorable_mask
 from .footprint import descriptive_hits, family_testable
 from .model import ChartTimeline, Episode, ScorerError, UnitSpec
 from .outcome import LABEL_CONFLICT_DRIVEN, decide, mde_report
@@ -92,7 +92,7 @@ def score_sample(
     scored_by_family: Dict[str, List[Episode]] = {}
     testab: Dict[str, Dict[str, Any]] = {}
     for fam, ctx in contexts.items():
-        ok = scorable_mask(ctx, list(episodes.get(fam, [])))
+        ok = applicable_mask(ctx, list(episodes.get(fam, [])))  # K2: scored-applicable, the count D7 and A7 use
         scored_by_family[fam] = [e for e, k in zip(episodes.get(fam, []), ok) if k]
         testab[fam] = family_testable(ctx, scored_by_family[fam])
     result["testability"] = testab

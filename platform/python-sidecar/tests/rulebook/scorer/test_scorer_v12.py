@@ -137,3 +137,24 @@ def test_v13_d7_decisions_from_the_sealed_counts_override_the_recount():
     assert "Z25-5y" in r8["stats"] and r8["p_dir"] is not None
     # T does not depend on the D7 lists
     assert r["stats"]["T-5y"] == base["stats"]["T-5y"]
+
+
+def test_k2_applicable_count_uses_assessed_masks_only_never_true_false_states():
+    from services.rulebook.scorer.core import applicable_mask, scorable_mask
+
+    n = 365 * 6
+    units = make_units([("U0", "promotive", [[("M0", ["career_adv_change_entry"])]])])
+    t = ChartTimeline("c0", BASE - 9000, BASE, BASE + n - 1, {"M0": np.zeros(n, dtype=np.int8)})  # never TRUE: uninformative
+    ctx = FamilyContext(C.FAMILY_DASHA, [t], units)
+    ok_area = Episode(0, "career_adv_change_entry", C.FAVOURABLE, C.G2, *month_window(1991, 5))
+    wrong_area = Episode(0, "illness_chronic_surgery", C.FAVOURABLE, C.G2, *month_window(1991, 5))
+    opposite = Episode(0, "career_adv_change_entry", C.UNFAVOURABLE, C.G2, *month_window(1991, 5))
+    assert applicable_mask(ctx, [ok_area, wrong_area, opposite]) == [True, False, False]
+    assert scorable_mask(ctx, [ok_area]) == [False]  # applicable, but not informative: the statistics skip it, the count does not
+    # swapping TRUE/FALSE states changes nothing
+    t.states["M0"][:] = 1
+    assert applicable_mask(ctx, [ok_area, wrong_area, opposite]) == [True, False, False]
+    # a window less than half assessed is not applicable
+    lo, hi = month_window(1991, 5)
+    t.states["M0"][lo - BASE : hi - BASE + 1 - 10] = -1
+    assert applicable_mask(ctx, [ok_area]) == [False]

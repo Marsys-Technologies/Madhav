@@ -97,7 +97,7 @@ def cmd_power(a) -> int:
     for sparse in (False, True):
         for target in C.FAMILIES:
             key = f"{target}{'_sparse' if sparse else ''}"
-            tasks = [(a.model, i, q, target, sparse) for q in qs for i in range(a.studies)]
+            tasks = [(a.model, i, q, target, sparse, a.threshold) for q in qs for i in range(a.studies)]
             p = out / f"power_{key}.jsonl"
             if p.exists():
                 p.unlink()
@@ -111,7 +111,7 @@ def cmd_power(a) -> int:
             curve = {"q": qs, "power": [row[str(q)]["target_full"] for q in qs]}
             table[key] = {"by_q": row, "mde": mde_report(curve["q"], curve["power"])}
             print(key, json.dumps(table[key]["mde"]), flush=True)
-    _write(out / "F4_POWER.json", {"model": a.model, "draws": a.draws, "mean_per_chart": a.mean_per_chart, "table": table})
+    _write(out / "F4_POWER.json", {"status": "FINAL_INPUTS" if a.step5_hash else "PROVISIONAL_NOT_STEP5_INPUTS", "threshold": a.threshold, "q_definition": "v1.2 K9", "model": a.model, "draws": a.draws, "mean_per_chart": a.mean_per_chart, "table": table})
     _hashes(out, {"draws": a.draws, "studies_per_cell": a.studies, "seed": a.seed})
     return 0
 

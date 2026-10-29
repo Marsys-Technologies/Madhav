@@ -343,6 +343,36 @@ class SchemeResult:
         self.fallback_pool: Optional[np.ndarray] = None
 
 
+def applicable_mask(ctx: FamilyContext, episodes: Sequence[Episode]) -> List[bool]:
+    """v1.2 K2 / v1.3 L1: "scored-applicable". The episode has at least one applicable unit (footprint gate,
+    member-area filter, Moon members on day grade only) with a member whose window is at least half assessed.
+    Uses only which days are assessed (NOT_ASSESSED masks), never a TRUE/FALSE state, so it is what the blind
+    counting script can compute. Admission (exclusion 5), testability (D7) and the A7 minimum are decided on
+    THIS count; the percentile-informative set used by the statistics is ``scorable_mask``."""
+    out = []
+    for ep in episodes:
+        t = ctx.tl[ep.chart]
+        lo, hi = ep.lo - t.h_start, ep.hi - t.h_start
+        if lo < 0 or hi >= t.n_days:
+            out.append(False)
+            continue
+        L = hi - lo + 1
+        ok = False
+        for v in ctx.klass_variants((C.POLARITY_OF_DIRECTION[ep.direction], ep.area, ep.grade)):
+            for g in v.groups:
+                for rid in g:
+                    a = t.states.get(rid)
+                    if a is not None and int((a[lo : hi + 1] >= 0).sum()) * 2 >= L:
+                        ok = True
+                        break
+                if ok:
+                    break
+            if ok:
+                break
+        out.append(ok)
+    return out
+
+
 def scorable_mask(ctx: FamilyContext, episodes: Sequence[Episode], scheme: Optional[str] = None) -> List[bool]:
     """An episode is scored under a block scheme iff its own-polarity class score at the observed placement is
     defined there (at least one applicable unit has an informative member in the episode's block).

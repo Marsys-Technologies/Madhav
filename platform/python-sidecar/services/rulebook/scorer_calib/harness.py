@@ -77,7 +77,7 @@ class Calibration:
         """v1.2 K8: exclusion 5 per family. A chart with fewer than ``min_usable`` usable (scored, primary-scheme)
         episodes in a family is excluded from that family only: its episodes are dropped there and it is not a donor
         there. ``min_usable`` 0 admits every chart."""
-        from ..scorer.core import scorable_mask
+        from ..scorer.core import applicable_mask
 
         out: Dict[str, List[Any]] = {}
         adm: Dict[str, Optional[List[int]]] = {}
@@ -87,7 +87,7 @@ class Calibration:
                 out[f], adm[f] = eps, None
                 continue
             usable: Dict[int, int] = {}
-            for e, ok in zip(eps, scorable_mask(self.ctx[f], eps)):
+            for e, ok in zip(eps, applicable_mask(self.ctx[f], eps)):  # scored-APPLICABLE (K2), not informative
                 if ok:
                     usable[e.chart] = usable.get(e.chart, 0) + 1
             keep = sorted(c for c, n in usable.items() if n >= min_usable)

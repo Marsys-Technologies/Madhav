@@ -112,7 +112,9 @@ def family_testable(
     surviving the footprint gate in at least one used window class; at least 15 charts with at least 5 eligible
     donors for check (b) AND for check (c). Direction testability (K4) and Z25 availability (K5) are reported
     here as well: they decide STRONG's reachability and the min-p set, not the family's testability."""
-    from .core import direction_counts, donor_eligibility_counts
+    from .core import applicable_mask, direction_counts, donor_eligibility_counts
+
+    scored = [e for e, ok in zip(scored, applicable_mask(ctx, scored)) if ok]  # K2: counts are of scored-APPLICABLE episodes
     charts = len({e.chart for e in scored})
     used = {e.grade for e in scored}
     survivors = 0
