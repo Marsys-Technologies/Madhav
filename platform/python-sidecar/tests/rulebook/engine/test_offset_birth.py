@@ -64,7 +64,31 @@ def test_adb_style_tz_raw_gives_offset_code_and_dst_note_as_stated():
     assert B.record_fields_from_adb_tz_raw("GMT h0e")["utc_offset_minutes"] == 0
 
 
-@pytest.mark.parametrize("raw", ["", "PDT", "PDT 7w", "h7w", "PDT h7x", "LMT m5e45", "PDT h7w30extra", "PDT h7e75", None])
+@pytest.mark.parametrize(
+    "raw,minutes,code",
+    [
+        ("-05 h5w (is standard time)", -300, "-05"),
+        ("-0330 h3w30 (is standard time)", -210, "-0330"),
+        ("-03 h3w (is standard time)", -180, "-03"),
+        ("+0545 h5e45", 345, "+0545"),
+    ],
+)
+def test_numeric_tzdb_zone_code_is_accepted_and_the_offset_still_comes_from_the_h_part(raw, minutes, code):
+    f = B.record_fields_from_adb_tz_raw(raw)
+    assert f["utc_offset_minutes"] == minutes and f["source_zone_code"] == code
+    if "standard" in raw:
+        assert f["dst_applied"] is False
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        "", "PDT", "PDT 7w", "h7w", "PDT h7x", "LMT m5e45", "PDT h7w30extra", "PDT h7e75", None,
+        # numeric codes do not loosen anything else: the h-offset is still required and validated
+        "-03", "-03 3w", "-03 m3w", "-0330 h3w75", "-3 h3w", "-033 h3w30", "--03 h3w", "03 h3w", "-03h3w",
+        "-0330x h3w30", "+05:45 h5e45",
+    ],
+)
 def test_unrecognised_tz_raw_is_refused_not_guessed(raw):
     with pytest.raises(B.ChartRefused):
         B.record_fields_from_adb_tz_raw(raw)
