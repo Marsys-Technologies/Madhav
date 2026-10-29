@@ -43,6 +43,12 @@ variable "github_data_plane_cutover_wif_subject" {
   default     = "principal://iam.googleapis.com/projects/938361928218/locations/global/workloadIdentityPools/github/subject/repo:Marsys-Technologies@311530097/Madhav@1213634114:environment:data-plane-production-cutover"
 }
 
+variable "retain_project_wide_logging_viewer" {
+  type        = bool
+  default     = true
+  description = "Keep the legacy project-wide roles/logging.viewer on github-actions@. Set false only after the cloudsql_restore_audit view, its binding and the logging_config_reader role are applied and read back."
+}
+
 // Runtime Secret Manager access is deliberately secret-specific. Keep these
 // sets aligned with deploy.yml and every Cloud Run job that reuses a runtime
 // service account; a service-level inventory alone misses those job mounts.
@@ -137,14 +143,88 @@ resource "google_project_iam_member" "github_actions_security_reviewer" {
   member  = "serviceAccount:github-actions@${var.gcp_project}.iam.gserviceaccount.com"
 }
 
-// The protected cutover verifier reads the immutable Admin Activity entry for
-// the named Cloud SQL restore operation because operations.describe omits the
-// source backup identifier. This role is read-only and does not expose Data
-// Access logs.
+// ── Narrow audit-log read for the protected cutover verifier (LOGVIEW-NARROW-IAC) ──
+//
+// The protected cutover verifier (platform/scripts/data-plane-cutover-preflight.ts,
+// run by deploy.yml job privileged-bootstrap) reads the immutable Admin Activity entry
+// for the named Cloud SQL restore operation, because operations.describe omits the
+// source backup identifier. It used to do that through a project-wide
+// roles/logging.viewer. It now reads through ONE log view on the `_Required` bucket
+// (where Admin Activity audit logs are stored), so the grant can be a single-view
+// roles/logging.viewAccessor and the project-wide role can go (SR-LOGVIEW-NARROW-KEEP).
+//
+// The view admits only Cloud SQL Admin Activity entries. The bucket, location and view
+// name below must equal CLOUDSQL_RESTORE_AUDIT_LOG_VIEW in the preflight script
+// (pinned by platform/scripts/governance/__tests__/test_logview_narrow_iac.py).
+//
+// The gochara_verification_job view that gochara-seal-approved.yml reads is owner-created
+// with gcloud (runbook Act 12) and is deliberately NOT declared here: Terraform would
+// try to create an object that already exists.
+resource "google_logging_log_view" "cloudsql_restore_audit" {
+  name        = "cloudsql_restore_audit"
+  bucket      = "projects/${var.gcp_project}/locations/global/buckets/_Required"
+  description = "Cloud SQL Admin Activity audit entries only: lets the protected data-plane cutover verifier bind a restore operation to its backup. No other log is visible through this view."
+  filter      = "SOURCE(\"projects/${var.gcp_project}\") AND resource.type = \"cloudsql_database\" AND LOG_ID(\"cloudaudit.googleapis.com/activity\")"
+}
+
+// Project-level viewAccessor limited by an IAM condition to that one view (Google's
+// documented way to bind a single view). Without the condition this role would expose
+// every view in the project, which is what this change exists to avoid.
+resource "google_project_iam_member" "github_actions_cloudsql_restore_audit_view" {
+  project = var.gcp_project
+  role    = "roles/logging.viewAccessor"
+  member  = "serviceAccount:github-actions@${var.gcp_project}.iam.gserviceaccount.com"
+
+  condition {
+    title       = "cloudsql_restore_audit_view_only"
+    description = "Only the cloudsql_restore_audit log view; never another view."
+    expression  = "resource.name == \"projects/${var.gcp_project}/locations/global/buckets/_Required/views/cloudsql_restore_audit\""
+  }
+}
+
+// roles/logging.viewer also carries the Logging CONFIGURATION reads that the
+// plan-only workflow iac-apply.yml needs (it plans the `logging` and `iam` modules as
+// github-actions@). viewAccessor does not. This custom role keeps exactly those reads
+// and no log-entry read (no logging.logEntries.list, no logging.logs.list), so removing
+// the project-wide viewer does not break `terraform plan`.
+resource "google_project_iam_custom_role" "logging_config_reader" {
+  role_id     = "loggingConfigReader"
+  title       = "Logging configuration reader"
+  description = "Read Logging exclusions, buckets and views (configuration only; no log entries). For terraform plan as github-actions@."
+  permissions = [
+    "logging.buckets.get",
+    "logging.buckets.list",
+    "logging.exclusions.get",
+    "logging.exclusions.list",
+    "logging.views.get",
+    "logging.views.list",
+  ]
+}
+
+resource "google_project_iam_member" "github_actions_logging_config_reader" {
+  project = var.gcp_project
+  role    = google_project_iam_custom_role.logging_config_reader.id
+  member  = "serviceAccount:github-actions@${var.gcp_project}.iam.gserviceaccount.com"
+}
+
+// The legacy project-wide grant. It stays (default true) so merging this file changes
+// nothing until the owner has applied the additions above AND checked that the cutover
+// preflight reads through the view. Setting this to false removes the grant:
+//   terraform apply -var retain_project_wide_logging_viewer=false
+// Apply needs owner approval; see infra/iam/README.md "Removing the project-wide
+// Logging Viewer".
 resource "google_project_iam_member" "github_actions_logging_viewer" {
+  count   = var.retain_project_wide_logging_viewer ? 1 : 0
   project = var.gcp_project
   role    = "roles/logging.viewer"
   member  = "serviceAccount:github-actions@${var.gcp_project}.iam.gserviceaccount.com"
+}
+
+// Adding `count` renames the address; without this the first plan would destroy and
+// recreate the live grant.
+moved {
+  from = google_project_iam_member.github_actions_logging_viewer
+  to   = google_project_iam_member.github_actions_logging_viewer[0]
 }
 
 // Firebase custom-token signing is self-only. A project-wide Token Creator
