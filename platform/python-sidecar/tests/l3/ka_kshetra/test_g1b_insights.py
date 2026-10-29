@@ -1,5 +1,6 @@
 """G1(f): reachable predicates, explicit observation horizons and typed silence."""
 from types import SimpleNamespace
+import pytest
 
 from services.ka_kshetra import stage65_insights as S
 from services.ka_kshetra import writer as W
@@ -19,6 +20,32 @@ def test_normalized_promise_absence_is_typed_model_silence():
     assert candidate.statement_params['probability_target'] is None
     assert S.detect_absence_of_expected('career', .59, [], 0., 100.) is None
     assert S.detect_absence_of_expected('career', .8, [window()], 0., 100.) is None
+
+
+@pytest.mark.parametrize('prior', [-.1, 1.01, 6., float('inf'), float('-inf'), float('nan')])
+def test_absence_never_converts_invalid_normalized_prior_into_a_finding(prior):
+    # ALGO §3.20: P is normalized, not the former six-point promise grade.
+    assert S.detect_absence_of_expected('career', prior, [], 0., 100.) is None
+
+
+@pytest.mark.parametrize('completed', [False, True])
+def test_absence_requires_an_evaluated_field_not_merely_an_empty_window_set(monkeypatch, completed):
+    from tests.l3.ka_kshetra.fake_db import FakeConn
+    writer = W.KaKshetraWriter()
+    writer._dry_run = False
+    writer._chart_id = 'chart'; writer._snapshot_id = 'snapshot'
+    writer._weights_version = 'v0'; writer._event_classes = ['career']; writer._skipped = []
+    monkeypatch.setattr(writer, '_load_committed_windows', lambda c: [])
+    monkeypatch.setattr(writer, '_load_salience', lambda c: {})
+    monkeypatch.setattr(writer, '_load_window_fact_ids', lambda c: {})
+    monkeypatch.setattr(writer, '_reversal_inputs', lambda *a: [])
+    monkeypatch.setattr(writer, '_record_substep', lambda *a: None)
+    monkeypatch.setattr(W.S4, 'load_promise_prior', lambda *a: PromisePrior(.8, fact_ids=('fact',)))
+    conn = FakeConn({'kala_field': [{'event_class': 'career'}] if completed else []})
+    result = writer._run_stage65(conn, SimpleNamespace(key='stage65'))
+    assert result.rows_inserted == int(completed)
+    rows = conn.tables.get('kala_insights', [])
+    assert [r['insight_type'] for r in rows] == (['absence_of_expected'] if completed else [])
 
 
 def test_zero_windows_still_runs_absence_for_completed_class(monkeypatch):
