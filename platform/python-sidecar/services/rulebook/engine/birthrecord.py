@@ -159,7 +159,9 @@ def parse_birth_record(rec: Mapping[str, Any]) -> BirthRecord:
     )
 
 
-_ADB_TZ = re.compile(r"^\s*([A-Za-z]{1,8})\s+h(\d{1,2})([ew])(\d{1,2})?\s*(?:\((.*)\))?\s*$")
+# zone code: a letter abbreviation (PDT, IST, ...) or a numeric tz-database abbreviation (-03, -0330, +0545); the
+# code is informational only: the offset is read from the h<H>(e|w)[<MM>] part and nowhere else.
+_ADB_TZ = re.compile(r"^\s*([A-Za-z]{1,8}|[+-]\d{2}(?:\d{2})?)\s+h(\d{1,2})([ew])(\d{1,2})?\s*(?:\((.*)\))?\s*$")
 
 
 def record_fields_from_adb_tz_raw(tz_raw: str) -> Dict[str, Any]:
