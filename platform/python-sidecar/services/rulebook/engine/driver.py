@@ -22,7 +22,7 @@ from . import constants as K
 from .birthcheck import require_consistent, utc_consistency_problems
 from .birthrecord import ChartRefused
 from .chart import NatalChart, readiness
-from .dayatom import SunriseProvider, build_grid, birth_utc, require_ist, tzdb_version
+from .dayatom import SunriseProvider, birth_utc, build_grid, first_day_at_or_after, require_ist, tzdb_version
 from .evaluator import combine_member_cards, evaluate_plan
 from .plan import TRANSIT_HOUSE, plan_card
 from .resolve import EvalContext
@@ -58,6 +58,40 @@ def prepare_chart(chart: NatalChart, first: date, last: date) -> NatalChart:
 
     chart.birth = replace(b, birth_utc=birth_utc(b))
     return chart
+
+
+def _twelfth_birthday(d: date) -> date:
+    """Birth date plus 12 calendar years (29 February maps to 28 February)."""
+    try:
+        return d.replace(year=d.year + 12)
+    except ValueError:
+        return d.replace(year=d.year + 12, day=28)
+
+
+def horizon_inputs(chart: NatalChart, sky: SkyTable, provider: SunriseProvider) -> Dict[str, Any]:
+    """Per-family data starts (SUR-RB-15): the later scorer builds each family's horizon from these.
+
+    ``dasha_first_day``: first civil date whose sunrise is at or after both the first stored Vimshottari row (levels 1 and 2) and
+    the birth instant; None if the chart has no rows. ``transit_first_day``: first civil date from which all seven true grahas
+    have a stored sign (the latest first ingress). ``horizon_start_12y``: birth date plus 12 years. Nothing is extrapolated:
+    days before a family's first day read NOT_ASSESSED for that family.
+    """
+    from .chart import utc_to_jd
+
+    birth_jd = utc_to_jd(chart.birth.birth_utc) if chart.birth.birth_utc else None
+    md0, ad0 = chart.md.first_jd, chart.ad.first_jd
+    dasha_day = None
+    if md0 is not None and ad0 is not None and birth_jd is not None:
+        dasha_day = first_day_at_or_after(provider, max(md0, ad0, birth_jd))
+    firsts = [sky.first_jd(K.L0_BODY[g]) for g in K.GRAHAS if g not in K.NODES]
+    transit_day = None if any(f is None for f in firsts) else first_day_at_or_after(provider, max(firsts))
+    h12 = _twelfth_birthday(chart.birth.birth_date)
+    return {
+        "dasha_first_day": dasha_day.isoformat() if dasha_day else None,
+        "transit_first_day": transit_day.isoformat() if transit_day else None,
+        "horizon_start_12y": h12.isoformat(),
+        "dasha_starts_after_12th_birthday": bool(dasha_day is None or dasha_day > h12),
+    }
 
 
 def _runs(series: Series) -> List[List[Any]]:
@@ -102,6 +136,7 @@ def scan(
     grid = build_grid(first, last, provider)
     ctx = EvalContext(chart, sky, grid)
 
+    dasha_known = Series.zip(lambda a, b: a is not None and b is not None, ctx.lord(K.DASHA_LEVEL_MD), ctx.lord(K.DASHA_LEVEL_AD))
     members: Dict[str, Dict[str, Any]] = {}
     sat_cards: Dict[str, Any] = {}
     series_by_member: Dict[str, Series] = {}
@@ -121,6 +156,10 @@ def scan(
                 plans.append(plan_card(c["ir"], c["operands"]))
             per_card = [evaluate_plan(p, ctx) for p in plans]
             state = combine_member_cards(per_card)
+            if m["plane"] == "dasha":
+                # the dasha plane has no state on a day without stored MD and AD rows (before the first stored day, before
+                # birth, after the last row, or a day with no sunrise): NOT_ASSESSED, never extrapolated or inferred from natal conjuncts
+                state = Series.zip(lambda s_, ok: s_ if ok else NOT_ASSESSED, state, dasha_known)
             series_by_member[rid] = state
             meta_by_member[rid] = {"unit": unit["unit_id"], "plane": m["plane"], "polarity": m["polarity"], "transit_bodies": m["transit_bodies"]}
             entry: Dict[str, Any] = {
@@ -169,6 +208,7 @@ def scan(
             "utc_epoch_seconds_sha256": hashlib.sha256(sun_bytes).hexdigest(),
             "no_sunrise_days": grid.no_sunrise_days,
         },
+        "horizon_inputs": horizon_inputs(chart, sky, provider),
         "coverage": {
             "sky_coverage_end_jd": sky.coverage_end_jd,
             "sky_fingerprint_sha256": sky.fingerprint(),

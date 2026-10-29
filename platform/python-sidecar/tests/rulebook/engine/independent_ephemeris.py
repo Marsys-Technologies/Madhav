@@ -51,3 +51,28 @@ def vimshottari_start(moon_sidereal: float, jd_birth_ut: float) -> Tuple[str, fl
     lord = VIM_ORDER[idx % 9]
     frac = (moon_sidereal - idx * span) / span
     return lord, jd_birth_ut - frac * VIM_YEARS[lord] * 365.25
+
+
+def vimshottari_running(moon_sidereal: float, jd_birth_ut: float, jd_query: float):
+    """(mahadasha lord, antardasha lord, antardasha start JD, distance in days to the nearest boundary) at ``jd_query``.
+
+    Walks the 120-year cycle forward from the start implied by the Moon's elapsed nakshatra fraction at birth. Nothing is
+    read from any stored table. Antardasha length = mahadasha days x antardasha years / 120 (year = 365.25 days).
+    """
+    lord0, md_start = vimshottari_start(moon_sidereal, jd_birth_ut)
+    i = VIM_ORDER.index(lord0)
+    t = md_start
+    while True:
+        lord = VIM_ORDER[i % 9]
+        md_days = VIM_YEARS[lord] * 365.25
+        md_end = t + md_days
+        if t <= jd_query < md_end:
+            a0 = t
+            for k in range(9):
+                al = VIM_ORDER[(i + k) % 9]
+                a1 = md_end if k == 8 else a0 + md_days * VIM_YEARS[al] / 120.0
+                if a0 <= jd_query < a1:
+                    return lord, al, a0, min(jd_query - a0, a1 - jd_query, jd_query - t, md_end - jd_query)
+                a0 = a1
+        t = md_end
+        i += 1

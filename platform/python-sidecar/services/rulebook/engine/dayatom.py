@@ -223,3 +223,26 @@ def build_grid(first: date, last: date, provider: SunriseProvider) -> DayGrid:
         if not b > a:
             raise ChartDataError("sunrise instants are not strictly increasing")
     return DayGrid(first=first, n=n, sunrise_jd=jds, sunrise_utc=utcs, provider=provider.name)
+
+
+def first_day_at_or_after(provider: SunriseProvider, jd: float, search_days: int = 8) -> Optional[date]:
+    """First civil date whose sunrise instant is at or after ``jd`` (None if none within ``search_days`` days).
+
+    Used for the per-family horizon starts: the first day a family's inputs exist at the sunrise that states the day.
+    """
+    y, m, d, _h = _revjul(jd)
+    start = date(y, m, d) - timedelta(days=2)
+    for i in range(search_days + 3):
+        day = start + timedelta(days=i)
+        try:
+            u = provider.sunrise_utc(day)
+        except ChartDataError:  # a table provider that has no instant for this date (tests, oracle fixtures)
+            continue
+        if u is not None and utc_to_jd(u) >= jd:
+            return day
+    return None
+
+
+def _revjul(jd: float):
+    t = datetime(1970, 1, 1, tzinfo=timezone.utc) + timedelta(days=jd - K.JD_UNIX_EPOCH)
+    return t.year, t.month, t.day, t.hour
