@@ -1048,7 +1048,7 @@ def test_the_registry_text_proposals_are_data_with_the_shape_the_earlier_forms_u
 def test_the_one_registry_bump_consumed_the_data_constants_exactly_once():
     """The ONE bump (REGISTRY_REVISION 29 -> 30, engine stack of the vocabulary round) appended each sentence to its criterion's applicability, once, and moved each revision old -> new,
     once (it replaces the pre-bump pin `this branch did not bump`, which the bump itself falsifies)."""
-    assert ac.REGISTRY_REVISION == 30
+    assert ac.REGISTRY_REVISION >= 30       # was `== 30`: revision 31 (SS N-611) bumped only Build.dag; the four criteria below keep the revision and text of the ONE bump of 30
     for crit, tail in ac.ES_APPLICABILITY_ADDITIONS.items():
         assert ac.CRITERION_REGISTRY[crit]["revision"] == ac.ES_REVISION_BUMPS[crit][1]
         assert ac.CRITERION_REGISTRY[crit]["applicability"].count(tail) == 1, crit
