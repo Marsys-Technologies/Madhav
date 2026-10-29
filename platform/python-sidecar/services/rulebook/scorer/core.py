@@ -373,6 +373,33 @@ def applicable_mask(ctx: FamilyContext, episodes: Sequence[Episode]) -> List[boo
     return out
 
 
+def unit_applicable_counts(ctx: FamilyContext, episodes: Sequence[Episode]) -> Dict[str, int]:
+    """v1.3 L1 item 2: per unit, the number of scored-applicable episodes it applies to (an applicable member whose
+    window is at least half assessed). Assessed masks only, never a TRUE/FALSE state."""
+    out: Dict[str, int] = {u.unit_id: 0 for u in ctx.units}
+    for ep in episodes:
+        t = ctx.tl[ep.chart]
+        lo, hi = ep.lo - t.h_start, ep.hi - t.h_start
+        if lo < 0 or hi >= t.n_days:
+            continue
+        L = hi - lo + 1
+        for v in ctx.klass_variants((C.POLARITY_OF_DIRECTION[ep.direction], ep.area, ep.grade)):
+            if any(t.states.get(r) is not None and int((t.states[r][lo : hi + 1] >= 0).sum()) * 2 >= L for g in v.groups for r in g):
+                out[v.unit_id] += 1
+    return out
+
+
+def d7_from_counts(ctx: FamilyContext, episodes: Sequence[Episode]) -> Dict[str, Any]:
+    """The D7 decisions the scorer needs, from applicability counts only (what count_blind emits, v1.2 K2 / v1.3):
+    p_dir testability (K4) and the Z25 unit set (K5). Used when no sealed counts are supplied."""
+    app = [e for e, ok in zip(episodes, applicable_mask(ctx, episodes)) if ok]
+    uc = unit_applicable_counts(ctx, app)
+    return {
+        "dir_testable": direction_counts(ctx, app)["testable"],
+        "z25_units": sorted(u for u, n in uc.items() if n >= C.Z25_MIN_UNIT_EPISODES),
+    }
+
+
 def scorable_mask(ctx: FamilyContext, episodes: Sequence[Episode], scheme: Optional[str] = None) -> List[bool]:
     """An episode is scored under a block scheme iff its own-polarity class score at the observed placement is
     defined there (at least one applicable unit has an informative member in the episode's block).
@@ -729,12 +756,17 @@ def score_family(
         out.update(status="no_scored_episodes", p1=None, p2=None, p3=None, p_dir=None)
         return out
     stream = FAMILY_STREAM[ctx.family]
-    dircount = direction_counts(ctx, scored)  # v1.2 K4: decided from counts, before any p-value
-    z25_units = None
-    if d7 is not None:  # v1.3: the D7 decisions made from the sealed count_blind aggregates override the recount
+    # D7 decisions (v1.2 K4, K5; v1.3): from the sealed count_blind aggregates when given, else recounted from
+    # APPLICABILITY only. Never from the percentile-scored set, which depends on TRUE/FALSE states (N.8 invariant).
+    app = [e for e, ok in zip(episodes, applicable_mask(ctx, episodes)) if ok]
+    dircount = direction_counts(ctx, app)
+    own = d7_from_counts(ctx, episodes)
+    z25_units = own["z25_units"]
+    if d7 is not None:
         if "dir_testable" in d7:
             dircount = dict(dircount, testable=bool(d7["dir_testable"]))
-        z25_units = d7.get("z25_units")
+        if "z25_units" in d7:
+            z25_units = d7["z25_units"]
     out["dir_testable"] = dircount["testable"]
     out["dir_episodes"] = dircount["episodes"]
     out["dir_charts"] = dircount["charts"]

@@ -39,14 +39,24 @@ def _load(args) -> H.Calibration:
 
     man = json.loads(Path(args.manifest).read_text())
     tab = json.loads(Path(args.clusters).read_text())
-    tl = load_timelines(args.timelines)
+    if getattr(args, "admission", None):  # the step-5 artefacts, every file hash-checked against TIMELINES_MANIFEST.json
+        from ..scorer.inputs import AdmissionInputs
+
+        adm = AdmissionInputs(args.admission)
+        tl = {f: adm.timelines(f) for f in C.FAMILIES}
+    else:
+        tl = load_timelines(args.timelines)
     units = {f: units_from_manifest(man, tab, f) for f in C.FAMILIES}
     gate: Dict[str, Any] = {}
     for f in C.FAMILIES:
         ctx, rep = build_family_context(f, tl[f], units[f])
         gate[f] = ctx.gate_drop
     prof = O.declared_profile(len(tl[C.FAMILY_DASHA]), mean=args.mean_per_chart)
-    if getattr(args, "counts_file", None):
+    if getattr(args, "count_blind", None):  # sealed counts, hash-checked against COUNT_BLIND_RUN.json
+        from ..scorer.inputs import read_count_blind
+
+        prof = O.profile_from_count_blind(read_count_blind(args.count_blind), [t.code for t in tl[C.FAMILY_TRANSIT]])
+    elif getattr(args, "counts_file", None):
         prof = O.profile_from_counts_file(args.counts_file, [t.code for t in tl[C.FAMILY_TRANSIT]])
     cal = H.Calibration(tl, units, gate, prof, draws=args.draws, seed=args.seed)
     cal.warm(args.warm)
@@ -160,7 +170,9 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(prog="rulebook-scorer-calib")
     sub = ap.add_subparsers(dest="cmd", required=True)
     def common(p, studies):
-        p.add_argument("--timelines", required=True)
+        p.add_argument("--timelines", default=None, help="saved calibration timelines (surrogate or provisional)")
+        p.add_argument("--admission", default=None, help="step-5 admission directory (admission-v1_1); overrides --timelines")
+        p.add_argument("--count-blind", default=None, help="count_blind output directory (sealed aggregates)")
         p.add_argument("--manifest", required=True)
         p.add_argument("--clusters", required=True)
         p.add_argument("--out", required=True)

@@ -75,6 +75,7 @@ def score_sample(
     *,
     power_curve: Optional[Mapping[str, Sequence[float]]] = None,
     note: str = "",
+    d7: Optional[Mapping[str, Mapping[str, Any]]] = None,
 ) -> Dict[str, Any]:
     """The real run. Claims the ledger first; refuses below the minimum for a verdict (20 charts and 400
     scored daśā episodes); scores each testable family; reads the outcome by Part E; returns the result."""
@@ -95,6 +96,10 @@ def score_sample(
         ok = applicable_mask(ctx, list(episodes.get(fam, [])))  # K2: scored-applicable, the count D7 and A7 use
         scored_by_family[fam] = [e for e, k in zip(episodes.get(fam, []), ok) if k]
         testab[fam] = family_testable(ctx, scored_by_family[fam])
+        if d7 and fam in d7:  # v1.2 D7 / v1.3: the sealed counts decide; the footprint-survival half stays from the timelines
+            sealed = d7[fam]
+            testab[fam]["sealed_counts"] = {k: sealed.get(k) for k in ("counts_ok", "donor_floor_ok", "dir_testable", "z25_units")}
+            testab[fam]["testable"] = bool(sealed.get("counts_ok") and sealed.get("donor_floor_ok") and testab[fam]["units_surviving"] * 2 >= testab[fam]["units"] > 0)
     result["testability"] = testab
     d = scored_by_family.get(C.FAMILY_DASHA, [])
     charts_total = len({e.chart for f in scored_by_family.values() for e in f})
@@ -105,7 +110,7 @@ def score_sample(
     fam_results: Dict[str, Dict[str, Any]] = {}
     for fam, ctx in contexts.items():
         if testab[fam]["testable"]:
-            fam_results[fam] = score_family(ctx, episodes.get(fam, []), cfg)
+            fam_results[fam] = score_family(ctx, episodes.get(fam, []), cfg, d7=(d7 or {}).get(fam))
             fam_results[fam]["descriptive"] = descriptive_hits(ctx, scored_by_family[fam])
     verdict = decide(fam_results, {f: t["testable"] for f, t in testab.items()}, cfg.fallback_primary_set)
     for fam, per in verdict["families"].items():

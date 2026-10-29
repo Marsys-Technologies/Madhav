@@ -102,6 +102,14 @@ def profile_from_counts_file(path: str, codes: Sequence[str]) -> CountsProfile:
     return CountsProfile(tuple(tuple(per[c]) for c in codes))
 
 
+def profile_from_count_blind(cb: Any, codes: Sequence[str]) -> CountsProfile:
+    """Per-chart counts from the sealed count_blind aggregates (transit family, primary set: the longer horizon;
+    the daśā family keeps the episodes inside its own horizon)."""
+    from ..scorer.inputs import profile_rows
+
+    return CountsProfile(tuple(profile_rows(cb, list(codes))))
+
+
 # ── day-probability vectors ──────────────────────────────────────────────────────────────
 def _age_density(kind: Tuple[str, Tuple[float, ...]], age: np.ndarray) -> np.ndarray:
     name, p = kind

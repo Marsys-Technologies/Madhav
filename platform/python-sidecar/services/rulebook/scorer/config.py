@@ -103,6 +103,7 @@ SOURCE_FILES = (
     "outcome.py",
     "footprint.py",
     "runner.py",
+    "inputs.py",
 )
 
 
