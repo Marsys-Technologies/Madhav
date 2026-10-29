@@ -88,6 +88,23 @@ describe('preflight() — single asset scope', () => {
     expect(result).toEqual([])
   })
 
+  it('accepts a GREEN legacy probe as the frozen runner records it (state lit)', () => {
+    const registry = [
+      serviceReg('bg_panchanga', 'healthy'),
+      reg('ga_panchanga', 'ganita', ['bg_panchanga']),
+    ]
+    const result = preflight(
+      ['ga_panchanga'],
+      'asset',
+      'ga_panchanga',
+      registry,
+      new Map([tp('bg_panchanga', 'lit')]),
+      new Map([['bg_panchanga', { state: 'unknown', reasons: ['output_digest_spec_unavailable'] }]]),
+    )
+
+    expect(result).toEqual([])
+  })
+
   it('accepts a successful healthy writer-backed service self-test with no relational output contract', () => {
     const registry = [
       serviceReg('ka_muhurta_seva', 'healthy', true),
@@ -113,7 +130,8 @@ describe('preflight() — single asset scope', () => {
     ['extra unknown evidence', { state: 'unknown' as const, reasons: ['output_digest_spec_unavailable', 'code_digest_unavailable'] }, 'healthy', 'service_ok'],
     ['stale service receipt', { state: 'stale' as const, reasons: ['registry_changed'] }, 'healthy', 'service_ok'],
     ['unhealthy live service', { state: 'unknown' as const, reasons: ['output_digest_spec_unavailable'] }, 'unhealthy', 'service_ok'],
-    ['historical lit state without current probe', { state: 'unknown' as const, reasons: ['output_digest_spec_unavailable'] }, 'healthy', 'lit'],
+    ['failed probe', { state: 'unknown' as const, reasons: ['output_digest_spec_unavailable'] }, 'healthy', 'error'],
+    ['lit state without a probe receipt', undefined, 'healthy', 'lit'],
   ])('does not bypass service readiness for %s', (_label, receipt, health, throughputState) => {
     const registry = [
       serviceReg('bg_panchanga', health as 'healthy' | 'unhealthy'),

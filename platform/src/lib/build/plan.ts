@@ -335,10 +335,12 @@ export function preflight(
       // relational output nor a relational spec. Accept only those two exact
       // evidence shapes, paired with their earned success state and live
       // service_health=healthy. Missing/stale/extra evidence still blocks.
+      // The frozen runner records a GREEN legacy probe as state='lit'
+      // (asset_runner._run_service_health_probe); a failed probe leaves 'error'.
       const serviceUnknownReasons = new Set(receipt?.reasons ?? [])
       const legacyProbeEvidence =
         depEntry?.has_writer !== true &&
-        depState === 'service_ok' &&
+        (depState === 'service_ok' || depState === 'lit') &&
         serviceUnknownReasons.size === 1 &&
         serviceUnknownReasons.has('output_digest_spec_unavailable')
       const writerSelfTestEvidence =
