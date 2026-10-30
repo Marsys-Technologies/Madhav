@@ -110,18 +110,40 @@ class AdmissionInputs:
         self.horizons = self._json("out/s5_horizons.json")
         self.admit = self._json("out/s6_admit.json")
 
-    def offset_normalised_count(self, chart_ids: Iterable[str]) -> int:
-        """SUR-RB-48: how many of these admitted charts were built with OFFSET NORMALISATION (verified offset with
-        non-zero seconds: offset rounded to the whole minute, local clock time shifted by the residual, UT identical).
-        Read from s6_admit.json (``ledger.<chart_id>.offset_normalised``, true/false, recorded by the admission
-        helper), never computed here; a chart without a boolean record refuses."""
-        led = (self.admit or {}).get("ledger") or {}
-        key = C.S6_OFFSET_NORMALISED_FIELD
-        ids = sorted(set(chart_ids))
-        bad = [c for c in ids if not isinstance((led.get(c) or {}).get(key), bool)]
-        if bad:
-            raise InputError(f"s6_admit.json does not record {key} (true/false) for {len(bad)} admitted chart(s) (SUR-RB-48)")
-        return sum(1 for c in ids if led[c][key])
+    NORMALISATION_KEYS = ("original_offset_seconds", "normalised_offset_minutes", "residual_seconds")
+
+    def offset_normalised_count(self) -> int:
+        """SUR-RB-48: how many ADMITTED charts were built with OFFSET NORMALISATION (verified offset with non-zero
+        seconds: offset rounded to the whole minute, local clock time shifted by the residual, UT identical). Read,
+        never computed, from the hash-checked step-5 artefacts: ``out/s1_resolve.json`` top-level
+        ``offset_normalised_charts`` intersected with ``out/s6_admit.json`` ``admitted``. The list must agree with the
+        per-chart records ``charts.<id>.variants."0".normalisation`` (an object with original_offset_seconds,
+        normalised_offset_minutes and residual_seconds = normalised, or null); any disagreement, a malformed record, or
+        an admitted chart without a variant-0 record refuses."""
+        s1 = self._json("out/s1_resolve.json")  # hash-checked against TIMELINES_MANIFEST.json
+        charts = s1.get("charts")
+        listed = s1.get("offset_normalised_charts")
+        if not isinstance(charts, dict) or not isinstance(listed, list) or not all(isinstance(c, str) for c in listed):
+            raise InputError("s1_resolve.json: charts / offset_normalised_charts missing or malformed (SUR-RB-48)")
+        if len(set(listed)) != len(listed):
+            raise InputError("s1_resolve.json: offset_normalised_charts lists a chart twice (SUR-RB-48)")
+        marked = set()
+        for cid, rec in charts.items():
+            v0 = ((rec or {}).get("variants") or {}).get("0")
+            norm = v0.get("normalisation") if isinstance(v0, dict) else None
+            if norm is None:
+                continue
+            if not isinstance(norm, dict) or not all(isinstance(norm.get(k), int) and not isinstance(norm.get(k), bool) for k in self.NORMALISATION_KEYS):
+                raise InputError(f"s1_resolve.json: {cid} has a malformed normalisation record (SUR-RB-48)")
+            marked.add(cid)
+        if marked != set(listed):
+            raise InputError(f"s1_resolve.json: offset_normalised_charts ({len(listed)}) disagrees with the per-chart normalisation records ({len(marked)}) (SUR-RB-48)")
+        admitted = set(self.admitted())
+        no_v0 = [c for c in admitted if not isinstance((((charts.get(c) or {}).get("variants") or {}).get("0")), dict)
+                 or "normalisation" not in charts[c]["variants"]["0"]]
+        if no_v0:
+            raise InputError(f"s1_resolve.json: {len(no_v0)} admitted chart(s) without a variant-0 normalisation record (SUR-RB-48)")
+        return len(admitted & marked)
 
     def _json(self, rel: str) -> Any:
         p = self.dir / rel

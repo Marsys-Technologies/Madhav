@@ -90,7 +90,6 @@ SAMPLE_STORE = "/Users/Dev/Archives/madhav-chart-sample"
 LOCK_LEDGER_PATH = "/Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl"
 LOCK_STEP4_ENTRY = "YARDSTICK-LOCK-STEP4"  # the entry the surrogate verified (SUR-RB-45): the claim-key hashes come from here
 LOCK_CUTOFF_ENTRY = "CUTOFF-AND-FILE-HASHES-V5-20261030"  # cross-check: the same two hashes must be logged here too
-S6_OFFSET_NORMALISED_FIELD = "offset_normalised"  # SUR-RB-48: per chart in s6_admit.json ledger.<chart_id>, true/false, written by the admission helper
 COUNT_BLIND_HASH_ENTRY = "COUNT-BLIND-V3-HASHES"  # count_blind V3 (supersedes V2): COUNT_BLIND_RUN.json must name this script hash
 CLAIM_KEY_OCCURRENCE_FILE = "sample_events_v5_slim.csv"  # the SLIM occurrence file
 CLAIM_KEY_BIRTH_FILE = "BIRTH_DATA_v5.csv"

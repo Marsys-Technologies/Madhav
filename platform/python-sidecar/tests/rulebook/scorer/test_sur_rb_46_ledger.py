@@ -263,20 +263,26 @@ def test_c_a_second_file_appearing_during_the_run_is_detected(tmp_path, lockfile
         score_sample_for_tests(ctx, eps, _cfg(), lock, str(led))
 
 
-# ── SUR-RB-48: the result header discloses the offset-normalised admitted charts, read from s6_admit ───────────
-def test_sur_rb_48_header_reports_offset_normalised_charts_from_s6_admit(tmp_path, lockfiles, monkeypatch):
+# ── SUR-RB-48: the result header discloses the offset-normalised admitted charts (s1_resolve x s6_admit) ──────
+def test_sur_rb_48_header_reports_offset_normalised_charts(tmp_path, lockfiles, monkeypatch):
     import services.rulebook.scorer.inputs as I
+
+    from .test_inputs import _s1_resolve
 
     ctx, eps = _two_families()
     by_code = {f: {t.code: t for t in c.tl} for f, c in ctx.items()}
     codes = sorted(by_code[C.FAMILY_DASHA])
-    flags = {c: (i % 3 == 0) for i, c in enumerate(codes)}
+    state = {"s1": _s1_resolve(codes, {codes[0], codes[3], "C999"}, extra=["C999"])}  # C999 normalised, not admitted
 
     class Adm(I.AdmissionInputs):
         def __init__(self, d, verify=True):
             self.manifest_sha256 = "a" * 64
             self.horizons = {"charts": {}}
-            self.admit = {"ledger": {c: {"admitted": True, "offset_normalised": flags[c]} for c in codes}}
+            self.admit = {"admitted": codes}
+
+        def _json(self, rel):
+            assert rel == "out/s1_resolve.json"
+            return state["s1"]
 
         def timeline(self, code, fam):
             return by_code[fam][code]
@@ -284,8 +290,8 @@ def test_sur_rb_48_header_reports_offset_normalised_charts_from_s6_admit(tmp_pat
     monkeypatch.setattr(I, "AdmissionInputs", Adm)
     lock = _lock(ctx, eps, lockfiles, tmp_path, admission_dir=str(tmp_path / "adm"))
     res = score_sample_for_tests(ctx, eps, _cfg(), lock, str(tmp_path / "ledger"))
-    assert res["admitted_charts_offset_normalised"] == sum(flags.values()) > 0
-    flags[codes[1]] = None  # a chart without a record refuses before the claim
+    assert res["admitted_charts_offset_normalised"] == 2
+    state["s1"] = _s1_resolve(codes, {codes[0]}, listed=[codes[0], codes[1]])  # the list disagrees: refused before the claim
     sub = tmp_path / "second"
     sub.mkdir()
     with pytest.raises(RunRefused, match="SUR-RB-48"):

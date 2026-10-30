@@ -60,7 +60,24 @@ def _timeline_doc(cid, first, days, birth):
     }
 
 
-def _admission(tmp, charts=("C001", "C002"), break_hash=None, offset=None):
+def _norm(residual):
+    return {"original_local": "1950-01-01T10:00:00", "normalised_local": "1950-01-01T10:00:%02d" % residual,
+            "original_offset_seconds": 19800 + residual, "normalised_offset_minutes": 330, "residual_seconds": residual}
+
+
+def _s1_resolve(charts, normalised, extra=(), listed=None):
+    """s1_resolve.json in the step-5 shape (SUR-RB-48): charts.<id>.variants."0".normalisation object or null, and the
+    top-level offset_normalised_charts list. ``extra`` are non-admitted charts (also possibly normalised)."""
+    out = {"step": "s1_resolve", "provenance": {}, "tally": {}, "tzdb": "x", "timezonefinder": "x", "charts": {}}
+    for c in list(charts) + list(extra):
+        v0 = {"local_date": "1950-01-01", "local_time": "10:00", "utc": "1950-01-01T04:30:00Z", "l1_local_date": "1950-01-01",
+              "l1_local_time": "10:00", "l1_zone": "+05:30", "normalisation": (_norm(12) if c in normalised else None)}
+        out["charts"][c] = {"chart_id": c, "confirmatory": "Y", "status": "resolved", "variants": {"-5": dict(v0), "0": v0, "5": dict(v0)}}
+    out["offset_normalised_charts"] = sorted(normalised) if listed is None else list(listed)
+    return out
+
+
+def _admission(tmp, charts=("C001", "C002"), break_hash=None, offset=None, s1=None):
     d = tmp / "admission-v1_1"
     first = date(2000, 1, 1)
     hz = {"charts": {}, "provenance": {}, "step": "s5", "under_12_years": {}}
@@ -71,9 +88,9 @@ def _admission(tmp, charts=("C001", "C002"), break_hash=None, offset=None):
                              "families": {"dasha": {"start": (first + timedelta(days=5)).isoformat(), "end": (first + timedelta(days=60)).isoformat(), "days": 56, "years": 0.15, "under_12_years": False},
                                           "transit": {"start": first.isoformat(), "end": (first + timedelta(days=99)).isoformat(), "days": 100, "years": 0.27, "under_12_years": False}}}
     _write_json(d / "out" / "s5_horizons.json", hz)
-    offset = {c: (i % 2 == 1) for i, c in enumerate(charts)} if offset is None else offset  # SUR-RB-48 per-chart record
-    ledger = {c: ({"admitted": True, "reason": None, "offset_normalised": offset[c]} if c in offset else {"admitted": True, "reason": None}) for c in charts}
-    _write_json(d / "out" / "s6_admit.json", {"admitted": list(charts), "dry_run_set": ["C900"], "donor_pool_candidates": list(charts), "ledger": ledger})
+    _write_json(d / "out" / "s6_admit.json", {"admitted": list(charts), "dry_run_set": ["C900"], "donor_pool_candidates": list(charts),
+                                               "ledger": {c: {"admitted": True, "reason": None} for c in charts}})
+    _write_json(d / "out" / "s1_resolve.json", s1 if s1 is not None else _s1_resolve(list(charts), offset or set()))
     files = {}
     for sub in ("timelines", "out"):
         for p in sorted((d / sub).glob("*.json")):
@@ -288,18 +305,67 @@ def test_count_blind_v2_files_are_hash_checked_and_format_checked(tmp_path):
         read_count_blind(str(d2), verify=False)
 
 
-def test_sur_rb_48_offset_normalised_charts_are_read_from_s6_admit(tmp_path):
-    adm = AdmissionInputs(str(_admission(tmp_path, charts=("C001", "C002", "C003"), offset={"C001": False, "C002": True, "C003": True})))
-    assert adm.offset_normalised_count(["C001", "C002", "C003"]) == 2
-    assert adm.offset_normalised_count(["C001", "C002"]) == 1 and adm.offset_normalised_count(["C001", "C001"]) == 0
-    sub = tmp_path / "missing"
+def test_sur_rb_48_offset_normalised_admitted_charts_are_read_from_s1_resolve(tmp_path):
+    # the list intersected with the admitted set: C900 is normalised but not admitted
+    s1 = _s1_resolve(["C001", "C002", "C003"], {"C002", "C003", "C900"}, extra=["C900", "C901"])
+    adm = AdmissionInputs(str(_admission(tmp_path, charts=("C001", "C002", "C003"), s1=s1)))
+    assert adm.offset_normalised_count() == 2
+    none = tmp_path / "none"
+    none.mkdir()
+    assert AdmissionInputs(str(_admission(none, charts=("C001",)))).offset_normalised_count() == 0
+
+
+def _adm_with(tmp_path, name, s1):
+    sub = tmp_path / name
     sub.mkdir()
-    adm2 = AdmissionInputs(str(_admission(sub, charts=("C001", "C002"), offset={"C001": True})))  # C002 has no record
+    return AdmissionInputs(str(_admission(sub, charts=("C001", "C002"), s1=s1)))
+
+
+def test_sur_rb_48_the_list_must_agree_with_the_per_chart_records(tmp_path):
+    base = ["C001", "C002"]
+    with pytest.raises(InputError, match="disagrees"):  # listed, but its record is null
+        _adm_with(tmp_path, "a", _s1_resolve(base, {"C001"}, listed=["C001", "C002"])).offset_normalised_count()
+    with pytest.raises(InputError, match="disagrees"):  # a non-null record missing from the list
+        _adm_with(tmp_path, "b", _s1_resolve(base, {"C001", "C002"}, listed=["C001"])).offset_normalised_count()
+    with pytest.raises(InputError, match="disagrees"):  # disagreement on a non-admitted chart refuses too
+        _adm_with(tmp_path, "c", _s1_resolve(base, {"C001", "C900"}, extra=["C900"], listed=["C001"])).offset_normalised_count()
+    with pytest.raises(InputError, match="twice"):
+        _adm_with(tmp_path, "d", _s1_resolve(base, {"C001"}, listed=["C001", "C001"])).offset_normalised_count()
+
+
+def test_sur_rb_48_malformed_records_and_missing_variants_refuse(tmp_path):
+    s1 = _s1_resolve(["C001", "C002"], {"C001"})
+    s1["charts"]["C001"]["variants"]["0"]["normalisation"].pop("residual_seconds")
+    with pytest.raises(InputError, match="malformed normalisation"):
+        _adm_with(tmp_path, "a", s1).offset_normalised_count()
+    s1 = _s1_resolve(["C001", "C002"], {"C001"})
+    s1["charts"]["C001"]["variants"]["0"]["normalisation"] = True
+    with pytest.raises(InputError, match="malformed normalisation"):
+        _adm_with(tmp_path, "b", s1).offset_normalised_count()
+    s1 = _s1_resolve(["C001", "C002"], set())
+    del s1["charts"]["C002"]["variants"]["0"]  # an admitted chart without a variant-0 record
+    with pytest.raises(InputError, match="variant-0"):
+        _adm_with(tmp_path, "c", s1).offset_normalised_count()
+    s1 = _s1_resolve(["C001", "C002"], set())
+    del s1["offset_normalised_charts"]
     with pytest.raises(InputError, match="SUR-RB-48"):
-        adm2.offset_normalised_count(["C001", "C002"])
-    assert adm2.offset_normalised_count(["C001"]) == 1
-    sub3 = tmp_path / "str"
-    sub3.mkdir()
-    adm3 = AdmissionInputs(str(_admission(sub3, charts=("C001",), offset={"C001": "yes"})))  # not a boolean
-    with pytest.raises(InputError, match="SUR-RB-48"):
-        adm3.offset_normalised_count(["C001"])
+        _adm_with(tmp_path, "d", s1).offset_normalised_count()
+
+
+def test_sur_rb_48_s1_resolve_is_hash_checked(tmp_path):
+    d = _admission(tmp_path, charts=("C001", "C002"), offset={"C002"})
+    doc = json.loads((d / "out" / "s1_resolve.json").read_text())
+    doc["offset_normalised_charts"] = []
+    doc["charts"]["C002"]["variants"]["0"]["normalisation"] = None  # consistent, but not the file the manifest hashed
+    (d / "out" / "s1_resolve.json").write_text(json.dumps(doc))
+    with pytest.raises(InputError, match="sha256"):
+        AdmissionInputs(str(d)).offset_normalised_count()
+
+
+@pytest.mark.skipif(not (Path("/Users/Dev/Archives/madhav-research-library/10_engine/admission-v1_1/out/TIMELINES_MANIFEST.json")).exists(), reason="step-5 artefacts not on this machine")
+def test_sur_rb_48_the_real_step5_files_give_seven():
+    """Read-only on the closed step-5 artefacts (hash-checked): s1_resolve 40d060b0...3f413e, s6_admit af460a17...."""
+    adm = AdmissionInputs("/Users/Dev/Archives/madhav-research-library/10_engine/admission-v1_1")
+    assert adm.files["out/s1_resolve.json"] == "40d060b0e947b5c32010014427c08ff7a32fefd2edfc2d1061adc83ac63f413e"
+    assert adm.files["out/s6_admit.json"].startswith("af460a17")
+    assert adm.offset_normalised_count() == 7
