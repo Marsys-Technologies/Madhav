@@ -80,6 +80,8 @@ def cmd_gate(a) -> int:
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True, mode=0o700)
     cal = _load(a)
+    if a.d7_known:  # review N6: the single m that D7 fixed applies to every study
+        cal.fixed_testable = {f: f in a.testable.split(",") for f in C.FAMILIES}
     by_model: Dict[str, List[Dict[str, Any]]] = {}
     t0 = time.time()
     for m in a.models.split(","):

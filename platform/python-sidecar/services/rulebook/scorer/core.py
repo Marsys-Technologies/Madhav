@@ -1,21 +1,23 @@
 """Rule Book scorer - the statistics: percentile scores, check (a), checks (b) and (c), direction check.
 
-Conventions fixed here, each tied to a clause of the yardstick (v1.0 as amended by v1.1):
+Conventions fixed here, each tied to a clause of the yardstick (v1.0 as amended by v1.1 to v1.5):
 
 * Episode score (v1.0 3.2, v1.1 C3). For a member: coverage of the window = share of ASSESSED days
   that are TRUE (a window with fewer than half its days assessed is not scored). Its percentile is the
   mid-rank of that coverage among the coverages of all scorable windows of the same length lying wholly
   inside the same block (no wrap; a window clipped at a block edge is ranked against windows of the
   clipped length). A member whose coverage is identical in every such window is dropped for the
-  episode. Unit score = mean of its members' percentiles; episode score = mean of its units'.
+  episode. Unit score = mean over its readings' percentiles (SUR-RB-39: a reading applies when a member is at least
+  half assessed; masks only); episode score = mean of its units'.
 * T = mean over charts of (mean over that chart's episodes of the episode score).
 * Check (a) (v1.1 D1): per chart and block, ONE shift drawn uniformly among the integers that keep every
   episode window of the block inside the block (and, added here for NOT_ASSESSED, on which every episode
-  of the block is still scorable). 5-year blocks; F-D also 15-year blocks, in the same draws.
+  of the block is still scorable). 5-year blocks; F-D also 15-year blocks, each scheme in its OWN draws (v1.4 M1).
 * Z25 (v1.1 D2): the mean of the top quartile of unit z-scores among units with at least 10 applicable
   episodes; a unit's score is the mean percentile over its applicable episodes (pooled over charts); z is
   standardised by the mean and sd of that score across the draws.
-* p1 of a family: single-step min-p over the family's statistics, all ranked in the same draws.
+* p1 of a family: within each scheme, single-step min-p over that scheme's statistics in its draws (K5); F-T has one
+  scheme; F-D combines its two schemes by Simes, min(1, 2 min, max) (v1.4 M1; Bonferroni is the logged fallback).
 * Check (b)/(c) (v1.1 D3, D4): per-chart independent donor draw, including self; donor mean fixed.
 * Direction check (v1.1 D5): own-polarity score minus opposite-polarity score, from the (a) draws.
 

@@ -65,6 +65,8 @@ class Calibration:
         for a, b in zip(self.tls[C.FAMILY_DASHA], self.tls[C.FAMILY_TRANSIT]):
             assert a.code == b.code and a.h_start >= b.h_start and a.h_end == b.h_end
         self.pmfs = [O._DayPmf(t) for t in self.tls[C.FAMILY_TRANSIT]]
+        # review N6: once D7 has fixed m, every study uses that single m (None = decide per study, before D7)
+        self.fixed_testable: Optional[Dict[str, bool]] = None
         self.eff = {f: O.ChartTimelineSet(self.ctx[f]) for f in FAMS}
         # D7.2 second half: at least half the family's units survive the footprint gate in at least one window class
         self.units_ok = {
@@ -116,14 +118,14 @@ class Calibration:
             app = [e for e, ok in zip(eps_f[f], applicable_mask(self.ctx[f], eps_f[f])) if ok]
             app_counts[f] = (len(app), len({e.chart for e in app}))
             # this study's D7, as production would decide it (review S6): counts, units surviving the gate, K11 floors
-            testable[f] = bool(
+            testable[f] = bool(self.fixed_testable[f]) if self.fixed_testable is not None else bool(
                 app_counts[f][0] >= C.TESTABLE_MIN_EPISODES
                 and app_counts[f][1] >= C.TESTABLE_MIN_CHARTS
                 and self.units_ok[f]
                 and res[f].get("donor_floor_ok")
                 and res[f].get("p1") is not None
             )
-        p1 = {f: res[f]["p1"] for f in FAMS if testable[f]}
+        p1 = {f: res[f]["p1"] for f in FAMS if testable[f] and res[f].get("p1") is not None}
         adj = holm_adjust(p1) if p1 else {}
         out: Dict[str, Any] = {"model": model, "i": index, "q": q, "target": target, "sparse": sparse, "min_usable": min_usable}
         for f in FAMS:

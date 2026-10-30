@@ -33,6 +33,7 @@ from services.rulebook.scorer.core import (
 from services.rulebook.scorer.footprint import touch_rates, unit_touch
 from services.rulebook.scorer.model import ChartTimeline, Episode, MemberSpec, UnitSpec
 from services.rulebook.scorer.outcome import CHANCE, NO_VERDICT, decide
+import services.rulebook.scorer.runner as R
 from services.rulebook.scorer.runner import (
     RunLedger,
     RunLock,
@@ -58,9 +59,22 @@ def _two_families(n_charts=22, per_chart=22, seed=3):
     return ctx, {f: list(eps) for f in ctx}
 
 
+def _manifest_and_table(units_by_family):
+    """A UNIT_MANIFEST / cluster table pair that defines exactly the toy units (units_from_manifest reads it back)."""
+    units, clusters = [], []
+    for fam, units_ in units_by_family.items():
+        for u in units_:
+            members = [{"rulebook_id": m.rid, "status": "evaluable", "area_tags": sorted(m.area_tags), "transit_bodies": ["chandra"] if m.moon else []} for m in u.members()]
+            units.append({"unit_id": u.unit_id, "plane": fam, "status": "evaluable", "kind": u.kind, "polarity": u.polarity, "members": members})
+            if u.kind == "cluster":
+                clusters.append({"cluster_id": u.unit_id, "scored_as": u.scored_as, "groups_scored": [[m.rid for m in g] for g in u.groups]})
+    return {"units": units}, {"clusters": clusters}
+
+
 @pytest.fixture
 def lockfiles(tmp_path, monkeypatch):
-    """Stand-in yardstick, cluster-table and manifest files; the constants are pointed at their hashes."""
+    """Stand-in yardstick files, a manifest and cluster table defining the toy units, occurrence and birth-data files;
+    the constants are pointed at their hashes."""
     files = {}
     ys = {}
     for name in C.YARDSTICK_SHA256:
@@ -68,11 +82,15 @@ def lockfiles(tmp_path, monkeypatch):
         p.write_text(f"stand-in {name}")
         ys[name] = hashlib.sha256(p.read_bytes()).hexdigest()
         files["yardstick " + name] = str(p)
+    ctx, _ = _two_families()
+    man, tab = _manifest_and_table({f: c.units for f, c in ctx.items()})
     ct = tmp_path / "FINAL_CLUSTER_TABLE_v1_1.json"
-    ct.write_text("{}")
+    ct.write_text(json.dumps(tab))
     mf = tmp_path / "UNIT_MANIFEST_v1_0.json"
-    mf.write_text("{}")
+    mf.write_text(json.dumps(man))
     files["cluster_table"], files["unit_manifest"] = str(ct), str(mf)
+    (tmp_path / "occurrences.csv").write_text("synthetic stand-in")
+    (tmp_path / "birth_data.csv").write_text("synthetic stand-in")
     monkeypatch.setattr(C, "YARDSTICK_SHA256", ys)
     monkeypatch.setattr(C, "CLUSTER_TABLE_SHA256", hashlib.sha256(ct.read_bytes()).hexdigest())
     monkeypatch.setattr(C, "DRAWS_PRODUCTION", 120)
@@ -80,19 +98,26 @@ def lockfiles(tmp_path, monkeypatch):
 
 
 def _lock(ctx, eps, files, tmp_path, **over):
+    import platform
+
+    from services.rulebook.scorer.footprint import family_testable
+
     d7, rows = {}, {}
     for f, c in ctx.items():
         kept, _ = prepare_episodes(c, eps[f])
         own = d7_from_counts(c, kept)
         don = donor_eligibility_counts(c, kept)
-        d7[f] = {"testable": True, "dir_testable": own["dir_testable"], "z25_units": own["z25_units"] if len(own["z25_units"]) >= 8 else [],
-                 "donor_charts_b": don["b"], "donor_charts_c": don["c"]}
+        d7[f] = {"testable": family_testable(c, kept)["testable"], "dir_testable": own["dir_testable"],
+                 "z25_units": own["z25_units"] if len(own["z25_units"]) >= 8 else [], "donor_charts_b": don["b"], "donor_charts_c": don["c"]}
         rows[f] = [{"chart_id": k[0], "area": k[1], "direction": k[2], "grade": k[3], **v} for k, v in recount_rows(c, kept).items()]
+    occ, birth = tmp_path / "occurrences.csv", tmp_path / "birth_data.csv"
     args = dict(
-        occurrence_sha256="o" * 64, birth_data_sha256="b" * 64, scorer_sha256=C.source_sha256(), seed=7,
-        fallback_primary_set=False, count_set="primary_nonschedulable",
+        occurrence_sha256=hashlib.sha256(occ.read_bytes()).hexdigest(), birth_data_sha256=hashlib.sha256(birth.read_bytes()).hexdigest(),
+        scorer_sha256=C.source_sha256(), seed=7, fallback_primary_set=False, count_set="primary_nonschedulable",
         admitted={f: [t.code for t in c.tl] for f, c in ctx.items()}, d7=d7, count_rows=rows, files=files,
-        ledger_dir=str(tmp_path / "ledger"),
+        ledger_dir=str(tmp_path / "ledger"), occurrence_path=str(occ), birth_data_path=str(birth),
+        manifest_sha256=hashlib.sha256(Path(files["unit_manifest"]).read_bytes()).hexdigest(),
+        numpy_version=np.__version__, python_version=platform.python_version(), test_mode=True,
     )
     args.update(over)
     return RunLock(**args)
@@ -127,7 +152,7 @@ def test_b1_month_straddling_the_horizon_mixed_and_g3_rows_are_dropped_before_th
     assert any(e.lo == t.h_end - 1 and e.hi == t.h_end for e in kept)  # clipped to 2 days, kept (K2)
     lock = _lock(ctx, eps, lockfiles, tmp_path)
     res = score_sample(ctx, eps, _cfg(), lock)
-    assert res["outcome"] in ("STRONG", "MIDDLE", "CHANCE-LEVEL") and len(_claims(tmp_path)) == 2
+    assert res["outcome"] in ("STRONG", "MIDDLE", "CHANCE-LEVEL") and len(_claims(tmp_path)) == 1
     assert res["validation_drops"][C.FAMILY_DASHA]["dropped_horizon"] == 1
 
 
@@ -161,15 +186,16 @@ def test_s1_dasha_p1_is_simes_over_within_scheme_min_p():
 
 
 def test_s1_simes_is_not_conservative_like_the_independent_pairing():
-    """On toy nulls the old 4-statistic min-p across independent streams had a mean p1 near 0.63."""
+    """On toy nulls the old 4-statistic min-p across independent streams had a mean p1 near 0.63 (review M-a: the
+    band must exclude it)."""
     ps = []
-    for s in range(60):
+    for s in range(100):
         if s % 20 == 0:
             tls, units = toy_world(800 + s, n_charts=16, years=40, n_units=8)
             ctx = FamilyContext(C.FAMILY_DASHA, tls, units)
         r = score_family(ctx, random_episodes(np.random.default_rng(s), tls, 12, AREAS), C.ScoreConfig(draws=200, seed=s))
         ps.append(r["p1"])
-    assert 0.38 < float(np.mean(ps)) < 0.62
+    assert 0.42 < float(np.mean(ps)) < 0.58
 
 
 # ── S2: the sealed D7 record decides, and the recount must agree, before the claim ───────────────────────
@@ -264,14 +290,104 @@ def test_s5_reordering_the_charts_cannot_buy_a_second_run(tmp_path, lockfiles):
     assert claim_keys(lock, rev) == claim_keys(lock, ctx)
     with pytest.raises(RunRefused, match="already been run"):
         score_sample(rev, reps, _cfg(), lock)
-    # one episode fewer, same occurrence file hash: still the same opened sample
+    # one episode fewer, same occurrence file: still the same opened sample, refused
     fewer = {f: v[:-1] for f, v in eps.items()}
-    with pytest.raises(RunRefused):
+    with pytest.raises(RunRefused, match="already been run"):
         score_sample(ctx, fewer, _cfg(), _lock(ctx, fewer, lockfiles, tmp_path))
 
 
-def test_s5_the_ledger_has_one_fixed_logged_path():
+def test_s5_the_ledger_has_one_fixed_logged_path(tmp_path, lockfiles):
     assert RunLedger().dir == Path(C.LEDGER_DIR) and C.LEDGER_DIR.endswith("10_engine/run-ledger")
+    ctx, eps = _two_families()
+    with pytest.raises(RunRefused, match="ledger path"):  # outside tests a non-canonical ledger is refused (N5)
+        score_sample(ctx, eps, _cfg(), _lock(ctx, eps, lockfiles, tmp_path, test_mode=False))
+    lock = _lock(ctx, eps, lockfiles, tmp_path)
+    with pytest.raises(RunRefused, match="logged ledger"):  # a ledger object pointing elsewhere is refused too
+        score_sample(ctx, eps, _cfg(), lock, ledger=RunLedger(str(tmp_path / "elsewhere")))
+
+
+def test_n5_occurrence_and_birth_files_are_rehashed_before_the_claim(tmp_path, lockfiles):
+    ctx, eps = _two_families()
+    lock = _lock(ctx, eps, lockfiles, tmp_path)
+    (tmp_path / "occurrences.csv").write_text("a different occurrence file")
+    with pytest.raises(RunRefused, match="occurrence file"):
+        score_sample(ctx, eps, _cfg(), lock)
+    with pytest.raises(RunRefused, match="birth-data"):
+        score_sample(ctx, eps, _cfg(), replace(lock, birth_data_path=None))
+    assert _claims(tmp_path) == []
+
+
+def test_s8_units_must_be_those_of_the_hashed_manifest(tmp_path, lockfiles):
+    ctx, eps = _two_families()
+    lock = _lock(ctx, eps, lockfiles, tmp_path)
+    d = ctx[C.FAMILY_DASHA]
+    ctx2 = dict(ctx)
+    ctx2[C.FAMILY_DASHA] = FamilyContext(C.FAMILY_DASHA, d.tl, d.units[:-1], d.gate_drop)  # one unit missing
+    with pytest.raises(RunRefused, match="hashed manifest"):
+        score_sample(ctx2, eps, _cfg(), lock)
+    with pytest.raises(RunRefused, match="unit manifest does not match"):
+        score_sample(ctx, eps, _cfg(), replace(lock, manifest_sha256="0" * 64))
+
+
+def test_s8_timelines_must_be_the_step5_artefacts(tmp_path, lockfiles):
+    ctx, eps = _two_families()
+    with pytest.raises(RunRefused, match="step-5"):
+        score_sample(ctx, eps, _cfg(), _lock(ctx, eps, lockfiles, tmp_path, admission_dir=str(tmp_path / "no-such-dir")))
+    with pytest.raises(RunRefused, match="not tied to the step-5"):
+        score_sample(ctx, eps, _cfg(), _lock(ctx, eps, lockfiles, tmp_path, test_mode=False, ledger_dir=C.LEDGER_DIR))
+    assert _claims(tmp_path) == []
+
+
+def test_m9_numpy_and_python_versions_are_pinned(tmp_path, lockfiles):
+    ctx, eps = _two_families()
+    with pytest.raises(RunRefused, match="pinned"):
+        score_sample(ctx, eps, _cfg(), _lock(ctx, eps, lockfiles, tmp_path, numpy_version="0.0.0"))
+
+
+def test_n3_the_sealed_testability_flag_is_recounted(tmp_path, lockfiles):
+    ctx, eps = _two_families()
+    lock = _lock(ctx, eps, lockfiles, tmp_path)
+    bad = {f: dict(v) for f, v in lock.d7.items()}
+    bad[C.FAMILY_TRANSIT]["testable"] = not bad[C.FAMILY_TRANSIT]["testable"]
+    with pytest.raises(RunRefused, match="testability"):
+        score_sample(ctx, eps, _cfg(), replace(lock, d7=bad))
+
+
+def test_n4_a_crash_after_the_claim_still_spends_the_sample(tmp_path, lockfiles, monkeypatch):
+    ctx, eps = _two_families()
+    lock = _lock(ctx, eps, lockfiles, tmp_path)
+    real = R.descriptive_hits
+    calls = {"n": 0}
+
+    def flaky(*a, **k):  # passes in the dry pass, fails in the real run (after the claim)
+        calls["n"] += 1
+        if calls["n"] > len([f for f in ctx]):
+            raise RuntimeError("post-claim failure")
+        return real(*a, **k)
+
+    monkeypatch.setattr(R, "descriptive_hits", flaky)
+    with pytest.raises(RuntimeError):
+        score_sample(ctx, eps, _cfg(), lock)
+    assert len(_claims(tmp_path)) == 1  # the claim is never released
+    monkeypatch.setattr(R, "descriptive_hits", real)
+    with pytest.raises(RunRefused, match="already been run"):
+        score_sample(ctx, eps, _cfg(), lock)
+
+
+def test_n7_the_dry_pass_covers_part_e_and_writing_the_result(tmp_path, lockfiles, monkeypatch):
+    ctx, eps = _two_families()
+    lock = _lock(ctx, eps, lockfiles, tmp_path)
+    for target in ("decide", "write_result"):
+        orig = getattr(R, target)
+
+        def boom(*a, **k):
+            raise ValueError(f"{target} broken")
+
+        monkeypatch.setattr(R, target, boom)
+        with pytest.raises(RunRefused, match="dry pass"):
+            score_sample(ctx, eps, _cfg(), lock)
+        monkeypatch.setattr(R, target, orig)
+    assert _claims(tmp_path) == [] and not list((tmp_path).glob(".dry-pass-*"))
 
 
 # ── S6 and S7 are in test_calib.py (gate under m = 1 and m = 2; NOT_GATE conditions; q = 30% sanity) ──────────
@@ -295,7 +411,7 @@ def test_s8_result_header_carries_the_computed_hashes(tmp_path, lockfiles):
     ctx, eps = _two_families()
     res = score_sample(ctx, eps, _cfg(), _lock(ctx, eps, lockfiles, tmp_path))
     assert res["input_sha256"]["cluster_table"] == hashlib.sha256(Path(lockfiles["cluster_table"]).read_bytes()).hexdigest()
-    assert len(res["yardstick_sha256"]) == 5 and res["numpy"] and res["python"]
+    assert len(res["yardstick_sha256"]) == 6 and res["numpy"] and res["python"]
 
 
 # ── M1: the opposite-polarity mask narrows the shift set only for the direction statistic ────────────────────
@@ -419,3 +535,20 @@ def test_m9_study_lines_are_sorted_before_hashing(tmp_path, monkeypatch):
     H.run_many(Stub(), [("N0", i, 0.0, "dasha", False) for i in (3, 1, 2)], 1, str(out1))
     H.run_many(Stub(), [("N0", i, 0.0, "dasha", False) for i in (2, 3, 1)], 1, str(out2))
     assert out1.read_bytes() == out2.read_bytes()
+
+
+def test_n6_with_d7_known_every_study_uses_the_single_m_d7_fixed():
+    from services.rulebook.scorer_calib import harness as H
+    from services.rulebook.scorer_calib import occurrences as O
+
+    tls, units = toy_world(21, n_charts=16, years=25, n_units=8)
+    t_units = [replace(u, plane=C.FAMILY_TRANSIT) for u in units]
+    prof = O.CountsProfile(tuple(tuple([(CAREER, C.FAVOURABLE, C.G2)] * 3) for _ in tls))  # too few to be testable
+    cal = H.Calibration({C.FAMILY_DASHA: tls, C.FAMILY_TRANSIT: tls}, {C.FAMILY_DASHA: units, C.FAMILY_TRANSIT: t_units}, {}, prof, draws=50)
+    r = cal.run_study("N0", 0)
+    assert r["dasha"]["testable"] is False  # per-study counts say untestable
+    cal.fixed_testable = {C.FAMILY_DASHA: True, C.FAMILY_TRANSIT: False}
+    r2 = cal.run_study("N0", 0)
+    assert r2["dasha"]["testable"] is True and r2["transit"]["testable"] is False
+    if r2["dasha"]["p1"] is not None:
+        assert r2["dasha"]["adj"] == r2["dasha"]["p1"]  # m = 1: Holm leaves p1 unchanged
