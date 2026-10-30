@@ -256,9 +256,10 @@ from services.rulebook.scorer.model import ChartTimeline as _CT
 
 _STATE = threading.local()
 ALLOWED_VALUE_READERS = {
-    "_member_vals": "carve-out 1 (statistics) and 3 (constant-member rule), via comp_vals / comp_prefix",
-    "comp_prefix": "carve-out 1 and 3: percentile curves",
-    "_reading_state": "carve-out 2: D8 touch rates",
+    "_reading_arrays": "carve-outs 1 and 3: coverage, percentiles, the constant-member rule, (b)/(c) coverages",
+    "comp_prefix": "carve-out 1: descriptive O/E of the statistics' episodes",
+    "_member_vals": "carve-out 1: statistics helpers",
+    "_reading_touch": "carve-out 2: D8 touch rates",
 }
 
 
@@ -453,8 +454,8 @@ def _carve_out_3(ctx, eps):
             for pol in ("promotive", "obstructive"):
                 for v in ctx.klass_variants((pol, ep.area, ep.grade)):
                     for comp in v.components():
-                        T, A = ctx.comp_prefix(e.chart, comp)
-                        flags[(scheme, e.chart, e.blk, e.L, comp)] = core.block_constant(T, A, bl, bh, e.L)
+                        cov = ctx.comp_coverage(scheme, e.chart, e.blk, e.L, comp)
+                        flags[(scheme, e.chart, e.blk, e.L, comp)] = core.constant_coverage(cov)
     return flags
 
 
@@ -485,9 +486,9 @@ def test_iii_scored_set_depends_on_states_only_through_carve_out_3():
             ok = False
             for v in ctx.klass_variants((C.POLARITY_OF_DIRECTION[ep.direction], ep.area, ep.grade)):
                 for comp in v.components():
-                    T, A = ctx.comp_prefix(e.chart, comp)
-                    win_ok = (A[e.a + e.L] - A[e.a]) * 2 >= e.L
-                    if win_ok and not core.block_constant(T, A, bl, bh, e.L):
+                    cov = ctx.comp_coverage(scheme, e.chart, e.blk, e.L, comp)
+                    # applies in the window (masks only) and is not constant in the block (carve-out 3)
+                    if np.isfinite(cov[e.off]) and not core.constant_coverage(cov):
                         ok = True
             out.append(ok)
         return out
@@ -500,8 +501,9 @@ def test_iii_scored_set_depends_on_states_only_through_carve_out_3():
             assert scorable_mask(ctx, eps, scheme) == derived(ctx, eps, scheme)
 
 
-@pytest.mark.xfail(strict=True, reason="PENDING RULING: a multi-member reading's NOT_ASSESSED day follows Kleene OR (TRUE or N = TRUE), so whether its window is half assessed can depend on TRUE days inside it")
-def test_iii_or_reading_assessment_with_a_not_assessed_member():
+def test_iii_or_reading_applicability_is_masks_only_sur_rb_39():
+    """Was the open case (Kleene OR made a reading's window assessed through a TRUE day). Under SUR-RB-39 (1) the
+    passing members, and so whether the reading applies, come from the masks alone."""
     n = 365 * 6
     lo, hi = month_window(1992, 4)
     a = runs_series(np.random.default_rng(1), n, 0.3, 10)  # informative across the block

@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 
 from services.rulebook.scorer import config as C
-from services.rulebook.scorer.core import make_blocks, min_p_adjusted, or_values, percentile_curve, pool_p, pool_p_all
+from services.rulebook.scorer.core import make_blocks, min_p_adjusted, percentile_curve, pool_p, pool_p_all, reading_coverage
 from services.rulebook.scorer.model import ScorerError, mask_unstable
 from services.rulebook.scorer.outcome import (
     CHANCE,
@@ -122,25 +122,44 @@ def test_percentile_reference_stays_inside_the_block():
 
 
 # ── OR of groups ──────────────────────────────────────────────────────────────
-def _kleene(vals):
-    if any(v == 1 for v in vals):
-        return 1.0
-    if any(np.isnan(v) for v in vals):
-        return np.nan
-    return 0.0
+def _cov1(arrs, L=4):
+    return reading_coverage([np.array(a, dtype=np.int8) for a in arrs], np.array([0]), L)[0]
 
 
-def test_or_of_a_reading_is_kleene_or():
-    for combo in itertools.product([0.0, 1.0, np.nan], repeat=3):
-        got = or_values([np.array([v]) for v in combo])[0]
-        want = _kleene(combo)
-        assert (np.isnan(got) and np.isnan(want)) or got == want
+def test_reading_rule_true_na_and_false_na_days():
+    """SUR-RB-39 (1): a NOT_ASSESSED member adds nothing. TRUE/N reads TRUE; FALSE/N reads FALSE."""
+    # member A assessed all 4 days, B assessed 2 of 4 (passes, exactly half): days are the union of both
+    assert _cov1([[1, 0, 0, 0], [-1, -1, 0, 0]]) == pytest.approx(1 / 4)  # TRUE/N day -> TRUE
+    assert _cov1([[0, 0, 0, 0], [-1, -1, 1, 0]]) == pytest.approx(1 / 4)
+    assert _cov1([[0, 0, 0, 0], [-1, -1, 0, 0]]) == 0.0  # FALSE/N days -> FALSE, never NOT_ASSESSED
+    # a member under half assessed does not pass: its TRUE day is not counted
+    assert _cov1([[0, 0, 0, 0], [1, -1, -1, -1]]) == 0.0
+    # days only the failing member covers are not in the day set: A assessed 2 of 4, B 1 of 4 (fails)
+    assert _cov1([[1, -1, -1, 0], [-1, 1, -1, -1]]) == pytest.approx(1 / 2)
+    # no member passes: the reading does not apply in this window
+    assert np.isnan(_cov1([[-1, -1, -1, 0], [-1, 1, -1, -1]]))
 
 
-def test_share_based_or_is_gone():
-    """v1.4 M2: no '1 - prod(1 - share)' form: a reading's state is 0/1/NaN only."""
-    got = or_values([np.array([1.0, 0.0, np.nan]), np.array([0.0, 0.0, 0.0])])
-    assert got[0] == 1.0 and got[1] == 0.0 and np.isnan(got[2])  # FALSE or NOT_ASSESSED is NOT_ASSESSED (Kleene)
+def test_reading_rule_never_reads_states_to_decide_which_members_pass():
+    """Swapping TRUE and FALSE leaves which windows apply unchanged (masks only)."""
+    rng = np.random.default_rng(4)
+    arrs = [np.where(rng.random(200) < 0.3, -1, (rng.random(200) < 0.4).astype(np.int8)).astype(np.int8) for _ in range(3)]
+    flipped = [np.where(a >= 0, 1 - a, a).astype(np.int8) for a in arrs]
+    s = np.arange(0, 190)
+    assert np.array_equal(np.isfinite(reading_coverage(arrs, s, 7)), np.isfinite(reading_coverage(flipped, s, 7)))
+
+
+def test_single_member_reading_equals_the_member_rule():
+    rng = np.random.default_rng(5)
+    a = (rng.random(300) < 0.3).astype(np.int8)
+    a[rng.integers(0, 300, 60)] = -1
+    s = np.arange(0, 290)
+    cov = reading_coverage([a], s, 5)
+    for i in (0, 10, 77, 200):
+        w = a[i : i + 5]
+        n = int((w >= 0).sum())
+        want = (w == 1).sum() / n if n * 2 >= 5 else np.nan
+        assert (np.isnan(cov[i]) and np.isnan(want)) or cov[i] == pytest.approx(want)
 
 
 # ── p-values and min-p ─────────────────────────────────────────────────────────

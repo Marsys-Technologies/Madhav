@@ -213,19 +213,30 @@ def test_declared_profile_is_reproducible_and_counts_only():
 
 # ── planted effect ────────────────────────────────────────────────────────────────────────────────────
 def _cov(ctx, chart, klass, lo, hi, units=None):
-    """Pooled coverage of the applicable units (optionally only ``units``) over [lo, hi]: share of TRUE days."""
+    """Coverage of the applicable units over [lo, hi] by the scorer's rule (SUR-RB-39 (1)), computed naively:
+    per reading, members at least half assessed, union of their assessed days, TRUE if any is TRUE; unit = mean over
+    its readings that apply; episode = mean over its units that apply."""
     t = ctx.tl[chart]
-    tr = asd = 0.0
+    a0, L = lo - t.h_start, hi - lo + 1
+    ucov = []
     for v in ctx.klass_variants(klass):
         if units is not None and v.unit_id not in units:
             continue
-        comps = v.components()
-        for comp in comps:
-            val = ctx.comp_vals(chart, comp)[lo - t.h_start : hi - t.h_start + 1]
-            ok = ~np.isnan(val)
-            tr += np.where(ok, val, 0.0).sum() / len(comps)
-            asd += ok.sum() / len(comps)
-    return tr / asd if asd else np.nan
+        rc = []
+        for reading in v.readings():
+            arrs = [t.states[r] for r in reading if int((t.states[r][a0 : a0 + L] >= 0).sum()) * 2 >= L]
+            if not arrs:
+                continue
+            day_ok = np.zeros(L, dtype=bool)
+            day_true = np.zeros(L, dtype=bool)
+            for x in arrs:
+                w = x[a0 : a0 + L]
+                day_ok |= w >= 0
+                day_true |= w == 1
+            rc.append(day_true.sum() / day_ok.sum())
+        if rc:
+            ucov.append(np.mean(rc))
+    return float(np.mean(ucov)) if ucov else np.nan
 
 
 def test_planted_effect_uses_the_top_20_percent_coverage_windows_of_the_chart():

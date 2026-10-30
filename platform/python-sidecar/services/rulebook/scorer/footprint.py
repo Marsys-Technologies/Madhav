@@ -17,59 +17,48 @@ from .core import FamilyContext, _place
 from .model import ChartTimeline, Episode, UnitSpec
 
 
-def _reading_state(t: ChartTimeline, rids: Sequence[str]) -> np.ndarray:
-    """Kleene OR of the members' states (1, 0, -1 NOT_ASSESSED). CARVE-OUT 2 (SUR-RB-36): the D8 touch rates read
-    TRUE/FALSE states, from timelines alone, before any occurrence exists."""
+def _windows(t: ChartTimeline, window: str) -> Tuple[np.ndarray, np.ndarray]:
+    """Window starts and lengths wholly inside the horizon: '3d' every 3-day window starting on each day; 'month'
+    the calendar months (SUR-RB-27 Q3)."""
     n = t.n_days
-    any_true = np.zeros(n, dtype=bool)
-    any_na = np.zeros(n, dtype=bool)
-    for r in rids:
-        a = t.values(r)
-        if a is None:
-            any_na[:] = True
-            continue
-        any_true |= a == 1
-        any_na |= a < 0
-    out = np.zeros(n, dtype=np.int8)
-    out[any_true] = 1
-    out[~any_true & any_na] = -1
-    return out
-
-
-def _touch(state: np.ndarray, h_start: int, window: str) -> Optional[float]:
-    """Share of windows wholly inside the horizon, at least half assessed, that contain a TRUE day. NOT_ASSESSED is
-    never FALSE: a window under half assessed is skipped (SUR-RB-27 Q3). '3d' = every 3-day window starting on each
-    day; 'month' = calendar months."""
-    n = state.size
-    T = np.concatenate([[0], np.cumsum(state == 1, dtype=np.int64)])
-    A = np.concatenate([[0], np.cumsum(state >= 0, dtype=np.int64)])
     if window == "3d":
-        if n < C.G1_WINDOW_DAYS:
-            return None
-        s = np.arange(0, n - C.G1_WINDOW_DAYS + 1)
-        e = s + C.G1_WINDOW_DAYS
-    else:
-        lo, hi = [], []
-        d0 = date.fromordinal(h_start)
-        y, m = (d0.year, d0.month) if d0.day == 1 else ((d0.year + (d0.month == 12)), d0.month % 12 + 1)
-        while True:
-            first = date(y, m, 1).toordinal()
-            ny, nm = (y + 1, 1) if m == 12 else (y, m + 1)
-            last = date(ny, nm, 1).toordinal() - 1
-            if last - h_start > n - 1:
-                break
-            lo.append(first - h_start)
-            hi.append(last - h_start)
-            y, m = ny, nm
-        if not lo:
-            return None
-        s, e = np.array(lo), np.array(hi) + 1
-    L = e - s
-    assessed = A[e] - A[s]
-    ok = assessed * 2 >= L
+        s = np.arange(0, max(0, n - C.G1_WINDOW_DAYS + 1))
+        return s, np.full(s.size, C.G1_WINDOW_DAYS)
+    lo, ln = [], []
+    d0 = date.fromordinal(t.h_start)
+    y, m = (d0.year, d0.month) if d0.day == 1 else ((d0.year + (d0.month == 12)), d0.month % 12 + 1)
+    while True:
+        first = date(y, m, 1).toordinal()
+        ny, nm = (y + 1, 1) if m == 12 else (y, m + 1)
+        last = date(ny, nm, 1).toordinal() - 1
+        if last - t.h_start > n - 1:
+            break
+        lo.append(first - t.h_start)
+        ln.append(last - first + 1)
+        y, m = ny, nm
+    return np.array(lo, dtype=np.int64), np.array(ln, dtype=np.int64)
+
+
+def _reading_touch(t: ChartTimeline, rids: Sequence[str], window: str) -> Optional[float]:
+    """CARVE-OUT 2 (SUR-RB-36): the D8 touch rate of one reading, from the timeline alone. The same rule as the
+    scorer's coverage (SUR-RB-39 (1)): a window counts when at least one member is at least half assessed in it
+    (otherwise it is skipped: NOT_ASSESSED is never FALSE); it is touched when a passing member is TRUE on a day."""
+    from .core import reading_coverage
+
+    starts, lens = _windows(t, window)
+    if starts.size == 0:
+        return None
+    arrs = []
+    for r in rids:  # a plain loop: the state read is attributed to this function on every Python version
+        arrs.append(t.values(r))
+    cov = np.full(starts.size, np.nan)
+    for L in np.unique(lens):
+        sel = lens == L
+        cov[sel] = reading_coverage(arrs, starts[sel], int(L))
+    ok = np.isfinite(cov)
     if not ok.any():
         return None
-    return float(np.count_nonzero((T[e] - T[s] > 0) & ok) / np.count_nonzero(ok))
+    return float(np.count_nonzero(cov[ok] > 0) / np.count_nonzero(ok))
 
 
 def unit_touch(t: ChartTimeline, u: UnitSpec, window: str) -> Optional[float]:
@@ -78,7 +67,7 @@ def unit_touch(t: ChartTimeline, u: UnitSpec, window: str) -> Optional[float]:
     of the touch rate of the OR across groups. (All three are the mean over readings, v1.4 M2.)"""
     rates = []
     for reading in itertools.product(*[[m.rid for m in g] for g in u.groups]):
-        r = _touch(_reading_state(t, reading), t.h_start, window)
+        r = _reading_touch(t, reading, window)
         if r is not None:
             rates.append(r)
     return float(np.mean(rates)) if rates else None

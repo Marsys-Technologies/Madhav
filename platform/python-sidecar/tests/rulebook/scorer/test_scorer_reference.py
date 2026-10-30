@@ -91,13 +91,38 @@ def naive_pct(states, bl, bh, L, start):
     return (less + 0.5 * eq) / t.size
 
 
-def naive_or_state(arrays):
-    """Kleene OR of singleton-group states, day by day."""
-    out = np.zeros(arrays[0].size, dtype=np.int8)
-    for i in range(out.size):
-        vals = [int(a[i]) for a in arrays]
-        out[i] = 1 if 1 in vals else (-1 if -1 in vals else 0)
-    return out
+def naive_reading_window(arrays, s, L):
+    """(TRUE days, days) of an OR reading in window [s, s+L), SUR-RB-39 (1): only members at least half assessed in
+    the window count; days = union of their assessed days; TRUE when any of them is TRUE. None if none passes."""
+    passing = [a for a in arrays if int((a[s : s + L] >= 0).sum()) * 2 >= L]
+    if not passing:
+        return None
+    tr = ad = 0
+    for d in range(s, s + L):
+        vals = [int(a[d]) for a in passing if a[d] >= 0]
+        if vals:
+            ad += 1
+            tr += int(1 in vals)
+    return tr, ad
+
+
+def naive_reading_pct(arrays, bl, bh, L, start):
+    starts = list(range(bl, bh - L + 2))
+    w = [naive_reading_window(arrays, s, L) for s in starts]
+    ref = [x for x in w if x is not None]
+    if not ref:
+        return None
+    t = np.array([x[0] for x in ref], dtype=np.int64)
+    a = np.array([x[1] for x in ref], dtype=np.int64)
+    if np.all(t[:, None] * a[None, :] == t[None, :] * a[:, None]):
+        return None
+    me = w[start - bl]
+    if me is None:
+        return None
+    ti, ai = me
+    less = int(np.sum(t * ai < ti * a))
+    eq = int(np.sum(t * ai == ti * a))
+    return (less + 0.5 * eq) / t.size
 
 
 def naive_unit_pct(unit, t, area, grade, bl, bh, L, start):
@@ -110,7 +135,7 @@ def naive_unit_pct(unit, t, area, grade, bl, bh, L, start):
         ps = [p for p in ps if p is not None]
         return sum(ps) / len(ps) if ps else None
     assert all(len(g) == 1 for g in groups), "the naive OR handles singleton groups only"
-    return naive_pct(naive_or_state([t.states[g[0].rid] for g in groups]), bl, bh, L, start)
+    return naive_reading_pct([t.states[g[0].rid] for g in groups], bl, bh, L, start)
 
 
 def naive_episode_score(units, t, ep, polarity, shift, scheme_block):

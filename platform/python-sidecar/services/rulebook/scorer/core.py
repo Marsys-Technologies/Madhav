@@ -53,43 +53,73 @@ def make_blocks(n_days: int, block_days: int, merge_below: int) -> List[Tuple[in
     return blocks
 
 
-def _window_coverage(T: np.ndarray, A: np.ndarray, bl: int, bh: int, L: int):
-    nst = bh - bl - L + 2
-    if nst <= 0:
-        return nst, None, None
-    s = np.arange(bl, bl + nst)
-    num = T[s + L] - T[s]
-    den = A[s + L] - A[s]
-    ok = den * 2 >= L
-    cov = np.full(nst, np.nan)
-    cov[ok] = np.round(num[ok] / den[ok], 10)
-    return nst, ok, cov
+def reading_coverage(arrays: Sequence[Optional[np.ndarray]], starts: np.ndarray, L: int) -> np.ndarray:
+    """Window coverage of one reading (a member, or an OR reading of several members) for windows
+    [s, s + L - 1], s in ``starts`` (SUR-RB-39 (1)):
+
+    * a member PASSES a window when it is at least half assessed there (masks only, K2/L1); with no member passing,
+      the reading does not apply and the coverage is NaN;
+    * the window's day set is the union of the passing members' assessed days; a day is TRUE when any passing
+      member assessed that day is TRUE (a NOT_ASSESSED member adds nothing: TRUE/N reads TRUE, FALSE/N reads FALSE);
+    * coverage = TRUE days / days in that set (rounded to 1e-10 so equal rationals tie exactly).
+
+    ``arrays`` are int8 member states (1, 0, -1), None for a member with no states."""
+    k = len(arrays)
+    n_out = starts.size
+    cov = np.full(n_out, np.nan)
+    if n_out == 0 or k == 0:
+        return cov
+    arrs = [a for a in arrays]
+    As, Ts = [], []
+    for a in arrs:
+        if a is None:
+            As.append(None)
+            Ts.append(None)
+        else:
+            As.append(np.concatenate([[0], np.cumsum(a >= 0, dtype=np.int64)]))
+            Ts.append(np.concatenate([[0], np.cumsum(a == 1, dtype=np.int64)]))
+    code = np.zeros(n_out, dtype=np.int64)
+    for i, A in enumerate(As):
+        if A is None:
+            continue
+        code |= ((A[starts + L] - A[starts]) * 2 >= L).astype(np.int64) << i
+    for c in np.unique(code):
+        if c == 0:
+            continue
+        sel = code == c
+        members = [i for i in range(k) if (c >> i) & 1]
+        s0 = starts[sel]
+        if len(members) == 1:
+            i = members[0]
+            num, den = Ts[i][s0 + L] - Ts[i][s0], As[i][s0 + L] - As[i][s0]
+        else:
+            au = np.zeros(arrs[members[0]].size, dtype=bool)
+            tu = np.zeros_like(au)
+            for i in members:
+                au |= arrs[i] >= 0
+                tu |= arrs[i] == 1
+            AU = np.concatenate([[0], np.cumsum(au, dtype=np.int64)])
+            TU = np.concatenate([[0], np.cumsum(tu, dtype=np.int64)])
+            num, den = TU[s0 + L] - TU[s0], AU[s0 + L] - AU[s0]
+        cov[sel] = np.round(num / den, 10)
+    return cov
 
 
-def block_constant(T: np.ndarray, A: np.ndarray, bl: int, bh: int, L: int) -> bool:
-    """CARVE-OUT 3 (SUR-RB-36; v1.0 3.2 step 3): True when the component has the same coverage in every scorable
-    window of length L in the block [bl, bh] (or no scorable window): it carries no information and is dropped.
-    It depends on the block's state pattern only, never on where an episode falls."""
-    nst, ok, cov = _window_coverage(T, A, bl, bh, L)
-    if nst <= 0 or not ok.any():
-        return True
-    c = cov[ok]
-    return bool(c.min() == c.max())
+def constant_coverage(cov: np.ndarray) -> bool:
+    """CARVE-OUT 3 (SUR-RB-36; v1.0 3.2 step 3): True when every applicable window of the block has the same
+    coverage (or none applies): the component carries no information there and is dropped. It depends on the
+    block's state pattern only, never on where an episode falls."""
+    c = cov[np.isfinite(cov)]
+    return bool(c.size == 0 or c.min() == c.max())
 
 
-def percentile_curve(T: np.ndarray, A: np.ndarray, bl: int, bh: int, L: int) -> np.ndarray:
-    """Mid-rank percentile of the window coverage for every window start of length L inside [bl, bh].
-
-    ``T``/``A`` are prefix sums (length n+1) of TRUE and of assessed days. NaN where the window is not
-    scorable (fewer than half its days assessed) and everywhere when the component is constant in the block
-    (``block_constant``).
-    """
-    nst, ok, cov = _window_coverage(T, A, bl, bh, L)
-    if nst <= 0:
-        return np.zeros(0, dtype=np.float32)
-    out = np.full(nst, np.nan, dtype=np.float32)
-    if block_constant(T, A, bl, bh, L):
+def percentile_from_coverage(cov: np.ndarray) -> np.ndarray:
+    """Mid-rank percentile of each applicable window's coverage among all applicable windows of the block; NaN for
+    windows where the component does not apply, and everywhere when the component is constant in the block."""
+    out = np.full(cov.size, np.nan, dtype=np.float32)
+    if constant_coverage(cov):
         return out
+    ok = np.isfinite(cov)
     c = cov[ok]
     srt = np.sort(c)
     lo = np.searchsorted(srt, c, side="left")
@@ -98,15 +128,19 @@ def percentile_curve(T: np.ndarray, A: np.ndarray, bl: int, bh: int, L: int) -> 
     return out
 
 
-def or_values(member_vals: Sequence[np.ndarray]) -> np.ndarray:
-    """Kleene OR of the members of one reading (v1.4 M2): 1 if any member is TRUE, NaN if none is TRUE and some
-    member is not assessed, else 0. Inputs are float arrays (1 TRUE, 0 FALSE, NaN not assessed)."""
-    st = np.vstack([m[None, :] for m in member_vals])
-    any_true = (st == 1.0).any(axis=0)
-    any_na = np.isnan(st).any(axis=0)
-    out = np.where(any_true, 1.0, 0.0)
-    out[~any_true & any_na] = np.nan
-    return out
+def percentile_curve(T: np.ndarray, A: np.ndarray, bl: int, bh: int, L: int) -> np.ndarray:
+    """Single-member form on prefix sums (kept for the primitive tests): the member passes a window when at least
+    half assessed; percentile as ``percentile_from_coverage``."""
+    nst = bh - bl - L + 2
+    if nst <= 0:
+        return np.zeros(0, dtype=np.float32)
+    s = np.arange(bl, bl + nst)
+    num = T[s + L] - T[s]
+    den = A[s + L] - A[s]
+    ok = den * 2 >= L
+    cov = np.full(nst, np.nan)
+    cov[ok] = np.round(num[ok] / den[ok], 10)
+    return percentile_from_coverage(cov)
 
 
 TIE_TOL = 1e-12  # review M3: statistics equal within this are ties (and ties count against the observed)
@@ -163,11 +197,9 @@ class FamilyContext:
         self.gate_drop: Dict[str, FrozenSet[str]] = {k: frozenset(v) for k, v in (gate_drop or {}).items()}
         self.schemes = C.SCHEMES[family]
         self._blocks: Dict[Tuple[str, int], List[Tuple[int, int]]] = {}
-        self._cpre: Dict[Tuple[int, CompKey], Tuple[np.ndarray, np.ndarray]] = {}
         self._ucurve: Dict[Tuple[Any, ...], np.ndarray] = {}
         self._kcurve: Dict[Tuple[Any, ...], np.ndarray] = {}
         self._kvars: Dict[Klass, List[Variant]] = {}
-        self._cls_pre: Dict[Klass, Tuple[np.ndarray, np.ndarray, float]] = {}
         self.g0 = min(t.h_start for t in self.tl) if self.tl else 0
         self.g1 = max(t.h_end for t in self.tl) if self.tl else 0
         # flat layout of the per-chart prefix arrays: chart c occupies n_days + 1 entries from flat_off[c]
@@ -202,6 +234,7 @@ class FamilyContext:
 
     # component series -------------------------------------------------------
     def _member_vals(self, chart: int, rid: str) -> np.ndarray:
+        """Float states of a member (1, 0, NaN). Statistics only (the planted-effect simulator, descriptive hits)."""
         t = self.tl[chart]
         a = t.values(rid)
         if a is None:
@@ -210,42 +243,38 @@ class FamilyContext:
         v[a < 0] = np.nan
         return v
 
-    def comp_vals(self, chart: int, comp: CompKey) -> np.ndarray:
-        """Daily value of a component (1 TRUE, 0 FALSE, NaN not assessed): a member, or the Kleene OR of a reading's
-        members (v1.4 M2). Not cached."""
-        if comp[0] == "m":
-            return self._member_vals(chart, comp[1])
-        return or_values([self._member_vals(chart, r) for r in comp[1]])
+    def _reading_arrays(self, chart: int, comp: CompKey) -> List[Optional[np.ndarray]]:
+        """The member state arrays of a component (carve-outs 1 and 3: statistics and the constant-member rule)."""
+        t = self.tl[chart]
+        rids = (comp[1],) if comp[0] == "m" else tuple(comp[1])
+        out: List[Optional[np.ndarray]] = []
+        for r in rids:  # a plain loop: the state read is attributed to this function on every Python version
+            out.append(t.values(r))
+        return out
 
     def comp_prefix(self, chart: int, comp: CompKey) -> Tuple[np.ndarray, np.ndarray]:
-        """Prefix sums (length n+1) of TRUE and of assessed days. Members: exact integer counts, computed on
-        demand from the int8 states (nothing cached: curves are). OR components: cached float prefix sums."""
-        if comp[0] == "m":
-            a = self.tl[chart].values(comp[1])
-            n = self.tl[chart].n_days
-            if a is None:
-                return np.zeros(n + 1, dtype=np.int64), np.zeros(n + 1, dtype=np.int64)
-            T = np.concatenate([[0], np.cumsum(a == 1, dtype=np.int64)])
-            A = np.concatenate([[0], np.cumsum(a >= 0, dtype=np.int64)])
-            return T, A
-        k = (chart, comp)
-        if k not in self._cpre:
-            v = self.comp_vals(chart, comp)
-            ok = ~np.isnan(v)
-            self._cpre[k] = (
-                np.concatenate([[0.0], np.cumsum(np.where(ok, v, 0.0))]),
-                np.concatenate([[0], np.cumsum(ok, dtype=np.int64)]),
-            )
-        return self._cpre[k]
+        """Prefix sums (length n+1) of TRUE and of assessed days of a single member (descriptive hits)."""
+        a = self.tl[chart].values(comp[1])
+        n = self.tl[chart].n_days
+        if a is None:
+            return np.zeros(n + 1, dtype=np.int64), np.zeros(n + 1, dtype=np.int64)
+        return np.concatenate([[0], np.cumsum(a == 1, dtype=np.int64)]), np.concatenate([[0], np.cumsum(a >= 0, dtype=np.int64)])
 
     # curves -----------------------------------------------------------------
+    def comp_coverage(self, scheme: str, chart: int, blk: int, L: int, comp: CompKey) -> np.ndarray:
+        """Coverage of every window of length L wholly inside the block (``reading_coverage``)."""
+        bl, bh = self.blocks(scheme, chart)[blk]
+        nst = bh - bl - L + 2
+        if nst <= 0:
+            return np.zeros(0)
+        return reading_coverage(self._reading_arrays(chart, comp), np.arange(bl, bl + nst), L)
+
     def comp_curve(self, scheme: str, chart: int, blk: int, L: int, comp: CompKey) -> np.ndarray:
         """Percentile curve of one component in one block (not cached: unit curves are, and they dominate memory)."""
-        bl, bh = self.blocks(scheme, chart)[blk]
-        T, A = self.comp_prefix(chart, comp)
-        return percentile_curve(T, A, bl, bh, L)
+        return percentile_from_coverage(self.comp_coverage(scheme, chart, blk, L, comp))
 
     def unit_curve(self, scheme: str, chart: int, blk: int, L: int, var: Variant) -> np.ndarray:
+        """Unit percentile = mean over the readings that apply in the window (R units: the members that pass)."""
         k = (scheme, chart, blk, L, var.key)
         c = self._ucurve.get(k)
         if c is None:
@@ -268,8 +297,8 @@ class FamilyContext:
         return c
 
     def member_assessed_flat(self, rid: str) -> Optional[np.ndarray]:
-        """Flat prefix counts of member ``rid``'s ASSESSED days, all charts (layout of ``klass_prefix``); None when
-        the member is assessed on every day of every chart (then every window is fully assessed). Masks only."""
+        """Flat prefix counts of member ``rid``'s ASSESSED days, all charts (chart c from ``flat_off[c]``); None when
+        the member is assessed on every day of every chart (every window then fully assessed). Masks only."""
         if not hasattr(self, "_mflat"):
             self._mflat: Dict[str, Optional[np.ndarray]] = {}
         if rid not in self._mflat:
@@ -284,34 +313,61 @@ class FamilyContext:
             self._mflat[rid] = np.concatenate(parts).astype(np.int32) if any_na else None
         return self._mflat[rid]
 
-    # class coverage prefix arrays, global day frame (checks (b) and (c)) -----
-    def klass_prefix(self, klass: Klass) -> Tuple[np.ndarray, np.ndarray, float]:
-        """(CT, CA, W): prefix sums of the weighted TRUE and weighted assessed component-days of the class, all
-        charts concatenated in one flat array. Chart c's prefix at k days after its horizon start sits at flat
-        index ``self.flat_off[c] + k`` (k = 0..n_days). W = total weight: every unit counts once, the components
-        of one unit variant sharing its weight equally."""
-        if klass in self._cls_pre:
-            return self._cls_pre[klass]
-        vs = self.klass_variants(klass)
-        W = float(len(vs))
-        CT = np.zeros(int(self.flat_off[-1]))
-        CA = np.zeros(int(self.flat_off[-1]))
-        for ci, t in enumerate(self.tl):
-            dT = np.zeros(t.n_days)
-            dA = np.zeros(t.n_days)
-            for v in vs:
-                comps = v.components()
-                w = 1.0 / len(comps)
-                for comp in comps:
-                    val = self.comp_vals(ci, comp)
-                    ok = ~np.isnan(val)
-                    dT += w * np.where(ok, val, 0.0)
-                    dA += w * ok
-            o = int(self.flat_off[ci])
-            CT[o + 1 : o + 1 + t.n_days] = np.cumsum(dT)
-            CA[o + 1 : o + 1 + t.n_days] = np.cumsum(dA)
-        self._cls_pre[klass] = (CT, CA, W)
-        return self._cls_pre[klass]
+    def _reading_flat(self, rids: Tuple[str, ...]) -> Tuple[np.ndarray, np.ndarray]:
+        """Flat prefix counts (TRUE, assessed) of the union of ``rids``, all charts: the reading's day set when every
+        listed member passes (checks (b) and (c), statistics: carve-out 1)."""
+        if not hasattr(self, "_rflat"):
+            self._rflat: Dict[Tuple[str, ...], Tuple[np.ndarray, np.ndarray]] = {}
+        if rids not in self._rflat:
+            pt, pa = [], []
+            for ci, t in enumerate(self.tl):
+                arrs = self._reading_arrays(ci, ("or", rids))
+                au = np.zeros(t.n_days, dtype=bool)
+                tu = np.zeros(t.n_days, dtype=bool)
+                for a in arrs:
+                    if a is not None:
+                        au |= a >= 0
+                        tu |= a == 1
+                pt.append(np.concatenate([[0], np.cumsum(tu, dtype=np.int32)]))
+                pa.append(np.concatenate([[0], np.cumsum(au, dtype=np.int32)]))
+            self._rflat[rids] = (np.concatenate(pt), np.concatenate(pa))
+        return self._rflat[rids]
+
+    def episode_coverage(self, units: Sequence[Variant], lo: np.ndarray, hi: np.ndarray, charts: np.ndarray) -> np.ndarray:
+        """Coverage of one episode's unit set on several timelines (checks (b) and (c), SUR-RB-39 (2)): for timeline
+        ``charts[i]`` and window [lo[i], hi[i]] (date ordinals inside its horizon): unit coverage = mean over its
+        readings that apply (``reading_coverage`` rule); episode coverage = mean over the units. NaN where a unit
+        does not apply (the caller only passes eligible timelines)."""
+        L = int(hi[0] - lo[0] + 1)
+        hs = np.array([self.tl[c].h_start for c in charts], dtype=np.int64)
+        k0 = lo - hs
+        k1 = hi + 1 - hs
+        off = self.flat_off[:-1][charts]
+        unit_cov = []
+        for v in units:
+            rc = []
+            for reading in v.readings():
+                passing = np.zeros((len(reading), charts.size), dtype=bool)
+                for j, rid in enumerate(reading):
+                    fa = self.member_assessed_flat(rid)
+                    passing[j] = True if fa is None else ((fa[off + k1] - fa[off + k0]) * 2 >= L)
+                cov = np.full(charts.size, np.nan)
+                allp = passing.all(axis=0)
+                if allp.any():
+                    FT, FA = self._reading_flat(tuple(reading))
+                    num = FT[off + k1] - FT[off + k0]
+                    den = FA[off + k1] - FA[off + k0]
+                    cov[allp] = np.round(num[allp] / den[allp], 10)
+                some = passing.any(axis=0) & ~allp
+                for i in np.nonzero(some)[0]:  # only some members pass: the union of those that do
+                    sub = tuple(r for r, p in zip(reading, passing[:, i]) if p)
+                    t_arr = self._reading_arrays(int(charts[i]), ("or", sub))
+                    cov[i] = reading_coverage(t_arr, np.array([k0[i]]), L)[0]
+                rc.append(cov)
+            st = np.vstack(rc)
+            ok = np.isfinite(st)
+            unit_cov.append(np.where(ok.any(axis=0), np.where(ok, st, 0.0).sum(axis=0) / np.maximum(ok.sum(axis=0), 1), np.nan))
+        return np.vstack(unit_cov).mean(axis=0)
 
 
 def _nanmean_stack(curves: Sequence[np.ndarray]) -> np.ndarray:
@@ -702,7 +758,7 @@ def donor_sets(ctx: FamilyContext, episodes: Sequence[Episode], age_matched: boo
                         break
                 ok &= unit_ok
         ok[c] = False
-        out[c] = {"eps": keep, "elig": np.nonzero(ok)[0], "dlo": dlo, "dhi": dhi, "inside": inside}
+        out[c] = {"eps": keep, "units": units_of, "elig": np.nonzero(ok)[0], "dlo": dlo, "dhi": dhi, "inside": inside}
     return out
 
 
@@ -736,15 +792,13 @@ def run_donor_check(
 ) -> Dict[str, Any]:
     """T2 (calendar-matched) or T3 (age-matched), its pool and p.
 
-    Eligibility (episode set, donors) comes from ``donor_sets``, fixed before any draw. Episode coverage on a
-    timeline = weighted share of assessed class-days that are TRUE in the window. T = mean over included charts of
+    Eligibility (episode set, its own-chart applicable unit set, donors) comes from ``donor_sets``, fixed before any
+    draw. Episode coverage on a timeline = ``FamilyContext.episode_coverage`` of that unit set. T = mean over included charts of
     mean over its episodes of (coverage on the drawn timeline - mean coverage over the chart's eligible donors, own
     chart excluded). Observed: the chart's own timeline. Every eligible donor has a defined coverage for every
     episode (v1.4 M3), so no deviation is ever imputed.
     """
     sets = donor_sets(ctx, episodes, age_matched, admitted)
-    hs = np.array([t.h_start for t in ctx.tl], dtype=np.int64)
-    he = np.array([t.h_end for t in ctx.tl], dtype=np.int64)
     included: List[int] = []
     excluded: List[int] = []
     V: Dict[int, Tuple[np.ndarray, np.ndarray]] = {}
@@ -754,20 +808,13 @@ def run_donor_check(
             excluded.append(c)
             continue
         choices = np.concatenate([[c], elig])  # first entry = self = observed
-        eps = [episodes[i] for i in d["eps"]]
-        M = np.empty((len(eps), choices.size))
-        for j, e in enumerate(eps):
-            klass = (C.POLARITY_OF_DIRECTION[e.direction], e.area, e.grade)
-            CT, CA, _W = ctx.klass_prefix(klass)
-            lo, hi = d["dlo"][j][choices], d["dhi"][j][choices]
-            k0 = np.clip(lo - hs[choices], 0, he[choices] - hs[choices] + 1)
-            k1 = np.clip(hi + 1 - hs[choices], 0, he[choices] - hs[choices] + 1)
-            base = ctx.flat_off[:-1][choices]
-            num = CT[base + k1] - CT[base + k0]
-            den = CA[base + k1] - CA[base + k0]
-            if not (den > 0).all():
-                raise ScorerError("check (b)/(c): an eligible timeline has no assessed class-day in an episode window")
-            M[j] = num / den
+        M = np.empty((len(d["eps"]), choices.size))
+        for j in range(len(d["eps"])):
+            # SUR-RB-39 (2): the episode's own-chart applicable unit set, fixed before the draws, defines the coverage
+            # on the own timeline and on every donor's
+            M[j] = ctx.episode_coverage(d["units"][j], d["dlo"][j][choices], d["dhi"][j][choices], choices)
+        if not np.isfinite(M).all():
+            raise ScorerError("check (b)/(c): an eligible timeline has an undefined coverage")
         m_e = M[:, 1:].mean(axis=1)  # donor mean: eligible donors only, own chart excluded
         V[c] = (choices, (M - m_e[:, None]).mean(axis=0))
         included.append(c)

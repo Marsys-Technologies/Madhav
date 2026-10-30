@@ -306,19 +306,6 @@ class ChartTimelineSet:
         variants = [v for v in ctx.klass_variants(klass) if active is None or v.unit_id in active]
         if not variants:
             return None
-        dT = np.zeros(t.n_days)
-        dA = np.zeros(t.n_days)
-        for v in variants:
-            comps = v.components()
-            w = 1.0 / len(comps)
-            for comp in comps:
-                val = ctx.comp_vals(chart, comp)
-                ok = ~np.isnan(val)
-                dT += w * np.where(ok, val, 0.0)
-                dA += w * ok
-        CT = np.concatenate([[0.0], np.cumsum(dT)])
-        CA = np.concatenate([[0.0], np.cumsum(dA)])
-        W = float(len(variants))
         if klass[2] == C.G1:
             s = np.arange(0, t.n_days - C.G1_WINDOW_DAYS + 1)
             lo_rel, hi_rel = s, s + C.G1_WINDOW_DAYS - 1
@@ -327,17 +314,33 @@ class ChartTimelineSet:
             lo_rel, hi_rel = mlo - t.h_start, mhi - t.h_start
         if lo_rel.size == 0:
             return None
-        L = hi_rel - lo_rel + 1
-        num = CT[hi_rel + 1] - CT[lo_rel]
-        den = CA[hi_rel + 1] - CA[lo_rel]
-        ok = (den > 0) & (den * 2.0 >= W * L)
-        if not ok.any():
+        from ..scorer.core import reading_coverage
+
+        lengths = hi_rel - lo_rel + 1
+        unit_cov = []
+        for v in variants:  # the scorer's own coverage rule (SUR-RB-39): readings that apply, averaged; units averaged
+            rc = []
+            for reading in v.readings():
+                arrs = [t.values(r) for r in reading]
+                cov = np.full(lo_rel.size, np.nan)
+                for L in np.unique(lengths):
+                    sel = lengths == L
+                    cov[sel] = reading_coverage(arrs, lo_rel[sel], int(L))
+                rc.append(cov)
+            st = np.vstack(rc)
+            ok = np.isfinite(st)
+            unit_cov.append(np.where(ok.any(axis=0), np.where(ok, st, 0.0).sum(axis=0) / np.maximum(ok.sum(axis=0), 1), np.nan))
+        st = np.vstack(unit_cov)
+        ok = np.isfinite(st)
+        cov = np.where(ok.any(axis=0), np.where(ok, st, 0.0).sum(axis=0) / np.maximum(ok.sum(axis=0), 1), np.nan)
+        okw = np.isfinite(cov)
+        if not okw.any():
             return None
-        cov = np.full(lo_rel.size, -1.0)
-        cov[ok] = num[ok] / den[ok]
-        thr = np.quantile(cov[ok], 1.0 - self.TOP_SHARE)
-        sel = ok & (cov >= thr) & (cov > 0)
+        thr = np.quantile(cov[okw], 1.0 - self.TOP_SHARE)
+        sel = okw & (cov >= thr) & (cov > 0)
         return (lo_rel[sel] + t.h_start, hi_rel[sel] + t.h_start)
+
+
 
 
 def to_episodes(occ: Sequence[Occurrence], tls: Sequence[ChartTimeline]) -> List[Episode]:
