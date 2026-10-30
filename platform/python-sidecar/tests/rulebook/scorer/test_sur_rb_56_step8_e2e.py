@@ -224,3 +224,19 @@ def test_step8_files_are_files_only_and_include_every_yardstick(world, tmp_path,
     assert S8.main(_args(world, tmp_path / "o")) == 0
     assert all(Path(p).is_file() for p in seen["files"].values())
     assert {Path(p).name for p in seen["files"].values()} >= set(C.YARDSTICK_SHA256)
+
+
+def test_step8_a_stray_file_after_the_run_voids_the_sample_and_discards_the_result(world, tmp_path, monkeypatch):
+    real = R.score_sample
+
+    def then_stray(*a, **k):
+        res = real(*a, **k)
+        (Path(C.LEDGER_DIR) / ".DS_Store").write_text("")  # e.g. a Finder preview between the run and the listing
+        return res
+
+    monkeypatch.setattr(R, "score_sample", then_stray)
+    out = tmp_path / "o"
+    rc = S8.main(_args(world, out))
+    log = json.loads((out / "STEP8_RUN_LOG.json").read_text())
+    assert rc == 4 and log["stage"] == "VOID" and log["ledger_after"]["names_count"] == 2
+    assert not (out / "STEP8_RESULT.json").exists()
