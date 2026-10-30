@@ -213,7 +213,7 @@ def test_not_assessed_stretch_makes_episodes_unscorable_and_shifts_avoid_it():
     ok2 = Episode(0, CAREER, C.FAVOURABLE, C.G1, BASE + 200, BASE + 202)
     assert (inside.lo - BASE) in range(900, 1500)
     assert scorable_mask(ctx, [inside, ok1, ok2]) == [False, True, True]
-    asm = assemble(ctx, "5y", [ok1, ok2], False, False)
+    asm = assemble(ctx, "5y", [ok1, ok2], False)
     r = asm.recs[0]
     # a shift that would drop one of the episodes into the unassessed stretch is not drawn
     sh = r["shifts"]

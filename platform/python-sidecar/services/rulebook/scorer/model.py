@@ -142,8 +142,8 @@ def units_from_manifest(
 class Episode:
     """One scored episode: chart index, area, direction, grade and its window (inclusive date ordinals).
 
-    G1 window = the day +- 1 (3 days); G2 window = the whole calendar month. ``schedulable`` marks an
-    occurrence that could have been chosen (v1.1 A7); the scorer uses it only for the fallback check.
+    G1 window = the day +- 1 (3 days); G2 window = the whole calendar month. ``schedulable`` is NOT read by any scoring
+    path (SUR-RB-55/56): the fallback check reads its own, separately formed non-schedulable list instead.
     """
 
     chart: int

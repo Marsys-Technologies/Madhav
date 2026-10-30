@@ -60,8 +60,8 @@ def test_unit_does_not_apply_to_an_episode_of_an_area_no_member_carries():
     ctx_b_only = FamilyContext(C.FAMILY_DASHA, [t], [_unit("VB", [[("B", [CAREER])]])])
     # (B declared for CAREER: the alignment is then counted and the class score is high)
     from services.rulebook.scorer.core import assemble
-    asm_a = assemble(ctx, "5y", scored, False, False)
-    asm_b = assemble(ctx_b_only, "5y", [e for e, ok in zip(eps_career, scorable_mask(ctx_b_only, eps_career)) if ok], False, False)
+    asm_a = assemble(ctx, "5y", scored, False)
+    asm_b = assemble(ctx_b_only, "5y", [e for e, ok in zip(eps_career, scorable_mask(ctx_b_only, eps_career)) if ok], False)
     score_a = sum(r["BT"][r["i0"]] for r in asm_a.recs)
     score_b = sum(r["BT"][r["i0"]] for r in asm_b.recs)
     assert score_b > 0.9 and score_a < score_b - 0.2

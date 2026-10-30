@@ -61,7 +61,7 @@ def prepare_episodes(ctx: FamilyContext, episodes: Sequence[Episode]) -> Tuple[L
         lo, hi = max(ep.lo, t.h_start), min(ep.hi, t.h_end)
         if (lo, hi) != (ep.lo, ep.hi):
             drops["clipped_day_windows"] += 1
-        kept.append(Episode(ep.chart, ep.area, ep.direction, ep.grade, lo, hi, ep.schedulable))
+        kept.append(Episode(ep.chart, ep.area, ep.direction, ep.grade, lo, hi))  # no schedulable label is carried or read (SUR-RB-56)
     for e in kept:
         e.validate()
     return kept, drops

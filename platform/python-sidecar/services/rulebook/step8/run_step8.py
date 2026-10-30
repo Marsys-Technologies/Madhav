@@ -47,7 +47,7 @@ UNIT_MANIFEST = LIB / "10_engine/unit-manifest/rev4-candidate-20261030/UNIT_MANI
 CLUSTER_TABLE = LIB / "02_plans/rule-book-programme/cluster-classification/FINAL_CLUSTER_TABLE_v1_1.json"
 SAMPLE = Path("/Users/Dev/Archives/madhav-chart-sample")
 
-FROZEN_SCORER_SHA256 = "836aabcd2b1a23b7f537cdb69c0f831e722557d2fc2baa6a494494e0f91823b4"  # SUR-RB-55 candidate (0c37855bc); the freeze confirms it
+FROZEN_SCORER_SHA256 = "f31e01ffba984cbcfd2c1505faaaee0f79bda4fb8fb70e8101f6f63295ca5813"  # SUR-RB-55/56 candidate; the freeze confirms it
 LOGGED = {
     "TIMELINES_MANIFEST.json": "d3d3948f56890336ac21388326eb3028e1038f8a58bf9221ca9c90b305f4dce0",
     "UNIT_MANIFEST_v1_0.json (rev4)": "7e8d69f29d11677b6ce430a2f3a6d21c2fcb45211117f28493c00dc659f71b79",

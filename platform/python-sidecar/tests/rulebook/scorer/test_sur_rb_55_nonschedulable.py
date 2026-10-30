@@ -75,8 +75,8 @@ def test_the_null_mean_is_exactly_one_half_and_an_empty_list_fails_closed(monkey
 
     real = core.run_scheme
 
-    def half(ctx_, scheme, eps, draws, rng, want_dir, want_fallback, z25_units=None, dir_eligible=None):
-        res = real(ctx_, scheme, eps, draws, rng, want_dir, want_fallback, z25_units, dir_eligible)
+    def half(ctx_, scheme, eps, draws, rng, want_dir, z25_units=None, dir_eligible=None):
+        res = real(ctx_, scheme, eps, draws, rng, want_dir, z25_units, dir_eligible)
         res.pools["T"] = np.full_like(res.pools["T"], 0.5)
         return res
 

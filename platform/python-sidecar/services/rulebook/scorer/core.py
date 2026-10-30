@@ -409,7 +409,7 @@ def _nanmean_stack(curves: Sequence[np.ndarray]) -> np.ndarray:
 
 # ── assembling an episode set under one block scheme ─────────────────────────
 class _Ep:
-    __slots__ = ("idx", "chart", "klass", "okl", "blk", "a", "b", "L", "off", "K", "O", "sched", "w", "wd", "wn", "dir_ok")
+    __slots__ = ("idx", "chart", "klass", "okl", "blk", "a", "b", "L", "off", "K", "O", "w", "wd", "dir_ok")
 
     def __init__(self) -> None:
         self.O = None
@@ -435,7 +435,6 @@ def _place(ctx: FamilyContext, scheme: str, ep: Episode, idx: int) -> _Ep:
     e.okl = (opp, ep.area, ep.grade)
     e.K = ctx.klass_curve(scheme, ep.chart, bi, e.L, e.klass)
     e.O = ctx.klass_curve(scheme, ep.chart, bi, e.L, e.okl)
-    e.sched = ep.schedulable
     return e
 
 
@@ -446,7 +445,6 @@ class SchemeResult:
         self.pools: Dict[str, np.ndarray] = {}
         self.n_scored = 0
         self.n_unit_eligible = 0
-        self.fallback_pool: Optional[np.ndarray] = None
 
 
 def _unit_applies(t: ChartTimeline, v: Variant, lo: int, hi: int) -> bool:
@@ -523,14 +521,13 @@ def scorable_mask(ctx: FamilyContext, episodes: Sequence[Episode], scheme: Optio
 
 class _Assembly:
     """Per-block tables of one episode set under one scheme: for every valid shift, the block's contribution
-    to T (BT), to the direction statistic (BD) and to the fallback statistic (BN), and per-unit sums."""
+    to T (BT), to the direction statistic (BD), and per-unit sums."""
 
     def __init__(self) -> None:
         self.recs: List[Dict[str, Any]] = []
         self.unit_ids: List[str] = []
         self.n_obs_unit: np.ndarray = np.zeros(0, dtype=np.int64)
         self.has_dir = False
-        self.has_ns = False
         self.n_scored = 0
 
 
@@ -539,7 +536,6 @@ def assemble(
     scheme: str,
     episodes: Sequence[Episode],
     want_dir: bool,
-    want_fallback: bool,
     dir_eligible: Optional[Sequence[bool]] = None,
 ) -> _Assembly:
     """Place the (scored) episodes in the blocks of ``scheme`` and tabulate every valid shift. No random numbers:
@@ -562,22 +558,16 @@ def assemble(
     n_charts = len(by_chart)
     # direction set: episodes whose opposite-polarity score exists at the observed placement
     dir_by_chart: Dict[int, int] = {}
-    ns_by_chart: Dict[int, int] = {}
     for e in placed:
         e.dir_ok = bool(want_dir and dir_eligible[e.idx] and np.isfinite(e.O[e.off]))
     for c, es in by_chart.items():
         nd_ = sum(1 for e in es if e.dir_ok)
         if nd_:
             dir_by_chart[c] = nd_
-        nn_ = sum(1 for e in es if e.sched is False)
-        if nn_:
-            ns_by_chart[c] = nn_
     for e in placed:
         e.w = 1.0 / (n_charts * len(by_chart[e.chart]))
         e.wd = 1.0 / (len(dir_by_chart) * dir_by_chart[e.chart]) if (e.chart in dir_by_chart and e.dir_ok) else 0.0
-        e.wn = 1.0 / (len(ns_by_chart) * ns_by_chart[e.chart]) if (e.chart in ns_by_chart and e.sched is False) else 0.0
     asm.has_dir = bool(want_dir and dir_by_chart)
-    asm.has_ns = bool(want_fallback and ns_by_chart)
 
     unit_ids = sorted(ctx.unit_by_id)
     upos = {u: i for i, u in enumerate(unit_ids)}
@@ -603,15 +593,12 @@ def assemble(
         i0 = int(np.nonzero(vi == -smin)[0][0])  # position of shift 0 in the valid list
         BT = np.zeros(vi.size)
         BD = np.zeros(vi.size)
-        BN = np.zeros(vi.size)
         us: Dict[int, List[np.ndarray]] = {}
         for e, k in zip(es, sl):
             kv = k[vi].astype(np.float64)
             BT += e.w * kv
             if e.wd > 0:
                 BD += e.wd * (kv - e.O[e.off + smin : e.off + smax + 1][vi].astype(np.float64))
-            if e.wn > 0:
-                BN += e.wn * kv
             for v in ctx.klass_variants(e.klass):
                 uc = ctx.unit_curve(scheme, c, bi, e.L, v)
                 us_slice = uc[e.off + smin : e.off + smax + 1][vi]
@@ -624,7 +611,7 @@ def assemble(
                 else:
                     ent[0] += np.where(fin, us_slice, 0.0)
                     ent[1] += fin
-        asm.recs.append({"chart": c, "blk": bi, "shifts": smin + vi, "i0": i0, "BT": BT, "BD": BD, "BN": BN, "us": us})
+        asm.recs.append({"chart": c, "blk": bi, "shifts": smin + vi, "i0": i0, "BT": BT, "BD": BD, "us": us})
     asm.unit_ids = unit_ids
     asm.n_obs_unit = n_obs_unit
     return asm
@@ -637,13 +624,12 @@ def run_scheme(
     draws: int,
     rng: np.random.Generator,
     want_dir: bool,
-    want_fallback: bool,
     z25_units: Optional[Iterable[str]] = None,
     dir_eligible: Optional[Sequence[bool]] = None,
 ) -> SchemeResult:
     """Check (a) under one block scheme. ``episodes`` are the scored ones."""
     res = SchemeResult()
-    asm = assemble(ctx, scheme, episodes, want_dir, want_fallback, dir_eligible)
+    asm = assemble(ctx, scheme, episodes, want_dir, dir_eligible)
     res.n_scored = asm.n_scored
     if not asm.recs:
         return res
@@ -651,7 +637,6 @@ def run_scheme(
     pool = draws + 1
     TP = np.zeros(pool)
     DP = np.zeros(pool) if asm.has_dir else None
-    NP = np.zeros(pool) if asm.has_ns else None
     # Z25 units (v1.2 K5): those with at least 10 applicable episodes; D7 may fix the list from the K2 counts (v1.3)
     allowed = None if z25_units is None else set(z25_units)
     elig = [
@@ -672,8 +657,6 @@ def run_scheme(
             TP[1 + c0 : 1 + c1] += rec["BT"][idx]
             if DP is not None:
                 DP[1 + c0 : 1 + c1] += rec["BD"][idx]
-            if NP is not None:
-                NP[1 + c0 : 1 + c1] += rec["BN"][idx]
             for p, (s_arr, c_arr) in rec["us"].items():
                 j = epos.get(p)
                 if j is not None:
@@ -684,8 +667,6 @@ def run_scheme(
         TP[0] += rec["BT"][i0]
         if DP is not None:
             DP[0] += rec["BD"][i0]
-        if NP is not None:
-            NP[0] += rec["BN"][i0]
         for p, (s_arr, c_arr) in rec["us"].items():
             j = epos.get(p)
             if j is not None:
@@ -694,8 +675,6 @@ def run_scheme(
     res.pools["T"] = TP
     if DP is not None:
         res.pools["_dir"] = DP
-    if NP is not None:
-        res.fallback_pool = NP
     if len(elig) >= C.Z25_MIN_UNITS:
         with np.errstate(invalid="ignore", divide="ignore"):
             score = np.where(CC > 0, SS / np.maximum(CC, 1.0), np.nan)
@@ -987,7 +966,7 @@ def nonschedulable_statistic(
         return {"T_nonschedulable": None, "nonschedulable_episodes_scored": 0, "nonschedulable_above_null_mean": False}
     scheme = ctx.schemes[0][0]
     # the observed T sits at index 0 and does not depend on the draws (one draw is run only to use the same code path)
-    res = run_scheme(ctx, scheme, sc, 1, np.random.default_rng([cfg.seed, FAMILY_STREAM[ctx.family], 95]), want_dir=False, want_fallback=False)
+    res = run_scheme(ctx, scheme, sc, 1, np.random.default_rng([cfg.seed, FAMILY_STREAM[ctx.family], 95]), want_dir=False)
     t = float(res.pools["T"][0])
     return {"T_nonschedulable": t, "nonschedulable_episodes_scored": len(sc), "nonschedulable_above_null_mean": bool(t > C.NONSCHEDULABLE_NULL_MEAN)}
 
@@ -1053,7 +1032,7 @@ def score_family(
         dir_el = opposite_applicable_mask(ctx, sc) if si == 0 else None
         res = run_scheme(
             ctx, scheme, sc, cfg.draws, rng,
-            want_dir=(si == 0 and dir_testable), want_fallback=False,  # SUR-RB-55: the fallback reads its own list
+            want_dir=(si == 0 and dir_testable),
             z25_units=z25_units, dir_eligible=dir_el,
         )
         if si == 0:

@@ -483,8 +483,8 @@ def test_m1_opposite_mask_does_not_narrow_the_shifts_when_direction_is_not_compu
     t.states["MO"][200:1000] = -1  # the opposite unit is not assessed over a long stretch
     ctx = FamilyContext(C.FAMILY_DASHA, [t], units)
     ep = [Episode(0, CAREER, C.FAVOURABLE, C.G2, *month_window(1993, 6))]
-    with_dir = assemble(ctx, "5y", ep, True, False)
-    no_dir = assemble(ctx, "5y", ep, False, False)
+    with_dir = assemble(ctx, "5y", ep, True)
+    no_dir = assemble(ctx, "5y", ep, False)
     assert no_dir.recs[0]["shifts"].size > with_dir.recs[0]["shifts"].size
 
 

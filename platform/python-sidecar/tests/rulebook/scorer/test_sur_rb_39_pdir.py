@@ -32,13 +32,13 @@ def test_3_p_dir_drops_an_episode_whose_opposite_score_is_undefined_by_carve_out
     ctx = FamilyContext(C.FAMILY_DASHA, [t], units)
     e0 = Episode(0, CAREER, C.FAVOURABLE, C.G2, *month_window(1991, 6))  # block 0: opposite applicable but constant
     e1 = Episode(0, CAREER, C.FAVOURABLE, C.G2, *month_window(1996, 6))  # block 1: opposite informative
-    asm = assemble(ctx, "5y", [e0, e1], True, False, dir_eligible=[True, True])
+    asm = assemble(ctx, "5y", [e0, e1], True, dir_eligible=[True, True])
     rec0 = next(r for r in asm.recs if r["blk"] == 0)
     rec1 = next(r for r in asm.recs if r["blk"] == 1)
     assert np.all(rec0["BD"] == 0.0)  # e0 contributes nothing to the direction statistic (dropped, not zero-filled)
     assert np.any(rec1["BD"] != 0.0)
     # and the drop is draw-invariant: e0's shift set is not narrowed by the opposite mask
-    no_dir = assemble(ctx, "5y", [e0, e1], False, False)
+    no_dir = assemble(ctx, "5y", [e0, e1], False)
     assert next(r for r in no_dir.recs if r["blk"] == 0)["shifts"].size == rec0["shifts"].size
 
 

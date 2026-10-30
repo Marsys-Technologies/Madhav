@@ -175,7 +175,7 @@ def test_observed_T_and_every_valid_shift_match_the_naive_scorer(seed):
         assert (nv is not None) == ok
     scored = [e for e, ok in zip(eps, mask) if ok]
     assert len(scored) >= 12
-    asm = assemble(ctx, "5y", scored, True, False)
+    asm = assemble(ctx, "5y", scored, True)
     per_chart = {}
     for e in scored:
         per_chart[e.chart] = per_chart.get(e.chart, 0) + 1
@@ -212,7 +212,7 @@ def test_shifts_that_would_leave_the_block_or_unscorable_positions_are_not_valid
     eps = _episodes(np.random.default_rng(55), tls)
     ctx = FamilyContext(C.FAMILY_DASHA, tls, units)
     scored = [e for e, ok in zip(eps, scorable_mask(ctx, eps)) if ok]
-    asm = assemble(ctx, "5y", scored, True, False)
+    asm = assemble(ctx, "5y", scored, True)
     for r in asm.recs:
         bl, bh = ctx.blocks("5y", r["chart"])[r["blk"]]
         eps_b = [e for e in scored if e.chart == r["chart"] and _block_of(ctx, e)[0] == r["blk"]]
@@ -236,7 +236,7 @@ def test_unit_scores_behind_Z25_are_pooled_means_over_applicable_episodes():
     eps = _episodes(np.random.default_rng(66), tls)
     ctx = FamilyContext(C.FAMILY_DASHA, tls, units)
     scored = [e for e, ok in zip(eps, scorable_mask(ctx, eps)) if ok]
-    asm = assemble(ctx, "5y", scored, False, False)
+    asm = assemble(ctx, "5y", scored, False)
     for p, uid in enumerate(asm.unit_ids):
         s = c = 0.0
         for r in asm.recs:
@@ -262,7 +262,7 @@ def test_direction_statistic_is_own_minus_opposite_polarity_score():
     eps = _episodes(np.random.default_rng(77), tls)
     ctx = FamilyContext(C.FAMILY_DASHA, tls, units)
     scored = [e for e, ok in zip(eps, scorable_mask(ctx, eps)) if ok]
-    asm = assemble(ctx, "5y", scored, True, False)
+    asm = assemble(ctx, "5y", scored, True)
     assert asm.has_dir
     dirs = []
     for e in scored:
@@ -284,10 +284,10 @@ def test_T_weights_each_chart_once_however_many_episodes_it_has():
     eps = _episodes(np.random.default_rng(88), tls)
     ctx = FamilyContext(C.FAMILY_DASHA, tls, units)
     scored = [e for e, ok in zip(eps, scorable_mask(ctx, eps)) if ok]
-    base = sum(r["BT"][r["i0"]] for r in assemble(ctx, "5y", scored, False, False).recs)
+    base = sum(r["BT"][r["i0"]] for r in assemble(ctx, "5y", scored, False).recs)
     # duplicate every episode of chart 0: its weight inside T must not grow
     extra = [e for e in scored if e.chart == 0]
-    both = sum(r["BT"][r["i0"]] for r in assemble(ctx, "5y", scored + extra, False, False).recs)
+    both = sum(r["BT"][r["i0"]] for r in assemble(ctx, "5y", scored + extra, False).recs)
     assert both == pytest.approx(base, abs=1e-9)
 
 
