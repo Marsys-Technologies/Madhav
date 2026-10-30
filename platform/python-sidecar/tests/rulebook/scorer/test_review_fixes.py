@@ -21,6 +21,7 @@ from services.rulebook.scorer.core import (
     d7_from_counts,
     direction_counts,
     donor_eligibility_counts,
+    donor_recount,
     donor_sets,
     min_p_adjusted,
     pool_p,
@@ -102,7 +103,7 @@ def _lock(ctx, eps, files, tmp_path, **over):
 
     from services.rulebook.scorer.footprint import family_testable
 
-    d7, rows = {}, {}
+    d7, rows, donors = {}, {}, {}
     for f, c in ctx.items():
         kept, _ = prepare_episodes(c, eps[f])
         own = d7_from_counts(c, kept)
@@ -110,6 +111,10 @@ def _lock(ctx, eps, files, tmp_path, **over):
         d7[f] = {"testable": family_testable(c, kept)["testable"], "dir_testable": own["dir_testable"],
                  "z25_units": own["z25_units"] if len(own["z25_units"]) >= 8 else [], "donor_charts_b": don["b"], "donor_charts_c": don["c"]}
         rows[f] = [{"chart_id": k[0], "area": k[1], "direction": k[2], "grade": k[3], **v} for k, v in recount_rows(c, kept).items()]
+        donors[f] = donor_recount(c, kept)  # stands in for count_blind v2's donor outputs
+        diag = donors[f]["checks"]
+        d7[f]["donor_rule_b"] = "m3" if diag["b"]["k11_floor_met_m3"] else "p2_90"
+        d7[f]["donor_rule_c"] = "m3" if diag["c"]["k11_floor_met_m3"] else "p2_90"
     occ, birth = tmp_path / "occurrences.csv", tmp_path / "birth_data.csv"
     args = dict(
         occurrence_sha256=hashlib.sha256(occ.read_bytes()).hexdigest(), birth_data_sha256=hashlib.sha256(birth.read_bytes()).hexdigest(),
@@ -117,7 +122,7 @@ def _lock(ctx, eps, files, tmp_path, **over):
         admitted={f: [t.code for t in c.tl] for f, c in ctx.items()}, d7=d7, count_rows=rows, files=files,
         ledger_dir=str(tmp_path / "ledger"), occurrence_path=str(occ), birth_data_path=str(birth),
         manifest_sha256=hashlib.sha256(Path(files["unit_manifest"]).read_bytes()).hexdigest(),
-        numpy_version=np.__version__, python_version=platform.python_version(), test_mode=True,
+        numpy_version=np.__version__, python_version=platform.python_version(), test_mode=True, donor_counts=donors,
     )
     args.update(over)
     return RunLock(**args)

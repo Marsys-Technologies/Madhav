@@ -825,6 +825,45 @@ def donor_eligibility_counts(ctx: FamilyContext, episodes: Sequence[Episode], ad
     return out
 
 
+def donor_recount(ctx: FamilyContext, episodes: Sequence[Episode], admitted: Optional[Iterable[int]] = None) -> Dict[str, Any]:
+    """The scorer's own recount of count_blind v2's donor outputs (masks only), for the pre-claim equality check:
+    per pool chart (by code) own_cells, donors_b_m3, donors_c_m3, donors_b_p2, donors_c_p2, imputed_cells_b_p2,
+    imputed_cells_c_p2; per check pool_charts, charts_ge5_donors_m3, k11_floor_met_m3, charts_ge5_donors_p2,
+    k11_floor_met_p2, imputed_cell_share_p2 (6 decimals; '' when no P2 donor cell)."""
+    adm = _admitted_mask(ctx, admitted)
+    pool = [c for c in range(len(ctx.tl)) if adm[c]]
+    rows: Dict[str, Dict[str, int]] = {}
+    agg = {k: [0, 0, 0, 0] for k in ("b", "c")}
+    for key, age in (("b", False), ("c", True)):
+        m3 = donor_sets(ctx, episodes, age, admitted, "m3")
+        p2 = donor_sets(ctx, episodes, age, admitted, "p2_90")
+        for c in pool:
+            code = ctx.tl[c].code
+            row = rows.setdefault(code, {"own_cells": 0, "donors_b_m3": 0, "donors_c_m3": 0, "donors_b_p2": 0, "donors_c_p2": 0, "imputed_cells_b_p2": 0, "imputed_cells_c_p2": 0})
+            if c not in p2:
+                continue
+            d = p2[c]
+            row["own_cells"] = d["cells"]
+            n_m3 = int(m3[c]["elig"].size) if c in m3 else 0
+            n_p2 = int(d["elig"].size)
+            imp = sum(int(d["cells"] - sum(int(dm[:, donor].sum()) for dm in d["defined"])) for donor in d["elig"])
+            row[f"donors_{key}_m3"] = n_m3
+            row[f"donors_{key}_p2"] = n_p2
+            row[f"imputed_cells_{key}_p2"] = imp
+            a = agg[key]
+            a[0] += n_m3 >= C.MIN_ELIGIBLE_DONORS
+            a[1] += n_p2 >= C.MIN_ELIGIBLE_DONORS
+            a[2] += imp
+            a[3] += n_p2 * d["cells"]
+    summary = {}
+    for key in ("b", "c"):
+        a = agg[key]
+        summary[key] = {"pool_charts": len(pool), "charts_ge5_donors_m3": a[0], "k11_floor_met_m3": int(a[0] >= C.DONOR_FLOOR_CHARTS),
+                        "charts_ge5_donors_p2": a[1], "k11_floor_met_p2": int(a[1] >= C.DONOR_FLOOR_CHARTS),
+                        "imputed_cell_share_p2": f"{(a[2] / a[3]):.6f}" if a[3] else ""}
+    return {"charts": rows, "checks": summary}
+
+
 def donor_diagnostic(ctx: FamilyContext, episodes: Sequence[Episode], admitted: Optional[Iterable[int]] = None) -> Dict[str, Any]:
     """Review N2 / v1.5 P1: per check, the charts keeping at least 5 donors under v1.4 M3, the K11 floor status, and
     the P1 trigger (P2 applies to a check if and only if its M3 count is below the floor). Counts only; to be logged

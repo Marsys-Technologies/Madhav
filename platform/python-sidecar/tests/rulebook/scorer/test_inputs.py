@@ -16,6 +16,9 @@ from services.rulebook.scorer.inputs import (
     AGG_INTS,
     AGG_TEXT,
     DONOR_COLUMNS,
+    DONOR_DIAG_COLUMNS,
+    DONOR_ELIG_COLUMNS,
+    donor_rows,
     TIMELINE_SCHEMA,
     UNIT_COLUMNS,
     AdmissionInputs,
@@ -160,6 +163,19 @@ def _count_blind(tmp, n_charts=20, per=25, opp=6, units_n=12, tamper=False):
     _csv(d / "COUNT_BLIND_DONORS.csv", list(DONOR_COLUMNS), don)
     uni = [[thr, "dasha", "primary_nonschedulable", f"RB1-U{k:02d}", (units_n if k < 9 else 3)] for thr in (3, 5, 8) for k in range(12)]
     _csv(d / "COUNT_BLIND_UNITS.csv", list(UNIT_COLUMNS), uni)
+    # count_blind v2: per pool chart donor eligibility, and the per-check diagnostic (exact formats, SUR-RB-41)
+    dele, ddg = [], []
+    for thr in (3, 5, 8):
+        pool = [i for i in range(n_charts) if (i < n_charts - 2 or thr == 3)]
+        for i in pool:
+            dele.append([thr, "dasha", "primary_nonschedulable", "C%03d" % (i + 1), 26, 3, 3, 17, 16, 4, 6])
+        for chk, m3, p2 in (("b", 3, 17), ("c", 3, 16)):
+            share = "0.012345" if True else ""
+            ddg.append([thr, "dasha", "primary_nonschedulable", chk, len(pool), 0, 0, len(pool), int(len(pool) >= 15), share])
+        ddg.append([thr, "transit", "primary_nonschedulable", "b", len(pool), len(pool), int(len(pool) >= 15), len(pool), int(len(pool) >= 15), ""])
+        ddg.append([thr, "transit", "primary_nonschedulable", "c", len(pool), len(pool), int(len(pool) >= 15), len(pool), int(len(pool) >= 15), ""])
+    _csv(d / "COUNT_BLIND_DONOR_ELIGIBILITY.csv", list(DONOR_ELIG_COLUMNS), dele)
+    _csv(d / "COUNT_BLIND_DONOR_DIAGNOSTIC.csv", list(DONOR_DIAG_COLUMNS), ddg)
     outs = {p.name: _sha(p) for p in sorted(d.glob("*.csv"))}
     if tamper:
         outs["COUNT_BLIND_UNITS.csv"] = "f" * 64
@@ -175,8 +191,13 @@ def test_count_blind_readers_and_d7_decisions(tmp_path):
     assert d["episodes_scored_applicable"] == 18 * (23 + 3)  # favourable + unfavourable rows; mixed and G3 rows never count
     assert d["charts_with_scored"] == 18 and d["counts_ok"] is True
     assert d["dir_episodes"] == 18 * (6 + 1) and d["dir_testable"] is True
-    assert d["donor_charts_b"] == 18 and d["donor_charts_c"] == 18 - 5  # charts 1,5,9,13,17 have only 4 age-matched donors
-    assert d["donor_floor_ok"] is False  # 13 < 15 for check (c): the family is untestable (K11)
+    # count_blind v2: the K11 donor counts come from the donor diagnostic under the rule it decides (here P2, 18 charts);
+    # the v1 COUNT_BLIND_DONORS horizon-only counts (18 and 13) are no longer what D7 reads
+    assert d["donor_charts_b"] == 18 and d["donor_charts_c"] == 18 and d["donor_floor_ok"] is True
+    cb.donor_diagnostic = []  # without a diagnostic the v1 horizon-only counts remain the fallback
+    d_v1 = d7_decisions(cb, 5, "dasha")
+    assert d_v1["donor_charts_c"] == 18 - 5 and d_v1["donor_floor_ok"] is False and d_v1["donor_rule_b"] == "m3"
+    cb = read_count_blind(str(tmp_path / "count_blind"))
     assert d["z25_units"] == ["RB1-U%02d" % k for k in range(9)]  # 9 units with >= 10 applicable episodes (>= 8 needed)
     assert d["a7_ok"] is False  # 18 charts < 20
     d3 = d7_decisions(cb, 3, "dasha")
@@ -228,3 +249,32 @@ def test_profile_rows_for_part_f(tmp_path):
     assert c1.count(("career_adv_change_entry", "favourable", C.G2)) == 4  # episodes column, month grade
     assert c1.count(("illness_chronic_surgery", "unfavourable", C.G1)) == 3  # day grade
     assert all(x[1] in ("favourable", "unfavourable") for x in c1)  # mixed rows are never placed
+
+
+def test_count_blind_v2_donor_outputs_are_read_and_decide_the_p1_trigger(tmp_path):
+    cb = read_count_blind(str(_count_blind(tmp_path)))
+    assert len(cb.donor_eligibility) == 20 + 18 + 18 and len(cb.donor_diagnostic) == 12
+    d = d7_decisions(cb, 5, "dasha")
+    # M3 misses the K11 floor for both checks in this file: P2 applies, and its counts decide the floor
+    assert d["donor_rule_b"] == "p2_90" and d["donor_rule_c"] == "p2_90"
+    assert d["donor_charts_b"] == 18 and d["donor_charts_c"] == 18 and d["donor_floor_ok"] is True
+    dr = donor_rows(cb, 5, "dasha")
+    assert dr["charts"]["C001"] == {"own_cells": 26, "donors_b_m3": 3, "donors_c_m3": 3, "donors_b_p2": 17, "donors_c_p2": 16, "imputed_cells_b_p2": 4, "imputed_cells_c_p2": 6}
+    assert dr["checks"]["b"]["imputed_cell_share_p2"] == "0.012345" and dr["checks"]["b"]["k11_floor_met_m3"] == 0
+
+
+def test_count_blind_v2_files_are_hash_checked_and_format_checked(tmp_path):
+    d = _count_blind(tmp_path)
+    rows = list(csv.reader(open(d / "COUNT_BLIND_DONOR_DIAGNOSTIC.csv")))
+    rows[1][6] = "2"  # a K11 flag must be 0 or 1
+    _csv(d / "COUNT_BLIND_DONOR_DIAGNOSTIC.csv", rows[0], rows[1:])
+    with pytest.raises(InputError, match="sha256"):
+        read_count_blind(str(d))
+    with pytest.raises(InputError, match="k11"):
+        read_count_blind(str(d), verify=False)
+    sub = tmp_path / "x"
+    sub.mkdir()
+    d2 = _count_blind(sub)
+    (d2 / "COUNT_BLIND_DONOR_ELIGIBILITY.csv").unlink()
+    with pytest.raises(Exception):
+        read_count_blind(str(d2), verify=False)

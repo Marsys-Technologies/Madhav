@@ -161,3 +161,65 @@ def test_p4_a_month_straddling_the_horizon_is_dropped_not_clipped():
     inside = Episode(0, CAREER, C.FAVOURABLE, C.G2, *month_window(1990, 2))
     kept, drops = prepare_episodes(ctx, [straddle, inside])
     assert kept == [inside] and drops["dropped_horizon"] == 1
+
+
+# ── count_blind v2 donor outputs: equality before the claim (SUR-RB-41) ─────────────────────────────────────
+def test_v2_donor_outputs_must_equal_the_recount_before_the_claim(tmp_path, lockfiles):
+    ctx, eps = _two_families()
+    lock = _lock(ctx, eps, lockfiles, tmp_path)
+    bad = {f: {"charts": {k: dict(v) for k, v in d["charts"].items()}, "checks": {k: dict(v) for k, v in d["checks"].items()}} for f, d in lock.donor_counts.items()}
+    first = sorted(bad[C.FAMILY_DASHA]["charts"])[0]
+    bad[C.FAMILY_DASHA]["charts"][first]["donors_b_p2"] += 1
+    with pytest.raises(RunRefused, match="COUNT_BLIND_DONOR_ELIGIBILITY"):
+        score_sample(ctx, eps, _cfg(), replace(lock, donor_counts=bad))
+    bad2 = {f: {"charts": d["charts"], "checks": {k: dict(v) for k, v in d["checks"].items()}} for f, d in lock.donor_counts.items()}
+    bad2[C.FAMILY_TRANSIT]["checks"]["c"]["imputed_cell_share_p2"] = "0.999999"
+    with pytest.raises(RunRefused, match="COUNT_BLIND_DONOR_DIAGNOSTIC"):
+        score_sample(ctx, eps, _cfg(), replace(lock, donor_counts=bad2))
+    missing = dict(lock.donor_counts)
+    missing.pop(C.FAMILY_DASHA)
+    with pytest.raises(RunRefused, match="count_blind v2"):
+        score_sample(ctx, eps, _cfg(), replace(lock, donor_counts=missing))
+    assert _claims(tmp_path) == []
+
+
+def test_v2_the_trigger_comes_from_the_sealed_diagnostic(tmp_path, lockfiles):
+    ctx, eps = _two_families()
+    lock = _lock(ctx, eps, lockfiles, tmp_path)
+    forged = {f: {"charts": d["charts"], "checks": {k: dict(v) for k, v in d["checks"].items()}} for f, d in lock.donor_counts.items()}
+    forged[C.FAMILY_DASHA]["checks"]["b"]["k11_floor_met_m3"] = 0  # the diagnostic now says P2 for dasha (b)
+    with pytest.raises(RunRefused, match="v1.5 P1"):
+        score_sample(ctx, eps, _cfg(), replace(lock, donor_counts=forged))
+
+
+def test_v2_recount_round_trips_through_files_in_the_exact_format(tmp_path):
+    """Write the recount as count_blind v2 would (exact columns), read it back, and compare: equal."""
+    import csv as _csv_mod
+    import hashlib
+    import json
+
+    from services.rulebook.scorer.core import donor_recount
+    from services.rulebook.scorer.inputs import DONOR_DIAG_COLUMNS, DONOR_ELIG_COLUMNS, donor_rows, read_count_blind
+
+    from .test_inputs import _count_blind
+
+    ctx, eps = _na_world(0.05, n_charts=18)
+    rec = donor_recount(ctx, eps)
+    d = _count_blind(tmp_path)
+    with open(d / "COUNT_BLIND_DONOR_ELIGIBILITY.csv", "w", newline="", encoding="utf-8") as fh:
+        w = _csv_mod.writer(fh, lineterminator="\n")
+        w.writerow(DONOR_ELIG_COLUMNS)
+        for code, row in sorted(rec["charts"].items()):
+            w.writerow([5, "dasha", "primary_nonschedulable", code] + [row[k] for k in DONOR_ELIG_COLUMNS[4:]])
+    with open(d / "COUNT_BLIND_DONOR_DIAGNOSTIC.csv", "w", newline="", encoding="utf-8") as fh:
+        w = _csv_mod.writer(fh, lineterminator="\n")
+        w.writerow(DONOR_DIAG_COLUMNS)
+        for chk in ("b", "c"):
+            w.writerow([5, "dasha", "primary_nonschedulable", chk] + [rec["checks"][chk][k] for k in DONOR_DIAG_COLUMNS[4:]])
+    run = json.loads((d / "COUNT_BLIND_RUN.json").read_text())
+    for nm in ("COUNT_BLIND_DONOR_ELIGIBILITY.csv", "COUNT_BLIND_DONOR_DIAGNOSTIC.csv"):
+        run["outputs_sha256"][nm] = hashlib.sha256((d / nm).read_bytes()).hexdigest()
+    (d / "COUNT_BLIND_RUN.json").write_text(json.dumps(run))
+    back = donor_rows(read_count_blind(str(d)), 5, "dasha")
+    assert back == rec
+    assert rec["checks"]["b"]["k11_floor_met_m3"] in (0, 1) and rec["checks"]["b"]["imputed_cell_share_p2"] != ""

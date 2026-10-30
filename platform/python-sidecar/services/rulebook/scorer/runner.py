@@ -111,6 +111,7 @@ class RunLock:
     python_version: str = ""
     admission_dir: Optional[str] = None  # step-5 artefacts: the contexts' timelines must be exactly these (review S8)
     test_mode: bool = False  # tests only: allows a non-canonical ledger path and contexts without step-5 artefacts
+    donor_counts: Mapping[str, Mapping[str, Any]] = field(default_factory=dict)  # family -> count_blind v2 donor rows (inputs.donor_rows)
 
 
 def claim_keys(lock: RunLock, contexts: Mapping[str, FamilyContext]) -> Dict[str, str]:
@@ -164,7 +165,7 @@ def validate_before_claim(
 ) -> Dict[str, Any]:
     """Everything that can refuse the run, BEFORE the claim (v1.4 conformance B1/M5, S2, S3, S8, M6). Raises
     RunRefused on any mismatch. Returns the prepared episodes and the counts of the validation."""
-    from .core import d7_from_counts, donor_diagnostic, donor_eligibility_counts
+    from .core import d7_from_counts, donor_diagnostic, donor_eligibility_counts, donor_recount
 
     problems: List[str] = []
     if lock.scorer_sha256 != C.source_sha256():
@@ -259,6 +260,19 @@ def validate_before_claim(
         rec = lock.d7.get(fam) or {}
         own = d7_from_counts(ctx, kept)
         rules = {"b": rec.get("donor_rule_b", "m3"), "c": rec.get("donor_rule_c", "m3")}
+        sealed_donors = lock.donor_counts.get(fam)
+        if sealed_donors is None:
+            problems.append(f"{fam}: count_blind v2 donor outputs (eligibility, diagnostic) not supplied")
+        else:  # count_blind v2 equality, chart by chart and check by check (SUR-RB-41)
+            mine = donor_recount(ctx, kept)
+            if mine["charts"] != dict(sealed_donors.get("charts", {})):
+                problems.append(f"{fam}: donor eligibility differs from COUNT_BLIND_DONOR_ELIGIBILITY")
+            if mine["checks"] != dict(sealed_donors.get("checks", {})):
+                problems.append(f"{fam}: donor diagnostic differs from COUNT_BLIND_DONOR_DIAGNOSTIC")
+            for k in ("b", "c"):  # the trigger comes from the sealed diagnostic
+                want = "m3" if (sealed_donors.get("checks", {}).get(k, {}).get("k11_floor_met_m3") == 1) else "p2_90"
+                if rules[k] not in ((want,) if want == "m3" else ("p2_90", "p2_95")):
+                    problems.append(f"{fam}: check ({k}) donor rule {rules[k]} is not the one the count_blind diagnostic decides (v1.5 P1)")
         diag = donor_diagnostic(ctx, kept)  # v1.5 P1: P2 only where the M3 count is below the K11 floor
         for k in ("b", "c"):
             if diag[k]["p2_trigger"] and rules[k] == "m3":
