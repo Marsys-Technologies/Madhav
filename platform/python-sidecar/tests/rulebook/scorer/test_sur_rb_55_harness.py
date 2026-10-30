@@ -56,6 +56,8 @@ def test_i_the_dasha_list_is_a_subset_of_the_transit_list_matched_by_code():
     dropped = {tl[C.FAMILY_TRANSIT][i].code for i in (2, 5)}
     assert all(0 <= e.chart < len(codes_d) for e in eps_d)
     assert not dropped & {codes_d[e.chart] for e in eps_d}
+    placed = {(cal.tls[C.FAMILY_TRANSIT][o.chart].code, o.area, o.grade, o.lo, o.hi) for o in occ}
+    assert all((codes_d[e.chart], e.area, e.grade, e.lo, e.hi) in placed for e in eps_d)  # each episode is its own chart's occurrence
     by_t = Counter(cal.tls[C.FAMILY_TRANSIT][o.chart].code for o in occ)
     by_d = Counter(codes_d[e.chart] for e in eps_d)
     late = tl[C.FAMILY_TRANSIT][1].code
