@@ -6,9 +6,11 @@ Formats (conductor, 2026-10-30; count_blind's hash is logged and will not change
   index 0 = ``range.first``; C2 already applied to daśā members. Family horizons come from
   ``out/s5_horizons.json`` (``charts.<id>.families.<family>.{start,end}``). Every file read is checked against
   ``out/TIMELINES_MANIFEST.json`` (``files``: relative path -> sha256).
-* ``COUNT_BLIND_AGGREGATES.csv``, ``COUNT_BLIND_DONORS.csv``, ``COUNT_BLIND_UNITS.csv`` and (count_blind v2)
-  ``COUNT_BLIND_DONOR_ELIGIBILITY.csv``, ``COUNT_BLIND_DONOR_DIAGNOSTIC.csv``: UTF-8, header row, decimal integers,
-  empty = not applicable. Checked against ``COUNT_BLIND_RUN.json`` (``outputs_sha256``: name -> sha256).
+* ``COUNT_BLIND_AGGREGATES.csv``, ``COUNT_BLIND_DONORS.csv``, ``COUNT_BLIND_UNITS.csv`` and (count_blind v2, with the
+  v3 95%-bar columns) ``COUNT_BLIND_DONOR_ELIGIBILITY.csv``, ``COUNT_BLIND_DONOR_DIAGNOSTIC.csv``: UTF-8, header row,
+  decimal integers, empty = not applicable; share columns are 6-decimal strings, EMPTY when there are no donor cells
+  (kept empty, never read as 0). Checked against ``COUNT_BLIND_RUN.json`` (``outputs_sha256``: name -> sha256), whose
+  ``script_sha256`` must be the count_blind hash logged in COUNT-BLIND-V3-HASHES.
 
 Nothing here reads an occurrence row: only counts, horizons and timelines.
 """
@@ -49,9 +51,15 @@ AGG_INTS = (
 )
 DONOR_COLUMNS = ("threshold", "family", "set", "chart_id", "in_pool", "donors_b", "donors_c")
 UNIT_COLUMNS = ("threshold", "family", "set", "unit_id", "scored_applicable_episodes")
-# count_blind v2 (COUNT-BLIND-V2-HASHES; SUR-RB-41): the v1.4 M3 / v1.5 P1-P2 donor outputs, masks only
-DONOR_ELIG_COLUMNS = ("threshold", "family", "set", "chart_id", "own_cells", "donors_b_m3", "donors_c_m3", "donors_b_p2", "donors_c_p2", "imputed_cells_b_p2", "imputed_cells_c_p2")
-DONOR_DIAG_COLUMNS = ("threshold", "family", "set", "check", "pool_charts", "charts_ge5_donors_m3", "k11_floor_met_m3", "charts_ge5_donors_p2", "k11_floor_met_p2", "imputed_cell_share_p2")
+# count_blind V3 (COUNT-BLIND-V3-HASHES, supersedes V2; SUR-RB-41/45): the v1.4 M3 / v1.5 P1-P2 donor outputs and the
+# v1.5 P3 95%-bar columns, masks only. Exact column order as logged by the conductor.
+DONOR_ELIG_COLUMNS = ("threshold", "family", "set", "chart_id", "own_cells", "donors_b_m3", "donors_c_m3", "donors_b_p2", "donors_c_p2",
+                      "imputed_cells_b_p2", "imputed_cells_c_p2", "donors_b_p95", "donors_c_p95", "imputed_cells_b_p95", "imputed_cells_c_p95")
+DONOR_DIAG_COLUMNS = ("threshold", "family", "set", "check", "pool_charts", "charts_ge5_donors_m3", "k11_floor_met_m3", "charts_ge5_donors_p2",
+                      "k11_floor_met_p2", "imputed_cell_share_p2", "charts_ge5_donors_p95", "k11_floor_met_p95", "imputed_cell_share_p95")
+DONOR_DIAG_INTS = ("pool_charts", "charts_ge5_donors_m3", "k11_floor_met_m3", "charts_ge5_donors_p2", "k11_floor_met_p2", "charts_ge5_donors_p95", "k11_floor_met_p95")
+DONOR_DIAG_FLAGS = ("k11_floor_met_m3", "k11_floor_met_p2", "k11_floor_met_p95")
+DONOR_DIAG_SHARES = ("imputed_cell_share_p2", "imputed_cell_share_p95")
 
 
 class InputError(ScorerError):
@@ -178,6 +186,62 @@ def _read_csv(path: Path, columns: Sequence[str]) -> List[Dict[str, str]]:
         return list(rd)
 
 
+def _share(v: str, name: str) -> str:
+    """A share column as logged: a 6-decimal string in [0, 1], or '' when there are no donor cells. The empty value
+    stays empty (it is not a zero share)."""
+    v = (v or "").strip()
+    if v == "":
+        return ""
+    head, dot, tail = v.partition(".")
+    if not (dot and head.isdigit() and tail.isdigit() and len(tail) == 6) or not (0.0 <= float(v) <= 1.0):
+        raise InputError(f"{name}: {v!r} is not a 6-decimal share in [0, 1]")
+    return v
+
+
+def share_value(v: str) -> Optional[float]:
+    """The numeric share, or None when the column is empty (no donor cells). Never 0 for empty."""
+    return None if v == "" else float(v)
+
+
+def ledger_entries(ledger_path: str) -> Dict[str, List[Dict[str, Any]]]:
+    """The append-only decisions ledger: entry id -> every line with that id, in order."""
+    p = Path(ledger_path)
+    if not p.exists():
+        raise InputError(f"the decisions ledger {p.name} is missing")
+    out: Dict[str, List[Dict[str, Any]]] = {}
+    for line in p.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            d = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(d, dict) and d.get("id"):
+            out.setdefault(d["id"], []).append(d)
+    return out
+
+
+def single_entry(entries: Mapping[str, List[Dict[str, Any]]], entry_id: str) -> Optional[Dict[str, Any]]:
+    """The one logged entry with this id (review VERIFY3 G3): None if absent; refused if two lines with the id differ
+    (a later line can never silently replace a logged one)."""
+    rows = entries.get(entry_id) or []
+    if not rows:
+        return None
+    first = json.dumps(rows[0], sort_keys=True)
+    if any(json.dumps(r, sort_keys=True) != first for r in rows[1:]):
+        raise InputError(f"the ledger holds {len(rows)} differing lines with id {entry_id}; refused")
+    return rows[0]
+
+
+def logged_count_blind_hashes(ledger_path: Optional[str] = None) -> Dict[str, str]:
+    """count_blind's own script (and tests) sha256 as logged in COUNT-BLIND-V3-HASHES."""
+    e = single_entry(ledger_entries(ledger_path or C.LOCK_LEDGER_PATH), C.COUNT_BLIND_HASH_ENTRY)
+    if not e or not e.get("sha256"):
+        raise InputError(f"ledger entry {C.COUNT_BLIND_HASH_ENTRY} (count_blind's own hash) not found")
+    return {"script": e["sha256"], "tests": (e.get("tests") or {}).get("sha256", "")}
+
+
 @dataclass
 class CountBlind:
     aggregates: List[Dict[str, Any]]
@@ -185,16 +249,24 @@ class CountBlind:
     units: List[Dict[str, Any]]
     run_sha256: str
     outputs_sha256: Dict[str, str] = field(default_factory=dict)
-    donor_eligibility: List[Dict[str, Any]] = field(default_factory=list)  # v2
-    donor_diagnostic: List[Dict[str, Any]] = field(default_factory=list)  # v2
+    donor_eligibility: List[Dict[str, Any]] = field(default_factory=list)  # v2 / v3 columns
+    donor_diagnostic: List[Dict[str, Any]] = field(default_factory=list)  # v2 / v3 columns
+    script_sha256: str = ""  # count_blind's own hash as named in COUNT_BLIND_RUN.json
 
 
-def read_count_blind(cb_dir: str, verify: bool = True) -> CountBlind:
+def read_count_blind(cb_dir: str, verify: bool = True, ledger_path: Optional[str] = None) -> CountBlind:
     d = Path(cb_dir)
     run_path = d / "COUNT_BLIND_RUN.json"
     if not run_path.exists():
         raise InputError("COUNT_BLIND_RUN.json missing")
     run = json.loads(run_path.read_text(encoding="utf-8"))
+    script = str(run.get("script_sha256") or "")
+    if verify:  # SUR-RB-45: only a run of the logged count_blind V3 is read
+        logged = logged_count_blind_hashes(ledger_path)
+        if script != logged["script"]:
+            raise InputError(f"COUNT_BLIND_RUN.json names count_blind sha256 {script[:12] or '(none)'}..., not the {C.COUNT_BLIND_HASH_ENTRY} hash {logged['script'][:12]}...")
+        if logged["tests"] and run.get("tests_sha256") and run["tests_sha256"] != logged["tests"]:
+            raise InputError(f"COUNT_BLIND_RUN.json names count_blind tests sha256 {run['tests_sha256'][:12]}..., not the logged {logged['tests'][:12]}...")
     outs = {Path(k).name: v for k, v in (run.get("outputs_sha256") or {}).items()}
     names = {"agg": "COUNT_BLIND_AGGREGATES.csv", "don": "COUNT_BLIND_DONORS.csv", "uni": "COUNT_BLIND_UNITS.csv",
              "del": "COUNT_BLIND_DONOR_ELIGIBILITY.csv", "ddg": "COUNT_BLIND_DONOR_DIAGNOSTIC.csv"}
@@ -235,23 +307,26 @@ def read_count_blind(cb_dir: str, verify: bool = True) -> CountBlind:
         if r["check"] not in ("b", "c"):
             raise InputError("donor diagnostic: check must be b or c")
         row = {"threshold": _int(r["threshold"], "threshold"), "family": r["family"], "set": r["set"], "check": r["check"]}
-        for k in ("pool_charts", "charts_ge5_donors_m3", "k11_floor_met_m3", "charts_ge5_donors_p2", "k11_floor_met_p2"):
+        for k in DONOR_DIAG_INTS:
             row[k] = _int(r[k], k)
-        if row["k11_floor_met_m3"] not in (0, 1) or row["k11_floor_met_p2"] not in (0, 1):
+            if row[k] is None:
+                raise InputError(f"donor diagnostic: {k} is empty")
+        if any(row[k] not in (0, 1) for k in DONOR_DIAG_FLAGS):
             raise InputError("donor diagnostic: k11 flags must be 0 or 1")
-        row["imputed_cell_share_p2"] = r["imputed_cell_share_p2"].strip()  # 6 decimals as text, or empty
+        for k in DONOR_DIAG_SHARES:
+            row[k] = _share(r[k], k)  # 6 decimals as text, or '' (no donor cells; not a zero share)
         ddg.append(row)
-    return CountBlind(agg, don, uni, sha256_file(run_path), outs, dele, ddg)
+    return CountBlind(agg, don, uni, sha256_file(run_path), outs, dele, ddg, script)
 
 
-def d7_decisions(cb: CountBlind, threshold: int, family: str, set_name: str = SET_PRIMARY) -> Dict[str, Any]:
+def d7_decisions(cb: CountBlind, threshold: int, family: str, set_name: str = SET_PRIMARY, escalated: Sequence[str] = ()) -> Dict[str, Any]:
     """Everything D7 decides from the sealed counts for one candidate threshold and family (v1.2 K4, K5, K8, K11;
-    v1.3 L1). The footprint-survival half of D7.2 comes from s7_footprint and is joined by the caller."""
+    v1.3 L1). The footprint-survival half of D7.2 comes from s7_footprint and is joined by the caller.
+
+    ``escalated`` names the checks ("b", "c") whose P2 bar v1.5 P3 raised to 95%: their rule is ``p2_95`` and their
+    K11 floor count, floor flag and imputed share are read from the sealed 95% columns (count_blind V3)."""
     pool = sorted(r["chart_id"] for r in cb.donors if r["threshold"] == threshold and r["family"] == family and r["set"] == set_name and r["in_pool"] == 1)
     ps = set(pool)
-    don = [r for r in cb.donors if r["threshold"] == threshold and r["family"] == family and r["set"] == set_name and r["in_pool"] == 1]
-    b_ok = sum(1 for r in don if r["donors_b"] >= C.MIN_ELIGIBLE_DONORS)
-    c_ok = sum(1 for r in don if r["donors_c"] >= C.MIN_ELIGIBLE_DONORS)
     scored: Dict[str, int] = {}
     with_opp: Dict[str, int] = {}
     for r in cb.aggregates:
@@ -269,11 +344,24 @@ def d7_decisions(cb: CountBlind, threshold: int, family: str, set_name: str = SE
     diag = {r["check"]: r for r in cb.donor_diagnostic if r["threshold"] == threshold and r["family"] == family and r["set"] == set_name}
     rules: Dict[str, str] = {}
     floor_rule: Dict[str, int] = {}
+    shares: Dict[str, Optional[float]] = {}
+    if set(escalated) - {"b", "c"}:
+        raise InputError(f"escalated checks must be b and/or c, not {sorted(escalated)}")
     if set(diag) == {"b", "c"}:
         for k in ("b", "c"):
             rules[k] = "m3" if diag[k]["k11_floor_met_m3"] == 1 else "p2_90"
-            floor_rule[k] = diag[k]["charts_ge5_donors_m3"] if rules[k] == "m3" else diag[k]["charts_ge5_donors_p2"]
+            if k in escalated:
+                if rules[k] != "p2_90":
+                    raise InputError(f"check ({k}) meets the K11 floor under M3: v1.5 P3 has no P2 bar to raise")
+                rules[k] = "p2_95"
+            suffix = {"m3": "m3", "p2_90": "p2", "p2_95": "p95"}[rules[k]]
+            floor_rule[k] = diag[k][f"charts_ge5_donors_{suffix}"]
+            if diag[k][f"k11_floor_met_{suffix}"] != int(floor_rule[k] >= C.DONOR_FLOOR_CHARTS):
+                raise InputError(f"donor diagnostic: check ({k}) k11_floor_met_{suffix} disagrees with charts_ge5_donors_{suffix}")
+            shares[k] = None if suffix == "m3" else share_value(diag[k][f"imputed_cell_share_{suffix}"])
         b_ok, c_ok = floor_rule["b"], floor_rule["c"]
+    else:  # review VERIFY3 G5: no fallback to the v1 horizon-only donor counts
+        raise InputError(f"the count_blind V3 donor diagnostic has no (b) and (c) rows for threshold {threshold}, {family}, {set_name}; refused")
     return {
         "threshold": threshold,
         "family": family,
@@ -287,6 +375,8 @@ def d7_decisions(cb: CountBlind, threshold: int, family: str, set_name: str = SE
         "donor_floor_ok": bool(b_ok >= C.DONOR_FLOOR_CHARTS and c_ok >= C.DONOR_FLOOR_CHARTS),
         "donor_rule_b": rules.get("b", "m3"),
         "donor_rule_c": rules.get("c", "m3"),
+        "imputed_share_b": shares.get("b"),  # under the rule that applies; None = M3 or no donor cells (never 0)
+        "imputed_share_c": shares.get("c"),
         "donor_diagnostic": {k: dict(v) for k, v in diag.items()},
         "dir_episodes": n_dir,
         "dir_charts": charts_dir,
@@ -311,7 +401,7 @@ def profile_rows(cb: CountBlind, chart_ids: Sequence[str], family: str = C.FAMIL
 
 
 def donor_rows(cb: CountBlind, threshold: int, family: str, set_name: str = SET_PRIMARY) -> Dict[str, Any]:
-    """count_blind v2's donor outputs for one threshold pool, family and set, keyed like ``core.donor_recount``."""
+    """count_blind V3's donor outputs (v2 columns plus the 95% bar) for one threshold pool, family and set, keyed like ``core.donor_recount``."""
     charts = {r["chart_id"]: {k: r[k] for k in DONOR_ELIG_COLUMNS[4:]} for r in cb.donor_eligibility
               if r["threshold"] == threshold and r["family"] == family and r["set"] == set_name}
     checks = {r["check"]: {k: r[k] for k in DONOR_DIAG_COLUMNS[4:]} for r in cb.donor_diagnostic

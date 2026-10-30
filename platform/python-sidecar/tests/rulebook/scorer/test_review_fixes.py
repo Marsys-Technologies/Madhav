@@ -50,7 +50,7 @@ def score_sample(ctx, eps, cfg, lock, ledger=None):
     """Tests drive the test entry point (separate ledger path); the production entry point is exercised directly."""
     return score_sample_for_tests(ctx, eps, cfg, lock, str(ledger.dir) if ledger is not None else lock.ledger_dir)
 
-from ._toy import BASE, make_units, month_window, random_episodes, runs_series, toy_world
+from ._toy import REAL_LEDGER_DIR, REAL_LOCK_LEDGER_PATH, BASE, make_units, month_window, random_episodes, runs_series, toy_world
 
 AREAS = ["career_adv_change_entry", "illness_chronic_surgery"]
 CAREER = AREAS[0]
@@ -112,14 +112,14 @@ def _lock(ctx, eps, files, tmp_path, **over):
     for f, c in ctx.items():
         kept, _ = prepare_episodes(c, eps[f])
         own = d7_from_counts(c, kept)
-        don = donor_eligibility_counts(c, kept)
-        d7[f] = {"testable": family_testable(c, kept)["testable"], "dir_testable": own["dir_testable"],
-                 "z25_units": own["z25_units"] if len(own["z25_units"]) >= 8 else [], "donor_charts_b": don["b"], "donor_charts_c": don["c"]}
-        rows[f] = [{"chart_id": k[0], "area": k[1], "direction": k[2], "grade": k[3], **v} for k, v in recount_rows(c, kept).items()]
-        donors[f] = donor_recount(c, kept)  # stands in for count_blind v2's donor outputs
+        donors[f] = donor_recount(c, kept)  # stands in for count_blind V3's donor outputs
         diag = donors[f]["checks"]
-        d7[f]["donor_rule_b"] = "m3" if diag["b"]["k11_floor_met_m3"] else "p2_90"
-        d7[f]["donor_rule_c"] = "m3" if diag["c"]["k11_floor_met_m3"] else "p2_90"
+        rules = {k: ("m3" if diag[k]["k11_floor_met_m3"] else "p2_90") for k in ("b", "c")}
+        don = donor_eligibility_counts(c, kept, None, rules)  # K11 counts under the rule that applies (v1.5 P1)
+        d7[f] = {"testable": family_testable(c, kept, donor_rules=rules)["testable"], "dir_testable": own["dir_testable"],
+                 "z25_units": own["z25_units"] if len(own["z25_units"]) >= 8 else [], "donor_charts_b": don["b"], "donor_charts_c": don["c"],
+                 "donor_rule_b": rules["b"], "donor_rule_c": rules["c"]}
+        rows[f] = [{"chart_id": k[0], "area": k[1], "direction": k[2], "grade": k[3], **v} for k, v in recount_rows(c, kept).items()]
     occ, birth = tmp_path / "sample_events_v5_slim.csv", tmp_path / "BIRTH_DATA_v5.csv"
     args = dict(
         occurrence_sha256=hashlib.sha256(occ.read_bytes()).hexdigest(), birth_data_sha256=hashlib.sha256(birth.read_bytes()).hexdigest(),
@@ -307,7 +307,7 @@ def test_s5_reordering_the_charts_cannot_buy_a_second_run(tmp_path, lockfiles):
 
 
 def test_s5_the_ledger_has_one_fixed_logged_path(tmp_path, lockfiles):
-    assert RunLedger().dir == Path(C.LEDGER_DIR) and C.LEDGER_DIR.endswith("10_engine/run-ledger")
+    assert RunLedger().dir == Path(C.LEDGER_DIR) and REAL_LEDGER_DIR == "/Users/Dev/Archives/madhav-research-library/10_engine/run-ledger"
     ctx, eps = _two_families()
     lock = _lock(ctx, eps, lockfiles, tmp_path)
     with pytest.raises(RunRefused, match="fixed, logged ledger"):  # production: any other path is refused
@@ -694,11 +694,15 @@ def test_sur_rb_45_production_refuses_a_mismatched_lock_record_before_the_claim(
         R.score_sample(ctx, eps, _cfg(), lock)
 
 
-@pytest.mark.skipif(not Path(C.LOCK_LEDGER_PATH).exists(), reason="the governance ledger is not on this machine")
+@pytest.mark.skipif(not Path(REAL_LOCK_LEDGER_PATH).exists(), reason="the governance ledger is not on this machine")
 def test_sur_rb_43_the_logged_record_names_the_slim_occurrence_file_and_birth_data():
-    got = R.read_lock_record()
+    """Read-only, by explicit path: the real decisions ledger (no test writes to it)."""
+    from services.rulebook.scorer.inputs import logged_count_blind_hashes
+
+    got = R.read_lock_record(REAL_LOCK_LEDGER_PATH)
     assert got["occurrence"] == "4be3abadb6348860c9f6b47b9c8aedab8527bee75bd816d76d0b3f8055d0f37d"
     assert got["birth_data"] == "4288cca3cd277d54cfe5f0d24b57830b47f7b8a692373ee4b5fa7b52030214d5"
+    assert logged_count_blind_hashes(REAL_LOCK_LEDGER_PATH)["script"] == "41ea7d8e4676b8f4b8e97be0c0abc1ced29c0fdd593f57f3af19e5ee1d56616a"
 
 
 def test_sur_rb_43_production_accepts_only_the_logged_claim_key_hashes(tmp_path, lockfiles, monkeypatch):

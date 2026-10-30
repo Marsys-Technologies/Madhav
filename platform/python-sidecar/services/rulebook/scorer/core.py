@@ -826,41 +826,47 @@ def donor_eligibility_counts(ctx: FamilyContext, episodes: Sequence[Episode], ad
 
 
 def donor_recount(ctx: FamilyContext, episodes: Sequence[Episode], admitted: Optional[Iterable[int]] = None) -> Dict[str, Any]:
-    """The scorer's own recount of count_blind v2's donor outputs (masks only), for the pre-claim equality check:
-    per pool chart (by code) own_cells, donors_b_m3, donors_c_m3, donors_b_p2, donors_c_p2, imputed_cells_b_p2,
-    imputed_cells_c_p2; per check pool_charts, charts_ge5_donors_m3, k11_floor_met_m3, charts_ge5_donors_p2,
-    k11_floor_met_p2, imputed_cell_share_p2 (6 decimals; '' when no P2 donor cell)."""
+    """The scorer's own recount of count_blind V3's donor outputs (masks only), for the pre-claim equality check:
+    per pool chart (by code) own_cells, donors_{b,c}_m3, donors_{b,c}_p2, imputed_cells_{b,c}_p2, donors_{b,c}_p95,
+    imputed_cells_{b,c}_p95; per check pool_charts, charts_ge5_donors_{m3,p2,p95}, k11_floor_met_{m3,p2,p95},
+    imputed_cell_share_{p2,p95} (6 decimals; '' when the rule has no donor cell, never '0.000000')."""
     adm = _admitted_mask(ctx, admitted)
     pool = [c for c in range(len(ctx.tl)) if adm[c]]
     rows: Dict[str, Dict[str, int]] = {}
-    agg = {k: [0, 0, 0, 0] for k in ("b", "c")}
+    agg = {k: [0, 0, 0, 0, 0, 0, 0] for k in ("b", "c")}  # >=5 m3, >=5 p2, imputed p2, p2 cells, >=5 p95, imputed p95, p95 cells
+    zero = ("own_cells", "donors_b_m3", "donors_c_m3", "donors_b_p2", "donors_c_p2", "imputed_cells_b_p2", "imputed_cells_c_p2",
+            "donors_b_p95", "donors_c_p95", "imputed_cells_b_p95", "imputed_cells_c_p95")
     for key, age in (("b", False), ("c", True)):
         m3 = donor_sets(ctx, episodes, age, admitted, "m3")
         p2 = donor_sets(ctx, episodes, age, admitted, "p2_90")
+        p95 = donor_sets(ctx, episodes, age, admitted, "p2_95")
         for c in pool:
             code = ctx.tl[c].code
-            row = rows.setdefault(code, {"own_cells": 0, "donors_b_m3": 0, "donors_c_m3": 0, "donors_b_p2": 0, "donors_c_p2": 0, "imputed_cells_b_p2": 0, "imputed_cells_c_p2": 0})
+            row = rows.setdefault(code, {k: 0 for k in zero})
             if c not in p2:
                 continue
-            d = p2[c]
-            row["own_cells"] = d["cells"]
+            row["own_cells"] = p2[c]["cells"]
             n_m3 = int(m3[c]["elig"].size) if c in m3 else 0
-            n_p2 = int(d["elig"].size)
-            imp = sum(int(d["cells"] - sum(int(dm[:, donor].sum()) for dm in d["defined"])) for donor in d["elig"])
-            row[f"donors_{key}_m3"] = n_m3
-            row[f"donors_{key}_p2"] = n_p2
-            row[f"imputed_cells_{key}_p2"] = imp
             a = agg[key]
             a[0] += n_m3 >= C.MIN_ELIGIBLE_DONORS
-            a[1] += n_p2 >= C.MIN_ELIGIBLE_DONORS
-            a[2] += imp
-            a[3] += n_p2 * d["cells"]
+            row[f"donors_{key}_m3"] = n_m3
+            for tag, sets, base in (("p2", p2, 1), ("p95", p95, 4)):
+                d = sets.get(c)
+                n = int(d["elig"].size) if d is not None else 0
+                imp = sum(int(d["cells"] - sum(int(dm[:, donor].sum()) for dm in d["defined"])) for donor in d["elig"]) if d is not None else 0
+                row[f"donors_{key}_{tag}"] = n
+                row[f"imputed_cells_{key}_{tag}"] = imp
+                a[base] += n >= C.MIN_ELIGIBLE_DONORS
+                a[base + 1] += imp
+                a[base + 2] += n * (d["cells"] if d is not None else 0)
     summary = {}
     for key in ("b", "c"):
         a = agg[key]
         summary[key] = {"pool_charts": len(pool), "charts_ge5_donors_m3": a[0], "k11_floor_met_m3": int(a[0] >= C.DONOR_FLOOR_CHARTS),
                         "charts_ge5_donors_p2": a[1], "k11_floor_met_p2": int(a[1] >= C.DONOR_FLOOR_CHARTS),
-                        "imputed_cell_share_p2": f"{(a[2] / a[3]):.6f}" if a[3] else ""}
+                        "imputed_cell_share_p2": f"{(a[2] / a[3]):.6f}" if a[3] else "",
+                        "charts_ge5_donors_p95": a[4], "k11_floor_met_p95": int(a[4] >= C.DONOR_FLOOR_CHARTS),
+                        "imputed_cell_share_p95": f"{(a[5] / a[6]):.6f}" if a[6] else ""}
     return {"charts": rows, "checks": summary}
 
 

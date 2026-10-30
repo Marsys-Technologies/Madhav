@@ -129,8 +129,8 @@ def _unit_signature(units: Sequence[UnitSpec]) -> Dict[str, Any]:
 class RunLedger:
     """Append-only directory of claims, one file per key, created with O_EXCL; one fixed, logged path."""
 
-    def __init__(self, directory: str = C.LEDGER_DIR):
-        self.dir = Path(directory)
+    def __init__(self, directory: Optional[str] = None):
+        self.dir = Path(directory if directory is not None else C.LEDGER_DIR)
 
     def _path(self, key: str) -> Path:
         return self.dir / (key + ".run")
@@ -269,9 +269,18 @@ def validate_before_claim(
             if mine["checks"] != dict(sealed_donors.get("checks", {})):
                 problems.append(f"{fam}: donor diagnostic differs from COUNT_BLIND_DONOR_DIAGNOSTIC")
             for k in ("b", "c"):  # the trigger comes from the sealed diagnostic
-                want = "m3" if (sealed_donors.get("checks", {}).get(k, {}).get("k11_floor_met_m3") == 1) else "p2_90"
+                sk = sealed_donors.get("checks", {}).get(k, {})
+                want = "m3" if (sk.get("k11_floor_met_m3") == 1) else "p2_90"
                 if rules[k] not in ((want,) if want == "m3" else ("p2_90", "p2_95")):
                     problems.append(f"{fam}: check ({k}) donor rule {rules[k]} is not the one the count_blind diagnostic decides (v1.5 P1)")
+                    continue
+                # the sealed D7 floor count is the sealed column of the rule that applies; at 95% (v1.5 P3) the
+                # count_blind V3 columns must be present (SUR-RB-45); the recount equality above covers their values
+                suffix = {"m3": "m3", "p2_90": "p2", "p2_95": "p95"}[rules[k]]
+                if sk.get(f"charts_ge5_donors_{suffix}") is None or sk.get(f"k11_floor_met_{suffix}") not in (0, 1):
+                    problems.append(f"{fam}: check ({k}) rule {rules[k]} but the count_blind diagnostic has no {suffix} floor columns (count_blind V3)")
+                elif rec.get(f"donor_charts_{k}") != sk[f"charts_ge5_donors_{suffix}"]:
+                    problems.append(f"{fam}: check ({k}) sealed D7 donor count is not count_blind's charts_ge5_donors_{suffix}")
         diag = donor_diagnostic(ctx, kept)  # v1.5 P1: P2 only where the M3 count is below the K11 floor
         for k in ("b", "c"):
             if diag[k]["p2_trigger"] and rules[k] == "m3":

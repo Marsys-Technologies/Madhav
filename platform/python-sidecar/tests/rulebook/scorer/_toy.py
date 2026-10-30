@@ -136,3 +136,23 @@ def planted_episodes(
         else:
             out.append(e)
     return out
+
+
+# ── ledgers (SUR-RB-45/46): every ledger-touching test uses a temporary directory (see conftest.py) ─────────────
+REAL_LEDGER_DIR = C.LEDGER_DIR  # captured at import, before the autouse fixture redirects the constants
+REAL_LOCK_LEDGER_PATH = C.LOCK_LEDGER_PATH
+REAL_QUARANTINE_DIR = C.LEDGER_QUARANTINE_DIR
+FAKE_COUNT_BLIND_SHA = "c0" * 32  # the toy count_blind V3 script hash logged in each test's own decisions ledger
+FAKE_COUNT_BLIND_TESTS_SHA = "c1" * 32
+FAKE_LOCK_OCC = "1" * 64
+FAKE_LOCK_BIRTH = "2" * 64
+
+
+def ledger_lines(occ: str = FAKE_LOCK_OCC, birth: str = FAKE_LOCK_BIRTH, cutoff_occ: Optional[str] = None, cutoff_birth: Optional[str] = None) -> List[Dict]:
+    """The decisions-ledger entries the scorer reads, in their logged formats, with toy hashes."""
+    return [
+        {"id": "SOMETHING-ELSE", "files_sha256": {}},
+        {"id": "CUTOFF-AND-FILE-HASHES-V5-20261030", "files_sha256": {"sample_events_v5_slim.csv": cutoff_occ or occ, "BIRTH_DATA_v5.csv": cutoff_birth or birth, "sample_events_v5.csv": "f" * 64}},
+        {"id": "YARDSTICK-LOCK-STEP4", "hashes_verified_by_surrogate": {"sample_events_v5_slim.csv": occ, "BIRTH_DATA_v5.csv": birth, "sample_events_v5.csv (full)": "f" * 64}},
+        {"id": "COUNT-BLIND-V3-HASHES", "supersedes": "COUNT-BLIND-V2-HASHES", "sha256": FAKE_COUNT_BLIND_SHA, "tests": {"sha256": FAKE_COUNT_BLIND_TESTS_SHA}},
+    ]

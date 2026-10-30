@@ -82,6 +82,7 @@ TESTABLE_MIN_UNIT_SHARE = 0.5
 
 # ── the one-run ledger (review S5): one fixed path, logged in the lock log
 LEDGER_DIR = "/Users/Dev/Archives/madhav-research-library/10_engine/run-ledger"
+LEDGER_QUARANTINE_DIR = "/Users/Dev/Archives/madhav-research-library/10_engine/run-ledger-quarantine"  # never read by the scorer (SUR-RB-46 b)
 REAL_INPUT_HASHES_PATH = "/Users/Dev/Archives/madhav-research-library/10_engine/run-ledger-real-input-hashes.json"  # logged at lock step 4
 SAMPLE_STORE = "/Users/Dev/Archives/madhav-chart-sample"
 # SUR-RB-43 (lock step 4): the logged lock record holding the claim-key file hashes. Names and the entry id are fixed
@@ -89,6 +90,7 @@ SAMPLE_STORE = "/Users/Dev/Archives/madhav-chart-sample"
 LOCK_LEDGER_PATH = "/Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl"
 LOCK_STEP4_ENTRY = "YARDSTICK-LOCK-STEP4"  # the entry the surrogate verified (SUR-RB-45): the claim-key hashes come from here
 LOCK_CUTOFF_ENTRY = "CUTOFF-AND-FILE-HASHES-V5-20261030"  # cross-check: the same two hashes must be logged here too
+COUNT_BLIND_HASH_ENTRY = "COUNT-BLIND-V3-HASHES"  # count_blind V3 (supersedes V2): COUNT_BLIND_RUN.json must name this script hash
 CLAIM_KEY_OCCURRENCE_FILE = "sample_events_v5_slim.csv"  # the SLIM occurrence file
 CLAIM_KEY_BIRTH_FILE = "BIRTH_DATA_v5.csv"
 

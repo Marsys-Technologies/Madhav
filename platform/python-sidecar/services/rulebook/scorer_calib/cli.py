@@ -75,6 +75,35 @@ def _hashes(out: Path, extra: Dict[str, Any]) -> None:
                                  "python": platform.python_version(), "numpy": np.__version__, **extra})
 
 
+def p95_escalation(a, failing) -> Dict[str, Any]:
+    """v1.5 P3 at 95%: the K11 floor check and the imputed-cell share of each escalated check come from the SEALED
+    count_blind V3 diagnostic (``charts_ge5_donors_p95``, ``k11_floor_met_p95``, ``imputed_cell_share_p95``) for the
+    gate's threshold pool; an empty share means no donor cell and is reported as None, never 0. The scorer's own
+    recount of these columns from the real episodes is asserted equal before the claim (runner, SUR-RB-45); the gate
+    itself never sees a real episode. Without the sealed files the escalation is provisional."""
+    out: Dict[str, Any] = {"source": None, "threshold": a.threshold, "families": {}}
+    by_fam: Dict[str, List[str]] = {}
+    for f, chk in failing:
+        by_fam.setdefault(f, []).append(chk)
+    if not getattr(a, "count_blind", None):
+        out["source"] = "PROVISIONAL: no sealed count_blind V3 files; the 95% floor is not checked"
+        for f, chks in by_fam.items():
+            out["families"][f] = {"checks": sorted(chks), "floor_met_p95": True, "sealed": False}
+        return out
+    from ..scorer.inputs import d7_decisions, read_count_blind
+
+    cb = read_count_blind(a.count_blind)  # hash-checked; refuses a run not of the logged count_blind V3
+    out["source"] = "count_blind V3 diagnostic (sealed)"
+    out["count_blind_script_sha256"] = cb.script_sha256
+    for f, chks in by_fam.items():
+        dec = d7_decisions(cb, a.threshold, f, escalated=chks)
+        rows = {k: {"rule": dec[f"donor_rule_{k}"], "charts_ge5_donors": dec[f"donor_charts_{k}"],
+                    "k11_floor_met": int(dec["donor_diagnostic"][k][f"k11_floor_met_{'p95' if k in chks else ('m3' if dec[f'donor_rule_{k}'] == 'm3' else 'p2')}"]),
+                    "imputed_share": dec[f"imputed_share_{k}"]} for k in ("b", "c")}
+        out["families"][f] = {"checks": sorted(chks), "rows": rows, "floor_met_p95": bool(dec["donor_floor_ok"]), "sealed": True}
+    return out
+
+
 def cmd_gate(a) -> int:
     """F2 gate (v1.1 F2, v1.2 K12, SUR-RB-35/37): N0-N4 null studies plus the q = 30% sanity check under N0."""
     out = Path(a.out)
@@ -105,12 +134,15 @@ def cmd_gate(a) -> int:
     p3_history = [p3]
     untestable: List[str] = []
     if not p3["ok"]:  # v1.5 P3: raise the bar to 95% for the failing P2 checks and re-run once
+        esc = p95_escalation(a, p3["failing"])
+        p3_history.append({"escalation_95": esc})
         for f, chk in p3["failing"]:
             cal.donor_rules[f][chk] = "p2_95"
+        untestable = sorted(f for f, row in esc["families"].items() if not row["floor_met_p95"])  # K11 floor missed at 95%
         by_model = run_models("_p2_95")
         p3 = H.p3_check(by_model, cal.donor_rules)
         p3_history.append(p3)
-        untestable = sorted({f for f, _chk in p3["failing"]})  # still failing: the family is untestable (K11)
+        untestable = sorted(set(untestable) | {f for f, _chk in p3["failing"]})  # still failing: the family is untestable (K11)
     testable = [f for f in a.testable.split(",") if f]
     key = "flags" if a.d7_known else "flags_m2"
     sanity: Dict[str, float] = {}

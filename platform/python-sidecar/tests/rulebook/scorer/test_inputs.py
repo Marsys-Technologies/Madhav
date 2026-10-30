@@ -12,6 +12,8 @@ import numpy as np
 import pytest
 
 from services.rulebook.scorer import config as C
+
+from ._toy import FAKE_COUNT_BLIND_SHA, FAKE_COUNT_BLIND_TESTS_SHA
 from services.rulebook.scorer.inputs import (
     AGG_INTS,
     AGG_TEXT,
@@ -140,7 +142,7 @@ def _csv(path, header, rows):
         w.writerows(rows)
 
 
-def _count_blind(tmp, n_charts=20, per=25, opp=6, units_n=12, tamper=False):
+def _count_blind(tmp, n_charts=20, per=25, opp=6, units_n=12, tamper=False, script_sha=None):
     d = tmp / "count_blind"
     d.mkdir()
     agg = []
@@ -168,19 +170,22 @@ def _count_blind(tmp, n_charts=20, per=25, opp=6, units_n=12, tamper=False):
     for thr in (3, 5, 8):
         pool = [i for i in range(n_charts) if (i < n_charts - 2 or thr == 3)]
         for i in pool:
-            dele.append([thr, "dasha", "primary_nonschedulable", "C%03d" % (i + 1), 26, 3, 3, 17, 16, 4, 6])
-        for chk, m3, p2 in (("b", 3, 17), ("c", 3, 16)):
-            share = "0.012345" if True else ""
-            ddg.append([thr, "dasha", "primary_nonschedulable", chk, len(pool), 0, 0, len(pool), int(len(pool) >= 15), share])
-        ddg.append([thr, "transit", "primary_nonschedulable", "b", len(pool), len(pool), int(len(pool) >= 15), len(pool), int(len(pool) >= 15), ""])
-        ddg.append([thr, "transit", "primary_nonschedulable", "c", len(pool), len(pool), int(len(pool) >= 15), len(pool), int(len(pool) >= 15), ""])
+            # count_blind V3 adds the 95% bar: fewer donors, fewer imputed cells
+            dele.append([thr, "dasha", "primary_nonschedulable", "C%03d" % (i + 1), 26, 3, 3, 17, 16, 4, 6, 9, 2, 1, 0])
+        n = len(pool)
+        ok = int(n >= 15)
+        # (b): 95% keeps the floor (16 charts with >= 5 donors at thr 5); (c): 95% misses it (2 charts), share empty
+        ddg.append([thr, "dasha", "primary_nonschedulable", "b", n, 0, 0, n, ok, "0.012345", min(n, 16), int(min(n, 16) >= 15), "0.004000"])
+        ddg.append([thr, "dasha", "primary_nonschedulable", "c", n, 0, 0, n, ok, "0.023456", 2, 0, ""])
+        ddg.append([thr, "transit", "primary_nonschedulable", "b", n, n, ok, n, ok, "", n, ok, ""])
+        ddg.append([thr, "transit", "primary_nonschedulable", "c", n, n, ok, n, ok, "", n, ok, ""])
     _csv(d / "COUNT_BLIND_DONOR_ELIGIBILITY.csv", list(DONOR_ELIG_COLUMNS), dele)
     _csv(d / "COUNT_BLIND_DONOR_DIAGNOSTIC.csv", list(DONOR_DIAG_COLUMNS), ddg)
     outs = {p.name: _sha(p) for p in sorted(d.glob("*.csv"))}
     if tamper:
         outs["COUNT_BLIND_UNITS.csv"] = "f" * 64
     (d / "COUNT_BLIND_RUN.log").write_text(json.dumps({"count_blind": "completed", "outputs_sha256": outs}) + "\n")
-    (d / "COUNT_BLIND_RUN.json").write_text(json.dumps({"script": "count_blind.py", "outputs_sha256": outs}))
+    (d / "COUNT_BLIND_RUN.json").write_text(json.dumps({"script": "count_blind.py", "script_sha256": script_sha or FAKE_COUNT_BLIND_SHA, "tests_sha256": FAKE_COUNT_BLIND_TESTS_SHA, "outputs_sha256": outs}))
     return d
 
 
@@ -194,9 +199,9 @@ def test_count_blind_readers_and_d7_decisions(tmp_path):
     # count_blind v2: the K11 donor counts come from the donor diagnostic under the rule it decides (here P2, 18 charts);
     # the v1 COUNT_BLIND_DONORS horizon-only counts (18 and 13) are no longer what D7 reads
     assert d["donor_charts_b"] == 18 and d["donor_charts_c"] == 18 and d["donor_floor_ok"] is True
-    cb.donor_diagnostic = []  # without a diagnostic the v1 horizon-only counts remain the fallback
-    d_v1 = d7_decisions(cb, 5, "dasha")
-    assert d_v1["donor_charts_c"] == 18 - 5 and d_v1["donor_floor_ok"] is False and d_v1["donor_rule_b"] == "m3"
+    cb.donor_diagnostic = []  # review VERIFY3 G5: without a diagnostic there is no fallback to the v1 counts
+    with pytest.raises(InputError, match="no \\(b\\) and \\(c\\) rows"):
+        d7_decisions(cb, 5, "dasha")
     cb = read_count_blind(str(tmp_path / "count_blind"))
     assert d["z25_units"] == ["RB1-U%02d" % k for k in range(9)]  # 9 units with >= 10 applicable episodes (>= 8 needed)
     assert d["a7_ok"] is False  # 18 charts < 20
@@ -259,7 +264,8 @@ def test_count_blind_v2_donor_outputs_are_read_and_decide_the_p1_trigger(tmp_pat
     assert d["donor_rule_b"] == "p2_90" and d["donor_rule_c"] == "p2_90"
     assert d["donor_charts_b"] == 18 and d["donor_charts_c"] == 18 and d["donor_floor_ok"] is True
     dr = donor_rows(cb, 5, "dasha")
-    assert dr["charts"]["C001"] == {"own_cells": 26, "donors_b_m3": 3, "donors_c_m3": 3, "donors_b_p2": 17, "donors_c_p2": 16, "imputed_cells_b_p2": 4, "imputed_cells_c_p2": 6}
+    assert dr["charts"]["C001"] == {"own_cells": 26, "donors_b_m3": 3, "donors_c_m3": 3, "donors_b_p2": 17, "donors_c_p2": 16, "imputed_cells_b_p2": 4, "imputed_cells_c_p2": 6,
+                                  "donors_b_p95": 9, "donors_c_p95": 2, "imputed_cells_b_p95": 1, "imputed_cells_c_p95": 0}
     assert dr["checks"]["b"]["imputed_cell_share_p2"] == "0.012345" and dr["checks"]["b"]["k11_floor_met_m3"] == 0
 
 
