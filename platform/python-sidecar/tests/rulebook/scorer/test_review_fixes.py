@@ -641,10 +641,14 @@ def test_f1_the_key_is_the_sample_and_the_claim_records_the_scorer_and_yardstick
 
 
 # ── SUR-RB-43: the claim-key inputs come from the logged lock record (lock step 4) ─────────────────────────────
-def _record(tmp_path, occ, birth, entry="CUTOFF-AND-FILE-HASHES-V5-20261030"):
+def _record(tmp_path, occ, birth, cutoff_occ=None, cutoff_birth=None):
+    """A ledger with the two lock-step-4 entries in their logged formats (YARDSTICK-LOCK-STEP4 and the cut-off record)."""
     p = tmp_path / "DECISIONS_SURROGATE.jsonl"
-    rows = [{"id": "SOMETHING-ELSE", "files_sha256": {}},
-            {"id": entry, "files_sha256": {"sample_events_v5_slim.csv": occ, "BIRTH_DATA_v5.csv": birth, "sample_events_v5.csv": "f" * 64}}]
+    rows = [
+        {"id": "SOMETHING-ELSE", "files_sha256": {}},
+        {"id": "CUTOFF-AND-FILE-HASHES-V5-20261030", "files_sha256": {"sample_events_v5_slim.csv": cutoff_occ or occ, "BIRTH_DATA_v5.csv": cutoff_birth or birth, "sample_events_v5.csv": "f" * 64}},
+        {"id": "YARDSTICK-LOCK-STEP4", "hashes_verified_by_surrogate": {"sample_events_v5_slim.csv": occ, "BIRTH_DATA_v5.csv": birth, "sample_events_v5.csv (full)": "f" * 64}},
+    ]
     p.write_text("\n".join(json.dumps(r) for r in rows) + "\n")
     return p
 
@@ -659,9 +663,35 @@ def test_sur_rb_43_lock_record_reader():
         assert got["occurrence"] == "a" * 64 and got["birth_data"] == "b" * 64 and got["all"]["sample_events_v5.csv"] == "f" * 64
         with pytest.raises(RunRefused, match="not found"):
             rec(str(p), "NO-SUCH-ENTRY")
-        p.write_text(json.dumps({"id": "CUTOFF-AND-FILE-HASHES-V5-20261030", "files_sha256": {"BIRTH_DATA_v5.csv": "b" * 64}}) + "\n")
+        p.write_text(json.dumps({"id": "YARDSTICK-LOCK-STEP4", "hashes_verified_by_surrogate": {"BIRTH_DATA_v5.csv": "b" * 64}}) + "\n"
+                     + json.dumps({"id": "CUTOFF-AND-FILE-HASHES-V5-20261030", "files_sha256": {"BIRTH_DATA_v5.csv": "b" * 64}}) + "\n")
         with pytest.raises(RunRefused, match="claim-key"):
             rec(str(p))
+
+
+def test_sur_rb_45_claim_key_hashes_come_from_step4_and_must_match_the_cutoff_record(tmp_path):
+    ok = R.read_lock_record(str(_record(tmp_path, "a" * 64, "b" * 64)))
+    assert (ok["occurrence"], ok["birth_data"]) == ("a" * 64, "b" * 64)  # the match
+    sub = tmp_path / "m"
+    sub.mkdir()
+    with pytest.raises(RunRefused, match="differ"):  # the slim-file hash differs between the two entries
+        R.read_lock_record(str(_record(sub, "a" * 64, "b" * 64, cutoff_occ="c" * 64)))
+    sub2 = tmp_path / "n"
+    sub2.mkdir()
+    with pytest.raises(RunRefused, match="differ"):  # the birth-data hash differs
+        R.read_lock_record(str(_record(sub2, "a" * 64, "b" * 64, cutoff_birth="d" * 64)))
+    only_cutoff = tmp_path / "only.jsonl"
+    only_cutoff.write_text(json.dumps({"id": "CUTOFF-AND-FILE-HASHES-V5-20261030", "files_sha256": {"sample_events_v5_slim.csv": "a" * 64, "BIRTH_DATA_v5.csv": "b" * 64}}) + "\n")
+    with pytest.raises(RunRefused, match="YARDSTICK-LOCK-STEP4"):  # the surrogate-verified entry is required
+        R.read_lock_record(str(only_cutoff))
+
+
+def test_sur_rb_45_production_refuses_a_mismatched_lock_record_before_the_claim(tmp_path, lockfiles, monkeypatch):
+    ctx, eps = _two_families()
+    lock = _lock(ctx, eps, lockfiles, tmp_path, ledger_dir=C.LEDGER_DIR)
+    monkeypatch.setattr(C, "LOCK_LEDGER_PATH", str(_record(tmp_path, lock.occurrence_sha256, lock.birth_data_sha256, cutoff_occ="0" * 64)))
+    with pytest.raises(RunRefused, match="differ"):
+        R.score_sample(ctx, eps, _cfg(), lock)
 
 
 @pytest.mark.skipif(not Path(C.LOCK_LEDGER_PATH).exists(), reason="the governance ledger is not on this machine")

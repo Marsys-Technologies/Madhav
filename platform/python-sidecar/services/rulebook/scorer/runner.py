@@ -371,16 +371,11 @@ def score_sample(
     return _run(contexts, episodes, cfg, lock, RunLedger(C.LEDGER_DIR), power_curve=power_curve, note=note, _test=False)
 
 
-def read_lock_record(ledger_path: str = None, entry_id: str = None) -> Dict[str, str]:
-    """SUR-RB-43: the claim-key inputs from the logged lock record (lock step 4): ``{"occurrence": sha256 of the SLIM
-    occurrence file, "birth_data": sha256 of BIRTH_DATA}``, plus every other logged file hash under ``"all"``.
-    Refuses when the entry or either hash is missing."""
-    ledger_path = ledger_path or C.LOCK_LEDGER_PATH
-    entry_id = entry_id or C.LOCK_STEP4_ENTRY
+def _ledger_entries(ledger_path: str) -> Dict[str, Dict[str, Any]]:
     p = Path(ledger_path)
     if not p.exists():
         raise RunRefused("the logged lock record (lock step 4) is missing")
-    rec = None
+    out: Dict[str, Dict[str, Any]] = {}
     for line in p.read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if not line:
@@ -389,15 +384,30 @@ def read_lock_record(ledger_path: str = None, entry_id: str = None) -> Dict[str,
             d = json.loads(line)
         except ValueError:
             continue
-        if d.get("id") == entry_id:
-            rec = d
-    if rec is None or not isinstance(rec.get("files_sha256"), dict):
-        raise RunRefused(f"lock record entry {entry_id} not found in the logged ledger")
-    files = rec["files_sha256"]
-    occ, birth = files.get(C.CLAIM_KEY_OCCURRENCE_FILE), files.get(C.CLAIM_KEY_BIRTH_FILE)
+        if isinstance(d, dict) and d.get("id"):
+            out[d["id"]] = d  # the last entry with an id wins (append-only ledger)
+    return out
+
+
+def read_lock_record(ledger_path: str = None, entry_id: str = None, cutoff_id: str = None) -> Dict[str, Any]:
+    """SUR-RB-43/45: the claim-key inputs from the logged lock record. The hashes are read from the entry the surrogate
+    verified (YARDSTICK-LOCK-STEP4, ``hashes_verified_by_surrogate``) and must equal those logged in
+    CUTOFF-AND-FILE-HASHES-V5-20261030 (``files_sha256``); any difference, or a missing entry or hash, refuses.
+    Returns ``{"occurrence", "birth_data", "all"}``."""
+    entries = _ledger_entries(ledger_path or C.LOCK_LEDGER_PATH)
+    step4 = entries.get(entry_id or C.LOCK_STEP4_ENTRY)
+    cutoff = entries.get(cutoff_id or C.LOCK_CUTOFF_ENTRY)
+    if step4 is None or not isinstance(step4.get("hashes_verified_by_surrogate"), dict):
+        raise RunRefused(f"lock record entry {entry_id or C.LOCK_STEP4_ENTRY} not found in the logged ledger")
+    if cutoff is None or not isinstance(cutoff.get("files_sha256"), dict):
+        raise RunRefused(f"lock record entry {cutoff_id or C.LOCK_CUTOFF_ENTRY} not found in the logged ledger")
+    v, f = step4["hashes_verified_by_surrogate"], cutoff["files_sha256"]
+    occ, birth = v.get(C.CLAIM_KEY_OCCURRENCE_FILE), v.get(C.CLAIM_KEY_BIRTH_FILE)
     if not occ or not birth:
         raise RunRefused("the lock record does not log the claim-key file hashes")
-    return {"occurrence": occ, "birth_data": birth, "all": dict(files)}
+    if f.get(C.CLAIM_KEY_OCCURRENCE_FILE) != occ or f.get(C.CLAIM_KEY_BIRTH_FILE) != birth:
+        raise RunRefused("refused before the claim: the claim-key hashes in YARDSTICK-LOCK-STEP4 and the cut-off record differ (SUR-RB-45)")
+    return {"occurrence": occ, "birth_data": birth, "all": {**dict(f), **dict(v)}}
 
 
 def _check_claim_key_inputs(lock: RunLock, record: Mapping[str, Any]) -> None:
