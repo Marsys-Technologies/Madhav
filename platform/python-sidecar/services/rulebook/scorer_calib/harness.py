@@ -221,6 +221,31 @@ def rates(results: Sequence[Mapping[str, Any]], key: str = "flags") -> Dict[str,
     return out
 
 
+def sanity_ok(rates: Mapping[str, float], testable: Sequence[str]) -> bool:
+    """SUR-RB-39 (4): for EACH family D7 makes testable, with the effect planted in that family, STRONG >= 0.80 at
+    q = 30% under N0."""
+    return bool(testable) and all(f in rates and rates[f] >= C.GATE_SANITY_POWER for f in testable)
+
+
+def sanity_report(rates: Mapping[str, float], testable: Sequence[str], q_curves: Mapping[str, Mapping[str, float]], unit_tests: Mapping[str, int]) -> Dict[str, Any]:
+    """On a shortfall: DO NOT FREEZE; print the q-curve (10/20/30/40%) and the unit-test status so low power can be
+    told apart from a defect (SUR-RB-39 (4))."""
+    ok = sanity_ok(rates, testable)
+    if ok:
+        reading = "met"
+    elif unit_tests.get("failed", 1) > 0:
+        reading = "possible scorer defect: unit tests are not all passing"
+    else:
+        rising = all(
+            all(b >= a - 0.02 for a, b in zip([c[k] for k in sorted(c, key=float)], [c[k] for k in sorted(c, key=float)][1:]))
+            and c[sorted(c, key=float)[-1]] > c[sorted(c, key=float)[0]]
+            for f, c in q_curves.items()
+        )
+        reading = "low power: the STRONG rate rises with q but is below 0.80 at q = 30%" if rising else "possible scorer defect: the STRONG rate does not rise with q"
+    return {"ok": ok, "freeze": "may proceed" if ok else "DO NOT FREEZE", "rates_q30": dict(rates), "testable": list(testable),
+            "q_curve": {f: dict(c) for f, c in q_curves.items()}, "unit_tests": dict(unit_tests), "reading": reading}
+
+
 def f2_gate(
     by_model: Mapping[str, Sequence[Mapping[str, Any]]],
     *,
@@ -229,6 +254,7 @@ def f2_gate(
     frozen_scorer_sha256: Optional[str],
     d7_known: bool = False,
     sanity: Optional[Mapping[str, float]] = None,
+    testable: Optional[Sequence[str]] = None,
 ) -> Dict[str, Any]:
     """v1.1 F2 with SUR-RB-37 S6/S7. GATE only if: all five models N0-N4, each with at least 5,000 studies, at least
     2,000 draws per check, the scorer byte-identical to the frozen one, and the q = 30% sanity check (STRONG >= 0.80
@@ -253,7 +279,7 @@ def f2_gate(
         "studies_at_least_5000": all(len(by_model.get(m) or []) >= C.GATE_MIN_STUDIES for m in O.MODELS),
         "draws_at_least_2000": draws >= C.MIN_DRAWS_CALIBRATION,
         "scorer_is_the_frozen_one": bool(frozen_scorer_sha256) and frozen_scorer_sha256 == scorer_sha256,
-        "sanity_q30_met": bool(sanity) and all(v >= C.GATE_SANITY_POWER for v in sanity.values()),
+        "sanity_q30_met": sanity_ok(sanity or {}, list(testable) if testable is not None else list(FAMS)),
     }
     status = "GATE" if all(conditions.values()) else "NOT_GATE"
     return {"status": status, "pass": bool(status == "GATE" and ok_all), "rates_pass": bool(ok_all), "conditions": conditions,

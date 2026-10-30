@@ -89,16 +89,27 @@ def cmd_gate(a) -> int:
         by_model[m] = H.run_many(cal, [(m, i, 0.0, C.FAMILY_DASHA, False, a.threshold) for i in range(a.studies)], a.workers, str(p))
         os.chmod(p, 0o600)
         print(m, "done", round(time.time() - t0), "s", flush=True)
+    testable = [f for f in a.testable.split(",") if f]
+    key = "flags" if a.d7_known else "flags_m2"
     sanity: Dict[str, float] = {}
-    for target in C.FAMILIES:  # large-effect sanity check: STRONG >= 0.80 at q = 30% under N0, each target family
+    for target in testable:  # SUR-RB-39 (4): each D7-testable family, effect planted in it, q = 30%, N0
         p = out / f"sanity_N0_q30_{target}.jsonl"
         if p.exists():
             p.unlink()
         res = H.run_many(cal, [("N0", i, 0.30, target, False, a.threshold) for i in range(a.sanity_studies)], a.workers, str(p))
         os.chmod(p, 0o600)
-        key = "flags" if a.d7_known else "flags_m2"
         sanity[target] = H.rates(res, key)[target]["full"]
-    res = H.f2_gate(by_model, draws=a.draws, scorer_sha256=C.source_sha256(), frozen_scorer_sha256=a.frozen_scorer_sha, d7_known=a.d7_known, sanity=sanity)
+    q_curves: Dict[str, Dict[str, float]] = {}
+    for target in testable:
+        if sanity[target] < C.GATE_SANITY_POWER:  # shortfall: the q-curve, to tell low power from a defect
+            q_curves[target] = {}
+            for q in (0.10, 0.20, 0.30, 0.40):
+                rq = H.run_many(cal, [("N0", i, q, target, False, a.threshold) for i in range(a.sanity_studies)], a.workers, None)
+                q_curves[target][str(q)] = H.rates(rq, key)[target]["full"]
+    unit_tests = json.loads(Path(a.unit_test_report).read_text()) if a.unit_test_report else {"failed": None}
+    rep = H.sanity_report(sanity, testable, q_curves, unit_tests)
+    _write(out / "SANITY_Q30.json", rep)
+    res = H.f2_gate(by_model, draws=a.draws, scorer_sha256=C.source_sha256(), frozen_scorer_sha256=a.frozen_scorer_sha, d7_known=a.d7_known, sanity=sanity, testable=testable)
     k12 = H.k12_check(by_model)
     status = res["status"] if a.step5_hash else "PROVISIONAL_NOT_STEP5_INPUTS"
     _write(out / "F2_GATE.json", {"status": status, "step5_hash": a.step5_hash, "threshold": a.threshold, "draws": a.draws, "studies_per_model": a.studies, "gate": res, "k12": k12})
@@ -211,6 +222,8 @@ def main(argv=None) -> int:
     g.add_argument("--sanity-studies", type=int, default=500)
     g.add_argument("--frozen-scorer-sha", default=None, help="sha256 of the frozen scorer; without it the status is NOT_GATE")
     g.add_argument("--d7-known", action="store_true", help="D7 has fixed m; otherwise m = 1 and m = 2 must both pass")
+    g.add_argument("--testable", default=",".join(C.FAMILIES), help="the families D7 makes testable (comma list)")
+    g.add_argument("--unit-test-report", default=None, help='JSON {"passed": n, "failed": n} of the scorer test run')
     g.set_defaults(fn=cmd_gate)
     p = sub.add_parser("power"); common(p, 400)
     p.add_argument("--qs", default="0.05,0.10,0.15,0.20,0.30"); p.add_argument("--model", default="N4"); p.set_defaults(fn=cmd_power)
