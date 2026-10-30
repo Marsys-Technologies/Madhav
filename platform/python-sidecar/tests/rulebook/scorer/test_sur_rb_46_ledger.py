@@ -107,8 +107,9 @@ def test_g1_production_compares_the_lock_ledger_by_identity(tmp_path, lockfiles,
     link = tmp_path / "alias"
     link.symlink_to(canon, target_is_directory=True)
     # an alias of the canonical ledger is the canonical ledger: it passes the ledger check (and stops later, at the step-5 tie)
-    with pytest.raises(RunRefused, match="step-5"):
+    with pytest.raises(RunRefused, match="step-5") as e:
         R.score_sample(ctx, eps, _cfg(), replace(lk, ledger_dir=str(link)))
+    assert "not the one fixed and logged" not in str(e.value)  # validation compares by identity too (S5)
     assert sorted(os.listdir(canon)) == [] and sorted(os.listdir(other)) == []
 
 
@@ -260,3 +261,33 @@ def test_c_a_second_file_appearing_during_the_run_is_detected(tmp_path, lockfile
     monkeypatch.setattr(R, "score_family", sneaky)
     with pytest.raises(R.ScorerError, match="exactly one claim"):
         score_sample_for_tests(ctx, eps, _cfg(), lock, str(led))
+
+
+# ── SUR-RB-48: the result header discloses the offset-normalised admitted charts, read from s6_admit ───────────
+def test_sur_rb_48_header_reports_offset_normalised_charts_from_s6_admit(tmp_path, lockfiles, monkeypatch):
+    import services.rulebook.scorer.inputs as I
+
+    ctx, eps = _two_families()
+    by_code = {f: {t.code: t for t in c.tl} for f, c in ctx.items()}
+    codes = sorted(by_code[C.FAMILY_DASHA])
+    flags = {c: (i % 3 == 0) for i, c in enumerate(codes)}
+
+    class Adm(I.AdmissionInputs):
+        def __init__(self, d, verify=True):
+            self.manifest_sha256 = "a" * 64
+            self.horizons = {"charts": {}}
+            self.admit = {"ledger": {c: {"admitted": True, "offset_normalised": flags[c]} for c in codes}}
+
+        def timeline(self, code, fam):
+            return by_code[fam][code]
+
+    monkeypatch.setattr(I, "AdmissionInputs", Adm)
+    lock = _lock(ctx, eps, lockfiles, tmp_path, admission_dir=str(tmp_path / "adm"))
+    res = score_sample_for_tests(ctx, eps, _cfg(), lock, str(tmp_path / "ledger"))
+    assert res["admitted_charts_offset_normalised"] == sum(flags.values()) > 0
+    flags[codes[1]] = None  # a chart without a record refuses before the claim
+    sub = tmp_path / "second"
+    sub.mkdir()
+    with pytest.raises(RunRefused, match="SUR-RB-48"):
+        score_sample_for_tests(ctx, eps, _cfg(), lock, str(sub / "ledger"))
+    assert not (sub / "ledger").exists()

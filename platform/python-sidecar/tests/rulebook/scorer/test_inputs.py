@@ -60,7 +60,7 @@ def _timeline_doc(cid, first, days, birth):
     }
 
 
-def _admission(tmp, charts=("C001", "C002"), break_hash=None):
+def _admission(tmp, charts=("C001", "C002"), break_hash=None, offset=None):
     d = tmp / "admission-v1_1"
     first = date(2000, 1, 1)
     hz = {"charts": {}, "provenance": {}, "step": "s5", "under_12_years": {}}
@@ -71,7 +71,9 @@ def _admission(tmp, charts=("C001", "C002"), break_hash=None):
                              "families": {"dasha": {"start": (first + timedelta(days=5)).isoformat(), "end": (first + timedelta(days=60)).isoformat(), "days": 56, "years": 0.15, "under_12_years": False},
                                           "transit": {"start": first.isoformat(), "end": (first + timedelta(days=99)).isoformat(), "days": 100, "years": 0.27, "under_12_years": False}}}
     _write_json(d / "out" / "s5_horizons.json", hz)
-    _write_json(d / "out" / "s6_admit.json", {"admitted": list(charts), "dry_run_set": ["C900"], "donor_pool_candidates": list(charts)})
+    offset = {c: (i % 2 == 1) for i, c in enumerate(charts)} if offset is None else offset  # SUR-RB-48 per-chart record
+    ledger = {c: ({"admitted": True, "reason": None, "offset_normalised": offset[c]} if c in offset else {"admitted": True, "reason": None}) for c in charts}
+    _write_json(d / "out" / "s6_admit.json", {"admitted": list(charts), "dry_run_set": ["C900"], "donor_pool_candidates": list(charts), "ledger": ledger})
     files = {}
     for sub in ("timelines", "out"):
         for p in sorted((d / sub).glob("*.json")):
@@ -284,3 +286,20 @@ def test_count_blind_v2_files_are_hash_checked_and_format_checked(tmp_path):
     (d2 / "COUNT_BLIND_DONOR_ELIGIBILITY.csv").unlink()
     with pytest.raises(Exception):
         read_count_blind(str(d2), verify=False)
+
+
+def test_sur_rb_48_offset_normalised_charts_are_read_from_s6_admit(tmp_path):
+    adm = AdmissionInputs(str(_admission(tmp_path, charts=("C001", "C002", "C003"), offset={"C001": False, "C002": True, "C003": True})))
+    assert adm.offset_normalised_count(["C001", "C002", "C003"]) == 2
+    assert adm.offset_normalised_count(["C001", "C002"]) == 1 and adm.offset_normalised_count(["C001", "C001"]) == 0
+    sub = tmp_path / "missing"
+    sub.mkdir()
+    adm2 = AdmissionInputs(str(_admission(sub, charts=("C001", "C002"), offset={"C001": True})))  # C002 has no record
+    with pytest.raises(InputError, match="SUR-RB-48"):
+        adm2.offset_normalised_count(["C001", "C002"])
+    assert adm2.offset_normalised_count(["C001"]) == 1
+    sub3 = tmp_path / "str"
+    sub3.mkdir()
+    adm3 = AdmissionInputs(str(_admission(sub3, charts=("C001",), offset={"C001": "yes"})))  # not a boolean
+    with pytest.raises(InputError, match="SUR-RB-48"):
+        adm3.offset_normalised_count(["C001"])

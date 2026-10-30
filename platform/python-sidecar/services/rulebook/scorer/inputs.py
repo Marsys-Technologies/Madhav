@@ -110,6 +110,19 @@ class AdmissionInputs:
         self.horizons = self._json("out/s5_horizons.json")
         self.admit = self._json("out/s6_admit.json")
 
+    def offset_normalised_count(self, chart_ids: Iterable[str]) -> int:
+        """SUR-RB-48: how many of these admitted charts were built with OFFSET NORMALISATION (verified offset with
+        non-zero seconds: offset rounded to the whole minute, local clock time shifted by the residual, UT identical).
+        Read from s6_admit.json (``ledger.<chart_id>.offset_normalised``, true/false, recorded by the admission
+        helper), never computed here; a chart without a boolean record refuses."""
+        led = (self.admit or {}).get("ledger") or {}
+        key = C.S6_OFFSET_NORMALISED_FIELD
+        ids = sorted(set(chart_ids))
+        bad = [c for c in ids if not isinstance((led.get(c) or {}).get(key), bool)]
+        if bad:
+            raise InputError(f"s6_admit.json does not record {key} (true/false) for {len(bad)} admitted chart(s) (SUR-RB-48)")
+        return sum(1 for c in ids if led[c][key])
+
     def _json(self, rel: str) -> Any:
         p = self.dir / rel
         if not p.exists():

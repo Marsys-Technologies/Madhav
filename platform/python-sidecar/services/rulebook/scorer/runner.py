@@ -306,8 +306,9 @@ def validate_before_claim(
 
     if lock.numpy_version != np.__version__ or lock.python_version != platform.python_version():
         problems.append(f"numpy/python {np.__version__}/{platform.python_version()} differ from the pinned {lock.numpy_version}/{lock.python_version} (M9)")
-    if not _test and str(Path(lock.ledger_dir)) != C.LEDGER_DIR:
+    if not _test and not (lock.ledger_dir and same_location(lock.ledger_dir, C.LEDGER_DIR)):  # by identity (SUR-RB-46 a)
         problems.append("the ledger path is not the one fixed and logged (S5)")
+    offset_normalised: Optional[int] = None
     if lock.admission_dir:  # the timelines scored must be exactly the hash-checked step-5 artefacts (S8)
         try:
             from .inputs import AdmissionInputs
@@ -322,6 +323,8 @@ def validate_before_claim(
                     if not same:
                         problems.append(f"{fam}/{t.code}: timeline differs from the step-5 artefact")
                         break
+            # SUR-RB-48: the header discloses the admitted charts built with offset normalisation, read from s6_admit
+            offset_normalised = adm.offset_normalised_count(t.code for ctx in contexts.values() for t in ctx.tl)
         except Exception as exc:  # noqa: BLE001
             problems.append(f"step-5 artefacts unreadable or unverified: {type(exc).__name__}: {exc}")
     elif not _test:
@@ -394,7 +397,7 @@ def validate_before_claim(
     testable = {fam: bool((lock.d7.get(fam) or {}).get("testable")) for fam in contexts}
     if problems:
         raise RunRefused("refused before the claim: " + "; ".join(problems))
-    return {"episodes": prepared, "drops": drops, "a7": a7, "testable": testable, "input_sha256": hashes}
+    return {"episodes": prepared, "drops": drops, "a7": a7, "testable": testable, "input_sha256": hashes, "offset_normalised": offset_normalised}
 
 
 def dry_pass(contexts: Mapping[str, FamilyContext], prepared: Mapping[str, Sequence[Episode]], testable: Mapping[str, bool], lock: RunLock) -> None:
@@ -604,6 +607,9 @@ def _run(
         "test_mode": bool(_test),
         "validation_drops": v["drops"],
         "limit_born_before_1930_death_source_none": _pre1930_alive_by_default(contexts, lock),
+        # SUR-RB-48: admitted charts whose verified offset had non-zero seconds (offset rounded to the minute, local
+        # clock time shifted by the residual, UT identical); from s6_admit.json; None only without step-5 artefacts
+        "admitted_charts_offset_normalised": v["offset_normalised"],
         "a7": v["a7"],
         "testability": v["testable"],
     }
