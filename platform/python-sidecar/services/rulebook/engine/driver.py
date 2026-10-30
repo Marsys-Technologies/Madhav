@@ -49,7 +49,8 @@ def prepare_chart(chart: NatalChart, first: date, last: date) -> NatalChart:
         parts = [int(x) for x in b.birth_time_local.split(":")]
         while len(parts) < 3:
             parts.append(0)
-        want = (datetime.combine(b.birth_date, dtime(*parts)) - timedelta(minutes=b.utc_offset_minutes)).replace(tzinfo=timezone.utc)
+        off_s = b.utc_offset_seconds if b.utc_offset_seconds is not None else b.utc_offset_minutes * 60
+        want = (datetime.combine(b.birth_date, dtime(*parts)) - timedelta(seconds=off_s)).replace(tzinfo=timezone.utc)
         if b.birth_utc is None or b.birth_utc != want:
             raise ChartRefused("OFFSET_BIRTH_INSTANT_INCONSISTENT", "birth_utc is not local time minus the stated offset")
         return chart

@@ -83,7 +83,7 @@ def test_numeric_tzdb_zone_code_is_accepted_and_the_offset_still_comes_from_the_
 @pytest.mark.parametrize(
     "raw",
     [
-        "", "PDT", "PDT 7w", "h7w", "PDT h7x", "LMT m5e45", "PDT h7w30extra", "PDT h7e75", None,
+        "", "PDT", "PDT 7w", "h7w", "PDT h7x", "LMT m5e", "PDT h7w30extra", "PDT h7e75", None,
         # numeric codes do not loosen anything else: the h-offset is still required and validated
         "-03", "-03 3w", "-03 m3w", "-0330 h3w75", "-3 h3w", "-033 h3w30", "--03 h3w", "03 h3w", "-03h3w",
         "-0330x h3w30", "+05:45 h5e45",
