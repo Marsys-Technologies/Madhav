@@ -75,3 +75,17 @@ def test_malformed_meridian_strings_are_refused(raw):
 def test_h_form_records_keep_the_old_path():
     f = B.record_fields_from_adb_tz_raw("PDT h7w (is daylight saving time)")
     assert f["utc_offset_minutes"] == -420 and "mean_time_form" not in f
+
+
+def test_true_lmt_far_from_the_zone_city_lmt_is_unrepresentable():
+    # SUR-RB-47: passes v1.6 Q1 (tzdb LMT period; offset = birthplace longitude / 15), but tzdb's LMT for the zone is the
+    # zone city's (Lagos, +0:13:35), 47 minutes away from +1:01:08: L1 takes its offset from tzdb only, so excluded
+    with pytest.raises(B.ChartExcluded) as e:
+        B.resolve_birth(rec("LMT m15e17 (is local mean time)", "1911-05-01", "12:00", -4.27, 15.28, "Africa/Brazzaville"))
+    assert e.value.code == B.L1_OFFSET_UNREPRESENTABLE
+
+
+def test_true_lmt_within_one_minute_of_the_zone_lmt_is_kept():
+    # Kolkata 1850: record +5:53:24, tzdb LMT +5:53:28 (4 s apart): representable
+    r = B.resolve_birth(rec("LMT m88e21 (is local mean time)", "1850-01-01", "06:00", 22.57, 88.36, "Asia/Kolkata"))
+    assert r.utc.isoformat() == "1850-01-01T00:06:36+00:00"

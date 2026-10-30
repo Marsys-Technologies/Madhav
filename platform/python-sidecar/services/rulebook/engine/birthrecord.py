@@ -42,6 +42,7 @@ L1_BIRTH_MISMATCH = "L1_BIRTH_MISMATCH"  # the stored chart row is not the recor
 MEAN_TIME_NOT_LMT_PERIOD = "MEAN_TIME_NOT_LMT_PERIOD"  # LMT/LST label, but tzdb shows standard (or another) time in force
 MEAN_TIME_LONGITUDE_MISMATCH = "MEAN_TIME_LONGITUDE_MISMATCH"  # LMT/LST offset not birthplace longitude / 15 within 1 min
 MEAN_TIME_REGIONAL_MISMATCH = "MEAN_TIME_REGIONAL_MISMATCH"  # named mean time not tzdb's offset (1 s) and abbreviation
+L1_OFFSET_UNREPRESENTABLE = "L1_OFFSET_UNREPRESENTABLE"  # SUR-RB-47: true LMT > 1 min from tzdb's LMT for the assigned zone
 LMT_LABELS = frozenset({"LMT", "LST"})
 LMT_LONGITUDE_TOLERANCE_S = 60
 REGIONAL_TOLERANCE_S = 1
@@ -319,6 +320,10 @@ def _check_mean_time(record: BirthRecord, name: str) -> None:
         want = record.lon * 240.0
         if abs(sec - want) > LMT_LONGITUDE_TOLERANCE_S:
             raise ChartExcluded(MEAN_TIME_LONGITUDE_MISMATCH, f"offset {sec} s vs longitude/15 = {want:.0f} s")
+        # SUR-RB-47: L1 takes the offset from tzdb only; a true LMT more than 1 minute from tzdb's LMT for the assigned
+        # zone cannot be built correctly by the unmodified L1 writers
+        if not any(abbr == "LMT" and abs(o - sec) <= LMT_LONGITUDE_TOLERANCE_S for o, abbr in periods):
+            raise ChartExcluded(L1_OFFSET_UNREPRESENTABLE, f"{name}: tzdb LMT {[o for o, a in periods if a == 'LMT']} s vs record {sec} s")
         return
     if not any(abs(o - sec) <= REGIONAL_TOLERANCE_S and abbr == label for o, abbr in periods):
         raise ChartExcluded(MEAN_TIME_REGIONAL_MISMATCH, f"{name}: tzdb shows {periods} at the birth instant; record {label} {sec} s")
