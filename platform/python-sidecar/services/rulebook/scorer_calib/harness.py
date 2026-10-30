@@ -311,11 +311,14 @@ def p3_check(by_model: Mapping[str, Sequence[Mapping[str, Any]]], rules: Mapping
             if rules.get(f, {}).get(chk, "m3") == "m3":
                 continue
             per_model = {}
+            upper = {}
             for m, res in by_model.items():
                 v = [r[f][key[chk]] for r in res if r[f][key[chk]] is not None]
-                per_model[m] = (sum(1 for x in v if x <= C.ALPHA_STRONG) / len(v)) if v else None
+                k = sum(1 for x in v if x <= C.ALPHA_STRONG)
+                per_model[m] = (k / len(v)) if v else None
+                upper[m] = wilson_upper(k, len(v)) if v else None  # review VERIFY2 F5: printed, the criterion is the point estimate
             ok = all(x is not None and x <= P3_LIMIT for x in per_model.values()) and len(per_model) == len(O.MODELS)
-            rows[f"{f}/{chk}"] = {"rule": rules[f][chk], "rates": per_model, "ok": ok}
+            rows[f"{f}/{chk}"] = {"rule": rules[f][chk], "rates": per_model, "wilson_upper95": upper, "ok": ok}
             if not ok:
                 failing.append((f, chk))
     return {"limit": P3_LIMIT, "rows": rows, "failing": failing, "ok": not failing}

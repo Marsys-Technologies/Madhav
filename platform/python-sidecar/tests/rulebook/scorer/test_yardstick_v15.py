@@ -118,6 +118,7 @@ def test_p3_marginal_rate_of_a_p2_check_must_stay_under_six_percent_under_every_
     rules = {"dasha": {"b": "p2_90", "c": "m3"}, "transit": {"b": "m3", "c": "m3"}}
     ok = H.p3_check({m: _rows(1000, 60) for m in O.MODELS}, rules)
     assert ok["ok"] and list(ok["rows"]) == ["dasha/b"]
+    assert all(0.06 < u < 0.08 for u in ok["rows"]["dasha/b"]["wilson_upper95"].values())  # Wilson bound printed (VERIFY2 F5)
     bad = H.p3_check(dict({m: _rows(1000, 60) for m in O.MODELS}, N2=_rows(1000, 61)), rules)
     assert not bad["ok"] and bad["failing"] == [("dasha", "b")]
     assert H.p3_check({m: _rows(1000, 99) for m in O.MODELS}, {"dasha": {"b": "m3", "c": "m3"}, "transit": {"b": "m3", "c": "m3"}})["ok"]  # no P2: no P3
