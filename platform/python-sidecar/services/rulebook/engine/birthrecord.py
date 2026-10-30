@@ -42,6 +42,7 @@ L1_BIRTH_MISMATCH = "L1_BIRTH_MISMATCH"  # the stored chart row is not the recor
 MEAN_TIME_NOT_LMT_PERIOD = "MEAN_TIME_NOT_LMT_PERIOD"  # LMT/LST label, but tzdb shows standard (or another) time in force
 MEAN_TIME_LONGITUDE_MISMATCH = "MEAN_TIME_LONGITUDE_MISMATCH"  # LMT/LST offset not birthplace longitude / 15 within 1 min
 MEAN_TIME_REGIONAL_MISMATCH = "MEAN_TIME_REGIONAL_MISMATCH"  # named mean time not tzdb's offset (1 s) and abbreviation
+OFFSET_NORMALISATION_CROSSES_MIDNIGHT = "OFFSET_NORMALISATION_CROSSES_MIDNIGHT"  # SUR-RB-48(3)
 L1_OFFSET_UNREPRESENTABLE = "L1_OFFSET_UNREPRESENTABLE"  # SUR-RB-47: true LMT > 1 min from tzdb's LMT for the assigned zone
 LMT_LABELS = frozenset({"LMT", "LST"})
 LMT_LONGITUDE_TOLERANCE_S = 60
@@ -237,11 +238,12 @@ def record_fields_from_adb_tz_raw(tz_raw: str) -> Dict[str, Any]:
 
 @dataclass(frozen=True)
 class ResolvedBirth:
-    record: BirthRecord
+    record: BirthRecord  # after SUR-RB-48 normalisation when the verified offset has seconds (UT unchanged)
     utc: datetime  # true UT of birth
     jd_ut: float
     zone_checked: str  # IANA zone the offset was checked against
     tzdb: str
+    normalisation: Optional[Dict[str, Any]] = None
 
     def birth(self) -> Birth:
         r = self.record
@@ -255,6 +257,34 @@ class ResolvedBirth:
             utc_offset_minutes=r.utc_offset_minutes,
             utc_offset_seconds=r.utc_offset_seconds,
         )
+
+
+def round_offset_minutes(seconds: int) -> Tuple[int, int]:
+    """Nearest whole minute, ties away from zero; returns (minutes, residual seconds) with seconds = 60 * minutes + residual."""
+    sign = 1 if seconds >= 0 else -1
+    minutes = sign * ((abs(seconds) + 30) // 60)
+    return minutes, seconds - 60 * minutes
+
+
+def normalise_offset(record: BirthRecord) -> Tuple[BirthRecord, Optional[Dict[str, Any]]]:
+    """SUR-RB-48: input-only. A verified offset with non-zero seconds becomes the nearest whole minute and the local clock
+    time moves by the residual, so UT is unchanged to the second. Refused if the shift crosses local midnight."""
+    from dataclasses import replace
+
+    sec = record.utc_offset_seconds
+    if sec is None or sec % 60 == 0:
+        return record, None
+    minutes, residual = round_offset_minutes(sec)
+    local = record.local_naive()
+    new_local = local - timedelta(seconds=residual)
+    if new_local.date() != local.date():
+        raise ChartRefused(OFFSET_NORMALISATION_CROSSES_MIDNIGHT, "the residual-second shift crosses local midnight")
+    out = replace(record, local_date=new_local.date(), local_time=new_local.strftime("%H:%M:%S"), utc_offset_minutes=minutes,
+                  utc_offset_seconds=60 * minutes)
+    if ut_of(out) != ut_of(record):
+        raise ChartRefused(OFFSET_NORMALISATION_CROSSES_MIDNIGHT, "normalisation changed the UT")  # cannot happen; fail closed
+    return out, {"original_local": local.isoformat(), "original_offset_seconds": sec,
+                 "normalised_local": new_local.isoformat(), "normalised_offset_minutes": minutes, "residual_seconds": residual}
 
 
 def ut_of(record: BirthRecord) -> datetime:
@@ -358,9 +388,15 @@ def resolve_birth(
             tally.add(exc)
         raise
     utc = ut_of(record)
+    try:
+        record, norm = normalise_offset(record)
+    except BirthRecordError as exc:
+        if tally is not None:
+            tally.add(exc)
+        raise
     if tally is not None:
         tally.accepted += 1
-    return ResolvedBirth(record=record, utc=utc, jd_ut=utc_to_jd(utc), zone_checked=name, tzdb=db)
+    return ResolvedBirth(record=record, utc=utc, jd_ut=utc_to_jd(utc), zone_checked=name, tzdb=db, normalisation=norm)
 
 
 def resolve_many(
