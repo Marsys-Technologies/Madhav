@@ -79,6 +79,7 @@ class Calibration:
             self.maps[f] = m
         # SUR-RB-55 (e): with the A7 fallback the studies score the full rule (the non-schedulable subset's condition)
         self.fallback = False
+        self.fallback_note: Optional[str] = None
         self.pmfs = [O._DayPmf(t) for t in self.tls[C.FAMILY_TRANSIT]]
         # review N6: once D7 has fixed m, every study uses that single m (None = decide per study, before D7)
         self.fixed_testable: Optional[Dict[str, bool]] = None

@@ -45,6 +45,7 @@ ADM = LIB / "10_engine/admission-v1_1"
 CB = ADM / "out/count_blind"
 UNIT_MANIFEST = LIB / "10_engine/unit-manifest/rev4-candidate-20261030/UNIT_MANIFEST_v1_0.json"
 CLUSTER_TABLE = LIB / "02_plans/rule-book-programme/cluster-classification/FINAL_CLUSTER_TABLE_v1_1.json"
+YARDSTICK_DIR = LIB / "02_plans/rule-book-programme"  # YARDSTICK_v1_0..v1_5_LOCKED.md, hashed by the runner (VERIFY6 H1)
 SAMPLE = Path("/Users/Dev/Archives/madhav-chart-sample")
 
 FROZEN_SCORER_SHA256 = "f31e01ffba984cbcfd2c1505faaaee0f79bda4fb8fb70e8101f6f63295ca5813"  # SUR-RB-55/56 candidate; the freeze confirms it
@@ -257,7 +258,10 @@ def main(argv=None) -> int:
         lock = R.RunLock(
             occurrence_sha256=record["occurrence"], birth_data_sha256=record["birth_data"], scorer_sha256=FROZEN_SCORER_SHA256,
             seed=a.seed, fallback_primary_set=FALLBACK_PRIMARY_SET, count_set=PRIMARY_SET, admitted=admitted, d7=d7, count_rows=rows_by_fam,
-            files={"unit_manifest": str(UNIT_MANIFEST), "cluster_table": str(CLUSTER_TABLE), "admission": str(ADM), "count_blind": str(CB)},
+            # FILES only (VERIFY6 H1): the runner hashes each entry; the admission and count_blind directories are tied
+            # by admission_dir (TIMELINES_MANIFEST) and count_blind_sha256; every locked yardstick file is supplied
+            files={"unit_manifest": str(UNIT_MANIFEST), "cluster_table": str(CLUSTER_TABLE),
+                   **{f"yardstick {name}": str(YARDSTICK_DIR / name) for name in sorted(C.YARDSTICK_SHA256)}},
             ledger_dir=C.LEDGER_DIR, occurrence_path=a.occurrences, birth_data_path=a.birth_data, manifest_sha256=LOGGED["UNIT_MANIFEST_v1_0.json (rev4)"],
             numpy_version=a.numpy, python_version=a.python, admission_dir=str(ADM), count_blind_sha256=dict(cb.outputs_sha256), donor_counts=donors,
             nonschedulable_episodes=ns_episodes, nonschedulable_count_rows=ns_rows,

@@ -75,7 +75,11 @@ def _load(args) -> H.Calibration:
 
         prof = O.profile_from_count_blind(read_count_blind(args.count_blind), [t.code for t in tl[C.FAMILY_TRANSIT]], set_name=args.count_set)
     cal = H.Calibration(tl, units, gate, prof, draws=args.draws, seed=args.seed)
-    cal.fallback = getattr(args, "count_set", "primary_nonschedulable") == "all"  # the A7 fallback: the full rule (SUR-RB-55 e)
+    # the A7 fallback: the studies score the full rule (SUR-RB-55 e) when the profile carries the non-schedulable subset;
+    # the declared stand-in profile has none, so it cannot simulate the fallback condition (review VERIFY6 H3)
+    want = getattr(args, "count_set", "primary_nonschedulable") == "all"
+    cal.fallback = bool(want and prof.ns_per_chart is not None)
+    cal.fallback_note = None if cal.fallback == want else "PROVISIONAL: --count-set all without sealed count_blind counts: no non-schedulable subset, the fallback condition is NOT simulated"
     cal.warm(args.warm)
     return cal
 
@@ -186,7 +190,7 @@ def cmd_gate(a) -> int:
     res["p3"] = p3_history
     k12 = H.k12_check(by_model)
     status = res["status"] if a.step5_hash else "PROVISIONAL_NOT_STEP5_INPUTS"
-    _write(out / "F2_GATE.json", {"status": status, "step5_hash": a.step5_hash, "threshold": a.threshold, "count_set": a.count_set, "fallback_full_rule": cal.fallback, "draws": a.draws, "studies_per_model": a.studies, "gate": res, "k12": k12})
+    _write(out / "F2_GATE.json", {"status": status, "step5_hash": a.step5_hash, "threshold": a.threshold, "count_set": a.count_set, "fallback_full_rule": cal.fallback, "fallback_note": cal.fallback_note, "draws": a.draws, "studies_per_model": a.studies, "gate": res, "k12": k12})
     _hashes(out, {"draws": a.draws, "studies": a.studies, "seed": a.seed, "status": status, "threshold": a.threshold})
     print("K12 remedies:", k12["triggers"] or "not triggered")
     print("F2", status, "rates", "PASS" if res["rates_pass"] else "FAIL", "conditions", res["conditions"])
@@ -248,7 +252,7 @@ def cmd_a6(a) -> int:
         print(t, rows[str(t)], flush=True)
     ok = [t for t in (3, 5, 8) if rows[str(t)]["meets_A7"]]
     best = max(ok, key=lambda t: (round(rows[str(t)]["dasha_strong_rate_q10"], 12), t)) if ok else None
-    _write(out / "A6_THRESHOLD.json", {"provisional": not a.step5_hash, "count_set": a.count_set, "fallback_full_rule": cal.fallback, "counts": "count_blind aggregates" if a.count_blind else "declared stand-in profile", "q_definition": "v1.2 K9 (top 20% coverage windows)", "studies": a.studies, "rows": rows, "chosen": best})
+    _write(out / "A6_THRESHOLD.json", {"provisional": not a.step5_hash, "count_set": a.count_set, "fallback_full_rule": cal.fallback, "fallback_note": cal.fallback_note, "counts": "count_blind aggregates" if a.count_blind else "declared stand-in profile", "q_definition": "v1.2 K9 (top 20% coverage windows)", "studies": a.studies, "rows": rows, "chosen": best})
     _hashes(out, {"draws": a.draws, "studies": a.studies, "seed": a.seed})
     print("A6 threshold:", best)
     return 0
