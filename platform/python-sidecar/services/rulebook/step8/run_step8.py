@@ -36,6 +36,7 @@ import hashlib
 import json
 import os
 import platform
+import re
 import sys
 from datetime import date, timedelta
 from pathlib import Path
@@ -45,7 +46,8 @@ ADM = LIB / "10_engine/admission-v1_1"
 CB = ADM / "out/count_blind"
 UNIT_MANIFEST = LIB / "10_engine/unit-manifest/rev4-candidate-20261030/UNIT_MANIFEST_v1_0.json"
 CLUSTER_TABLE = LIB / "02_plans/rule-book-programme/cluster-classification/FINAL_CLUSTER_TABLE_v1_1.json"
-YARDSTICK_DIR = LIB / "02_plans/rule-book-programme"  # YARDSTICK_v1_0..v1_5_LOCKED.md, hashed by the runner (VERIFY6 H1)
+YARDSTICK_DIR = LIB / "02_plans/rule-book-programme"  # every logged YARDSTICK_v1_x_LOCKED.md, hashed by the runner (VERIFY6 H1)
+LOCKED_YARDSTICK_ID = re.compile(r"^YARDSTICK-V1_(\d+)-LOCKED$")  # the ledger entries that lock each yardstick version
 SAMPLE = Path("/Users/Dev/Archives/madhav-chart-sample")
 
 FROZEN_SCORER_SHA256 = "f31e01ffba984cbcfd2c1505faaaee0f79bda4fb8fb70e8101f6f63295ca5813"  # SUR-RB-55/56 candidate; the freeze confirms it
@@ -157,6 +159,26 @@ def family_episodes(rows, codes, horizons, family, C, Episode, set_name=PRIMARY_
     return out, g3
 
 
+def logged_yardsticks(entries, single_entry) -> dict:
+    """The locked yardstick versions as LOGGED in the decisions ledger (YARDSTICK-V1_x-LOCKED entries: ``file`` and
+    ``sha256``), not a hard-coded list: file name -> sha256. The versions must run 0, 1, ..., n without a gap; an
+    entry without a yardstick file name or a hash stops the run."""
+    out, vers = {}, []
+    for eid in sorted(entries):
+        m = LOCKED_YARDSTICK_ID.match(eid)
+        if not m:
+            continue
+        e = single_entry(entries, eid)
+        name = Path(str((e or {}).get("file", "")).split(" (")[0]).name
+        if not re.fullmatch(r"YARDSTICK_v1_\d+_LOCKED\.md", name) or name != f"YARDSTICK_v1_{m.group(1)}_LOCKED.md" or not (e or {}).get("sha256"):
+            raise Stop(f"ledger entry {eid} does not name its yardstick file and sha256")
+        out[name] = e["sha256"]
+        vers.append(int(m.group(1)))
+    if not vers or sorted(vers) != list(range(max(vers) + 1)):
+        raise Stop("the logged locked yardstick versions are missing or have a gap")
+    return out
+
+
 def check_pool(family, pool, admitted, family_ids):
     """R2: the count_blind exclusion-5 pool of the family must lie inside s6_admit's admitted set and contain no chart
     the family's horizon exclusions removed; any difference stops before the claim."""
@@ -209,7 +231,18 @@ def main(argv=None) -> int:
                "FINAL_CLUSTER_TABLE_v1_1.json": sha(CLUSTER_TABLE), "s7_footprint.json": sha(ADM / "out/s7_footprint.json")}
         if got != LOGGED:
             raise Stop("an input hash differs from its logged value: " + ", ".join(k for k in LOGGED if got[k] != LOGGED[k]))
-        run_entry = single_entry(ledger_entries(C.LOCK_LEDGER_PATH), COUNT_BLIND_RUN_ENTRY)
+        entries = ledger_entries(C.LOCK_LEDGER_PATH)
+        # every LOCKED yardstick version from the ledger (v1.6 and any later one included); a missing file or a
+        # different hash stops; the scorer's own set must be among them with the same hashes
+        yardsticks = logged_yardsticks(entries, single_entry)
+        for name, h in sorted(yardsticks.items()):
+            yp = YARDSTICK_DIR / name
+            if not yp.is_file() or sha(yp) != h:
+                raise Stop(f"locked yardstick {name} is missing or differs from its logged sha256")
+        if any(yardsticks.get(n) != h for n, h in C.YARDSTICK_SHA256.items()):
+            raise Stop("the scorer's yardstick hashes are not among the logged locked versions")
+        log["yardstick_sha256"] = dict(yardsticks)
+        run_entry = single_entry(entries, COUNT_BLIND_RUN_ENTRY)
         if not run_entry or not run_entry.get("outputs_sha256"):
             raise Stop(f"{COUNT_BLIND_RUN_ENTRY} not in the decisions ledger")
         for name, h in (run_entry or {}).get("outputs_sha256", {}).items():
@@ -261,7 +294,7 @@ def main(argv=None) -> int:
             # FILES only (VERIFY6 H1): the runner hashes each entry; the admission and count_blind directories are tied
             # by admission_dir (TIMELINES_MANIFEST) and count_blind_sha256; every locked yardstick file is supplied
             files={"unit_manifest": str(UNIT_MANIFEST), "cluster_table": str(CLUSTER_TABLE),
-                   **{f"yardstick {name}": str(YARDSTICK_DIR / name) for name in sorted(C.YARDSTICK_SHA256)}},
+                   **{f"yardstick {name}": str(YARDSTICK_DIR / name) for name in sorted(yardsticks)}},
             ledger_dir=C.LEDGER_DIR, occurrence_path=a.occurrences, birth_data_path=a.birth_data, manifest_sha256=LOGGED["UNIT_MANIFEST_v1_0.json (rev4)"],
             numpy_version=a.numpy, python_version=a.python, admission_dir=str(ADM), count_blind_sha256=dict(cb.outputs_sha256), donor_counts=donors,
             nonschedulable_episodes=ns_episodes, nonschedulable_count_rows=ns_rows,
@@ -308,7 +341,16 @@ def main(argv=None) -> int:
             save("STEP8_RUN_LOG.json", log)
             return 4
         res_path = out / "STEP8_RESULT.json"
+        # the result header names every logged locked yardstick (the runner's own set is checked equal above)
+        result["yardstick_sha256"] = {**dict(result.get("yardstick_sha256") or {}), **yardsticks}
+        result["yardstick_sha256_source"] = "decisions ledger YARDSTICK-V1_x-LOCKED entries"
         log["result_sha256"] = R.write_result(result, str(res_path))
+        # SUR-RB-58: the yardstick provenance record next to the result (every logged locked version), hashed and logged
+        prov = {"source": "decisions ledger YARDSTICK-V1_x-LOCKED entries", "ledger_sha256": sha(C.LOCK_LEDGER_PATH),
+                "yardstick_sha256": dict(yardsticks), "files_passed_to_runner": sorted(f"yardstick {n}" for n in yardsticks),
+                "result_sha256": log["result_sha256"]}
+        save("STEP8_YARDSTICK_PROVENANCE.json", prov)
+        log["yardstick_provenance_sha256"] = sha(out / "STEP8_YARDSTICK_PROVENANCE.json")
         log["outcome"] = result.get("outcome")
         log["stage"] = "complete"
         save("STEP8_RUN_LOG.json", log)

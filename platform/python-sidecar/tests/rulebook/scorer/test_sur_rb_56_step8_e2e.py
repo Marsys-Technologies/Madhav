@@ -153,11 +153,24 @@ def build_world(root: Path, ys_dir: Path):
             "occ": occ, "birth": birth, "testable": testable, "outs": {**outs, "COUNT_BLIND_RUN.json": sha(cbd / "COUNT_BLIND_RUN.json")}}
 
 
+def yardstick_entries(ys_dir):
+    """YARDSTICK-V1_x-LOCKED entries in the logged format for every yardstick file in ys_dir."""
+    out = []
+    for p in sorted(Path(ys_dir).glob("YARDSTICK_v1_*_LOCKED.md")):
+        n = p.name.split("_")[2]
+        out.append({"id": f"YARDSTICK-V1_{n}-LOCKED", "file": f"02_plans/rule-book-programme/{p.name} (library, 0400)", "sha256": sha(p)})
+    return out
+
+
 @pytest.fixture
 def world(tmp_path, lockfiles, monkeypatch):
     w = build_world(tmp_path / "w", tmp_path)
     led = tmp_path / "DECISIONS_SURROGATE.jsonl"
+    v16 = tmp_path / "YARDSTICK_v1_6_LOCKED.md"  # a later locked version the scorer itself does not list (SUR-RB-44)
+    v16.write_text("stand-in YARDSTICK_v1_6_LOCKED.md")
     lines = ledger_lines(sha(w["occ"]), sha(w["birth"])) + [{"id": "COUNT-BLIND-V3-RUN-20261030", "outputs_sha256": w["outs"]}]
+    lines += yardstick_entries(tmp_path)
+    w["ledger_lines"], w["ledger"] = lines, led
     led.write_text("\n".join(json.dumps(r) for r in lines) + "\n")
     monkeypatch.setattr(C, "LOCK_LEDGER_PATH", str(led))
     monkeypatch.setattr(C, "CLUSTER_TABLE_SHA256", sha(w["tab"]))
@@ -196,7 +209,14 @@ def test_step8_end_to_end_reaches_one_claim_and_writes_the_result(world, tmp_pat
     assert res["outcome"] in ("STRONG", "MIDDLE", "CHANCE-LEVEL")
     for f in world["testable"]:
         assert res["families"][f]["nonschedulable_episodes_scored"] > 0  # the separate list reached the statistic
-    assert set(res["input_sha256"]) >= {f"yardstick {n}" for n in C.YARDSTICK_SHA256} | {"unit_manifest", "cluster_table"}
+    logged = {e["file"].split(" (")[0].split("/")[-1]: e["sha256"] for e in world["ledger_lines"] if str(e.get("id", "")).startswith("YARDSTICK-V1_")}
+    assert len(logged) == len(C.YARDSTICK_SHA256) + 1 and "YARDSTICK_v1_6_LOCKED.md" in logged
+    assert res["yardstick_sha256"] == logged and log["yardstick_sha256"] == logged  # every logged locked version, v1.6 included
+    assert set(res["input_sha256"]) >= {f"yardstick {n}" for n in logged} | {"unit_manifest", "cluster_table"}
+    prov_p = out / "STEP8_YARDSTICK_PROVENANCE.json"  # SUR-RB-58: provenance record next to the result, hashed and logged
+    prov = json.loads(prov_p.read_text())
+    assert prov["yardstick_sha256"] == logged and prov["result_sha256"] == log["result_sha256"]
+    assert log["yardstick_provenance_sha256"] == sha(prov_p) and oct(prov_p.stat().st_mode & 0o777) == "0o600"
     # a second invocation on the same sample is refused before anything is claimed again
     rc2 = S8.main(_args(world, tmp_path / "again"))
     log2 = json.loads((tmp_path / "again" / "STEP8_RUN_LOG.json").read_text())
@@ -240,3 +260,27 @@ def test_step8_a_stray_file_after_the_run_voids_the_sample_and_discards_the_resu
     log = json.loads((out / "STEP8_RUN_LOG.json").read_text())
     assert rc == 4 and log["stage"] == "VOID" and log["ledger_after"]["names_count"] == 2
     assert not (out / "STEP8_RESULT.json").exists()
+
+
+def _rewrite_ledger(world, lines):
+    world["ledger"].write_text("\n".join(json.dumps(r) for r in lines) + "\n")
+
+
+@pytest.mark.parametrize("break_it", ["v16_file_missing", "v16_hash_differs", "gap_v1_3", "no_entries", "entry_without_file"])
+def test_step8_stops_unless_every_logged_locked_yardstick_is_present(world, tmp_path, break_it):
+    lines = [dict(r) for r in world["ledger_lines"]]
+    if break_it == "v16_file_missing":
+        (tmp_path / "YARDSTICK_v1_6_LOCKED.md").unlink()
+    elif break_it == "v16_hash_differs":
+        (tmp_path / "YARDSTICK_v1_6_LOCKED.md").write_text("edited after the lock")
+    elif break_it == "gap_v1_3":
+        lines = [r for r in lines if r.get("id") != "YARDSTICK-V1_3-LOCKED"]
+    elif break_it == "no_entries":
+        lines = [r for r in lines if not str(r.get("id", "")).startswith("YARDSTICK-V1_")]
+    elif break_it == "entry_without_file":
+        lines = [dict(r, file="") if r.get("id") == "YARDSTICK-V1_6-LOCKED" else r for r in lines]
+    _rewrite_ledger(world, lines)
+    rc = S8.main(_args(world, tmp_path / "o"))
+    log = json.loads((tmp_path / "o" / "STEP8_RUN_LOG.json").read_text())
+    assert rc == 1 and log["stage"] == "stopped_before_claim" and "yardstick" in log["stop"]
+    assert not Path(C.LEDGER_DIR).exists() or os.listdir(C.LEDGER_DIR) == []
