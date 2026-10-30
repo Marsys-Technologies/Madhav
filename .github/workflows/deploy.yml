@@ -2503,6 +2503,11 @@ jobs:
             asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline:latest
           cache-from: type=gha,scope=brahma-pipeline
           cache-to: type=gha,mode=max,scope=brahma-pipeline
+          # SR-W4-IMAGE-INDEX: push ONE linux/amd64 manifest, not an OCI index. With attestations on (v6's default) the tag names an index while
+          # Cloud Run records the resolved platform child on every execution, so the verification job's executed-resource check (and the seal's,
+          # same contract) compared two different digests for the same image. A plain manifest makes tag = job image = execution image.
+          provenance: false
+          sbom: false
 
       - name: Re-point Cloud Run Job at the new image
         run: |
