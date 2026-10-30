@@ -178,21 +178,24 @@ def world(tmp_path, lockfiles, monkeypatch):
         monkeypatch.setattr(S8, k, Path(v), raising=False)
     monkeypatch.setattr(S8, "LOGGED", {"TIMELINES_MANIFEST.json": sha(w["adm"] / "out" / "TIMELINES_MANIFEST.json"), "UNIT_MANIFEST_v1_0.json (rev4)": sha(w["man"]),
                                        "FINAL_CLUSTER_TABLE_v1_1.json": sha(w["tab"]), "s7_footprint.json": sha(w["adm"] / "out" / "s7_footprint.json")})
+    # the pins are SUR-RB-60's; the tests also run under the unit-test-only Python 3.9, so the fixture points them at
+    # the running environment (test_step8_pins_* check the constants and the refusals)
+    monkeypatch.setattr(S8, "PINNED_PYTHON", platform.python_version())
+    monkeypatch.setattr(S8, "PINNED_NUMPY", np.__version__)
     assert Path(C.LEDGER_DIR).resolve() != Path(S8.LIB / "10_engine/run-ledger").resolve()  # the conftest redirect is in force
     assert w["testable"], "the synthetic world must make at least one family testable"
     return w
 
 
 def _args(w, out):
-    return ["--threshold", str(THRESHOLD), "--testable", ",".join(w["testable"]), "--seed", "7", "--numpy", np.__version__,
-            "--python", platform.python_version(), "--occurrences", str(w["occ"]), "--birth-data", str(w["birth"]), "--out", str(out)]
+    return ["--threshold", str(THRESHOLD), "--testable", ",".join(w["testable"]), "--seed", "7", "--occurrences", str(w["occ"]), "--birth-data", str(w["birth"]), "--out", str(out)]
 
 
 def test_step8_end_to_end_reaches_one_claim_and_writes_the_result(world, tmp_path):
     out = tmp_path / "step8-out"
     rc = S8.main(_args(world, out))
     log = json.loads((out / "STEP8_RUN_LOG.json").read_text())
-    assert rc == 0, log
+    assert rc == 0, (log.get("stage"), log.get("refusal"), log.get("stop"), log.get("error"))
     assert log["stage"] == "complete"
     empty = hashlib.sha256(json.dumps([]).encode()).hexdigest()
     assert log["ledger_before"] == {"names_count": 0, "names_are_one_claim": False, "sha256": empty}
@@ -205,6 +208,7 @@ def test_step8_end_to_end_reaches_one_claim_and_writes_the_result(world, tmp_pat
     assert res["scorer_source_sha256"] == C.source_sha256() and res["canonical_ledger"] is True and res["test_mode"] is False
     assert res["occurrence_sha256"] == sha(world["occ"]) and res["birth_data_sha256"] == sha(world["birth"])
     assert res["admitted_charts_offset_normalised"] == 0 and res["config"]["fallback_primary_set"] is True
+    assert (res["python"], res["numpy"]) == (S8.PINNED_PYTHON, S8.PINNED_NUMPY) == (log["python"], log["numpy"])
     assert res["ledger_listing_before"]["names"] == [] and res["ledger_listing_after"] == {"names": names, "sha256": log["ledger_after"]["sha256"], "claims": 1}
     assert res["outcome"] in ("STRONG", "MIDDLE", "CHANCE-LEVEL")
     for f in world["testable"]:
@@ -284,3 +288,43 @@ def test_step8_stops_unless_every_logged_locked_yardstick_is_present(world, tmp_
     log = json.loads((tmp_path / "o" / "STEP8_RUN_LOG.json").read_text())
     assert rc == 1 and log["stage"] == "stopped_before_claim" and "yardstick" in log["stop"]
     assert not Path(C.LEDGER_DIR).exists() or os.listdir(C.LEDGER_DIR) == []
+
+
+def test_step8_pins_are_python_3_13_7_and_numpy_2_4_4():
+    import importlib
+
+    fresh = importlib.reload(S8)  # the module's own constants, not the fixture's
+    assert (fresh.PINNED_PYTHON, fresh.PINNED_NUMPY) == ("3.13.7", "2.4.4")
+
+
+@pytest.mark.parametrize("which", ["python", "numpy"])
+def test_step8_pins_a_mismatched_version_refuses_before_the_lock(world, tmp_path, monkeypatch, which):
+    monkeypatch.setattr(S8, "PINNED_PYTHON" if which == "python" else "PINNED_NUMPY", "0.0.0")
+    built = []
+    real = R.RunLock
+
+    def spy(*a, **k):
+        built.append(1)
+        return real(*a, **k)
+
+    monkeypatch.setattr(R, "RunLock", spy)
+    rc = S8.main(_args(world, tmp_path / "o"))
+    log = json.loads((tmp_path / "o" / "STEP8_RUN_LOG.json").read_text())
+    assert rc == 1 and log["stage"] == "stopped_before_claim" and "pinned" in log["stop"] and built == []
+    assert "inputs_sha256" not in log  # refused before any input was even hashed
+
+
+def test_step8_pins_are_written_into_the_lock_and_the_header_is_checked(world, tmp_path, monkeypatch):
+    seen = {}
+    real = R.score_sample
+
+    def spy(contexts, episodes, cfg, lock, **kw):
+        seen["lock"] = (lock.python_version, lock.numpy_version)
+        res = real(contexts, episodes, cfg, lock, **kw)
+        return dict(res, numpy="9.9.9")  # a header that does not record the pin
+
+    monkeypatch.setattr(R, "score_sample", spy)
+    rc = S8.main(_args(world, tmp_path / "o"))
+    log = json.loads((tmp_path / "o" / "STEP8_RUN_LOG.json").read_text())
+    assert seen["lock"] == (S8.PINNED_PYTHON, S8.PINNED_NUMPY)
+    assert rc == 5 and log["stage"] == "VOID" and not (tmp_path / "o" / "STEP8_RESULT.json").exists()

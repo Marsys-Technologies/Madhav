@@ -58,6 +58,8 @@ LOGGED = {
     "s7_footprint.json": "8d9d29935557ceac282fc88d025698fa10dd0fb7918d1bcb77849bce4a4c53ed",
 }
 COUNT_BLIND_RUN_ENTRY = "COUNT-BLIND-V3-RUN-20261030"
+PINNED_PYTHON = "3.13.7"  # SUR-RB-60: the pinned environment of Part F step (2), the dry run and step 8
+PINNED_NUMPY = "2.4.4"
 PRIMARY_SET = "all"  # SUR-RB-51: the A7 fallback applies; the all-occurrence set is PRIMARY
 FALLBACK_PRIMARY_SET = True
 NONSCHEDULABLE_SET = "primary_nonschedulable"
@@ -197,8 +199,6 @@ def main(argv=None) -> int:
     ap.add_argument("--testable", required=True, help="D7 testable families as decided, e.g. dasha,transit")
     ap.add_argument("--escalated", default="", help='v1.5 P3 95%% checks as decided at the gate, e.g. "dasha:b,c"')
     ap.add_argument("--seed", type=int, required=True, help="the seed logged at the lock")
-    ap.add_argument("--numpy", required=True, help="the numpy version pinned at the freeze")
-    ap.add_argument("--python", required=True, help="the Python version pinned at the freeze")
     ap.add_argument("--occurrences", default=str(SAMPLE / "astro-databank/extracted-wave2/sample_events_v5_slim.csv"))
     ap.add_argument("--birth-data", required=True, help="BIRTH_DATA_v5.csv (only hashed here; the runner re-hashes it)")
     ap.add_argument("--out", required=True)
@@ -224,6 +224,12 @@ def main(argv=None) -> int:
             fh.write(json.dumps(obj, sort_keys=True, indent=1, default=str) + "\n")
 
     try:
+        # 0. the pinned environment (SUR-RB-60), before anything else and long before the lock is built
+        import numpy as _np
+
+        log["python"], log["numpy"] = platform.python_version(), _np.__version__
+        if (platform.python_version(), _np.__version__) != (PINNED_PYTHON, PINNED_NUMPY):
+            raise Stop(f"the environment is not the pinned one (Python {PINNED_PYTHON}, numpy {PINNED_NUMPY}); refused before the lock")
         # 1. hashes
         if C.source_sha256() != FROZEN_SCORER_SHA256:
             raise Stop("the scorer source is not the frozen one")
@@ -296,12 +302,11 @@ def main(argv=None) -> int:
             files={"unit_manifest": str(UNIT_MANIFEST), "cluster_table": str(CLUSTER_TABLE),
                    **{f"yardstick {name}": str(YARDSTICK_DIR / name) for name in sorted(yardsticks)}},
             ledger_dir=C.LEDGER_DIR, occurrence_path=a.occurrences, birth_data_path=a.birth_data, manifest_sha256=LOGGED["UNIT_MANIFEST_v1_0.json (rev4)"],
-            numpy_version=a.numpy, python_version=a.python, admission_dir=str(ADM), count_blind_sha256=dict(cb.outputs_sha256), donor_counts=donors,
+            numpy_version=PINNED_NUMPY, python_version=PINNED_PYTHON,  # SUR-RB-60: the runner's M9 check enforces them
+            admission_dir=str(ADM), count_blind_sha256=dict(cb.outputs_sha256), donor_counts=donors,
             nonschedulable_episodes=ns_episodes, nonschedulable_count_rows=ns_rows,
         )
         cfg = C.ScoreConfig(draws=C.DRAWS_PRODUCTION, seed=a.seed, fallback_primary_set=FALLBACK_PRIMARY_SET)
-        if platform.python_version() != a.python:
-            raise Stop("the Python version is not the pinned one")
 
         # 4. the canonical ledger must be EMPTY immediately before the call (SUR-RB-46 c, SUR-RB-53 (4))
         led = Path(a.rehearsal_ledger) if a.rehearsal_ledger else Path(C.LEDGER_DIR)
@@ -340,6 +345,11 @@ def main(argv=None) -> int:
             log["void_reason"] = "the ledger does not hold exactly this run's one claim"
             save("STEP8_RUN_LOG.json", log)
             return 4
+        if (result.get("python"), result.get("numpy")) != (PINNED_PYTHON, PINNED_NUMPY):  # SUR-RB-60: the header records the pins
+            log["stage"] = "VOID"
+            log["void_reason"] = "the result header does not record the pinned Python and numpy versions"
+            save("STEP8_RUN_LOG.json", log)
+            return 5
         res_path = out / "STEP8_RESULT.json"
         # the result header names every logged locked yardstick (the runner's own set is checked equal above)
         result["yardstick_sha256"] = {**dict(result.get("yardstick_sha256") or {}), **yardsticks}
