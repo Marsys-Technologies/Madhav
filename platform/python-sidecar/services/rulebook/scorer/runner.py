@@ -337,6 +337,21 @@ def dry_pass(contexts: Mapping[str, FamilyContext], prepared: Mapping[str, Seque
         raise RunRefused(f"refused before the claim: the dry pass raised {type(exc).__name__}: {exc}") from exc
 
 
+def _pre1930_alive_by_default(contexts: Mapping[str, FamilyContext], lock: RunLock) -> Optional[int]:
+    """SUR-RB-43: confirmatory charts born before 1930 whose death_source is 'none' (treated as alive: a known limit
+    that can only dilute toward chance). From the step-5 horizons record; None without it."""
+    if not lock.admission_dir:
+        return None
+    from datetime import date as _date
+
+    from .inputs import AdmissionInputs
+
+    hz = (AdmissionInputs(lock.admission_dir).horizons.get("charts") or {})
+    births = {t.code: t.birth for ctx in contexts.values() for t in ctx.tl}
+    cut = _date(1930, 1, 1).toordinal()
+    return sum(1 for code, b in births.items() if b < cut and str((hz.get(code) or {}).get("death_source", "")).lower() == "none")
+
+
 def score_sample(
     contexts: Mapping[str, FamilyContext],
     episodes: Mapping[str, Sequence[Episode]],
@@ -352,7 +367,47 @@ def score_sample(
     not met: NO_VERDICT, nothing claimed -> claim (never released) -> score each testable family -> read Part E."""
     if str(Path(lock.ledger_dir)) != C.LEDGER_DIR:
         raise RunRefused("refused before the claim: the lock does not name the fixed, logged ledger path")
+    _check_claim_key_inputs(lock, read_lock_record())
     return _run(contexts, episodes, cfg, lock, RunLedger(C.LEDGER_DIR), power_curve=power_curve, note=note, _test=False)
+
+
+def read_lock_record(ledger_path: str = None, entry_id: str = None) -> Dict[str, str]:
+    """SUR-RB-43: the claim-key inputs from the logged lock record (lock step 4): ``{"occurrence": sha256 of the SLIM
+    occurrence file, "birth_data": sha256 of BIRTH_DATA}``, plus every other logged file hash under ``"all"``.
+    Refuses when the entry or either hash is missing."""
+    ledger_path = ledger_path or C.LOCK_LEDGER_PATH
+    entry_id = entry_id or C.LOCK_STEP4_ENTRY
+    p = Path(ledger_path)
+    if not p.exists():
+        raise RunRefused("the logged lock record (lock step 4) is missing")
+    rec = None
+    for line in p.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            d = json.loads(line)
+        except ValueError:
+            continue
+        if d.get("id") == entry_id:
+            rec = d
+    if rec is None or not isinstance(rec.get("files_sha256"), dict):
+        raise RunRefused(f"lock record entry {entry_id} not found in the logged ledger")
+    files = rec["files_sha256"]
+    occ, birth = files.get(C.CLAIM_KEY_OCCURRENCE_FILE), files.get(C.CLAIM_KEY_BIRTH_FILE)
+    if not occ or not birth:
+        raise RunRefused("the lock record does not log the claim-key file hashes")
+    return {"occurrence": occ, "birth_data": birth, "all": dict(files)}
+
+
+def _check_claim_key_inputs(lock: RunLock, record: Mapping[str, Any]) -> None:
+    """SUR-RB-43: the ONLY acceptable claim-key inputs are the two hashes in the logged lock record, and the files
+    hashed must be those two files."""
+    if lock.occurrence_sha256 != record["occurrence"] or lock.birth_data_sha256 != record["birth_data"]:
+        raise RunRefused("refused before the claim: the claim-key hashes are not the ones in the logged lock record (SUR-RB-43)")
+    for path, name in ((lock.occurrence_path, C.CLAIM_KEY_OCCURRENCE_FILE), (lock.birth_data_path, C.CLAIM_KEY_BIRTH_FILE)):
+        if not path or Path(path).name != name:
+            raise RunRefused(f"refused before the claim: the claim-key file must be {name}")
 
 
 def _logged_real_hashes() -> set:
@@ -388,6 +443,10 @@ def score_sample_for_tests(
     if tl == canon or canon in tl.parents or tl in canon.parents:
         raise RunRefused("test mode cannot use the canonical ledger path")
     real = _logged_real_hashes()
+    try:  # every file hash in the real lock record is a real-file hash too
+        real |= set(read_lock_record()["all"].values())
+    except RunRefused:
+        pass
     mine = {lock.occurrence_sha256, lock.birth_data_sha256, *lock.count_blind_sha256.values()}
     if lock.admission_dir and (Path(lock.admission_dir) / "out" / "TIMELINES_MANIFEST.json").exists():
         mine.add(_sha_file(str(Path(lock.admission_dir) / "out" / "TIMELINES_MANIFEST.json")))
@@ -434,6 +493,7 @@ def _run(
         "canonical_ledger": str(ledger.dir) == C.LEDGER_DIR,
         "test_mode": bool(_test),
         "validation_drops": v["drops"],
+        "limit_born_before_1930_death_source_none": _pre1930_alive_by_default(contexts, lock),
         "a7": v["a7"],
         "testability": v["testable"],
     }

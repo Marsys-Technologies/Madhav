@@ -84,6 +84,12 @@ TESTABLE_MIN_UNIT_SHARE = 0.5
 LEDGER_DIR = "/Users/Dev/Archives/madhav-research-library/10_engine/run-ledger"
 REAL_INPUT_HASHES_PATH = "/Users/Dev/Archives/madhav-research-library/10_engine/run-ledger-real-input-hashes.json"  # logged at lock step 4
 SAMPLE_STORE = "/Users/Dev/Archives/madhav-chart-sample"
+# SUR-RB-43 (lock step 4): the logged lock record holding the claim-key file hashes. Names and the entry id are fixed
+# here; the HASHES are read from the record (S8), never written into the scorer.
+LOCK_LEDGER_PATH = "/Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl"
+LOCK_STEP4_ENTRY = "CUTOFF-AND-FILE-HASHES-V5-20261030"
+CLAIM_KEY_OCCURRENCE_FILE = "sample_events_v5_slim.csv"  # the SLIM occurrence file
+CLAIM_KEY_BIRTH_FILE = "BIRTH_DATA_v5.csv"
 
 # ── outcomes (v1.1 Part E) ─────────────────────────────────────────────────
 ALPHA_STRONG = 0.05

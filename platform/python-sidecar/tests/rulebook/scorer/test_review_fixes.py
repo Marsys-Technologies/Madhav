@@ -95,8 +95,8 @@ def lockfiles(tmp_path, monkeypatch):
     mf = tmp_path / "UNIT_MANIFEST_v1_0.json"
     mf.write_text(json.dumps(man))
     files["cluster_table"], files["unit_manifest"] = str(ct), str(mf)
-    (tmp_path / "occurrences.csv").write_text("synthetic stand-in")
-    (tmp_path / "birth_data.csv").write_text("synthetic stand-in")
+    (tmp_path / "sample_events_v5_slim.csv").write_text("synthetic stand-in occurrences")
+    (tmp_path / "BIRTH_DATA_v5.csv").write_text("synthetic stand-in birth data")
     monkeypatch.setattr(C, "YARDSTICK_SHA256", ys)
     monkeypatch.setattr(C, "CLUSTER_TABLE_SHA256", hashlib.sha256(ct.read_bytes()).hexdigest())
     monkeypatch.setattr(C, "DRAWS_PRODUCTION", 120)
@@ -120,7 +120,7 @@ def _lock(ctx, eps, files, tmp_path, **over):
         diag = donors[f]["checks"]
         d7[f]["donor_rule_b"] = "m3" if diag["b"]["k11_floor_met_m3"] else "p2_90"
         d7[f]["donor_rule_c"] = "m3" if diag["c"]["k11_floor_met_m3"] else "p2_90"
-    occ, birth = tmp_path / "occurrences.csv", tmp_path / "birth_data.csv"
+    occ, birth = tmp_path / "sample_events_v5_slim.csv", tmp_path / "BIRTH_DATA_v5.csv"
     args = dict(
         occurrence_sha256=hashlib.sha256(occ.read_bytes()).hexdigest(), birth_data_sha256=hashlib.sha256(birth.read_bytes()).hexdigest(),
         scorer_sha256=C.source_sha256(), seed=7, fallback_primary_set=False, count_set="primary_nonschedulable",
@@ -324,9 +324,10 @@ def test_f2_the_production_entry_point_has_no_test_switch():
     assert not any("test" in p for p in inspect.signature(R.score_sample).parameters)
 
 
-def test_f2_production_refuses_contexts_not_tied_to_step5_even_on_the_canonical_path(tmp_path, lockfiles):
+def test_f2_production_refuses_contexts_not_tied_to_step5_even_on_the_canonical_path(tmp_path, lockfiles, monkeypatch):
     ctx, eps = _two_families()
     lock = _lock(ctx, eps, lockfiles, tmp_path, ledger_dir=C.LEDGER_DIR)
+    monkeypatch.setattr(C, "LOCK_LEDGER_PATH", str(_record(tmp_path, lock.occurrence_sha256, lock.birth_data_sha256)))
     with pytest.raises(RunRefused, match="not tied to the step-5"):
         R.score_sample(ctx, eps, _cfg(), lock)
 
@@ -366,7 +367,7 @@ def test_f2_test_mode_refuses_any_input_matching_a_logged_real_file_hash(tmp_pat
 def test_n5_occurrence_and_birth_files_are_rehashed_before_the_claim(tmp_path, lockfiles):
     ctx, eps = _two_families()
     lock = _lock(ctx, eps, lockfiles, tmp_path)
-    (tmp_path / "occurrences.csv").write_text("a different occurrence file")
+    (tmp_path / "sample_events_v5_slim.csv").write_text("a different occurrence file")
     with pytest.raises(RunRefused, match="occurrence file"):
         score_sample(ctx, eps, _cfg(), lock)
     with pytest.raises(RunRefused, match="birth-data"):
@@ -386,10 +387,12 @@ def test_s8_units_must_be_those_of_the_hashed_manifest(tmp_path, lockfiles):
         score_sample(ctx, eps, _cfg(), replace(lock, manifest_sha256="0" * 64))
 
 
-def test_s8_timelines_must_be_the_step5_artefacts(tmp_path, lockfiles):
+def test_s8_timelines_must_be_the_step5_artefacts(tmp_path, lockfiles, monkeypatch):
     ctx, eps = _two_families()
     with pytest.raises(RunRefused, match="step-5"):
         score_sample(ctx, eps, _cfg(), _lock(ctx, eps, lockfiles, tmp_path, admission_dir=str(tmp_path / "no-such-dir")))
+    lk = _lock(ctx, eps, lockfiles, tmp_path)
+    monkeypatch.setattr(C, "LOCK_LEDGER_PATH", str(_record(tmp_path, lk.occurrence_sha256, lk.birth_data_sha256)))
     with pytest.raises(RunRefused, match="not tied to the step-5"):
         R.score_sample(ctx, eps, _cfg(), _lock(ctx, eps, lockfiles, tmp_path, ledger_dir=C.LEDGER_DIR))
     assert _claims(tmp_path) == []
@@ -635,3 +638,77 @@ def test_f1_the_key_is_the_sample_and_the_claim_records_the_scorer_and_yardstick
     # a different scorer hash in the lock refuses before anything else (validation)
     with pytest.raises(RunRefused):
         score_sample(ctx, eps, _cfg(), replace(lock, scorer_sha256="0" * 64))
+
+
+# ── SUR-RB-43: the claim-key inputs come from the logged lock record (lock step 4) ─────────────────────────────
+def _record(tmp_path, occ, birth, entry="CUTOFF-AND-FILE-HASHES-V5-20261030"):
+    p = tmp_path / "DECISIONS_SURROGATE.jsonl"
+    rows = [{"id": "SOMETHING-ELSE", "files_sha256": {}},
+            {"id": entry, "files_sha256": {"sample_events_v5_slim.csv": occ, "BIRTH_DATA_v5.csv": birth, "sample_events_v5.csv": "f" * 64}}]
+    p.write_text("\n".join(json.dumps(r) for r in rows) + "\n")
+    return p
+
+
+def test_sur_rb_43_lock_record_reader():
+    rec = R.read_lock_record
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as d:
+        p = _record(Path(d), "a" * 64, "b" * 64)
+        got = rec(str(p))
+        assert got["occurrence"] == "a" * 64 and got["birth_data"] == "b" * 64 and got["all"]["sample_events_v5.csv"] == "f" * 64
+        with pytest.raises(RunRefused, match="not found"):
+            rec(str(p), "NO-SUCH-ENTRY")
+        p.write_text(json.dumps({"id": "CUTOFF-AND-FILE-HASHES-V5-20261030", "files_sha256": {"BIRTH_DATA_v5.csv": "b" * 64}}) + "\n")
+        with pytest.raises(RunRefused, match="claim-key"):
+            rec(str(p))
+
+
+@pytest.mark.skipif(not Path(C.LOCK_LEDGER_PATH).exists(), reason="the governance ledger is not on this machine")
+def test_sur_rb_43_the_logged_record_names_the_slim_occurrence_file_and_birth_data():
+    got = R.read_lock_record()
+    assert got["occurrence"] == "4be3abadb6348860c9f6b47b9c8aedab8527bee75bd816d76d0b3f8055d0f37d"
+    assert got["birth_data"] == "4288cca3cd277d54cfe5f0d24b57830b47f7b8a692373ee4b5fa7b52030214d5"
+
+
+def test_sur_rb_43_production_accepts_only_the_logged_claim_key_hashes(tmp_path, lockfiles, monkeypatch):
+    ctx, eps = _two_families()
+    lock = _lock(ctx, eps, lockfiles, tmp_path, ledger_dir=C.LEDGER_DIR)
+    monkeypatch.setattr(C, "LOCK_LEDGER_PATH", str(_record(tmp_path, "9" * 64, lock.birth_data_sha256)))
+    with pytest.raises(RunRefused, match="logged lock record"):
+        R.score_sample(ctx, eps, _cfg(), lock)
+    monkeypatch.setattr(C, "LOCK_LEDGER_PATH", str(_record(tmp_path, lock.occurrence_sha256, lock.birth_data_sha256)))
+    other = tmp_path / "sample_events_v5.csv"  # same bytes, but not the SLIM file the key names
+    other.write_bytes(Path(lock.occurrence_path).read_bytes())
+    with pytest.raises(RunRefused, match="sample_events_v5_slim.csv"):
+        R.score_sample(ctx, eps, _cfg(), replace(lock, occurrence_path=str(other)))
+
+
+def test_sur_rb_43_test_mode_refuses_any_hash_in_the_real_lock_record(tmp_path, lockfiles, monkeypatch):
+    ctx, eps = _two_families()
+    lock = _lock(ctx, eps, lockfiles, tmp_path)
+    monkeypatch.setattr(C, "REAL_INPUT_HASHES_PATH", str(tmp_path / "none.json"))
+    monkeypatch.setattr(C, "LOCK_LEDGER_PATH", str(_record(tmp_path, lock.occurrence_sha256, "b" * 64)))
+    with pytest.raises(RunRefused, match="logged real-file hash"):
+        score_sample(ctx, eps, _cfg(), lock)
+
+
+def test_sur_rb_43_result_reports_pre_1930_charts_with_death_source_none(monkeypatch):
+    from datetime import date as _d
+
+    tls, units = toy_world(31, n_charts=4, years=10, n_units=2)
+    for t, y in zip(tls, (1925, 1928, 1931, 1920)):
+        t.birth = _d(y, 6, 1).toordinal()
+    ctx = {C.FAMILY_DASHA: FamilyContext(C.FAMILY_DASHA, tls, units)}
+
+    class Adm:
+        def __init__(self, d):
+            self.horizons = {"charts": {tls[0].code: {"death_source": "none"}, tls[1].code: {"death_source": "wikidata"},
+                                        tls[2].code: {"death_source": "none"}, tls[3].code: {"death_source": "none"}}}
+
+    import services.rulebook.scorer.inputs as I
+
+    monkeypatch.setattr(I, "AdmissionInputs", Adm)
+    lock = type("L", (), {"admission_dir": "x"})()
+    assert R._pre1930_alive_by_default(ctx, lock) == 2  # 1925 and 1920; 1928 has a death source, 1931 is after 1930
+    assert R._pre1930_alive_by_default(ctx, type("L", (), {"admission_dir": None})()) is None
