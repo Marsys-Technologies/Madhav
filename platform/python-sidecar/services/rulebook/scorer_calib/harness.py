@@ -24,7 +24,7 @@ from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 import numpy as np
 
 from ..scorer import config as C
-from ..scorer.core import FamilyContext, score_family
+from ..scorer.core import FamilyContext, applicable_mask, score_family
 from ..scorer.outcome import holm_adjust
 from . import occurrences as O
 
@@ -66,6 +66,11 @@ class Calibration:
             assert a.code == b.code and a.h_start >= b.h_start and a.h_end == b.h_end
         self.pmfs = [O._DayPmf(t) for t in self.tls[C.FAMILY_TRANSIT]]
         self.eff = {f: O.ChartTimelineSet(self.ctx[f]) for f in FAMS}
+        # D7.2 second half: at least half the family's units survive the footprint gate in at least one window class
+        self.units_ok = {
+            f: bool(self.ctx[f].units) and 2 * sum(1 for u in self.ctx[f].units if len(self.ctx[f].gate_drop.get(u.unit_id, frozenset())) < 2) >= len(self.ctx[f].units)
+            for f in FAMS
+        }
 
     def warm(self, n: int = 150) -> None:
         """Run ``n`` throwaway studies so the curve caches are filled BEFORE the worker pool forks (pages are then
@@ -104,16 +109,32 @@ class Calibration:
         cfg = C.ScoreConfig(draws=self.draws, seed=int(rng.integers(1, 2**31 - 1)))
         eps_f, adm = self.admit({f: O.to_episodes(occ, self.tls[f]) for f in FAMS}, min_usable)
         res: Dict[str, Dict[str, Any]] = {}
+        testable: Dict[str, bool] = {}
+        app_counts: Dict[str, Tuple[int, int]] = {}
         for f in FAMS:
             res[f] = score_family(self.ctx[f], eps_f[f], cfg, admitted=adm[f])
-        p1 = {f: res[f]["p1"] for f in FAMS if res[f].get("p1") is not None and res[f].get("donor_floor_ok", True)}
+            app = [e for e, ok in zip(eps_f[f], applicable_mask(self.ctx[f], eps_f[f])) if ok]
+            app_counts[f] = (len(app), len({e.chart for e in app}))
+            # this study's D7, as production would decide it (review S6): counts, units surviving the gate, K11 floors
+            testable[f] = bool(
+                app_counts[f][0] >= C.TESTABLE_MIN_EPISODES
+                and app_counts[f][1] >= C.TESTABLE_MIN_CHARTS
+                and self.units_ok[f]
+                and res[f].get("donor_floor_ok")
+                and res[f].get("p1") is not None
+            )
+        p1 = {f: res[f]["p1"] for f in FAMS if testable[f]}
         adj = holm_adjust(p1) if p1 else {}
         out: Dict[str, Any] = {"model": model, "i": index, "q": q, "target": target, "sparse": sparse, "min_usable": min_usable}
         for f in FAMS:
             r = res[f]
+            m2 = holm_adjust({g: res[g]["p1"] for g in FAMS if res[g].get("p1") is not None})
             out[f] = {
                 "n": r["episodes_scored"],
+                "n_applicable": app_counts[f][0],
+                "charts_applicable": app_counts[f][1],
                 "charts": r["charts_scored"],
+                "testable": testable[f],
                 "p1": r.get("p1"),
                 "adj": adj.get(f),
                 "p2": r.get("p2"),
@@ -122,9 +143,12 @@ class Calibration:
                 "dir_ok": r.get("dir_testable"),
                 "floor_ok": r.get("donor_floor_ok"),
                 "T": r.get("T"),
-                "flags": flags(adj.get(f), r),
+                "flags": flags(adj.get(f), r),  # the production rule: Holm over this study's testable families
+                "flags_m1": flags(r.get("p1"), r),  # one family testable: adjusted p1 = p1
+                "flags_m2": flags(m2.get(f), r),  # both families in Holm
             }
-        out["any"] = {v: any(out[f]["flags"][v] for f in FAMS) for v in VARIANTS}
+        for key in ("flags", "flags_m1", "flags_m2"):
+            out["any" if key == "flags" else "any_" + key[6:]] = {v: any(out[f][key][v] for f in FAMS) for v in VARIANTS}
         return out
 
 
@@ -165,6 +189,10 @@ def run_many(cal: Calibration, tasks: Sequence[Tuple[str, int, float, str, bool]
     finally:
         if fh:
             fh.close()
+    if out_path:  # review M9: identical content -> identical bytes, whatever the worker count
+        lines = sorted(open(out_path, encoding="utf-8").read().splitlines())
+        with open(out_path, "w", encoding="utf-8") as fo:
+            fo.write("".join(x + "\n" for x in lines))
     return results
 
 
@@ -179,31 +207,58 @@ def wilson_upper(k: int, n: int, z: float = 1.96) -> float:
     return (c + r) / d
 
 
-def rates(results: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
+def rates(results: Sequence[Mapping[str, Any]], key: str = "flags") -> Dict[str, Any]:
     n = len(results)
-    out: Dict[str, Any] = {"n": n}
+    anykey = "any" if key == "flags" else "any_" + key[6:]
+    out: Dict[str, Any] = {"n": n, "rule": key}
     for f in FAMS:
-        out[f] = {v: sum(1 for r in results if r[f]["flags"][v]) / n if n else None for v in VARIANTS}
-        out[f]["full_k"] = sum(1 for r in results if r[f]["flags"]["full"])
+        out[f] = {v: sum(1 for r in results if r[f][key][v]) / n if n else None for v in VARIANTS}
+        out[f]["full_k"] = sum(1 for r in results if r[f][key]["full"])
         out[f]["full_upper95"] = wilson_upper(out[f]["full_k"], n)
-    out["any"] = {v: sum(1 for r in results if r["any"][v]) / n if n else None for v in VARIANTS}
-    out["any"]["full_k"] = sum(1 for r in results if r["any"]["full"])
+    out["any"] = {v: sum(1 for r in results if r[anykey][v]) / n if n else None for v in VARIANTS}
+    out["any"]["full_k"] = sum(1 for r in results if r[anykey]["full"])
     out["any"]["full_upper95"] = wilson_upper(out["any"]["full_k"], n)
     return out
 
 
-def f2_gate(by_model: Mapping[str, Sequence[Mapping[str, Any]]], min_studies: int = C.GATE_MIN_STUDIES) -> Dict[str, Any]:
-    """v1.1 F2: under EACH model, per-family false-STRONG <= 0.02 and overall <= 0.03, over >= 5,000 studies."""
+def f2_gate(
+    by_model: Mapping[str, Sequence[Mapping[str, Any]]],
+    *,
+    draws: int,
+    scorer_sha256: str,
+    frozen_scorer_sha256: Optional[str],
+    d7_known: bool = False,
+    sanity: Optional[Mapping[str, float]] = None,
+) -> Dict[str, Any]:
+    """v1.1 F2 with SUR-RB-37 S6/S7. GATE only if: all five models N0-N4, each with at least 5,000 studies, at least
+    2,000 draws per check, the scorer byte-identical to the frozen one, and the q = 30% sanity check (STRONG >= 0.80
+    under N0, each target family) supplied and met; otherwise status NOT_GATE. Criterion: the point estimate,
+    per family <= 0.02 and overall <= 0.03 (Wilson upper bounds printed). Under D7's m when ``d7_known``; otherwise
+    the m = 1 and m = 2 readings must BOTH pass."""
+    rules = ["flags"] if d7_known else ["flags_m1", "flags_m2"]
     rows: Dict[str, Any] = {}
     ok_all = True
-    for m, res in by_model.items():
-        r = rates(res)
-        fam_ok = all(r[f]["full"] <= C.GATE_PER_FAMILY for f in FAMS)
-        over_ok = r["any"]["full"] <= C.GATE_OVERALL
-        enough = r["n"] >= min_studies
-        rows[m] = {"rates": r, "per_family_ok": fam_ok, "overall_ok": over_ok, "enough_studies": enough, "pass": bool(fam_ok and over_ok and enough)}
-        ok_all &= rows[m]["pass"]
-    return {"pass": bool(ok_all and rows), "models": rows}
+    for m in O.MODELS:
+        res = by_model.get(m) or []
+        row: Dict[str, Any] = {"n": len(res)}
+        for key in rules:
+            r = rates(res, key) if res else None
+            fam_ok = bool(r) and all(r[f]["full"] <= C.GATE_PER_FAMILY for f in FAMS)
+            over_ok = bool(r) and r["any"]["full"] <= C.GATE_OVERALL
+            row[key] = {"rates": r, "per_family_ok": fam_ok, "overall_ok": over_ok}
+            ok_all &= fam_ok and over_ok
+        rows[m] = row
+    conditions = {
+        "all_five_models": all(m in by_model for m in O.MODELS),
+        "studies_at_least_5000": all(len(by_model.get(m) or []) >= C.GATE_MIN_STUDIES for m in O.MODELS),
+        "draws_at_least_2000": draws >= C.MIN_DRAWS_CALIBRATION,
+        "scorer_is_the_frozen_one": bool(frozen_scorer_sha256) and frozen_scorer_sha256 == scorer_sha256,
+        "sanity_q30_met": bool(sanity) and all(v >= C.GATE_SANITY_POWER for v in sanity.values()),
+    }
+    status = "GATE" if all(conditions.values()) else "NOT_GATE"
+    return {"status": status, "pass": bool(status == "GATE" and ok_all), "rates_pass": bool(ok_all), "conditions": conditions,
+            "criterion": "point estimate: per family <= 0.02, overall <= 0.03 (Wilson 95% upper bounds printed)",
+            "rules": rules, "sanity_q30": dict(sanity or {}), "models": rows}
 
 
 # ── v1.2 K12: remedies triggered by check (a) alone ───────────────────────────────────────────────────────

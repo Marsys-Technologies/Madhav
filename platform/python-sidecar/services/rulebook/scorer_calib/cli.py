@@ -56,8 +56,6 @@ def _load(args) -> H.Calibration:
         from ..scorer.inputs import read_count_blind
 
         prof = O.profile_from_count_blind(read_count_blind(args.count_blind), [t.code for t in tl[C.FAMILY_TRANSIT]])
-    elif getattr(args, "counts_file", None):
-        prof = O.profile_from_counts_file(args.counts_file, [t.code for t in tl[C.FAMILY_TRANSIT]])
     cal = H.Calibration(tl, units, gate, prof, draws=args.draws, seed=args.seed)
     cal.warm(args.warm)
     return cal
@@ -71,10 +69,14 @@ def _write(path: Path, obj: Any) -> None:
 
 def _hashes(out: Path, extra: Dict[str, Any]) -> None:
     files = {p.name: _sha(p) for p in sorted(out.iterdir()) if p.is_file() and p.name != "HASHES.json"}
-    _write(out / "HASHES.json", {"scorer_source_sha256": C.source_sha256(), "simulator_source_sha256": sim_sha(), "files": files, **extra})
+    import platform
+
+    _write(out / "HASHES.json", {"scorer_source_sha256": C.source_sha256(), "simulator_source_sha256": sim_sha(), "files": files,
+                                 "python": platform.python_version(), "numpy": np.__version__, **extra})
 
 
 def cmd_gate(a) -> int:
+    """F2 gate (v1.1 F2, v1.2 K12, SUR-RB-35/37): N0-N4 null studies plus the q = 30% sanity check under N0."""
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True, mode=0o700)
     cal = _load(a)
@@ -87,14 +89,22 @@ def cmd_gate(a) -> int:
         by_model[m] = H.run_many(cal, [(m, i, 0.0, C.FAMILY_DASHA, False, a.threshold) for i in range(a.studies)], a.workers, str(p))
         os.chmod(p, 0o600)
         print(m, "done", round(time.time() - t0), "s", flush=True)
-    res = H.f2_gate(by_model, min_studies=min(a.studies, C.GATE_MIN_STUDIES) if a.allow_fewer else C.GATE_MIN_STUDIES)
+    sanity: Dict[str, float] = {}
+    for target in C.FAMILIES:  # large-effect sanity check: STRONG >= 0.80 at q = 30% under N0, each target family
+        p = out / f"sanity_N0_q30_{target}.jsonl"
+        if p.exists():
+            p.unlink()
+        res = H.run_many(cal, [("N0", i, 0.30, target, False, a.threshold) for i in range(a.sanity_studies)], a.workers, str(p))
+        os.chmod(p, 0o600)
+        key = "flags" if a.d7_known else "flags_m2"
+        sanity[target] = H.rates(res, key)[target]["full"]
+    res = H.f2_gate(by_model, draws=a.draws, scorer_sha256=C.source_sha256(), frozen_scorer_sha256=a.frozen_scorer_sha, d7_known=a.d7_known, sanity=sanity)
     k12 = H.k12_check(by_model)
-    status = "FINAL_INPUTS" if a.step5_hash else "PROVISIONAL_NOT_STEP5_INPUTS"
-    _write(out / "F2_GATE.json", {"status": status, "step5_hash": a.step5_hash, "threshold": a.threshold, "draws": a.draws, "studies_per_model": a.studies, "mean_per_chart": a.mean_per_chart, "gate": res, "k12": k12})
+    status = res["status"] if a.step5_hash else "PROVISIONAL_NOT_STEP5_INPUTS"
+    _write(out / "F2_GATE.json", {"status": status, "step5_hash": a.step5_hash, "threshold": a.threshold, "draws": a.draws, "studies_per_model": a.studies, "gate": res, "k12": k12})
     _hashes(out, {"draws": a.draws, "studies": a.studies, "seed": a.seed, "status": status, "threshold": a.threshold})
     print("K12 remedies:", k12["triggers"] or "not triggered")
-    print(json.dumps({m: {k: v for k, v in r["rates"].items() if k != "n"} for m, r in res["models"].items()}, indent=1, default=float))
-    print("F2 GATE", "PASS" if res["pass"] else "FAIL")
+    print("F2", status, "rates", "PASS" if res["rates_pass"] else "FAIL", "conditions", res["conditions"])
     return 0 if res["pass"] else 2
 
 
@@ -134,16 +144,28 @@ def cmd_a6(a) -> int:
     out.mkdir(parents=True, exist_ok=True, mode=0o700)
     cal = _load(a)
     rows: Dict[str, Any] = {}
+    cb = None
+    if a.count_blind:
+        from ..scorer.inputs import read_count_blind
+
+        cb = read_count_blind(a.count_blind)
     for t in (3, 5, 8):
         res = H.run_many(cal, [("N4", i, 0.10, C.FAMILY_DASHA, False, t) for i in range(a.studies)], a.workers, None)
-        n_d = float(np.mean([r[C.FAMILY_DASHA]["n"] for r in res]))
-        ch = float(np.mean([r[C.FAMILY_DASHA]["charts"] for r in res]))
         rate = H.rates(res)[C.FAMILY_DASHA]["full"]
-        rows[str(t)] = {"dasha_strong_rate_q10": rate, "mean_scored_dasha_episodes": n_d, "mean_charts": ch, "meets_A7": bool(n_d >= C.MIN_DASHA_EPISODES_FOR_VERDICT and ch >= C.MIN_CHARTS_FOR_VERDICT)}
+        if cb is not None:  # the real choice: A7 from the sealed counts of this threshold's pool (v1.2 K8, review M7)
+            from ..scorer.inputs import d7_decisions
+
+            meets = bool(d7_decisions(cb, t, C.FAMILY_DASHA)["a7_ok"])
+            share = None
+        else:  # synthetic counts: A7 on scored-APPLICABLE daśā counts, judged per sample, all samples must meet it
+            per = [r[C.FAMILY_DASHA]["n_applicable"] >= C.MIN_DASHA_EPISODES_FOR_VERDICT and r[C.FAMILY_DASHA]["charts_applicable"] >= C.MIN_CHARTS_FOR_VERDICT for r in res]
+            share = float(np.mean(per))
+            meets = bool(all(per))
+        rows[str(t)] = {"dasha_strong_rate_q10": rate, "meets_A7": meets, "share_of_samples_meeting_A7": share}
         print(t, rows[str(t)], flush=True)
     ok = [t for t in (3, 5, 8) if rows[str(t)]["meets_A7"]]
     best = max(ok, key=lambda t: (round(rows[str(t)]["dasha_strong_rate_q10"], 12), t)) if ok else None
-    _write(out / "A6_THRESHOLD.json", {"provisional": not a.step5_hash, "counts": "K2 aggregates" if a.counts_file else "declared stand-in profile", "q_definition": "v1.2 K9 (top 20% coverage windows)", "studies": a.studies, "rows": rows, "chosen": best})
+    _write(out / "A6_THRESHOLD.json", {"provisional": not a.step5_hash, "counts": "count_blind aggregates" if a.count_blind else "declared stand-in profile", "q_definition": "v1.2 K9 (top 20% coverage windows)", "studies": a.studies, "rows": rows, "chosen": best})
     _hashes(out, {"draws": a.draws, "studies": a.studies, "seed": a.seed})
     print("A6 threshold:", best)
     return 0
@@ -182,11 +204,14 @@ def main(argv=None) -> int:
         p.add_argument("--mean-per-chart", type=float, default=O.DECLARED_MEAN_PER_CHART)
         p.add_argument("--seed", type=int, default=20261030)
         p.add_argument("--warm", type=int, default=150)
-        p.add_argument("--counts-file", default=None, help="K2 aggregate counts (chart_code,area,direction,grade,count); else the declared stand-in")
         p.add_argument("--step5-hash", default=None, help="hash of the step-5 admission artefacts; without it every output is labelled PROVISIONAL")
         p.add_argument("--threshold", type=int, default=0, help="exclusion-5 threshold (3, 5, 8) applied per family; 0 = none")
     g = sub.add_parser("gate"); common(g, C.GATE_MIN_STUDIES)
-    g.add_argument("--models", default=",".join(O.MODELS)); g.add_argument("--allow-fewer", action="store_true"); g.set_defaults(fn=cmd_gate)
+    g.add_argument("--models", default=",".join(O.MODELS))
+    g.add_argument("--sanity-studies", type=int, default=500)
+    g.add_argument("--frozen-scorer-sha", default=None, help="sha256 of the frozen scorer; without it the status is NOT_GATE")
+    g.add_argument("--d7-known", action="store_true", help="D7 has fixed m; otherwise m = 1 and m = 2 must both pass")
+    g.set_defaults(fn=cmd_gate)
     p = sub.add_parser("power"); common(p, 400)
     p.add_argument("--qs", default="0.05,0.10,0.15,0.20,0.30"); p.add_argument("--model", default="N4"); p.set_defaults(fn=cmd_power)
     a6 = sub.add_parser("a6"); common(a6, 300); a6.set_defaults(fn=cmd_a6)

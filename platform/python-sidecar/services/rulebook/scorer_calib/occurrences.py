@@ -2,7 +2,7 @@
 
 No real occurrence is read. A ``CountsProfile`` says, per chart, how many episodes of which (area, direction,
 grade) a study has; it is DECLARED here (fixed seed, weights written below) unless a counts-only file of real
-per-chart counts is supplied through ``profile_from_counts_file``. The models place those episodes:
+per-chart counts is supplied through ``profile_from_count_blind`` (the sealed K2 aggregates). The models place those episodes:
 
 N0  uniform within the horizon.
 N1  age-clustered, with the fixed age densities of v1.1 F1 (truncated to the horizon).
@@ -90,16 +90,6 @@ def declared_profile(n_charts: int, seed: int = 7, mean: float = DECLARED_MEAN_P
             eps.append((a, d, g))
         out.append(tuple(eps))
     return CountsProfile(tuple(out))
-
-
-def profile_from_counts_file(path: str, codes: Sequence[str]) -> CountsProfile:
-    """Real counts only: CSV with columns chart_code, area, direction, grade, count (no names, no dates)."""
-    per: Dict[str, List[Tuple[str, str, str]]] = {c: [] for c in codes}
-    with open(path, "r", encoding="utf-8", newline="") as fh:
-        for r in csv.DictReader(fh):
-            if r["chart_code"] in per:
-                per[r["chart_code"]].extend([(r["area"], r["direction"], r["grade"])] * int(r["count"]))
-    return CountsProfile(tuple(tuple(per[c]) for c in codes))
 
 
 def profile_from_count_blind(cb: Any, codes: Sequence[str]) -> CountsProfile:

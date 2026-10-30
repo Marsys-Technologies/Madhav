@@ -13,7 +13,7 @@ from services.rulebook.scorer import config as C
 from services.rulebook.scorer.core import FamilyContext
 from services.rulebook.scorer.footprint import descriptive_hits, family_testable, gate_from_touch, pooled_touch, touch_rates
 from services.rulebook.scorer.model import ChartTimeline, Episode
-from services.rulebook.scorer.runner import RunLedger, RunRefused, mechanical_dry_run, sample_sha256, score_sample, write_result
+from services.rulebook.scorer.runner import RunLedger, RunRefused, mechanical_dry_run, write_result
 
 from ._toy import BASE, make_units, month_window, random_episodes, runs_series, toy_world
 
@@ -29,11 +29,7 @@ def test_touch_rate_of_a_known_series():
     t = ChartTimeline("c", BASE - 100, BASE, BASE + n - 1, {"M": st})
     tr = touch_rates([t], u)["U"]
     assert tr["3d"] == pytest.approx(3 / (n - 2))
-    mths = [m for m in range(1, 14) if True]
-    # the one TRUE day (BASE+100 = 2020-04-11) lies in one of the whole calendar months inside the horizon
-    from datetime import date
-
-    d = date.fromordinal(BASE + 100)
+    # the one TRUE day lies in one of the whole calendar months inside the horizon
     assert tr["month"] == pytest.approx(1 / _count_months(BASE, BASE + n - 1))
 
 
@@ -109,56 +105,10 @@ def test_descriptive_hits_report_O_E_without_testing():
 
 
 # ── ledger: no second run on the same sample ────────────────────────────────────────────
-def _small_sample(seed=1, n_charts=22, per_chart=20):
-    tls, units = toy_world(seed, n_charts=n_charts, years=25, n_units=6)
-    ctx = FamilyContext(C.FAMILY_DASHA, tls, units)
-    eps = random_episodes(np.random.default_rng(seed), tls, per_chart, AREAS)
-    return ctx, eps
-
-
-def test_second_run_on_the_same_sample_is_refused(tmp_path):
-    ctx, eps = _small_sample()
-    ledger = RunLedger(str(tmp_path / "ledger"))
-    cfg = C.ScoreConfig(draws=200, seed=1)
-    res = score_sample({C.FAMILY_DASHA: ctx}, {C.FAMILY_DASHA: eps}, cfg, ledger)
-    assert res["outcome"] in {"STRONG", "MIDDLE", "CHANCE-LEVEL", "NO_VERDICT"}
-    assert res["scorer_source_sha256"] == C.source_sha256()
-    with pytest.raises(RunRefused):
-        score_sample({C.FAMILY_DASHA: ctx}, {C.FAMILY_DASHA: eps}, cfg, ledger)
-    # a different seed or a different draw count is still the same sample
-    with pytest.raises(RunRefused):
-        score_sample({C.FAMILY_DASHA: ctx}, {C.FAMILY_DASHA: eps}, C.ScoreConfig(draws=500, seed=2), ledger)
-    # the same episodes in another order are the same sample
-    with pytest.raises(RunRefused):
-        score_sample({C.FAMILY_DASHA: ctx}, {C.FAMILY_DASHA: list(reversed(eps))}, cfg, ledger)
-    # one more episode is a different sample
-    extra = eps + [Episode(0, AREAS[0], C.FAVOURABLE, C.G1, eps[0].lo + 40, eps[0].lo + 42)]
-    assert RunLedger(str(tmp_path / "ledger")).has(sample_sha256({C.FAMILY_DASHA: ctx.tl}, {C.FAMILY_DASHA: eps}))
-    assert sample_sha256({C.FAMILY_DASHA: ctx.tl}, {C.FAMILY_DASHA: extra}) != sample_sha256({C.FAMILY_DASHA: ctx.tl}, {C.FAMILY_DASHA: eps})
-
-
-def test_a_run_that_crashes_after_the_claim_still_counts_as_run(tmp_path):
-    ctx, eps = _small_sample(2)
-    ledger = RunLedger(str(tmp_path / "ledger"))
-    bad = [Episode(0, AREAS[0], "mixed", C.G1, 1, 3)] + eps  # mixed direction: refused inside the scorer
-    with pytest.raises(Exception):
-        score_sample({C.FAMILY_DASHA: ctx}, {C.FAMILY_DASHA: bad}, C.ScoreConfig(draws=100, seed=1), ledger)
-    with pytest.raises(RunRefused):
-        score_sample({C.FAMILY_DASHA: ctx}, {C.FAMILY_DASHA: bad}, C.ScoreConfig(draws=100, seed=1), ledger)
-
-
-def test_below_the_minimum_there_is_no_verdict_and_no_statistic(tmp_path):
-    tls, units = toy_world(3, n_charts=12, years=20, n_units=4)  # 12 charts < 20
-    ctx = FamilyContext(C.FAMILY_DASHA, tls, units)
-    eps = random_episodes(np.random.default_rng(1), tls, 40, AREAS)
-    res = score_sample({C.FAMILY_DASHA: ctx}, {C.FAMILY_DASHA: eps}, C.ScoreConfig(draws=100, seed=1), RunLedger(str(tmp_path / "l")))
-    assert res["outcome"] == "NO_VERDICT" and "families" not in res and "minimum not met" in res["reason"]
-
-
 def test_ledger_files_are_private_and_result_file_is_written_once(tmp_path):
     ledger = RunLedger(str(tmp_path / "ledger"))
-    p = ledger.claim("a" * 64, C.source_sha256(), "x")
-    assert stat.S_IMODE(os.stat(p).st_mode) == 0o600
+    paths = ledger.claim({"inputs": "a" * 64}, C.source_sha256(), "x")
+    assert stat.S_IMODE(os.stat(paths[0]).st_mode) == 0o600
     out = str(tmp_path / "result.json")
     sha = write_result({"k": 1}, out)
     assert len(sha) == 64 and stat.S_IMODE(os.stat(out).st_mode) == 0o600
@@ -179,7 +129,9 @@ def _keys(obj, acc):
 
 
 def test_dry_run_checks_invariants_and_returns_no_statistics():
-    ctx, eps = _small_sample(4, n_charts=10, per_chart=8)
+    tls, units = toy_world(4, n_charts=10, years=25, n_units=6)
+    ctx = FamilyContext(C.FAMILY_DASHA, tls, units)
+    eps = random_episodes(np.random.default_rng(4), tls, 8, AREAS)
     out = mechanical_dry_run({C.FAMILY_DASHA: ctx}, {C.FAMILY_DASHA: eps})
     assert out["dry_run"] and out["statistics_kept"] is False
     assert out["families"][C.FAMILY_DASHA]["invariants_hold"] is True

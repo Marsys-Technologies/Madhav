@@ -95,7 +95,10 @@ def test_rival_group_members_are_averaged_and_separate_groups_are_ored():
     assert u.variant(CAREER, True).components() == (("m", "A"), ("m", "B"))  # one group: percentiles averaged
     u = _unit("VC", [[("A", [C.GENERAL])], [("B", [C.GENERAL])], [("C", [C.GENERAL]), ("D", [C.GENERAL])]])
     comps = u.variant(CAREER, True).components()
-    assert len(comps) == 1 and comps[0][0] == "or" and comps[0][1] == (("A",), ("B",), ("C", "D"))
+    # v1.4 M2: MIXED = one reading per choice of one member from each group, each reading the OR of its members
+    assert comps == (("or", ("A", "B", "C")), ("or", ("A", "B", "D")))
+    e = _unit("VE", [[("A", [C.GENERAL])], [("B", [C.GENERAL])]])
+    assert e.variant(CAREER, True).components() == (("or", ("A", "B")),)  # E: a single reading
 
 
 def test_moon_member_is_scored_on_g1_episodes_only():

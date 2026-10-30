@@ -53,68 +53,74 @@ def make_blocks(n_days: int, block_days: int, merge_below: int) -> List[Tuple[in
     return blocks
 
 
-def percentile_curve(T: np.ndarray, A: np.ndarray, bl: int, bh: int, L: int) -> np.ndarray:
-    """Mid-rank percentile of the window coverage for every window start of length L inside [bl, bh].
-
-    ``T``/``A`` are prefix sums (length n+1) of TRUE and of assessed days. NaN where the window is not
-    scorable (fewer than half its days assessed) and everywhere when every scorable window has the same
-    coverage (the member carries no information).
-    """
+def _window_coverage(T: np.ndarray, A: np.ndarray, bl: int, bh: int, L: int):
     nst = bh - bl - L + 2
     if nst <= 0:
-        return np.zeros(0, dtype=np.float32)
+        return nst, None, None
     s = np.arange(bl, bl + nst)
     num = T[s + L] - T[s]
     den = A[s + L] - A[s]
     ok = den * 2 >= L
+    cov = np.full(nst, np.nan)
+    cov[ok] = np.round(num[ok] / den[ok], 10)
+    return nst, ok, cov
+
+
+def block_constant(T: np.ndarray, A: np.ndarray, bl: int, bh: int, L: int) -> bool:
+    """CARVE-OUT 3 (SUR-RB-36; v1.0 3.2 step 3): True when the component has the same coverage in every scorable
+    window of length L in the block [bl, bh] (or no scorable window): it carries no information and is dropped.
+    It depends on the block's state pattern only, never on where an episode falls."""
+    nst, ok, cov = _window_coverage(T, A, bl, bh, L)
+    if nst <= 0 or not ok.any():
+        return True
+    c = cov[ok]
+    return bool(c.min() == c.max())
+
+
+def percentile_curve(T: np.ndarray, A: np.ndarray, bl: int, bh: int, L: int) -> np.ndarray:
+    """Mid-rank percentile of the window coverage for every window start of length L inside [bl, bh].
+
+    ``T``/``A`` are prefix sums (length n+1) of TRUE and of assessed days. NaN where the window is not
+    scorable (fewer than half its days assessed) and everywhere when the component is constant in the block
+    (``block_constant``).
+    """
+    nst, ok, cov = _window_coverage(T, A, bl, bh, L)
+    if nst <= 0:
+        return np.zeros(0, dtype=np.float32)
     out = np.full(nst, np.nan, dtype=np.float32)
-    if not ok.any():
+    if block_constant(T, A, bl, bh, L):
         return out
-    cov = np.round(num[ok] / den[ok], 10)
-    if cov.min() == cov.max():
-        return out
-    srt = np.sort(cov)
-    lo = np.searchsorted(srt, cov, side="left")
-    hi = np.searchsorted(srt, cov, side="right")
-    out[ok] = ((lo + hi) / (2.0 * cov.size)).astype(np.float32)
+    c = cov[ok]
+    srt = np.sort(c)
+    lo = np.searchsorted(srt, c, side="left")
+    hi = np.searchsorted(srt, c, side="right")
+    out[ok] = ((lo + hi) / (2.0 * c.size)).astype(np.float32)
     return out
 
 
-def or_values(member_vals: Sequence[Sequence[np.ndarray]]) -> np.ndarray:
-    """Daily value of a multi-group unit variant. ``member_vals[g][i]`` is member i of group g as a float
-    array (1 TRUE, 0 FALSE, NaN not assessed). A group's value is the share of its assessed members that are
-    TRUE (members of a group are rival readings); groups are disjoint claims, OR-ed as 1 - prod(1 - value),
-    which is the plain Kleene OR when every group has one member. NaN when nothing is TRUE and some group is
-    not assessed (Kleene)."""
-    n = member_vals[0][0].shape[0]
-    none_true_prod = np.ones(n)
-    any_pos = np.zeros(n, dtype=bool)
-    any_na = np.zeros(n, dtype=bool)
-    for grp in member_vals:
-        stack = np.vstack([m[None, :] for m in grp])
-        assessed = ~np.isnan(stack)
-        cnt = assessed.sum(axis=0)
-        tot = np.where(assessed, stack, 0.0).sum(axis=0)
-        f = np.where(cnt > 0, tot / np.maximum(cnt, 1), np.nan)
-        na = cnt == 0
-        any_na |= na
-        fz = np.where(na, 0.0, f)
-        any_pos |= fz > 0
-        none_true_prod *= 1.0 - fz
-    out = 1.0 - none_true_prod
-    out[~any_pos & any_na] = np.nan
+def or_values(member_vals: Sequence[np.ndarray]) -> np.ndarray:
+    """Kleene OR of the members of one reading (v1.4 M2): 1 if any member is TRUE, NaN if none is TRUE and some
+    member is not assessed, else 0. Inputs are float arrays (1 TRUE, 0 FALSE, NaN not assessed)."""
+    st = np.vstack([m[None, :] for m in member_vals])
+    any_true = (st == 1.0).any(axis=0)
+    any_na = np.isnan(st).any(axis=0)
+    out = np.where(any_true, 1.0, 0.0)
+    out[~any_true & any_na] = np.nan
     return out
+
+
+TIE_TOL = 1e-12  # review M3: statistics equal within this are ties (and ties count against the observed)
 
 
 def pool_p(pool: np.ndarray) -> float:
     """p of the observed value (index 0) among the pool: (1 + #{draws >= observed}) / (n_draws + 1)."""
-    return float((np.count_nonzero(pool[1:] >= pool[0]) + 1) / pool.size)
+    return float((np.count_nonzero(pool[1:] >= pool[0] - TIE_TOL) + 1) / pool.size)
 
 
 def pool_p_all(pool: np.ndarray) -> np.ndarray:
-    """p of every pool element: #{pool >= value} / pool.size (the observed is one of the pool)."""
+    """p of every pool element: #{pool >= value - TIE_TOL} / pool.size (the observed is one of the pool)."""
     srt = np.sort(pool)
-    return (pool.size - np.searchsorted(srt, pool, side="left")) / float(pool.size)
+    return (pool.size - np.searchsorted(srt, pool - TIE_TOL, side="left")) / float(pool.size)
 
 
 def min_p_adjusted(pools: Mapping[str, np.ndarray]) -> Tuple[float, Dict[str, float]]:
@@ -127,7 +133,7 @@ def min_p_adjusted(pools: Mapping[str, np.ndarray]) -> Tuple[float, Dict[str, fl
         p = pool_p_all(pools[nm])
         per[nm] = float(p[0])
         minp = np.minimum(minp, p)
-    return float(np.count_nonzero(minp <= minp[0]) / size), per
+    return float(np.count_nonzero(minp <= minp[0] + TIE_TOL) / size), per
 
 
 # ── the family context: timelines + units + caches ──────────────────────────
@@ -197,7 +203,7 @@ class FamilyContext:
     # component series -------------------------------------------------------
     def _member_vals(self, chart: int, rid: str) -> np.ndarray:
         t = self.tl[chart]
-        a = t.states.get(rid)
+        a = t.values(rid)
         if a is None:
             return np.full(t.n_days, np.nan)
         v = a.astype(np.float64)
@@ -205,16 +211,17 @@ class FamilyContext:
         return v
 
     def comp_vals(self, chart: int, comp: CompKey) -> np.ndarray:
-        """Daily value of a component (1 TRUE, 0 FALSE, NaN not assessed; fractions for a multi-group OR). Not cached."""
+        """Daily value of a component (1 TRUE, 0 FALSE, NaN not assessed): a member, or the Kleene OR of a reading's
+        members (v1.4 M2). Not cached."""
         if comp[0] == "m":
             return self._member_vals(chart, comp[1])
-        return or_values([[self._member_vals(chart, r) for r in g] for g in comp[1]])
+        return or_values([self._member_vals(chart, r) for r in comp[1]])
 
     def comp_prefix(self, chart: int, comp: CompKey) -> Tuple[np.ndarray, np.ndarray]:
         """Prefix sums (length n+1) of TRUE and of assessed days. Members: exact integer counts, computed on
         demand from the int8 states (nothing cached: curves are). OR components: cached float prefix sums."""
         if comp[0] == "m":
-            a = self.tl[chart].states.get(comp[1])
+            a = self.tl[chart].values(comp[1])
             n = self.tl[chart].n_days
             if a is None:
                 return np.zeros(n + 1, dtype=np.int64), np.zeros(n + 1, dtype=np.int64)
@@ -260,6 +267,23 @@ class FamilyContext:
             self._kcurve[k] = c
         return c
 
+    def member_assessed_flat(self, rid: str) -> Optional[np.ndarray]:
+        """Flat prefix counts of member ``rid``'s ASSESSED days, all charts (layout of ``klass_prefix``); None when
+        the member is assessed on every day of every chart (then every window is fully assessed). Masks only."""
+        if not hasattr(self, "_mflat"):
+            self._mflat: Dict[str, Optional[np.ndarray]] = {}
+        if rid not in self._mflat:
+            parts = []
+            any_na = False
+            for t in self.tl:
+                a = t.assessed(rid)
+                if a is None:
+                    a = np.zeros(t.n_days, dtype=bool)
+                any_na |= not bool(a.all())
+                parts.append(np.concatenate([[0], np.cumsum(a, dtype=np.int32)]))
+            self._mflat[rid] = np.concatenate(parts).astype(np.int32) if any_na else None
+        return self._mflat[rid]
+
     # class coverage prefix arrays, global day frame (checks (b) and (c)) -----
     def klass_prefix(self, klass: Klass) -> Tuple[np.ndarray, np.ndarray, float]:
         """(CT, CA, W): prefix sums of the weighted TRUE and weighted assessed component-days of the class, all
@@ -303,7 +327,7 @@ def _nanmean_stack(curves: Sequence[np.ndarray]) -> np.ndarray:
 
 # ── assembling an episode set under one block scheme ─────────────────────────
 class _Ep:
-    __slots__ = ("idx", "chart", "klass", "okl", "blk", "a", "b", "L", "off", "K", "O", "sched", "w", "wd", "wn")
+    __slots__ = ("idx", "chart", "klass", "okl", "blk", "a", "b", "L", "off", "K", "O", "sched", "w", "wd", "wn", "dir_ok")
 
     def __init__(self) -> None:
         self.O = None
@@ -343,49 +367,47 @@ class SchemeResult:
         self.fallback_pool: Optional[np.ndarray] = None
 
 
+def _unit_applies(t: ChartTimeline, v: Variant, lo: int, hi: int) -> bool:
+    """At least one applicable member of the variant has its window [lo, hi] (indices from h_start) at least half
+    assessed. Assessed masks only (v1.2 K2, v1.3 L1, v1.4 M3)."""
+    L = hi - lo + 1
+    for g in v.groups:
+        for rid in g:
+            n = t.assessed_count(rid, lo, hi)
+            if n is not None and n * 2 >= L:
+                return True
+    return False
+
+
+def _polarity_applicable(ctx: FamilyContext, ep: Episode, polarity: str) -> List[Variant]:
+    t = ctx.tl[ep.chart]
+    lo, hi = ep.lo - t.h_start, ep.hi - t.h_start
+    if lo < 0 or hi >= t.n_days:
+        return []
+    return [v for v in ctx.klass_variants((polarity, ep.area, ep.grade)) if _unit_applies(t, v, lo, hi)]
+
+
 def applicable_mask(ctx: FamilyContext, episodes: Sequence[Episode]) -> List[bool]:
     """v1.2 K2 / v1.3 L1: "scored-applicable". The episode has at least one applicable unit (footprint gate,
-    member-area filter, Moon members on day grade only) with a member whose window is at least half assessed.
-    Uses only which days are assessed (NOT_ASSESSED masks), never a TRUE/FALSE state, so it is what the blind
-    counting script can compute. Admission (exclusion 5), testability (D7) and the A7 minimum are decided on
-    THIS count; the percentile-informative set used by the statistics is ``scorable_mask``."""
-    out = []
-    for ep in episodes:
-        t = ctx.tl[ep.chart]
-        lo, hi = ep.lo - t.h_start, ep.hi - t.h_start
-        if lo < 0 or hi >= t.n_days:
-            out.append(False)
-            continue
-        L = hi - lo + 1
-        ok = False
-        for v in ctx.klass_variants((C.POLARITY_OF_DIRECTION[ep.direction], ep.area, ep.grade)):
-            for g in v.groups:
-                for rid in g:
-                    a = t.states.get(rid)
-                    if a is not None and int((a[lo : hi + 1] >= 0).sum()) * 2 >= L:
-                        ok = True
-                        break
-                if ok:
-                    break
-            if ok:
-                break
-        out.append(ok)
-    return out
+    member-area filter, Moon members on day grade only) with a member whose (clipped) window is at least half
+    assessed. Assessed masks only, never a TRUE/FALSE state: what the blind counting script computes. Admission
+    (exclusion 5), testability (D7) and the A7 minimum are decided on THIS count; the percentile-informative set
+    used by the statistics is ``scorable_mask`` (carve-out 3)."""
+    return [bool(_polarity_applicable(ctx, ep, C.POLARITY_OF_DIRECTION[ep.direction])) for ep in episodes]
+
+
+def opposite_applicable_mask(ctx: FamilyContext, episodes: Sequence[Episode]) -> List[bool]:
+    """v1.3 L1 item 1: the episode also has an applicable opposite-polarity unit (same applicability rules)."""
+    return [bool(_polarity_applicable(ctx, ep, C.POLARITY_OF_DIRECTION[C.OPPOSITE_DIRECTION[ep.direction]])) for ep in episodes]
 
 
 def unit_applicable_counts(ctx: FamilyContext, episodes: Sequence[Episode]) -> Dict[str, int]:
     """v1.3 L1 item 2: per unit, the number of scored-applicable episodes it applies to (an applicable member whose
-    window is at least half assessed). Assessed masks only, never a TRUE/FALSE state."""
+    window is at least half assessed). Assessed masks only."""
     out: Dict[str, int] = {u.unit_id: 0 for u in ctx.units}
     for ep in episodes:
-        t = ctx.tl[ep.chart]
-        lo, hi = ep.lo - t.h_start, ep.hi - t.h_start
-        if lo < 0 or hi >= t.n_days:
-            continue
-        L = hi - lo + 1
-        for v in ctx.klass_variants((C.POLARITY_OF_DIRECTION[ep.direction], ep.area, ep.grade)):
-            if any(t.states.get(r) is not None and int((t.states[r][lo : hi + 1] >= 0).sum()) * 2 >= L for g in v.groups for r in g):
-                out[v.unit_id] += 1
+        for v in _polarity_applicable(ctx, ep, C.POLARITY_OF_DIRECTION[ep.direction]):
+            out[v.unit_id] += 1
     return out
 
 
@@ -430,10 +452,25 @@ class _Assembly:
         self.n_scored = 0
 
 
-def assemble(ctx: FamilyContext, scheme: str, episodes: Sequence[Episode], want_dir: bool, want_fallback: bool) -> _Assembly:
-    """Place the (scored) episodes in the blocks of ``scheme`` and tabulate every valid shift. No random numbers."""
+def assemble(
+    ctx: FamilyContext,
+    scheme: str,
+    episodes: Sequence[Episode],
+    want_dir: bool,
+    want_fallback: bool,
+    dir_eligible: Optional[Sequence[bool]] = None,
+) -> _Assembly:
+    """Place the (scored) episodes in the blocks of ``scheme`` and tabulate every valid shift. No random numbers:
+    every eligibility decision of check (a) is made here, once, before any draw (SUR-RB-36 (ii)).
+
+    ``dir_eligible``: per episode, whether it has an applicable opposite-polarity unit (v1.2 K4 / v1.3 L1; the
+    direction set). The direction statistic uses those episodes whose opposite-polarity score is defined at the
+    observed placement (v1.0 3.2 step 5); the opposite-polarity mask narrows the shift set only when the direction
+    statistic is computed (review M1)."""
     asm = _Assembly()
     placed = [_place(ctx, scheme, ep, i) for i, ep in enumerate(episodes)]
+    if dir_eligible is None:
+        dir_eligible = [True] * len(placed)
     asm.n_scored = len(placed)
     if not placed:
         return asm
@@ -444,8 +481,10 @@ def assemble(ctx: FamilyContext, scheme: str, episodes: Sequence[Episode], want_
     # direction set: episodes whose opposite-polarity score exists at the observed placement
     dir_by_chart: Dict[int, int] = {}
     ns_by_chart: Dict[int, int] = {}
+    for e in placed:
+        e.dir_ok = bool(want_dir and dir_eligible[e.idx] and np.isfinite(e.O[e.off]))
     for c, es in by_chart.items():
-        nd_ = sum(1 for e in es if np.isfinite(e.O[e.off]))
+        nd_ = sum(1 for e in es if e.dir_ok)
         if nd_:
             dir_by_chart[c] = nd_
         nn_ = sum(1 for e in es if e.sched is False)
@@ -453,7 +492,7 @@ def assemble(ctx: FamilyContext, scheme: str, episodes: Sequence[Episode], want_
             ns_by_chart[c] = nn_
     for e in placed:
         e.w = 1.0 / (n_charts * len(by_chart[e.chart]))
-        e.wd = 1.0 / (len(dir_by_chart) * dir_by_chart[e.chart]) if (e.chart in dir_by_chart and np.isfinite(e.O[e.off])) else 0.0
+        e.wd = 1.0 / (len(dir_by_chart) * dir_by_chart[e.chart]) if (e.chart in dir_by_chart and e.dir_ok) else 0.0
         e.wn = 1.0 / (len(ns_by_chart) * ns_by_chart[e.chart]) if (e.chart in ns_by_chart and e.sched is False) else 0.0
     asm.has_dir = bool(want_dir and dir_by_chart)
     asm.has_ns = bool(want_fallback and ns_by_chart)
@@ -518,10 +557,11 @@ def run_scheme(
     want_dir: bool,
     want_fallback: bool,
     z25_units: Optional[Iterable[str]] = None,
+    dir_eligible: Optional[Sequence[bool]] = None,
 ) -> SchemeResult:
     """Check (a) under one block scheme. ``episodes`` are the scored ones."""
     res = SchemeResult()
-    asm = assemble(ctx, scheme, episodes, want_dir, want_fallback)
+    asm = assemble(ctx, scheme, episodes, want_dir, want_fallback, dir_eligible)
     res.n_scored = asm.n_scored
     if not asm.recs:
         return res
@@ -613,37 +653,77 @@ def _admitted_mask(ctx: FamilyContext, admitted: Optional[Iterable[int]]) -> np.
     return m
 
 
-def donor_eligibility_counts(ctx: FamilyContext, episodes: Sequence[Episode], admitted: Optional[Iterable[int]] = None) -> Dict[str, int]:
-    """v1.2 K11 / K2: how many charts have at least MIN_ELIGIBLE_DONORS eligible donors for check (b) and for check
-    (c). A donor is eligible when it is an admitted chart of the family whose horizon covers all of the chart's
-    episode windows (calendar dates for (b), the same ages for (c)). Horizons only: no state, no statistic."""
+def donor_sets(ctx: FamilyContext, episodes: Sequence[Episode], age_matched: bool, admitted: Optional[Iterable[int]] = None) -> Dict[int, Dict[str, Any]]:
+    """Checks (b)/(c) eligibility, computed ONCE before any draw (SUR-RB-36 (ii)), from horizons and assessed masks
+    only (v1.4 M3):
+    * a chart's check set = its scored-applicable episodes (K2), each with the units that apply to it on the chart's
+      own timeline;
+    * a donor is eligible for chart c if it is an admitted chart of the family (K6), its horizon covers every episode
+      window (same dates for (b), same ages for (c)), and for EVERY episode of the set each of the episode's applicable
+      units has at least one member at least half assessed in the donor's corresponding window.
+    Returns chart -> {"eps": episode indices, "elig": donor ids, "dlo", "dhi", "inside"}."""
     adm = _admitted_mask(ctx, admitted)
-    by_chart: Dict[int, List[Episode]] = {}
-    for ep in episodes:
-        by_chart.setdefault(ep.chart, []).append(ep)
-    out = {"b": 0, "c": 0}
-    for c, eps in by_chart.items():
-        if not adm[c]:
+    hs = np.array([t.h_start for t in ctx.tl], dtype=np.int64)
+    he = np.array([t.h_end for t in ctx.tl], dtype=np.int64)
+    by_chart: Dict[int, List[int]] = {}
+    for i, ep in enumerate(episodes):
+        if adm[ep.chart]:
+            by_chart.setdefault(ep.chart, []).append(i)
+    out: Dict[int, Dict[str, Any]] = {}
+    for c, ids in sorted(by_chart.items()):
+        units_of: List[List[Variant]] = []
+        keep: List[int] = []
+        for i in ids:
+            vs = _polarity_applicable(ctx, episodes[i], C.POLARITY_OF_DIRECTION[episodes[i].direction])
+            if vs:
+                keep.append(i)
+                units_of.append(vs)
+        if not keep:
             continue
-        for key, age in (("b", False), ("c", True)):
-            _lo, _hi, inside, _hs, _he = _donor_geometry(ctx, eps, c, age)
-            ok = inside.all(axis=0) & adm
-            ok[c] = False
-            if int(ok.sum()) >= C.MIN_ELIGIBLE_DONORS:
+        eps = [episodes[i] for i in keep]
+        dlo, dhi, inside, _hs, _he = _donor_geometry(ctx, eps, c, age_matched)
+        ok = inside.all(axis=0) & adm
+        k0 = np.clip(dlo - hs[None, :], 0, (he - hs + 1)[None, :])
+        k1 = np.clip(dhi + 1 - hs[None, :], 0, (he - hs + 1)[None, :])
+        off = ctx.flat_off[:-1][None, :]
+        for j, vs in enumerate(units_of):
+            L = eps[j].hi - eps[j].lo + 1
+            for v in vs:
+                unit_ok = np.zeros(len(ctx.tl), dtype=bool)
+                for g in v.groups:
+                    for rid in g:
+                        fa = ctx.member_assessed_flat(rid)
+                        if fa is None:
+                            unit_ok[:] = True
+                            break
+                        n = fa[off[0] + k1[j]] - fa[off[0] + k0[j]]
+                        unit_ok |= n * 2 >= L
+                    if unit_ok.all():
+                        break
+                ok &= unit_ok
+        ok[c] = False
+        out[c] = {"eps": keep, "elig": np.nonzero(ok)[0], "dlo": dlo, "dhi": dhi, "inside": inside}
+    return out
+
+
+def donor_eligibility_counts(ctx: FamilyContext, episodes: Sequence[Episode], admitted: Optional[Iterable[int]] = None) -> Dict[str, int]:
+    """v1.2 K11 with v1.4 M3: charts with at least MIN_ELIGIBLE_DONORS eligible donors for check (b) and for (c)."""
+    out = {"b": 0, "c": 0}
+    for key, age in (("b", False), ("c", True)):
+        for c, d in donor_sets(ctx, episodes, age, admitted).items():
+            if d["elig"].size >= C.MIN_ELIGIBLE_DONORS:
                 out[key] += 1
     return out
 
 
 def direction_counts(ctx: FamilyContext, episodes: Sequence[Episode]) -> Dict[str, int]:
-    """v1.2 K4: episodes with at least one applicable opposite-polarity unit, and the charts they sit in."""
-    n = 0
-    charts = set()
-    for ep in episodes:
-        okl = (C.POLARITY_OF_DIRECTION[C.OPPOSITE_DIRECTION[ep.direction]], ep.area, ep.grade)
-        if ctx.klass_variants(okl):
-            n += 1
-            charts.add(ep.chart)
-    return {"episodes": n, "charts": len(charts), "testable": bool(n >= C.DIR_MIN_EPISODES and len(charts) >= C.DIR_MIN_CHARTS)}
+    """v1.2 K4 / v1.3 L1: scored-applicable episodes that also have an applicable opposite-polarity unit (window at
+    least half assessed), and the charts they sit in. Assessed masks only."""
+    app = applicable_mask(ctx, episodes)
+    opp = opposite_applicable_mask(ctx, episodes)
+    sel = [e for e, a, o in zip(episodes, app, opp) if a and o]
+    charts = {e.chart for e in sel}
+    return {"episodes": len(sel), "charts": len(charts), "testable": bool(len(sel) >= C.DIR_MIN_EPISODES and len(charts) >= C.DIR_MIN_CHARTS)}
 
 
 def run_donor_check(
@@ -654,61 +734,42 @@ def run_donor_check(
     age_matched: bool,
     admitted: Optional[Iterable[int]] = None,
 ) -> Dict[str, Any]:
-    """T2 (calendar-matched, ``age_matched`` False) or T3 (age-matched, True), its pool and p.
+    """T2 (calendar-matched) or T3 (age-matched), its pool and p.
 
-    Episode coverage on a timeline = weighted share of assessed class-days that are TRUE in the window. T =
-    mean over included charts of mean over its episodes of (coverage on the drawn timeline - mean coverage over
-    the chart's eligible donors, own chart excluded). Observed: the chart's own timeline. Donors are the
-    ADMITTED charts of the family only (v1.2 K6).
-
-    EPISODE SET. ``episodes`` are ALL episodes of the family with an applicable unit; an episode counts for a
-    chart if its coverage is defined on the chart's own timeline (at least half the weighted class-days
-    assessed). The check-(a) rule "drop a member that is identical in every window of the block" is a
-    percentile device and is NOT applied here: it conditions on the own timeline being active in the episode's
-    block, and a coverage statistic computed on episodes selected that way is higher on the own timeline than on
-    any donor's at the same dates (found in the Part F calibration, where it made p2 and p3 about 0.001 under
-    every null model).
+    Eligibility (episode set, donors) comes from ``donor_sets``, fixed before any draw. Episode coverage on a
+    timeline = weighted share of assessed class-days that are TRUE in the window. T = mean over included charts of
+    mean over its episodes of (coverage on the drawn timeline - mean coverage over the chart's eligible donors, own
+    chart excluded). Observed: the chart's own timeline. Every eligible donor has a defined coverage for every
+    episode (v1.4 M3), so no deviation is ever imputed.
     """
-    nch = len(ctx.tl)
-    adm = _admitted_mask(ctx, admitted)
-    by_chart: Dict[int, List[int]] = {}
-    for i, ep in enumerate(episodes):
-        if adm[ep.chart]:
-            by_chart.setdefault(ep.chart, []).append(i)
+    sets = donor_sets(ctx, episodes, age_matched, admitted)
+    hs = np.array([t.h_start for t in ctx.tl], dtype=np.int64)
+    he = np.array([t.h_end for t in ctx.tl], dtype=np.int64)
     included: List[int] = []
     excluded: List[int] = []
-    V: Dict[int, Tuple[np.ndarray, np.ndarray]] = {}  # chart -> (donor ids incl. self first, values)
-    for c, ids in sorted(by_chart.items()):
-        eps = [episodes[i] for i in ids]
-        dlo, dhi, inside, hs, he = _donor_geometry(ctx, eps, c, age_matched)
-        M = np.full((len(eps), nch), np.nan)
-        for j, e in enumerate(eps):
-            klass = (C.POLARITY_OF_DIRECTION[e.direction], e.area, e.grade)
-            CT, CA, W = ctx.klass_prefix(klass)
-            if W <= 0:
-                continue
-            # prefix index of a date inside donor d's horizon: flat_off[d] + (date - h_start[d])
-            k0 = np.clip(dlo[j] - hs, 0, he - hs + 1)
-            k1 = np.clip(dhi[j] + 1 - hs, 0, he - hs + 1)
-            num = CT[ctx.flat_off[:-1] + k1] - CT[ctx.flat_off[:-1] + k0]
-            den = CA[ctx.flat_off[:-1] + k1] - CA[ctx.flat_off[:-1] + k0]
-            L = e.hi - e.lo + 1
-            okc = inside[j] & (den * 2.0 >= W * L) & (den > 0)
-            M[j, okc] = num[okc] / den[okc]
-        keep = np.isfinite(M[:, c])  # defined on the own timeline
-        if not keep.any():
-            continue
-        M, inside = M[keep], inside[keep]
-        elig_mask = inside.all(axis=0) & adm
-        elig_mask[c] = False
-        elig = np.nonzero(elig_mask)[0]
+    V: Dict[int, Tuple[np.ndarray, np.ndarray]] = {}
+    for c, d in sets.items():
+        elig = d["elig"]
         if elig.size < C.MIN_ELIGIBLE_DONORS:
             excluded.append(c)
             continue
-        m_e = np.nanmean(M[:, elig], axis=1)
-        dev = np.where(np.isnan(M), 0.0, M - m_e[:, None])  # a donor with the window not assessed contributes no deviation
         choices = np.concatenate([[c], elig])  # first entry = self = observed
-        V[c] = (choices, dev[:, choices].mean(axis=0))
+        eps = [episodes[i] for i in d["eps"]]
+        M = np.empty((len(eps), choices.size))
+        for j, e in enumerate(eps):
+            klass = (C.POLARITY_OF_DIRECTION[e.direction], e.area, e.grade)
+            CT, CA, _W = ctx.klass_prefix(klass)
+            lo, hi = d["dlo"][j][choices], d["dhi"][j][choices]
+            k0 = np.clip(lo - hs[choices], 0, he[choices] - hs[choices] + 1)
+            k1 = np.clip(hi + 1 - hs[choices], 0, he[choices] - hs[choices] + 1)
+            base = ctx.flat_off[:-1][choices]
+            num = CT[base + k1] - CT[base + k0]
+            den = CA[base + k1] - CA[base + k0]
+            if not (den > 0).all():
+                raise ScorerError("check (b)/(c): an eligible timeline has no assessed class-day in an episode window")
+            M[j] = num / den
+        m_e = M[:, 1:].mean(axis=1)  # donor mean: eligible donors only, own chart excluded
+        V[c] = (choices, (M - m_e[:, None]).mean(axis=0))
         included.append(c)
     out: Dict[str, Any] = {"included_charts": included, "excluded_charts": excluded}
     if not included:
@@ -730,6 +791,11 @@ def run_donor_check(
 FAMILY_STREAM = {C.FAMILY_DASHA: 1, C.FAMILY_TRANSIT: 2}
 
 
+def simes_two(p_a: float, p_b: float) -> float:
+    """v1.4 M1: Simes combination of two p-values, min(1, 2 * min, max)."""
+    return float(min(1.0, 2.0 * min(p_a, p_b), max(p_a, p_b)))
+
+
 def score_family(
     ctx: FamilyContext,
     episodes: Sequence[Episode],
@@ -737,7 +803,13 @@ def score_family(
     admitted: Optional[Iterable[int]] = None,
     d7: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """All statistics and p-values of one family for one episode set. Pure given (ctx, episodes, cfg)."""
+    """All statistics and p-values of one family for one episode set. Pure given (ctx, episodes, cfg, d7).
+
+    ``d7``: the sealed D7 decisions (dir_testable, z25_units). When absent (calibration), they are recounted from
+    applicability only, as count_blind would (v1.2 K4/K5, v1.3 L1; SUR-RB-36 (a)).
+    p1: F-T = min-p over {T5, Z25-5}; F-D = Simes over the two within-scheme min-p values, each scheme in its own
+    draws (v1.4 M1), or Bonferroni across schemes when ``cfg.scheme_combination == "bonferroni"`` (the v1.4 M1
+    fallback)."""
     for ep in episodes:
         ep.validate()
         if not 0 <= ep.chart < len(ctx.tl):
@@ -756,39 +828,56 @@ def score_family(
         out.update(status="no_scored_episodes", p1=None, p2=None, p3=None, p_dir=None)
         return out
     stream = FAMILY_STREAM[ctx.family]
-    # D7 decisions (v1.2 K4, K5; v1.3): from the sealed count_blind aggregates when given, else recounted from
-    # APPLICABILITY only. Never from the percentile-scored set, which depends on TRUE/FALSE states (N.8 invariant).
-    app = [e for e, ok in zip(episodes, applicable_mask(ctx, episodes)) if ok]
-    dircount = direction_counts(ctx, app)
     own = d7_from_counts(ctx, episodes)
-    z25_units = own["z25_units"]
+    dir_testable, z25_units = own["dir_testable"], own["z25_units"]
     if d7 is not None:
         if "dir_testable" in d7:
-            dircount = dict(dircount, testable=bool(d7["dir_testable"]))
+            dir_testable = bool(d7["dir_testable"])
         if "z25_units" in d7:
-            z25_units = d7["z25_units"]
-    out["dir_testable"] = dircount["testable"]
+            z25_units = list(d7["z25_units"])
+    dircount = direction_counts(ctx, episodes)
+    out["dir_testable"] = dir_testable
     out["dir_episodes"] = dircount["episodes"]
     out["dir_charts"] = dircount["charts"]
+    out["z25_unit_list"] = sorted(z25_units)
     pools: Dict[str, np.ndarray] = {}
+    scheme_p: Dict[str, float] = {}
+    per_all: Dict[str, float] = {}
     primary: Optional[SchemeResult] = None
     for si, (scheme, _bd, _mb) in enumerate(ctx.schemes):
         rng = np.random.default_rng([cfg.seed, stream, si])
         sc = scored if si == 0 else [e for e, ok in zip(episodes, scorable_mask(ctx, episodes, scheme)) if ok]
         if not sc:
             continue
-        res = run_scheme(ctx, scheme, sc, cfg.draws, rng, want_dir=(si == 0 and dircount["testable"]), want_fallback=(si == 0 and cfg.fallback_primary_set), z25_units=z25_units)
+        dir_el = opposite_applicable_mask(ctx, sc) if si == 0 else None
+        res = run_scheme(
+            ctx, scheme, sc, cfg.draws, rng,
+            want_dir=(si == 0 and dir_testable), want_fallback=(si == 0 and cfg.fallback_primary_set),
+            z25_units=z25_units, dir_eligible=dir_el,
+        )
         if si == 0:
             primary = res
-        pools["T-" + scheme] = res.pools["T"]
+        sp = {"T-" + scheme: res.pools["T"]}
         if "Z25" in res.pools:
-            pools["Z25-" + scheme] = res.pools["Z25"]
-    p1, per = min_p_adjusted(pools)
+            sp["Z25-" + scheme] = res.pools["Z25"]
+        p_s, per = min_p_adjusted(sp)  # within-scheme min-p, the scheme's own draws (K5, v1.4 M1)
+        scheme_p[scheme] = p_s
+        per_all.update(per)
+        pools.update(sp)
+    if len(scheme_p) == 1:
+        p1 = next(iter(scheme_p.values()))
+    elif cfg.scheme_combination == "bonferroni":
+        p1 = float(min(1.0, 2.0 * min(scheme_p.values())))
+    else:
+        a_, b_ = list(scheme_p.values())
+        p1 = simes_two(a_, b_)
     out.update(
         status="scored",
         stats={k: float(v[0]) for k, v in sorted(pools.items())},
         null_mean={k: float(v[1:].mean()) for k, v in sorted(pools.items())},
-        p_stat=per,
+        p_stat=per_all,
+        p_scheme=scheme_p,
+        scheme_combination=cfg.scheme_combination if len(scheme_p) > 1 else "single",
         p1=p1,
         T=float(pools["T-" + ctx.schemes[0][0]][0]),
         z25_units=primary.n_unit_eligible if primary else 0,

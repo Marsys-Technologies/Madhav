@@ -130,20 +130,17 @@ def _kleene(vals):
     return 0.0
 
 
-def test_or_of_singleton_groups_is_kleene_or():
+def test_or_of_a_reading_is_kleene_or():
     for combo in itertools.product([0.0, 1.0, np.nan], repeat=3):
-        arrs = [[np.array([v])] for v in combo]
-        got = or_values(arrs)[0]
+        got = or_values([np.array([v]) for v in combo])[0]
         want = _kleene(combo)
         assert (np.isnan(got) and np.isnan(want)) or got == want
 
 
-def test_or_group_value_is_share_of_assessed_members():
-    g1 = [np.array([1.0, 1.0, np.nan]), np.array([0.0, 1.0, np.nan])]
-    g2 = [np.array([0.0, 0.0, 0.0])]
-    got = or_values([g1, g2])
-    assert np.allclose(got[:2], [0.5, 1.0])
-    assert np.isnan(got[2])  # group 1 unassessed, group 2 FALSE: Kleene says unknown
+def test_share_based_or_is_gone():
+    """v1.4 M2: no '1 - prod(1 - share)' form: a reading's state is 0/1/NaN only."""
+    got = or_values([np.array([1.0, 0.0, np.nan]), np.array([0.0, 0.0, 0.0])])
+    assert got[0] == 1.0 and got[1] == 0.0 and np.isnan(got[2])  # FALSE or NOT_ASSESSED is NOT_ASSESSED (Kleene)
 
 
 # ── p-values and min-p ─────────────────────────────────────────────────────────
@@ -245,8 +242,9 @@ def test_fallback_consistency_and_label():
 def test_untestable_family_does_not_enter_holm_and_cannot_pass():
     v = decide({"dasha": _fam(0.03, 0.01, 0.01, 0.01), "transit": _fam(0.0001, 0.0001, 0.0001, 0.0001)}, {"dasha": True, "transit": False})
     assert v["m"] == 1 and v["outcome"] == STRONG and "transit" not in v["families"]
-    assert decide({}, {})["outcome"] == CHANCE
-    assert decide({"dasha": _fam(None, None, None, None)}, {"dasha": True})["outcome"] == CHANCE
+    assert decide({}, {})["outcome"] == "NO_VERDICT"  # v1.4 conformance: no testable family
+    with pytest.raises(ValueError):  # testable at D7 but no p1: the run should have been refused before the claim
+        decide({"dasha": _fam(None, None, None, None)}, {"dasha": True})
 
 
 def test_chance_level():

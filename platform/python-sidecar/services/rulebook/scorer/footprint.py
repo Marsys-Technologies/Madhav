@@ -6,6 +6,7 @@ counts and windows). Nothing here feeds a p-value.
 
 from __future__ import annotations
 
+import itertools
 from datetime import date
 from typing import Any, Dict, FrozenSet, List, Mapping, Optional, Sequence, Tuple
 
@@ -16,67 +17,84 @@ from .core import FamilyContext, _place
 from .model import ChartTimeline, Episode, UnitSpec
 
 
-def _union_true(t: ChartTimeline, rids: Sequence[str]) -> np.ndarray:
-    u = np.zeros(t.n_days, dtype=bool)
+def _reading_state(t: ChartTimeline, rids: Sequence[str]) -> np.ndarray:
+    """Kleene OR of the members' states (1, 0, -1 NOT_ASSESSED). CARVE-OUT 2 (SUR-RB-36): the D8 touch rates read
+    TRUE/FALSE states, from timelines alone, before any occurrence exists."""
+    n = t.n_days
+    any_true = np.zeros(n, dtype=bool)
+    any_na = np.zeros(n, dtype=bool)
     for r in rids:
-        a = t.states.get(r)
-        if a is not None:
-            u |= a == 1
-    return u
+        a = t.values(r)
+        if a is None:
+            any_na[:] = True
+            continue
+        any_true |= a == 1
+        any_na |= a < 0
+    out = np.zeros(n, dtype=np.int8)
+    out[any_true] = 1
+    out[~any_true & any_na] = -1
+    return out
 
 
-def _touch_3d(true_days: np.ndarray) -> Optional[float]:
-    n = true_days.size
-    if n < C.G1_WINDOW_DAYS:
+def _touch(state: np.ndarray, h_start: int, window: str) -> Optional[float]:
+    """Share of windows wholly inside the horizon, at least half assessed, that contain a TRUE day. NOT_ASSESSED is
+    never FALSE: a window under half assessed is skipped (SUR-RB-27 Q3). '3d' = every 3-day window starting on each
+    day; 'month' = calendar months."""
+    n = state.size
+    T = np.concatenate([[0], np.cumsum(state == 1, dtype=np.int64)])
+    A = np.concatenate([[0], np.cumsum(state >= 0, dtype=np.int64)])
+    if window == "3d":
+        if n < C.G1_WINDOW_DAYS:
+            return None
+        s = np.arange(0, n - C.G1_WINDOW_DAYS + 1)
+        e = s + C.G1_WINDOW_DAYS
+    else:
+        lo, hi = [], []
+        d0 = date.fromordinal(h_start)
+        y, m = (d0.year, d0.month) if d0.day == 1 else ((d0.year + (d0.month == 12)), d0.month % 12 + 1)
+        while True:
+            first = date(y, m, 1).toordinal()
+            ny, nm = (y + 1, 1) if m == 12 else (y, m + 1)
+            last = date(ny, nm, 1).toordinal() - 1
+            if last - h_start > n - 1:
+                break
+            lo.append(first - h_start)
+            hi.append(last - h_start)
+            y, m = ny, nm
+        if not lo:
+            return None
+        s, e = np.array(lo), np.array(hi) + 1
+    L = e - s
+    assessed = A[e] - A[s]
+    ok = assessed * 2 >= L
+    if not ok.any():
         return None
-    cs = np.concatenate([[0], np.cumsum(true_days.astype(np.int64))])
-    w = cs[C.G1_WINDOW_DAYS:] - cs[:-C.G1_WINDOW_DAYS]
-    return float(np.count_nonzero(w > 0) / w.size)
+    return float(np.count_nonzero((T[e] - T[s] > 0) & ok) / np.count_nonzero(ok))
 
 
-def _touch_month(true_days: np.ndarray, h_start: int) -> Optional[float]:
-    n = true_days.size
-    cs = np.concatenate([[0], np.cumsum(true_days.astype(np.int64))])
-    hit = tot = 0
-    d0 = date.fromordinal(h_start)
-    y, m = d0.year, d0.month
-    if d0.day != 1:
-        m += 1
-        if m == 13:
-            y, m = y + 1, 1
-    while True:
-        first = date(y, m, 1).toordinal()
-        ny, nm = (y + 1, 1) if m == 12 else (y, m + 1)
-        last = date(ny, nm, 1).toordinal() - 1
-        if last - h_start > n - 1:
-            break
-        a, b = first - h_start, last - h_start
-        tot += 1
-        hit += int(cs[b + 1] - cs[a] > 0)
-        y, m = ny, nm
-    return hit / tot if tot else None
+def unit_touch(t: ChartTimeline, u: UnitSpec, window: str) -> Optional[float]:
+    """SUR-RB-27 Q3, on the unit's FULL evaluable member set: E, single and conflict-free units -> touch rate of the
+    OR of members; R units -> mean of member touch rates; MIXED units -> mean over all one-member-per-group readings
+    of the touch rate of the OR across groups. (All three are the mean over readings, v1.4 M2.)"""
+    rates = []
+    for reading in itertools.product(*[[m.rid for m in g] for g in u.groups]):
+        r = _touch(_reading_state(t, reading), t.h_start, window)
+        if r is not None:
+            rates.append(r)
+    return float(np.mean(rates)) if rates else None
 
 
 def touch_rates(timelines: Sequence[ChartTimeline], units: Sequence[UnitSpec]) -> Dict[str, Dict[str, Optional[float]]]:
-    """Per unit and window class ('3d', 'month'): the mean over charts of the share of windows that contain at
-    least one TRUE day of any evaluable member of the unit (v1.1 D8)."""
+    """Per unit and window class ('3d', 'month'): the mean over charts of ``unit_touch`` (v1.1 D8, SUR-RB-27 Q3)."""
     out: Dict[str, Dict[str, Optional[float]]] = {}
     for u in units:
-        rids = [m.rid for m in u.members()]
-        r3: List[float] = []
-        rm: List[float] = []
+        per = {"3d": [], "month": []}
         for t in timelines:
-            tr = _union_true(t, rids)
-            a = _touch_3d(tr)
-            b = _touch_month(tr, t.h_start)
-            if a is not None:
-                r3.append(a)
-            if b is not None:
-                rm.append(b)
-        out[u.unit_id] = {
-            "3d": float(np.mean(r3)) if r3 else None,
-            "month": float(np.mean(rm)) if rm else None,
-        }
+            for w in per:
+                r = unit_touch(t, u, w)
+                if r is not None:
+                    per[w].append(r)
+        out[u.unit_id] = {w: (float(np.mean(v)) if v else None) for w, v in per.items()}
     return out
 
 
@@ -186,3 +204,14 @@ def build_family_context(family: str, timelines: Sequence[ChartTimeline], units:
         "dropped": {k: sorted(v) for k, v in sorted(drop.items())},
     }
     return ctx, report
+
+
+def sealed_gate_from_s7(s7: Mapping[str, Any], family: str) -> Dict[str, FrozenSet[str]]:
+    """The sealed footprint gate (admission out/s7_footprint.json): unit -> grades dropped, from
+    ``summary.<family>.<3day|month>.dropped_units``."""
+    inv = {"3day": C.G1, "month": C.G2}
+    drop: Dict[str, set] = {}
+    for wc, grade in inv.items():
+        for uid in ((s7.get("summary") or {}).get(family) or {}).get(wc, {}).get("dropped_units") or []:
+            drop.setdefault(uid, set()).add(grade)
+    return {k: frozenset(v) for k, v in drop.items()}

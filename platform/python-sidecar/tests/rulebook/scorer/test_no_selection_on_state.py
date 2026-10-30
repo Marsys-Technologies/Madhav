@@ -174,7 +174,9 @@ def test_no_selection_stage_reads_a_true_false_state(config, seed):
             assert perm[stage] == base[stage], f"{config}/seed {seed}/perm {k}: stage '{stage}' moved when only TRUE/FALSE states moved"
     # the selections are not trivially empty
     assert sum(base["applicable"]) > 50
-    assert base["donor_counts"]["b"] > 0 and any(v[0] for v in base["admitted_3"].values())
+    assert any(v[0] for v in base["admitted_3"].values())
+    if config != "not_assessed":  # long NOT_ASSESSED stretches leave few donors defined for every window (v1.4 M3)
+        assert base["donor_counts"]["b"] > 0
 
 
 # ── the detector is live: it catches the defect class ───────────────────────────────────────────────────
@@ -242,3 +244,276 @@ def test_a_member_constant_after_permutation_stays_constant():
             for code in (-1, 0, 1):
                 assert int((a.states[rid] == code).sum()) == int((b.states[rid] == code).sum())
             assert np.array_equal(a.states[rid] == -1, b.states[rid] == -1)
+
+
+# ══ SUR-RB-36 tightening: (i) who reads a state, (ii) eligibility fixed before any draw, (iii) nothing in a window ══
+import threading
+from contextlib import contextmanager
+
+from services.rulebook.scorer import footprint as F
+from services.rulebook.scorer import runner as R
+from services.rulebook.scorer.model import ChartTimeline as _CT
+
+_STATE = threading.local()
+ALLOWED_VALUE_READERS = {
+    "_member_vals": "carve-out 1 (statistics) and 3 (constant-member rule), via comp_vals / comp_prefix",
+    "comp_prefix": "carve-out 1 and 3: percentile curves",
+    "_reading_state": "carve-out 2: D8 touch rates",
+}
+
+
+class GuardedStates(dict):
+    """A member-state dict that refuses every read not made through the ChartTimeline accessors (or validate)."""
+
+    def _check(self):
+        if not getattr(_STATE, "accessor", 0):
+            import inspect
+
+            caller = inspect.stack()[2].function
+            if caller != "validate":  # input integrity check: raises on malformed input, selects nothing
+                raise AssertionError(f"direct read of member states from {caller}()")
+
+    def __getitem__(self, k):
+        self._check()
+        return dict.__getitem__(self, k)
+
+    def get(self, k, default=None):
+        self._check()
+        return dict.get(self, k, default)
+
+
+@contextmanager
+def instrumented(monkeypatch):
+    """Record every caller of ChartTimeline.values (TRUE/FALSE reads) and assessed reads, and the draw phase."""
+    import inspect
+
+    log = {"values": [], "values_while_drawing": [], "assessed_while_drawing": [], "eligibility_while_drawing": []}
+    _STATE.drawing = False
+    orig_values, orig_assessed, orig_count = _CT.values, _CT.assessed, _CT.assessed_count
+
+    def values(self, rid):
+        log["values"].append(inspect.stack()[1].function)
+        if _STATE.drawing:
+            log["values_while_drawing"].append(inspect.stack()[1].function)
+        _STATE.accessor = 1
+        try:
+            return orig_values(self, rid)
+        finally:
+            _STATE.accessor = 0
+
+    def assessed(self, rid):
+        if _STATE.drawing:
+            log["assessed_while_drawing"].append(inspect.stack()[1].function)
+        _STATE.accessor = 1
+        try:
+            return orig_assessed(self, rid)
+        finally:
+            _STATE.accessor = 0
+
+    def assessed_count(self, rid, lo, hi):
+        if _STATE.drawing:
+            log["assessed_while_drawing"].append(inspect.stack()[1].function)
+        _STATE.accessor = 1
+        try:
+            return orig_count(self, rid, lo, hi)
+        finally:
+            _STATE.accessor = 0
+
+    monkeypatch.setattr(_CT, "values", values)
+    monkeypatch.setattr(_CT, "assessed", assessed)
+    monkeypatch.setattr(_CT, "assessed_count", assessed_count)
+
+    # draw phase: the first random number of a check starts it; the check's return ends it
+    real_rng = np.random.default_rng
+
+    class Rng:
+        def __init__(self, *a, **k):
+            self._g = real_rng(*a, **k)
+
+        def random(self, *a, **k):
+            _STATE.drawing = True
+            return self._g.random(*a, **k)
+
+        def __getattr__(self, name):
+            return getattr(self._g, name)
+
+    monkeypatch.setattr(core.np.random, "default_rng", Rng)
+    for name in ("run_scheme", "run_donor_check"):
+        fn = getattr(core, name)
+
+        def wrap(*a, __fn=fn, **k):
+            _STATE.drawing = False
+            try:
+                return __fn(*a, **k)
+            finally:
+                _STATE.drawing = False
+
+        monkeypatch.setattr(core, name, wrap)
+    for name in ("scorable_mask", "applicable_mask", "opposite_applicable_mask", "donor_sets", "assemble", "_polarity_applicable", "direction_counts", "d7_from_counts"):
+        fn = getattr(core, name)
+
+        def elig(*a, __fn=fn, __name=name, **k):
+            if _STATE.drawing:
+                log["eligibility_while_drawing"].append(__name)
+            return __fn(*a, **k)
+
+        monkeypatch.setattr(core, name, elig)
+    orig_kv = core.FamilyContext.klass_variants
+
+    def kv(self, klass):
+        if _STATE.drawing:
+            log["eligibility_while_drawing"].append("klass_variants")
+        return orig_kv(self, klass)
+
+    monkeypatch.setattr(core.FamilyContext, "klass_variants", kv)
+    yield log
+
+
+def _guard(tls):
+    for t in tls:
+        t.states = GuardedStates(t.states)
+    return tls
+
+
+@pytest.mark.parametrize("config", sorted(CONFIGS))
+def test_i_selections_read_no_true_false_state_and_only_the_carve_outs_do(config, monkeypatch):
+    tls, units = CONFIGS[config](11)
+    eps = _episodes(tls, 11)
+    _guard(tls)
+    with instrumented(monkeypatch) as log:
+        ctx = FamilyContext(C.FAMILY_DASHA, tls, units, {units[0].unit_id: frozenset({C.G1})})
+        ctx_t = FamilyContext(C.FAMILY_TRANSIT, tls, _as_transit(units))
+        kept, _ = R.prepare_episodes(ctx, eps)
+        core.applicable_mask(ctx, kept)
+        core.opposite_applicable_mask(ctx, kept)
+        unit_applicable_counts(ctx, kept)
+        d7_from_counts(ctx, kept)
+        direction_counts(ctx, kept)
+        donor_eligibility_counts(ctx, kept)
+        core.donor_sets(ctx, kept, True)
+        family_testable(ctx, kept, min_episodes=10, min_charts=5)
+        R.recount_rows(ctx, kept)
+        fake = types.SimpleNamespace(ctx={C.FAMILY_DASHA: ctx, C.FAMILY_TRANSIT: ctx_t})
+        H.Calibration.admit(fake, {C.FAMILY_DASHA: kept, C.FAMILY_TRANSIT: kept}, 5)
+        assert log["values"] == [], f"a selection read TRUE/FALSE states: {sorted(set(log['values']))}"
+        # the statistics and the D8 touch rates: these may read states, and only from the allowed functions
+        score_family(ctx, kept, C.ScoreConfig(draws=30, seed=1))
+        touch_rates(tls, units)
+        readers = set(log["values"])
+        assert readers and readers <= set(ALLOWED_VALUE_READERS), readers - set(ALLOWED_VALUE_READERS)
+
+
+@pytest.mark.parametrize("config", sorted(CONFIGS))
+def test_ii_eligibility_is_fixed_before_the_first_draw_of_every_check(config, monkeypatch):
+    tls, units = CONFIGS[config](12)
+    eps = _episodes(tls, 12)
+    with instrumented(monkeypatch) as log:
+        ctx = FamilyContext(C.FAMILY_DASHA, tls, units)
+        r = score_family(ctx, eps, C.ScoreConfig(draws=60, seed=2))
+        assert r["status"] == "scored"
+        assert log["values_while_drawing"] == [], log["values_while_drawing"]
+        assert log["assessed_while_drawing"] == [], log["assessed_while_drawing"]
+        assert log["eligibility_while_drawing"] == [], log["eligibility_while_drawing"]
+
+
+def _window_flip(tls, eps, seed):
+    """Flip TRUE/FALSE days lying inside episode windows only (NOT_ASSESSED untouched), for members that vary
+    (both TRUE and FALSE) outside the window in every block containing it, so the block patterns that carve-out 3
+    reads stay what they were."""
+    rng = np.random.default_rng(seed)
+    out = permute_states(tls, 0)  # copies
+    for t, src in zip(out, tls):
+        for rid in t.states:
+            t.states[rid] = src.states[rid].copy()
+    for e in eps:
+        t = out[e.chart]
+        lo, hi = max(e.lo - t.h_start, 0), min(e.hi - t.h_start, t.n_days - 1)
+        blocks = [b for bd, mb in ((C.BLOCK_DAYS_5Y, C.MERGE_BELOW_5Y), (C.BLOCK_DAYS_15Y, C.MERGE_BELOW_15Y)) for b in core.make_blocks(t.n_days, bd, mb) if b[0] <= lo <= b[1] or b[0] <= hi <= b[1]]
+        for rid, a in t.states.items():
+            varies = True
+            for bl, bh in blocks:
+                outside = np.concatenate([a[bl:lo], a[hi + 1 : bh + 1]])
+                if not ((outside == 1).sum() > 40 and (outside == 0).sum() > 40):
+                    varies = False
+            if not varies:
+                continue
+            seg = a[lo : hi + 1]
+            m = (seg >= 0) & (rng.random(seg.size) < 0.5)
+            seg[m] = 1 - seg[m]
+    return out
+
+
+def _carve_out_3(ctx, eps):
+    """The constant-member flags of every (scheme, chart, block, length, component) the episodes touch."""
+    flags = {}
+    for scheme, _bd, _mb in ctx.schemes:
+        for i, ep in enumerate(eps):
+            e = core._place(ctx, scheme, ep, i)
+            bl, bh = ctx.blocks(scheme, e.chart)[e.blk]
+            for pol in ("promotive", "obstructive"):
+                for v in ctx.klass_variants((pol, ep.area, ep.grade)):
+                    for comp in v.components():
+                        T, A = ctx.comp_prefix(e.chart, comp)
+                        flags[(scheme, e.chart, e.blk, e.L, comp)] = core.block_constant(T, A, bl, bh, e.L)
+    return flags
+
+
+@pytest.mark.parametrize("config", ["plain", "patchy", "clusters"])
+def test_iii_no_state_inside_an_episode_window_feeds_any_eligibility_decision(config):
+    """Flip states INSIDE the episode windows only. Where the carve-out-3 flags (block pattern) come out the same,
+    every eligibility decision, the percentile-scored sets included, must come out the same."""
+    tls, units = CONFIGS[config](13)
+    eps = _episodes(tls, 13, per_chart=6)
+    gate = {}
+    flipped = _window_flip(tls, eps, 5)
+    ctx_a, ctx_b = FamilyContext(C.FAMILY_DASHA, tls, units, gate), FamilyContext(C.FAMILY_DASHA, flipped, units, gate)
+    assert _carve_out_3(ctx_a, eps) == _carve_out_3(ctx_b, eps), "the flip changed a block pattern; choose another seed"
+    for scheme, _bd, _mb in ctx_a.schemes:
+        assert scorable_mask(ctx_a, eps, scheme) == scorable_mask(ctx_b, eps, scheme)
+    assert selection_stages(tls, units, eps, gate) == selection_stages(flipped, units, eps, gate)
+
+
+def test_iii_scored_set_depends_on_states_only_through_carve_out_3():
+    """Under a full permutation the scored set may move, but always exactly as the carve-out-3 flags (plus the
+    assessed masks) say: re-deriving it from those flags gives the scorer's answer before and after."""
+
+    def derived(ctx, eps, scheme):
+        out = []
+        for i, ep in enumerate(eps):
+            e = core._place(ctx, scheme, ep, i)
+            bl, bh = ctx.blocks(scheme, e.chart)[e.blk]
+            ok = False
+            for v in ctx.klass_variants((C.POLARITY_OF_DIRECTION[ep.direction], ep.area, ep.grade)):
+                for comp in v.components():
+                    T, A = ctx.comp_prefix(e.chart, comp)
+                    win_ok = (A[e.a + e.L] - A[e.a]) * 2 >= e.L
+                    if win_ok and not core.block_constant(T, A, bl, bh, e.L):
+                        ok = True
+            out.append(ok)
+        return out
+
+    tls, units = cfg_patchy(14)
+    eps = _episodes(tls, 14, per_chart=8)
+    for t_set in (tls, permute_states(tls, 3)):
+        ctx = FamilyContext(C.FAMILY_DASHA, t_set, units)
+        for scheme, _bd, _mb in ctx.schemes:
+            assert scorable_mask(ctx, eps, scheme) == derived(ctx, eps, scheme)
+
+
+@pytest.mark.xfail(strict=True, reason="PENDING RULING: a multi-member reading's NOT_ASSESSED day follows Kleene OR (TRUE or N = TRUE), so whether its window is half assessed can depend on TRUE days inside it")
+def test_iii_or_reading_assessment_with_a_not_assessed_member():
+    n = 365 * 6
+    lo, hi = month_window(1992, 4)
+    a = runs_series(np.random.default_rng(1), n, 0.3, 10)  # informative across the block
+    b = np.zeros(n, dtype=np.int8)
+    b[lo - BASE : hi - BASE + 1] = -1  # member B not assessed inside the episode window only
+    a[lo - BASE : hi - BASE + 1] = 0  # A FALSE there: the OR reading is NOT_ASSESSED (Kleene) in the window
+    units = [_unit("E1", "promotive", [[("A", [C.GENERAL])], [("B", [C.GENERAL])]])]
+    t = ChartTimeline("c", BASE - 9000, BASE, BASE + n - 1, {"A": a, "B": b})
+    ep = Episode(0, AREAS[0], C.FAVOURABLE, C.G2, lo, hi)
+    ctx1 = FamilyContext(C.FAMILY_DASHA, [t], units)
+    before = scorable_mask(ctx1, [ep])
+    t2 = ChartTimeline("c", BASE - 9000, BASE, BASE + n - 1, {"A": a.copy(), "B": b.copy()})
+    t2.states["A"][lo - BASE : hi - BASE + 1] = 1  # TRUE inside the window: the OR reading becomes assessed there
+    after = scorable_mask(FamilyContext(C.FAMILY_DASHA, [t2], units), [ep])
+    assert before == after

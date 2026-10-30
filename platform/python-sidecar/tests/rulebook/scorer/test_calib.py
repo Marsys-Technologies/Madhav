@@ -211,13 +211,6 @@ def test_declared_profile_is_reproducible_and_counts_only():
     assert all(x[2] in (C.G1, C.G2) and x[1] in (C.FAVOURABLE, C.UNFAVOURABLE) for ch in a.per_chart for x in ch)
 
 
-def test_profile_from_counts_file_reads_counts_only(tmp_path):
-    p = tmp_path / "counts.csv"
-    p.write_text("chart_code,area,direction,grade,count\nr001,childbirth_progeny,favourable,G2,3\nr002,other,unfavourable,G1,1\nzzz,x,favourable,G1,9\n")
-    prof = O.profile_from_counts_file(str(p), ["r001", "r002", "r003"])
-    assert [len(c) for c in prof.per_chart] == [3, 1, 0]
-
-
 # ── planted effect ────────────────────────────────────────────────────────────────────────────────────
 def _cov(ctx, chart, klass, lo, hi, units=None):
     """Pooled coverage of the applicable units (optionally only ``units``) over [lo, hi]: share of TRUE days."""
@@ -316,16 +309,29 @@ def test_to_episodes_keeps_what_falls_inside_the_family_horizon():
 
 
 # ── gate arithmetic ─────────────────────────────────────────────────────────────────────────────────────
-def _res(model, n, k_dasha, k_transit, k_any):
+def _res(model, n, k_dasha, k_transit, k_any, m1=None, m2=None):
+    """Synthetic study results: the first k studies pass in that family (same counts under every rule unless given)."""
     out = []
+    m1 = m1 or (k_dasha, k_transit, k_any)
+    m2 = m2 or (k_dasha, k_transit, k_any)
     for i in range(n):
-        d = i < k_dasha
-        t = i < k_transit
-        out.append({
-            "dasha": {"flags": {v: d for v in H.VARIANTS}}, "transit": {"flags": {v: t for v in H.VARIANTS}},
-            "any": {v: i < k_any for v in H.VARIANTS},
-        })
+        row = {}
+        for key, (kd, kt, ka) in (("flags", (k_dasha, k_transit, k_any)), ("flags_m1", m1), ("flags_m2", m2)):
+            row.setdefault("dasha", {})[key] = {v: i < kd for v in H.VARIANTS}
+            row.setdefault("transit", {})[key] = {v: i < kt for v in H.VARIANTS}
+            row["any" if key == "flags" else "any_" + key[6:]] = {v: i < ka for v in H.VARIANTS}
+        out.append(row)
     return out
+
+
+SHA = "a" * 64
+GOOD_SANITY = {"dasha": 0.9, "transit": 0.85}
+
+
+def _gate(by, **kw):
+    args = dict(draws=2000, scorer_sha256=SHA, frozen_scorer_sha256=SHA, d7_known=False, sanity=GOOD_SANITY)
+    args.update(kw)
+    return H.f2_gate(by, **args)
 
 
 def test_flags_apply_the_four_variants_of_the_strong_rule():
@@ -338,16 +344,39 @@ def test_flags_apply_the_four_variants_of_the_strong_rule():
 
 
 def test_f2_gate_passes_and_fails_on_the_stated_numbers():
-    ok = {m: _res(m, 5000, 100, 100, 150) for m in O.MODELS}  # 0.02, 0.02, 0.03 exactly
-    assert H.f2_gate(ok)["pass"] is True
-    bad_family = dict(ok, N3=_res("N3", 5000, 101, 0, 101))
-    g = H.f2_gate(bad_family)
-    assert g["pass"] is False and g["models"]["N3"]["per_family_ok"] is False
-    bad_overall = dict(ok, N1=_res("N1", 5000, 50, 50, 151))
-    assert H.f2_gate(bad_overall)["models"]["N1"]["overall_ok"] is False
-    few = {m: _res(m, 4999, 0, 0, 0) for m in O.MODELS}
-    assert H.f2_gate(few)["pass"] is False  # fewer than 5,000 studies
-    assert H.f2_gate({})["pass"] is False
+    ok = {m: _res(m, 5000, 100, 100, 150) for m in O.MODELS}  # 0.02, 0.02, 0.03 exactly: point estimate passes
+    g = _gate(ok)
+    assert g["status"] == "GATE" and g["pass"] is True
+    assert "Wilson" in g["criterion"] and g["models"]["N0"]["flags_m1"]["rates"]["dasha"]["full_upper95"] > 0.02
+    g = _gate(dict(ok, N3=_res("N3", 5000, 101, 0, 101)))
+    assert g["pass"] is False and g["models"]["N3"]["flags_m1"]["per_family_ok"] is False
+    assert _gate(dict(ok, N1=_res("N1", 5000, 50, 50, 151)))["models"]["N1"]["flags_m2"]["overall_ok"] is False
+
+
+def test_f2_gate_needs_every_condition_or_it_is_not_a_gate():
+    ok = {m: _res(m, 5000, 0, 0, 0) for m in O.MODELS}
+    assert _gate(ok)["status"] == "GATE"
+    only_n0 = {"N0": ok["N0"]}  # review S7 (i): a subset of models is never a gate
+    g = _gate(only_n0)
+    assert g["status"] == "NOT_GATE" and g["pass"] is False and g["conditions"]["all_five_models"] is False
+    few = {m: _res(m, 4999, 0, 0, 0) for m in O.MODELS}  # (ii)
+    assert _gate(few)["conditions"]["studies_at_least_5000"] is False and _gate(few)["pass"] is False
+    assert _gate(ok, draws=1999)["status"] == "NOT_GATE"  # (iii)
+    assert _gate(ok, frozen_scorer_sha256="b" * 64)["status"] == "NOT_GATE"  # not the frozen scorer
+    assert _gate(ok, frozen_scorer_sha256=None)["status"] == "NOT_GATE"
+    assert _gate(ok, sanity=None)["status"] == "NOT_GATE"  # (iv) the q = 30% sanity check must be run
+    assert _gate(ok, sanity={"dasha": 0.95, "transit": 0.79})["pass"] is False
+    assert H.f2_gate({}, draws=2000, scorer_sha256=SHA, frozen_scorer_sha256=SHA, sanity=GOOD_SANITY)["pass"] is False
+
+
+def test_f2_gate_before_d7_needs_both_m1_and_m2_and_after_d7_uses_its_m():
+    """review S6: one family testable means Holm's first step is 0.05, not 0.025; the gate must see that case."""
+    m1_fails = {m: _res(m, 5000, 0, 0, 0, m1=(150, 0, 150)) for m in O.MODELS}
+    g = _gate(m1_fails)
+    assert g["rules"] == ["flags_m1", "flags_m2"] and g["pass"] is False
+    assert g["models"]["N0"]["flags_m2"]["per_family_ok"] is True and g["models"]["N0"]["flags_m1"]["per_family_ok"] is False
+    g = _gate(m1_fails, d7_known=True)  # D7 fixed m: the study's own production rule decides
+    assert g["rules"] == ["flags"] and g["pass"] is True
 
 
 def test_wilson_upper_bound():

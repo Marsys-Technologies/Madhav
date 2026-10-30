@@ -13,6 +13,7 @@ Unit structure (SUR-RB-23, FINAL_CLUSTER_TABLE_v1_1):
 
 from __future__ import annotations
 
+import itertools
 from dataclasses import dataclass, field
 from datetime import date
 from typing import Any, Dict, FrozenSet, List, Mapping, Optional, Sequence, Tuple
@@ -48,12 +49,15 @@ class Variant:
     def key(self) -> Tuple[Any, ...]:
         return (self.unit_id, self.groups)
 
+    def readings(self) -> Tuple[Tuple[str, ...], ...]:
+        """v1.4 M2: a reading = one member chosen from each group. R unit: one reading per member; E unit: one
+        reading (all its single-member groups); MIXED: every combination."""
+        return tuple(itertools.product(*self.groups))
+
     def components(self) -> Tuple[CompKey, ...]:
-        """Percentile components. One group: each member is its own component (percentiles
-        averaged). Several groups: one OR-ed component (the groups are disjoint claims)."""
-        if len(self.groups) == 1:
-            return tuple(("m", rid) for rid in self.groups[0])
-        return (("or", self.groups),)
+        """Percentile components: one per reading, its day state the OR of the reading's members (v1.4 M2). The
+        unit's percentile is the mean over its readings."""
+        return tuple(("m", r[0]) if len(r) == 1 else ("or", tuple(r)) for r in self.readings())
 
 
 @dataclass(frozen=True)
@@ -154,8 +158,9 @@ class Episode:
         if self.direction not in C.POLARITY_OF_DIRECTION:
             raise ScorerError(f"direction {self.direction!r}: only favourable/unfavourable episodes are scored")
         if self.grade == C.G1:
-            if self.hi - self.lo != C.G1_WINDOW_DAYS - 1:
-                raise ScorerError("a G1 window is 3 days")
+            # the day +- 1, possibly clipped to the family horizon (v1.2 K2): 3 days, or 2 at a horizon edge
+            if self.hi - self.lo not in (C.G1_WINDOW_DAYS - 1, C.G1_WINDOW_DAYS - 2):
+                raise ScorerError("a G1 window is 3 days (2 when clipped at the horizon edge)")
         elif self.grade == C.G2:
             a, b = date.fromordinal(self.lo), date.fromordinal(self.hi)
             first = date(a.year, a.month, 1)
@@ -191,6 +196,21 @@ class ChartTimeline:
     @property
     def n_days(self) -> int:
         return self.h_end - self.h_start + 1
+
+    # The ONLY two ways scorer code reads a member's states (SUR-RB-36): ``assessed`` exposes which days are
+    # assessed and nothing else; ``values`` exposes TRUE/FALSE and is permitted only in the three carve-outs
+    # (the statistics, the D8 touch rates, the constant-member rule of v1.0 3.2 step 3).
+    def assessed(self, rid: str) -> Optional[np.ndarray]:
+        a = self.states.get(rid)
+        return None if a is None else (a >= 0)
+
+    def assessed_count(self, rid: str, lo: int, hi: int) -> Optional[int]:
+        """Number of assessed days of member ``rid`` in [lo, hi] (indices from h_start). Assessed-mask only."""
+        a = self.states.get(rid)
+        return None if a is None else int((a[lo : hi + 1] >= 0).sum())
+
+    def values(self, rid: str) -> Optional[np.ndarray]:
+        return self.states.get(rid)
 
     def validate(self) -> None:
         if self.h_end < self.h_start:

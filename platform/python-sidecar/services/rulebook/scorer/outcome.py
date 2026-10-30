@@ -9,6 +9,7 @@ from . import config as C
 STRONG = "STRONG"
 MIDDLE = "MIDDLE"
 CHANCE = "CHANCE-LEVEL"
+NO_VERDICT = "NO_VERDICT"
 
 LABEL_NOT_DIRECTION = "timing association, not direction-specific"
 LABEL_DIR_UNTESTABLE = "direction not testable"
@@ -42,7 +43,12 @@ def decide(
 
     Only testable families enter Holm (their number is m, at most 2). A family with no p1 is not testable.
     """
-    fams = [f for f, r in results.items() if testable.get(f, False) and r.get("p1") is not None]
+    for f, r in results.items():
+        if testable.get(f, False) and r.get("p1") is None:  # review M5: m may not change once p-values start
+            raise ValueError(f"{f} was testable at D7 but has no p1; the run must have been refused before the claim")
+    fams = [f for f, r in results.items() if testable.get(f, False)]
+    if not fams:  # v1.4 conformance: no testable family is NO_VERDICT, not CHANCE-LEVEL
+        return {"outcome": NO_VERDICT, "labels": [], "m": 0, "families": {}, "testable": dict(testable), "reason": "no family is testable (m = 0)"}
     holm = holm_adjust({f: results[f]["p1"] for f in fams}) if fams else {}
     per: Dict[str, Dict[str, Any]] = {}
     for f in fams:

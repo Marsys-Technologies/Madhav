@@ -15,6 +15,15 @@ SCORER_VERSION = "rulebook-scorer-v1.0"
 YARDSTICK_V10_SHA256 = "6e2dc5f3e42f0a357c2f15fae7210427bbab2c37182d69c3774974b4d9a34591"
 YARDSTICK_V11_SHA256 = "8071d944dfa858d4d1e7d6b226589d8ef0eb470cc3faa3eaa3cd9e8a6ad4efbd"
 YARDSTICK_V12_SHA256 = "387526b683e000b20d57592fd5f76402d7d57d73bc6c7e380e1bb3a5e3f0fa3e"
+YARDSTICK_V13_SHA256 = "d770b461666f840c331106cb584c15fee7a474c383935c072401af344ed833b6"
+YARDSTICK_V14_SHA256 = "098d625b174678ee4dc9eeb66a6b2f6e6e75ee62e0ceb3c55fa95006d5fd3f91"
+YARDSTICK_SHA256 = {
+    "YARDSTICK_v1_0_LOCKED.md": YARDSTICK_V10_SHA256,
+    "YARDSTICK_v1_1_LOCKED.md": YARDSTICK_V11_SHA256,
+    "YARDSTICK_v1_2_LOCKED.md": YARDSTICK_V12_SHA256,
+    "YARDSTICK_v1_3_LOCKED.md": YARDSTICK_V13_SHA256,
+    "YARDSTICK_v1_4_LOCKED.md": YARDSTICK_V14_SHA256,
+}
 CLUSTER_TABLE_SHA256 = "b3e0a6b9f31e41dbd974f667c3507af6d2681b180ba78b694d6aeccddf79499f"  # SUR-RB-23
 
 # ── planes / families (v1.1 B4: F-N dropped, m <= 2) ────────────────────────
@@ -69,6 +78,9 @@ TESTABLE_MIN_EPISODES = 250
 TESTABLE_MIN_CHARTS = 15
 TESTABLE_MIN_UNIT_SHARE = 0.5
 
+# ── the one-run ledger (review S5): one fixed path, logged in the lock log
+LEDGER_DIR = "/Users/Dev/Archives/madhav-research-library/10_engine/run-ledger"
+
 # ── outcomes (v1.1 Part E) ─────────────────────────────────────────────────
 ALPHA_STRONG = 0.05
 ALPHA_MIDDLE = 0.10
@@ -93,6 +105,7 @@ class ScoreConfig:
     draws: int = DRAWS_PRODUCTION
     seed: int = 20261030
     fallback_primary_set: bool = False  # v1.1 A7: all-occurrence set is primary -> direction-consistency check
+    scheme_combination: str = "simes"  # v1.4 M1: F-D p1 = Simes over the 5y and 15y min-p; "bonferroni" is the logged fallback
 
 
 SOURCE_FILES = (
