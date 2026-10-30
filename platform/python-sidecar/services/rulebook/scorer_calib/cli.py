@@ -82,15 +82,35 @@ def cmd_gate(a) -> int:
     cal = _load(a)
     if a.d7_known:  # review N6: the single m that D7 fixed applies to every study
         cal.fixed_testable = {f: f in a.testable.split(",") for f in C.FAMILIES}
-    by_model: Dict[str, List[Dict[str, Any]]] = {}
-    t0 = time.time()
-    for m in a.models.split(","):
-        p = out / f"studies_{m}_q0.jsonl"
-        if p.exists():
-            p.unlink()
-        by_model[m] = H.run_many(cal, [(m, i, 0.0, C.FAMILY_DASHA, False, a.threshold) for i in range(a.studies)], a.workers, str(p))
-        os.chmod(p, 0o600)
-        print(m, "done", round(time.time() - t0), "s", flush=True)
+    for spec in filter(None, (a.donor_rules or "").split(";")):  # e.g. "dasha:b=p2_90,c=m3" (sealed at D7, v1.5 P1)
+        fam, kv = spec.split(":")
+        for item in kv.split(","):
+            chk, rule = item.split("=")
+            cal.donor_rules[fam][chk] = rule
+
+    def run_models(tag: str) -> Dict[str, List[Dict[str, Any]]]:
+        bym: Dict[str, List[Dict[str, Any]]] = {}
+        t0 = time.time()
+        for m in a.models.split(","):
+            p = out / f"studies_{m}_q0{tag}.jsonl"
+            if p.exists():
+                p.unlink()
+            bym[m] = H.run_many(cal, [(m, i, 0.0, C.FAMILY_DASHA, False, a.threshold) for i in range(a.studies)], a.workers, str(p))
+            os.chmod(p, 0o600)
+            print(m, tag or "base", "done", round(time.time() - t0), "s", flush=True)
+        return bym
+
+    by_model = run_models("")
+    p3 = H.p3_check(by_model, cal.donor_rules)
+    p3_history = [p3]
+    untestable: List[str] = []
+    if not p3["ok"]:  # v1.5 P3: raise the bar to 95% for the failing P2 checks and re-run once
+        for f, chk in p3["failing"]:
+            cal.donor_rules[f][chk] = "p2_95"
+        by_model = run_models("_p2_95")
+        p3 = H.p3_check(by_model, cal.donor_rules)
+        p3_history.append(p3)
+        untestable = sorted({f for f, _chk in p3["failing"]})  # still failing: the family is untestable (K11)
     testable = [f for f in a.testable.split(",") if f]
     key = "flags" if a.d7_known else "flags_m2"
     sanity: Dict[str, float] = {}
@@ -111,7 +131,8 @@ def cmd_gate(a) -> int:
     unit_tests = json.loads(Path(a.unit_test_report).read_text()) if a.unit_test_report else {"failed": None}
     rep = H.sanity_report(sanity, testable, q_curves, unit_tests)
     _write(out / "SANITY_Q30.json", rep)
-    res = H.f2_gate(by_model, draws=a.draws, scorer_sha256=C.source_sha256(), frozen_scorer_sha256=a.frozen_scorer_sha, d7_known=a.d7_known, sanity=sanity, testable=testable)
+    res = H.f2_gate(by_model, draws=a.draws, scorer_sha256=C.source_sha256(), frozen_scorer_sha256=a.frozen_scorer_sha, d7_known=a.d7_known, sanity=sanity, testable=[f for f in testable if f not in untestable], untestable=untestable)
+    res["p3"] = p3_history
     k12 = H.k12_check(by_model)
     status = res["status"] if a.step5_hash else "PROVISIONAL_NOT_STEP5_INPUTS"
     _write(out / "F2_GATE.json", {"status": status, "step5_hash": a.step5_hash, "threshold": a.threshold, "draws": a.draws, "studies_per_model": a.studies, "gate": res, "k12": k12})
@@ -184,6 +205,39 @@ def cmd_a6(a) -> int:
     return 0
 
 
+def cmd_donor_diagnostic(a) -> int:
+    """Review N2 / v1.5 P1: per family, the charts keeping at least 5 donors under (b) and (c) (v1.4 M3), the K11 floor
+    status and the P2 trigger. Reads the step-5 timelines (hash-checked) and an episodes file of windows
+    [{chart_id, family, area, direction, grade: day|month, lo: ISO date, hi: ISO date}]; that file is built from the
+    occurrences, so this runs ONLY inside the count_blind boundary. Emits counts and decisions, nothing else."""
+    from datetime import date as _date
+
+    from ..scorer.core import donor_diagnostic
+    from ..scorer.inputs import AdmissionInputs
+    from ..scorer.model import Episode
+
+    adm = AdmissionInputs(a.admission)
+    man = json.loads(Path(a.manifest).read_text())
+    tab = json.loads(Path(a.clusters).read_text())
+    rows = json.loads(Path(a.episodes).read_text())
+    out: Dict[str, Any] = {"timelines_manifest_sha256": adm.manifest_sha256, "episodes_file_sha256": _sha(Path(a.episodes))}
+    for fam in C.FAMILIES:
+        ids = adm.admitted()
+        tls = adm.timelines(fam, ids)
+        ctx, _rep = build_family_context(fam, tls, units_from_manifest(man, tab, fam))
+        pos = {c: i for i, c in enumerate(ids)}
+        eps = []
+        for r in rows:
+            if r["family"] == fam and r["chart_id"] in pos and r["direction"] in C.POLARITY_OF_DIRECTION:
+                eps.append(Episode(pos[r["chart_id"]], r["area"], r["direction"], {"day": C.G1, "month": C.G2}[r["grade"]],
+                                   _date.fromisoformat(r["lo"]).toordinal(), _date.fromisoformat(r["hi"]).toordinal()))
+        out[fam] = donor_diagnostic(ctx, eps)
+    p = Path(a.out)
+    _write(p, out)
+    print(json.dumps({f: {k: out[f][k] for k in ("b", "c", "donor_rules")} for f in C.FAMILIES}, sort_keys=True))
+    return 0
+
+
 def cmd_build(a) -> int:
     from .births import births_from_file, births_sha256, read_permitted_columns, surrogate_births
     from .timelines import InputsBundle, build_one, save_chart
@@ -225,11 +279,19 @@ def main(argv=None) -> int:
     g.add_argument("--frozen-scorer-sha", default=None, help="sha256 of the frozen scorer; without it the status is NOT_GATE")
     g.add_argument("--d7-known", action="store_true", help="D7 has fixed m; otherwise m = 1 and m = 2 must both pass")
     g.add_argument("--testable", default=",".join(C.FAMILIES), help="the families D7 makes testable (comma list)")
+    g.add_argument("--donor-rules", default="", help='v1.5 P1 decisions from D7, e.g. "dasha:b=p2_90,c=m3;transit:b=m3,c=m3"')
     g.add_argument("--unit-test-report", default=None, help='JSON {"passed": n, "failed": n} of the scorer test run')
     g.set_defaults(fn=cmd_gate)
     p = sub.add_parser("power"); common(p, 400)
     p.add_argument("--qs", default="0.05,0.10,0.15,0.20,0.30"); p.add_argument("--model", default="N4"); p.set_defaults(fn=cmd_power)
     a6 = sub.add_parser("a6"); common(a6, 300); a6.set_defaults(fn=cmd_a6)
+    dd = sub.add_parser("donor-diagnostic")
+    dd.add_argument("--admission", required=True)
+    dd.add_argument("--manifest", required=True)
+    dd.add_argument("--clusters", required=True)
+    dd.add_argument("--episodes", required=True)
+    dd.add_argument("--out", required=True)
+    dd.set_defaults(fn=cmd_donor_diagnostic)
     b = sub.add_parser("build-timelines")
     b.add_argument("--births", required=True); b.add_argument("--people", required=True); b.add_argument("--manifest", required=True)
     b.add_argument("--bundle", required=True); b.add_argument("--sky", required=True); b.add_argument("--out", required=True); b.set_defaults(fn=cmd_build)

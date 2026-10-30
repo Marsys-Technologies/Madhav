@@ -67,6 +67,8 @@ class Calibration:
         self.pmfs = [O._DayPmf(t) for t in self.tls[C.FAMILY_TRANSIT]]
         # review N6: once D7 has fixed m, every study uses that single m (None = decide per study, before D7)
         self.fixed_testable: Optional[Dict[str, bool]] = None
+        # v1.5 P1/P2: the donor rule of each family's checks (b) and (c), as D7 decides it ("m3", "p2_90", "p2_95")
+        self.donor_rules: Dict[str, Dict[str, str]] = {f: {"b": "m3", "c": "m3"} for f in FAMS}
         self.eff = {f: O.ChartTimelineSet(self.ctx[f]) for f in FAMS}
         # D7.2 second half: at least half the family's units survive the footprint gate in at least one window class
         self.units_ok = {
@@ -114,7 +116,8 @@ class Calibration:
         testable: Dict[str, bool] = {}
         app_counts: Dict[str, Tuple[int, int]] = {}
         for f in FAMS:
-            res[f] = score_family(self.ctx[f], eps_f[f], cfg, admitted=adm[f])
+            rules = self.donor_rules[f]
+            res[f] = score_family(self.ctx[f], eps_f[f], cfg, admitted=adm[f], d7={"donor_rule_b": rules["b"], "donor_rule_c": rules["c"]})
             app = [e for e, ok in zip(eps_f[f], applicable_mask(self.ctx[f], eps_f[f])) if ok]
             app_counts[f] = (len(app), len({e.chart for e in app}))
             # this study's D7, as production would decide it (review S6): counts, units surviving the gate, K11 floors
@@ -257,6 +260,7 @@ def f2_gate(
     d7_known: bool = False,
     sanity: Optional[Mapping[str, float]] = None,
     testable: Optional[Sequence[str]] = None,
+    untestable: Sequence[str] = (),
 ) -> Dict[str, Any]:
     """v1.1 F2 with SUR-RB-37 S6/S7. GATE only if: all five models N0-N4, each with at least 5,000 studies, at least
     2,000 draws per check, the scorer byte-identical to the frozen one, and the q = 30% sanity check (STRONG >= 0.80
@@ -264,6 +268,9 @@ def f2_gate(
     per family <= 0.02 and overall <= 0.03 (Wilson upper bounds printed). Under D7's m when ``d7_known``; otherwise
     the m = 1 and m = 2 readings must BOTH pass."""
     rules = ["flags"] if d7_known else ["flags_m1", "flags_m2"]
+    fams = [f for f in FAMS if f not in untestable]
+    if untestable:  # v1.5 P3 / K11: a family made untestable is dropped; the other is judged at m = 1
+        rules = ["flags_m1"]
     rows: Dict[str, Any] = {}
     ok_all = True
     for m in O.MODELS:
@@ -271,8 +278,8 @@ def f2_gate(
         row: Dict[str, Any] = {"n": len(res)}
         for key in rules:
             r = rates(res, key) if res else None
-            fam_ok = bool(r) and all(r[f]["full"] <= C.GATE_PER_FAMILY for f in FAMS)
-            over_ok = bool(r) and r["any"]["full"] <= C.GATE_OVERALL
+            fam_ok = bool(r) and all(r[f]["full"] <= C.GATE_PER_FAMILY for f in fams)
+            over_ok = bool(r) and (r["any"]["full"] if not untestable else max([r[f]["full"] for f in fams] or [0.0])) <= C.GATE_OVERALL
             row[key] = {"rates": r, "per_family_ok": fam_ok, "overall_ok": over_ok}
             ok_all &= fam_ok and over_ok
         rows[m] = row
@@ -286,7 +293,32 @@ def f2_gate(
     status = "GATE" if all(conditions.values()) else "NOT_GATE"
     return {"status": status, "pass": bool(status == "GATE" and ok_all), "rates_pass": bool(ok_all), "conditions": conditions,
             "criterion": "point estimate: per family <= 0.02, overall <= 0.03 (Wilson 95% upper bounds printed)",
-            "rules": rules, "sanity_q30": dict(sanity or {}), "models": rows}
+            "rules": rules, "families_judged": fams, "untestable": list(untestable), "sanity_q30": dict(sanity or {}), "models": rows}
+
+
+# ── v1.5 P3: the extra gate on a check whose donor rule is P2 ────────────────────────────────────────────────
+P3_LIMIT = 0.06
+
+
+def p3_check(by_model: Mapping[str, Sequence[Mapping[str, Any]]], rules: Mapping[str, Mapping[str, str]]) -> Dict[str, Any]:
+    """v1.5 P3: for each family and check whose rule is P2, the marginal P(p <= 0.05) of that check must be <= 0.06
+    (point estimate) under every model. Returns the rates and the failing (family, check) pairs."""
+    key = {"b": "p2", "c": "p3"}
+    rows: Dict[str, Any] = {}
+    failing: List[Tuple[str, str]] = []
+    for f in FAMS:
+        for chk in ("b", "c"):
+            if rules.get(f, {}).get(chk, "m3") == "m3":
+                continue
+            per_model = {}
+            for m, res in by_model.items():
+                v = [r[f][key[chk]] for r in res if r[f][key[chk]] is not None]
+                per_model[m] = (sum(1 for x in v if x <= C.ALPHA_STRONG) / len(v)) if v else None
+            ok = all(x is not None and x <= P3_LIMIT for x in per_model.values()) and len(per_model) == len(O.MODELS)
+            rows[f"{f}/{chk}"] = {"rule": rules[f][chk], "rates": per_model, "ok": ok}
+            if not ok:
+                failing.append((f, chk))
+    return {"limit": P3_LIMIT, "rows": rows, "failing": failing, "ok": not failing}
 
 
 # ── v1.2 K12: remedies triggered by check (a) alone ───────────────────────────────────────────────────────

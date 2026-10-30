@@ -113,6 +113,7 @@ def family_testable(
     min_episodes: int = C.TESTABLE_MIN_EPISODES,
     min_charts: int = C.TESTABLE_MIN_CHARTS,
     admitted: Optional[Sequence[int]] = None,
+    donor_rules: Optional[Mapping[str, str]] = None,
 ) -> Dict[str, Any]:
     """v1.1 D7.2 with v1.2 K4 and K11, from counts and horizons only (no state, no p-value):
     at least 250 scored primary episodes in at least 15 charts; at least half the family's evaluable units
@@ -132,7 +133,7 @@ def family_testable(
     n_units = len(ctx.units)
     ok_ep = len(scored) >= min_episodes and charts >= min_charts
     ok_units = n_units > 0 and survivors * 2 >= n_units * 1  # survivors >= half of the units
-    donors = donor_eligibility_counts(ctx, scored, admitted)
+    donors = donor_eligibility_counts(ctx, scored, admitted, donor_rules)
     ok_donors = donors["b"] >= C.DONOR_FLOOR_CHARTS and donors["c"] >= C.DONOR_FLOOR_CHARTS
     dirc = direction_counts(ctx, scored)
     reasons = []

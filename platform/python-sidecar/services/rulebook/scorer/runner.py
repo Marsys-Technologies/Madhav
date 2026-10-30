@@ -164,7 +164,7 @@ def validate_before_claim(
 ) -> Dict[str, Any]:
     """Everything that can refuse the run, BEFORE the claim (v1.4 conformance B1/M5, S2, S3, S8, M6). Raises
     RunRefused on any mismatch. Returns the prepared episodes and the counts of the validation."""
-    from .core import d7_from_counts, donor_eligibility_counts
+    from .core import d7_from_counts, donor_diagnostic, donor_eligibility_counts
 
     problems: List[str] = []
     if lock.scorer_sha256 != C.source_sha256():
@@ -258,14 +258,21 @@ def validate_before_claim(
         # sealed D7 record against the recount (S2)
         rec = lock.d7.get(fam) or {}
         own = d7_from_counts(ctx, kept)
-        don = donor_eligibility_counts(ctx, kept)
+        rules = {"b": rec.get("donor_rule_b", "m3"), "c": rec.get("donor_rule_c", "m3")}
+        diag = donor_diagnostic(ctx, kept)  # v1.5 P1: P2 only where the M3 count is below the K11 floor
+        for k in ("b", "c"):
+            if diag[k]["p2_trigger"] and rules[k] == "m3":
+                problems.append(f"{fam}: check ({k}) is below the K11 floor under M3 but the sealed rule is M3 (v1.5 P1)")
+            if not diag[k]["p2_trigger"] and rules[k] != "m3":
+                problems.append(f"{fam}: check ({k}) meets the K11 floor under M3 but the sealed rule is {rules[k]} (v1.5 P1)")
+        don = donor_eligibility_counts(ctx, kept, None, rules)
         if bool(rec.get("dir_testable")) != own["dir_testable"]:
             problems.append(f"{fam}: p_dir testability differs from the sealed D7 record")
         if sorted(rec.get("z25_units") or []) != (own["z25_units"] if len(own["z25_units"]) >= C.Z25_MIN_UNITS else []):
             problems.append(f"{fam}: the Z25 unit set differs from the sealed D7 record")
         if (rec.get("donor_charts_b"), rec.get("donor_charts_c")) != (don["b"], don["c"]):
             problems.append(f"{fam}: K11 donor counts differ from the sealed D7 record (v1.4 M3)")
-        ft = family_testable(ctx, kept)  # review N3: the sealed testability flag is recomputed, not trusted
+        ft = family_testable(ctx, kept, donor_rules=rules)  # review N3: the sealed testability flag is recomputed, not trusted
         if bool(rec.get("testable")) != bool(ft["testable"]):
             problems.append(f"{fam}: D7 testability differs from the recount ({ft['reasons'] or 'recount says testable'})")
         recount_ok[fam] = True

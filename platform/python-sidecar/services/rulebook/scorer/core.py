@@ -336,6 +336,30 @@ class FamilyContext:
         return self._rflat[rids]
 
     def episode_coverage(self, units: Sequence[Variant], lo: np.ndarray, hi: np.ndarray, charts: np.ndarray) -> np.ndarray:
+        """Mean over the units of ``unit_coverages`` (NaN where a unit does not apply)."""
+        return self.unit_coverages(units, lo, hi, charts).mean(axis=0)
+
+    def block_base_rate(self, chart: int, var: Variant, L: int, mid: int) -> float:
+        """v1.5 P2 imputation: the unit's mean coverage over all windows of length L lying wholly inside the 5-year
+        block of ``chart``'s own timeline that contains day ``mid`` (date ordinal), over the windows where the unit
+        applies (SUR-RB-39 rule). From that timeline alone; cached."""
+        if not hasattr(self, "_base"):
+            self._base: Dict[Tuple[Any, ...], float] = {}
+        t = self.tl[chart]
+        rel = min(max(mid - t.h_start, 0), t.n_days - 1)
+        scheme = self.schemes[0][0]
+        blk = next(i for i, (bl, bh) in enumerate(self.blocks(scheme, chart)) if bl <= rel <= bh)
+        k = (chart, blk, L, var.key)
+        if k not in self._base:
+            rc = [self.comp_coverage(scheme, chart, blk, L, comp) for comp in var.components()]
+            st = np.vstack(rc)
+            ok = np.isfinite(st)
+            ucov = np.where(ok.any(axis=0), np.where(ok, st, 0.0).sum(axis=0) / np.maximum(ok.sum(axis=0), 1), np.nan)
+            f = ucov[np.isfinite(ucov)]
+            self._base[k] = float(f.mean()) if f.size else float("nan")
+        return self._base[k]
+
+    def unit_coverages(self, units: Sequence[Variant], lo: np.ndarray, hi: np.ndarray, charts: np.ndarray) -> np.ndarray:
         """Coverage of one episode's unit set on several timelines (checks (b) and (c), SUR-RB-39 (2)): for timeline
         ``charts[i]`` and window [lo[i], hi[i]] (date ordinals inside its horizon): unit coverage = mean over its
         readings that apply (``reading_coverage`` rule); episode coverage = mean over the units. NaN where a unit
@@ -369,7 +393,7 @@ class FamilyContext:
             st = np.vstack(rc)
             ok = np.isfinite(st)
             unit_cov.append(np.where(ok.any(axis=0), np.where(ok, st, 0.0).sum(axis=0) / np.maximum(ok.sum(axis=0), 1), np.nan))
-        return np.vstack(unit_cov).mean(axis=0)
+        return np.vstack(unit_cov)
 
 
 def _nanmean_stack(curves: Sequence[np.ndarray]) -> np.ndarray:
@@ -711,15 +735,29 @@ def _admitted_mask(ctx: FamilyContext, admitted: Optional[Iterable[int]]) -> np.
     return m
 
 
-def donor_sets(ctx: FamilyContext, episodes: Sequence[Episode], age_matched: bool, admitted: Optional[Iterable[int]] = None) -> Dict[int, Dict[str, Any]]:
+DONOR_RULES = {"m3": None, "p2_90": 0.90, "p2_95": 0.95}  # v1.4 M3; v1.5 P2 at the 90% bar and its 95% escalation
+
+
+def donor_sets(
+    ctx: FamilyContext,
+    episodes: Sequence[Episode],
+    age_matched: bool,
+    admitted: Optional[Iterable[int]] = None,
+    rule: str = "m3",
+) -> Dict[int, Dict[str, Any]]:
     """Checks (b)/(c) eligibility, computed ONCE before any draw (SUR-RB-36 (ii)), from horizons and assessed masks
-    only (v1.4 M3):
+    only:
     * a chart's check set = its scored-applicable episodes (K2), each with the units that apply to it on the chart's
-      own timeline;
-    * a donor is eligible for chart c if it is an admitted chart of the family (K6), its horizon covers every episode
-      window (same dates for (b), same ages for (c)), and for EVERY episode of the set each of the episode's applicable
-      units has at least one member at least half assessed in the donor's corresponding window.
-    Returns chart -> {"eps": episode indices, "elig": donor ids, "dlo", "dhi", "inside"}."""
+      own timeline (its (episode, unit) cells);
+    * ``rule == "m3"`` (v1.4 M3): a donor is eligible if it is an admitted chart of the family (K6), its horizon covers
+      every episode window (same dates for (b), same ages for (c)), and EVERY cell is defined on it (the unit has at
+      least one member at least half assessed in the donor's window);
+    * ``rule == "p2_90"`` / ``"p2_95"`` (v1.5 P2): the same horizon condition, and at least 90% (95%) of the cells
+      defined; undefined cells are imputed later (``block_base_rate``).
+    Returns chart -> {"eps", "units", "elig", "defined" (per episode: units x charts bool), "dlo", "dhi", "inside"}."""
+    if rule not in DONOR_RULES:
+        raise ScorerError(f"unknown donor rule {rule!r}")
+    bar = DONOR_RULES[rule]
     adm = _admitted_mask(ctx, admitted)
     hs = np.array([t.h_start for t in ctx.tl], dtype=np.int64)
     he = np.array([t.h_end for t in ctx.tl], dtype=np.int64)
@@ -740,13 +778,17 @@ def donor_sets(ctx: FamilyContext, episodes: Sequence[Episode], age_matched: boo
             continue
         eps = [episodes[i] for i in keep]
         dlo, dhi, inside, _hs, _he = _donor_geometry(ctx, eps, c, age_matched)
-        ok = inside.all(axis=0) & adm
+        horizon_ok = inside.all(axis=0) & adm
         k0 = np.clip(dlo - hs[None, :], 0, (he - hs + 1)[None, :])
         k1 = np.clip(dhi + 1 - hs[None, :], 0, (he - hs + 1)[None, :])
         off = ctx.flat_off[:-1][None, :]
+        defined: List[np.ndarray] = []
+        n_cells = 0
+        n_def = np.zeros(len(ctx.tl), dtype=np.int64)
         for j, vs in enumerate(units_of):
             L = eps[j].hi - eps[j].lo + 1
-            for v in vs:
+            dm = np.zeros((len(vs), len(ctx.tl)), dtype=bool)
+            for ui, v in enumerate(vs):
                 unit_ok = np.zeros(len(ctx.tl), dtype=bool)
                 for g in v.groups:
                     for rid in g:
@@ -758,19 +800,40 @@ def donor_sets(ctx: FamilyContext, episodes: Sequence[Episode], age_matched: boo
                         unit_ok |= n * 2 >= L
                     if unit_ok.all():
                         break
-                ok &= unit_ok
+                dm[ui] = unit_ok
+            defined.append(dm)
+            n_cells += len(vs)
+            n_def += dm.sum(axis=0)
+        if bar is None:
+            ok = horizon_ok & (n_def == n_cells)
+        else:
+            ok = horizon_ok & (n_def >= bar * n_cells - 1e-9)
         ok[c] = False
-        out[c] = {"eps": keep, "units": units_of, "elig": np.nonzero(ok)[0], "dlo": dlo, "dhi": dhi, "inside": inside}
+        out[c] = {"eps": keep, "units": units_of, "elig": np.nonzero(ok)[0], "defined": defined, "dlo": dlo, "dhi": dhi, "inside": inside, "cells": n_cells}
     return out
 
 
-def donor_eligibility_counts(ctx: FamilyContext, episodes: Sequence[Episode], admitted: Optional[Iterable[int]] = None) -> Dict[str, int]:
-    """v1.2 K11 with v1.4 M3: charts with at least MIN_ELIGIBLE_DONORS eligible donors for check (b) and for (c)."""
+def donor_eligibility_counts(ctx: FamilyContext, episodes: Sequence[Episode], admitted: Optional[Iterable[int]] = None, rules: Optional[Mapping[str, str]] = None) -> Dict[str, int]:
+    """v1.2 K11: charts with at least MIN_ELIGIBLE_DONORS eligible donors for check (b) and for (c), under each
+    check's donor rule (v1.4 M3 unless v1.5 P2 is active for it)."""
+    rules = rules or {}
     out = {"b": 0, "c": 0}
     for key, age in (("b", False), ("c", True)):
-        for c, d in donor_sets(ctx, episodes, age, admitted).items():
+        for c, d in donor_sets(ctx, episodes, age, admitted, rules.get(key, "m3")).items():
             if d["elig"].size >= C.MIN_ELIGIBLE_DONORS:
                 out[key] += 1
+    return out
+
+
+def donor_diagnostic(ctx: FamilyContext, episodes: Sequence[Episode], admitted: Optional[Iterable[int]] = None) -> Dict[str, Any]:
+    """Review N2 / v1.5 P1: per check, the charts keeping at least 5 donors under v1.4 M3, the K11 floor status, and
+    the P1 trigger (P2 applies to a check if and only if its M3 count is below the floor). Counts only; to be logged
+    before any p-value. It needs the charts' episode windows, so on real data it runs inside the count_blind boundary."""
+    m3 = donor_eligibility_counts(ctx, episodes, admitted)
+    out: Dict[str, Any] = {"family": ctx.family, "rule": "v1.4 M3", "floor": C.DONOR_FLOOR_CHARTS}
+    for key in ("b", "c"):
+        out[key] = {"charts_with_5_donors": m3[key], "floor_ok": m3[key] >= C.DONOR_FLOOR_CHARTS, "p2_trigger": m3[key] < C.DONOR_FLOOR_CHARTS}
+    out["donor_rules"] = {k: ("p2_90" if out[k]["p2_trigger"] else "m3") for k in ("b", "c")}
     return out
 
 
@@ -791,19 +854,23 @@ def run_donor_check(
     rng: np.random.Generator,
     age_matched: bool,
     admitted: Optional[Iterable[int]] = None,
+    rule: str = "m3",
 ) -> Dict[str, Any]:
     """T2 (calendar-matched) or T3 (age-matched), its pool and p.
 
     Eligibility (episode set, its own-chart applicable unit set, donors) comes from ``donor_sets``, fixed before any
-    draw. Episode coverage on a timeline = ``FamilyContext.episode_coverage`` of that unit set. T = mean over included charts of
-    mean over its episodes of (coverage on the drawn timeline - mean coverage over the chart's eligible donors, own
-    chart excluded). Observed: the chart's own timeline. Every eligible donor has a defined coverage for every
-    episode (v1.4 M3), so no deviation is ever imputed.
+    draw. Episode coverage on a timeline = mean over that unit set of the unit coverage (SUR-RB-39). T = mean over
+    included charts of mean over its episodes of (coverage on the drawn timeline - mean coverage over the chart's
+    eligible donors, own chart excluded). Observed: the chart's own timeline. Under v1.4 M3 every eligible donor has
+    every cell defined; under v1.5 P2 a donor's undefined cell takes the donor's own block base rate for that unit and
+    window length, in the donor mean and whenever it is drawn (never a zero deviation); the imputed share is reported.
     """
-    sets = donor_sets(ctx, episodes, age_matched, admitted)
+    sets = donor_sets(ctx, episodes, age_matched, admitted, rule)
     included: List[int] = []
     excluded: List[int] = []
     V: Dict[int, Tuple[np.ndarray, np.ndarray]] = {}
+    cells_total = 0
+    cells_imputed = 0
     for c, d in sets.items():
         elig = d["elig"]
         if elig.size < C.MIN_ELIGIBLE_DONORS:
@@ -812,15 +879,25 @@ def run_donor_check(
         choices = np.concatenate([[c], elig])  # first entry = self = observed
         M = np.empty((len(d["eps"]), choices.size))
         for j in range(len(d["eps"])):
-            # SUR-RB-39 (2): the episode's own-chart applicable unit set, fixed before the draws, defines the coverage
-            # on the own timeline and on every donor's
-            M[j] = ctx.episode_coverage(d["units"][j], d["dlo"][j][choices], d["dhi"][j][choices], choices)
+            # SUR-RB-39 (2): the episode's own-chart applicable unit set, fixed before the draws
+            lo, hi = d["dlo"][j][choices], d["dhi"][j][choices]
+            U = ctx.unit_coverages(d["units"][j], lo, hi, choices)
+            if rule != "m3":
+                L = int(hi[0] - lo[0] + 1)
+                for ui, v in enumerate(d["units"][j]):
+                    for ci in range(1, choices.size):  # donors only: the own chart's cells are all defined
+                        cells_total += 1
+                        if not np.isfinite(U[ui, ci]):
+                            U[ui, ci] = ctx.block_base_rate(int(choices[ci]), v, L, int((lo[ci] + hi[ci]) // 2))
+                            cells_imputed += 1
+            M[j] = U.mean(axis=0)
         if not np.isfinite(M).all():
             raise ScorerError("check (b)/(c): an eligible timeline has an undefined coverage")
         m_e = M[:, 1:].mean(axis=1)  # donor mean: eligible donors only, own chart excluded
         V[c] = (choices, (M - m_e[:, None]).mean(axis=0))
         included.append(c)
-    out: Dict[str, Any] = {"included_charts": included, "excluded_charts": excluded}
+    out: Dict[str, Any] = {"included_charts": included, "excluded_charts": excluded, "donor_rule": rule,
+                           "imputed_share": (cells_imputed / cells_total) if cells_total else 0.0}
     if not included:
         out.update(T=None, p=None, pool=None)
         return out
@@ -940,12 +1017,14 @@ def score_family(
         out["T_nonschedulable"] = float(npool[0]) if npool is not None else None
         out["nonschedulable_above_null_mean"] = bool(npool is not None and npool[0] > npool[1:].mean())
     adm = None if admitted is None else list(admitted)
-    rb = run_donor_check(ctx, list(episodes), cfg.draws, np.random.default_rng([cfg.seed, stream, 90]), age_matched=False, admitted=adm)
-    rc = run_donor_check(ctx, list(episodes), cfg.draws, np.random.default_rng([cfg.seed, stream, 91]), age_matched=True, admitted=adm)
+    rules = {"b": (d7 or {}).get("donor_rule_b", "m3"), "c": (d7 or {}).get("donor_rule_c", "m3")}  # v1.5 P1, sealed at D7
+    rb = run_donor_check(ctx, list(episodes), cfg.draws, np.random.default_rng([cfg.seed, stream, 90]), age_matched=False, admitted=adm, rule=rules["b"])
+    rc = run_donor_check(ctx, list(episodes), cfg.draws, np.random.default_rng([cfg.seed, stream, 91]), age_matched=True, admitted=adm, rule=rules["c"])
     out.update(
         T2=rb["T"], p2=rb["p"], b_charts=len(rb["included_charts"]), b_excluded=len(rb["excluded_charts"]),
         T3=rc["T"], p3=rc["p"], c_charts=len(rc["included_charts"]), c_excluded=len(rc["excluded_charts"]),
         donor_floor_ok=bool(len(rb["included_charts"]) >= C.DONOR_FLOOR_CHARTS and len(rc["included_charts"]) >= C.DONOR_FLOOR_CHARTS),
+        donor_rules=rules, imputed_share_b=rb.get("imputed_share"), imputed_share_c=rc.get("imputed_share"),
         b_excluded_codes=[ctx.tl[i].code for i in rb["excluded_charts"]],
         c_excluded_codes=[ctx.tl[i].code for i in rc["excluded_charts"]],
     )
