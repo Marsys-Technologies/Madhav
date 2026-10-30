@@ -557,3 +557,29 @@ def test_n6_with_d7_known_every_study_uses_the_single_m_d7_fixed():
     assert r2["dasha"]["testable"] is True and r2["transit"]["testable"] is False
     if r2["dasha"]["p1"] is not None:
         assert r2["dasha"]["adj"] == r2["dasha"]["p1"]  # m = 1: Holm leaves p1 unchanged
+
+
+# ── SUR-RB-42 F1: the one-run rule is per sample; a scorer edit cannot open a second claim ─────────────────────
+def test_f1_an_edited_scorer_cannot_run_the_same_sample_again(tmp_path, lockfiles, monkeypatch):
+    ctx, eps = _two_families()
+    lock = _lock(ctx, eps, lockfiles, tmp_path)
+    score_sample(ctx, eps, _cfg(), lock)
+    edited = "e" * 64  # the scorer source after an edit
+    monkeypatch.setattr(C, "source_sha256", lambda: edited)
+    with pytest.raises(RunRefused, match="already been run"):
+        score_sample(ctx, eps, _cfg(), replace(lock, scorer_sha256=edited))
+    assert len(_claims(tmp_path)) == 1
+
+
+def test_f1_the_key_is_the_sample_and_the_claim_records_the_scorer_and_yardsticks(tmp_path, lockfiles):
+    ctx, eps = _two_families()
+    lock = _lock(ctx, eps, lockfiles, tmp_path)
+    assert claim_keys(lock, ctx) == claim_keys(replace(lock, scorer_sha256="0" * 64), ctx)  # the scorer is not in the key
+    assert claim_keys(lock, ctx) != claim_keys(replace(lock, birth_data_sha256="1" * 64), ctx)
+    score_sample(ctx, eps, _cfg(), lock)
+    rec = json.loads((tmp_path / "ledger" / _claims(tmp_path)[0]).read_text())
+    assert rec["scorer_sha256"] == C.source_sha256() and len(rec["yardstick_sha256"]) == len(C.YARDSTICK_SHA256)
+    assert rec["occurrence_sha256"] == lock.occurrence_sha256 and rec["birth_data_sha256"] == lock.birth_data_sha256
+    # a different scorer hash in the lock refuses before anything else (validation)
+    with pytest.raises(RunRefused):
+        score_sample(ctx, eps, _cfg(), replace(lock, scorer_sha256="0" * 64))

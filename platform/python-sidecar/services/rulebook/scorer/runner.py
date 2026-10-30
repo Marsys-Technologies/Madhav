@@ -115,12 +115,11 @@ class RunLock:
 
 
 def claim_keys(lock: RunLock, contexts: Mapping[str, FamilyContext]) -> Dict[str, str]:
-    """SUR-RB-37 S5: the claim is keyed on the logged sha256 of the occurrence file, the birth-data file and the frozen
-    scorer (all recomputed from the files before the claim). Chart identity is by code everywhere, so list order
-    cannot change it. (The earlier second key on the admitted set is withdrawn: it would refuse a legitimate new
-    sample over the same charts, review N5.)"""
-    k1 = hashlib.sha256(f"{lock.occurrence_sha256}|{lock.birth_data_sha256}|{lock.scorer_sha256}".encode()).hexdigest()
-    return {"inputs": k1}
+    """SUR-RB-42 (F1): the one-run rule is per SAMPLE. The key is the occurrence-file sha256 and the birth-data-file
+    sha256 ONLY (both recomputed from the files and required to equal the hashes logged at lock step 4). The scorer and
+    yardstick hashes are recorded in the claim and checked before it, never part of the key: a scorer edit can never
+    open a second claim on the same sample."""
+    return {"sample": hashlib.sha256(f"{lock.occurrence_sha256}|{lock.birth_data_sha256}".encode()).hexdigest()}
 
 
 def _unit_signature(units: Sequence[UnitSpec]) -> Dict[str, Any]:
@@ -139,7 +138,7 @@ class RunLedger:
     def has(self, key: str) -> bool:
         return self._path(key).exists()
 
-    def claim(self, keys: Mapping[str, str], scorer_sha: str, note: str = "") -> List[Path]:
+    def claim(self, keys: Mapping[str, str], scorer_sha: str, note: str = "", record: Optional[Mapping[str, Any]] = None) -> List[Path]:
         self.dir.mkdir(parents=True, exist_ok=True, mode=0o700)
         for role, key in keys.items():
             if self.has(key):
@@ -151,7 +150,7 @@ class RunLedger:
             except FileExistsError:
                 raise RunRefused(f"the scorer has already been run on this sample ({role} key {key[:12]})")
             with os.fdopen(fd, "w") as fh:
-                fh.write(json.dumps({"role": role, "key": key, "scorer_sha256": scorer_sha, "note": note}, sort_keys=True) + "\n")
+                fh.write(json.dumps({"role": role, "key": key, "scorer_sha256": scorer_sha, "note": note, **dict(record or {})}, sort_keys=True) + "\n")
             out.append(self._path(key))
         return out
 
@@ -357,6 +356,9 @@ def score_sample(
     ledger = ledger or RunLedger(lock.ledger_dir)
     if str(ledger.dir) != str(Path(lock.ledger_dir)):
         raise RunRefused("refused before the claim: the ledger given is not the logged ledger path")
+    for key in claim_keys(lock, contexts).values():  # SUR-RB-42: an existing claim for the sample refuses outright
+        if ledger.has(key):
+            raise RunRefused(f"the scorer has already been run on this sample ({key[:12]}); a second run is refused")
     v = validate_before_claim(contexts, episodes, cfg, lock)
     result: Dict[str, Any] = {
         "scorer_version": C.SCORER_VERSION,
@@ -383,7 +385,11 @@ def score_sample(
         return result
     dry_pass(contexts, v["episodes"], v["testable"], lock)
     keys = claim_keys(lock, contexts)
-    ledger.claim(keys, C.source_sha256(), note)
+    for key in keys.values():  # an existing claim for this sample refuses outright, whatever scorer is asking
+        if ledger.has(key):
+            raise RunRefused(f"the scorer has already been run on this sample ({key[:12]}); a second run is refused")
+    ledger.claim(keys, C.source_sha256(), note, record={"yardstick_sha256": dict(C.YARDSTICK_SHA256),
+                                                         "occurrence_sha256": lock.occurrence_sha256, "birth_data_sha256": lock.birth_data_sha256})
     result["claim_keys"] = keys
     fam_results: Dict[str, Dict[str, Any]] = {}
     for fam, ctx in contexts.items():
