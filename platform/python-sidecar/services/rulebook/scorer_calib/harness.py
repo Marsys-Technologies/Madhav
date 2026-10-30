@@ -32,7 +32,9 @@ VARIANTS = ("a", "a+b", "a+c", "a+b+c", "full")
 FAMS = C.FAMILIES
 
 
-def flags(adj: Optional[float], r: Mapping[str, Any]) -> Dict[str, bool]:
+def flags(adj: Optional[float], r: Mapping[str, Any], fallback: bool = False) -> Dict[str, bool]:
+    """The decision variants; with the A7 fallback, ``full`` (STRONG) also needs the non-schedulable subset's T above
+    its null mean (SUR-RB-55 e: the gate simulates the full rule)."""
     def le(x: Optional[float]) -> bool:
         return x is not None and x <= C.ALPHA_STRONG
 
@@ -40,7 +42,7 @@ def flags(adj: Optional[float], r: Mapping[str, Any]) -> Dict[str, bool]:
     b = a and le(r.get("p2"))
     c = a and le(r.get("p3"))
     bc = b and le(r.get("p3"))
-    full = bc and le(r.get("p_dir"))
+    full = bc and le(r.get("p_dir")) and (not fallback or bool(r.get("nonschedulable_above_null_mean")))
     return {"a": a, "a+b": b, "a+c": c, "a+b+c": bc, "full": full}
 
 
@@ -61,9 +63,22 @@ class Calibration:
         self.profile = profile
         self.ctx = {f: FamilyContext(f, timelines[f], units[f], gate_drop.get(f)) for f in FAMS}
         self.tls = {f: list(timelines[f]) for f in FAMS}
-        # the longer (transit) horizon carries the placement; the daśā horizon is inside it for every chart
-        for a, b in zip(self.tls[C.FAMILY_DASHA], self.tls[C.FAMILY_TRANSIT]):
-            assert a.code == b.code and a.h_start >= b.h_start and a.h_end == b.h_end
+        # the longer (transit) horizon carries the placement. SUR-RB-54 (i): each family has its own charts (horizon
+        # exclusions); every daśā chart is a transit chart, matched by code, with its horizon inside the transit one
+        pos = {t.code: i for i, t in enumerate(self.tls[C.FAMILY_TRANSIT])}
+        assert len(pos) == len(self.tls[C.FAMILY_TRANSIT]), "duplicate transit chart codes"
+        self.maps: Dict[str, Dict[int, int]] = {}
+        for f in FAMS:
+            m: Dict[int, int] = {}
+            for i, t in enumerate(self.tls[f]):
+                assert t.code in pos, f"{f} chart {t.code} is not a transit chart"
+                b = self.tls[C.FAMILY_TRANSIT][pos[t.code]]
+                assert t.h_start >= b.h_start, f"{t.code}: the {f} horizon starts before the transit one"
+                assert t.h_end == b.h_end, f"{t.code}: the {f} horizon does not end with the transit one"
+                m[pos[t.code]] = i
+            self.maps[f] = m
+        # SUR-RB-55 (e): with the A7 fallback the studies score the full rule (the non-schedulable subset's condition)
+        self.fallback = False
         self.pmfs = [O._DayPmf(t) for t in self.tls[C.FAMILY_TRANSIT]]
         # review N6: once D7 has fixed m, every study uses that single m (None = decide per study, before D7)
         self.fixed_testable: Optional[Dict[str, bool]] = None
@@ -109,15 +124,21 @@ class Calibration:
         rng = np.random.default_rng([self.seed, 100 + mi, index, int(round(q * 1000)), int(sparse), FAMS.index(target)])
         occ = O.place_study(rng, self.profile, self.tls[C.FAMILY_TRANSIT], self.pmfs, model)
         if q > 0:
-            occ = O.apply_effect(rng, occ, q, self.eff[target], sparse)
-        cfg = C.ScoreConfig(draws=self.draws, seed=int(rng.integers(1, 2**31 - 1)))
-        eps_f, adm = self.admit({f: O.to_episodes(occ, self.tls[f]) for f in FAMS}, min_usable)
+            occ = O.apply_effect(rng, occ, q, self.eff[target], sparse, index_map=self.maps[target])
+        cfg = C.ScoreConfig(draws=self.draws, seed=int(rng.integers(1, 2**31 - 1)), fallback_primary_set=self.fallback)
+        eps_f, adm = self.admit({f: O.to_episodes(occ, self.tls[f], self.maps[f]) for f in FAMS}, min_usable)
+        # the separate non-schedulable list (SUR-RB-55 e), restricted to the charts the family admits (exclusion 5)
+        ns_f = {}
+        for f in FAMS:
+            ns = O.to_episodes(occ, self.tls[f], self.maps[f], only_ns=True) if self.fallback else []
+            keep = None if adm[f] is None else set(adm[f])
+            ns_f[f] = [e for e in ns if keep is None or e.chart in keep]
         res: Dict[str, Dict[str, Any]] = {}
         testable: Dict[str, bool] = {}
         app_counts: Dict[str, Tuple[int, int]] = {}
         for f in FAMS:
             rules = self.donor_rules[f]
-            res[f] = score_family(self.ctx[f], eps_f[f], cfg, admitted=adm[f], d7={"donor_rule_b": rules["b"], "donor_rule_c": rules["c"]})
+            res[f] = score_family(self.ctx[f], eps_f[f], cfg, admitted=adm[f], d7={"donor_rule_b": rules["b"], "donor_rule_c": rules["c"]}, ns_episodes=ns_f[f])
             app = [e for e, ok in zip(eps_f[f], applicable_mask(self.ctx[f], eps_f[f])) if ok]
             app_counts[f] = (len(app), len({e.chart for e in app}))
             # this study's D7, as production would decide it (review S6): counts, units surviving the gate, K11 floors
@@ -148,9 +169,12 @@ class Calibration:
                 "dir_ok": r.get("dir_testable"),
                 "floor_ok": r.get("donor_floor_ok"),
                 "T": r.get("T"),
-                "flags": flags(adj.get(f), r),  # the production rule: Holm over this study's testable families
-                "flags_m1": flags(r.get("p1"), r),  # one family testable: adjusted p1 = p1
-                "flags_m2": flags(m2.get(f), r),  # both families in Holm
+                "T_ns": r.get("T_nonschedulable"),
+                "n_ns": r.get("nonschedulable_episodes_scored", 0),
+                "ns_ok": r.get("nonschedulable_above_null_mean"),
+                "flags": flags(adj.get(f), r, self.fallback),  # the production rule: Holm over this study's testable families
+                "flags_m1": flags(r.get("p1"), r, self.fallback),  # one family testable: adjusted p1 = p1
+                "flags_m2": flags(m2.get(f), r, self.fallback),  # both families in Holm
             }
         for key in ("flags", "flags_m1", "flags_m2"):
             out["any" if key == "flags" else "any_" + key[6:]] = {v: any(out[f][key][v] for f in FAMS) for v in VARIANTS}

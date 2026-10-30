@@ -34,6 +34,23 @@ def _sha(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def family_chart_ids(adm: Any) -> Dict[str, List[str]]:
+    """SUR-RB-54 (i) / SUR-RB-51: per family, the admitted charts minus those whose family horizon is under 12 years
+    (s5_horizons ``charts.<id>.families.<family>.under_12_years``); a chart may leave one family only (daśā) or both."""
+    charts = (adm.horizons.get("charts") or {})
+    out: Dict[str, List[str]] = {}
+    for f in C.FAMILIES:
+        out[f] = [c for c in adm.admitted() if not (((charts.get(c) or {}).get("families") or {}).get(f) or {}).get("under_12_years", False)]
+    return out
+
+
+def a7_meets(cb: Any, threshold: int, count_set: str) -> bool:
+    """A6's A7 check on the sealed counts of this threshold's pool, for the selected occurrence set (SUR-RB-54 ii)."""
+    from ..scorer.inputs import d7_decisions
+
+    return bool(d7_decisions(cb, threshold, C.FAMILY_DASHA, set_name=count_set)["a7_ok"])
+
+
 def _load(args) -> H.Calibration:
     from .timelines import load_timelines
 
@@ -43,7 +60,8 @@ def _load(args) -> H.Calibration:
         from ..scorer.inputs import AdmissionInputs
 
         adm = AdmissionInputs(args.admission)
-        tl = {f: adm.timelines(f) for f in C.FAMILIES}
+        ids = family_chart_ids(adm)
+        tl = {f: adm.timelines(f, ids[f]) for f in C.FAMILIES}
     else:
         tl = load_timelines(args.timelines)
     units = {f: units_from_manifest(man, tab, f) for f in C.FAMILIES}
@@ -55,8 +73,9 @@ def _load(args) -> H.Calibration:
     if getattr(args, "count_blind", None):  # sealed counts, hash-checked against COUNT_BLIND_RUN.json
         from ..scorer.inputs import read_count_blind
 
-        prof = O.profile_from_count_blind(read_count_blind(args.count_blind), [t.code for t in tl[C.FAMILY_TRANSIT]])
+        prof = O.profile_from_count_blind(read_count_blind(args.count_blind), [t.code for t in tl[C.FAMILY_TRANSIT]], set_name=args.count_set)
     cal = H.Calibration(tl, units, gate, prof, draws=args.draws, seed=args.seed)
+    cal.fallback = getattr(args, "count_set", "primary_nonschedulable") == "all"  # the A7 fallback: the full rule (SUR-RB-55 e)
     cal.warm(args.warm)
     return cal
 
@@ -167,7 +186,7 @@ def cmd_gate(a) -> int:
     res["p3"] = p3_history
     k12 = H.k12_check(by_model)
     status = res["status"] if a.step5_hash else "PROVISIONAL_NOT_STEP5_INPUTS"
-    _write(out / "F2_GATE.json", {"status": status, "step5_hash": a.step5_hash, "threshold": a.threshold, "draws": a.draws, "studies_per_model": a.studies, "gate": res, "k12": k12})
+    _write(out / "F2_GATE.json", {"status": status, "step5_hash": a.step5_hash, "threshold": a.threshold, "count_set": a.count_set, "fallback_full_rule": cal.fallback, "draws": a.draws, "studies_per_model": a.studies, "gate": res, "k12": k12})
     _hashes(out, {"draws": a.draws, "studies": a.studies, "seed": a.seed, "status": status, "threshold": a.threshold})
     print("K12 remedies:", k12["triggers"] or "not triggered")
     print("F2", status, "rates", "PASS" if res["rates_pass"] else "FAIL", "conditions", res["conditions"])
@@ -218,10 +237,8 @@ def cmd_a6(a) -> int:
     for t in (3, 5, 8):
         res = H.run_many(cal, [("N4", i, 0.10, C.FAMILY_DASHA, False, t) for i in range(a.studies)], a.workers, None)
         rate = H.rates(res)[C.FAMILY_DASHA]["full"]
-        if cb is not None:  # the real choice: A7 from the sealed counts of this threshold's pool (v1.2 K8, review M7)
-            from ..scorer.inputs import d7_decisions
-
-            meets = bool(d7_decisions(cb, t, C.FAMILY_DASHA)["a7_ok"])
+        if cb is not None:  # the real choice: A7 from the sealed counts of this threshold's pool and set (v1.2 K8, review M7)
+            meets = a7_meets(cb, t, a.count_set)
             share = None
         else:  # synthetic counts: A7 on scored-APPLICABLE daśā counts, judged per sample, all samples must meet it
             per = [r[C.FAMILY_DASHA]["n_applicable"] >= C.MIN_DASHA_EPISODES_FOR_VERDICT and r[C.FAMILY_DASHA]["charts_applicable"] >= C.MIN_CHARTS_FOR_VERDICT for r in res]
@@ -231,7 +248,7 @@ def cmd_a6(a) -> int:
         print(t, rows[str(t)], flush=True)
     ok = [t for t in (3, 5, 8) if rows[str(t)]["meets_A7"]]
     best = max(ok, key=lambda t: (round(rows[str(t)]["dasha_strong_rate_q10"], 12), t)) if ok else None
-    _write(out / "A6_THRESHOLD.json", {"provisional": not a.step5_hash, "counts": "count_blind aggregates" if a.count_blind else "declared stand-in profile", "q_definition": "v1.2 K9 (top 20% coverage windows)", "studies": a.studies, "rows": rows, "chosen": best})
+    _write(out / "A6_THRESHOLD.json", {"provisional": not a.step5_hash, "count_set": a.count_set, "fallback_full_rule": cal.fallback, "counts": "count_blind aggregates" if a.count_blind else "declared stand-in profile", "q_definition": "v1.2 K9 (top 20% coverage windows)", "studies": a.studies, "rows": rows, "chosen": best})
     _hashes(out, {"draws": a.draws, "studies": a.studies, "seed": a.seed})
     print("A6 threshold:", best)
     return 0
@@ -288,6 +305,11 @@ def cmd_build(a) -> int:
 
 
 def main(argv=None) -> int:
+    a = build_parser().parse_args(argv)
+    return int(a.fn(a))
+
+
+def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(prog="rulebook-scorer-calib")
     sub = ap.add_subparsers(dest="cmd", required=True)
     def common(p, studies):
@@ -305,6 +327,9 @@ def main(argv=None) -> int:
         p.add_argument("--warm", type=int, default=150)
         p.add_argument("--step5-hash", default=None, help="hash of the step-5 admission artefacts; without it every output is labelled PROVISIONAL")
         p.add_argument("--threshold", type=int, default=0, help="exclusion-5 threshold (3, 5, 8) applied per family; 0 = none")
+        p.add_argument("--count-set", default="all", choices=("all", "primary_nonschedulable"),
+                       help="occurrence set of the counts profile and of A6's A7 check (SUR-RB-54 ii); 'all' = the A7 fallback, "
+                            "whose studies also carry the non-schedulable subset and score the full rule (SUR-RB-55 e)")
     g = sub.add_parser("gate"); common(g, C.GATE_MIN_STUDIES)
     g.add_argument("--models", default=",".join(O.MODELS))
     g.add_argument("--sanity-studies", type=int, default=500)
@@ -327,8 +352,7 @@ def main(argv=None) -> int:
     b = sub.add_parser("build-timelines")
     b.add_argument("--births", required=True); b.add_argument("--people", required=True); b.add_argument("--manifest", required=True)
     b.add_argument("--bundle", required=True); b.add_argument("--sky", required=True); b.add_argument("--out", required=True); b.set_defaults(fn=cmd_build)
-    a = ap.parse_args(argv)
-    return int(a.fn(a))
+    return ap
 
 
 if __name__ == "__main__":

@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import csv
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
@@ -66,9 +66,13 @@ AGE_DENSITY: Dict[Tuple[str, str], Tuple[str, Tuple[float, ...]]] = {
 
 @dataclass(frozen=True)
 class CountsProfile:
-    """Per chart (by index): the (area, direction, grade) of every episode of a study."""
+    """Per chart (by index): the (area, direction, grade) of every episode of a study. ``ns_per_chart`` (SUR-RB-55 e):
+    the same for count_blind's primary_nonschedulable set; when given, each study marks that many of the chart's
+    placed occurrences of each class as non-schedulable (at most as many as were placed) and forms the separate
+    non-schedulable list from them."""
 
     per_chart: Tuple[Tuple[Tuple[str, str, str], ...], ...]
+    ns_per_chart: Optional[Tuple[Tuple[Tuple[str, str, str], ...], ...]] = None
 
     def total(self) -> int:
         return sum(len(x) for x in self.per_chart)
@@ -92,12 +96,15 @@ def declared_profile(n_charts: int, seed: int = 7, mean: float = DECLARED_MEAN_P
     return CountsProfile(tuple(out))
 
 
-def profile_from_count_blind(cb: Any, codes: Sequence[str]) -> CountsProfile:
-    """Per-chart counts from the sealed count_blind aggregates (transit family, primary set: the longer horizon;
-    the daśā family keeps the episodes inside its own horizon)."""
+def profile_from_count_blind(cb: Any, codes: Sequence[str], set_name: str = "primary_nonschedulable") -> CountsProfile:
+    """Per-chart counts from the sealed count_blind aggregates (transit family: the longer horizon; the daśā family
+    keeps the episodes inside its own horizon) for the occurrence set ``set_name`` (SUR-RB-54 ii). For the 'all' set
+    (the A7 fallback) the primary_nonschedulable counts are attached as the non-schedulable subset (SUR-RB-55 e)."""
     from ..scorer.inputs import profile_rows
 
-    return CountsProfile(tuple(profile_rows(cb, list(codes))))
+    rows = tuple(profile_rows(cb, list(codes), set_name=set_name))
+    ns = tuple(profile_rows(cb, list(codes), set_name="primary_nonschedulable")) if set_name == "all" else None
+    return CountsProfile(rows, ns)
 
 
 # ── day-probability vectors ──────────────────────────────────────────────────────────────
@@ -174,12 +181,13 @@ def _inside(win: Tuple[int, int], tl: ChartTimeline) -> bool:
 
 @dataclass(frozen=True)
 class Occurrence:
-    chart: int
+    chart: int  # index in the TRANSIT list (the placement horizon)
     area: str
     direction: str
     grade: str
     lo: int
     hi: int
+    ns: bool = False  # SUR-RB-55 (e): in the non-schedulable subset
 
 
 def place_study(
@@ -226,6 +234,14 @@ def place_study(
                 if win is None:
                     continue
             placed.append(Occurrence(ci, area, direction, grade, win[0], win[1]))
+        if profile.ns_per_chart is not None:  # SUR-RB-55 (e): mark the chart's non-schedulable occurrences, class by class
+            want = {}
+            for key in profile.ns_per_chart[ci]:
+                want[key] = want.get(key, 0) + 1
+            for key in sorted(want):
+                idx = [i for i, o in enumerate(placed) if (o.area, o.direction, o.grade) == key]
+                for i in sorted(rng.permutation(len(idx))[: min(want[key], len(idx))].tolist()):
+                    placed[idx[i]] = replace(placed[idx[i]], ns=True)
         out.extend(placed)
     return out
 
@@ -236,12 +252,15 @@ def apply_effect(
     q: float,
     target: "ChartTimelineSet",
     sparse: bool = False,
+    index_map: Optional[Mapping[int, int]] = None,
 ) -> List[Occurrence]:
     """Planted effect, defined on the real timelines (v1.2 K9). With probability ``q`` an episode is placed,
     uniformly, among the windows of its grade's length inside the target family's horizon in which the mean TRUE
     coverage of its applicable units lies in the top 20% of that chart's windows (for that unit set); otherwise it
     keeps its null-model (N4) placement. ``sparse``: only a random 20% of the units carry the effect, so the
-    coverage is taken over those units alone and an episode none of them applies to is not moved (v1.1 F4)."""
+    coverage is taken over those units alone and an episode none of them applies to is not moved (v1.1 F4).
+    ``index_map``: transit chart index -> the target family's chart index (SUR-RB-54 i); an occurrence of a chart
+    outside the target family keeps its placement. The non-schedulable mark travels with a moved occurrence."""
     if q <= 0:
         return list(occ)
     ids = [u.unit_id for u in target.ctx.units]
@@ -255,17 +274,21 @@ def apply_effect(
         if rng.random() >= q:
             out.append(o)
             continue
+        tc = o.chart if index_map is None else index_map.get(o.chart)
+        if tc is None:
+            out.append(o)
+            continue
         klass = (C.POLARITY_OF_DIRECTION[o.direction], o.area, o.grade)
-        key = (o.chart, klass)
+        key = (tc, klass)
         cache = local if sparse else target.windows_cache
         if key not in cache:
-            cache[key] = target.top_windows(o.chart, klass, active)
+            cache[key] = target.top_windows(tc, klass, active)
         cand = cache[key]
         if cand is None or cand[0].size == 0:
             out.append(o)
             continue
         j = int(rng.integers(0, cand[0].size))
-        out.append(Occurrence(o.chart, o.area, o.direction, o.grade, int(cand[0][j]), int(cand[1][j])))
+        out.append(Occurrence(o.chart, o.area, o.direction, o.grade, int(cand[0][j]), int(cand[1][j]), o.ns))
     return out
 
 
@@ -343,11 +366,19 @@ class ChartTimelineSet:
 
 
 
-def to_episodes(occ: Sequence[Occurrence], tls: Sequence[ChartTimeline]) -> List[Episode]:
-    """The occurrences that fall inside a family's horizon, as scorer episodes (all primary / non-schedulable)."""
+def to_episodes(occ: Sequence[Occurrence], tls: Sequence[ChartTimeline], index_map: Optional[Mapping[int, int]] = None, only_ns: bool = False) -> List[Episode]:
+    """The occurrences that fall inside a family's horizon, as scorer episodes. ``index_map``: transit index -> the
+    family's chart index (charts outside the family are skipped). ``only_ns``: the separate non-schedulable list
+    (SUR-RB-55 e), formed from the marked occurrences alone, before any family trim, exactly as count_blind drops
+    schedulable occurrences before the horizon trim."""
     out = []
     for o in occ:
-        t = tls[o.chart]
+        if only_ns and not o.ns:
+            continue
+        ci = o.chart if index_map is None else index_map.get(o.chart)
+        if ci is None:
+            continue
+        t = tls[ci]
         if o.lo >= t.h_start and o.hi <= t.h_end:
-            out.append(Episode(o.chart, o.area, o.direction, o.grade, o.lo, o.hi, schedulable=False))
+            out.append(Episode(ci, o.area, o.direction, o.grade, o.lo, o.hi, schedulable=False))
     return out
