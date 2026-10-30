@@ -1,0 +1,1582 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "urn:marsys-jis:rulebook:rule-card:v1.2",
+ "title": "Rule Card v1.2 (schema amendment proposal v0.2, change register CR-006)",
+ "description": "Rule Card v1.1 plus the v1.2 amendment. A v1.1 card (schema_version rule-card-v1 or rule-card-v1.1) is valid unchanged; the new keys are admitted only on schema_version rule-card-v1.2. Every new value is verse-sourced: it carries quote_terms (clear words of the cited passages, or witnesses: passage id plus token offsets). No field has a default: a missing optional key means 'not stated' and evaluates to NOT_ASSESSED or quarantines; it is never filled in. Filing labels (card_id, drafter, round, class_group(s), classical_descriptors, confidence_notes) are exempt from the quote_terms rule. Cross-field rules JSON Schema cannot state are listed in RULE_CARD_SCHEMA_v1_2_PROPOSAL_v0_2.md section 3 and enforced by services/rulebook/schema.py and the harness verifier.",
+ "type": "array",
+ "items": {
+  "$ref": "#/$defs/card"
+ },
+ "$defs": {
+  "card": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": [
+    "card_id",
+    "schema_version",
+    "field1_citation",
+    "field2_target_scope",
+    "field3_reference_frame",
+    "field4_necessary_gate",
+    "field5_typed_operands",
+    "field6_exceptions",
+    "field7_discrete_arithmetic",
+    "polarity",
+    "provenance",
+    "confidence_notes"
+   ],
+   "properties": {
+    "card_id": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_.:-]{3,80}$"
+    },
+    "schema_version": {
+     "enum": [
+      "rule-card-v1",
+      "rule-card-v1.1",
+      "rule-card-v1.2"
+     ]
+    },
+    "drafter": {
+     "type": "string",
+     "description": "panelist label (e.g. drafter_A); never a person"
+    },
+    "round": {
+     "type": "integer",
+     "minimum": 1,
+     "maximum": 3
+    },
+    "field1_citation": {
+     "$ref": "#/$defs/citation"
+    },
+    "field2_target_scope": {
+     "type": "object",
+     "additionalProperties": false,
+     "required": [
+      "category"
+     ],
+     "properties": {
+      "class_group": {
+       "enum": [
+        "illness_chronic_surgery",
+        "relocation_travel",
+        "major_gain",
+        "major_loss",
+        "career_adv_change_entry",
+        "business_launch",
+        "cross_cutting",
+        "marriage_relationship_begin",
+        "separation_relationship_end",
+        "bereavement_parent",
+        "childbirth_progeny",
+        "education_learning",
+        "achievement_recognition",
+        "deception_fraud",
+        "foreign_residence",
+        "parent_affairs_non_death",
+        "property_acquisition",
+        "mental_distress",
+        "spiritual_renunciation",
+        "career_setback"
+       ]
+      },
+      "category": {
+       "enum": [
+        "natal_promise",
+        "dasha",
+        "transit"
+       ],
+       "description": "the plane this card belongs to; one card = one plane unless its own quote is a bridge"
+      },
+      "classical_descriptors": {
+       "type": "array",
+       "items": {
+        "type": "string",
+        "maxLength": 60
+       },
+       "maxItems": 12
+      },
+      "class_groups": {
+       "type": "array",
+       "minItems": 1,
+       "uniqueItems": true,
+       "items": {
+        "enum": [
+         "illness_chronic_surgery",
+         "relocation_travel",
+         "major_gain",
+         "major_loss",
+         "career_adv_change_entry",
+         "business_launch",
+         "cross_cutting",
+         "marriage_relationship_begin",
+         "separation_relationship_end",
+         "bereavement_parent",
+         "childbirth_progeny",
+         "education_learning",
+         "achievement_recognition",
+         "deception_fraud",
+         "foreign_residence",
+         "parent_affairs_non_death",
+         "property_acquisition",
+         "mental_distress",
+         "spiritual_renunciation",
+         "career_setback"
+        ]
+       },
+       "description": "filing label (exempt from quote_terms); v1.2 only"
+      }
+     },
+     "oneOf": [
+      {
+       "required": [
+        "class_group"
+       ]
+      },
+      {
+       "required": [
+        "class_groups"
+       ]
+      }
+     ]
+    },
+    "field3_reference_frame": {
+     "type": "object",
+     "additionalProperties": false,
+     "required": [
+      "frame"
+     ],
+     "properties": {
+      "frame": {
+       "enum": [
+        "janma_lagna",
+        "chandra_lagna",
+        "surya_lagna",
+        "navamsa_lagna",
+        "dasha_lord_natal_position",
+        "antardasha_lord_natal_position",
+        "natal_position_of_role",
+        "bhava_of_role",
+        "sign_of_transit_only",
+        "sign_intrinsic"
+       ]
+      },
+      "frame_role": {
+       "type": "string",
+       "description": "role id when frame is *_of_role"
+      },
+      "frame_terms": {
+       "type": "array",
+       "items": {
+        "$ref": "#/$defs/term"
+       },
+       "description": "words in the quote that state the frame (verifier checks them)"
+      },
+      "frame_citation": {
+       "type": "object",
+       "additionalProperties": false,
+       "required": [
+        "passage_ids"
+       ],
+       "description": "the same-chapter passage(s) that state the frame (e.g. a gochara chapter's opening verse counting from the Moon); passage ids from the pack or the brief's chapter-head section; quote >= 8 words, compared only with the cited passages",
+       "properties": {
+        "passage_ids": {
+         "type": "array",
+         "minItems": 1,
+         "maxItems": 3,
+         "items": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]+_pg\\d{4}_c\\d{2}:(en|sa):p\\d{3}$"
+         }
+        },
+        "quote": {
+         "type": "string"
+        },
+        "quote_language": {
+         "enum": [
+          "en",
+          "sa_devanagari",
+          "sa_iast"
+         ]
+        },
+        "quote_form": {
+         "enum": [
+          "clear",
+          "sha256"
+         ],
+         "description": "sha256: restricted edition; no quote text; quote_sha256 + witnesses"
+        },
+        "quote_sha256": {
+         "type": "string",
+         "pattern": "^[0-9a-f]{64}$",
+         "description": "sha256 of the witness text: witness tokens joined by single spaces"
+        },
+        "witnesses": {
+         "type": "array",
+         "minItems": 1,
+         "maxItems": 8,
+         "items": {
+          "$ref": "#/$defs/witness"
+         }
+        }
+       },
+       "allOf": [
+        {
+         "$ref": "#/$defs/hash_form"
+        },
+        {
+         "if": {
+          "not": {
+           "required": [
+            "quote_form"
+           ],
+           "properties": {
+            "quote_form": {
+             "const": "sha256"
+            }
+           }
+          }
+         },
+         "then": {
+          "required": [
+           "quote"
+          ]
+         }
+        }
+       ]
+      }
+     }
+    },
+    "field4_necessary_gate": {
+     "type": "object",
+     "additionalProperties": false,
+     "required": [
+      "expr",
+      "gate_term"
+     ],
+     "properties": {
+      "expr": {
+       "$ref": "#/$defs/expr"
+      },
+      "gate_term": {
+       "type": "string",
+       "minLength": 2,
+       "description": "the word(s) of the quote that make the gate necessary (e.g. 'when', 'if', 'yadā')"
+      }
+     }
+    },
+    "field5_typed_operands": {
+     "type": "array",
+     "minItems": 1,
+     "maxItems": 8,
+     "items": {
+      "$ref": "#/$defs/operand"
+     }
+    },
+    "field6_exceptions": {
+     "type": "array",
+     "maxItems": 6,
+     "items": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+       "condition",
+       "effect",
+       "school_scope"
+      ],
+      "properties": {
+       "condition": {
+        "$ref": "#/$defs/expr"
+       },
+       "effect": {
+        "enum": [
+         "cancels",
+         "reduces",
+         "reverses_polarity",
+         "delays"
+        ]
+       },
+       "school_scope": {
+        "enum": [
+         "parashari",
+         "jataka_general",
+         "nadi",
+         "kerala",
+         "tajaka",
+         "same_text_only"
+        ]
+       },
+       "citation": {
+        "$ref": "#/$defs/citation"
+       },
+       "operands": {
+        "type": "array",
+        "items": {
+         "$ref": "#/$defs/operand"
+        }
+       }
+      }
+     }
+    },
+    "field7_discrete_arithmetic": {
+     "type": "array",
+     "maxItems": 4,
+     "description": "classical discrete arithmetic only; empty array when the rule has none. No tents, weights, percentiles or decimals other than drishti padas.",
+     "items": {
+      "oneOf": [
+       {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+         "kind",
+         "value"
+        ],
+        "properties": {
+         "kind": {
+          "const": "rasi_binary"
+         },
+         "value": {
+          "enum": [
+           0,
+           1
+          ]
+         }
+        }
+       },
+       {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+         "kind",
+         "cell"
+        ],
+        "properties": {
+         "kind": {
+          "const": "kakshya_cell"
+         },
+         "cell": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+         }
+        }
+       },
+       {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+         "kind",
+         "pada"
+        ],
+        "properties": {
+         "kind": {
+          "const": "drishti_pada"
+         },
+         "pada": {
+          "enum": [
+           0.25,
+           0.5,
+           0.75,
+           1
+          ]
+         }
+        }
+       },
+       {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+         "kind",
+         "bindus",
+         "comparator"
+        ],
+        "properties": {
+         "kind": {
+          "const": "bindus_of_8"
+         },
+         "bindus": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8
+         },
+         "comparator": {
+          "enum": [
+           "eq",
+           "ge",
+           "le",
+           "gt",
+           "lt"
+          ]
+         }
+        }
+       },
+       {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+         "kind",
+         "orb_deg",
+         "graha"
+        ],
+        "properties": {
+         "kind": {
+          "const": "combustion_orb_int"
+         },
+         "orb_deg": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 17
+         },
+         "graha": {
+          "$ref": "#/$defs/graha"
+         }
+        }
+       }
+      ]
+     }
+    },
+    "polarity": {
+     "enum": [
+      "promotive",
+      "obstructive"
+     ]
+    },
+    "provenance": {
+     "enum": [
+      "verse_cited",
+      "commentarial_practice"
+     ]
+    },
+    "commentarial_source": {
+     "type": "object",
+     "additionalProperties": false,
+     "required": [
+      "author",
+      "work"
+     ],
+     "properties": {
+      "author": {
+       "type": "string",
+       "minLength": 2
+      },
+      "work": {
+       "type": "string",
+       "minLength": 2
+      },
+      "page": {
+       "type": "string"
+      },
+      "attribution": {
+       "enum": [
+        "page_anchored_in_corpus",
+        "panel_memory_unverified"
+       ]
+      }
+     }
+    },
+    "confidence_notes": {
+     "type": "string",
+     "maxLength": 1200
+    }
+   },
+   "allOf": [
+    {
+     "if": {
+      "properties": {
+       "provenance": {
+        "const": "commentarial_practice"
+       }
+      }
+     },
+     "then": {
+      "required": [
+       "commentarial_source"
+      ]
+     }
+    },
+    {
+     "if": {
+      "properties": {
+       "provenance": {
+        "const": "verse_cited"
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "field1_citation": {
+        "required": [
+         "passage_ids"
+        ],
+        "anyOf": [
+         {
+          "required": [
+           "quote"
+          ]
+         },
+         {
+          "required": [
+           "quote_form",
+           "quote_sha256",
+           "witnesses"
+          ]
+         }
+        ]
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "properties": {
+       "schema_version": {
+        "enum": [
+         "rule-card-v1",
+         "rule-card-v1.1"
+        ]
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "field1_citation": {
+        "not": {
+         "anyOf": [
+          {
+           "required": [
+            "quote_form"
+           ]
+          },
+          {
+           "required": [
+            "quote_sha256"
+           ]
+          },
+          {
+           "required": [
+            "witnesses"
+           ]
+          }
+         ]
+        }
+       },
+       "field2_target_scope": {
+        "required": [
+         "class_group"
+        ],
+        "not": {
+         "required": [
+          "class_groups"
+         ]
+        }
+       },
+       "field3_reference_frame": {
+        "properties": {
+         "frame": {
+          "not": {
+           "const": "sign_intrinsic"
+          }
+         },
+         "frame_terms": {
+          "items": {
+           "type": "string"
+          }
+         },
+         "frame_citation": {
+          "not": {
+           "anyOf": [
+            {
+             "required": [
+              "quote_form"
+             ]
+            },
+            {
+             "required": [
+              "quote_sha256"
+             ]
+            },
+            {
+             "required": [
+              "witnesses"
+             ]
+            }
+           ]
+          }
+         }
+        }
+       },
+       "field5_typed_operands": {
+        "items": {
+         "$ref": "#/$defs/operand_v11"
+        }
+       },
+       "field6_exceptions": {
+        "items": {
+         "properties": {
+          "operands": {
+           "items": {
+            "$ref": "#/$defs/operand_v11"
+           }
+          },
+          "citation": {
+           "not": {
+            "anyOf": [
+             {
+              "required": [
+               "quote_form"
+              ]
+             },
+             {
+              "required": [
+               "quote_sha256"
+              ]
+             },
+             {
+              "required": [
+               "witnesses"
+              ]
+             }
+            ]
+           }
+          }
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "properties": {
+       "field5_typed_operands": {
+        "contains": {
+         "required": [
+          "bindu_gate"
+         ]
+        }
+       }
+      },
+      "required": [
+       "field5_typed_operands"
+      ]
+     },
+     "then": {
+      "properties": {
+       "field7_discrete_arithmetic": {
+        "not": {
+         "contains": {
+          "properties": {
+           "kind": {
+            "const": "bindus_of_8"
+           }
+          },
+          "required": [
+           "kind"
+          ]
+         }
+        }
+       }
+      }
+     }
+    }
+   ]
+  },
+  "citation": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": [
+    "work"
+   ],
+   "properties": {
+    "text_id": {
+     "type": "string",
+     "description": "bank text id, e.g. phaladeepika"
+    },
+    "chunk_id": {
+     "type": "string",
+     "pattern": "^[a-z0-9_]+_pg\\d{4}_c\\d{2}$"
+    },
+    "work": {
+     "type": "string"
+    },
+    "edition": {
+     "type": "string"
+    },
+    "locus": {
+     "type": "string",
+     "description": "chapter/verse as printed, if any; page-anchored chunks cannot confirm it"
+    },
+    "quote": {
+     "type": "string",
+     "description": "the cited passage words, OCR errors may be corrected; >= 12 words; compared only against the cited passages"
+    },
+    "quote_language": {
+     "enum": [
+      "en",
+      "sa_devanagari",
+      "sa_iast"
+     ]
+    },
+    "passage_ids": {
+     "type": "array",
+     "minItems": 1,
+     "maxItems": 4,
+     "items": {
+      "type": "string",
+      "pattern": "^[a-z0-9_]+_pg\\d{4}_c\\d{2}:(en|sa):p\\d{3}$"
+     },
+     "description": "pack passage ids the quote comes from; consecutive passages of one chunk field only"
+    },
+    "quote_form": {
+     "enum": [
+      "clear",
+      "sha256"
+     ],
+     "description": "sha256: restricted edition; no quote text; quote_sha256 + witnesses"
+    },
+    "quote_sha256": {
+     "type": "string",
+     "pattern": "^[0-9a-f]{64}$",
+     "description": "sha256 of the witness text: witness tokens joined by single spaces"
+    },
+    "witnesses": {
+     "type": "array",
+     "minItems": 1,
+     "maxItems": 8,
+     "items": {
+      "$ref": "#/$defs/witness"
+     }
+    }
+   },
+   "allOf": [
+    {
+     "$ref": "#/$defs/hash_form"
+    }
+   ]
+  },
+  "graha": {
+   "enum": [
+    "surya",
+    "chandra",
+    "mangala",
+    "budha",
+    "guru",
+    "shukra",
+    "shani",
+    "rahu",
+    "ketu"
+   ]
+  },
+  "operand": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": [
+    "id",
+    "role",
+    "relation"
+   ],
+   "properties": {
+    "id": {
+     "type": "string",
+     "pattern": "^[a-z][a-z0-9_]{0,30}$"
+    },
+    "role": {
+     "enum": [
+      "transiting_graha",
+      "natal_graha",
+      "bhava_lord",
+      "bhava",
+      "karaka",
+      "dasha_lord",
+      "antardasha_lord",
+      "graha_class",
+      "lagna",
+      "moon_sign",
+      "ashtakavarga_bav",
+      "ashtakavarga_sav"
+     ]
+    },
+    "doctrinal_graha": {
+     "$ref": "#/$defs/graha",
+     "description": "only when the verse itself names the graha (doctrine); never a chart's placement"
+    },
+    "graha_class": {
+     "enum": [
+      "benefic",
+      "malefic",
+      "natural_benefic",
+      "natural_malefic"
+     ]
+    },
+    "bhava": {
+     "type": "integer",
+     "minimum": 1,
+     "maximum": 12,
+     "description": "bhava counted in field3's frame"
+    },
+    "relation": {
+     "enum": [
+      "occupies",
+      "transits",
+      "aspects",
+      "conjoins",
+      "lord_of",
+      "is_dasha_lord",
+      "is_antardasha_lord",
+      "exalted",
+      "debilitated",
+      "own_sign",
+      "combust",
+      "retrograde",
+      "vedha_by",
+      "bindus",
+      "in_bhava_group",
+      "moolatrikona"
+     ]
+    },
+    "target_bhavas": {
+     "type": "array",
+     "items": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 12
+     },
+     "maxItems": 12
+    },
+    "target_role": {
+     "type": "string"
+    },
+    "quote_terms": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/term"
+     },
+     "description": "the passage's own words (clear) or witnesses for this operand"
+    },
+    "bhava_group": {
+     "enum": [
+      "kendra",
+      "trikona",
+      "dusthana",
+      "upachaya",
+      "panaphara",
+      "apoklima",
+      "maraka"
+     ],
+     "description": "classical house group named by the verse (e.g. 'in a kendra')"
+    },
+    "vedha": {
+     "$ref": "#/$defs/vedha"
+    },
+    "bindu_gate": {
+     "$ref": "#/$defs/bindu_gate"
+    },
+    "target_sign": {
+     "$ref": "#/$defs/target_sign"
+    }
+   },
+   "not": {
+    "anyOf": [
+     {
+      "required": [
+       "longitude"
+      ]
+     },
+     {
+      "required": [
+       "degree"
+      ]
+     },
+     {
+      "required": [
+       "sign"
+      ]
+     },
+     {
+      "required": [
+       "date"
+      ]
+     },
+     {
+      "required": [
+       "chart"
+      ]
+     }
+    ]
+   },
+   "allOf": [
+    {
+     "if": {
+      "required": [
+       "vedha"
+      ]
+     },
+     "then": {
+      "properties": {
+       "relation": {
+        "const": "vedha_by"
+       }
+      },
+      "required": [
+       "doctrinal_graha"
+      ],
+      "not": {
+       "required": [
+        "target_bhavas"
+       ]
+      }
+     }
+    },
+    {
+     "if": {
+      "required": [
+       "bindu_gate"
+      ]
+     },
+     "then": {
+      "properties": {
+       "relation": {
+        "const": "bindus"
+       },
+       "role": {
+        "enum": [
+         "ashtakavarga_bav",
+         "ashtakavarga_sav"
+        ]
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "required": [
+       "target_sign"
+      ]
+     },
+     "then": {
+      "properties": {
+       "relation": {
+        "enum": [
+         "exalted",
+         "debilitated",
+         "own_sign",
+         "moolatrikona"
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  "expr": {
+   "oneOf": [
+    {
+     "type": "object",
+     "additionalProperties": false,
+     "required": [
+      "operand"
+     ],
+     "properties": {
+      "operand": {
+       "type": "string"
+      }
+     }
+    },
+    {
+     "type": "object",
+     "additionalProperties": false,
+     "required": [
+      "op",
+      "args"
+     ],
+     "properties": {
+      "op": {
+       "enum": [
+        "AND",
+        "OR",
+        "NOT"
+       ]
+      },
+      "args": {
+       "type": "array",
+       "minItems": 1,
+       "maxItems": 8,
+       "items": {
+        "$ref": "#/$defs/expr"
+       }
+      }
+     }
+    }
+   ]
+  },
+  "witness": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": [
+    "passage_id",
+    "token_start",
+    "token_end"
+   ],
+   "description": "token range [token_start, token_end) of one cited passage; tokens are the matches of [a-z0-9]+|[Devanagari]+ in the bank's normalised passage text (verify_cards.norm)",
+   "properties": {
+    "passage_id": {
+     "type": "string",
+     "pattern": "^[a-z0-9_]+_pg\\d{4}_c\\d{2}:(en|sa):p\\d{3}$"
+    },
+    "token_start": {
+     "type": "integer",
+     "minimum": 0
+    },
+    "token_end": {
+     "type": "integer",
+     "minimum": 1
+    }
+   }
+  },
+  "term": {
+   "oneOf": [
+    {
+     "type": "string",
+     "minLength": 1
+    },
+    {
+     "$ref": "#/$defs/witness"
+    }
+   ]
+  },
+  "terms": {
+   "type": "array",
+   "minItems": 1,
+   "items": {
+    "$ref": "#/$defs/term"
+   }
+  },
+  "graha7": {
+   "enum": [
+    "surya",
+    "chandra",
+    "mangala",
+    "budha",
+    "guru",
+    "shukra",
+    "shani"
+   ]
+  },
+  "hash_form": {
+   "if": {
+    "required": [
+     "quote_form"
+    ],
+    "properties": {
+     "quote_form": {
+      "const": "sha256"
+     }
+    }
+   },
+   "then": {
+    "required": [
+     "quote_sha256",
+     "witnesses"
+    ],
+    "not": {
+     "required": [
+      "quote"
+     ]
+    }
+   },
+   "else": {
+    "not": {
+     "anyOf": [
+      {
+       "required": [
+        "quote_sha256"
+       ]
+      },
+      {
+       "required": [
+        "witnesses"
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "vedha": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": [
+    "vedha_pairs",
+    "obstructors",
+    "exemption"
+   ],
+   "description": "on a vedha_by operand only; the primary is the operand's doctrinal_graha (no copy here). Store only the direction the cited passage names.",
+   "properties": {
+    "vedha_pairs": {
+     "type": "array",
+     "minItems": 1,
+     "maxItems": 12,
+     "items": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+       "transit_bhava",
+       "vedha_bhava",
+       "quote_terms"
+      ],
+      "properties": {
+       "transit_bhava": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 12
+       },
+       "vedha_bhava": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 12
+       },
+       "quote_terms": {
+        "$ref": "#/$defs/terms"
+       }
+      }
+     }
+    },
+    "obstructor_relation": {
+     "type": "object",
+     "additionalProperties": false,
+     "required": [
+      "relation",
+      "quote_terms"
+     ],
+     "description": "absent = undeclared (no default); 'occupies' only on occupation words, 'aspects' only on drishti words",
+     "properties": {
+      "relation": {
+       "enum": [
+        "occupies",
+        "aspects"
+       ]
+      },
+      "quote_terms": {
+       "$ref": "#/$defs/terms"
+      }
+     }
+    },
+    "obstructors": {
+     "type": "array",
+     "maxItems": 9,
+     "items": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+       "graha",
+       "status",
+       "quote_terms"
+      ],
+      "properties": {
+       "graha": {
+        "$ref": "#/$defs/graha"
+       },
+       "status": {
+        "enum": [
+         "obstruct",
+         "exempt"
+        ]
+       },
+       "quote_terms": {
+        "$ref": "#/$defs/terms"
+       }
+      }
+     },
+     "description": "a graha absent from this list (and not covered by universal) is undeclared: NOT_ASSESSED"
+    },
+    "universal": {
+     "type": "object",
+     "additionalProperties": false,
+     "required": [
+      "operator",
+      "quote_terms"
+     ],
+     "description": "'any planet (except ...)': covers the seven grahas surya..shani other than the primary and the listed exempt grahas; rahu/ketu only by their own obstructors entry",
+     "properties": {
+      "operator": {
+       "const": "all_seven_grahas_except_listed_exempt"
+      },
+      "quote_terms": {
+       "$ref": "#/$defs/terms"
+      }
+     }
+    },
+    "exemption": {
+     "type": "object",
+     "additionalProperties": false,
+     "required": [
+      "stated",
+      "clause_span"
+     ],
+     "description": "stated:false asserts the vedha clause names no exempt graha; clause_span cites that whole clause",
+     "properties": {
+      "stated": {
+       "type": "boolean"
+      },
+      "clause_span": {
+       "$ref": "#/$defs/terms"
+      }
+     }
+    },
+    "counter_vedha": {
+     "type": "object",
+     "additionalProperties": false,
+     "required": [
+      "kind",
+      "quote_terms"
+     ],
+     "description": "absent = undeclared. Present only when the passage states it.",
+     "properties": {
+      "kind": {
+       "const": "obstructor_itself_under_vedha_does_not_obstruct"
+      },
+      "quote_terms": {
+       "$ref": "#/$defs/terms"
+      }
+     }
+    }
+   }
+  },
+  "bindu_gate": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": [
+    "varga_owner",
+    "reads_sign_of",
+    "comparator",
+    "count_term",
+    "count_term_quote_terms",
+    "count_convention",
+    "sodhana_stage"
+   ],
+   "description": "on a bindus operand only; mutually exclusive with field7 bindus_of_8. No 8-n rewrite exists.",
+   "properties": {
+    "varga_owner": {
+     "enum": [
+      "surya",
+      "chandra",
+      "mangala",
+      "budha",
+      "guru",
+      "shukra",
+      "shani",
+      "sav",
+      "undeclared"
+     ]
+    },
+    "varga_owner_terms": {
+     "$ref": "#/$defs/terms"
+    },
+    "reads_sign_of": {
+     "type": "string",
+     "pattern": "^[a-z][a-z0-9_]{0,30}$"
+    },
+    "comparator": {
+     "enum": [
+      "eq",
+      "ge",
+      "le",
+      "gt",
+      "lt",
+      "max_among_signs",
+      "min_among_signs"
+     ]
+    },
+    "value": {
+     "type": "integer",
+     "minimum": 0,
+     "maximum": 56
+    },
+    "value_terms": {
+     "$ref": "#/$defs/terms"
+    },
+    "rank_domain": {
+     "type": "object",
+     "additionalProperties": false,
+     "required": [
+      "scope",
+      "quote_terms"
+     ],
+     "properties": {
+      "scope": {
+       "enum": [
+        "all_twelve_signs",
+        "listed_bhavas"
+       ]
+      },
+      "bhavas": {
+       "type": "array",
+       "minItems": 2,
+       "uniqueItems": true,
+       "items": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 12
+       }
+      },
+      "quote_terms": {
+       "$ref": "#/$defs/terms"
+      }
+     },
+     "if": {
+      "properties": {
+       "scope": {
+        "const": "listed_bhavas"
+       }
+      }
+     },
+     "then": {
+      "required": [
+       "bhavas"
+      ]
+     },
+     "else": {
+      "not": {
+       "required": [
+        "bhavas"
+       ]
+      }
+     }
+    },
+    "count_term": {
+     "enum": [
+      "rekha",
+      "bindu",
+      "benefic_dot"
+     ]
+    },
+    "count_term_quote_terms": {
+     "$ref": "#/$defs/terms"
+    },
+    "count_convention": {
+     "enum": [
+      "benefic",
+      "malefic",
+      "undeclared"
+     ]
+    },
+    "convention_terms": {
+     "$ref": "#/$defs/terms"
+    },
+    "sodhana_stage": {
+     "enum": [
+      "prastara",
+      "trikona",
+      "ekadhipatya",
+      "undeclared"
+     ]
+    },
+    "sodhana_terms": {
+     "$ref": "#/$defs/terms"
+    }
+   },
+   "allOf": [
+    {
+     "if": {
+      "properties": {
+       "comparator": {
+        "enum": [
+         "eq",
+         "ge",
+         "le",
+         "gt",
+         "lt"
+        ]
+       }
+      }
+     },
+     "then": {
+      "required": [
+       "value",
+       "value_terms"
+      ],
+      "not": {
+       "required": [
+        "rank_domain"
+       ]
+      }
+     },
+     "else": {
+      "required": [
+       "rank_domain"
+      ],
+      "not": {
+       "anyOf": [
+        {
+         "required": [
+          "value"
+         ]
+        },
+        {
+         "required": [
+          "value_terms"
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "if": {
+      "properties": {
+       "varga_owner": {
+        "const": "undeclared"
+       }
+      }
+     },
+     "then": {
+      "not": {
+       "required": [
+        "varga_owner_terms"
+       ]
+      }
+     },
+     "else": {
+      "required": [
+       "varga_owner_terms"
+      ]
+     }
+    },
+    {
+     "if": {
+      "properties": {
+       "varga_owner": {
+        "enum": [
+         "surya",
+         "chandra",
+         "mangala",
+         "budha",
+         "guru",
+         "shukra",
+         "shani"
+        ]
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "value": {
+        "maximum": 8
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "properties": {
+       "count_convention": {
+        "const": "undeclared"
+       }
+      }
+     },
+     "then": {
+      "not": {
+       "required": [
+        "convention_terms"
+       ]
+      }
+     },
+     "else": {
+      "required": [
+       "convention_terms"
+      ]
+     }
+    },
+    {
+     "if": {
+      "properties": {
+       "sodhana_stage": {
+        "const": "undeclared"
+       }
+      }
+     },
+     "then": {
+      "not": {
+       "required": [
+        "sodhana_terms"
+       ]
+      }
+     },
+     "else": {
+      "required": [
+       "sodhana_terms"
+      ]
+     }
+    }
+   ]
+  },
+  "target_sign": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": [
+    "of_role",
+    "locus",
+    "locus_terms"
+   ],
+   "description": "with frame sign_intrinsic: the operand's graha is in the sign where of_role holds the operand's dignity relation (exalted | debilitated | own_sign | moolatrikona). of_role must name a graha-bearing operand. locus = which position of the operand graha is read.",
+   "properties": {
+    "of_role": {
+     "type": "string",
+     "pattern": "^[a-z][a-z0-9_]{0,30}$"
+    },
+    "locus": {
+     "enum": [
+      "natal",
+      "transit",
+      "dasha_period"
+     ]
+    },
+    "locus_terms": {
+     "$ref": "#/$defs/terms"
+    }
+   }
+  },
+  "operand_v11": {
+   "not": {
+    "anyOf": [
+     {
+      "required": [
+       "vedha"
+      ]
+     },
+     {
+      "required": [
+       "bindu_gate"
+      ]
+     },
+     {
+      "required": [
+       "target_sign"
+      ]
+     },
+     {
+      "required": [
+       "relation"
+      ],
+      "properties": {
+       "relation": {
+        "const": "moolatrikona"
+       }
+      }
+     },
+     {
+      "required": [
+       "quote_terms"
+      ],
+      "properties": {
+       "quote_terms": {
+        "contains": {
+         "type": "object"
+        }
+       }
+      }
+     }
+    ]
+   }
+  }
+ }
+}
