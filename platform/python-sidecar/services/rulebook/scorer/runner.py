@@ -126,11 +126,99 @@ def _unit_signature(units: Sequence[UnitSpec]) -> Dict[str, Any]:
     return {u.unit_id: (u.plane, u.polarity, tuple(tuple((m.rid, tuple(sorted(m.area_tags)), m.moon) for m in g) for g in u.groups)) for u in units}
 
 
+# ── ledger locations by file-system identity (review VERIFY3 G1; SUR-RB-46 a) ─────────────────────────────
+def _fs_chain(path: Any) -> List[Tuple[Tuple[int, int], Tuple[str, ...]]]:
+    """Identity keys of a path and of each of its ancestors, nearest first. A key is the (device, inode) of the nearest
+    EXISTING directory plus the case-folded names below it that do not exist yet; an existing directory also carries
+    the alternative key (its parent's identity, its case-folded name). Symlinks, '..', '.', repeated slashes and
+    relative paths are resolved first (realpath, against the current directory); on a case-insensitive volume a case
+    variant reaches the same inode, and a not-yet-existing name is compared case-folded. Element 0 is the path's own
+    key."""
+    p = Path(os.path.realpath(os.path.expanduser(os.fspath(path))))
+    rest: List[str] = []
+    cur = p
+    while True:
+        try:
+            st = os.stat(cur)
+            break
+        except (FileNotFoundError, NotADirectoryError):
+            if cur.parent == cur:
+                raise
+            rest.insert(0, cur.name.casefold())
+            cur = cur.parent
+    ident = (st.st_dev, st.st_ino)
+    chain: List[Tuple[Tuple[int, int], Tuple[str, ...]]] = []
+    r = list(rest)
+    while True:
+        chain.append((ident, tuple(r)))
+        if r:
+            r.pop()
+            continue
+        if cur.parent == cur:
+            break
+        name = cur.name.casefold()
+        cur = cur.parent
+        st = os.stat(cur)
+        ident = (st.st_dev, st.st_ino)
+        chain.append((ident, (name,)))  # the alternative key of the directory just left
+    return chain
+
+
+def _fs_chain_unopened(path: Any) -> List[Tuple[Tuple[int, int], Tuple[str, ...]]]:
+    """The same keys for a directory that must not even be stat'ed (the quarantine, SUR-RB-46 b): its parent's
+    identity plus its case-folded name, then the parent's chain."""
+    p = Path(os.path.realpath(os.path.expanduser(os.fspath(Path(path).parent)))) / Path(path).name
+    up = _fs_chain(p.parent)
+    return [(up[0][0], up[0][1] + (p.name.casefold(),))] + up
+
+
+def same_location(a: Any, b: Any) -> bool:
+    """a and b name the same directory (file-system identity, never string equality)."""
+    return _fs_chain(a)[0] == _fs_chain(b)[0]
+
+
+def within(a: Any, b: Any) -> bool:
+    """a is b or lies inside b (file-system identity)."""
+    return _fs_chain(b)[0] in _fs_chain(a)
+
+
+def _refuse_canonical_alias(path: Any) -> None:
+    """Tests only: the path must not be the canonical ledger, lie inside it, or contain it (SUR-RB-46 a)."""
+    if within(path, C.LEDGER_DIR) or within(C.LEDGER_DIR, path):
+        raise RunRefused("test mode cannot use the canonical ledger (same directory, inside it, or a parent of it, by file-system identity)")
+
+
+def _refuse_quarantine(path: Any) -> None:
+    """SUR-RB-46 b: no scorer path reads the run-ledger quarantine; a ledger there (or containing it) is refused."""
+    q = _fs_chain_unopened(C.LEDGER_QUARANTINE_DIR)  # the quarantine itself is never opened, listed or stat'ed
+    mine = _fs_chain(path)
+    if q[0] in mine or mine[0] in q:
+        raise RunRefused("the run-ledger quarantine is never read or used as a ledger")
+
+
+def ledger_listing(directory: Any) -> Dict[str, Any]:
+    """The ledger directory's listing (every name, hidden ones included; a missing directory lists empty) and its
+    sha256 = sha256(json of the sorted names)."""
+    d = Path(directory)
+    names = sorted(os.listdir(d)) if d.exists() else []
+    return {"names": names, "sha256": hashlib.sha256(json.dumps(names).encode()).hexdigest()}
+
+
+def _log_listing(ledger: "RunLedger", stage: str, listing: Mapping[str, Any]) -> None:
+    """Append the listing and its hash to <ledger>-listing.jsonl beside the ledger (0600), never inside it."""
+    log = ledger.dir.parent / f"{ledger.dir.name}-listing.jsonl"
+    log.parent.mkdir(parents=True, exist_ok=True)
+    fd = os.open(str(log), os.O_CREAT | os.O_APPEND | os.O_WRONLY, 0o600)
+    with os.fdopen(fd, "a") as fh:
+        fh.write(json.dumps({"stage": stage, "ledger": str(ledger.dir), **dict(listing)}, sort_keys=True) + "\n")
+
+
 class RunLedger:
     """Append-only directory of claims, one file per key, created with O_EXCL; one fixed, logged path."""
 
     def __init__(self, directory: Optional[str] = None):
         self.dir = Path(directory if directory is not None else C.LEDGER_DIR)
+        _refuse_quarantine(self.dir)
 
     def _path(self, key: str) -> Path:
         return self.dir / (key + ".run")
@@ -139,6 +227,7 @@ class RunLedger:
         return self._path(key).exists()
 
     def claim(self, keys: Mapping[str, str], scorer_sha: str, note: str = "", record: Optional[Mapping[str, Any]] = None) -> List[Path]:
+        _refuse_quarantine(self.dir)
         self.dir.mkdir(parents=True, exist_ok=True, mode=0o700)
         for role, key in keys.items():
             if self.has(key):
@@ -374,28 +463,28 @@ def score_sample(
     fixed, logged path (``C.LEDGER_DIR``, and the lock must name it), and the timelines must be the hash-checked step-5
     artefacts. Order: validate everything and run a full dry pass (refuse on any problem) -> no testable family or A7
     not met: NO_VERDICT, nothing claimed -> claim (never released) -> score each testable family -> read Part E."""
-    if str(Path(lock.ledger_dir)) != C.LEDGER_DIR:
+    if not lock.ledger_dir or not same_location(lock.ledger_dir, C.LEDGER_DIR):  # by file-system identity (SUR-RB-46 a)
         raise RunRefused("refused before the claim: the lock does not name the fixed, logged ledger path")
     _check_claim_key_inputs(lock, read_lock_record())
     return _run(contexts, episodes, cfg, lock, RunLedger(C.LEDGER_DIR), power_curve=power_curve, note=note, _test=False)
 
 
-def _ledger_entries(ledger_path: str) -> Dict[str, Dict[str, Any]]:
-    p = Path(ledger_path)
-    if not p.exists():
-        raise RunRefused("the logged lock record (lock step 4) is missing")
-    out: Dict[str, Dict[str, Any]] = {}
-    for line in p.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            d = json.loads(line)
-        except ValueError:
-            continue
-        if isinstance(d, dict) and d.get("id"):
-            out[d["id"]] = d  # the last entry with an id wins (append-only ledger)
-    return out
+def _ledger_entry(entries: Mapping[str, Any], entry_id: str) -> Optional[Dict[str, Any]]:
+    from .inputs import InputError, single_entry
+
+    try:
+        return single_entry(entries, entry_id)
+    except InputError as exc:  # review VERIFY3 G3: two differing lines with one id refuse
+        raise RunRefused(f"lock record: {exc}") from exc
+
+
+def _ledger_entries(ledger_path: str) -> Dict[str, List[Dict[str, Any]]]:
+    from .inputs import InputError, ledger_entries
+
+    try:
+        return ledger_entries(ledger_path)
+    except InputError as exc:
+        raise RunRefused("the logged lock record (lock step 4) is missing") from exc
 
 
 def read_lock_record(ledger_path: str = None, entry_id: str = None, cutoff_id: str = None) -> Dict[str, Any]:
@@ -404,8 +493,8 @@ def read_lock_record(ledger_path: str = None, entry_id: str = None, cutoff_id: s
     CUTOFF-AND-FILE-HASHES-V5-20261030 (``files_sha256``); any difference, or a missing entry or hash, refuses.
     Returns ``{"occurrence", "birth_data", "all"}``."""
     entries = _ledger_entries(ledger_path or C.LOCK_LEDGER_PATH)
-    step4 = entries.get(entry_id or C.LOCK_STEP4_ENTRY)
-    cutoff = entries.get(cutoff_id or C.LOCK_CUTOFF_ENTRY)
+    step4 = _ledger_entry(entries, entry_id or C.LOCK_STEP4_ENTRY)
+    cutoff = _ledger_entry(entries, cutoff_id or C.LOCK_CUTOFF_ENTRY)
     if step4 is None or not isinstance(step4.get("hashes_verified_by_surrogate"), dict):
         raise RunRefused(f"lock record entry {entry_id or C.LOCK_STEP4_ENTRY} not found in the logged ledger")
     if cutoff is None or not isinstance(cutoff.get("files_sha256"), dict):
@@ -457,15 +546,14 @@ def score_sample_for_tests(
     """Tests only (SUR-RB-42 F2): a separate, non-canonical ledger path, and a refusal of ANY input whose sha256 equals a
     logged real-file hash (occurrences, birth data, timelines manifest, count_blind outputs) or whose file lies in the
     sample store. The step-5 tie may be absent here; nothing else is relaxed."""
-    tl = Path(test_ledger_dir).resolve()
-    canon = Path(C.LEDGER_DIR).resolve()
-    if tl == canon or canon in tl.parents or tl in canon.parents:
-        raise RunRefused("test mode cannot use the canonical ledger path")
+    _refuse_canonical_alias(test_ledger_dir)  # by file-system identity: case variants, '..', symlinks, relative paths
+    _refuse_quarantine(test_ledger_dir)
+    tl = Path(os.path.realpath(os.fspath(test_ledger_dir)))
     real = _logged_real_hashes()
-    try:  # every file hash in the real lock record is a real-file hash too
+    try:  # every file hash in the real lock record is a real-file hash too; fail closed without it (review VERIFY3 G2)
         real |= set(read_lock_record()["all"].values())
-    except RunRefused:
-        pass
+    except RunRefused as exc:
+        raise RunRefused(f"test mode refuses: the logged lock record cannot be read ({exc})") from exc
     mine = {lock.occurrence_sha256, lock.birth_data_sha256, *lock.count_blind_sha256.values()}
     if lock.admission_dir and (Path(lock.admission_dir) / "out" / "TIMELINES_MANIFEST.json").exists():
         mine.add(_sha_file(str(Path(lock.admission_dir) / "out" / "TIMELINES_MANIFEST.json")))
@@ -492,8 +580,11 @@ def _run(
 ) -> Dict[str, Any]:
     import platform
 
-    if _test and Path(ledger.dir).resolve() == Path(C.LEDGER_DIR).resolve():
-        raise RunRefused("test mode cannot use the canonical ledger path")
+    if _test:
+        _refuse_canonical_alias(ledger.dir)
+    elif not same_location(ledger.dir, C.LEDGER_DIR):
+        raise RunRefused("refused before the claim: the production run must use the fixed, logged ledger path")
+    _refuse_quarantine(ledger.dir)
     for key in claim_keys(lock, contexts).values():  # SUR-RB-42: an existing claim for the sample refuses outright
         if ledger.has(key):
             raise RunRefused(f"the scorer has already been run on this sample ({key[:12]}); a second run is refused")
@@ -527,9 +618,16 @@ def _run(
     for key in keys.values():  # an existing claim for this sample refuses outright, whatever scorer is asking
         if ledger.has(key):
             raise RunRefused(f"the scorer has already been run on this sample ({key[:12]}); a second run is refused")
-    ledger.claim(keys, C.source_sha256(), note, record={"yardstick_sha256": dict(C.YARDSTICK_SHA256),
+    before = ledger_listing(ledger.dir)  # SUR-RB-46 c: just before step 8 the ledger is EMPTY; the listing hash is logged
+    if before["names"]:
+        raise RunRefused(f"refused before the claim: the ledger is not empty ({len(before['names'])} entries, listing sha256 {before['sha256'][:12]}...)")
+    _log_listing(ledger, "before_claim", before)
+    ledger.claim(keys, C.source_sha256(), note, record={"yardstick_sha256": dict(C.YARDSTICK_SHA256), "ledger_listing_before_sha256": before["sha256"],
                                                          "occurrence_sha256": lock.occurrence_sha256, "birth_data_sha256": lock.birth_data_sha256})
     result["claim_keys"] = keys
+    result["ledger_listing_before"] = before
+    claim_names = sorted(k + ".run" for k in keys.values())
+    _assert_one_claim(ledger, claim_names, "after_claim")
     fam_results: Dict[str, Dict[str, Any]] = {}
     for fam, ctx in contexts.items():
         if v["testable"][fam]:
@@ -549,7 +647,18 @@ def _run(
     result["outcome"] = verdict["outcome"]
     if power_curve:
         result["minimum_detectable_effect"] = mde_report(power_curve["q"], power_curve["power"])
+    after = _assert_one_claim(ledger, claim_names, "after_run")
+    result["ledger_listing_after"] = {**after, "claims": len(after["names"])}
     return result
+
+
+def _assert_one_claim(ledger: "RunLedger", claim_names: Sequence[str], stage: str) -> Dict[str, Any]:
+    """SUR-RB-46 c: after the claim the ledger holds exactly ONE claim, this run's; asserted and logged."""
+    now = ledger_listing(ledger.dir)
+    _log_listing(ledger, stage, now)
+    if now["names"] != list(claim_names) or len(claim_names) != 1:
+        raise ScorerError(f"ledger invariant broken at {stage}: the ledger must hold exactly one claim (this run's), it lists {len(now['names'])} entries (sha256 {now['sha256'][:12]}...)")
+    return now
 
 
 def write_result(result: Mapping[str, Any], path: str) -> str:
