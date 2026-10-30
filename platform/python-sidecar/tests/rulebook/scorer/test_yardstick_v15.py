@@ -224,3 +224,36 @@ def test_v2_recount_round_trips_through_files_in_the_exact_format(tmp_path):
     back = donor_rows(read_count_blind(str(d)), 5, "dasha")
     assert back == rec
     assert rec["checks"]["b"]["k11_floor_met_m3"] in (0, 1) and rec["checks"]["b"]["imputed_cell_share_p2"] != ""
+
+
+def test_v2_recount_b_and_c_are_the_same_date_and_the_age_matched_donors_and_the_share_has_six_decimals():
+    """Review VERIFY3: an independent recount from donor_sets in a world where (b) and (c) differ, so a b/c swap in
+    donor_recount fails; and the exact share strings (6 decimals) computed here, not round-tripped."""
+    import re
+
+    from services.rulebook.scorer.core import donor_recount
+
+    ctx, eps = _na_world(0.05, n_charts=18)
+    rec = donor_recount(ctx, eps)
+    exp = {}
+    for key, age in (("b", False), ("c", True)):
+        m3 = donor_sets(ctx, eps, age, None, "m3")
+        for tag, rule in (("p2", "p2_90"), ("p95", "p2_95")):
+            sets = donor_sets(ctx, eps, age, None, rule)
+            imp = tot = ge5 = 0
+            for c, d in sets.items():
+                code = ctx.tl[c].code
+                n = int(d["elig"].size)
+                i_c = sum(int(d["cells"] - sum(int(dm[:, k].sum()) for dm in d["defined"])) for k in d["elig"])
+                assert rec["charts"][code][f"donors_{key}_{tag}"] == n and rec["charts"][code][f"imputed_cells_{key}_{tag}"] == i_c
+                imp, tot, ge5 = imp + i_c, tot + n * d["cells"], ge5 + (n >= C.MIN_ELIGIBLE_DONORS)
+            share = ("%.6f" % (imp / tot)) if tot else ""
+            assert rec["checks"][key][f"imputed_cell_share_{tag}"] == share
+            assert rec["checks"][key][f"charts_ge5_donors_{tag}"] == ge5
+            exp[(key, tag)] = share
+        for c, d in m3.items():
+            assert rec["charts"][ctx.tl[c].code][f"donors_{key}_m3"] == int(d["elig"].size)
+    # the world really separates (b) from (c), and the share is a 6-decimal string, non-zero here
+    assert any(r["donors_b_p2"] != r["donors_c_p2"] for r in rec["charts"].values())
+    assert rec["checks"]["b"] != {k: v for k, v in rec["checks"]["c"].items()}
+    assert exp[("b", "p2")] != "" and re.fullmatch(r"0\.\d{6}", exp[("b", "p2")]) and rec["checks"]["b"]["imputed_cell_share_p2"] == exp[("b", "p2")]

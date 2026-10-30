@@ -631,13 +631,16 @@ def test_f1_the_key_is_the_sample_and_the_claim_records_the_scorer_and_yardstick
     lock = _lock(ctx, eps, lockfiles, tmp_path)
     assert claim_keys(lock, ctx) == claim_keys(replace(lock, scorer_sha256="0" * 64), ctx)  # the scorer is not in the key
     assert claim_keys(lock, ctx) != claim_keys(replace(lock, birth_data_sha256="1" * 64), ctx)
+    assert claim_keys(lock, ctx) != claim_keys(replace(lock, occurrence_sha256="3" * 64), ctx)  # review VERIFY3: the occurrence hash is in the key
+    assert claim_keys(lock, ctx) == {"sample": hashlib.sha256(f"{lock.occurrence_sha256}|{lock.birth_data_sha256}".encode()).hexdigest()}
+    # a different scorer hash in the lock refuses in validation, on a FRESH ledger (no existing claim to hide behind)
+    with pytest.raises(RunRefused, match="byte-identical to the frozen one"):
+        score_sample(ctx, eps, _cfg(), replace(lock, scorer_sha256="0" * 64))
+    assert _claims(tmp_path) == []
     score_sample(ctx, eps, _cfg(), lock)
     rec = json.loads((tmp_path / "ledger" / _claims(tmp_path)[0]).read_text())
     assert rec["scorer_sha256"] == C.source_sha256() and len(rec["yardstick_sha256"]) == len(C.YARDSTICK_SHA256)
     assert rec["occurrence_sha256"] == lock.occurrence_sha256 and rec["birth_data_sha256"] == lock.birth_data_sha256
-    # a different scorer hash in the lock refuses before anything else (validation)
-    with pytest.raises(RunRefused):
-        score_sample(ctx, eps, _cfg(), replace(lock, scorer_sha256="0" * 64))
 
 
 # ── SUR-RB-43: the claim-key inputs come from the logged lock record (lock step 4) ─────────────────────────────
@@ -711,6 +714,9 @@ def test_sur_rb_43_production_accepts_only_the_logged_claim_key_hashes(tmp_path,
     monkeypatch.setattr(C, "LOCK_LEDGER_PATH", str(_record(tmp_path, "9" * 64, lock.birth_data_sha256)))
     with pytest.raises(RunRefused, match="logged lock record"):
         R.score_sample(ctx, eps, _cfg(), lock)
+    monkeypatch.setattr(C, "LOCK_LEDGER_PATH", str(_record(tmp_path, lock.occurrence_sha256, "8" * 64)))  # review VERIFY3: wrong birth hash only
+    with pytest.raises(RunRefused, match="logged lock record"):
+        R.score_sample(ctx, eps, _cfg(), lock)
     monkeypatch.setattr(C, "LOCK_LEDGER_PATH", str(_record(tmp_path, lock.occurrence_sha256, lock.birth_data_sha256)))
     other = tmp_path / "sample_events_v5.csv"  # same bytes, but not the SLIM file the key names
     other.write_bytes(Path(lock.occurrence_path).read_bytes())
@@ -730,19 +736,19 @@ def test_sur_rb_43_test_mode_refuses_any_hash_in_the_real_lock_record(tmp_path, 
 def test_sur_rb_43_result_reports_pre_1930_charts_with_death_source_none(monkeypatch):
     from datetime import date as _d
 
-    tls, units = toy_world(31, n_charts=4, years=10, n_units=2)
-    for t, y in zip(tls, (1925, 1928, 1931, 1920)):
-        t.birth = _d(y, 6, 1).toordinal()
+    tls, units = toy_world(31, n_charts=6, years=10, n_units=2)
+    # review VERIFY3: the two boundary days 1929-12-31 (before the cut, counted) and 1930-01-01 (not counted)
+    for t, b in zip(tls, (_d(1925, 6, 1), _d(1928, 6, 1), _d(1931, 6, 1), _d(1920, 6, 1), _d(1929, 12, 31), _d(1930, 1, 1))):
+        t.birth = b.toordinal()
     ctx = {C.FAMILY_DASHA: FamilyContext(C.FAMILY_DASHA, tls, units)}
 
     class Adm:
         def __init__(self, d):
-            self.horizons = {"charts": {tls[0].code: {"death_source": "none"}, tls[1].code: {"death_source": "wikidata"},
-                                        tls[2].code: {"death_source": "none"}, tls[3].code: {"death_source": "none"}}}
+            self.horizons = {"charts": {t.code: {"death_source": ("wikidata" if i == 1 else "none")} for i, t in enumerate(tls)}}
 
     import services.rulebook.scorer.inputs as I
 
     monkeypatch.setattr(I, "AdmissionInputs", Adm)
     lock = type("L", (), {"admission_dir": "x"})()
-    assert R._pre1930_alive_by_default(ctx, lock) == 2  # 1925 and 1920; 1928 has a death source, 1931 is after 1930
+    assert R._pre1930_alive_by_default(ctx, lock) == 3  # 1925, 1920 and 1929-12-31; 1928 has a death source; 1930-01-01 and 1931 are not before 1930
     assert R._pre1930_alive_by_default(ctx, type("L", (), {"admission_dir": None})()) is None
