@@ -38,6 +38,13 @@ TZ_UNCHECKABLE = "TZ_UNCHECKABLE"
 TZDB_PIN_MISMATCH = "TZDB_PIN_MISMATCH"
 L1_UT_MISMATCH = "L1_UT_MISMATCH"  # raised by the guards in birthcheck, counted with the rest
 L1_BIRTH_MISMATCH = "L1_BIRTH_MISMATCH"  # the stored chart row is not the record's birth
+# YARDSTICK v1.6 Q1 (SUR-RB-44): mean-time records in the meridian form
+MEAN_TIME_NOT_LMT_PERIOD = "MEAN_TIME_NOT_LMT_PERIOD"  # LMT/LST label, but tzdb shows standard (or another) time in force
+MEAN_TIME_LONGITUDE_MISMATCH = "MEAN_TIME_LONGITUDE_MISMATCH"  # LMT/LST offset not birthplace longitude / 15 within 1 min
+MEAN_TIME_REGIONAL_MISMATCH = "MEAN_TIME_REGIONAL_MISMATCH"  # named mean time not tzdb's offset (1 s) and abbreviation
+LMT_LABELS = frozenset({"LMT", "LST"})
+LMT_LONGITUDE_TOLERANCE_S = 60
+REGIONAL_TOLERANCE_S = 1
 
 OFFSET_LIMITS_MINUTES = (-14 * 60, 14 * 60)
 
@@ -97,7 +104,9 @@ class BirthRecord:
     lat: float
     lon: float
     utc_offset_minutes: int
-    source_zone_code: Optional[str] = None  # as the record gives it (e.g. an abbreviation); informational
+    source_zone_code: Optional[str] = None
+    utc_offset_seconds: Optional[int] = None  # meridian-form (mean-time) records only: the exact stated offset
+    mean_time_form: bool = False  # as the record gives it (e.g. an abbreviation); informational
     dst_applied: Optional[bool] = None  # the record's own note, if it gives one
     dst_note: Optional[str] = None
     tz_iana: Optional[str] = None  # zone used only for the cross-check; coordinates are the fallback
@@ -156,12 +165,36 @@ def parse_birth_record(rec: Mapping[str, Any]) -> BirthRecord:
         dst_applied=dst,
         dst_note=(str(rec["dst_note"]) if rec.get("dst_note") is not None else None),
         tz_iana=(str(rec["tz_iana"]) if rec.get("tz_iana") else None),
+        utc_offset_seconds=_offset_seconds(rec.get("utc_offset_seconds"), off) if rec.get("mean_time_form") else None,
+        mean_time_form=bool(rec.get("mean_time_form")),
     )
+
+
+def _offset_seconds(value: Any, minutes: int) -> int:
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ChartRefused(OFFSET_MALFORMED, "utc_offset_seconds must be a whole number of seconds")
+    if abs(value) > OFFSET_LIMITS_MINUTES[1] * 60 or round(value / 60) != minutes:
+        raise ChartRefused(OFFSET_MALFORMED, "utc_offset_seconds out of range or inconsistent with utc_offset_minutes")
+    return value
 
 
 # zone code: a letter abbreviation (PDT, IST, ...) or a numeric tz-database abbreviation (-03, -0330, +0545); the
 # code is informational only: the offset is read from the h<H>(e|w)[<MM>] part and nowhere else.
 _ADB_TZ = re.compile(r"^\s*([A-Za-z]{1,8}|[+-]\d{2}(?:\d{2})?)\s+h(\d{1,2})([ew])(\d{1,2})?\s*(?:\((.*)\))?\s*$")
+
+
+# meridian form: 'm<deg>(e|w)<arcmin>[<arcsec>]', the offset stated as a meridian (v1.6 Q1)
+_ADB_MERIDIAN = re.compile(r"^\s*([A-Za-z]{1,8}|[+-]\d{2}(?:\d{2})?)\s+m(\d{1,3})([ew])(\d{2})(\d{2})?\s*(?:\((.*)\))?\s*$")
+
+
+def _note_fields(out: Dict[str, Any], note: Optional[str]) -> None:
+    if note is not None:
+        out["dst_note"] = note.strip()
+        low = note.lower()
+        if "is daylight saving time" in low:
+            out["dst_applied"] = True
+        elif "standard" in low or "not daylight" in low or "mean time" in low:
+            out["dst_applied"] = False
 
 
 def record_fields_from_adb_tz_raw(tz_raw: str) -> Dict[str, Any]:
@@ -172,9 +205,20 @@ def record_fields_from_adb_tz_raw(tz_raw: str) -> Dict[str, Any]:
     unknown shape) is malformed and the chart is refused: the offset is never inferred from the zone
     abbreviation.
     """
+    mm_ = _ADB_MERIDIAN.match(tz_raw or "")
+    if mm_:
+        code, deg, ew, amin, asec, note = mm_.group(1), int(mm_.group(2)), mm_.group(3), int(mm_.group(4)), int(mm_.group(5) or 0), mm_.group(6)
+        if deg > 180 or amin > 59 or asec > 59:
+            raise ChartRefused(OFFSET_MALFORMED, "meridian out of range")
+        arcsec = deg * 3600 + amin * 60 + asec  # 15 arcsec of meridian = 1 s of time
+        seconds = round(arcsec / 15) * (1 if ew == "e" else -1)
+        out_m: Dict[str, Any] = {"utc_offset_minutes": round(seconds / 60), "utc_offset_seconds": seconds, "source_zone_code": code,
+                                 "mean_time_form": True}
+        _note_fields(out_m, note)
+        return out_m
     m = _ADB_TZ.match(tz_raw or "")
     if not m:
-        raise ChartRefused(OFFSET_MALFORMED, "tz_raw is not '<code> h<H>(e|w)[<MM>] [(note)]'")
+        raise ChartRefused(OFFSET_MALFORMED, "tz_raw is not '<code> h<H>(e|w)[<MM>] [(note)]' or '<code> m<deg>(e|w)<MM>[<SS>] [(note)]'")
     code, h, ew, mm, note = m.group(1), int(m.group(2)), m.group(3), int(m.group(4) or 0), m.group(5)
     if mm > 59:
         raise ChartRefused(OFFSET_MALFORMED, "minutes out of range")
@@ -208,12 +252,14 @@ class ResolvedBirth:
             zone=r.tz_iana or self.zone_checked,
             birth_utc=self.utc,
             utc_offset_minutes=r.utc_offset_minutes,
+            utc_offset_seconds=r.utc_offset_seconds,
         )
 
 
 def ut_of(record: BirthRecord) -> datetime:
     """Local birth time minus the stated offset. The only conversion the engine uses on this path."""
-    return (record.local_naive() - timedelta(minutes=record.utc_offset_minutes)).replace(tzinfo=timezone.utc)
+    off = record.utc_offset_seconds if record.utc_offset_seconds is not None else record.utc_offset_minutes * 60
+    return (record.local_naive() - timedelta(seconds=off)).replace(tzinfo=timezone.utc)
 
 
 def _zone_name(record: BirthRecord) -> str:
@@ -250,6 +296,34 @@ def tz_valid_offsets_seconds(name: str, local: datetime) -> List[int]:
     return sorted(out)
 
 
+def _check_mean_time(record: BirthRecord, name: str) -> None:
+    """v1.6 Q1. LMT/LST: tzdb in a local-mean-time period at the birth instant AND offset = longitude/15 within 1 min.
+    Any other label: tzdb's offset within 1 s and tzdb's abbreviation equal to the label at the birth instant."""
+    import zoneinfo
+
+    z = zoneinfo.ZoneInfo(name)
+    local = record.local_naive()
+    periods = []
+    for fold in (0, 1):
+        aware = local.replace(tzinfo=z, fold=fold)
+        off = aware.utcoffset()
+        if off is None:
+            continue
+        if aware.astimezone(timezone.utc).astimezone(z).replace(tzinfo=None) == local:
+            periods.append((int(off.total_seconds()), aware.tzname()))
+    sec = record.utc_offset_seconds
+    label = (record.source_zone_code or "").upper()
+    if label in LMT_LABELS:
+        if not any(abbr == "LMT" for _o, abbr in periods):
+            raise ChartExcluded(MEAN_TIME_NOT_LMT_PERIOD, f"{name}: tzdb shows {sorted({a for _o, a in periods})} at the birth instant, not LMT")
+        want = record.lon * 240.0
+        if abs(sec - want) > LMT_LONGITUDE_TOLERANCE_S:
+            raise ChartExcluded(MEAN_TIME_LONGITUDE_MISMATCH, f"offset {sec} s vs longitude/15 = {want:.0f} s")
+        return
+    if not any(abs(o - sec) <= REGIONAL_TOLERANCE_S and abbr == label for o, abbr in periods):
+        raise ChartExcluded(MEAN_TIME_REGIONAL_MISMATCH, f"{name}: tzdb shows {periods} at the birth instant; record {label} {sec} s")
+
+
 def resolve_birth(
     record: BirthRecord,
     *,
@@ -267,7 +341,9 @@ def resolve_birth(
         valid = tz_valid_offsets_seconds(name, record.local_naive())
         if not valid:
             raise ChartExcluded(TZ_LOCAL_TIME_NONEXISTENT, f"{name}: this wall-clock time does not exist (DST gap)")
-        if record.utc_offset_minutes * 60 not in valid:
+        if record.mean_time_form:
+            _check_mean_time(record, name)
+        elif record.utc_offset_minutes * 60 not in valid:
             raise ChartExcluded(
                 TZ_DISAGREEMENT,
                 f"stated offset {record.utc_offset_minutes} min, tz database ({name}) allows {[v // 60 for v in valid]} min",

@@ -54,6 +54,7 @@ class Birth:
     # Explicit-offset path (foreign births): the UT offset the SOURCE RECORD states, in minutes east of UT.
     # When set, ``birth_utc`` is local time minus this offset and no zone name is needed or consulted.
     utc_offset_minutes: Optional[int] = None
+    utc_offset_seconds: Optional[int] = None  # mean-time (meridian-form) records only (v1.6 Q1)
 
     def to_json(self) -> dict:
         return {
@@ -64,6 +65,7 @@ class Birth:
             "zone": self.zone,
             "birth_utc": self.birth_utc.isoformat() if self.birth_utc else None,
             "utc_offset_minutes": self.utc_offset_minutes,
+            "utc_offset_seconds": self.utc_offset_seconds,
         }
 
 
