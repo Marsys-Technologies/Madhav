@@ -49,7 +49,63 @@ def sky_sign_problems(chart: NatalChart, sky: SkyTable, birth_jd: float) -> List
     return out
 
 
+def ephemeris_moon_sidereal(jd_ut: float) -> Optional[float]:
+    """Moon's Lahiri sidereal longitude by DIRECT Swiss Ephemeris at jd_ut (true geometric position, the L1 convention).
+    None if the pinned .se1 files are not in use (Moshier fallback): the check then fails closed."""
+    import os
+
+    import swisseph as swe
+
+    swe.set_ephe_path(os.environ.get("SE_EPHE_PATH") or None)
+    swe.set_sid_mode(swe.SIDM_LAHIRI, 0, 0)
+    xx, ret = swe.calc_ut(jd_ut, swe.MOON, swe.FLG_SWIEPH | swe.FLG_SIDEREAL | swe.FLG_TRUEPOS)
+    if not ret & swe.FLG_SWIEPH:
+        return None
+    return xx[0] % 360.0
+
+
+def pre_window_dasha_problems(chart: NatalChart, birth_jd: float) -> List[str]:
+    """SUR-RB-49: a birth before the stored window start. The FIRST stored level-1 row must carry the lord that an
+    independent 120-year walk from the ephemeris Moon at the true UT gives at the window start, and its END must lie within
+    START_TOLERANCE_S of that walk's end after the SUR-RB-30 allowance for the L1-vs-ephemeris Moon difference."""
+    if not chart.md.rows:
+        return ["no stored level-1 daśā row"]
+    first = chart.md.rows[0]
+    if first.start_jd > DASHA_WINDOW_START_JD + 1e-9:
+        return ["first stored level-1 row does not start at the stored window start"]
+    moon = ephemeris_moon_sidereal(birth_jd)
+    if moon is None:
+        return ["pinned ephemeris not in use: the pre-window Vimshottari check cannot run"]
+    span = 360.0 / 27.0
+    idx = min(int(moon // span), 26)
+    frac = (moon - idx * span) / span
+    i, start = idx % 9, birth_jd - frac * VIMSHOTTARI_YEARS[VIMSHOTTARI_ORDER[idx % 9]] * YEAR_DAYS
+    ref = None
+    while start < DASHA_WINDOW_START_JD + 130 * YEAR_DAYS:
+        lord = VIMSHOTTARI_ORDER[i % 9]
+        end = start + VIMSHOTTARI_YEARS[lord] * YEAR_DAYS
+        if start <= first.start_jd < end:
+            ref = (lord, end)
+            break
+        start, i = end, i + 1
+    if ref is None:
+        return ["the independent walk does not reach the stored window start"]
+    if first.lord != ref[0]:
+        return [f"first stored daśā is {first.lord}, the ephemeris walk gives {ref[0]} at the window start"]
+    l1_moon = chart.graha("chandra").longitude
+    allowance = 0.0
+    if l1_moon is not None:
+        dm = (l1_moon - moon + 180.0) % 360.0 - 180.0
+        allowance = -dm / span * VIMSHOTTARI_YEARS[VIMSHOTTARI_ORDER[idx % 9]] * YEAR_DAYS
+    diff = abs(first.end_jd - (ref[1] + allowance)) * K.SECONDS_PER_DAY
+    if diff > START_TOLERANCE_S:
+        return [f"first stored {first.lord} end differs from the ephemeris walk by {diff:.0f} s (limit {START_TOLERANCE_S:.0f} s)"]
+    return []
+
+
 def dasha_start_problems(chart: NatalChart, birth_jd: float) -> List[str]:
+    if birth_jd < DASHA_WINDOW_START_JD:
+        return pre_window_dasha_problems(chart, birth_jd)
     lon = chart.graha("chandra").longitude
     if lon is None:
         return ["Moon longitude missing: Vimshottari start cannot be checked"]
