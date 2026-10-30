@@ -12,12 +12,12 @@ import pytest
 from services.rulebook.scorer import config as C
 from services.rulebook.scorer.core import FamilyContext, donor_diagnostic, donor_eligibility_counts, donor_sets, run_donor_check, score_family
 from services.rulebook.scorer.model import ChartTimeline, Episode
-from services.rulebook.scorer.runner import RunRefused, prepare_episodes, score_sample
+from services.rulebook.scorer.runner import RunRefused, prepare_episodes
 from services.rulebook.scorer_calib import harness as H
 from services.rulebook.scorer_calib import occurrences as O
 
 from ._toy import BASE, make_units, month_window, random_episodes, runs_series, toy_world
-from .test_review_fixes import _cfg, _claims, _lock, _two_families, lockfiles  # noqa: F401  (fixture re-used)
+from .test_review_fixes import _cfg, _claims, _lock, _two_families, lockfiles, score_sample  # noqa: F401  (fixture re-used)
 
 CAREER = "career_adv_change_entry"
 

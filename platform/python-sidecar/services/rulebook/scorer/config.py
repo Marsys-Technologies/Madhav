@@ -82,6 +82,8 @@ TESTABLE_MIN_UNIT_SHARE = 0.5
 
 # ── the one-run ledger (review S5): one fixed path, logged in the lock log
 LEDGER_DIR = "/Users/Dev/Archives/madhav-research-library/10_engine/run-ledger"
+REAL_INPUT_HASHES_PATH = "/Users/Dev/Archives/madhav-research-library/10_engine/run-ledger-real-input-hashes.json"  # logged at lock step 4
+SAMPLE_STORE = "/Users/Dev/Archives/madhav-chart-sample"
 
 # ── outcomes (v1.1 Part E) ─────────────────────────────────────────────────
 ALPHA_STRONG = 0.05

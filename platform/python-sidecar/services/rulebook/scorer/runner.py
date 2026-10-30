@@ -12,7 +12,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
@@ -110,7 +110,7 @@ class RunLock:
     numpy_version: str = ""  # pinned at the freeze (review M9)
     python_version: str = ""
     admission_dir: Optional[str] = None  # step-5 artefacts: the contexts' timelines must be exactly these (review S8)
-    test_mode: bool = False  # tests only: allows a non-canonical ledger path and contexts without step-5 artefacts
+    count_blind_sha256: Mapping[str, str] = field(default_factory=dict)  # count_blind outputs as logged (name -> sha256)
     donor_counts: Mapping[str, Mapping[str, Any]] = field(default_factory=dict)  # family -> count_blind v2 donor rows (inputs.donor_rows)
 
 
@@ -160,7 +160,7 @@ def _conflict_free(units: Sequence[UnitSpec]) -> List[UnitSpec]:
 
 
 def validate_before_claim(
-    contexts: Mapping[str, FamilyContext], episodes: Mapping[str, Sequence[Episode]], cfg: C.ScoreConfig, lock: RunLock
+    contexts: Mapping[str, FamilyContext], episodes: Mapping[str, Sequence[Episode]], cfg: C.ScoreConfig, lock: RunLock, _test: bool = False
 ) -> Dict[str, Any]:
     """Everything that can refuse the run, BEFORE the claim (v1.4 conformance B1/M5, S2, S3, S8, M6). Raises
     RunRefused on any mismatch. Returns the prepared episodes and the counts of the validation."""
@@ -217,7 +217,7 @@ def validate_before_claim(
 
     if lock.numpy_version != np.__version__ or lock.python_version != platform.python_version():
         problems.append(f"numpy/python {np.__version__}/{platform.python_version()} differ from the pinned {lock.numpy_version}/{lock.python_version} (M9)")
-    if not lock.test_mode and str(Path(lock.ledger_dir)) != C.LEDGER_DIR:
+    if not _test and str(Path(lock.ledger_dir)) != C.LEDGER_DIR:
         problems.append("the ledger path is not the one fixed and logged (S5)")
     if lock.admission_dir:  # the timelines scored must be exactly the hash-checked step-5 artefacts (S8)
         try:
@@ -235,7 +235,7 @@ def validate_before_claim(
                         break
         except Exception as exc:  # noqa: BLE001
             problems.append(f"step-5 artefacts unreadable or unverified: {type(exc).__name__}: {exc}")
-    elif not lock.test_mode:
+    elif not _test:
         problems.append("the timelines are not tied to the step-5 artefacts (admission_dir missing)")
     prepared: Dict[str, List[Episode]] = {}
     drops: Dict[str, Dict[str, int]] = {}
@@ -343,23 +343,83 @@ def score_sample(
     cfg: C.ScoreConfig,
     lock: RunLock,
     *,
-    ledger: Optional[RunLedger] = None,
     power_curve: Optional[Mapping[str, Sequence[float]]] = None,
     note: str = "",
 ) -> Dict[str, Any]:
-    """The real run (v1.1 Part G step 8 with v1.2 K1 and the v1.4 conformance fixes).
+    """THE production entry point (v1.1 Part G step 8; SUR-RB-42). No test switch exists here: the ledger is the one
+    fixed, logged path (``C.LEDGER_DIR``, and the lock must name it), and the timelines must be the hash-checked step-5
+    artefacts. Order: validate everything and run a full dry pass (refuse on any problem) -> no testable family or A7
+    not met: NO_VERDICT, nothing claimed -> claim (never released) -> score each testable family -> read Part E."""
+    if str(Path(lock.ledger_dir)) != C.LEDGER_DIR:
+        raise RunRefused("refused before the claim: the lock does not name the fixed, logged ledger path")
+    return _run(contexts, episodes, cfg, lock, RunLedger(C.LEDGER_DIR), power_curve=power_curve, note=note, _test=False)
 
-    Order: validate everything and run a full dry pass (refuse on any problem) -> no testable family or A7 not met:
-    NO_VERDICT, nothing claimed -> claim (never released) -> score each testable family -> read Part E."""
+
+def _logged_real_hashes() -> set:
+    p = Path(C.REAL_INPUT_HASHES_PATH)
+    if not p.exists():
+        return set()
+    doc = json.loads(p.read_text(encoding="utf-8"))
+    vals = doc.values() if isinstance(doc, dict) else doc
+    out = set()
+    for v in vals:
+        if isinstance(v, str):
+            out.add(v)
+        elif isinstance(v, dict):
+            out.update(x for x in v.values() if isinstance(x, str))
+    return out
+
+
+def score_sample_for_tests(
+    contexts: Mapping[str, FamilyContext],
+    episodes: Mapping[str, Sequence[Episode]],
+    cfg: C.ScoreConfig,
+    lock: RunLock,
+    test_ledger_dir: str,
+    *,
+    power_curve: Optional[Mapping[str, Sequence[float]]] = None,
+    note: str = "",
+) -> Dict[str, Any]:
+    """Tests only (SUR-RB-42 F2): a separate, non-canonical ledger path, and a refusal of ANY input whose sha256 equals a
+    logged real-file hash (occurrences, birth data, timelines manifest, count_blind outputs) or whose file lies in the
+    sample store. The step-5 tie may be absent here; nothing else is relaxed."""
+    tl = Path(test_ledger_dir).resolve()
+    canon = Path(C.LEDGER_DIR).resolve()
+    if tl == canon or canon in tl.parents or tl in canon.parents:
+        raise RunRefused("test mode cannot use the canonical ledger path")
+    real = _logged_real_hashes()
+    mine = {lock.occurrence_sha256, lock.birth_data_sha256, *lock.count_blind_sha256.values()}
+    if lock.admission_dir and (Path(lock.admission_dir) / "out" / "TIMELINES_MANIFEST.json").exists():
+        mine.add(_sha_file(str(Path(lock.admission_dir) / "out" / "TIMELINES_MANIFEST.json")))
+    for p in (lock.occurrence_path, lock.birth_data_path):
+        if p and Path(p).exists():
+            mine.add(_sha_file(p))
+            if Path(C.SAMPLE_STORE).resolve() in Path(p).resolve().parents:
+                raise RunRefused("test mode cannot read a file from the sample store")
+    if mine & real:
+        raise RunRefused("test mode refuses an input whose sha256 equals a logged real-file hash")
+    return _run(contexts, episodes, cfg, replace(lock, ledger_dir=str(tl)), RunLedger(str(tl)), power_curve=power_curve, note=note, _test=True)
+
+
+def _run(
+    contexts: Mapping[str, FamilyContext],
+    episodes: Mapping[str, Sequence[Episode]],
+    cfg: C.ScoreConfig,
+    lock: RunLock,
+    ledger: "RunLedger",
+    *,
+    power_curve: Optional[Mapping[str, Sequence[float]]] = None,
+    note: str = "",
+    _test: bool = False,
+) -> Dict[str, Any]:
     import platform
 
-    ledger = ledger or RunLedger(lock.ledger_dir)
-    if str(ledger.dir) != str(Path(lock.ledger_dir)):
-        raise RunRefused("refused before the claim: the ledger given is not the logged ledger path")
+    if _test and Path(ledger.dir).resolve() == Path(C.LEDGER_DIR).resolve():
+        raise RunRefused("test mode cannot use the canonical ledger path")
     for key in claim_keys(lock, contexts).values():  # SUR-RB-42: an existing claim for the sample refuses outright
         if ledger.has(key):
             raise RunRefused(f"the scorer has already been run on this sample ({key[:12]}); a second run is refused")
-    v = validate_before_claim(contexts, episodes, cfg, lock)
+    v = validate_before_claim(contexts, episodes, cfg, lock, _test=_test)
     result: Dict[str, Any] = {
         "scorer_version": C.SCORER_VERSION,
         "scorer_source_sha256": C.source_sha256(),
@@ -372,7 +432,7 @@ def score_sample(
         "numpy": np.__version__,
         "ledger_dir": str(ledger.dir),
         "canonical_ledger": str(ledger.dir) == C.LEDGER_DIR,
-        "test_mode": bool(lock.test_mode),
+        "test_mode": bool(_test),
         "validation_drops": v["drops"],
         "a7": v["a7"],
         "testability": v["testable"],

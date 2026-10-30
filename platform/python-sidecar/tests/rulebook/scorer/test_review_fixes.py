@@ -42,8 +42,13 @@ from services.rulebook.scorer.runner import (
     claim_keys,
     prepare_episodes,
     recount_rows,
-    score_sample,
+    score_sample_for_tests,
 )
+
+
+def score_sample(ctx, eps, cfg, lock, ledger=None):
+    """Tests drive the test entry point (separate ledger path); the production entry point is exercised directly."""
+    return score_sample_for_tests(ctx, eps, cfg, lock, str(ledger.dir) if ledger is not None else lock.ledger_dir)
 
 from ._toy import BASE, make_units, month_window, random_episodes, runs_series, toy_world
 
@@ -122,7 +127,7 @@ def _lock(ctx, eps, files, tmp_path, **over):
         admitted={f: [t.code for t in c.tl] for f, c in ctx.items()}, d7=d7, count_rows=rows, files=files,
         ledger_dir=str(tmp_path / "ledger"), occurrence_path=str(occ), birth_data_path=str(birth),
         manifest_sha256=hashlib.sha256(Path(files["unit_manifest"]).read_bytes()).hexdigest(),
-        numpy_version=np.__version__, python_version=platform.python_version(), test_mode=True, donor_counts=donors,
+        numpy_version=np.__version__, python_version=platform.python_version(), donor_counts=donors,
     )
     args.update(over)
     return RunLock(**args)
@@ -304,11 +309,58 @@ def test_s5_reordering_the_charts_cannot_buy_a_second_run(tmp_path, lockfiles):
 def test_s5_the_ledger_has_one_fixed_logged_path(tmp_path, lockfiles):
     assert RunLedger().dir == Path(C.LEDGER_DIR) and C.LEDGER_DIR.endswith("10_engine/run-ledger")
     ctx, eps = _two_families()
-    with pytest.raises(RunRefused, match="ledger path"):  # outside tests a non-canonical ledger is refused (N5)
-        score_sample(ctx, eps, _cfg(), _lock(ctx, eps, lockfiles, tmp_path, test_mode=False))
     lock = _lock(ctx, eps, lockfiles, tmp_path)
-    with pytest.raises(RunRefused, match="logged ledger"):  # a ledger object pointing elsewhere is refused too
-        score_sample(ctx, eps, _cfg(), lock, ledger=RunLedger(str(tmp_path / "elsewhere")))
+    with pytest.raises(RunRefused, match="fixed, logged ledger"):  # production: any other path is refused
+        R.score_sample(ctx, eps, _cfg(), lock)
+    assert _claims(tmp_path) == []
+
+
+# ── SUR-RB-42 F2: no bypass on the canonical path; test mode only with a separate ledger ────────────────────────
+def test_f2_the_production_entry_point_has_no_test_switch():
+    import dataclasses
+    import inspect
+
+    assert "test_mode" not in {f.name for f in dataclasses.fields(RunLock)}
+    assert not any("test" in p for p in inspect.signature(R.score_sample).parameters)
+
+
+def test_f2_production_refuses_contexts_not_tied_to_step5_even_on_the_canonical_path(tmp_path, lockfiles):
+    ctx, eps = _two_families()
+    lock = _lock(ctx, eps, lockfiles, tmp_path, ledger_dir=C.LEDGER_DIR)
+    with pytest.raises(RunRefused, match="not tied to the step-5"):
+        R.score_sample(ctx, eps, _cfg(), lock)
+
+
+def test_f2_test_mode_cannot_use_the_canonical_ledger(tmp_path, lockfiles):
+    ctx, eps = _two_families()
+    lock = _lock(ctx, eps, lockfiles, tmp_path)
+    with pytest.raises(RunRefused, match="canonical ledger"):
+        score_sample_for_tests(ctx, eps, _cfg(), lock, C.LEDGER_DIR)
+    with pytest.raises(RunRefused, match="canonical ledger"):
+        score_sample_for_tests(ctx, eps, _cfg(), lock, str(Path(C.LEDGER_DIR) / "sub"))
+    with pytest.raises(RunRefused, match="canonical ledger"):
+        R._run(ctx, eps, _cfg(), lock, RunLedger(C.LEDGER_DIR), _test=True)
+
+
+def test_f2_test_mode_refuses_any_input_matching_a_logged_real_file_hash(tmp_path, lockfiles, monkeypatch):
+    ctx, eps = _two_families()
+    lock = _lock(ctx, eps, lockfiles, tmp_path)
+    real = tmp_path / "real_hashes.json"
+    monkeypatch.setattr(C, "REAL_INPUT_HASHES_PATH", str(real))
+    for logged in ({"occurrence": lock.occurrence_sha256}, {"birth": lock.birth_data_sha256}, {"count_blind": {"COUNT_BLIND_UNITS.csv": "c" * 64}}):
+        real.write_text(json.dumps(logged))
+        lk = replace(lock, count_blind_sha256={"COUNT_BLIND_UNITS.csv": "c" * 64})
+        with pytest.raises(RunRefused, match="logged real-file hash"):
+            score_sample_for_tests(ctx, eps, _cfg(), lk, lock.ledger_dir)
+    # a file inside the sample store is refused too
+    store = tmp_path / "store"
+    store.mkdir()
+    (store / "occ.csv").write_text("synthetic stand-in")
+    monkeypatch.setattr(C, "SAMPLE_STORE", str(store))
+    real.write_text("{}")
+    with pytest.raises(RunRefused, match="sample store"):
+        score_sample_for_tests(ctx, eps, _cfg(), replace(lock, occurrence_path=str(store / "occ.csv")), lock.ledger_dir)
+    assert _claims(tmp_path) == []
 
 
 def test_n5_occurrence_and_birth_files_are_rehashed_before_the_claim(tmp_path, lockfiles):
@@ -339,7 +391,7 @@ def test_s8_timelines_must_be_the_step5_artefacts(tmp_path, lockfiles):
     with pytest.raises(RunRefused, match="step-5"):
         score_sample(ctx, eps, _cfg(), _lock(ctx, eps, lockfiles, tmp_path, admission_dir=str(tmp_path / "no-such-dir")))
     with pytest.raises(RunRefused, match="not tied to the step-5"):
-        score_sample(ctx, eps, _cfg(), _lock(ctx, eps, lockfiles, tmp_path, test_mode=False, ledger_dir=C.LEDGER_DIR))
+        R.score_sample(ctx, eps, _cfg(), _lock(ctx, eps, lockfiles, tmp_path, ledger_dir=C.LEDGER_DIR))
     assert _claims(tmp_path) == []
 
 
