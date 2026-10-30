@@ -67,6 +67,7 @@ Z25_MIN_UNITS = 8  # v1.2 K5: with fewer than 8 eligible units Z25 is dropped fr
 
 # ── draws (v1.1 D1, D3, D4) ────────────────────────────────────────────────
 DRAWS_PRODUCTION = 100_000
+NONSCHEDULABLE_NULL_MEAN = 0.5  # SUR-RB-55 (d): T's null mean (v1.0 section 3.2 step 4); the fallback condition is T above it
 DRAW_CHUNK = 4_000  # draws are generated in chunks of this size (memory); part of the definition of the random stream
 MIN_DRAWS_CALIBRATION = 2_000  # v1.1 F2: at least 2,000 draws per check in the calibration
 MIN_ELIGIBLE_DONORS = 5  # v1.1 D3

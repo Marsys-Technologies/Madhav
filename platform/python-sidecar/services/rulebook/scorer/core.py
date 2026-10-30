@@ -967,14 +967,44 @@ def simes_two(p_a: float, p_b: float) -> float:
     return float(min(1.0, 2.0 * min(p_a, p_b), max(p_a, p_b)))
 
 
+def nonschedulable_statistic(
+    ctx: FamilyContext, ns_episodes: Optional[Sequence[Episode]], cfg: C.ScoreConfig, admitted: Optional[Sequence[int]] = None
+) -> Dict[str, Any]:
+    """SUR-RB-55 (d): the fallback direction-consistency statistic = T (v1.0 section 3.2, chart-weighted mean of the
+    episode percentiles under the primary block scheme) on the separately formed non-schedulable list, its episodes
+    fixed by the same scorable rule before any draw; the condition is T above its null mean, exactly 0.5 (section 3.2
+    step 4). No scored episode (or no list) = the condition is NOT met (fail closed)."""
+    eps = list(ns_episodes or [])
+    for ep in eps:
+        ep.validate()
+        if not 0 <= ep.chart < len(ctx.tl):
+            raise ScorerError("a non-schedulable episode refers to a chart outside the family")
+    if admitted is not None:
+        keep = set(admitted)
+        eps = [e for e in eps if e.chart in keep]
+    sc = [e for e, ok in zip(eps, scorable_mask(ctx, eps)) if ok] if eps else []
+    if not sc:
+        return {"T_nonschedulable": None, "nonschedulable_episodes_scored": 0, "nonschedulable_above_null_mean": False}
+    scheme = ctx.schemes[0][0]
+    # the observed T sits at index 0 and does not depend on the draws (one draw is run only to use the same code path)
+    res = run_scheme(ctx, scheme, sc, 1, np.random.default_rng([cfg.seed, FAMILY_STREAM[ctx.family], 95]), want_dir=False, want_fallback=False)
+    t = float(res.pools["T"][0])
+    return {"T_nonschedulable": t, "nonschedulable_episodes_scored": len(sc), "nonschedulable_above_null_mean": bool(t > C.NONSCHEDULABLE_NULL_MEAN)}
+
+
 def score_family(
     ctx: FamilyContext,
     episodes: Sequence[Episode],
     cfg: C.ScoreConfig,
     admitted: Optional[Iterable[int]] = None,
     d7: Optional[Mapping[str, Any]] = None,
+    ns_episodes: Optional[Sequence[Episode]] = None,
 ) -> Dict[str, Any]:
-    """All statistics and p-values of one family for one episode set. Pure given (ctx, episodes, cfg, d7).
+    """All statistics and p-values of one family for one episode set. Pure given (ctx, episodes, cfg, d7, ns_episodes).
+
+    ``ns_episodes`` (SUR-RB-55): the SEPARATELY formed non-schedulable list (count_blind's primary_nonschedulable:
+    schedulable occurrences dropped before the horizon trim and the merge). With ``cfg.fallback_primary_set`` it gives
+    the fallback's direction-consistency statistic and nothing else (never T, Z25, (b), (c), p_dir or eligibility).
 
     ``d7``: the sealed D7 decisions (dir_testable, z25_units). When absent (calibration), they are recounted from
     applicability only, as count_blind would (v1.2 K4/K5, v1.3 L1; SUR-RB-36 (a)).
@@ -1023,7 +1053,7 @@ def score_family(
         dir_el = opposite_applicable_mask(ctx, sc) if si == 0 else None
         res = run_scheme(
             ctx, scheme, sc, cfg.draws, rng,
-            want_dir=(si == 0 and dir_testable), want_fallback=(si == 0 and cfg.fallback_primary_set),
+            want_dir=(si == 0 and dir_testable), want_fallback=False,  # SUR-RB-55: the fallback reads its own list
             z25_units=z25_units, dir_eligible=dir_el,
         )
         if si == 0:
@@ -1057,11 +1087,9 @@ def score_family(
     dpool = primary.pools.get("_dir")
     out["T_dir"] = float(dpool[0]) if dpool is not None else None
     out["p_dir"] = pool_p(dpool) if dpool is not None else None
-    if cfg.fallback_primary_set:
-        npool = primary.fallback_pool
-        out["T_nonschedulable"] = float(npool[0]) if npool is not None else None
-        out["nonschedulable_above_null_mean"] = bool(npool is not None and npool[0] > npool[1:].mean())
     adm = None if admitted is None else list(admitted)
+    if cfg.fallback_primary_set:
+        out.update(nonschedulable_statistic(ctx, ns_episodes, cfg, adm))
     rules = {"b": (d7 or {}).get("donor_rule_b", "m3"), "c": (d7 or {}).get("donor_rule_c", "m3")}  # v1.5 P1, sealed at D7
     rb = run_donor_check(ctx, list(episodes), cfg.draws, np.random.default_rng([cfg.seed, stream, 90]), age_matched=False, admitted=adm, rule=rules["b"])
     rc = run_donor_check(ctx, list(episodes), cfg.draws, np.random.default_rng([cfg.seed, stream, 91]), age_matched=True, admitted=adm, rule=rules["c"])

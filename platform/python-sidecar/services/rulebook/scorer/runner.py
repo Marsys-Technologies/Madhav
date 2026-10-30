@@ -112,6 +112,11 @@ class RunLock:
     admission_dir: Optional[str] = None  # step-5 artefacts: the contexts' timelines must be exactly these (review S8)
     count_blind_sha256: Mapping[str, str] = field(default_factory=dict)  # count_blind outputs as logged (name -> sha256)
     donor_counts: Mapping[str, Mapping[str, Any]] = field(default_factory=dict)  # family -> count_blind v2 donor rows (inputs.donor_rows)
+    # SUR-RB-55: with the A7 fallback, the SEPARATELY formed non-schedulable list per family (count_blind's
+    # primary_nonschedulable: drop schedulable occurrences before the horizon trim and the merge) and count_blind's
+    # primary_nonschedulable aggregate rows of the admitted charts; used only for the direction-consistency statistic
+    nonschedulable_episodes: Mapping[str, Sequence[Episode]] = field(default_factory=dict)
+    nonschedulable_count_rows: Mapping[str, Sequence[Mapping[str, Any]]] = field(default_factory=dict)
 
 
 def claim_keys(lock: RunLock, contexts: Mapping[str, FamilyContext]) -> Dict[str, str]:
@@ -332,6 +337,8 @@ def validate_before_claim(
         problems.append("the timelines are not tied to the step-5 artefacts (admission_dir missing)")
     prepared: Dict[str, List[Episode]] = {}
     drops: Dict[str, Dict[str, int]] = {}
+    ns_prepared: Dict[str, List[Episode]] = {}
+    ns_drops: Dict[str, Dict[str, int]] = {}
     recount_ok: Dict[str, bool] = {}
     for fam, ctx in contexts.items():
         codes = sorted(t.code for t in ctx.tl)
@@ -348,6 +355,23 @@ def validate_before_claim(
             sealed[k] = {f: int(row[f]) for f in ("episodes", "scored_applicable", "scored_with_opposite_applicable")}
         if {k: v for k, v in mine.items() if v["episodes"]} != {k: v for k, v in sealed.items() if v["episodes"]}:
             problems.append(f"{fam}: episode / scored-applicable counts differ from the logged count_blind aggregates")
+        # SUR-RB-55 (b)/(c): the separate non-schedulable list, same edge rules, equal to count_blind's primary_nonschedulable rows
+        if lock.fallback_primary_set:
+            if fam not in lock.nonschedulable_episodes or fam not in lock.nonschedulable_count_rows:
+                problems.append(f"{fam}: the A7 fallback needs the non-schedulable episode list and its count_blind rows (SUR-RB-55)")
+            else:
+                ns_kept, ns_dr = prepare_episodes(ctx, lock.nonschedulable_episodes[fam])
+                ns_prepared[fam], ns_drops[fam] = ns_kept, ns_dr
+                ns_mine = recount_rows(ctx, ns_kept)
+                ns_sealed: Dict[Tuple[str, str, str, str], Dict[str, int]] = {}
+                for row in lock.nonschedulable_count_rows[fam]:
+                    if row["direction"] not in C.POLARITY_OF_DIRECTION or row["grade"] not in ("day", "month"):
+                        continue
+                    ns_sealed[(row["chart_id"], row["area"], row["direction"], row["grade"])] = {f: int(row[f]) for f in ("episodes", "scored_applicable", "scored_with_opposite_applicable")}
+                if {k: v for k, v in ns_mine.items() if v["episodes"]} != {k: v for k, v in ns_sealed.items() if v["episodes"]}:
+                    problems.append(f"{fam}: the non-schedulable list's counts differ from count_blind's primary_nonschedulable aggregates (SUR-RB-55)")
+        elif lock.nonschedulable_episodes or lock.nonschedulable_count_rows:
+            problems.append("a non-schedulable episode list is used only with the A7 fallback (SUR-RB-55)")
         # sealed D7 record against the recount (S2)
         rec = lock.d7.get(fam) or {}
         own = d7_from_counts(ctx, kept)
@@ -398,10 +422,12 @@ def validate_before_claim(
     testable = {fam: bool((lock.d7.get(fam) or {}).get("testable")) for fam in contexts}
     if problems:
         raise RunRefused("refused before the claim: " + "; ".join(problems))
-    return {"episodes": prepared, "drops": drops, "a7": a7, "testable": testable, "input_sha256": hashes, "offset_normalised": offset_normalised}
+    return {"episodes": prepared, "drops": drops, "a7": a7, "testable": testable, "input_sha256": hashes, "offset_normalised": offset_normalised,
+            "ns_episodes": ns_prepared, "ns_drops": ns_drops}
 
 
-def dry_pass(contexts: Mapping[str, FamilyContext], prepared: Mapping[str, Sequence[Episode]], testable: Mapping[str, bool], lock: RunLock) -> None:
+def dry_pass(contexts: Mapping[str, FamilyContext], prepared: Mapping[str, Sequence[Episode]], testable: Mapping[str, bool], lock: RunLock,
+             ns_prepared: Optional[Mapping[str, Sequence[Episode]]] = None) -> None:
     """A full pass of the whole post-claim path with few draws, BEFORE the claim; nothing is kept (review B1/M5, N7):
     every testable family's score_family, its descriptive hits, the conflict-free sensitivity, Part E, and writing a
     result file (to a private directory removed at once). Refuses on any exception, on a possibly undefined p1, or on
@@ -416,14 +442,14 @@ def dry_pass(contexts: Mapping[str, FamilyContext], prepared: Mapping[str, Seque
             if not ok:
                 continue
             ctx = contexts[fam]
-            r = score_family(ctx, prepared[fam], cfg, d7=lock.d7.get(fam))
+            r = score_family(ctx, prepared[fam], cfg, d7=lock.d7.get(fam), ns_episodes=(ns_prepared or {}).get(fam))
             if r.get("p1") is None:
                 raise RunRefused(f"refused before the claim: {fam} is testable but its p1 would be undefined")
             if not r.get("donor_floor_ok"):
                 raise RunRefused(f"refused before the claim: {fam} donor floors (K11) not met at scoring")
             r["descriptive"] = descriptive_hits(ctx, [e for e, k in zip(prepared[fam], scorable_mask(ctx, prepared[fam])) if k])
             cf = FamilyContext(fam, ctx.tl, _conflict_free(ctx.units), ctx.gate_drop)
-            score_family(cf, prepared[fam], cfg)
+            score_family(cf, prepared[fam], cfg, ns_episodes=(ns_prepared or {}).get(fam))
             res[fam] = r
         decide(res, testable, cfg.fallback_primary_set)
         base = Path(lock.ledger_dir).parent
@@ -607,6 +633,7 @@ def _run(
         "canonical_ledger": str(ledger.dir) == C.LEDGER_DIR,
         "test_mode": bool(_test),
         "validation_drops": v["drops"],
+        "validation_drops_nonschedulable": v["ns_drops"],
         "limit_born_before_1930_death_source_none": _pre1930_alive_by_default(contexts, lock),
         # SUR-RB-48: admitted charts whose verified offset had non-zero seconds (offset rounded to the minute, local
         # clock time shifted by the residual, UT identical); from s1_resolve.json x s6_admit.json; None only without step-5 artefacts
@@ -620,7 +647,7 @@ def _run(
     if not any(v["testable"].values()):
         result.update(outcome="NO_VERDICT", reason="no family is testable (m = 0)")
         return result
-    dry_pass(contexts, v["episodes"], v["testable"], lock)
+    dry_pass(contexts, v["episodes"], v["testable"], lock, v["ns_episodes"])
     keys = claim_keys(lock, contexts)
     for key in keys.values():  # an existing claim for this sample refuses outright, whatever scorer is asking
         if ledger.has(key):
@@ -638,14 +665,14 @@ def _run(
     fam_results: Dict[str, Dict[str, Any]] = {}
     for fam, ctx in contexts.items():
         if v["testable"][fam]:
-            fam_results[fam] = score_family(ctx, v["episodes"][fam], cfg, d7=lock.d7.get(fam))
+            fam_results[fam] = score_family(ctx, v["episodes"][fam], cfg, d7=lock.d7.get(fam), ns_episodes=v["ns_episodes"].get(fam))
             fam_results[fam]["descriptive"] = descriptive_hits(ctx, [e for e, ok in zip(v["episodes"][fam], scorable_mask(ctx, v["episodes"][fam])) if ok])
     verdict = decide(fam_results, v["testable"], cfg.fallback_primary_set)
     for fam, per in verdict["families"].items():
         if per["strong"]:  # the conflict-free-only sensitivity label (v1.0 section 5, kept by v1.1)
             ctx = contexts[fam]
             cf = FamilyContext(fam, ctx.tl, _conflict_free(ctx.units), ctx.gate_drop)
-            sens = score_family(cf, v["episodes"][fam], cfg)
+            sens = score_family(cf, v["episodes"][fam], cfg, ns_episodes=v["ns_episodes"].get(fam))
             fam_results[fam]["conflict_free_only"] = {k: sens.get(k) for k in ("T", "p1", "episodes_scored")}
             if sens.get("T") is not None and sens["T"] <= 0.5:
                 verdict["labels"].append(f"{fam}: {LABEL_CONFLICT_DRIVEN}")

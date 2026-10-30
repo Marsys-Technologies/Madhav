@@ -238,23 +238,19 @@ def test_episode_whose_units_are_all_uninformative_is_not_scored():
 
 # ── fallback consistency (v1.1 A7) ──────────────────────────────────────────────────────────
 def test_fallback_direction_consistency_uses_the_nonschedulable_subset():
+    """SUR-RB-55: the subset is a separate list (count_blind's primary_nonschedulable), not labels on the main list."""
     tls, units = toy_world(90, n_charts=12, years=25, n_units=8)
     ctx = FamilyContext(C.FAMILY_DASHA, tls, units)
     rng = np.random.default_rng(2)
     base = random_episodes(rng, tls, 8, AREAS)
-    # effect carried by the NON-schedulable episodes: the subset's T lies above its null mean
-    eps_ns = planted_episodes(np.random.default_rng(3), tls, units, 8, 0.7, AREAS, schedulable_effect=False)
+    # effect carried by the non-schedulable list: its T lies above the null mean 0.5
+    eps_ns = planted_episodes(np.random.default_rng(3), tls, units, 8, 0.7, AREAS)
     cfg = C.ScoreConfig(draws=500, seed=1, fallback_primary_set=True)
-    r = score_family(ctx, eps_ns, cfg)
+    r = score_family(ctx, base, cfg, ns_episodes=eps_ns)
     assert r["nonschedulable_above_null_mean"] is True and r["T_nonschedulable"] > 0.5
-    # effect carried only by schedulable episodes (the unit-free ones stay random): the subset shows no excess
-    sched = planted_episodes(np.random.default_rng(3), tls, units, 8, 0.7, AREAS, schedulable_effect=True)
-    mixed = []
-    for s, b in zip(sched, base):
-        mixed.append(s if s.schedulable else s)
-    # keep the planted episodes marked schedulable and add random non-schedulable ones
-    noise = [Episode(e.chart, e.area, e.direction, e.grade, e.lo, e.hi, schedulable=False) for e in base]
-    r2 = score_family(ctx, sched + noise, cfg)
+    # a non-schedulable list without the effect: no excess
+    noise = random_episodes(np.random.default_rng(4), tls, 8, AREAS)
+    r2 = score_family(ctx, base, cfg, ns_episodes=noise)
     assert r2["T_nonschedulable"] < r["T_nonschedulable"] - 0.05
     assert "T_nonschedulable" not in score_family(ctx, base, C.ScoreConfig(draws=100, seed=1))
 
