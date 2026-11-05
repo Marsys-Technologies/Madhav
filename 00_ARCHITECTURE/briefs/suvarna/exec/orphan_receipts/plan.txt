@@ -1,0 +1,31 @@
+-- plan: retire the ORPHANED legacy __whole_asset__ receipt row and its asset_freshness twin for asset ga_positions on chart 482012f1-710e-4a25-994a-93821f5871aa (data rows only: no grant, no schema, no code, no other row of any table)
+SET LOCAL search_path = pg_catalog, pg_temp
+SET LOCAL lock_timeout = '5s'
+SET LOCAL statement_timeout = '5s'
+SET LOCAL TimeZone = 'UTC'
+-- snapshot A (session user): relacl + owner of every public relation, relrowsecurity/relforcerowsecurity, pg_policy, pg_auth_members
+-- membership: GRANT amjis_app TO <session user> only if missing; REVOKE before snapshot B only if granted here
+SET LOCAL ROLE amjis_app
+LOCK TABLE public.asset_provenance_receipts, public.asset_freshness, public.build_runs IN SHARE ROW EXCLUSIVE MODE
+-- before-images (all columns, JSON) of both rows + reversal INSERT SQL written to the evidence directory BEFORE any DELETE; if unwritable: abort + ROLLBACK
+-- resolver port (resolver_verdicts.sql, chart-parameterised) run for ALL assets: verdicts A; row-key+md5 map of both tables A
+-- pre-checks (any failure: no DELETE is issued, ROLLBACK):
+--   P1 registry declares a non-empty natural_key_partition for the asset, != '__whole_asset__'
+--   P2 the __whole_asset__ receipt is receipt_state='unknown' and its twin freshness_state in ('stale','unknown') (never a proven/fresh row)
+--   P3 a PROVEN declared-partition receipt exists with freshness 'fresh', from a COMPLETED build that is newer than the __whole_asset__ row's build
+--      AND its receipt observed_at and its build created_at are > --min-build-after (required at --apply; a runtime parameter, tz-aware, bound by the evidence digest; a --dry-run without it is a counterfactual only, exit 3)
+--   P4 exactly 1 receipt row and exactly 1 freshness twin for (asset, chart, '__whole_asset__')
+--   P5 zero build_runs in state planned/running/paused on ANY chart
+DELETE FROM public.asset_freshness WHERE asset_id = 'ga_positions' AND chart_id = '482012f1-710e-4a25-994a-93821f5871aa'::uuid AND partition_key = '__whole_asset__' AND freshness_state IN ('stale','unknown')   -- rowcount must be 1
+DELETE FROM public.asset_provenance_receipts WHERE asset_id = 'ga_positions' AND chart_id = '482012f1-710e-4a25-994a-93821f5871aa'::uuid AND partition_key = '__whole_asset__' AND receipt_state = 'unknown'   -- rowcount must be 1
+-- resolver port again: verdicts B; row-key+md5 map B
+RESET ROLE
+-- REVOKE amjis_app FROM <session user> only if granted here; snapshot B
+-- commit only if: both DELETE rowcounts == 1; the row-key+md5 diff of BOTH tables is exactly the two removed keys (no other row of any table changed); the per-asset verdict diff over ALL assets is exactly {ga_positions: receipt_not_proven -> RESOLVED}; relacl, owner, relrowsecurity, relforcerowsecurity, pg_policy and pg_auth_members diffs between snapshot A and B are all empty; chart-scoped receipt<->freshness twin integrity unchanged
+-- --dry-run: the same statements, then ROLLBACK, always. --apply: COMMIT only if every check above holds, --expect-plan equals this plan hash AND --expect-evidence (REQUIRED) equals the evidence digest computed in this transaction (check E).
+-- the real run is started ONLY through run_gated.sh <executor> <args> (GATE_V2): prerun_gate.py must read zero non-completed main deploy.yml runs and zero planned/running/paused build_runs as suvarna_reader, else the executor is not started; run_gated.sh then sets GATE_V2_LAUNCH and the executor REFUSES (exit 93) unless that marker verifies against the gate files pinned below.
+-- in every mode the executor writes outcome.json (status dry_run | applied | failed | commit_state_unknown, UTC time, executor sha, plan hash, gate shas, evidence digest, failed check names, under_test from the launch marker, warnings) into its evidence directory (after COMMIT an interruption records applied with a warning, never failed; a MISSING outcome.json means check the database); it refuses (exit 95) when ORPH_TEST_EVIDENCE_ROOT is set outside a pytest run.
+-- gate files (byte-identical to gate_v2, PR #2938): prerun_gate.py sha256 01ab1d70d0cffea015a64af5430f355dd8d419307aceeaeacf3a0cc4d715773e; run_gated.sh sha256 305b4406bba57f85944bbb57cb269368287aaa6d6f782e986afa7f857606f076; executor_standards.py sha256 bbea69552a6a92e7aed3a75758b533868e3e3d2c5b47385ccc1bf6c0660dc135
+-- plan hash = bind_gate_into_plan_hash(sha256(plan text + "\n" + DIFF), prerun_gate.py sha256, run_gated.sh sha256)
+-- resolver port: resolver_verdicts.sql sha256 724ef0db39f61799a0bffc325e4babbeeac7918d3ce1896ab031661841b96f23
+-- executor: orphan_receipts_exec.py sha256 ffa4309f5d6411254daccdfa105f0d3cfff19b64ea31a1269a0af75b82f8f788
