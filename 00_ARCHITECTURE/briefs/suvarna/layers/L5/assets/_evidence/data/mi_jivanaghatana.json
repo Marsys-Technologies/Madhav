@@ -1,0 +1,275 @@
+{
+ "asset_id": "mi_jivanaghatana",
+ "collected_utc": "2026-10-03T12:30:03.318682Z",
+ "chart": "482012f1-710e-4a25-994a-93821f5871aa",
+ "registry": {
+  "rung": "R5",
+  "layer": "mimamsa",
+  "scope": "per_chart",
+  "domain": "chart",
+  "asset_id": "mi_jivanaghatana",
+  "size_sql": "SELECT pg_total_relation_size('mimamsa_event_provenance')",
+  "count_sql": "SELECT count(*) FROM mimamsa_event_provenance WHERE chart_id = $1",
+  "dead_flag": null,
+  "is_active": true,
+  "asset_kind": "data",
+  "asset_type": "data",
+  "created_at": "2026-06-05T21:58:21.119083+00:00",
+  "depends_on": [
+   "bg_ghatana"
+  ],
+  "has_writer": true,
+  "layer_name": "M\u012bm\u0101\u1e43s\u0101",
+  "sort_order": 1,
+  "layer_index": "L5",
+  "clear_tables": null,
+  "english_name": "Life event log (held-out)",
+  "has_substeps": false,
+  "health_probe": null,
+  "storage_type": "postgres_table",
+  "target_floor": 0,
+  "target_table": "mimamsa_event_provenance",
+  "provides_apis": null,
+  "sanskrit_name": "J\u012bvanagha\u1e6dan\u0101",
+  "superseded_by": null,
+  "catalog_status": "CURRENT",
+  "service_health": null,
+  "last_invoked_at": null,
+  "selftest_detail": null,
+  "data_disposition": null,
+  "last_selftest_at": null,
+  "estimated_seconds": 2,
+  "volume_explanation": "One row per life_events row for the chart. Derived from the table the writer actually reads (the writer has no markdown branch: lel_source is hardcoded \"db\"). A chart with no Life Event Log correctly produces 0 rows -- an honest zero, not a shortfall.",
+  "english_description": "LEL \u2014 held-out event log isolated from generation; ground truth for prediction calibration",
+  "integrity_check_sql": "\nSELECT NOT EXISTS (\n  SELECT 1\n  FROM life_events le\n  FULL JOIN mimamsa_event_provenance ep\n    ON ep.chart_id = le.chart_id AND ep.event_id = le.event_id\n  GROUP BY coalesce(le.chart_id, ep.chart_id)\n  HAVING count(*) FILTER (WHERE le.event_id IS NULL OR ep.event_id IS NULL) > 0\n      OR count(DISTINCT ep.event_id) <> count(ep.event_id)\n      OR count(*) FILTER (WHERE ep.event_id IS NOT NULL\n             AND ep.held_out <> ((('x' || lpad(substr(md5(ep.event_id), 1, 8), 16, '0'))::bit(64)::bigint % 10) >= 8)) > 0\n      OR count(*) FILTER (WHERE ep.event_id IS NOT NULL AND ep.partition_seed_version <> 'v1_md5_mod10') > 0\n      OR count(*) FILTER (WHERE ep.event_id IS NOT NULL\n             AND ep.admissible_clean <> (NOT ep.shaped_predictor\n                                         AND ep.disclosure_timing <> 'post_framework_undated'\n                                         AND ep.event_date IS NOT NULL)) > 0\n      OR count(*) FILTER (WHERE ep.event_id IS NOT NULL AND ep.event_date IS DISTINCT FROM le.event_date) > 0\n      OR count(*) FILTER (WHERE ep.event_id IS NOT NULL\n             AND (btrim(coalesce(ep.lel_version, '')) = ''\n                  OR btrim(coalesce(ep.provenance_formula_ver, '')) = ''\n                  OR btrim(coalesce(ep.domain_primary, '')) = ''\n                  OR btrim(coalesce(ep.admissibility_reason, '')) = '')) > 0\n)\n",
+  "natural_key_partition": null,
+  "rebuild_on_probe_fail": false,
+  "expected_volume_inputs": {
+   "partition": "chart_id",
+   "derivation": "one provenance row per life_events row for the chart; a chart with no Life Event Log correctly yields 0",
+   "supersedes": "FILE_COUNT(01_FACTS_LAYER/LIFE_EVENT_LOG_v1_2.md, EVT) with file_count 56 -- wrong count, wrong source, not chart-scoped (finding A-F-09)",
+   "chart_scoped": true,
+   "source_table": "life_events",
+   "observed_2026_09_05": {
+    "1c826d5a-41cb-4450-b4dc-59d440e5f75a": 0,
+    "482012f1-710e-4a25-994a-93821f5871aa": 64
+   }
+  },
+  "writer_timeout_seconds": 10800,
+  "expected_volume_formula": "COUNT(life_events WHERE chart_id = $chart)"
+ },
+ "throughput": {
+  "state": "lit",
+  "history": [],
+  "asset_id": "mi_jivanaghatana",
+  "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+  "last_error": null,
+  "rows_written": 63,
+  "expected_rows": null,
+  "last_built_at": "2026-09-06T10:55:02.562194+00:00",
+  "rows_per_second": null,
+  "duration_seconds": null,
+  "last_measured_at": null,
+  "measurement_count": 0,
+  "last_measured_build_id": null,
+  "built_against_writer_hash": "ab15008f71f8a9ece4c94465bf8fd25f36937882782a2e3f5bf9620e6e2b04d1",
+  "built_against_upstream_hash": "31de5351f924318e2f68a6b16b18140ba6da58ce2c4024ea29c2b8da21f71275"
+ },
+ "runs_summary": [
+  {
+   "n": 4,
+   "last": "2026-07-13T21:13:41.719555+00:00",
+   "state": "aborted",
+   "disposition": null
+  },
+  {
+   "n": 2,
+   "last": "2026-09-06T10:55:02.562194+00:00",
+   "state": "complete",
+   "disposition": "build"
+  },
+  {
+   "n": 33,
+   "last": "2026-08-08T00:18:13.998786+00:00",
+   "state": "complete",
+   "disposition": null
+  },
+  {
+   "n": 2,
+   "last": "2026-09-05T14:54:48.975807+00:00",
+   "state": "error",
+   "disposition": null
+  },
+  {
+   "n": 1,
+   "last": null,
+   "state": "queued",
+   "disposition": null
+  }
+ ],
+ "last_runs": [
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "4c4ed2c4-2897-490f-a3ff-9dc362d4f6ff",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-09-06T10:55:02.562194+00:00",
+   "started_at": "2026-09-06T10:55:02.497538+00:00",
+   "disposition": "build",
+   "output_changed": true
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "14797342-d91d-4b36-8ed2-006b92d567cf",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-09-06T01:57:15.750223+00:00",
+   "started_at": "2026-09-06T01:57:15.692628+00:00",
+   "disposition": "build",
+   "output_changed": true
+  },
+  {
+   "error": "provenance: Object of type UUID is not JSON serializable",
+   "scope": "asset_set",
+   "state": "error",
+   "run_id": "21e3d6e6-9d3d-44bb-92f1-12ce816b9cc5",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-09-05T14:54:48.975807+00:00",
+   "started_at": "2026-09-05T14:54:48.920627+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "global",
+   "state": "complete",
+   "run_id": "6479bb56-e0b1-4294-9bb2-d2fb1c987bb6",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-08-08T00:18:13.998786+00:00",
+   "started_at": "2026-08-08T00:17:57.268862+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "global",
+   "state": "complete",
+   "run_id": "9fc3e49d-8c24-4be7-80f0-29c8cff726e8",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-08-07T21:50:43.714647+00:00",
+   "started_at": "2026-08-07T21:50:20.924647+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "global",
+   "state": "complete",
+   "run_id": "fc222fb5-a53f-49fe-99a1-8f1df0cf967d",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-08-07T21:10:05.257289+00:00",
+   "started_at": "2026-08-07T21:09:46.887283+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "layer",
+   "state": "complete",
+   "run_id": "7b364f83-07ce-4bd0-9024-92f01fc8ec59",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-07-27T06:15:01.849401+00:00",
+   "started_at": "2026-07-27T06:15:01.069475+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "layer",
+   "state": "complete",
+   "run_id": "fe64d0b7-6627-484f-890b-1f8a91132125",
+   "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+   "ended_at": "2026-07-26T21:18:01.144158+00:00",
+   "started_at": "2026-07-26T21:18:00.994889+00:00",
+   "disposition": null,
+   "output_changed": null
+  }
+ ],
+ "last_runs_canonical": [
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "4c4ed2c4-2897-490f-a3ff-9dc362d4f6ff",
+   "ended_at": "2026-09-06T10:55:02.562194+00:00",
+   "started_at": "2026-09-06T10:55:02.497538+00:00",
+   "disposition": "build",
+   "output_changed": true
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "14797342-d91d-4b36-8ed2-006b92d567cf",
+   "ended_at": "2026-09-06T01:57:15.750223+00:00",
+   "started_at": "2026-09-06T01:57:15.692628+00:00",
+   "disposition": "build",
+   "output_changed": true
+  },
+  {
+   "error": "provenance: Object of type UUID is not JSON serializable",
+   "state": "error",
+   "run_id": "21e3d6e6-9d3d-44bb-92f1-12ce816b9cc5",
+   "ended_at": "2026-09-05T14:54:48.975807+00:00",
+   "started_at": "2026-09-05T14:54:48.920627+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "6479bb56-e0b1-4294-9bb2-d2fb1c987bb6",
+   "ended_at": "2026-08-08T00:18:13.998786+00:00",
+   "started_at": "2026-08-08T00:17:57.268862+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "9fc3e49d-8c24-4be7-80f0-29c8cff726e8",
+   "ended_at": "2026-08-07T21:50:43.714647+00:00",
+   "started_at": "2026-08-07T21:50:20.924647+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "fc222fb5-a53f-49fe-99a1-8f1df0cf967d",
+   "ended_at": "2026-08-07T21:10:05.257289+00:00",
+   "started_at": "2026-08-07T21:09:46.887283+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "7b364f83-07ce-4bd0-9024-92f01fc8ec59",
+   "ended_at": "2026-07-27T06:15:01.849401+00:00",
+   "started_at": "2026-07-27T06:15:01.069475+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "45733f22-04d6-48d4-b976-52bb06425bb0",
+   "ended_at": "2026-07-15T17:59:29.300728+00:00",
+   "started_at": "2026-07-15T17:59:28.507349+00:00",
+   "disposition": null,
+   "output_changed": null
+  }
+ ],
+ "live_count": "count\n63\n(1 row)"
+}
