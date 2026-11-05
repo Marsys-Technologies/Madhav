@@ -1,0 +1,250 @@
+{
+  "lane": "s_l2_embeddings_grounding",
+  "ruling": "S-L2 downstream of MSR: bo_samskara embeddings and bo_grounding matches",
+  "pr": "suvarna/land/TI-s-l2-prep-001",
+  "description": "One embedding per MSR signal (bo_samskara, 1:1; embedding_id derived from signal_id + model) and one grounding match per MSR signal plus one per fired yoga/dosha (bo_grounding). Both tables therefore follow the MSR projection lane exactly in SET size: they can appear or disappear only where a signal does, so the bounds are the MSR appeared/disappeared bounds (A_TOTAL, D_TOTAL), and a value change is bounded by the signal count. The embedding vector and the input summary enter the snapshot as 12-hex digests (the vendor call is not repeatable byte for byte, which is why the value bound is the full row count, not a derived subset).",
+  "may_change": [
+    {
+      "table": "bodha_signal_embeddings",
+      "categories": [
+        "annual",
+        "arudha",
+        "composite_state",
+        "configuration",
+        "dhana_axis",
+        "dosha",
+        "karaka_alignment",
+        "nakshatra_semantic",
+        "panchanga",
+        "parivartana",
+        "sade_sati",
+        "special_lagna",
+        "sudarshana_agreement",
+        "tradition_specific",
+        "varga_pattern",
+        "varga_ratification_divergence",
+        "vargottama_amplification",
+        "yoga"
+      ],
+      "change_types": [
+        "appeared"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 5436
+      },
+      "note": "An embedding exists only for a signal: at most the 5,436 signals the declared S-L1 changes can add (composite 4,081 + karaka 1,340 + parivartana 15). Source: section 3.3 (R6)."
+    },
+    {
+      "table": "bodha_signal_embeddings",
+      "categories": [
+        "annual",
+        "arudha",
+        "composite_state",
+        "configuration",
+        "dhana_axis",
+        "dosha",
+        "karaka_alignment",
+        "nakshatra_semantic",
+        "panchanga",
+        "parivartana",
+        "sade_sati",
+        "special_lagna",
+        "sudarshana_agreement",
+        "tradition_specific",
+        "varga_pattern",
+        "varga_ratification_divergence",
+        "vargottama_amplification",
+        "yoga"
+      ],
+      "change_types": [
+        "disappeared"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 275
+      },
+      "note": "At most the 275 signals the declared S-L1 changes can remove (composite 240 + karaka 35). Source: section 3.3 (R6)."
+    },
+    {
+      "table": "bodha_signal_embeddings",
+      "categories": [
+        "annual",
+        "arudha",
+        "composite_state",
+        "configuration",
+        "dhana_axis",
+        "dosha",
+        "karaka_alignment",
+        "nakshatra_semantic",
+        "panchanga",
+        "parivartana",
+        "sade_sati",
+        "special_lagna",
+        "sudarshana_agreement",
+        "tradition_specific",
+        "varga_pattern",
+        "varga_ratification_divergence",
+        "vargottama_amplification",
+        "yoga"
+      ],
+      "change_types": [
+        "value"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 50678
+      },
+      "note": "embedding_id and the vector/input digests move with the signal id and the summary text; a surviving embedding changes only if its signal does; at most one per signal (50,678). No lower bound: a signal whose id and summary are unchanged keeps an identical embedding. Source: section 3.3 (R6)."
+    },
+    {
+      "table": "bodha_signal_embeddings",
+      "categories": [
+        "annual",
+        "arudha",
+        "composite_state",
+        "configuration",
+        "dhana_axis",
+        "dosha",
+        "karaka_alignment",
+        "nakshatra_semantic",
+        "panchanga",
+        "parivartana",
+        "sade_sati",
+        "special_lagna",
+        "sudarshana_agreement",
+        "tradition_specific",
+        "varga_pattern",
+        "varga_ratification_divergence",
+        "vargottama_amplification",
+        "yoga"
+      ],
+      "change_types": [
+        "occurrence_count"
+      ],
+      "expected_count": {
+        "min": 0
+      },
+      "optional": true,
+      "note": "Several signals can share a key (class, model, signal type id); attribution only. Source: section 3.3 (R4)."
+    },
+    {
+      "table": "bodha_signal_embeddings",
+      "categories": [
+        "annual",
+        "arudha",
+        "composite_state",
+        "configuration",
+        "dhana_axis",
+        "dosha",
+        "karaka_alignment",
+        "nakshatra_semantic",
+        "panchanga",
+        "parivartana",
+        "sade_sati",
+        "special_lagna",
+        "sudarshana_agreement",
+        "tradition_specific",
+        "varga_pattern",
+        "varga_ratification_divergence",
+        "vargottama_amplification",
+        "yoga"
+      ],
+      "change_types": [
+        "tier"
+      ],
+      "expected_count": {
+        "exact": 0
+      },
+      "note": "The registry carries no tier for the embeddings table (empty on both sides): a tier change cannot be read; declared zero so that none can ride. Source: section 3.3."
+    },
+    {
+      "table": "bodha_grounding_matches",
+      "categories": [
+        "msr_signal"
+      ],
+      "change_types": [
+        "appeared"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 5436
+      },
+      "note": "One msr_signal match per signal: at most the 5,436 signals S-L1 can add. Source: section 3.3 (R6)."
+    },
+    {
+      "table": "bodha_grounding_matches",
+      "categories": [
+        "msr_signal"
+      ],
+      "change_types": [
+        "disappeared"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 275
+      },
+      "note": "At most the 275 signals S-L1 can remove. Source: section 3.3 (R6)."
+    },
+    {
+      "table": "bodha_grounding_matches",
+      "categories": [
+        "msr_signal"
+      ],
+      "change_types": [
+        "value"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 50678
+      },
+      "note": "target_id is the signal id and the chains/evidence digests follow the signal; at most one per match (50,678). Source: section 3.3 (R6)."
+    },
+    {
+      "table": "bodha_grounding_matches",
+      "categories": [
+        "msr_signal"
+      ],
+      "change_types": [
+        "tier"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 50678
+      },
+      "note": "grounding_tier follows the rule match for the signal; at most one tier change per match. Source: section 3.3 (R5)."
+    },
+    {
+      "table": "bodha_grounding_matches",
+      "categories": [
+        "msr_signal"
+      ],
+      "change_types": [
+        "occurrence_count"
+      ],
+      "expected_count": {
+        "min": 0
+      },
+      "optional": true,
+      "note": "Several signals share a (target kind, rule, signal type) key; attribution only. Source: section 3.3 (R4)."
+    },
+    {
+      "table": "bodha_grounding_matches",
+      "categories": [
+        "yoga_dosha_firing"
+      ],
+      "change_types": [
+        "value",
+        "appeared",
+        "disappeared",
+        "tier",
+        "occurrence_count"
+      ],
+      "expected_count": {
+        "min": 0
+      },
+      "optional": true,
+      "note": "The 53 firing matches follow ga_yoga_firings (id serial, re-created by the L1 rebuild); the yoga firings table is not read by the detector and no upper bound on its S-L1 effect is derivable: attribution only. Source: section 3.3 (R7)."
+    }
+  ]
+}
