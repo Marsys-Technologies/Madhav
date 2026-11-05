@@ -1,0 +1,74 @@
+[
+ {
+  "id": 1,
+  "graha": "sun",
+  "avg_daily_motion_deg": 0.9856,
+  "zodiac_period_days": 365.25,
+  "sign_residence_days": 30.44,
+  "classical_citation": "BPHS Ch.22 (Graha Gati — Planetary Motion)"
+ },
+ {
+  "id": 2,
+  "graha": "moon",
+  "avg_daily_motion_deg": 13.1764,
+  "zodiac_period_days": 27.32,
+  "sign_residence_days": 2.28,
+  "classical_citation": "BPHS Ch.22 (Graha Gati — Planetary Motion)"
+ },
+ {
+  "id": 3,
+  "graha": "mars",
+  "avg_daily_motion_deg": 0.524,
+  "zodiac_period_days": 686.97,
+  "sign_residence_days": 45,
+  "classical_citation": "BPHS Ch.22 (Graha Gati — Planetary Motion)"
+ },
+ {
+  "id": 4,
+  "graha": "mercury",
+  "avg_daily_motion_deg": 1.3833,
+  "zodiac_period_days": 87.97,
+  "sign_residence_days": 14,
+  "classical_citation": "BPHS Ch.22 (Graha Gati — Planetary Motion)"
+ },
+ {
+  "id": 5,
+  "graha": "jupiter",
+  "avg_daily_motion_deg": 0.0831,
+  "zodiac_period_days": 4332.59,
+  "sign_residence_days": 361.05,
+  "classical_citation": "BPHS Ch.22 (Graha Gati — Planetary Motion)"
+ },
+ {
+  "id": 6,
+  "graha": "venus",
+  "avg_daily_motion_deg": 1.2,
+  "zodiac_period_days": 224.7,
+  "sign_residence_days": 23,
+  "classical_citation": "BPHS Ch.22 (Graha Gati — Planetary Motion)"
+ },
+ {
+  "id": 7,
+  "graha": "saturn",
+  "avg_daily_motion_deg": 0.0335,
+  "zodiac_period_days": 10759.22,
+  "sign_residence_days": 913.37,
+  "classical_citation": "BPHS Ch.22 (Graha Gati — Planetary Motion)"
+ },
+ {
+  "id": 8,
+  "graha": "rahu",
+  "avg_daily_motion_deg": -0.0529,
+  "zodiac_period_days": 6793.5,
+  "sign_residence_days": 548,
+  "classical_citation": "BPHS Ch.22 (Graha Gati — Planetary Motion)"
+ },
+ {
+  "id": 9,
+  "graha": "ketu",
+  "avg_daily_motion_deg": -0.0529,
+  "zodiac_period_days": 6793.5,
+  "sign_residence_days": 548,
+  "classical_citation": "BPHS Ch.22 (Graha Gati — Planetary Motion)"
+ }
+]
