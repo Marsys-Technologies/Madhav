@@ -112,7 +112,7 @@ def query_rules(req: QueryRulesRequest):
     where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
     params.append(req.limit)
 
-    sql = f"{_SELECT} {where} ORDER BY r.confidence DESC NULLS LAST LIMIT %s"
+    sql = f"{_SELECT} {where} ORDER BY r.quality_score DESC NULLS LAST LIMIT %s"
 
     try:
         with get_conn() as conn:
@@ -144,7 +144,7 @@ def query_rules_for_planet(
         {_SELECT}
         WHERE r.antecedent_jsonb->>'planet' ILIKE %s
         {house_clause}
-        ORDER BY r.confidence DESC NULLS LAST
+        ORDER BY r.quality_score DESC NULLS LAST
         LIMIT %s
     """
 
@@ -190,7 +190,7 @@ def list_rules_by_text(
     sql = f"""
         {_SELECT}
         WHERE r.text_id = %s
-        ORDER BY r.verse_ref NULLS LAST, r.confidence DESC NULLS LAST
+        ORDER BY r.verse_ref NULLS LAST, r.quality_score DESC NULLS LAST
         LIMIT %s OFFSET %s
     """
     try:
@@ -214,7 +214,7 @@ def sutravali_by_planet(planet: str, limit: int = Query(500, ge=1, le=2000)):
     sql = f"""
         {_SELECT}
         WHERE r.antecedent_jsonb->>'planet' ILIKE %s
-        ORDER BY r.confidence DESC NULLS LAST
+        ORDER BY r.quality_score DESC NULLS LAST
         LIMIT %s
     """
     try:
@@ -238,7 +238,7 @@ def sutravali_by_house(house_num: int, limit: int = Query(500, ge=1, le=2000)):
     sql = f"""
         {_SELECT}
         WHERE r.antecedent_jsonb->>'house' = %s
-        ORDER BY r.confidence DESC NULLS LAST
+        ORDER BY r.quality_score DESC NULLS LAST
         LIMIT %s
     """
     try:
