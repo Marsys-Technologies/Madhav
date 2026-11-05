@@ -103,6 +103,24 @@ Permanent CI lint (ŚUDDHA-VĀCA C.7) flagging any `chart_facts` selection reduc
 `--self-test` runs the bundled `fact_category_pin_fixtures/`; default scans the live repo tree
 against `fact_category_pin_allowlist.json`. Wired into `ci.yml` (static, no network).
 
+### `check_node_series_pin.py` ← **NODE-SERIES step 0 (SS N-68/N-69)**
+Reader-pin lint with a RATCHET for `ephemeris_daily`. **A ratchet and an aid, not the proof; fail-closed.** Every SQL statement that reads the
+table (FROM / JOIN / comma-join / DELETE .. USING / UPDATE .. FROM; quoted, schema-qualified, `${schema}.` and same-file table-constant forms;
+python, ts/js, sh string literals, sql files, both migration directories; roots platform/*, platform-mcp, scripts, evals, infra) is judged per SELECT
+branch and counts as pinned ONLY when the lint can positively show (a) the bare `NODE_SERIES_PREDICATE` interpolation, (b) a literal `node_mode`
+predicate, or (c) a literal non-node `body` list with no interpolation, as a top-level conjunct of THAT select's own WHERE (or ON bound to that
+table). Comments, other tables, variable or interpolated body filters, conditional pins, partial UNIONs and `LIMIT 0` never count. The only
+exemption is the explicit marker `node-agnostic: <reason_code>: <text>` (closed codes `non_node_bodies_literal`, `count_only_table_level`,
+`schema_introspection`, `legacy_dead_code`), scoped to the one statement it is attached to. Today's unclassifiable/unpinned readers are baselined with
+an owner and a reason in `node_series_pin_baseline.json`; the ratchet can only shrink (R1 new, R2 stale, R3 retired, R4 ceiling, R5 shape) and the
+growth guard (`--against`, run for real by the pytest step, which FETCHES origin/main under CI and fails if it cannot) blocks any new key, count,
+total or `RATCHET_CEILING_TOTAL` increase unless the baseline carries a new `ceiling_raise_approved: <reason>`. `--self-test` runs the bundled
+`node_series_pin_fixtures/` (the independent review's scratch cases are permanent fixtures in `cases.py`). **CI wiring without a workflow edit:**
+`__tests__/test_node_series_pin_lint.py` runs inside the existing "Governance Tool Tests (pytest)" step.
+**KNOWN BLIND SPOTS (documented, not modelled; strict-xfail fixtures):** Supabase `.from("ephemeris_daily")`, SQLAlchemy `Table(...)`,
+`sql.Identifier(...)`, `.format("ephemeris_daily")`; python `+` concatenation and `" ".join([...])` of SQL pieces; a table name imported from another file;
+SQL assembled across statements or variables; heredoc SQL in shell scripts; HTTP callers of the L0 routes (covered through the route's own SQL).
+
 ### `check_reconciliation_cadence.py` ← **PARIŚODHANA Phase C2**
 The standing reconciliation cadence recommended by `POST_REMEDIATION_CONSUMPTION_REGISTER_v1_0.md`'s
 "ships-but-register-never-flips" standing note: cross-references `cr_status.ts`'s
