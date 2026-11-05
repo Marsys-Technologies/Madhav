@@ -41,6 +41,7 @@ from __future__ import annotations
 import pytest
 
 from tests.l3._p0_harness import (
+    assert_disposable_connection,
     CANONICAL_CHART_ID,
     connect,
     content_digest,
@@ -58,6 +59,7 @@ WATCHED_EXTRA = ["build_substep_progress", "bodha_pratijna"]
 @pytest.fixture
 def conn():
     c = connect()
+    assert_disposable_connection(c)  # this module DELETEs canonical-chart kala_* rows
     yield c
     c.rollback()
     c.close()
