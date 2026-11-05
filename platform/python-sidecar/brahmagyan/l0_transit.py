@@ -86,6 +86,78 @@ PD_ADH26_PG323_VENUS   = "Phaladipika Adh. XXVI, Sloka 8 — phaladeepika:PG323:
 # Every other seed row of this table is unchanged (hashed against a pin in the test).
 #
 
+# TI-L0-10 (SS Q3, INDEX section 8): the 19 rows that cited "BPHS Ch.29 (Gochara Phala)"
+# and the 5 rows that cited the chapter-only "Phaladeepika Ch.26" are re-sourced to the
+# Phaladipika Adh. XXVI result slokas (9-24) that state each result. Every (sloka, page)
+# pair below was read in the served corpus (classical_text_chunks, text_id='phaladeepika',
+# verse_ref PG324:C1..PG331:C1) on 2026-10-03; the valence of each sloka agrees with the
+# row's rule_type. verse_ref is PAGE-based in this corpus, so the citation is
+# page-anchored (a chapter.sloka locator does not resolve). Evidence table and quotes:
+# 00_ARCHITECTURE/briefs/suvarna/layers/L0/L0_WAVE_REBUILD_PLAN_v1_0.md (TI-L0-10).
+_PD_ED = "(Sastri trans. 1950)"
+
+
+def _pd_result(sloka: int, pages: str) -> str:
+    return f"Phaladipika Adh. XXVI, Sloka {sloka} \u2014 phaladeepika:{pages} {_PD_ED}"
+
+
+# (graha, primary_house) -> citation for the 18 classical-graha/Rahu rows the corpus states directly.
+PD_RESULT_CITATION: dict[tuple[str, int], str] = {
+    ("sun", 1): _pd_result(9, "PG324:C1"),
+    ("sun", 5): _pd_result(10, "PG324:C1"),
+    ("sun", 8): _pd_result(10, "PG324:C1-PG325:C1"),      # sloka 10 runs across the page break
+    ("moon", 8): _pd_result(12, "PG325:C1"),
+    ("mars", 1): _pd_result(13, "PG326:C1"),
+    ("mars", 4): _pd_result(13, "PG326:C1"),
+    ("mars", 8): _pd_result(15, "PG326:C1-PG327:C1"),     # sloka 15 runs across the page break
+    ("jupiter", 4): _pd_result(18, "PG328:C1"),
+    ("jupiter", 8): _pd_result(19, "PG328:C1"),
+    ("saturn", 1): _pd_result(22, "PG330:C1"),
+    ("saturn", 4): _pd_result(22, "PG330:C1"),
+    ("saturn", 8): _pd_result(22, "PG330:C1"),
+    ("rahu", 1): _pd_result(24, "PG331:C1"),
+    ("rahu", 2): _pd_result(24, "PG331:C1"),
+    ("rahu", 4): _pd_result(24, "PG331:C1"),
+    ("rahu", 7): _pd_result(24, "PG331:C1"),
+    ("rahu", 8): _pd_result(24, "PG331:C1"),
+    ("rahu", 12): _pd_result(24, "PG331:C1"),
+}
+
+# Ketu has no sloka of its own in the served corpus. Adh. XXVI Sloka 2 (PG321:C1) states the equivalence ("Rahu and Ketu are
+# similar to the Sun"), so the five Ketu rows whose valence agrees with that reading cite the equivalence HONESTLY as an
+# equivalence AND name the SUN sloka it refers to for that house (not Rahu's Sloka 24: the equivalence equates Ketu with the Sun):
+# Sun 1st/2nd/4th = Sloka 9 (PG324:C1), Sun 7th = Sloka 10 (PG324:C1), Sun 8th = Sloka 10 (PG324:C1-PG325:C1). An acharya must
+# accept the equivalence (spot-check item); if not accepted these five become UNSOURCED like the six node vedha rows.
+_KETU_SUN_SLOKA: dict[int, tuple[int, str, str]] = {
+    1: (9, "PG324:C1", "1st"), 2: (9, "PG324:C1", "2nd"), 4: (9, "PG324:C1", "4th"),
+    7: (10, "PG324:C1", "7th"), 8: (10, "PG324:C1-PG325:C1", "8th"),
+}
+
+
+def _ketu_equivalence_citation(house: int) -> str:
+    sloka, pages, ordinal = _KETU_SUN_SLOKA[house]
+    return (
+        "Phaladipika Adh. XXVI, Sloka 2 \u2014 phaladeepika:PG321:C1 (\"Rahu and Ketu are similar to the Sun\"), "
+        f"read with the SUN's Sloka {sloka} \u2014 phaladeepika:{pages} for the {ordinal} house. "
+        "BY STATED EQUIVALENCE, not a Ketu-specific sloka; acharya acceptance pending " + _PD_ED
+    )
+
+
+KETU_BY_EQUIVALENCE_CITATION: dict[int, str] = {h: _ketu_equivalence_citation(h) for h in _KETU_SUN_SLOKA}
+
+# Ketu 12th is stored FAVOURABLE. The old "BPHS Ch.29" citation is refuted (BPHS page 29 is
+# Bhava Padas), and the corpus reading above points the OTHER way (Sun 12th: sorrow, loss of
+# wealth, Sloka 11 PG325:C1; Rahu 12th: expenditure, Sloka 24 PG331:C1). The row is kept (B.10:
+# never silently dropped) and its valence is NOT changed here (that is an acharya decision);
+# the citation says plainly that it is unsourced and contradicted.
+KETU_12_UNSOURCED_CONTRADICTED = (
+    "UNSOURCED \u2014 the former citation (BPHS Ch.29) is refuted (BPHS page 29 in the served "
+    "corpus is Bhava Padas). The served Phaladeepika text points the other way: Sloka 2 "
+    "(phaladeepika:PG321:C1) makes Ketu similar to the Sun, whose 12th-house transit gives "
+    "sorrow and loss of wealth (Sloka 11, phaladeepika:PG325:C1), and Rahu's 12th is "
+    "expenditure (Sloka 24, phaladeepika:PG331:C1). Valence retained pending acharya review."
+)
+
 # ── §1 — BG_TRANSIT_ENGINE: Graha average motion parameters ──────────────────
 #
 # avg_daily_motion_deg: classical average daily motion in degrees
@@ -170,7 +242,7 @@ BG_TRANSIT_ENGINE: list[dict[str, Any]] = [
 # rule_notes:         clarifying note (vedha exceptions, nakshatra nuances, etc.)
 
 BG_TRANSIT_RULES: list[dict[str, Any]] = [
-    # ── SUN (Surya) Gochara — BPHS Ch.29 ────────────────────────────────────
+    # ── SUN (Surya) Gochara — Phaladeepika Adh. XXVI (TI-L0-10: citations page-anchored per row) ────────────────────────────────────
     {
         "rule_type": "favourable",
         "graha": "sun",
@@ -233,7 +305,7 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 1,
         "vedha_house": None,
         "phala": "Ill health, loss of position, eye trouble",
-        "classical_citation": BPHS_CH29,
+        "classical_citation": PD_RESULT_CITATION[("sun", 1)],
         "rule_notes": "Generally inauspicious for health and status",
     },
     {
@@ -242,7 +314,7 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 5,
         "vedha_house": None,
         "phala": "Trouble with children, loss of intelligence",
-        "classical_citation": BPHS_CH29,
+        "classical_citation": PD_RESULT_CITATION[("sun", 5)],
         "rule_notes": "Afflicts progeny and wisdom matters",
     },
     {
@@ -251,10 +323,10 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 8,
         "vedha_house": None,
         "phala": "Disease, obstacle, conflict with authority",
-        "classical_citation": BPHS_CH29,
+        "classical_citation": PD_RESULT_CITATION[("sun", 8)],
         "rule_notes": "Transit through 8th from Moon — serious affliction",
     },
-    # ── MOON (Chandra) Gochara — BPHS Ch.29 ──────────────────────────────────
+    # ── MOON (Chandra) Gochara — Phaladeepika Adh. XXVI (TI-L0-10: citations page-anchored per row) ──────────────────────────────────
     {
         "rule_type": "favourable",
         "graha": "moon",
@@ -345,10 +417,10 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 8,
         "vedha_house": None,
         "phala": "Fear, sorrow, ill health",
-        "classical_citation": BPHS_CH29,
+        "classical_citation": PD_RESULT_CITATION[("moon", 8)],
         "rule_notes": "Moon in 8th from natal Moon is afflictive",
     },
-    # ── MARS (Mangal) Gochara — BPHS Ch.29 ──────────────────────────────────
+    # ── MARS (Mangal) Gochara — Phaladeepika Adh. XXVI (TI-L0-10: citations page-anchored per row) ──────────────────────────────────
     {
         "rule_type": "favourable",
         "graha": "mars",
@@ -382,7 +454,7 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 1,
         "vedha_house": None,
         "phala": "Fever, accidents, injury, quarrels",
-        "classical_citation": BPHS_CH29,
+        "classical_citation": PD_RESULT_CITATION[("mars", 1)],
         "rule_notes": "Mars transiting natal Moon sign — danger and conflict",
     },
     {
@@ -391,7 +463,7 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 4,
         "vedha_house": None,
         "phala": "Domestic strife, trouble to mother, property loss",
-        "classical_citation": BPHS_CH29,
+        "classical_citation": PD_RESULT_CITATION[("mars", 4)],
         "rule_notes": "Mars 4th from Moon — family and home afflictions",
     },
     {
@@ -400,10 +472,10 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 8,
         "vedha_house": None,
         "phala": "Danger, accidents, surgical risk",
-        "classical_citation": BPHS_CH29,
+        "classical_citation": PD_RESULT_CITATION[("mars", 8)],
         "rule_notes": "Mars 8th from Moon — severe affliction",
     },
-    # ── MERCURY (Budha) Gochara — BPHS Ch.29 ─────────────────────────────────
+    # ── MERCURY (Budha) Gochara — Phaladeepika Adh. XXVI (TI-L0-10: citations page-anchored per row) ─────────────────────────────────
     {
         "rule_type": "favourable",
         "graha": "mercury",
@@ -491,7 +563,7 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
             "precision limit, not silently resolved."
         ),
     },
-    # ── JUPITER (Guru) Gochara — BPHS Ch.29 ──────────────────────────────────
+    # ── JUPITER (Guru) Gochara — Phaladeepika Adh. XXVI (TI-L0-10: citations page-anchored per row) ──────────────────────────────────
     {
         "rule_type": "favourable",
         "graha": "jupiter",
@@ -543,7 +615,7 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 4,
         "vedha_house": None,
         "phala": "Domestic trouble, loss of comforts, mother's illness",
-        "classical_citation": BPHS_CH29,
+        "classical_citation": PD_RESULT_CITATION[("jupiter", 4)],
         "rule_notes": "Ashtama Guru precedes the 5th favourable transit",
     },
     {
@@ -552,10 +624,10 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 8,
         "vedha_house": None,
         "phala": "Obstacles, loss of position, health issues",
-        "classical_citation": BPHS_CH29,
+        "classical_citation": PD_RESULT_CITATION[("jupiter", 8)],
         "rule_notes": "Jupiter 8th from Moon — significant affliction",
     },
-    # ── VENUS (Shukra) Gochara — BPHS Ch.29 ──────────────────────────────────
+    # ── VENUS (Shukra) Gochara — Phaladeepika Adh. XXVI (TI-L0-10: citations page-anchored per row) ──────────────────────────────────
     {
         "rule_type": "favourable",
         "graha": "venus",
@@ -684,7 +756,7 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "classical_citation": PD_ADH26_S2_8_21,
         "rule_notes": "Venus 10th from Moon — unfavourable transit",
     },
-    # ── SATURN (Shani) Gochara — BPHS Ch.29 ─────────────────────────────────
+    # ── SATURN (Shani) Gochara — Phaladeepika Adh. XXVI (TI-L0-10: citations page-anchored per row) ─────────────────────────────────
     {
         "rule_type": "favourable",
         "graha": "saturn",
@@ -733,7 +805,7 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 1,
         "vedha_house": None,
         "phala": "Sade Sati peak — hardship, health issues, delays",
-        "classical_citation": PD_CH26,
+        "classical_citation": PD_RESULT_CITATION[("saturn", 1)],
         "rule_notes": "Central phase of Sade Sati (7.5 year Saturn affliction cycle)",
     },
     {
@@ -742,7 +814,7 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 4,
         "vedha_house": None,
         "phala": "Domestic troubles, loss of property, mother's illness",
-        "classical_citation": BPHS_CH29,
+        "classical_citation": PD_RESULT_CITATION[("saturn", 4)],
         "rule_notes": "Kantaka Saturn (4th) — classic obstacle transit",
     },
     {
@@ -751,10 +823,10 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 8,
         "vedha_house": None,
         "phala": "Serious illness, accidents, prolonged suffering",
-        "classical_citation": BPHS_CH29,
+        "classical_citation": PD_RESULT_CITATION[("saturn", 8)],
         "rule_notes": "Ashtama Shani — worst Saturn transit position",
     },
-    # ── RAHU Gochara — BPHS Ch.29 + Phaladeepika Ch.26 ──────────────────────
+    # ── RAHU Gochara — Phaladeepika Adh. XXVI (TI-L0-10: citations page-anchored per row) ──────────────────────
     {
         "rule_type": "favourable",
         "graha": "rahu",
@@ -788,7 +860,7 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 1,
         "vedha_house": None,
         "phala": "Ill health, confusion, loss of clarity; fear and anxiety",
-        "classical_citation": BPHS_CH29,
+        "classical_citation": PD_RESULT_CITATION[("rahu", 1)],
         "rule_notes": "Rahu over natal Moon — mental disturbance; Sade-Sati-class affliction for Rahu.",
     },
     {
@@ -797,7 +869,7 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 2,
         "vedha_house": None,
         "phala": "Speech affliction, family disputes, financial drain",
-        "classical_citation": BPHS_CH29,
+        "classical_citation": PD_RESULT_CITATION[("rahu", 2)],
         "rule_notes": "Rahu 2nd from Moon — kutumba and dhana affliction.",
     },
     {
@@ -806,7 +878,7 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 4,
         "vedha_house": None,
         "phala": "Domestic troubles, property loss, mother's health affected",
-        "classical_citation": BPHS_CH29,
+        "classical_citation": PD_RESULT_CITATION[("rahu", 4)],
         "rule_notes": "Rahu 4th from Moon — Kantaka-class obstruction; home and sukha affliction.",
     },
     {
@@ -815,7 +887,7 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 7,
         "vedha_house": None,
         "phala": "Partnership conflicts, danger in travel, hidden adversaries",
-        "classical_citation": PD_CH26,
+        "classical_citation": PD_RESULT_CITATION[("rahu", 7)],
         "rule_notes": "Rahu 7th from Moon — kalatra and travel affliction.",
     },
     {
@@ -824,7 +896,7 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 8,
         "vedha_house": None,
         "phala": "Accidents, sudden illness, hidden dangers; fear of death",
-        "classical_citation": BPHS_CH29,
+        "classical_citation": PD_RESULT_CITATION[("rahu", 8)],
         "rule_notes": "Rahu 8th from Moon — randhra affliction; severe; longevity concern.",
     },
     {
@@ -833,10 +905,10 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 12,
         "vedha_house": None,
         "phala": "Hidden expenditure, foreign travel under duress, separation",
-        "classical_citation": PD_CH26,
+        "classical_citation": PD_RESULT_CITATION[("rahu", 12)],
         "rule_notes": "Rahu 12th from Moon — vyaya affliction; loss and isolation.",
     },
-    # ── KETU Gochara — BPHS Ch.29 + Phaladeepika Ch.26 ──────────────────────
+    # ── KETU Gochara — Phaladeepika Adh. XXVI (TI-L0-10: citations page-anchored per row) ──────────────────────
     {
         "rule_type": "favourable",
         "graha": "ketu",
@@ -870,7 +942,7 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 12,
         "vedha_house": None,
         "phala": "Spiritual liberation, moksha progress, renunciation; retreat and deep contemplation",
-        "classical_citation": BPHS_CH29,
+        "classical_citation": KETU_12_UNSOURCED_CONTRADICTED,
         "rule_notes": "Ketu 12th from Moon — moksha-karaka in vyaya: uniquely auspicious for spiritual seekers.",
     },
     {
@@ -879,7 +951,7 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 1,
         "vedha_house": None,
         "phala": "Bodily affliction, confusion, spiritual restlessness; detachment from self",
-        "classical_citation": BPHS_CH29,
+        "classical_citation": KETU_BY_EQUIVALENCE_CITATION[1],
         "rule_notes": "Ketu over natal Moon — dissociation and health disturbance.",
     },
     {
@@ -888,7 +960,7 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 2,
         "vedha_house": None,
         "phala": "Financial loss, family separation, speech affliction",
-        "classical_citation": PD_CH26,
+        "classical_citation": KETU_BY_EQUIVALENCE_CITATION[2],
         "rule_notes": "Ketu 2nd from Moon — kutumba and dhana affliction.",
     },
     {
@@ -897,7 +969,7 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 4,
         "vedha_house": None,
         "phala": "Home disruption, loss of comforts, mother's health concerns",
-        "classical_citation": BPHS_CH29,
+        "classical_citation": KETU_BY_EQUIVALENCE_CITATION[4],
         "rule_notes": "Ketu 4th from Moon — Kantaka-class; domestic troubles and vehicle accidents.",
     },
     {
@@ -906,7 +978,7 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 7,
         "vedha_house": None,
         "phala": "Marital friction, separation, hidden adversary in partnership",
-        "classical_citation": PD_CH26,
+        "classical_citation": KETU_BY_EQUIVALENCE_CITATION[7],
         "rule_notes": "Ketu 7th from Moon — kalatra affliction; relationships tested.",
     },
     {
@@ -915,10 +987,37 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 8,
         "vedha_house": None,
         "phala": "Surgery, accidents, sudden health crisis; karmic debt activation",
-        "classical_citation": BPHS_CH29,
+        "classical_citation": KETU_BY_EQUIVALENCE_CITATION[8],
         "rule_notes": "Ketu 8th from Moon — randhra + moksha karak: severe; karmic reckoning.",
     },
 ]
+
+# TI-L0-10 / independent review L0A LOW-2 + NIT-1: a sloka-level citation now sits beside a `phala` summary that, for several rows,
+# carries detail the cited sloka does not state (e.g. Moon 8th "Fear, sorrow, ill health" vs Sloka 12 "(8) untoward events"). Only the
+# VALENCE (rule_type) of a re-sourced row is sloka-supported. Rather than rewrite summaries without an acharya decision (which would
+# be inventing in the other direction), every re-sourced row says so in `rule_notes`. Ketu 12th's favourable valence is unsourced.
+PHALA_INFERENCE_NOTE = (
+    " [L0A: only the valence is supported by the cited sloka; any detail in `phala` beyond what that sloka states is INFERENCE, "
+    "not sloka-derived - acharya review pending]"
+)
+KETU_12_NOTE = (
+    " [L0A: the favourable valence of this row is UNSOURCED and the served Phaladeepika text points the other way (see "
+    "classical_citation); `phala` and this note record the earlier reading - acharya decision pending]"
+)
+
+
+def _annotate_resourced_rows(rules: list[dict[str, Any]]) -> None:
+    for r in rules:
+        key = (r["graha"], r["primary_house"])
+        if r["rule_type"] == "double_transit":
+            continue
+        if key == ("ketu", 12):
+            r["rule_notes"] = (r.get("rule_notes") or "") + KETU_12_NOTE
+        elif key in PD_RESULT_CITATION or (r["graha"] == "ketu" and r["rule_type"] == "unfavourable" and key[1] in _KETU_SUN_SLOKA):
+            r["rule_notes"] = (r.get("rule_notes") or "") + PHALA_INFERENCE_NOTE
+
+
+_annotate_resourced_rows(BG_TRANSIT_RULES)
 
 # ── §3 — BG_TRANSIT_MOORTI: Moorti Nirnaya (BA-P7A) ──────────────────────────
 #
