@@ -39,7 +39,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('server-only', () => ({}))
 
-const { mockQuery, mockResolveAccess, mockRedirect, mockGetServerUser, mockParseLEL } = vi.hoisted(() => ({
+const { mockQuery, mockResolveAccess, mockRedirect, mockGetServerUser, mockParseLEL, mockRequireSuperAdmin } = vi.hoisted(() => ({
   mockQuery: vi.fn(),
   mockResolveAccess: vi.fn(),
   mockRedirect: vi.fn((path: string) => {
@@ -47,8 +47,10 @@ const { mockQuery, mockResolveAccess, mockRedirect, mockGetServerUser, mockParse
   }),
   mockGetServerUser: vi.fn(),
   mockParseLEL: vi.fn(),
+  mockRequireSuperAdmin: vi.fn(),
 }))
 
+vi.mock('@/lib/auth/access-control', () => ({ requireSuperAdmin: mockRequireSuperAdmin }))
 vi.mock('@/lib/db/client', () => ({ query: mockQuery }))
 vi.mock('@/lib/auth/chart-page-guard', () => ({ resolveChartPageAccess: mockResolveAccess }))
 vi.mock('next/navigation', () => ({ redirect: mockRedirect }))
@@ -87,6 +89,7 @@ function chartRow() {
 beforeEach(() => {
   vi.clearAllMocks()
   mockGetServerUser.mockResolvedValue({ uid: GRANTEE_UID })
+  mockRequireSuperAdmin.mockResolvedValue({ user: { uid: 'admin-1' } })
   mockParseLEL.mockRejectedValue(new Error('ENOENT: legacy life-event Markdown is unavailable'))
   mockQuery.mockImplementation((sql: string) => {
     if (/FROM profiles/.test(sql)) return Promise.resolve({ rows: [{ role: 'guest', status: 'active' }], rowCount: 1 })
@@ -141,9 +144,11 @@ describe('timeline page — V3-E-019 authorization-model convergence', () => {
     expect(mockParseLEL).not.toHaveBeenCalled()
     expect(mockQuery).toHaveBeenCalledWith(expect.stringMatching(/FROM life_events\s+WHERE chart_id = \$1/i), [CHART_ID])
     expect(findTimelineView(el)?.props.events).toEqual([event])
+    expect(findTimelineView(el)?.props.canLogEvent).toBe(false)
+    expect(mockRequireSuperAdmin).not.toHaveBeenCalled()
   })
 
-  it('loads chart events for an administrator without enabling legacy write controls', async () => {
+  it('enables chart event logging only for an active administrator', async () => {
     mockResolveAccess.mockResolvedValue({
       user: { uid: 'admin-1' }, role: 'super_admin', permission: 'all', canBuild: true,
     })
@@ -151,8 +156,15 @@ describe('timeline page — V3-E-019 authorization-model convergence', () => {
     const el = await mod.default({ params: Promise.resolve({ id: CHART_ID }) })
     const view = findTimelineView(el)
     expect(view?.props.events).toEqual([event])
-    expect(view?.props.canWrite).toBeUndefined()
+    expect(view?.props.canLogEvent).toBe(true)
     expect(view?.props.chartId).toBe(CHART_ID)
+  })
+
+  it('keeps logging disabled for a guest who owns the chart', async () => {
+    mockResolveAccess.mockResolvedValue({ role: 'guest', permission: 'all', canBuild: true })
+    const mod = await import('../page')
+    const view = findTimelineView(await mod.default({ params: Promise.resolve({ id: CHART_ID }) }))
+    expect(view?.props.canLogEvent).toBe(false)
   })
 
   it('routes old prediction bookmarks to the same chart’s Prediction Review', async () => {

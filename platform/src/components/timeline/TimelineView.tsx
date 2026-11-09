@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { LogEventDialog } from './LogEventDialog'
 import type { LELEvent } from '@/lib/lel/parser'
 import { EventCard } from './EventCard'
 import { cn } from '@/lib/utils'
@@ -9,6 +11,7 @@ import { cn } from '@/lib/utils'
 interface TimelineViewProps {
   events: LELEvent[]
   chartId: string
+  canLogEvent: boolean
 }
 
 const CATEGORIES = [
@@ -16,7 +19,9 @@ const CATEGORIES = [
   'health', 'spiritual', 'travel', 'finance', 'loss', 'other',
 ]
 
-export function TimelineView({ events, chartId }: TimelineViewProps) {
+export function TimelineView({ events, chartId, canLogEvent }: TimelineViewProps) {
+  const router = useRouter()
+  const [saved, setSaved] = useState(false)
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [yearFilter, setYearFilter] = useState('all')
 
@@ -31,17 +36,28 @@ export function TimelineView({ events, chartId }: TimelineViewProps) {
     .filter(e => yearFilter === 'all' || e.date.startsWith(yearFilter))
     .sort((a, b) => b.date.localeCompare(a.date))
 
+  function finishLogging() {
+    setCategoryFilter('all')
+    setYearFilter('all')
+    setSaved(true)
+    router.refresh()
+  }
+
   return (
     <div className="flex h-full flex-col">
       <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border/40 px-6 py-4">
         <div>
           <h1 className="text-lg font-semibold">Life Events</h1>
-          <p className="text-sm text-muted-foreground">Recorded events for this chart · Read-only</p>
+          <p className="text-sm text-muted-foreground">Recorded events for this chart{!canLogEvent && ' · Read-only'}</p>
         </div>
-        <Link href={`/clients/${chartId}/samiksha`} className="text-sm text-primary underline">
-          Prediction Review
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link href={`/clients/${chartId}/samiksha`} className="text-sm text-primary underline">
+            Prediction Review
+          </Link>
+          {canLogEvent && <LogEventDialog chartId={chartId} onSuccess={finishLogging} />}
+        </div>
       </header>
+      {saved && <p role="status" className="px-6 pt-3 text-sm">Event saved.</p>}
       {/* Filter chips */}
       <div className="flex flex-wrap gap-2 overflow-x-auto px-6 py-3">
         <div className="flex gap-1">

@@ -5,6 +5,8 @@ import { TimelineView } from '@/components/timeline/TimelineView'
 import { ChartNav } from '@/components/journey1/ChartNav'
 import { ZoneRoot } from '@/components/shared/ZoneRoot'
 import { resolveChartPageAccess } from '@/lib/auth/chart-page-guard'
+import { requireSuperAdmin } from '@/lib/auth/access-control'
+import { NextResponse } from 'next/server'
 
 // V3-E-019: converged off the retired inline `chart.client_id !== user.uid`
 // model onto resolveChartPageAccess — see the sibling layout for the full
@@ -45,10 +47,12 @@ export default async function TimelinePage({
     [id],
   )
 
+  const canLogEvent = access.role === 'super_admin' && !((await requireSuperAdmin()) instanceof NextResponse)
+
   return (
     <ZoneRoot zone="vellum" className="flex h-full flex-col">
       <ChartNav chartId={id} canBuild={access.canBuild} active="events" />
-      <TimelineView events={events} chartId={id} />
+      <TimelineView key={id} events={events} chartId={id} canLogEvent={canLogEvent} />
     </ZoneRoot>
   )
 }

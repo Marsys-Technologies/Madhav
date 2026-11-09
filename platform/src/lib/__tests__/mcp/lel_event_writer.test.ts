@@ -91,6 +91,20 @@ describe('recordLelEvent', () => {
     expect(params[6]).toBe(true)
   })
 
+  it('stores the portal category, date precision and authenticated actor', async () => {
+    seedValid()
+    await recordLelEvent({
+      chartId: CHART,
+      event: { ...makeEvent(), category: 'career', date_confidence: 'month_known' },
+      provenance: { key_id: null, trace_id: null, actor_uid: 'admin-1' },
+    })
+    const [sql, params] = mockQuery.mock.calls[1] as [string, unknown[]]
+    expect(sql).toContain('date_confidence')
+    expect(params[8]).toBe('career')
+    expect(JSON.parse(String(params[12])).actor_uid).toBe('admin-1')
+    expect(params[13]).toBe('month_known')
+  })
+
   it('rejects an unknown event class (not in brahma_event_ontology)', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 }) // ontology check → empty
     await expect(
