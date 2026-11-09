@@ -6,7 +6,7 @@ import { operatorActivityFilters } from '@/lib/admin/activity-filters'
 export const ADMIN_BLOCKS = [
   { label: 'People and access', href: '/admin?tab=pending', description: 'Requests, users, chart access, AI grants, administration log and client keys.' },
   { label: 'Activity and AI accounting', href: '/admin/activity', description: 'Portal and selected-user activity, consumption and reconciliation.' },
-  { label: 'System diagnostics', href: '/admin/foundation', description: 'Foundation, measured tool health and recorded query traces.' },
+  { label: 'System diagnostics', href: '/admin/foundation', description: 'Foundation, tool health, query traces and the operator command center.' },
   { label: 'Assets, programme and learning', href: '/admin/assets', description: 'Canonical asset definitions, programme records and read-only learning evidence.' },
 ] as const
 export function AdminNavigation() {
@@ -22,7 +22,7 @@ export function AdminNavigation() {
   const sections: Record<string,{label:string;href:string}[]> = {
     people:[{label:'Access Requests',href:'/admin?tab=pending'},{label:'Users',href:'/admin?tab=users'},{label:'Chart Management',href:'/admin?tab=charts'},...(process.env.NEXT_PUBLIC_MARSYS_FLAG_AI_CONSOLE_BYOK === 'true' ? [{label:'AI Access',href:'/admin?tab=ai-access'}] : []),{label:'Administration Log',href:'/admin/administration-log'},{label:'MCP / Client Keys',href:'/admin/mcp/keys'}],
     activity:[{label:'System Observatory',href:'/admin/activity'+activityQuery},{label:'Analytics',href:'/admin/analytics'+activityQuery}],
-    diagnostics:[{label:'System Foundation',href:'/admin/foundation'},{label:'MCP Health',href:'/admin/mcp/health'}],
+    diagnostics:[{label:'System Foundation',href:'/admin/foundation'},{label:'MCP Health',href:'/admin/mcp/health'},{label:'Operator Cockpit',href:'/cockpit'},{label:'Command Center',href:'/cockpit/command-center'}],
     assets:[{label:'Asset Register',href:'/admin/assets'},{label:'Programme Record',href:'/admin/programme'},{label:'Learning Review',href:'/admin/learning'}],
   }
   return <><nav className="j6-nav" aria-label="Administration blocks">

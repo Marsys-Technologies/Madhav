@@ -33,6 +33,7 @@ export const PAGE_NAMES = {
   personas: ["Saṃvāda Śailī", "AI Personas"],
   myObservatory: ["Sva Nirīkṣaṇa", "My Observatory"],
   admin: ["Praśāsana", "Administration"],
+  operations: ["Praśāsana", "Operations"],
   accessRequests: ["Anumati", "Access Requests"],
   adminUsers: ["Sadasya", "Users"],
   chartManagement: ["Jātaka Vyavasthā", "Chart Management"],

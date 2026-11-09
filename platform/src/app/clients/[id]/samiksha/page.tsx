@@ -5,6 +5,7 @@ import { configService } from '@/lib/config/index'
 import { getReviewData } from '@/lib/pariprashna/samiksha/review'
 import { countBadge } from '@/lib/pariprashna/samiksha/badge'
 import { SamiksaReview } from '@/components/pariprashna/samiksha/SamiksaReview'
+import { ChartNav } from '@/components/journey1/ChartNav'
 import type { ReviewViewModel, ReviewActions } from '@/components/pariprashna/samiksha/types'
 import {
   confirmCandidateAction,
@@ -74,5 +75,10 @@ export default async function SamiksaPage({ params }: { params: Promise<{ id: st
     },
   }
 
-  return <SamiksaReview vm={vm} actions={actions} />
+  return (
+    <>
+      <ChartNav chartId={id} canBuild={access.canBuild} active="review" />
+      <SamiksaReview vm={vm} actions={actions} />
+    </>
+  )
 }

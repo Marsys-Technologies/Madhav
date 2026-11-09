@@ -14,14 +14,11 @@ export function ChartNav({
   const tabs: { name: PageName; href: string }[] = [
     { name: "overview", href: base },
     { name: "consultation", href: `${base}/pariprashna` },
+    { name: "almanac", href: `${base}/panchang` },
     { name: "review", href: `${base}/samiksha` },
+    { name: "events", href: `${base}/timeline` },
   ];
   if (canBuild) tabs.push({ name: "preparation", href: `${base}/nirmana` });
-  tabs.push(
-    { name: "almanac", href: `${base}/panchang` },
-    { name: "events", href: `${base}/timeline` },
-    { name: "reports", href: `${base}/reports` },
-  );
   return (
     <nav className="j1-chart-tabs" aria-label="Chart workspace">
       {tabs.map((t) => (

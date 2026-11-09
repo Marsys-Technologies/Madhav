@@ -77,9 +77,10 @@ interface PanchangHeaderProps {
   initialLocation: SelectedLocation
   /** Called when chart selection changes so parent can pass chartId to usePanchangDay */
   onChartIdChange?: (chartId: string | null) => void
+  fixedChartId?: string
 }
 
-export function PanchangHeader({ initialDate, initialLocation, onChartIdChange }: PanchangHeaderProps) {
+export function PanchangHeader({ initialDate, initialLocation, onChartIdChange, fixedChartId }: PanchangHeaderProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -92,17 +93,18 @@ export function PanchangHeader({ initialDate, initialLocation, onChartIdChange }
   const [customLon, setCustomLon] = useState(String(currentLocation.id === 'custom' ? currentLocation.lon : ''))
 
   // Chart list for personalise dropdown
-  const { charts, isLoading: chartsLoading } = useChartList()
+  const { charts, isLoading: chartsLoading } = useChartList(!fixedChartId)
 
   // Resolve initial chart_id from URL, then localStorage
   const currentChartId = useMemo(() => {
+    if (fixedChartId) return fixedChartId
     const fromUrl = resolveChartId(searchParams)
     if (fromUrl) return fromUrl
     if (typeof window !== 'undefined') {
       return localStorage.getItem(PERSONALISE_LS_KEY) ?? null
     }
     return null
-  }, [searchParams])
+  }, [searchParams, fixedChartId])
 
   // Notify parent when chart changes (so usePanchangDay cache key updates)
   useEffect(() => {
@@ -125,9 +127,11 @@ export function PanchangHeader({ initialDate, initialLocation, onChartIdChange }
           params.set(key, val)
         }
       }
-      router.push(`/panchang?${params.toString()}`)
+      if (fixedChartId) params.delete('chart_id')
+      const path = fixedChartId ? `/clients/${fixedChartId}/panchang` : '/panchang'
+      router.push(`${path}?${params.toString()}`)
     },
-    [router, searchParams],
+    [router, searchParams, fixedChartId],
   )
 
   function handlePrevDay() {
@@ -279,7 +283,7 @@ export function PanchangHeader({ initialDate, initialLocation, onChartIdChange }
         </div>
 
         {/* Personalise dropdown — wired in 4C-5; chart_id in URL + localStorage */}
-        <div className="ml-auto flex items-center gap-2">
+        {!fixedChartId && <div className="ml-auto flex items-center gap-2">
           <User className="h-4 w-4 shrink-0" style={{ color: 'rgba(212,175,55,0.55)' }} aria-hidden="true" />
           <label htmlFor="panchang-personalise" className="sr-only">Personalise view</label>
           <select
@@ -319,7 +323,7 @@ export function PanchangHeader({ initialDate, initialLocation, onChartIdChange }
               </option>
             )}
           </select>
-        </div>
+        </div>}
       </div>
     </header>
   )

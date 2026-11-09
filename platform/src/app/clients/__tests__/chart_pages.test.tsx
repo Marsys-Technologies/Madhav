@@ -57,6 +57,11 @@ vi.mock('@/components/consume/ConsumeChat', () => ({
     <div data-testid="consume-chat-mock" data-chart-id={chartId} />
   ),
 }))
+vi.mock('@/app/panchang/components/PanchangClientView', () => ({
+  PanchangClientView: ({ fixedChartId }: { fixedChartId: string }) => (
+    <div data-testid="embedded-panchang" data-chart-id={fixedChartId} />
+  ),
+}))
 vi.mock('@/components/profile/ChartHero', () => ({ ChartHero: () => null }))
 vi.mock('@/components/profile/ProfileSideRail', () => ({ ProfileSideRail: () => null }))
 vi.mock('@/components/build/JourneyStrip', () => ({ JourneyStrip: () => null }))
@@ -252,6 +257,10 @@ describe('clients/[id]/panchang — personalized panchang', () => {
     const { getByTestId } = render(jsx)
     expect(getByTestId('chart-panchang-root').getAttribute('data-permission')).toBe('view')
     expect(getByTestId('chart-panchang-root').getAttribute('data-chart-id')).toBe(TEST_CHART_ID)
+    expect(getByTestId('embedded-panchang').getAttribute('data-chart-id')).toBe(TEST_CHART_ID)
+    const chartNav = getByTestId('chart-panchang-root').querySelector('nav')
+    expect(chartNav?.querySelector('[aria-current="page"]')?.getAttribute('href')).toBe(`/clients/${TEST_CHART_ID}/panchang`)
+    expect(chartNav?.querySelector('a[href$="/reports"]')).toBeNull()
   })
 })
 

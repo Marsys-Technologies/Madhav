@@ -54,9 +54,7 @@ export const NAV_ITEMS: readonly NavItemDescriptor[] = [
   // this direct entry because Cockpit itself is an admin-only surface.
   { key: 'ai-console',  href: '/ai-console',  label: 'AI Console',  roles: ['guest'], feature: 'aiConsoleByok' },
   { key: 'observatory', href: '/observatory', label: 'Observatory', roles: ['guest'], feature: 'aiMetering' },
-  { key: 'audit',       href: '/audit',       label: 'Audit',       roles: ['super_admin'], admin: true },
-  { key: 'performance', href: '/performance', label: 'Performance', roles: ['super_admin'], admin: true },
-  { key: 'admin',       href: '/admin',       label: 'Admin',       roles: ['super_admin'], admin: true },
+  { key: 'admin',       href: '/admin',       label: 'Operations',       roles: ['super_admin'], admin: true },
 ] as const
 
 /**
@@ -107,6 +105,7 @@ export function isNavItemActive(key: string, href: string, pathname: string): bo
 
 export function isAdminSurface(href: string): boolean {
   return (
+    href === '/audit' || href === '/performance' ||
     NAV_ITEMS.find((item) => item.href === href)?.admin === true ||
     INFORMATION_NAV_ITEMS.find((item) => item.href === href)?.admin === true
   )

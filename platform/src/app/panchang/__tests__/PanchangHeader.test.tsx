@@ -47,6 +47,7 @@ describe('PanchangHeader', () => {
     mockSearchParams.delete('loc')
     mockSearchParams.delete('lat')
     mockSearchParams.delete('lon')
+    mockSearchParams.delete('chart_id')
   })
 
   it('renders the date navigation controls', () => {
@@ -97,6 +98,15 @@ describe('PanchangHeader', () => {
     expect(screen.getByLabelText('Latitude')).toBeInTheDocument()
     expect(screen.getByLabelText('Longitude')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Apply' })).toBeInTheDocument()
+  })
+
+  it('keeps navigation on the authorized chart and drops any chart override', () => {
+    mockSearchParams.set('d', '2026-05-20')
+    mockSearchParams.set('chart_id', 'other-chart')
+    render(<PanchangHeader {...defaultProps} fixedChartId="allowed-chart" />)
+    expect(screen.queryByLabelText('Personalise view')).not.toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Location'), { target: { value: 'new_delhi' } })
+    expect(mockPush).toHaveBeenCalledWith('/clients/allowed-chart/panchang?d=2026-05-20&loc=new_delhi')
   })
 
   it('Personalise select is present with Generic Panchang default and enabled when charts loaded', () => {

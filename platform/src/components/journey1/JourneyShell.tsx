@@ -64,6 +64,8 @@ function JourneyShellBody({
     path === `/clients/${chartId}/edit` ||
     path === `/clients/${chartId}/nirmana` ||
     path === `/clients/${chartId}/reports` ||
+    path === `/clients/${chartId}/samiksha` ||
+    path === `/clients/${chartId}/panchang` ||
     path === `/clients/${chartId}/pariprashna`;
   const railRef = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -102,7 +104,7 @@ function JourneyShellBody({
   if (role === "super_admin")
     items.push(
       { name: "atlas", href: "/information/atlas", icon: Map },
-      { name: "admin", href: "/admin", icon: Shield },
+      { name: "operations", href: "/admin", icon: Shield },
     );
   items.push({ name: "account", href: "/account", icon: UserRound });
   return (

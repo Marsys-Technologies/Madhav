@@ -25,6 +25,7 @@ import { resolveLocation, resolveChartId } from './PanchangHeader'
 const NATIVE_CLIENT_ID = '362f9f17-95a5-490b-a5a7-027d3e0efda0'
 
 interface ActionBarProps {
+  fixedChartId?: string
   /** ISO date string for the currently displayed Panchang day (YYYY-MM-DD) */
   date: string
   /**
@@ -284,7 +285,7 @@ function CalendarExportDropdown({
   )
 }
 
-export function ActionBar({ date, panchangContext }: ActionBarProps) {
+export function ActionBar({ date, panchangContext, fixedChartId }: ActionBarProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [muhuratOpen, setMuhuratOpen] = useState(false)
@@ -294,9 +295,13 @@ export function ActionBar({ date, panchangContext }: ActionBarProps) {
 
   // Resolve current location + chart from URL (mirrors PanchangClientView / PanchangHeader)
   const location = resolveLocation(searchParams)
-  const chartId = resolveChartId(searchParams)
+  const chartId = fixedChartId ?? resolveChartId(searchParams)
 
   function handleAskMadhav() {
+    if (fixedChartId) {
+      router.push(`/clients/${fixedChartId}/pariprashna`)
+      return
+    }
     // 4C-8: inject full Panchang context when available
     const visiblePrompt = `Tell me about today's Panchang (${date}) and what it means for me.`
     const params = new URLSearchParams()

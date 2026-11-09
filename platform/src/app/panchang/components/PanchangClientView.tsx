@@ -14,7 +14,7 @@
 import { useCallback, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { parseISO, isAfter, addYears } from 'date-fns'
-import { PanchangHeader, resolveDate, resolveLocation, resolveChartId } from './PanchangHeader'
+import { PanchangHeader, resolveDate, resolveLocation, resolveChartId, PRESET_LOCATIONS } from './PanchangHeader'
 import { PrimaryStrip } from './PrimaryStrip'
 import { TimingsPanel } from './TimingsPanel'
 import { PlanetaryGrid } from './PlanetaryGrid'
@@ -23,20 +23,23 @@ import { SpecialYogasList } from './SpecialYogasList'
 import { ChoghadiyaPanel } from './ChoghadiyaPanel'
 import { HoraPanel } from './HoraPanel'
 import { ActionBar } from './ActionBar'
+import { PanchangChartContext } from './AskMadhavLink'
 
 interface PanchangClientViewProps {
   /** Server-rendered initial data — used as TanStack Query initialData to skip first fetch */
   initialData: PanchangDay | null
   initialDate: string
-  initialLat: number
-  initialLon: number
+  initialLat?: number
+  initialLon?: number
+  fixedChartId?: string
 }
 
 export function PanchangClientView({
   initialData,
   initialDate,
-  initialLat,
-  initialLon,
+  initialLat = PRESET_LOCATIONS[0].lat,
+  initialLon = PRESET_LOCATIONS[0].lon,
+  fixedChartId,
 }: PanchangClientViewProps) {
   const searchParams = useSearchParams()
   const date = resolveDate(searchParams) || initialDate
@@ -61,7 +64,7 @@ export function PanchangClientView({
     lat: location.lat,
     lon: location.lon,
     tzOffsetMinutes: 330,
-    chartId,
+    chartId: fixedChartId ?? chartId,
     initialData: initialData ?? undefined,
     // Skip fetching if we know the request can't succeed
     enabled: !isBeyondEphemeris,
@@ -69,12 +72,13 @@ export function PanchangClientView({
 
   const handleRetry = useCallback(() => { void refetch() }, [refetch])
 
-  return (
+  const view = (
     <div className="flex min-h-full flex-col">
       <PanchangHeader
         initialDate={initialDate}
         initialLocation={{ id: 'bhubaneswar', label: 'Bhubaneswar', lat: initialLat, lon: initialLon }}
         onChartIdChange={setChartId}
+        fixedChartId={fixedChartId}
       />
 
       {/* Edge: date beyond ephemeris range */}
@@ -196,8 +200,10 @@ export function PanchangClientView({
       {/* Action Bar — sticky bottom on mobile, inline on desktop (§4.2) */}
       {/* 4C-8: panchangContext passed for Ask-Madhav deep link injection */}
       <div className="mt-auto">
-        <ActionBar date={date} panchangContext={data ?? undefined} />
+        <ActionBar date={date} panchangContext={data ?? undefined} fixedChartId={fixedChartId} />
       </div>
     </div>
   )
+
+  return <PanchangChartContext.Provider value={fixedChartId ?? null}>{view}</PanchangChartContext.Provider>
 }

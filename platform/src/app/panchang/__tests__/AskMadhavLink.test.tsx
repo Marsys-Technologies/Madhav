@@ -14,7 +14,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
-import { AskMadhavLink, serialiseContext, DEFAULT_CHART_ID } from '../components/AskMadhavLink'
+import { AskMadhavLink, PanchangChartContext, serialiseContext, DEFAULT_CHART_ID } from '../components/AskMadhavLink'
 
 // ── Mock next/navigation ──────────────────────────────────────────────────────
 
@@ -159,4 +159,16 @@ describe('AskMadhavLink', () => {
     const byteLen = new TextEncoder().encode(rawContext).length
     expect(byteLen).toBeLessThanOrEqual(10_240)
   })
+})
+
+
+it('opens the current chart consultation without putting personal almanac data in the URL', () => {
+  mockPush.mockClear()
+  render(
+    <PanchangChartContext.Provider value="allowed-chart">
+      <AskMadhavLink prompt="Explain this timing" panchang_context={{ private: true }} />
+    </PanchangChartContext.Provider>,
+  )
+  fireEvent.click(screen.getByRole('button', { name: 'Open consultation for this chart' }))
+  expect(mockPush).toHaveBeenCalledWith('/clients/allowed-chart/pariprashna')
 })

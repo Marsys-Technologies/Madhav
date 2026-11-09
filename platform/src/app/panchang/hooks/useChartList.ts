@@ -28,12 +28,13 @@ interface UseChartListResult {
   error: string | null
 }
 
-export function useChartList(): UseChartListResult {
+export function useChartList(enabled = true): UseChartListResult {
   const [charts, setCharts] = useState<ChartSummary[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (!enabled) return
     let cancelled = false
 
     fetch('/api/panchang/charts')
@@ -59,7 +60,7 @@ export function useChartList(): UseChartListResult {
       })
 
     return () => { cancelled = true }
-  }, [])
+  }, [enabled])
 
   return { charts, isLoading, error }
 }

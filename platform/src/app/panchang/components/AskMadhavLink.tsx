@@ -16,6 +16,7 @@
  * Phase: 4C-8 (Item 1)
  */
 
+import { createContext, useContext } from 'react'
 import { useRouter } from 'next/navigation'
 import { MessageCircle } from 'lucide-react'
 
@@ -23,6 +24,7 @@ import { MessageCircle } from 'lucide-react'
 
 /** Default chart ID — the native's primary chart. Can be overridden per call-site. */
 export const DEFAULT_CHART_ID = 'abhisek_mohanty_primary'
+export const PanchangChartContext = createContext<string | null>(null)
 
 /** Maximum raw-JSON bytes for context injection. Above this we trim. */
 const MAX_CONTEXT_BYTES = 10_240 // 10 KB
@@ -96,8 +98,13 @@ export function AskMadhavLink({
   ariaLabel,
 }: AskMadhavLinkProps) {
   const router = useRouter()
+  const chartContext = useContext(PanchangChartContext)
 
   function handleClick() {
+    if (chartContext) {
+      router.push(`/clients/${chartContext}/pariprashna`)
+      return
+    }
     const params = new URLSearchParams()
     params.set('prompt', prompt)
 
@@ -109,14 +116,14 @@ export function AskMadhavLink({
   }
 
   const tooltipText = `Ask Madhav: "${prompt.length > 60 ? prompt.slice(0, 57) + '…' : prompt}"`
-  const label = ariaLabel ?? tooltipText
+  const label = chartContext ? 'Open consultation for this chart' : (ariaLabel ?? tooltipText)
 
   return (
     <button
       type="button"
       onClick={handleClick}
       aria-label={label}
-      title={tooltipText}
+      title={chartContext ? label : tooltipText}
       className={[
         // Ghost style — low visual weight, doesn't compete with primary content
         'inline-flex items-center justify-center',

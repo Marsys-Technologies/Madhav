@@ -288,7 +288,7 @@ describe('Nav role-gates (pure helper)', () => {
 
   it('super_admin sees Cockpit and the remaining top-level admin surfaces', () => {
     const keys = visibleNavItems('super_admin').map((i) => i.key)
-    expect(keys).toEqual(['roster', 'panchang', 'cockpit', 'audit', 'performance', 'admin'])
+    expect(keys).toEqual(['roster', 'panchang', 'cockpit', 'admin'])
   })
 
   it('guest sees only Roster + Panchang — no admin surfaces', () => {

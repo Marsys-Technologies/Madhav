@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { query } from '@/lib/db/client'
 import type { LELEvent } from '@/lib/lel/parser'
 import { TimelineView } from '@/components/timeline/TimelineView'
+import { ChartNav } from '@/components/journey1/ChartNav'
 import { ZoneRoot } from '@/components/shared/ZoneRoot'
 import { resolveChartPageAccess } from '@/lib/auth/chart-page-guard'
 
@@ -27,8 +28,17 @@ export default async function TimelinePage({
   if ((await searchParams)?.tab === 'predictions') redirect(`/clients/${id}/samiksha`)
 
   const { rows: events } = await query<LELEvent>(
-    `SELECT event_id AS id, to_char(event_date, 'YYYY-MM-DD') AS date,
-            category, description AS body
+    `SELECT event_id AS id,
+            CASE date_confidence
+              WHEN 'year_only' THEN to_char(event_date, 'YYYY')
+              WHEN 'month_known' THEN to_char(event_date, 'YYYY-MM')
+              ELSE to_char(event_date, 'YYYY-MM-DD')
+            END AS date,
+            category, description AS body,
+            jsonb_strip_nulls(jsonb_build_object(
+              'maha_lord', chart_state->>'dasha_md',
+              'antar_lord', chart_state->>'dasha_ad'
+            )) AS chart_state
        FROM life_events
       WHERE chart_id = $1
       ORDER BY event_date DESC, event_id ASC`,
@@ -37,6 +47,7 @@ export default async function TimelinePage({
 
   return (
     <ZoneRoot zone="vellum" className="flex h-full flex-col">
+      <ChartNav chartId={id} canBuild={access.canBuild} active="events" />
       <TimelineView events={events} chartId={id} />
     </ZoneRoot>
   )
