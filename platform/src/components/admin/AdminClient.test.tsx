@@ -9,6 +9,11 @@ const navigation = vi.hoisted(() => ({
 
 const queries = vi.hoisted(() => ({
   auditRefetch: vi.fn(),
+  requestRefetch: vi.fn(),
+  requestFailed: false,
+  requestPending: false,
+  requestFetched: true,
+  requestFetching: false,
 }))
 
 vi.mock('@tanstack/react-query', () => ({
@@ -29,7 +34,14 @@ vi.mock('@tanstack/react-query', () => ({
     if (queryKey.at(-1) === 'audit-log') {
       return { data: { entries: [] }, isError: false, refetch: queries.auditRefetch }
     }
-    return { data: { requests: [] }, isError: false, refetch: vi.fn() }
+    return {
+      data: queries.requestFailed || queries.requestPending ? undefined : { requests: [] },
+      isError: queries.requestFailed,
+      isPending: queries.requestPending,
+      isFetched: queries.requestFetched,
+      isFetching: queries.requestFetching,
+      refetch: queries.requestRefetch,
+    }
   },
 }))
 
@@ -62,6 +74,11 @@ afterEach(() => {
   vi.unstubAllEnvs()
   navigation.push.mockReset()
   queries.auditRefetch.mockReset()
+  queries.requestRefetch.mockReset()
+  queries.requestFailed = false
+  queries.requestPending = false
+  queries.requestFetched = true
+  queries.requestFetching = false
   navigation.search = new URLSearchParams()
 })
 
@@ -104,6 +121,40 @@ describe('AdminClient', () => {
     navigation.search = new URLSearchParams(`tab=${tab}`)
     render(<AdminClient currentUserId="admin-1" />)
     expect(screen.getByText(panel)).toBeInTheDocument()
+  })
+
+  it('announces an unavailable access queue and retries only its request', () => {
+    navigation.search = new URLSearchParams('tab=pending')
+    queries.requestPending = true
+    queries.requestFetched = false
+    const view = render(<AdminClient currentUserId="admin-1" />)
+    expect(screen.getByRole('status')).toHaveTextContent('Loading access requests…')
+
+    queries.requestPending = false
+    queries.requestFetched = true
+    queries.requestFailed = true
+    view.rerender(<AdminClient currentUserId="admin-1" />)
+    expect(screen.getByRole('alert')).toHaveTextContent('Could not load access requests.')
+    expect(screen.queryByText('Pending panel')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Retry access requests' }))
+    expect(queries.requestRefetch).toHaveBeenCalledTimes(1)
+    expect(queries.auditRefetch).not.toHaveBeenCalled()
+
+    queries.requestFailed = false
+    queries.requestPending = true
+    queries.requestFetching = true
+    view.rerender(<AdminClient currentUserId="admin-1" />)
+    expect(screen.getByRole('status')).toHaveTextContent('Retrying access requests…')
+    const retrying = screen.getByRole('button', { name: 'Retry access requests' })
+    expect(retrying).toHaveAttribute('aria-disabled', 'true')
+    fireEvent.click(retrying)
+    expect(queries.requestRefetch).toHaveBeenCalledTimes(1)
+
+    queries.requestPending = false
+    queries.requestFetching = false
+    view.rerender(<AdminClient currentUserId="admin-1" />)
+    expect(screen.getByText('Pending panel')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('mounts AI Access with safe users and the audit refresh callback', () => {

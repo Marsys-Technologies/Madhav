@@ -4,7 +4,7 @@
  * X-Forwarded-For hop, so rotating the client-controlled leftmost entry does not
  * mint a fresh bucket per request.
  */
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
 vi.mock('@/lib/db/client', () => ({ query: vi.fn().mockResolvedValue({ rows: [] }) }))
@@ -23,6 +23,20 @@ beforeEach(() => {
   __resetRpmCountersForTest()
   vi.stubEnv('NEXT_PUBLIC_FIREBASE_API_KEY', 'test-public-key')
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}')))
+})
+
+afterEach(() => {
+  vi.unstubAllEnvs()
+  vi.unstubAllGlobals()
+})
+
+it('sends a local reset through the configured auth emulator', async () => {
+  vi.stubEnv('FIREBASE_AUTH_EMULATOR_HOST', 'madhav-uat-auth:9099')
+  expect((await POST(post('203.0.113.9'))).status).toBe(200)
+  expect(fetch).toHaveBeenCalledWith(
+    'http://madhav-uat-auth:9099/identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=test-public-key',
+    expect.objectContaining({ method: 'POST' }),
+  )
 })
 
 describe('POST /api/auth/recover rate limit', () => {

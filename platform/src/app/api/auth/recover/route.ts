@@ -50,8 +50,12 @@ export async function POST(request: Request) {
     // No message can be delivered to the reserved .invalid domain.
     const email =
       rows[0]?.email ?? "account-recovery-unmatched@example.invalid";
+    const emulator = process.env.FIREBASE_AUTH_EMULATOR_HOST;
+    const identityToolkit = emulator
+      ? `http://${emulator}/identitytoolkit.googleapis.com`
+      : "https://identitytoolkit.googleapis.com";
     const response = await fetch(
-      `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${encodeURIComponent(key)}`,
+      `${identityToolkit}/v1/accounts:sendOobCode?key=${encodeURIComponent(key)}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },

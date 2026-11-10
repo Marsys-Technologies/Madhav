@@ -26,6 +26,9 @@ export function ChartNav({
           key={t.name}
           href={t.href}
           aria-current={active === t.name ? "page" : undefined}
+          onFocus={(event) =>
+            event.currentTarget.scrollIntoView({ block: "nearest", inline: "nearest" })
+          }
         >
           <PageTitle name={t.name} as="span" compact />
         </Link>

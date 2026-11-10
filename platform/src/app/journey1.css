@@ -609,6 +609,15 @@
   background: #1c160c;
   border: 1px solid #8a5e12;
 }
+.j1-chart-tabs a[aria-current="page"] .j1-title > span {
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+.j1-chart-tabs a:focus-visible {
+  /* Keep the outline inside the link when the scroll strip clips its edges. */
+  outline: 2px solid var(--j1-gold, currentColor);
+  outline-offset: -3px;
+}
 .j1-summary-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

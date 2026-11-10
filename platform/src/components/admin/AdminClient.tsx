@@ -9,6 +9,7 @@ import { AuditLogPanel } from './AuditLogPanel'
 import { ChartsTab } from './ChartsTab'
 import { AiAccessTab } from './AiAccessTab'
 import { ADMIN_BLOCKS } from './AdminNavigation'
+import { adminGhostBtn } from './styles'
 import { PageTitle, type PageName } from '@/components/journey1/Titles'
 import type { AdminAccessRequest, AdminUser } from './types'
 import type { AuditLogEntry } from '@/app/api/admin/audit-log/route'
@@ -58,6 +59,7 @@ export function AdminClient({ currentUserId }: { currentUserId: string }) {
   }
 
   const pendingCount = (requestsQuery.data?.requests ?? []).filter(r => r.status === 'pending').length
+  const showRequestRecovery = requestsQuery.isError || (requestsQuery.isPending && requestsQuery.isFetched)
 
   return (
     <div className="space-y-6">
@@ -80,9 +82,23 @@ export function AdminClient({ currentUserId }: { currentUserId: string }) {
       </>}
       {/* Tab panels */}
       {activeTab === 'pending' && (
-        requestsQuery.isPending ? <p role="status">Loading access requests…</p> : requestsQuery.isError ? (
-          <p className="text-sm text-red-400">Could not load access requests.</p>
-        ) : (
+        showRequestRecovery ? (
+          <div className="j5-panel space-y-3">
+            {requestsQuery.isFetching
+              ? <p role="status">Retrying access requests…</p>
+              : <p role="alert" className="text-sm text-red-400">Could not load access requests.</p>}
+            <button
+              type="button"
+              className={adminGhostBtn + ' aria-disabled:opacity-50'}
+              aria-disabled={requestsQuery.isFetching}
+              onClick={() => {
+                if (!requestsQuery.isFetching) void requestsQuery.refetch({ cancelRefetch: false })
+              }}
+            >
+              Retry access requests
+            </button>
+          </div>
+        ) : requestsQuery.isPending ? <p role="status">Loading access requests…</p> : (
           <PendingRequestsTable
             requests={requestsQuery.data?.requests ?? []}
             onMutated={refetchAll}
