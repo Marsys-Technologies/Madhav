@@ -11,10 +11,10 @@ model_policy: gemini_deepseek_only   # Anthropic banned unless native asks
 data_plane: prod_via_cloud_sql_proxy_5433
 native_chart_id: 482012f1-710e-4a25-994a-93821f5871aa
 migration_tree: platform/migrations/   # CANONICAL. Prep finding 2026-06-19: prod DB at mig 323; file 324 EXISTS but is UNAPPLIED. Wave-0 FIRST action = apply 324, THEN write L2 migrations from 325+.
-prep_findings:   # from PREIMPL_READINESS_REPORT.md (commit ebfc7922) — the swarm MUST honor these
+prep_findings: # from PREIMPL_READINESS_REPORT.md (commit ebfc7922) — the swarm MUST honor these
   prod_revision: amjis-web-00638-2gs   # == e6be443e merge; prod==main PASS
   db_migration_state: "prod at 323; file 324 exists UNAPPLIED — apply 324 first (Wave-0), then 325+"
-  expected_tracked_gaps:   # EXPECTED — flag as documented gaps, do NOT deep-fix-loop on them
+  expected_tracked_gaps: # EXPECTED — flag as documented gaps, do NOT deep-fix-loop on them
     - "F2 remedy corpus: planet + dosha covered (266 rows); nakshatra-key / vastu-direction (0 rows) / body-part-key = remedy_corpus_gap → bo_upaya §R5 flags them; an L0-corpus-expansion follow-on, NOT a build failure"
     - "§XS cross-subsystem: bg_nakshatra_medical (27) + vastu (3 tables) present; NO chakra table → tracked gap, edges cover what exists"
     - "classical_chunks (stale): empty/deprecated, NO live reader → leave in place, no action (NOT the retire/repoint case)"
@@ -29,17 +29,17 @@ governing:
   - 00_ARCHITECTURE/LEL_TOGGLE_GOVERNING_PRINCIPLE_v1_0.md       # lel_origin tagging + zero-leak proof
   - 00_ARCHITECTURE/L2_BODHA_DISCOVERY_MISSION_v1_0.md           # bo_anveshana mandate
 asset_briefs:
-  bo_laksana:      00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_BO_LAKSANA_v1_0.md
-  bo_sangati:      00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_BO_SANGATI_v1_0.md
-  bo_karanajala:   00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_BO_KARANAJALA_BIMBA_v1_0.md
-  bo_bimba:        00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_BO_KARANAJALA_BIMBA_v1_0.md
-  bo_samskara:     00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_BO_SAMSKARA_v1_0.md
-  bo_samvada:      00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_BO_SAMVADA_v1_0.md
-  bo_upaya:        00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_BO_UPAYA_v1_0.md
-  bo_drishti:      00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_BO_DRISHTI_v1_0.md
-  bo_anveshana:    00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_BO_ANVESHANA_v1_0.md
+  bo_laksana: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_BO_LAKSANA_v1_0.md
+  bo_sangati: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_BO_SANGATI_v1_0.md
+  bo_karanajala: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_BO_KARANAJALA_BIMBA_v1_0.md
+  bo_bimba: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_BO_KARANAJALA_BIMBA_v1_0.md
+  bo_samskara: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_BO_SAMSKARA_v1_0.md
+  bo_samvada: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_BO_SAMVADA_v1_0.md
+  bo_upaya: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_BO_UPAYA_v1_0.md
+  bo_drishti: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_BO_DRISHTI_v1_0.md
+  bo_anveshana: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_BO_ANVESHANA_v1_0.md
   bo_pramana_mapa: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_BO_PRAMANA_MAPA_v1_0.md
-  b6_eval:         00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_B6_EVAL_HARNESS_v1_0.md
+  b6_eval: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_B6_EVAL_HARNESS_v1_0.md
 
 # Standing rails for EVERY session (the inherited non-negotiables)
 standing_gates: ["tsc", "vitest_changed", "lint", "frozen_orchestrator_contract", "prod_verify", "anti_drift_resolve", "lel_zero_leak"]

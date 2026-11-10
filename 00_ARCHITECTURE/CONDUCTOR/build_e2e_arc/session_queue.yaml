@@ -19,10 +19,10 @@ A:
     up by Stream C-S8.5.
   sessions:
     - {
-        id: A-S5,
-        title: Cloud Run Job timeout via gcloud (no terraform for this resource — folds into deploy.yml step),
-        gate: "grep -q 'task-timeout=30m' .github/workflows/deploy.yml",
-      }
+      id: A-S5,
+      title: Cloud Run Job timeout via gcloud (no terraform for this resource — folds into deploy.yml step),
+      gate: "grep -q 'task-timeout=30m' .github/workflows/deploy.yml",
+    }
     - {id: A-S7, title: Migration runner (migrate.ts + _migrations_applied tracking + idempotency), gate: 'cd platform && npm test -- migrate.test.ts'}
     - {id: A-S8, title: Extend deploy.yml — post-deploy migrations + terraform apply + smoke + traffic flip + Cloud Run Job timeout, gate: 'yamllint .github/workflows/deploy.yml'}
     - {id: A-S9, title: Final commit + cherry-pick to main + watch first auto-deploy, gate: 'git log origin/main..HEAD --oneline | head -1'}
@@ -36,10 +36,10 @@ B:
   sessions:
     - {id: B-S1, title: Merge fix/chart-dedupe into base + resolve any conflicts, gate: "git log --oneline | grep -q 'chart-dedupe'"}
     - {
-        id: B-S2,
-        title: emit_node_added + emit_edge_added helpers in build_events.py,
-        gate: 'cd platform/python-sidecar && python -m pytest pipeline/__tests__/test_build_events.py -v',
-      }
+      id: B-S2,
+      title: emit_node_added + emit_edge_added helpers in build_events.py,
+      gate: 'cd platform/python-sidecar && python -m pytest pipeline/__tests__/test_build_events.py -v',
+    }
     - {id: B-S3, title: Dispatcher wires typed events on per-asset row writes + edge emission, gate: 'cd platform/python-sidecar && python -m pytest pipeline/__tests__/ -v'}
     - {id: B-S4, title: emit_step_event mirrors completions to build_events.chart_id, gate: 'cd platform/python-sidecar && python -m pytest -k chart_id -v'}
     - {id: B-S5, title: sse_events.ts type union extended (node_added + edge_added), gate: 'cd platform && npm run build'}

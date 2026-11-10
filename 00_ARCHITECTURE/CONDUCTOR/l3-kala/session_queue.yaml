@@ -39,53 +39,53 @@ waves:
     gate_before_next: "service-asset-type RESOLVES end-to-end (schema + cockpit render + orchestrator self-test path), PROD-verified. ALL K1 blocked until green."
     runs_alone: true
     assets:
-      - { id: k0_service_asset_type, brief: CLAUDECODE_BRIEF_L3_K0_SERVICE_ASSET_TYPE_v1_0.md, kind: infra }
+      - {id: k0_service_asset_type, brief: CLAUDECODE_BRIEF_L3_K0_SERVICE_ASSET_TYPE_v1_0.md, kind: infra}
 
   - wave: K1
     parallel: true   # disjoint files
     seed_edit_policy: "SERIALIZE asset_registry_seed.ts (CS1) — one post-wave seed-reconciliation commit, NOT concurrent edits"
     assets:
-      - { id: ka_graha_sancara, brief: CLAUDECODE_BRIEF_L3_KA_GRAHA_SANCARA_v1_0.md, kind: service, note: "wrap M3 get_transit_states; ephemeris cache; TRUE_NODE; reads bg_ephemeris" }
-      - { id: ka_dasha_kala,    brief: CLAUDECODE_BRIEF_L3_KA_DASHA_KALA_v1_0.md,    kind: service, note: "reads chart_dashas (level-4 Sookshma), 7 systems, KP=sublevel; lazy pruning tree-walk" }
-      - { id: ka_muhurta_seva,  brief: CLAUDECODE_BRIEF_L3_KA_MUHURTA_SEVA_v1_0.md,  kind: service, note: "LIVE by (date,location); Tara Bala; demote the fenced cache (I-10)" }
+      - {id: ka_graha_sancara, brief: CLAUDECODE_BRIEF_L3_KA_GRAHA_SANCARA_v1_0.md, kind: service, note: "wrap M3 get_transit_states; ephemeris cache; TRUE_NODE; reads bg_ephemeris"}
+      - {id: ka_dasha_kala, brief: CLAUDECODE_BRIEF_L3_KA_DASHA_KALA_v1_0.md, kind: service, note: "reads chart_dashas (level-4 Sookshma), 7 systems, KP=sublevel; lazy pruning tree-walk"}
+      - {id: ka_muhurta_seva, brief: CLAUDECODE_BRIEF_L3_KA_MUHURTA_SEVA_v1_0.md, kind: service, note: "LIVE by (date,location); Tara Bala; demote the fenced cache (I-10)"}
 
   - wave: K2
     assets:
-      - { id: ka_gochara, brief: CLAUDECODE_BRIEF_L3_KA_GOCHARA_v1_0.md, kind: service,
-          note: "BUILD pipeline/transit_search from PHASE_4D spec; TRUE_NODE; coarse-to-fine search_long_horizon; subsumes ka_transit_almanac; fix crashing router",
-          verifier: "transit_search BUILD verifier — deterministic re-derivation, internal-consistency only (NO JH-parity)" }
+      - {id: ka_gochara, brief: CLAUDECODE_BRIEF_L3_KA_GOCHARA_v1_0.md, kind: service,
+         note: "BUILD pipeline/transit_search from PHASE_4D spec; TRUE_NODE; coarse-to-fine search_long_horizon; subsumes ka_transit_almanac; fix crashing router",
+         verifier: "transit_search BUILD verifier — deterministic re-derivation, internal-consistency only (NO JH-parity)"}
 
   - wave: K3
     assets:
-      - { id: ka_yojaka, brief: CLAUDECODE_BRIEF_L3_KA_YOJAKA_v1_0.md, kind: artifact,
-          note: "USES RATIFIED I-15 templates + I-7 weights (pre-approved, no halt). classifier + class→template binder",
-          verifier: "activation-bridge integrity — bound predicates reference REAL L2 signal_id + L1 fact_ids; ZERO L2 writes" }
+      - {id: ka_yojaka, brief: CLAUDECODE_BRIEF_L3_KA_YOJAKA_v1_0.md, kind: artifact,
+         note: "USES RATIFIED I-15 templates + I-7 weights (pre-approved, no halt). classifier + class→template binder",
+         verifier: "activation-bridge integrity — bound predicates reference REAL L2 signal_id + L1 fact_ids; ZERO L2 writes"}
 
   - wave: K4
     internal_order: "ka_sangam FIRST (hard spine gate) THEN ka_kalasutra"
     assets:
-      - { id: ka_sangam, brief: CLAUDECODE_BRIEF_L3_KA_SANGAM_v1_0.md, kind: artifact,
-          note: "Convergence core Mode A+B + rigor stratum; USES RATIFIED I-16 form + weights",
-          hard_internal_gate: "SPINE-FIRST: prove ONE signal end-to-end (classify→Mode A+B→rigor scores→ranked window→anti-drift clean) BEFORE ka_kalasutra/K5/K6 dispatch. Failure → deep-fix ladder, NOT native." }
-      - { id: ka_kalasutra, brief: CLAUDECODE_BRIEF_L3_KA_KALASUTRA_v1_0.md, kind: artifact,
-          blocked_by_intra_wave: [ka_sangam],
-          note: "Activation artifact; fills L2 NULL hooks via artifact (zero L2 writes); PRESERVE the id (5 downstream deps)" }
+      - {id: ka_sangam, brief: CLAUDECODE_BRIEF_L3_KA_SANGAM_v1_0.md, kind: artifact,
+         note: "Convergence core Mode A+B + rigor stratum; USES RATIFIED I-16 form + weights",
+         hard_internal_gate: "SPINE-FIRST: prove ONE signal end-to-end (classify→Mode A+B→rigor scores→ranked window→anti-drift clean) BEFORE ka_kalasutra/K5/K6 dispatch. Failure → deep-fix ladder, NOT native."}
+      - {id: ka_kalasutra, brief: CLAUDECODE_BRIEF_L3_KA_KALASUTRA_v1_0.md, kind: artifact,
+         blocked_by_intra_wave: [ka_sangam],
+         note: "Activation artifact; fills L2 NULL hooks via artifact (zero L2 writes); PRESERVE the id (5 downstream deps)"}
 
   - wave: K5
     internal_order: "ka_vighnakara FIRST THEN ka_kala_darshana (catalog reads danger windows — CS3 fix)"
     assets:
-      - { id: ka_vighnakara, brief: CLAUDECODE_BRIEF_L3_KA_VIGHNAKARA_v1_0.md, kind: artifact, note: "Danger engine = inverse search reuse of ka_sangam spine; extends kala_obstruction; temporal dissonance" }
-      - { id: ka_kala_darshana, brief: CLAUDECODE_BRIEF_L3_KA_KALA_DARSHANA_v1_0.md, kind: artifact,
-          blocked_by_intra_wave: [ka_vighnakara],
-          note: "Lifetime catalog; mirrors bodha_discoveries shape; cross-subsystem convergence WITH independence discount" }
+      - {id: ka_vighnakara, brief: CLAUDECODE_BRIEF_L3_KA_VIGHNAKARA_v1_0.md, kind: artifact, note: "Danger engine = inverse search reuse of ka_sangam spine; extends kala_obstruction; temporal dissonance"}
+      - {id: ka_kala_darshana, brief: CLAUDECODE_BRIEF_L3_KA_KALA_DARSHANA_v1_0.md, kind: artifact,
+         blocked_by_intra_wave: [ka_vighnakara],
+         note: "Lifetime catalog; mirrors bodha_discoveries shape; cross-subsystem convergence WITH independence discount"}
 
   - wave: K6
     parallel: true
     seed_edit_policy: "SERIALIZE asset_registry_seed.ts (CS1)"
     assets:
-      - { id: ka_tulana,          brief: CLAUDECODE_BRIEF_L3_KA_TULANA_v1_0.md,          kind: service,  note: "cross-pattern prioritization; RATIFIED I-11 weights; dissonance-aware verdicts" }
-      - { id: ka_jivana_parva,    brief: CLAUDECODE_BRIEF_L3_KA_JIVANA_PARVA_v1_0.md,    kind: artifact, note: "daśā macro-narrative; chapters from chart_dashas MD boundaries; theme from THIS native" }
-      - { id: ka_bhavishya_lekha, brief: CLAUDECODE_BRIEF_L3_KA_BHAVISHYA_LEKHA_v1_0.md, kind: artifact, note: "prediction-record emitter → L5 mi_bhavisya; MUST NOT write mimamsa_* tables; LEL toggle honored" }
+      - {id: ka_tulana, brief: CLAUDECODE_BRIEF_L3_KA_TULANA_v1_0.md, kind: service, note: "cross-pattern prioritization; RATIFIED I-11 weights; dissonance-aware verdicts"}
+      - {id: ka_jivana_parva, brief: CLAUDECODE_BRIEF_L3_KA_JIVANA_PARVA_v1_0.md, kind: artifact, note: "daśā macro-narrative; chapters from chart_dashas MD boundaries; theme from THIS native"}
+      - {id: ka_bhavishya_lekha, brief: CLAUDECODE_BRIEF_L3_KA_BHAVISHYA_LEKHA_v1_0.md, kind: artifact, note: "prediction-record emitter → L5 mi_bhavisya; MUST NOT write mimamsa_* tables; LEL toggle honored"}
 
 # ---- SEAL (autonomous, AI-assessed) ----
 seal:
