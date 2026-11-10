@@ -448,6 +448,19 @@ class TestLelQueryMock:
         assert env["total_events"] == 1  # mock count
         assert env["b3_compliant"] is True
 
+    @pytest.mark.parametrize(
+        ("rows", "expected"),
+        [([_make_event_row(source_citation=" ")], False), ([], None)],
+    )
+    def test_query_citation_compliance_depends_on_served_events(self, rows, expected):
+        mod = _get_module()
+        mock_conn = _make_mock_conn(rows, count=len(rows))
+
+        with patch.object(mod, '_get_conn', return_value=mock_conn):
+            result = mod.lel_query()
+
+        assert result["provenance_envelope"]["b3_compliant"] is expected
+
     def test_query_no_leakage_note_present(self):
         mod = _get_module()
         rows = [_make_event_row()]

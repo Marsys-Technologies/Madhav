@@ -7,6 +7,9 @@ Every expected sentence is stated by hand from the f-string templates.
 """
 from __future__ import annotations
 
+from unittest.mock import MagicMock
+
+from ga_writers._karaka_roles import KARAKA_ROLES_8
 from pipeline.orchestrator.writers import bo_upaya as W
 
 
@@ -137,3 +140,24 @@ def test_upaya_counter_indications_array_maraka_sentence_golden(monkeypatch):
         "acharya review finds a redeeming yoga; gemstones strengthen the planet they represent, and "
         "strengthening a maraka is the opposite of the intended effect."
     ]
+
+def test_upaya_reads_yoga_karaka_identity_from_canonical_subject():
+    conn = MagicMock()
+    conn.execute.return_value.fetchall.return_value = [{"fact_subject": "SAT"}]
+    assert W._fetch_yoga_karaka_flags(conn, "chart", "lahiri_chitrapaksha") == {"Saturn"}
+    assert "fact_key = 'is_yoga_karaka'" in conn.execute.call_args.args[0]
+
+
+def test_upaya_uses_the_headline_school_roles_and_keeps_absence_unknown(monkeypatch):
+    grahas = ("Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu")
+    rows = [
+        row
+        for rank, (subject, graha) in enumerate(zip(KARAKA_ROLES_8, grahas, strict=True), start=1)
+        for row in [(subject, "assigned_graha", graha, None), (subject, "karaka_rank", None, rank)]
+    ]
+    monkeypatch.setattr(W, "fetch_kn_rao_karaka_rows", lambda *_: rows)
+    assert W._fetch_chara_roles(None, "chart", "lahiri_chitrapaksha") == dict(
+        zip(grahas, ("AK", "AmK", "BK", "MK", "PiK", "PK", "GK", "DK"), strict=True)
+    )
+    rows.clear()
+    assert W._fetch_chara_roles(None, "chart", "lahiri_chitrapaksha") == {}

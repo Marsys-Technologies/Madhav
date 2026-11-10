@@ -49,6 +49,7 @@ from pyjhora_adapter.compute import compute_chart
 from pyjhora_adapter import strength as pyjhora_strength
 from pyjhora_adapter._names import SIGN_NAMES
 from pyjhora_adapter.version import ENGINE_VERSION
+from brahmagyan.aspects import get_graha_aspects
 from brahmagyan.verification_tiers import (
     CLASSICAL_MATCH,
     COMPUTED_EXTENSION,
@@ -299,14 +300,9 @@ def _check_narration(text_value: str | None, context: str) -> None:
 
 _BENEFIC_GRAHAS_DRIK = frozenset({"Jupiter", "Venus", "Mercury", "Moon"})
 _MALEFIC_GRAHAS_DRIK = frozenset({"Saturn", "Mars", "Sun", "Rahu", "Ketu"})
-_DRIK_ASPECT_OFFSETS: dict[str, dict[int, float]] = {
-    "Saturn":  {3: 0.25, 7: 1.0, 10: 0.75},
-    "Jupiter": {5: 1.0,  7: 1.0, 9: 1.0},
-    "Mars":    {4: 1.0,  7: 1.0, 8: 1.0},
-    "Rahu":    {5: 1.0,  7: 1.0, 9: 1.0},
-    "Ketu":    {5: 1.0,  7: 1.0, 9: 1.0},
-}
-_DRIK_DEFAULT_OFFSETS: dict[int, float] = {7: 1.0}
+# Śaḍbala keeps the existing fractional Saturn weights. The oracle supplies
+# the aspect geometry; this table only scales its contribution to drik bala.
+_SATURN_DRIK_WEIGHTS = {3: 0.25, 10: 0.75}
 
 
 def _compute_drik_bala(target_graha: str, target_house: int, grahas: list[dict]) -> float:
@@ -321,8 +317,9 @@ def _compute_drik_bala(target_graha: str, target_house: int, grahas: list[dict])
         g_house = int(g.get("house", 0))
         if not g_house:
             continue
-        offsets = _DRIK_ASPECT_OFFSETS.get(g_name, _DRIK_DEFAULT_OFFSETS)
-        for offset, strength in offsets.items():
+        for offset, strength in get_graha_aspects(g_name).items():
+            if g_name == "Saturn":
+                strength = _SATURN_DRIK_WEIGHTS.get(offset, strength)
             aspected_h = ((g_house - 1 + offset - 1) % 12) + 1
             if aspected_h == target_house:
                 if g_name in _BENEFIC_GRAHAS_DRIK:
@@ -1927,7 +1924,7 @@ def build_ga_strength(
         "build_id": build_id,
         "ayanamshas": {},
         "total_chart_facts_rows": 0,
-        "forensic_pass": False,
+        "forensic_pass": None,
         "two_pass_verified": False,
     }
 
@@ -1951,14 +1948,13 @@ def build_ga_strength(
             # str(): the orchestrator hands a uuid.UUID, which never == the str constant, so the gate was skipped.
             if str(chart_id) == CANONICAL_CHART_ID:
                 try:
-                    forensic_gate(chart_output, canonical_id)
+                    summary["forensic_pass"] = forensic_gate(chart_output, canonical_id)
                 except Exception:
                     logger.error("FORENSIC gate ga_strength executed passed=False chart=canonical ayanamsha=%s", canonical_id)
                     raise
                 logger.info("FORENSIC gate ga_strength executed passed=True chart=canonical ayanamsha=%s", canonical_id)
             else:
                 logger.debug("FORENSIC gate ga_strength skipped chart=skipped-non-canonical ayanamsha=%s", canonical_id)
-            summary["forensic_pass"] = True
 
             # jd_ut + place feed PyJHora's real shadbala/vimsopaka/ashtakavarga
             # directly (M-1/M-2/M-3 fix) — jd_ut comes straight from this same

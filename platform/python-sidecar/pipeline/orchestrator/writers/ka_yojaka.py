@@ -601,7 +601,8 @@ class KaYojakaWriter(WriterBase):
                     SELECT ayanamsha_id, fact_subject, fact_value_text
                     FROM chart_facts
                     WHERE chart_id = %s AND fact_category = 'lord_in_house_per_varga'
-                      AND fact_value_text IS NOT NULL
+                      AND fact_key = 'lord_placement' AND fact_value_text IS NOT NULL
+                    ORDER BY ayanamsha_id, fact_subject, computed_at ASC NULLS FIRST, fact_id
                     """,
                     (chart_id,),
                 )

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from services.gochara_grammar.primitives import SPECIAL_DRISHTI_DEG as LEGACY_TABLE
+from services.gochara_grammar.primitives import legacy_drishti_angles
 from services.kala_core.sky import aspected_points, aspects, contact_level, drishti_angles
 
 
@@ -31,9 +31,9 @@ def test_nodes_cast_none(node: str) -> None:
 
 
 def test_legacy_node_aspect_table_is_not_the_table() -> None:
-    assert tuple(LEGACY_TABLE["Rahu"]) != drishti_angles("Rahu")
-    assert {b: tuple(v) for b, v in LEGACY_TABLE.items() if b not in ("Rahu", "Ketu")} == {
-        b: drishti_angles(b) for b in LEGACY_TABLE if b not in ("Rahu", "Ketu")}
+    assert tuple(legacy_drishti_angles("Rahu")) != drishti_angles("Rahu")
+    for body in ("Mars", "Jupiter", "Saturn"):
+        assert tuple(legacy_drishti_angles(body)) == drishti_angles(body)
 
 
 def test_orb_must_be_declared() -> None:

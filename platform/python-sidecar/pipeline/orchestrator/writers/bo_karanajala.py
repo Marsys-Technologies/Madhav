@@ -44,6 +44,7 @@ from pipeline.orchestrator.writers.bo_bimba import (
     yoga_node_subject as _yoga_node_subject,
     _YOGA_NODE_CLASSES,
 )
+from brahmagyan.verification_vocab import DOCUMENTED_APPROXIMATION, LEGACY_SINGLE_PASS
 # DP-SD-015: L2 may reference exact L1 clock identities but must not invoke a
 # later-layer resolver or persist resolved activation windows. Legacy schema
 # columns remain readable and are written as NULL for new L2 generations.
@@ -710,7 +711,7 @@ def _build_argala_edges(
             "subsystem_to": "parashari",
             **_typed_edge_fields("argala", relationship_class=relationship_class,
                                  graha_a=graha_a, graha_b=graha_b),
-            "verification_pass_status": "documented_approximation",
+            "verification_pass_status": DOCUMENTED_APPROXIMATION,
             "citation_ref": "BPHS_Ch28/argala",
             "citation_human": (
                 f"Argala: {graha_b} in {_ot.ordinal(house_b_from_a)} from {graha_a}"
@@ -798,7 +799,7 @@ def _build_dispositor_edges(
             # "single_pass" -- verification_vocab.py's declared alias of
             # "single", both resolving to formulas.py VERIFICATION_RESCALE
             # 0.85 vs 1.00 for two_pass_verified (#1729/D-CND-05).
-            "verification_pass_status":        "single_pass",
+            "verification_pass_status":        LEGACY_SINGLE_PASS,
             "citation_ref":                    f"parashari/sign_lordship/{graha}",
             "citation_human":                  f"Dispositor: {graha} (sign {sign_num}) → lord {lord}",
             "computed_at":                     now,
@@ -875,7 +876,7 @@ def _graha_bhava_edge(
         "subsystem_from":                  "parashari",
         "subsystem_to":                    "parashari",
         **_typed_edge_fields(edge_type),
-        "verification_pass_status":        "single_pass",
+        "verification_pass_status":        LEGACY_SINGLE_PASS,
         "citation_ref":                    f"{cite_root}/{graha}/H{house}",
         "citation_human":                  f"{graha} {verb} house {house}",
         "computed_at":                     now,
@@ -1114,7 +1115,7 @@ def _membership_edge(
         "subsystem_from":                  "parashari",
         "subsystem_to":                    "parashari",
         **_typed_edge_fields("yoga_member"),
-        "verification_pass_status":        "single_pass",
+        "verification_pass_status":        LEGACY_SINGLE_PASS,
         "citation_ref":                    f"bo_karanajala/yoga_member/{yoga_subject}",
         "citation_human":                  f"{yoga_subject} ↔ {member_kind} {member_subject}",
         "computed_at":                     now,
@@ -1452,7 +1453,7 @@ def _detect_contradictions(
             "combined_salience": round(
                 float(y_sig.get("computed_salience") or 0.0)
                 + float(d_sig.get("computed_salience") or 0.0), 6),
-            "verification_pass_status": "documented_approximation",
+            "verification_pass_status": DOCUMENTED_APPROXIMATION,
             "citation_ref": (
                 f"bo_karanajala/contradiction/{tension_class}/"
                 f"{graha or '_'}/{'_'.join(sorted(shared))}"
@@ -1769,7 +1770,7 @@ def _build_arudha_special_lagna_nodes_and_edges(
                 "present_in_traditions_array": ["jaimini" if node_type == "arudha" else "parashari"],
                 "graph_compute_library": GRAPH_LIB,
                 "graph_compute_library_version": GRAPH_LIB_VER,
-                "verification_pass_status": "single_pass",
+                "verification_pass_status": LEGACY_SINGLE_PASS,
                 "citation_ref": f"chart_facts/{'arudha_pada' if node_type == 'arudha' else 'special_lagna'}/{_arudha_fact_subject(node_type, node_subject)}",
                 "citation_human": f"{node_type} node: {node_subject}" + (f" (house {house})" if house else ""),
                 "computed_at": now,
@@ -1829,7 +1830,7 @@ def _build_arudha_special_lagna_nodes_and_edges(
             "subsystem_from": "jaimini" if node_type == "arudha" else "parashari",
             "subsystem_to": "parashari",
             **_typed_edge_fields(edge_type, relationship_class=edge_type),
-            "verification_pass_status": "single_pass",
+            "verification_pass_status": LEGACY_SINGLE_PASS,
             "citation_ref": f"bo_karanajala/{edge_type}/{node_subject}",
             "citation_human": f"{node_subject} falls in house {house}",
             "computed_at": now,

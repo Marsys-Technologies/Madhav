@@ -3262,6 +3262,7 @@ def build_ga_sensitive(
         "build_id": build_id,
         "started_at": started_at,
         "ayanamshas": {},
+        "forensic_pass": None,
         "prerequisites": {},
         "total_rows": 0,
         "status": "IN_PROGRESS",
@@ -3274,14 +3275,13 @@ def build_ga_sensitive(
         preflight_chart = compute_chart(inputs=birth_params, ayanamsha_id="lahiri")
         if str(chart_id) == CANONICAL_CHART_ID:
             try:
-                forensic_gate(preflight_chart, "lahiri")
+                summary["forensic_pass"] = forensic_gate(preflight_chart, "lahiri")
             except Exception:
                 logger.error("FORENSIC gate ga_sensitive preflight executed passed=False chart=canonical")
                 raise
             logger.info("FORENSIC gate ga_sensitive preflight executed passed=True chart=canonical")
         else:
             logger.debug("FORENSIC gate ga_sensitive preflight skipped chart=skipped-non-canonical")
-        summary["forensic_pass"] = True
     except BACKEND_FAILURE_ERRORS:
         # SwissBackendError is a RuntimeError: without this it would be reported as a FORENSIC gate
         # failure (and logged to the halt log as one). A missing/unusable ephemeris backend is an

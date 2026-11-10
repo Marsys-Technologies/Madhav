@@ -4,7 +4,7 @@ Tests for canonical Parāśari aspect authority (BPHS Ch.26).
 BPHS graha-drishti: Rahu and Ketu cast the same special aspects as Jupiter
 (5th/7th/9th), NOT only the default 7th. These tests cover:
   1. The canonical immutable API in brahmagyan/aspects.py.
-  2. The primitives.py SPECIAL_DRISHTI_DEG fix (gochara grammar).
+  2. The legacy Gochara grammar degree projection (gochara grammar).
   3. The ga_yoga_writer.py canonical-oracle consumer.
   4. The golden case: Ketu in Leo casts 5th aspect onto Sagittarius.
 """
@@ -43,51 +43,12 @@ def test_canonical_aspect_api_is_immutable_and_invalid_inputs_are_universal_only
         raise AssertionError("canonical aspect profiles must be immutable")
 
 
-# ── 2. primitives.py SPECIAL_DRISHTI_DEG ────────────────────────────────────
-
-def test_primitives_nodal_drishti_rahu_has_explicit_entry():
-    from services.gochara_grammar.primitives import SPECIAL_DRISHTI_DEG
-    assert "Rahu" in SPECIAL_DRISHTI_DEG, (
-        "Rahu must have an explicit entry in SPECIAL_DRISHTI_DEG "
-        "(not fall through to _DEFAULT_DRISHTI_DEG)"
-    )
-
-
-def test_primitives_nodal_drishti_ketu_has_explicit_entry():
-    from services.gochara_grammar.primitives import SPECIAL_DRISHTI_DEG
-    assert "Ketu" in SPECIAL_DRISHTI_DEG, (
-        "Ketu must have an explicit entry in SPECIAL_DRISHTI_DEG "
-        "(not fall through to _DEFAULT_DRISHTI_DEG)"
-    )
-
-
-def test_primitives_nodal_drishti_5th_aspect_120deg():
-    """5th aspect = 120° forward (4 signs × 30°).  Both nodes must carry it."""
-    from services.gochara_grammar.primitives import SPECIAL_DRISHTI_DEG
-    assert 120.0 in SPECIAL_DRISHTI_DEG["Rahu"], "Rahu must cast 5th (120°) aspect"
-    assert 120.0 in SPECIAL_DRISHTI_DEG["Ketu"], "Ketu must cast 5th (120°) aspect"
-
-
-def test_primitives_nodal_drishti_7th_aspect_180deg():
-    """7th aspect = 180°. Both nodes must carry it."""
-    from services.gochara_grammar.primitives import SPECIAL_DRISHTI_DEG
-    assert 180.0 in SPECIAL_DRISHTI_DEG["Rahu"], "Rahu must cast 7th (180°) aspect"
-    assert 180.0 in SPECIAL_DRISHTI_DEG["Ketu"], "Ketu must cast 7th (180°) aspect"
-
-
-def test_primitives_nodal_drishti_9th_aspect_240deg():
-    """9th aspect = 240°. Both nodes must carry it."""
-    from services.gochara_grammar.primitives import SPECIAL_DRISHTI_DEG
-    assert 240.0 in SPECIAL_DRISHTI_DEG["Rahu"], "Rahu must cast 9th (240°) aspect"
-    assert 240.0 in SPECIAL_DRISHTI_DEG["Ketu"], "Ketu must cast 9th (240°) aspect"
-
+# ── 2. Legacy Gochara grammar degree projection ──────────────────────────────
 
 def test_primitives_nodal_drishti_matches_jupiter():
-    """Nodes must carry exactly the same degree set as Jupiter (5th/7th/9th)."""
-    from services.gochara_grammar.primitives import SPECIAL_DRISHTI_DEG
-    jupiter_degs = set(SPECIAL_DRISHTI_DEG["Jupiter"])
-    assert set(SPECIAL_DRISHTI_DEG["Rahu"]) == jupiter_degs
-    assert set(SPECIAL_DRISHTI_DEG["Ketu"]) == jupiter_degs
+    from services.gochara_grammar.primitives import legacy_drishti_angles
+    for graha in ("Rahu", "Ketu", "Jupiter"):
+        assert legacy_drishti_angles(graha) == [120.0, 180.0, 240.0]
 
 
 # ── 3. ga_yoga_writer.py canonical-oracle consumer ─────────────────────────

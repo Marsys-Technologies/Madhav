@@ -361,9 +361,9 @@ async function handleSavBavGating(
     const rowsRes = await query<{ fact_subject: string; fact_value_num: number; fact_id: string }>(
       `SELECT fact_id, fact_subject, fact_value_num
        FROM chart_facts
-       WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = $3
+       WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = $3 AND fact_key = 'bindus'
          ${buildIds ? 'AND build_id = ANY($4::uuid[])' : ''}
-       ORDER BY fact_subject`,
+       ORDER BY fact_subject, computed_at ASC NULLS FIRST, fact_id`,
       buildIds ? [chart_id, ayanamsha_id, AV_BINDU_SIGN_CATEGORY, buildIds] : [chart_id, ayanamsha_id, AV_BINDU_SIGN_CATEGORY],
     )
 
@@ -462,7 +462,9 @@ async function handleKakshyaWindows(
     const boundaryRes = await query<{ fact_subject: string; fact_key: string; fact_value_num: number | null; fact_value_text: string | null }>(
       `SELECT fact_subject, fact_key, fact_value_num, fact_value_text
        FROM chart_facts
-       WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = $3`,
+       WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = $3
+         AND fact_key IN ('lord', 'start_deg', 'end_deg')
+       ORDER BY fact_subject, fact_key, computed_at ASC NULLS FIRST, fact_id`,
       [chart_id, ayanamsha_id, AV_KAKSHYA_CATEGORY],
     )
     if (boundaryRes.rows.length === 0) {

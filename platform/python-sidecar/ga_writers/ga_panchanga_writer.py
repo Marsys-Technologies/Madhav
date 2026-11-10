@@ -249,7 +249,7 @@ def _ts_iso(dt) -> Optional[str]:
 
 # ── FORENSIC gate ─────────────────────────────────────────────────────────────
 
-def panchanga_forensic_gate(pi: Any) -> None:
+def panchanga_forensic_gate(pi: Any) -> bool:
     """
     Assert FORENSIC anchors against PanchangaInstant output.
     Raises RuntimeError if any anchor fails — halts the build.
@@ -314,6 +314,7 @@ def panchanga_forensic_gate(pi: Any) -> None:
         "[GA4 FORENSIC] PASS: Tithi=Shukla Tritiya, Vara=Ravivara, "
         "Yoga=Shiva, Karana=Garaja, Nak=Purva Bhadrapada"
     )
+    return not failures
 
 
 def _write_halt_log(gate_name: str, msg: str) -> None:
@@ -1447,7 +1448,7 @@ def build_ga_panchanga(
     summary: dict[str, Any] = {
         "chart_id": chart_id,
         "build_id": build_id,
-        "forensic_pass": False,
+        "forensic_pass": None,
         "total_chart_facts_rows": 0,
         "invariant_rows": 0,
         "dependent_rows_by_ayanamsha": {},
@@ -1481,14 +1482,13 @@ def build_ga_panchanga(
     # str(): the orchestrator hands a uuid.UUID, which never == the str constant, so the gate was skipped.
     if str(chart_id) == CANONICAL_CHART_ID:
         try:
-            panchanga_forensic_gate(pi)
+            summary["forensic_pass"] = panchanga_forensic_gate(pi)
         except Exception:
             logger.error("FORENSIC gate ga_panchanga executed passed=False chart=canonical")
             raise
         logger.info("FORENSIC gate ga_panchanga executed passed=True chart=canonical")
     else:
         logger.debug("FORENSIC gate ga_panchanga skipped chart=skipped-non-canonical")
-    summary["forensic_pass"] = True
 
     # ── Build INVARIANT rows ─────────────────────────────────────────────────
     invariant_rows: list[dict] = []

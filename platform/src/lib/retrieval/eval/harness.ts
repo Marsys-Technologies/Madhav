@@ -621,7 +621,7 @@ export function formatHarnessReport(result: HarnessRunResult): string {
   lines.push('')
   lines.push('────────────────────────────────────────────────────────────')
   lines.push(`SEAL GATE: ${result.seal_gate_pass ? '✓ PASS' : '✗ FAIL'}`)
-  lines.push('  Hard gates: chart_agnostic=PASS, contamination_count=0, chart_isolation=PASS, lel_firewall=PASS')
+  lines.push('  Seal requires chart-agnostic routing, zero contamination, chart isolation and the LEL firewall.')
   lines.push('  Aspirational floors: recall@5, faithfulness (requires live judge)')
   lines.push('═══════════════════════════════════════════════════════════')
 

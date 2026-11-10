@@ -1,8 +1,8 @@
 {
   "schema_version": "1.0",
-  "$comment": "Allowlist for check_fact_category_pinning.py (brief §5 C.7, SUDDHA-VACA Phase C lane:ci-lint). Every entry requires: file (repo-relative POSIX path, must match a Violation.file exactly), EITHER line (int, matched exactly against the violation's line number) OR pattern (a string matched as a regex, falling back to a plain substring match, against the violation's snippet text) — line is preferred when known since it is unambiguous; pattern is for cases where line drift is expected, and justification (a non-empty, specific, human-readable reason — 'pre-existing' alone is not sufficient, say WHY it's safe or why it's out of scope). An entry with neither line nor pattern never matches anything (fails closed, not open). Populated 2026-07-28 during the initial rollout scan against the live repo tree (this worktree, base main, before this wave's other lanes landed) — see the ci-lint lane's session report for the full disposition rationale of every entry.",
+  "$comment": "Allowlist for check_fact_category_pinning.py (brief §5 C.7, SUDDHA-VACA Phase C lane:ci-lint). Every entry requires: file (repo-relative POSIX path, must match a Violation.file exactly), EITHER line (int, matched exactly against the violation's line number) OR pattern (a string matched as a regex, falling back to a plain substring match, against the violation's snippet text) — line is preferred when known since it is unambiguous; pattern is for cases where line drift is expected, and justification (a non-empty, specific, human-readable reason — 'pre-existing' alone is not sufficient, say WHY it's safe or why it's out of scope). An entry with neither line nor pattern never matches anything (fails closed, not open). Populated 2026-07-28 during the initial rollout scan against the live repo tree (this worktree, base main, before this wave's other lanes landed) — see the ci-lint lane's session report for the full disposition rationale of every entry. A matching entry covers one finding by default. max_occurrences freezes the observed count when several intentionally share a pattern.",
   "generated_by": "check_fact_category_pinning.py initial-rollout scan, 2026-07-28",
-  "entry_count": 65,
+  "entry_count": 53,
   "entries": [
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
@@ -20,7 +20,8 @@
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
       "line": null,
       "pattern": "WITH handler_page AS \\( SELECT fact_id, fact_category, ayanamsha_id, fact_key, fact_value_num, fact_value_text, fact_value_jsonb, unit, verification_pass_status",
-      "justification": "AUDITED source-query availability probe for get_tara_chandra_bala, not a value read or one-row reduction. `handler_page` deliberately reproduces the handler's complete two-category source scope (`tara_bala_natal_baseline` plus `chandra_bala_natal_baseline`) while `LIMIT 0` guarantees that no fact row is selected; the sibling `handler_count` is an aggregate over that same complete scope, and the outer CROSS JOIN returns zero rows. Availability is earned solely by authenticated query success, including a legitimate empty category set. Adding an arbitrary fact_key predicate would narrow the real handler contract and could report availability while a valid baseline measurement is unreadable. The chart binding and intentional zero-row/count semantics are exercised by the source-query availability contract tests."
+      "justification": "AUDITED source-query availability probe for get_tara_chandra_bala, not a value read or one-row reduction. `handler_page` deliberately reproduces the handler's complete two-category source scope (`tara_bala_natal_baseline` plus `chandra_bala_natal_baseline`) while `LIMIT 0` guarantees that no fact row is selected; the sibling `handler_count` is an aggregate over that same complete scope, and the outer CROSS JOIN returns zero rows. Availability is earned solely by authenticated query success, including a legitimate empty category set. Adding an arbitrary fact_key predicate would narrow the real handler contract and could report availability while a valid baseline measurement is unreadable. The chart binding and intentional zero-row/count semantics are exercised by the source-query availability contract tests.",
+      "max_occurrences": 3
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
@@ -108,12 +109,6 @@
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 1768,
-      "pattern": null,
-      "justification": "AUDITED zero-row source-query availability probe for get_panchanga. It reproduces the handler's complete default Pañcāṅga category family plus its count/page shape, while LIMIT 0 prevents selecting or reducing any fact row; authenticated query success is the only availability witness. [Lahiri-primary combined batch rehearsal, 2026-10-10: line 1300->1767; the probe is unchanged in purpose, the lines moved because the batch edited this file.]"
-    },
-    {
-      "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
       "line": 2039,
       "pattern": null,
       "justification": "AUDITED zero-row source-query availability probe for get_structural. It preserves the handler's complete residual structural-signal category family and deterministic pagination order while LIMIT 0 prevents selecting or reducing any fact row. [Lahiri-primary combined batch rehearsal, 2026-10-10: line 2014->2038; the probe is unchanged in purpose, the lines moved because the batch edited this file.]"
@@ -179,58 +174,10 @@
       "justification": "PRE-EXISTING, not in this wave's scope. Reviewed: consumed as a full per-subject iteration (domain/confidence per signal), not reduced to one row."
     },
     {
-      "file": "platform/python-sidecar/brahmagyan/phala/muhurta.py",
-      "line": null,
-      "pattern": "fact_subject, fact_value_text FROM chart_facts\\s+WHERE chart_id = %s AND ayanamsha_id = %s\\s+AND fact_category = 'tara_bala_natal_baseline'",
-      "justification": "PRE-EXISTING full-iteration lookup: `tara_bala_natal_baseline` rows are keyed by fact_subject and all subjects are preserved into the returned mapping, so no single ambiguous row is reduced. F47 inserts new action-sensitive scorer code earlier in this actively edited file and moved this unchanged query from line 578 to 639; use its exact stable SELECT shape rather than a brittle line number."
-    },
-    {
-      "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py",
-      "line": null,
-      "pattern": "SELECT fact_subject, fact_value_text FROM chart_facts WHERE chart_id=%s AND ayanamsha_id=%s AND fact_category='graha_dignity_per_varga'",
-      "justification": "PRE-EXISTING, not in this wave's scope. Same file/defect-shape as P0-5 (_build_dignity_lookup: fact_category='graha_dignity_per_varga', pinned only by fact_value_jsonb->>'varga'='D1', no fact_key, no ORDER BY — the function's own comment already flags 'first row wins (avoid overwriting with duplicates)' as an explicit non-determinism guard). Recommend folding into lane:bo-laksana's P0-5 fix scope since it's the same file/same rebuild — newly discovered by this lint, not previously ledgered. [line updated 888->931 after ŚABDA-ŚUDDHI L1 domain remap shifted line numbers; same defect, unchanged. ADHISTHANA fact-category-pinning-lint repair, 2026-08-08: line 931->932, shifted by 1 by Lane A2's `from brahmagyan.graha_vocabulary import to_title` import line added earlier in the file — verified same code via diff. Switched line->pattern (schema-preferred for expected drift); pattern's column list ('fact_subject, fact_value_text') distinguishes this from the file's other two graha_dignity_per_varga selectors (which select 'fact_id, fact_subject, fact_value_text' — see the 2361/2373 entry below).]"
-    },
-    {
-      "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py",
-      "line": null,
-      "pattern": "SELECT fact_id, fact_subject, fact_value_text FROM chart_facts WHERE chart_id=%s AND ayanamsha_id=%s AND fact_category='graha_dignity_per_varga'",
-      "justification": "PRE-EXISTING, not in this wave's scope. Same file/defect-shape as P0-5 (second graha_dignity_per_varga selector, no fact_key, no ORDER BY). Recommend folding into lane:bo-laksana's P0-5 fix scope. Newly discovered by this lint. [line updated 2318->2361 after ŚABDA-ŚUDDHI L1 domain remap shifted line numbers; same defect, unchanged. ADHISTHANA fact-category-pinning-lint repair, 2026-08-08: line 2361->2373, shifted by 12 (1 from the file-wide Lane A2 import line, plus an 11-line local `short_to_long = {...}` graha-SSoT dict block Lane A2 inserted immediately before this specific call site) — verified same code via diff. Switched line->pattern; pattern's leading 'fact_id, ' column distinguishes this from the 931/932 selector above, which omits fact_id.]"
-    },
-    {
-      "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py",
-      "line": null,
-      "pattern": "fact_category = 'graha_yoga_karaka_flag' AND fact_value_text IN \\('true', '1', 'ye",
-      "justification": "PRE-EXISTING, not in this wave's scope. `SELECT fact_key FROM ... fact_category='graha_yoga_karaka_flag' AND fact_value_text IN (...)` — selects the SET of qualifying fact_keys itself as data (which grahas are yoga karakas), not a value keyed by fact_category; there is no row to misselect. [ADHISTHANA fact-category-pinning-lint repair, 2026-08-08: line 392->395, shifted by 3 by Lane A2's graha-vocabulary-SSoT import/comment block inserted earlier in the file — verified same code via diff. Switched line->pattern per schema guidance for expected drift.]"
-    },
-    {
-      "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py",
-      "line": null,
-      "pattern": "fact_category = 'karaka_chara_position'",
-      "justification": "PRE-EXISTING, not in this wave's scope. `SELECT fact_key, fact_value_text FROM ... fact_category='karaka_chara_position'` — fact_key selected and preserved per row, not collapsed to one value. [ADHISTHANA fact-category-pinning-lint repair, 2026-08-08: line 410->413, shifted by the same 3-line Lane A2 block as the sibling 392/395 entry — verified same code via diff. Switched line->pattern.]"
-    },
-    {
-      "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py",
-      "line": null,
-      "pattern": "SELECT fact_subject, fact_value_text, fact_value_jsonb FROM chart_facts WHERE chart_id = %s AND ayanamsha_id = %s AND fact_category = 'dosha_label'",
-      "justification": "PRE-EXISTING, not in this wave's scope. dosha_label rows filtered by fact_category + a fact_value_text predicate (truncated in the scan snippet) — same catalog-label shape as the register_p1_ganita.ts entries above; one-per-name-per-chart by convention, lower risk. [ADHISTHANA fact-category-pinning-lint repair, 2026-08-08: line 807->810, shifted by the same 3-line Lane A2 block as the sibling entries in this file — verified same code via diff. Switched line->pattern.]"
-    },
-    {
-      "file": "platform/python-sidecar/pipeline/orchestrator/writers/ka_yojaka.py",
-      "line": null,
-      "pattern": "fact_category = 'lord_in_house_per_varga' AND fact_value_text IS NOT",
-      "justification": "PRE-EXISTING, not in this wave's scope. `lord_in_house_per_varga` has no fact_key dimension (fact_subject IS the {varga}_H{house} key per the function's own docstring); result is keyed by (ayanamsha_id, fact_subject), not collapsed further. [line updated 362->367 after ŚABDA-ŚUDDHI L4 fix shifted line numbers; same defect, unchanged. ADHISTHANA fact-category-pinning-lint repair, 2026-08-08: line 367->368, shifted by 1 by an ADHISTHANA vocabulary-consolidation import line added earlier in the file — verified same code via diff. Switched line->pattern per schema guidance for expected drift.]"
-    },
-    {
       "file": "platform/python-sidecar/pipeline/orchestrator/writers/ka_yojaka.py",
       "line": null,
       "pattern": "fact_category IN \\('yoga_label', 'dosha_label', 'graha_position'\\)",
       "justification": "PRE-EXISTING, not in this wave's scope. `fact_category IN ('yoga_label', 'dosha_label', 'graha_position')` with no fact_key — but the result is stored as `result[fact_id] = (fact_category, fact_subject)`, i.e. every row is preserved individually keyed by its own fact_id (no collapsing/overwrite across rows), so this does not exhibit the P0-5 'last-row-wins' hazard despite lacking the lint's literal fact_key signal. [line updated 540->545 after ŚABDA-ŚUDDHI L4 fix shifted line numbers; same defect, unchanged. ADHISTHANA fact-category-pinning-lint repair, 2026-08-08: line 545->546, shifted by the same 1-line import addition as the sibling 367/368 entry — verified same code via diff. Switched line->pattern.]"
-    },
-    {
-      "file": "platform/python-sidecar/scripts/rebuild_el18_manglik_ga_structural.py",
-      "line": 1,
-      "pattern": null,
-      "justification": "FALSE POSITIVE (scanner limitation, not a code issue). The matched text is a manual 'Verify after' SQL example embedded in the module docstring for a human to run post-rebuild — never executed by this script. The scanner cannot distinguish a documentation code-block from an executed query string; both are triple-quoted Python strings containing SELECT...FROM chart_facts. Not fixed because it is not live code."
     },
     {
       "file": "platform/python-sidecar/services/gochara_grammar/primitives.py",
@@ -245,28 +192,22 @@
       "justification": "PRE-EXISTING, not in this wave's scope. `_fetch_sade_sati_rows` returns the full row list (subject, key, text, num, citation) unmodified for the caller to interpret; no reduction/collapse happens in this function. [PK-R-9 IR-11 (F1), 2026-08-11: line-pinned entry (line 1043) had DRIFTED for the same reason as the sibling _fetch_kakshya_boundaries entry above (this lane's own MR-41(a) edits to this file) and was silently failing to match -- confirmed live: the violation reported at line 1130, not 1043. Converted line->pattern; the pattern's leading 'citation_human FROM chart_facts' column list distinguishes this from the shape-similar sade_sati query in services/gochara_v3/context.py (which selects a DIFFERENT column list — fact_key, fact_value_text, fact_value_num, fact_subject, fact_category, no citation_human — and carries its own ORDER BY) — no cross-file ambiguity regardless, since _matches_entry checks `file` before `pattern`.] [Lahiri-primary combined batch rehearsal, 2026-10-10: PR-5 pins ayanamsha_id in this SELECT and adds a total ORDER BY (fact_subject, fact_key, fact_id); pattern extended to the new WHERE clause. The function still returns the full row list unmodified.]"
     },
     {
-      "file": "platform/python-sidecar/services/kala_permission/permission.py",
-      "line": null,
-      "pattern": "Read-only SELECT of a single graha's D1 house \\(house_d1\\) and natal nakshatra name from chart_facts \\(fact_category='graha_position'\\)",
-      "justification": "FALSE POSITIVE (scanner limitation, not a code issue). The matched text is the function's docstring prose ('Read-only SELECT of a single graha's D1 house ... from chart_facts (fact_category=...)') — English sentence structure that happens to contain the literal keyword sequence SELECT ... FROM chart_facts. The REAL query three lines below (fact_key IN ('house_d1', 'nakshatra')) is correctly pinned and is NOT flagged. A regex/bracket-matching scanner cannot distinguish prose from SQL when the prose itself uses SQL vocabulary; full AST/docstring-exclusion parsing would be needed to close this gap and is out of scope for this lightweight lane. [ADHISTHANA fact-category-pinning-lint repair, 2026-08-08: line 287->291, shifted by 4 by an ADHISTHANA vocabulary-consolidation import/comment block inserted earlier in the file (domain_vocabulary + graha_vocabulary SSoT imports) — verified identical docstring text via diff. Switched line->pattern per schema guidance for expected drift.]"
-    },
-    {
       "file": "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
       "line": null,
       "pattern": "fact_category = 'graha_position' AND fact_subject = 'MOON'",
-      "justification": "PRE-EXISTING, introduced by PR #1045 (m22/stage2 campaign, 2026-08-04), not touched by any shad-darshana lane. Verified via git blame + PR diff inspection during the ShadDarshana night-run merge-train (T3/T4 PRs #1050/#1052): this file is untouched by shad-darshana work. Out of this campaign's scope to fix another concurrent campaign's writer; flagged for m22 to address in its own lane. [ADHISTHANA fact-category-pinning-lint repair, 2026-08-08: line 1438->1444, shifted by 6 by unrelated edits earlier in this file (not an ADHISTHANA lane edit to this file itself — this file is not on any ADHISTHANA lane's touch list; the shift predates/is-concurrent-with integration merges of other lanes) — verified same code (identical SQL, same _verify_upstream_rows function) via diff against origin/main. Switched line->pattern per schema guidance since this file has now drifted twice (1394->1438->1444); note there remain THREE now-orphaned, stale duplicate entries for this same file at lines 1394/1428/1580 (the pre-PR#1045 generation) that no longer match any code — left untouched as out-of-scope allowlist hygiene debris; flagged in the fact-category-pinning-lint repair PR report for a future cleanup pass, not fixed here to stay within this fix's surgical scope.]"
+      "justification": "_verify_upstream_rows intentionally reports existence of any Moon position row. It consumes the count only. The sign reader separately pins the sign fact key."
     },
     {
       "file": "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
       "line": null,
       "pattern": "SELECT COUNT\\(\\*\\) FROM chart_facts WHERE chart_id = %s AND fact_category = 'argala_natal_matrix'",
-      "justification": "PRE-EXISTING, introduced by PR #1045 (m22/stage2 campaign, 2026-08-04), not touched by any shad-darshana lane. Verified via git blame + PR diff inspection during the ShadDarshana night-run merge-train (T3/T4 PRs #1050/#1052): this file is untouched by shad-darshana work. Out of this campaign's scope to fix another concurrent campaign's writer; flagged for m22 to address in its own lane. [ADHISTHANA fact-category-pinning-lint repair, 2026-08-08: line 1472->1478, shifted by the same +6 as the sibling 1438/1444 entry (same file, same unrelated earlier-in-file edit) — verified same code (GA8 presence check in _verify_upstream_rows) via diff. Switched line->pattern; pattern is a COUNT(*) presence-check query distinct in shape from the sibling fact_key-lookup query at line 1630 below (both reference 'argala_natal_matrix' but this one is 'SELECT COUNT(*)...' while the other is 'SELECT fact_key, fact_value_num...').]"
+      "justification": "_verify_upstream_rows intentionally reports presence of any argala matrix row. It consumes the count only."
     },
     {
       "file": "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
       "line": null,
       "pattern": "fact_key, fact_value_num FROM chart_facts WHERE chart_id = %s AND ayanamsha_id = %s AND fact_category = 'argala_natal_matrix' AND fact_subject = %s",
-      "justification": "PRE-EXISTING, introduced by PR #1045 (m22/stage2 campaign, 2026-08-04), not touched by any shad-darshana lane. Verified via git blame + PR diff inspection during the ShadDarshana night-run merge-train (T3/T4 PRs #1050/#1052): this file is untouched by shad-darshana work. Out of this campaign's scope to fix another concurrent campaign's writer; flagged for m22 to address in its own lane. [ADHISTHANA fact-category-pinning-lint repair, 2026-08-08: line 1624->1630, shifted by the same +6 as the sibling entries above (same file, same unrelated earlier-in-file edit) — verified same code (_lookup_argala_for_sign) via diff. Switched line->pattern; pattern is distinct in shape from the COUNT(*) sibling above.]"
+      "justification": "_verify_upstream_rows intentionally reports presence of any argala matrix row. It consumes the count only."
     },
     {
       "file": "platform/python-sidecar/services/gochara_v3/context.py",
@@ -283,16 +224,6 @@
       "file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_aspects.ts",
       "line": 71,
       "justification": "Newly VISIBLE, not newly broken: TS SQL template literals were never scanned by this guard until F-C14 (issue #1750) — the scanner only read .find()/.filter()[0]. This query does NOT reduce to one row, so it cannot exhibit the shadbala defect the tightened reduction rule targets; its safety depends instead on the consumer keying results by (fact_subject, fact_key) application-side. That per-file audit is real work owned by the file's layer session, tracked in issue #1758. Allowlisted so the guard starts blocking NEW instances immediately rather than waiting on 18 audits. [Lahiri-primary combined batch rehearsal, 2026-10-10: line 70->71; the probe is unchanged in purpose, the lines moved because the batch edited this file.]"
-    },
-    {
-      "file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_av_transit_gating.ts",
-      "line": 362,
-      "justification": "Newly VISIBLE, not newly broken: TS SQL template literals were never scanned by this guard until F-C14 (issue #1750) — the scanner only read .find()/.filter()[0]. This query does NOT reduce to one row, so it cannot exhibit the shadbala defect the tightened reduction rule targets; its safety depends instead on the consumer keying results by (fact_subject, fact_key) application-side. That per-file audit is real work owned by the file's layer session, tracked in issue #1758. Allowlisted so the guard starts blocking NEW instances immediately rather than waiting on 18 audits. [Lahiri-primary combined batch rehearsal, 2026-10-10: line 358->362; the probe is unchanged in purpose, the lines moved because the batch edited this file.]"
-    },
-    {
-      "file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_av_transit_gating.ts",
-      "line": 463,
-      "justification": "Newly VISIBLE, not newly broken: TS SQL template literals were never scanned by this guard until F-C14 (issue #1750) — the scanner only read .find()/.filter()[0]. This query does NOT reduce to one row, so it cannot exhibit the shadbala defect the tightened reduction rule targets; its safety depends instead on the consumer keying results by (fact_subject, fact_key) application-side. That per-file audit is real work owned by the file's layer session, tracked in issue #1758. Allowlisted so the guard starts blocking NEW instances immediately rather than waiting on 18 audits. [Lahiri-primary combined batch rehearsal, 2026-10-10: line 459->463; the probe is unchanged in purpose, the lines moved because the batch edited this file.]"
     },
     {
       "file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_bhava_bala.ts",

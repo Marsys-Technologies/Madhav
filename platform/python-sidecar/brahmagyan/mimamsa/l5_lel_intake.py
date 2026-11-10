@@ -222,14 +222,14 @@ def seed_lel_intake(
         verbose: Log each row.
 
     Returns:
-        Provenance envelope with split counts and isolation verification.
+        Provenance envelope with split counts and an unmeasured isolation verdict.
     """
     from brahmagyan.mimamsa.lel_intake import seed_lel_intake as _base_seed
 
     rows = build_intake_rows()
     split = get_split_counts(rows)
 
-    # Validate isolation: every row has source_citation
+    # Validate the source citation on each row.
     for r in rows:
         assert r["source_citation"], f"Missing source_citation on {r['lel_id']}"
 
@@ -241,7 +241,7 @@ def seed_lel_intake(
 
     return {
         **base_result,
-        "lel_isolation_verified": True,
+        "lel_isolation_verified": None,
         "split": split,
         "no_leakage_note": (
             "LEL events isolated in life_events table — "

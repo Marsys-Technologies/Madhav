@@ -1606,7 +1606,11 @@ def lel_query(
             "confidence":      0.89,
             "source_citation": SOURCE_CITATION,
             "no_leakage_note": "life_events is calibration corpus only — must not feed prediction generation",
-            "b3_compliant":    True,
+            "b3_compliant": (
+                all(isinstance(event["source_citation"], str) and event["source_citation"].strip()
+                    for event in events)
+                if events else None
+            ),
             "empty_reason": (
                 "no LEL events recorded for this chart (structural/no-lel)"
                 if chart_id is not None and total_count == 0 else None

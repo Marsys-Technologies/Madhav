@@ -248,7 +248,7 @@ class StructuredFalsifier:
         return asdict(self)
 
 
-def _promise_lift(grade: float, status: str) -> float:
+def _promise_lift(grade: float | None, status: str) -> float:
     """bodha_pratijna grade [0..10] → Bayesian lift factor.
 
     Fix (SHABDA-SHUDDHI lane L4 / R6): corrects a sign-inversion bug in the
@@ -267,7 +267,7 @@ def _promise_lift(grade: float, status: str) -> float:
     which compressed the dynamic range and left 'no_evidence' falling into
     the promised/conditional formula (non-neutral lift).
     """
-    if status == 'no_evidence':
+    if grade is None or status == 'no_evidence':
         return 1.0
     if status == 'denied':
         # grade=0 -> 1.0 (neutral: no denial evidence); grade=10 -> 0.1 (floor)
@@ -288,7 +288,7 @@ def _trigger_lift(av_transit_potency: float) -> float:
 
 def compute_posterior(
     base_rate: float,
-    pratijna_grade: float,
+    pratijna_grade: float | None,
     pratijna_status: str,
     multi_system_confirmation_count: int,
     av_transit_potency: float,
@@ -386,8 +386,8 @@ class NimittaContext:
     ayanamsha_robustness:    Optional[int]  = None   # None = not measured (no default, §N.8)
     # BA-P5B: posterior model inputs (writer-supplied from pratijna + activation + transit)
     event_class_id:                  Optional[str] = None
-    pratijna_grade:                  float         = 5.0   # bodha_pratijna grade [0..10]
-    pratijna_status:                 str           = 'conditional'
+    pratijna_grade:                  float | None  = None  # bodha_pratijna grade [0..10]
+    pratijna_status:                 str           = 'no_evidence'
     multi_system_confirmation_count: int           = 0     # ka_yojaka enrichment
     av_transit_potency:              float         = 0.0   # AV/SAV gate score [0..1]
     base_rate:                       float         = 0.10  # brahma_event_ontology prior (JL-009)

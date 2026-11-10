@@ -37,6 +37,7 @@ from bodha_writers.formulas import (
     SalienceInputsV2,
 )
 from brahmagyan.graha_vocabulary import to_title
+from brahmagyan.verification_vocab import DOCUMENTED_APPROXIMATION
 
 ENGINE_VERSION = "bo_sudarshana_v1.0"
 
@@ -246,7 +247,7 @@ def build_signal_row(
         vargottama_amplification=0.0,
         neechabhanga_modifier=1.0,
         cancellation_modifier=1.0,
-        verification_pass_status="documented_approximation",  # M-22: status is earned by a verifier pass, never a literal at the emit site — deterministic sign-count arithmetic, but honestly labeled per the L2 convention (bo_laksana.py, bhavat_bhavam_amplifier.py)
+        verification_pass_status=DOCUMENTED_APPROXIMATION,  # M-22: status is earned by a verifier pass, never a literal at the emit site — deterministic sign-count arithmetic, but honestly labeled per the L2 convention (bo_laksana.py, bhavat_bhavam_amplifier.py)
         class_prior=SUDARSHANA_CLASS_PRIOR,
         varga_id="D1",
         specificity=specificity,
@@ -376,7 +377,7 @@ def build_signal_row(
         "pada_precision_flag": None,
         "cross_system_consensus_count": None,
         "channel_render_priority_jsonb": None,
-        "verification_pass_status": "documented_approximation",
+        "verification_pass_status": DOCUMENTED_APPROXIMATION,
         "verification_method": "sign_count_arithmetic_deterministic",
         "citation_ref": f"bo_sudarshana/{graha_code}",
         "citation_human": f"Sudarshana Chakra tri-frame: {graha_display}",

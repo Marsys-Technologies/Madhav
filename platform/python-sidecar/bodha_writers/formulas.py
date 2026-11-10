@@ -29,7 +29,7 @@ import math
 from dataclasses import dataclass, field
 from typing import Any
 
-from brahmagyan.verification_vocab import ALL_STATUSES, canonical as _vocab_canonical
+from brahmagyan.verification_vocab import DOCUMENTED_APPROXIMATION, ALL_STATUSES, canonical as _vocab_canonical
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Version constants — writers stamp these on each row
@@ -602,7 +602,7 @@ class SalienceInputsV2:
     argala_modifier: float | None = None            # 0..0.20 net argala support
 
     # V2 additions
-    verification_pass_status: str = "documented_approximation"
+    verification_pass_status: str = DOCUMENTED_APPROXIMATION
     class_prior: float = 1.0        # from brahma_class_priors; 1.0 if row not found
     varga_id: str = "D1"            # used to look up VARGA_WEIGHT
     specificity: float = 1.0        # 1 + 0.5×extremity_pctl; 1.0 before percentile pass

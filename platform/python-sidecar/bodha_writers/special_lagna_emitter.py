@@ -30,6 +30,7 @@ import json
 from typing import Any
 
 from bodha_writers.formulas import salience_formula_v2, SalienceInputsV2, VERSION_SALIENCE_FORMULA_V2
+from brahmagyan.verification_vocab import DOCUMENTED_APPROXIMATION
 
 ENGINE_VERSION = "bo_special_lagna_v1.0"
 
@@ -101,7 +102,7 @@ def build_signal_row(
         vargottama_amplification=0.0,
         neechabhanga_modifier=1.0,
         cancellation_modifier=1.0,
-        verification_pass_status="documented_approximation",
+        verification_pass_status=DOCUMENTED_APPROXIMATION,
         class_prior=SPECIAL_LAGNA_CLASS_PRIOR,
         varga_id="D1",
         specificity=specificity,
@@ -222,7 +223,7 @@ def build_signal_row(
         "pada_precision_flag": None,
         "cross_system_consensus_count": None,
         "channel_render_priority_jsonb": None,
-        "verification_pass_status": "documented_approximation",
+        "verification_pass_status": DOCUMENTED_APPROXIMATION,
         "verification_method": "l1_fact_composition_deterministic",
         "citation_ref": f"bo_special_lagna/{lagna_key}",
         "citation_human": f"Special lagna: {display}",

@@ -666,7 +666,7 @@ def query_muhurta(
             "panchanga_method": "approximate (production: panchanga_daily Phase 4C)",
             "action_types_supported": sorted(VALID_ACTION_TYPES),
             "source_citation": SOURCE_CITATION,
-            "b3_citation_compliant": True,
+            "b3_citation_compliant": None,
             "queried_at": datetime.now(tz=timezone.utc).isoformat(),
         },
     }

@@ -508,8 +508,8 @@ def run_acceptance_gate(
         result = phala_outlook(chart_id, horizon_months=horizon_months)
         checks.append({
             "id": "AC5",
-            "desc": "phala_outlook returns without raising",
-            "passed": True,
+            "desc": "phala_outlook returns ok=True",
+            "passed": result.get("ok") is True,
         })
     except Exception as exc:
         checks.append({

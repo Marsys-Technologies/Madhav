@@ -32,6 +32,7 @@ from bodha_writers.formulas import salience_formula_v2, SalienceInputsV2, VERSIO
 from bodha_writers.sudarshana_emitter import GRAHAS, classify_house
 from brahmagyan import valence_doctrine as _vd
 from brahmagyan.graha_vocabulary import to_title
+from brahmagyan.verification_vocab import DOCUMENTED_APPROXIMATION
 
 ENGINE_VERSION = "bo_arudha_v1.0"
 
@@ -101,7 +102,7 @@ def _base_inputs(specificity: float, house: int | None) -> SalienceInputsV2:
         vargottama_amplification=0.0,
         neechabhanga_modifier=1.0,
         cancellation_modifier=1.0,
-        verification_pass_status="documented_approximation",
+        verification_pass_status=DOCUMENTED_APPROXIMATION,
         class_prior=ARUDHA_CLASS_PRIOR,
         varga_id="D1",
         specificity=specificity,
@@ -217,7 +218,7 @@ def _make_row(
         "pada_precision_flag": None,
         "cross_system_consensus_count": None,
         "channel_render_priority_jsonb": None,
-        "verification_pass_status": "documented_approximation",
+        "verification_pass_status": DOCUMENTED_APPROXIMATION,
         "verification_method": "l1_fact_composition_deterministic",
         "citation_ref": f"bo_arudha/{signal_subkey}",
         "citation_human": f"Arudha: {headline}",

@@ -125,6 +125,7 @@ Exit codes
 from __future__ import annotations
 
 import argparse
+import ast
 import json
 import re
 import sys
@@ -310,14 +311,46 @@ def _is_unsafe_sql_block(sql: str) -> bool:
     return not (has_fact_key or has_order_limit or has_distinct_on)
 
 
+def _python_docstring_spans(text: str) -> list[tuple[int, int]]:
+    try:
+        tree = ast.parse(text)
+    except SyntaxError:
+        # Keep the conservative string scan for partial or invalid source.
+        return []
+    lines = text.splitlines(keepends=True)
+    starts = [0]
+    for line in lines:
+        starts.append(starts[-1] + len(line))
+
+    def offset(line_number: int, byte_column: int) -> int:
+        line = lines[line_number - 1]
+        prefix = line.encode("utf-8")[:byte_column].decode("utf-8")
+        return starts[line_number - 1] + len(prefix)
+
+    spans = []
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        if ast.get_docstring(node, clean=False) is None:
+            continue
+        expr = node.body[0]
+        spans.append((offset(expr.lineno, expr.col_offset), offset(expr.end_lineno, expr.end_col_offset)))
+    return spans
+
+
 def scan_python_text(text: str) -> List[tuple]:
     """Return list of (line, snippet) for unsafe fact_category SQL blocks."""
     hits: List[tuple] = []
+    docstrings = None
     for m in _PY_STRING_RE.finditer(text):
         content = next((g for g in m.groups() if g is not None), "")
         if not content or "chart_facts" not in content.lower():
             continue
         if _is_unsafe_sql_block(content):
+            if docstrings is None:
+                docstrings = _python_docstring_spans(text)
+            if any(start <= m.start() and m.end() <= end for start, end in docstrings):
+                continue
             line = text.count("\n", 0, m.start()) + 1
             snippet = " ".join(content.split())[:160]
             hits.append((line, snippet))
@@ -531,11 +564,16 @@ def _matches_entry(v: Violation, entry: dict) -> bool:
 
 def partition_allowlisted(violations: Sequence[Violation], allowlist: list):
     allowed, new = [], []
-    for v in violations:
-        if any(_matches_entry(v, e) for e in allowlist):
-            allowed.append(v)
+    used: dict[int, int] = {}
+    for violation in violations:
+        for index, entry in enumerate(allowlist):
+            if _matches_entry(violation, entry):
+                used[index] = used.get(index, 0) + 1
+                target = allowed if used[index] <= entry.get("max_occurrences", 1) else new
+                target.append(violation)
+                break
         else:
-            new.append(v)
+            new.append(violation)
     return allowed, new
 
 
@@ -558,6 +596,18 @@ def run_self_test() -> int:
         return 2
 
     failures: List[str] = []
+
+    unpinned_sql = "SELECT fact_id FROM chart_facts WHERE fact_category = 'strength'"
+    if scan_python_text(f'"""{unpinned_sql}"""'):
+        failures.append("SQL examples in Python docstrings must not be flagged")
+    mixed_source = f'def check(): """{unpinned_sql}"""; return execute("""{unpinned_sql}""")'
+    if len(scan_python_text(mixed_source)) != 1:
+        failures.append("A live SQL string adjacent to a docstring must still be flagged")
+
+    hit = Violation("source.py", 2, "python", "sql_select", unpinned_sql, "fixture")
+    allowed, new = partition_allowlisted([hit, hit], [{"file": hit.file, "pattern": "SELECT"}])
+    if allowed != [hit] or new != [hit]:
+        failures.append("A new occurrence must not inherit an existing query's exception")
 
     for fixture in sorted(pass_dir.iterdir()):
         if not fixture.is_file():

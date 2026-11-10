@@ -1359,7 +1359,7 @@ def _build_per_varga_avastha_rows(
                 "citation_ref":            f"{floor_cat}.{graha}.D_ALL@chart={chart_id}:ay={ayanamsha_id}:eng={eng_ver}",
                 "citation_human":          f"{graha.capitalize()} {floor_cat}: floored (intrinsically D1, no per-varga computation)",
                 "source_calculation":      f"ga_condition_writer.intrinsically_d1_avastha_floor/{eng_ver}",
-                "verification_pass_status":"floored",
+                "verification_pass_status":FLOORED,
                 "engine_version":          eng_ver,
                 "computed_at":             computed_at,
             })
@@ -1591,7 +1591,7 @@ def _build_d1_avastha_rows(
                 "5/9+shadow=lajjita, friend=mudita, enemy=kshudhita)."
             ),
             "source_calculation":      f"ga_condition_writer._lajjitadi_from_context/{eng_ver}",
-            "verification_pass_status":"computed_extension",
+            "verification_pass_status":COMPUTED_EXTENSION,
             "engine_version":          eng_ver,
             "computed_at":             computed_at,
         })
@@ -1894,3 +1894,4 @@ def build_ga_condition_substep(
 # condition for them (rule-scope ruling N-185 on the owner's acharya-check list). No row changes today: no node sits
 # in an enemy sign on the three production charts; the exclusion keeps a future chart from turning `dina` into `vikala`.
 from ga_writers.ga_positions_writer import MEAN_NODE_GRAHA_NAMES as _MEAN_NODE_GRAHA_NAMES  # noqa: E402
+from brahmagyan.verification_vocab import COMPUTED_EXTENSION, FLOORED

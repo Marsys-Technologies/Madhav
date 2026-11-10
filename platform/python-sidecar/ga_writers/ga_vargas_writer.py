@@ -177,20 +177,6 @@ assert sum(VIMSOPAKA_SHODA_WEIGHTS.values()) == 20.0, (
     f"{sum(VIMSOPAKA_SHODA_WEIGHTS.values())}"
 )
 
-# Dignity table: sign-based dignity per graha
-# (exaltation_sign_idx, debilitation_sign_idx, moolatrikona_sign_idx, own_signs)
-DIGNITY_TABLE = {
-    "Sun":     {"exalt": 0, "debil": 6, "mt": 4, "own": [4]},
-    "Moon":    {"exalt": 1, "debil": 7, "mt": 1, "own": [3]},
-    "Mars":    {"exalt": 9, "debil": 3, "mt": 0, "own": [0, 7]},
-    "Mercury": {"exalt": 5, "debil": 11, "mt": 5, "own": [2, 5]},
-    "Jupiter": {"exalt": 3, "debil": 9, "mt": 8, "own": [8, 11]},
-    "Venus":   {"exalt": 11, "debil": 5, "mt": 6, "own": [1, 6]},
-    "Saturn":  {"exalt": 6, "debil": 0, "mt": 10, "own": [10, 7]},
-    "Rahu":    {"exalt": 1, "debil": 7, "mt": None, "own": []},
-    "Ketu":    {"exalt": 7, "debil": 1, "mt": None, "own": []},
-}
-
 # Friend/enemy/neutral tables (classical BPHS)
 NATURAL_FRIENDS = {
     "Sun":     ["Moon", "Mars", "Jupiter"],
@@ -521,7 +507,7 @@ def _compute_dignity(body: str, sign_idx: int, degree_in_sign: float = 0.0) -> s
     degree-gated moolatrikona support.  Returns Title-case to preserve callers'
     existing comparison strings.
 
-    The Friend/Enemy tier that the previous local DIGNITY_TABLE implementation
+    The Friend/Enemy tier that the previous local dignity implementation
     produced is intentionally retained as a fallback label so that callers that
     compare against "Friend" / "Enemy" continue to work; those values are not
     produced by the oracle (which returns only the five canonical tiers), so the
@@ -532,7 +518,7 @@ def _compute_dignity(body: str, sign_idx: int, degree_in_sign: float = 0.0) -> s
     dignity for vimsopaka/saptavargaja scoring already handle "Neutral" via their
     default-fallback branch, so this change is safe.
     """
-    if body not in DIGNITY_TABLE and body not in ("Rahu", "Ketu"):
+    if body not in CLASSICAL_7_GRAHAS and body not in ("Rahu", "Ketu"):
         return "Unknown"
     try:
         sign_name = SIGN_NAMES[sign_idx]
@@ -1114,7 +1100,7 @@ def _build_d2_hora_rows(
                 "fact_value_num": vnum,
                 "fact_subject": f"{vid}.{subject}",
                 "build_id_uuid": build_id,
-                "verification_pass_status": "classical_match",
+                "verification_pass_status": UNVERIFIED_DEFAULT,
                 "engine_version": ENGINE_VERSION,
                 "citation_ref": _citation_ref("varga_hora_class", vid, body, key,
                                                chart_id, ayanamsha_id, ENGINE_VERSION),
@@ -1279,7 +1265,7 @@ def _build_house_lord_occupant_rows(
             "fact_value_num": float(house),
             "fact_subject": f"{vid}.H{house}",
             "build_id_uuid": build_id,
-            "verification_pass_status": "single",
+            "verification_pass_status": UNVERIFIED_DEFAULT,
             "engine_version": ENGINE_VERSION,
             "citation_ref": _citation_ref("varga_house_lord", vid, f"H{house}", "lord",
                                            chart_id, ayanamsha_id, ENGINE_VERSION),
@@ -1323,7 +1309,7 @@ def _build_house_lord_occupant_rows(
             "fact_value_num": float(house_num),
             "fact_subject": f"{vid}.{subject}",
             "build_id_uuid": build_id,
-            "verification_pass_status": "single",
+            "verification_pass_status": UNVERIFIED_DEFAULT,
             "engine_version": ENGINE_VERSION,
             "citation_ref": _citation_ref("varga_house_occupant", vid, body, "house",
                                            chart_id, ayanamsha_id, ENGINE_VERSION),
@@ -1834,7 +1820,7 @@ def _build_saptavargaja_rows(
         if bdata is None:
             continue
         sign_idx = bdata["sign_idx"]
-        dtab = DIGNITY_TABLE.get(body, {})
+        sign_lord = SIGN_LORDS[sign_idx]
 
         # B-01 dignity oracle: Moolatrikona is degree-gated (only evaluated for
         # varga_n==1, where degree_in_sign is the real natal degree — vargas
@@ -1848,20 +1834,15 @@ def _build_saptavargaja_rows(
         if is_mt:
             saptavargaja_score = 45.0
             relation_label = "Moolatrikona"
-        elif sign_idx in dtab.get("own", []):
+        elif sign_lord == body:
             saptavargaja_score = 30.0
             relation_label = "Own"
         else:
-            sign_lord = SIGN_LORDS[sign_idx]
-            if sign_lord == body:
-                saptavargaja_score = 30.0
-                relation_label = "Own"
-            else:
-                rel_code = compound.get((body, sign_lord))
-                if rel_code is None:
-                    continue  # floor: skip rather than fabricate
-                saptavargaja_score = SAPTAVARGAJA_VIRUPA_BY_COMPOUND_CODE[rel_code]
-                relation_label = SAPTAVARGAJA_LABEL_BY_COMPOUND_CODE[rel_code]
+            rel_code = compound.get((body, sign_lord))
+            if rel_code is None:
+                continue  # floor: skip rather than fabricate
+            saptavargaja_score = SAPTAVARGAJA_VIRUPA_BY_COMPOUND_CODE[rel_code]
+            relation_label = SAPTAVARGAJA_LABEL_BY_COMPOUND_CODE[rel_code]
 
         subject = BODY_TO_SUBJECT.get(body, body.upper())
         rid = _fact_id(vid, body, "varga_saptavargaja_bala_component", "saptavargaja",
@@ -1896,7 +1877,7 @@ def _build_saptavargaja_rows(
             # low-confidence VERIFICATION_RESCALE default via .get()
             # fallback). Fixing the friendship-ladder derivation itself is
             # M-18's scope, not this lane's.
-            "verification_pass_status": "single",
+            "verification_pass_status": UNVERIFIED_DEFAULT,
             "engine_version": ENGINE_VERSION,
             "citation_ref": _citation_ref("varga_saptavargaja_bala_component", vid, body, "saptavargaja",
                                            chart_id, ayanamsha_id, ENGINE_VERSION),
@@ -2408,7 +2389,7 @@ def _build_d27_quadrant_rows(
             "fact_value_num": None,
             "fact_subject": f"D27.{subject}",
             "build_id_uuid": build_id,
-            "verification_pass_status": "single",
+            "verification_pass_status": UNVERIFIED_DEFAULT,
             "engine_version": ENGINE_VERSION,
             "citation_ref": f"varga_d27_directional_quadrant.D27.{body}.quadrant@chart={chart_id}:ay={ayanamsha_id}",
             "citation_human": f"{body}'s D27 Bhamsa quadrant: {quadrant} ({ayanamsha_id}).",

@@ -36,6 +36,7 @@ from typing import Any
 
 from bodha_writers.bhavat_bhavam_registry import derived_houses
 from bodha_writers.data_plane_contracts import stable_semantic_uuid
+from brahmagyan.verification_vocab import DOCUMENTED_APPROXIMATION
 
 VERSION_BHAVAT_BHAVAM_AMPLIFIER = "v1.0"
 
@@ -384,7 +385,7 @@ def to_msr_row(
         "pada_precision_flag": None,
         "cross_system_consensus_count": None,
         "channel_render_priority_jsonb": None,
-        "verification_pass_status": "documented_approximation",
+        "verification_pass_status": DOCUMENTED_APPROXIMATION,
         "verification_method": "bhavat_bhavam_amplifier_v1",
         "citation_ref": f"bhavat_bhavam/H{signal.primary_house}/H{signal.derived_house}",
         "citation_human": (

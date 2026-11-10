@@ -34,6 +34,7 @@ from itertools import combinations
 from . import WriterBase, ContextSpec, WriterResult, register
 from bodha_writers.data_plane_contracts import l2_producer, stable_semantic_uuid
 from brahmagyan.domain_vocabulary import CANONICAL_DOMAINS, CANONICAL_DOMAINS_SORTED
+from brahmagyan.verification_vocab import DOCUMENTED_APPROXIMATION
 
 logger = logging.getLogger(__name__)
 
@@ -360,7 +361,7 @@ def _build_cdlm_cells(
             "shared_signals_by_tradition_jsonb": json.dumps(dict(tradition_breakdown)),
             "top_k_rank_in_snapshot": None,  # set after ranking
             "msr_salience_version_used": (shared_sigs[0].get("salience_formula_version") or "v1.0") if shared_sigs else "v1.0",
-            "verification_pass_status": "documented_approximation",
+            "verification_pass_status": DOCUMENTED_APPROXIMATION,
             "citation_ref": f"bo_sangati/cdlm/{domain_a}_{domain_b}",
             "citation_human": f"CDLM cell: {domain_a}×{domain_b}, {len(shared_ids)} shared signals",
             "computed_at": now,
@@ -435,7 +436,7 @@ def _build_convergence_rows(
             "salience_weighted_sum": round(sal_sum, 6),
             "salience_max": round(sal_max, 6),
             "contradiction_count": 1 if domain in contradiction_domains else 0,
-            "verification_pass_status": "documented_approximation",
+            "verification_pass_status": DOCUMENTED_APPROXIMATION,
             "citation_ref": f"bo_sangati/convergence/{domain}",
             "citation_human": f"Convergence: {domain} — {len(sigs)} signals",
             "computed_at": now,

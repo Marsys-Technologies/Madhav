@@ -793,8 +793,8 @@ class PhNimittaWriter(WriterBase):
             # branch already existed in the engine and was simply never reached, because the
             # substitution happened here, upstream of it.
             #
-            # Verified: _promise_lift(5.0,'conditional') = 1.75; _promise_lift(0.0,'no_evidence') = 1.0.
-            pratijna_grade=post.get('pratijna_grade') if post.get('pratijna_grade') is not None else 0.0,
+            # An absent grade keeps the promise lift neutral and is disclosed as null.
+            pratijna_grade=post.get('pratijna_grade'),
             pratijna_status=post.get('pratijna_status') or 'no_evidence',
             multi_system_confirmation_count=post.get('multi_system_confirmation_count', 0),
             av_transit_potency=0.0,
