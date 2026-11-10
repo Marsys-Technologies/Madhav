@@ -20,11 +20,11 @@
  * Usage:
  *   npx tsx evals/k2/auditor.ts <transcript.json> <domain> <chart_id> [--ledger-out <dir>] [--no-write]
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
+import { existsSync, mkdirSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import { loadAccounting, loadTranscript, bareToolName, REPO_ROOT, lenientParseJson } from './transcript_utils.js'
 import { scoreConceptHits, type ConceptHitResult } from './consumption_grader.js'
-import type { AccountingRow, NormalizedTranscript, TranscriptCall } from './types.js'
+import type { AccountingRow, NormalizedTranscript } from './types.js'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Independent structural-walk pass

@@ -294,6 +294,8 @@ jobs:
         run: npm ci --prefix ../platform-mcp
       - name: ESLint — MCP server
         run: npm run lint --prefix ../platform-mcp -- --max-warnings 0
+      - name: ESLint — evaluation tools
+        run: npm run lint:evals --prefix ../platform-mcp
       - name: tsc — src only (exclude tests)
         # Capture tsc output; only fail on errors outside test directories.
         # Uses || true so set -e doesn't abort before we can inspect output.

@@ -12,6 +12,7 @@
     "dev": "tsx watch src/server.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint",
+    "lint:evals": "cd .. && eslint --config platform-mcp/eslint.config.mjs evals --max-warnings 0",
     "test": "vitest run",
     "accuracy:capture": "vitest run test/accuracy/run.test.ts --reporter=verbose",
     "accuracy:diff": "tsx test/accuracy/diff.ts",
