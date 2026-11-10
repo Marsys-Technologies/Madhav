@@ -8,9 +8,9 @@ import subprocess
 
 
 def main() -> int:
-    config_path = Path(__file__).with_name("yaml_style_exceptions.json")
+    root = Path(__file__).resolve().parents[3]
+    config_path = root / ".github/yaml-style-exceptions.json"
     exceptions = json.loads(config_path.read_text(encoding="utf-8"))["entries"]
-    root = config_path.resolve().parents[3]
     tracked = subprocess.check_output(
         ["git", "ls-files", "-z", "--", "*.yaml", "*.yml"], cwd=root
     )
