@@ -272,7 +272,7 @@ async function queryKalaTimeline(
       signal_activations: Array.isArray(r.signal_activations) ? r.signal_activations : [],
       source_citation: r.source_citation,
     }))
-  } catch (err) {
+  } catch {
     // Table may not exist yet — fall back to algorithmic computation
     rows = []
   }

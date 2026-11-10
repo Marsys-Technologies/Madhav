@@ -12,7 +12,7 @@
  *   - tool smoke: timeline_query responds with provenance_envelope
  */
 
-import { describe, it, expect, beforeAll } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { Principal } from '../types.js'
 import { registerKalaTimeline } from '../tools/kala_timeline.js'
