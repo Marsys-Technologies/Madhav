@@ -160,17 +160,21 @@ waves:
 
 # ---- SEAL (autonomous, AI-assessed) — the HARD VISUAL gate is FIRST ----
 seal:
-  - "HARD VISUAL COCKPIT GATE (#1 L3 lesson): deployed Cloud Run revision == merge SHA; the LIVE cockpit Phala panel shows 8 assets lit with real counts + zero error/missing_table; verify on prod AND localhost. Green JSON / 'SEALED' report / unmerged-branch fix are ALL false positives."
+  - "HARD VISUAL COCKPIT GATE (#1 L3 lesson): deployed Cloud Run revision == merge SHA; the LIVE cockpit Phala panel shows 8 assets lit with real counts + zero error/missing_table; verify on prod
+    AND localhost. Green JSON / 'SEALED' report / unmerged-branch fix are ALL false positives."
   - "Anti-drift final audit: every ph_* writer → zero non-phala writes + zero .commit()/.rollback(); ledgers resolve. Canonical chart 482012f1 UNCHANGED (ph_sodhana hypothesis-only)."
   - "PROD-VERIFY every AC against prod. FORENSIC 7/7."
   - "Promote all ph_* DRAFT→CURRENT; set every target_floor = achieved count. Re-seal L3 (U2/U3/U4)."
-  - "Author L4_PHALA_CLOSE_v1_0.md + the L5 Mīmāṃsā onboarding contract (drafted by ph_pramana); update CURRENT_STATE + SESSION_LOG; merge + push (CI-green gate); final Vimarśaka audit (temporal + anti-drift)."
+  - "Author L4_PHALA_CLOSE_v1_0.md + the L5 Mīmāṃsā onboarding contract (drafted by ph_pramana); update CURRENT_STATE + SESSION_LOG; merge + push (CI-green gate); final Vimarśaka audit (temporal
+    + anti-drift)."
 
 # ---- AUTONOMOUS EXECUTION (every band; no human gate) ----
 autonomous_execution:
   - "Each Śilpī agent runs in an ISOLATED worktree sub-branch off feature/l4-phala-autonomous; parallel bands = parallel sub-branches, merged at the band gate."
-  - "Per asset: write code+tests → run the asset's hard gate (if any) → commit → Vimarśaka audit → merge to band → at band gate merge to feature → CI-green → DEPLOY (migrate runner applies the migration; Cloud Run sidecar rebuilds) → BUILD/DATA-GEN (orchestrator click-Build runs the writer for 482012f1 → rows in phala_*) → PROD-VERIFY ACs. ALL autonomous."
-  - "Failures: the deep-fix ladder (B.1 — 6 attempts, escalating to multi-model-parallel) resolves without a native halt; destructive ops via the disposition classifier (B.2); Tier-2 decisions Smṛti-logged."
+  - "Per asset: write code+tests → run the asset's hard gate (if any) → commit → Vimarśaka audit → merge to band → at band gate merge to feature → CI-green → DEPLOY (migrate runner applies the
+    migration; Cloud Run sidecar rebuilds) → BUILD/DATA-GEN (orchestrator click-Build runs the writer for 482012f1 → rows in phala_*) → PROD-VERIFY ACs. ALL autonomous."
+  - "Failures: the deep-fix ladder (B.1 — 6 attempts, escalating to multi-model-parallel) resolves without a native halt; destructive ops via the disposition classifier (B.2); Tier-2 decisions
+    Smṛti-logged."
   - "The chart-revision flag (ph_suddha_sodhana D43): STAGED + async-notified; does NOT block the build (build completes on the recorded chart; adoption is a post-seal one-click native action)."
 
 # ---- CROSS-CUTTING GATES (every asset) ----

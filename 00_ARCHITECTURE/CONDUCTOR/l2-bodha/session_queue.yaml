@@ -15,7 +15,8 @@ prep_findings:  # from PREIMPL_READINESS_REPORT.md (commit ebfc7922) — the swa
   prod_revision: amjis-web-00638-2gs   # == e6be443e merge; prod==main PASS
   db_migration_state: "prod at 323; file 324 exists UNAPPLIED — apply 324 first (Wave-0), then 325+"
   expected_tracked_gaps:  # EXPECTED — flag as documented gaps, do NOT deep-fix-loop on them
-    - "F2 remedy corpus: planet + dosha covered (266 rows); nakshatra-key / vastu-direction (0 rows) / body-part-key = remedy_corpus_gap → bo_upaya §R5 flags them; an L0-corpus-expansion follow-on, NOT a build failure"
+    - "F2 remedy corpus: planet + dosha covered (266 rows); nakshatra-key / vastu-direction (0 rows) / body-part-key = remedy_corpus_gap → bo_upaya §R5 flags them; an L0-corpus-expansion
+      follow-on, NOT a build failure"
     - "§XS cross-subsystem: bg_nakshatra_medical (27) + vastu (3 tables) present; NO chakra table → tracked gap, edges cover what exists"
     - "classical_chunks (stale): empty/deprecated, NO live reader → leave in place, no action (NOT the retire/repoint case)"
 governing:

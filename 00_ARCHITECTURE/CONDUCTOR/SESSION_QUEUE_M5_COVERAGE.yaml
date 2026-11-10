@@ -199,7 +199,8 @@ sessions:
     native_review_required: true
     proposed_patch_artifacts:
       - 00_ARCHITECTURE/CONFLICT_PATCHES/PROPOSED/DIS.013_MSR.377_proposed.yaml
-    halt_conditions: ["ICR-S4 emits patch with propagation chain mismatching audit §C.10", "NATIVE_REVIEW_REQUIRED_ON_PROPOSE_PATCH (always halts after this session — propose-patch artifacts in PROPOSED/ require native confirmation before ICR-S5 can resolve them)"]
+    halt_conditions: ["ICR-S4 emits patch with propagation chain mismatching audit §C.10", "NATIVE_REVIEW_REQUIRED_ON_PROPOSE_PATCH (always halts after this session — propose-patch artifacts in
+      PROPOSED/ require native confirmation before ICR-S5 can resolve them)"]
   - id: PERF-S4
     stream: perf
     audit_section: "§H.4"

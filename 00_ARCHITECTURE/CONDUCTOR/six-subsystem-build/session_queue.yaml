@@ -16,8 +16,11 @@ seal_layers: false                   # subsystems validate-as-you-go; layers sea
 rails:
   - orchestrator-native (@register WriterBase, FROZEN contract; HALT if a contract change seems needed)
   - computed-and-cited HARD GATE (uncited datum → floor null+marked, NEVER fabricate)
-  - "STANDING RULE (native 2026-06-10, all 6 subsystems): CANONICAL-computed-and-cited OR floored NULL+reason — NEVER substitute a different-but-computable method that LOOKS like the cited rule. A value computed by a non-canonical method (e.g. graha-yuddha by longitude when the rule is latitude) FAILS the hard gate = fabricating CONFORMANCE. If the actual classical criterion isn't computable from available data, FLOOR the field (NULL+reason) and open a real fix to add the needed data. Pramāṇa verifies each computed value uses the CITED rule's actual method, not a proxy."
-  - "FORMULA WEIGHTS / VERSIONED-FORMULA PARAMETERS are NATIVE judgments, not agent conveniences: an agent must NOT change weights/thresholds for arithmetic tidiness. If a sum needs normalizing, NORMALIZE (preserve relative weights) — do not re-pick. A weight change is a formula-version decision → HALT for native sign-off (do not just document-and-proceed)."
+  - "STANDING RULE (native 2026-06-10, all 6 subsystems): CANONICAL-computed-and-cited OR floored NULL+reason — NEVER substitute a different-but-computable method that LOOKS like the cited rule.
+    A value computed by a non-canonical method (e.g. graha-yuddha by longitude when the rule is latitude) FAILS the hard gate = fabricating CONFORMANCE. If the actual classical criterion isn't
+    computable from available data, FLOOR the field (NULL+reason) and open a real fix to add the needed data. Pramāṇa verifies each computed value uses the CITED rule's actual method, not a proxy."
+  - "FORMULA WEIGHTS / VERSIONED-FORMULA PARAMETERS are NATIVE judgments, not agent conveniences: an agent must NOT change weights/thresholds for arithmetic tidiness. If a sum needs normalizing,
+    NORMALIZE (preserve relative weights) — do not re-pick. A weight change is a formula-version decision → HALT for native sign-off (do not just document-and-proceed)."
   - 3-category split: static→L0 ON-CONFLICT, per-chart→L1 delete-then-insert, time-varying→L0 SERVICE (nothing stored across time)
   - reuse-don't-recompute (Sambandha verifies cross-subsystem refs resolve to MERGED assets, not worktree-only)
   - surgical migrations only (never deploy.yml-auto / bulk migrate.ts)

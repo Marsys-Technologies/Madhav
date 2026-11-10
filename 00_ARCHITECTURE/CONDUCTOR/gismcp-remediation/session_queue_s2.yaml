@@ -29,7 +29,8 @@ sessions:
       - "test -f /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S2/00_ARCHITECTURE/CONDUCTOR/gismcp-remediation/MSR_GROUNDING_AUDIT.md"
       # Conductor checks: if R3-S1 showed ungrounded_count=0, this session may be a no-op
       # Session still runs but may produce only a VERIFIED_NO_GAP note
-      - "grep -qE 'ungrounded_count: 0|status: VERIFIED_NO_GAP|status: REMEDIATION_COMPLETE' /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S2/00_ARCHITECTURE/CONDUCTOR/gismcp-remediation/MSR_GROUNDING_AUDIT.md"
+      - "grep -qE 'ungrounded_count: 0|status: VERIFIED_NO_GAP|status: REMEDIATION_COMPLETE'
+        /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S2/00_ARCHITECTURE/CONDUCTOR/gismcp-remediation/MSR_GROUNDING_AUDIT.md"
 
   - id: R3-T1
     title: "MSR grounding verification — 573/573 grounded, discovery layer quality check"

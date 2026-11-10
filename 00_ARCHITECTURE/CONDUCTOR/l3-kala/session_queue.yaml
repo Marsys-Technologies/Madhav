@@ -66,7 +66,8 @@ waves:
     assets:
       - {id: ka_sangam, brief: CLAUDECODE_BRIEF_L3_KA_SANGAM_v1_0.md, kind: artifact,
          note: "Convergence core Mode A+B + rigor stratum; USES RATIFIED I-16 form + weights",
-         hard_internal_gate: "SPINE-FIRST: prove ONE signal end-to-end (classify→Mode A+B→rigor scores→ranked window→anti-drift clean) BEFORE ka_kalasutra/K5/K6 dispatch. Failure → deep-fix ladder, NOT native."}
+         hard_internal_gate: "SPINE-FIRST: prove ONE signal end-to-end (classify→Mode A+B→rigor scores→ranked window→anti-drift clean) BEFORE ka_kalasutra/K5/K6 dispatch. Failure → deep-fix
+           ladder, NOT native."}
       - {id: ka_kalasutra, brief: CLAUDECODE_BRIEF_L3_KA_KALASUTRA_v1_0.md, kind: artifact,
          blocked_by_intra_wave: [ka_sangam],
          note: "Activation artifact; fills L2 NULL hooks via artifact (zero L2 writes); PRESERVE the id (5 downstream deps)"}
@@ -74,7 +75,8 @@ waves:
   - wave: K5
     internal_order: "ka_vighnakara FIRST THEN ka_kala_darshana (catalog reads danger windows — CS3 fix)"
     assets:
-      - {id: ka_vighnakara, brief: CLAUDECODE_BRIEF_L3_KA_VIGHNAKARA_v1_0.md, kind: artifact, note: "Danger engine = inverse search reuse of ka_sangam spine; extends kala_obstruction; temporal dissonance"}
+      - {id: ka_vighnakara, brief: CLAUDECODE_BRIEF_L3_KA_VIGHNAKARA_v1_0.md, kind: artifact, note: "Danger engine = inverse search reuse of ka_sangam spine; extends kala_obstruction; temporal
+        dissonance"}
       - {id: ka_kala_darshana, brief: CLAUDECODE_BRIEF_L3_KA_KALA_DARSHANA_v1_0.md, kind: artifact,
          blocked_by_intra_wave: [ka_vighnakara],
          note: "Lifetime catalog; mirrors bodha_discoveries shape; cross-subsystem convergence WITH independence discount"}
@@ -85,7 +87,8 @@ waves:
     assets:
       - {id: ka_tulana, brief: CLAUDECODE_BRIEF_L3_KA_TULANA_v1_0.md, kind: service, note: "cross-pattern prioritization; RATIFIED I-11 weights; dissonance-aware verdicts"}
       - {id: ka_jivana_parva, brief: CLAUDECODE_BRIEF_L3_KA_JIVANA_PARVA_v1_0.md, kind: artifact, note: "daśā macro-narrative; chapters from chart_dashas MD boundaries; theme from THIS native"}
-      - {id: ka_bhavishya_lekha, brief: CLAUDECODE_BRIEF_L3_KA_BHAVISHYA_LEKHA_v1_0.md, kind: artifact, note: "prediction-record emitter → L5 mi_bhavisya; MUST NOT write mimamsa_* tables; LEL toggle honored"}
+      - {id: ka_bhavishya_lekha, brief: CLAUDECODE_BRIEF_L3_KA_BHAVISHYA_LEKHA_v1_0.md, kind: artifact, note: "prediction-record emitter → L5 mi_bhavisya; MUST NOT write mimamsa_* tables; LEL
+        toggle honored"}
 
 # ---- SEAL (autonomous, AI-assessed) ----
 seal:
