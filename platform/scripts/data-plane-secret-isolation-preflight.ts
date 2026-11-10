@@ -45,6 +45,7 @@ interface IamPolicy { bindings?: IamBinding[] }
 interface ServiceAccount { disabled?: boolean }
 interface CloudRunEntry { metadata?: { name?: string; labels?: Record<string, string> }; location?: string }
 interface EffectivePolicy { resource?: string; policy?: IamPolicy }
+interface EffectiveTag { tagKey?: string; tagValue?: string; namespacedTagValue?: string; inherited?: boolean }
 interface ResourceAncestor { type?: string; id?: string }
 export type CloudRunSurface = { kind: 'service' | 'revision' | 'job'; name: string; definition: unknown }
 type RolePermissions = Record<string, string[]>
@@ -94,6 +95,41 @@ const KNOWN_SA_CONTROL_ROLES = new Set([
 export function grantsServiceAccountControl(role: string, resolved: RolePermissions): boolean {
   if (KNOWN_SA_CONTROL_ROLES.has(role)) return true
   return (resolved[role] ?? []).some((permission) => SA_CONTROL_PERMISSIONS.has(permission))
+}
+
+const KILL_SWITCH_AGENT_DOMAINS: Record<string, string> = {
+  'roles/cloudfunctions.standardServiceAgent': 'gcf-admin-robot.iam.gserviceaccount.com',
+  'roles/eventarc.serviceAgent': 'gcp-sa-eventarc.iam.gserviceaccount.com',
+}
+
+export function protectedResourceExclusion(
+  projectNumber: string,
+  tagsByResource: readonly (readonly EffectiveTag[])[],
+): string {
+  const names = [project, projectNumber].map((id) => `${id}/madhav-protected-data-plane/true`)
+  const tags = tagsByResource.map((entries) => entries.filter((tag) =>
+    tag.inherited !== true && names.includes(tag.namespacedTagValue ?? '')))
+  const { tagKey, tagValue } = tags[0]?.[0] ?? {}
+  if (!tagKey || !/^tagKeys\/\d+$/.test(tagKey) || !tagValue || !/^tagValues\/\d+$/.test(tagValue)
+      || tags.length < 2 || !tags.every((entries) => entries.length === 1
+        && entries[0].tagKey === tagKey && entries[0].tagValue === tagValue)) {
+    throw new Error('The managed kill-switch agents require the same direct protection tag on every protected identity and job.')
+  }
+  return `!resource.matchTagId('${tagKey}', '${tagValue}')`
+}
+
+function isScopedKillSwitchAgent(
+  binding: IamBinding, member: string, projectNumber: string,
+  resolved: RolePermissions, exclusion?: string,
+): boolean {
+  const domain = KILL_SWITCH_AGENT_DOMAINS[binding.role]
+  const permissions = resolved[binding.role] ?? []
+  return Boolean(exclusion && domain && /^\d+$/.test(projectNumber)
+    && binding.members?.length === 1 && member === `serviceAccount:service-${projectNumber}@${domain}`
+    && (binding.condition as { expression?: string } | undefined)?.expression === exclusion
+    && permissions.length > 0 && permissions.every((permission) =>
+      (!SA_CONTROL_PERMISSIONS.has(permission) || IMPERSONATION_PERMISSIONS.has(permission))
+      && !/^(?:(?:iam\.serviceAccounts|run\.jobs)\.(?:create|delete)TagBinding|resourcemanager\.tag(?:Bindings|Keys|Values|ValueBindings)\.(?:create|delete|update|setIamPolicy))$/i.test(permission)))
 }
 
 function isDeclaredControlPlaneAdminGrant(
@@ -600,6 +636,7 @@ export function assertVerifierInheritedControl(
   controlPlaneAdminPrincipal = '',
   projectNumber = '',
   declaredExceptions = process.env.DATA_PLANE_VERIFIER_CONTROL_EXCEPTIONS ?? '',
+  protectedExclusion?: string,
 ): void {
   const exceptions = parseDeclaredExceptions(declaredExceptions, projectNumber)
   const violations: string[] = []
@@ -611,6 +648,7 @@ export function assertVerifierInheritedControl(
         const isProject = resource === `projects/${project}`
         if (isProject && isDeclaredControlPlaneAdminGrant(binding, member, controlPlaneAdminPrincipal)) continue
         if (isProject && isCanonicalGoogleServiceAgentGrant(binding, member, projectNumber, true)) continue
+        if (isProject && isScopedKillSwitchAgent(binding, member, projectNumber, resolved, protectedExclusion)) continue
         if (binding.condition === undefined && exceptions.has(`${resource}|${binding.role}|${member}`)) continue
         violations.push(`${resource}:${binding.role}:${member}`)
       }
@@ -717,6 +755,7 @@ export function assertEffectiveIsolation(
   controlPlaneAdminPrincipal = '',
   projectNumber = '',
   mode: SecretIsolationMode = 'strict',
+  protectedExclusion?: string,
 ): void {
   if (projectNumber !== '') setSecretResolutionProjectNumber(projectNumber)      // ONE project identity for the literal-surface annotation parse and the secret resolution
   for (const hit of effective) {
@@ -741,7 +780,8 @@ export function assertEffectiveIsolation(
     })
     .filter(({ resource, member, binding }) => !(isThisProject(resource, projectNumber)
       && (isDeclaredControlPlaneAdminGrant(binding, member, controlPlaneAdminPrincipal)
-        || isCanonicalGoogleServiceAgentGrant(binding, member, projectNumber))))
+        || isCanonicalGoogleServiceAgentGrant(binding, member, projectNumber)
+        || isScopedKillSwitchAgent(binding, member, projectNumber, resolved, protectedExclusion))))
   if (inheritedImpersonators.length > 0) {
     const detail = inheritedImpersonators
       .map(({ resource, member, binding }) => `${resource}:${binding.role}:${member}`)
@@ -826,6 +866,28 @@ export function requiresRuntimeSecretGrant(surface: CloudRunSurface): boolean {
   return !(active && (active as Record<string, unknown>).status === 'False')
 }
 
+function loadProtectedExclusion(projectNumber: string, verifier: VerifierState, jobs: CloudRunEntry[]): string {
+  const identities = [BUILDER_SERVICE_ACCOUNT, `github-actions@${project}.iam.gserviceaccount.com`]
+  if (verifier.serviceAccountEmails.includes(VERIFIER_SERVICE_ACCOUNT)) identities.push(VERIFIER_SERVICE_ACCOUNT)
+  const list = ['resource-manager', 'tags', 'bindings', 'list', '--effective', '--project', project]
+  const tags = identities.map((email) => {
+    const { uniqueId } = gcloud<{ uniqueId?: string }>(['iam', 'service-accounts', 'describe', email, '--project', project])
+    if (!uniqueId || !/^\d+$/.test(uniqueId)) throw new Error('Could not resolve a protected service account ID.')
+    return gcloud<EffectiveTag[]>([
+      ...list, '--parent', `//iam.googleapis.com/projects/${projectNumber}/serviceAccounts/${uniqueId}`,
+    ])
+  })
+  for (const job of jobs) {
+    const name = job.metadata?.name
+    if (name !== 'brahma-build-pipeline-job' && name !== VERIFIER_JOB) continue
+    const location = cloudRunLocation(job)
+    tags.push(gcloud<EffectiveTag[]>([
+      ...list, '--location', location, '--parent', `//run.googleapis.com/projects/${projectNumber}/locations/${location}/jobs/${name}`,
+    ]))
+  }
+  return protectedResourceExclusion(projectNumber, tags)
+}
+
 function loadVerifierState(): VerifierState {
   const serviceAccountEmails = gcloud<{ email?: string }[]>(['iam', 'service-accounts', 'list', '--project', project])
     .map((entry) => entry.email ?? '')
@@ -878,6 +940,11 @@ export function runDataPlaneSecretIsolationPreflight(): void {
     throw new Error('Could not load a complete ancestor IAM policy.')
   })
   const verifier = loadVerifierState()
+  const jobs = gcloud<CloudRunEntry[]>(['run', 'jobs', 'list', '--project', project])
+  const protectedExclusion = projectPolicy.bindings?.some((binding) =>
+    binding.condition !== undefined && Object.hasOwn(KILL_SWITCH_AGENT_DOMAINS, binding.role))
+    ? loadProtectedExclusion(projectNumber, verifier, jobs)
+    : undefined
   const roleNames = new Set<string>()
   for (const policy of [projectPolicy,secretPolicy,serviceAccountPolicy,topicPolicy,
     verifier.serviceAccountPolicy ?? {}, verifier.secretPolicy ?? {}, ...effective.map((hit) => hit.policy ?? {})]) {
@@ -890,7 +957,7 @@ export function runDataPlaneSecretIsolationPreflight(): void {
   assertSecretIsolation(projectPolicy, secretPolicy, serviceAccount, topicPolicy, resolved, controlPlaneAdminPrincipal)
   assertVerifierIsolation(projectPolicy, verifier, resolved, process.env.DATA_PLANE_DEPLOY_PRINCIPAL, process.env.DATA_PLANE_VERIFIER_PHASE?.trim() as VerifierPhase | undefined)
   if (verifier.serviceAccountEmails.includes(VERIFIER_SERVICE_ACCOUNT)) {
-    assertVerifierInheritedControl(effective, resolved, controlPlaneAdminPrincipal, projectNumber)
+    assertVerifierInheritedControl(effective, resolved, controlPlaneAdminPrincipal, projectNumber, undefined, protectedExclusion)
   }
 
   const surfaces: CloudRunSurface[] = []
@@ -908,14 +975,14 @@ export function runDataPlaneSecretIsolationPreflight(): void {
     // or reducing the inventory.
     surfaces.push({ kind: 'revision', name, definition: entry })
   }
-  for (const entry of gcloud<CloudRunEntry[]>(['run', 'jobs', 'list', '--project', project])) {
+  for (const entry of jobs) {
     const name = entry?.metadata?.name
     if (!name) throw new Error('Could not resolve a Cloud Run job name for credential inspection.')
     surfaces.push({ kind: 'job', name, definition: gcloud<unknown>(['run', 'jobs', 'describe', name, '--project', project, '--region', cloudRunLocation(entry)]) })
   }
   assertEffectiveIsolation(
     effective, serviceAccountPolicy, surfaces, resolved, controlPlaneAdminPrincipal, projectNumber,
-    mode as SecretIsolationMode,
+    mode as SecretIsolationMode, protectedExclusion,
   )
   const checked = new Set<string>()
   for (const surface of surfaces) {
