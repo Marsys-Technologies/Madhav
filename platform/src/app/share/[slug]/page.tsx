@@ -70,7 +70,7 @@ export default async function SharedConversationPage({
   )
   const chart = chartResult.rows[0] ?? null
 
-  const messages = await loadConversationMessagesV2(share.conversation_id)
+  const messages = await loadConversationMessagesV2(share.conversation_id, { includeCanonicalText: true })
 
   // X-S8 / SS N-379: the STORED hide options of the share row are ALWAYS applied,
   // whatever R10_SELECTIVE_SHARE says. The flag only controls whether the options

@@ -70,7 +70,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     // 403: conversation exists but belongs to another user (information-hiding: 404 used for not-found)
     if (!conv) return res.notFound('conversation')
 
-    const messages = await loadConversationMessagesV2(id)
+    const messages = await loadConversationMessagesV2(id, { includeCanonicalText: true })
 
     if (format === 'md') {
       const body = toMarkdown(id, messages)
