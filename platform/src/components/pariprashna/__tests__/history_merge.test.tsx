@@ -115,6 +115,15 @@ describe("Consultation persisted history", () => {
         ]),
       ),
     );
+    expect(
+      screen.getByRole("link", { name: "Back to Chart Overview" }),
+    ).toHaveAttribute("href", `/clients/${chart}`);
+    const workspace = screen.getByRole("navigation", { name: "Chart workspace" });
+    expect(workspace.querySelector("a[aria-current='page']")).toHaveAttribute(
+      "href",
+      `/clients/${chart}/pariprashna`,
+    );
+    expect(workspace.querySelector(`a[href="/clients/${chart}"]`)).toBeVisible();
   });
   it("keeps history disabled while streaming and merges the current id only once", async () => {
     const turn = makeInitialTurnState("turn", "Current question");

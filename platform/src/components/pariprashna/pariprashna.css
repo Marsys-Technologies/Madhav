@@ -828,7 +828,7 @@
 }
 
 @media (max-width: 900px) {
-  .pp-consultation[data-compact-viewport="true"] .j1-chart-tabs,
+  /* Keep the existing chart tabs available while the keyboard reduces height. */
   .pp-consultation[data-compact-viewport="true"] .pp-page-header,
   .pp-consultation[data-compact-viewport="true"] .pp-conversation-heading {
     display: none;
