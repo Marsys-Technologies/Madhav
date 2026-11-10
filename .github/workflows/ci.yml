@@ -2453,10 +2453,11 @@ jobs:
           export SE_EPHE_PATH="$se1_dir"
           export GOCHARA_SE1_REQUIRE=1
           cd python-sidecar
-          export GOCHARA_A25_DISPOSABLE_CLUSTER_ID="$(python -c 'import os; '\
+          GOCHARA_A25_DISPOSABLE_CLUSTER_ID="$(python -c 'import os; '\
           'from tests.l3.gochara._disposable_db_guard import guarded_admin_connect; '\
           'c=guarded_admin_connect(os.environ["GOCHARA_A25_ADMIN_DSN"], autocommit=True); '\
           'print(c.execute("SELECT system_identifier FROM pg_control_system()").fetchone()[0]); c.close()')"
+          export GOCHARA_A25_DISPOSABLE_CLUSTER_ID
           python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest gochara-a55-final-rules-p06 -- -q --tb=short -rs -p no:cacheprovider
           mutation_scratch="$(mktemp -d "$RUNNER_TEMP/ky-p06-XXXXXX")"
           python ../scripts/gochara/mutation_check_verifier_side.py --scratch "$mutation_scratch"
@@ -3316,7 +3317,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y postgresql
           python -m pip install -r platform/python-sidecar/requirements-ci.txt --quiet
-          LANE_PG_BIN="$(ls -d /usr/lib/postgresql/*/bin | sort -V | tail -n 1)"
+          LANE_PG_BIN="$(find /usr/lib/postgresql -mindepth 2 -maxdepth 2 -type d -name bin | sort -V | tail -n 1)"
           LANE_PG_ROOT="$(mktemp -d "$RUNNER_TEMP/ky-j1a.XXXXXX")"
           cleanup_lane_pg() {
             if [ -f "$LANE_PG_ROOT/data/postmaster.pid" ]; then
