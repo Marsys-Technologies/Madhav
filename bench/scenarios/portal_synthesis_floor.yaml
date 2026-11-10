@@ -4,13 +4,13 @@ audience_tier: super_admin
 mcp_base_url: ${MCP_BASE_URL:-http://localhost:8080}
 steps:
   - tool: query_chart_facts
-    args: { category: birth_metadata }
+    args: {category: birth_metadata}
   - tool: query_chart_facts
-    args: { category: planet }
+    args: {category: planet}
   - tool: query_chart_facts
-    args: { category: house }
+    args: {category: house}
   - tool: query_chart_facts
-    args: { category: yoga }
+    args: {category: yoga}
   - tool: query_chart_facts
-    args: { category: arudha }
+    args: {category: arudha}
 metrics: [round_trips, response_bytes, wall_time_ms]

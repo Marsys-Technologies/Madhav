@@ -36,7 +36,9 @@ on:
         type: choice
         options: [create-roles, sealer-password, grant-l1-reads, sealer-credential, layer-verifier-credential]
       dsn_tail:
-        description: 'create-roles: the NON-SECRET tail of the verifier DSN, e.g. @/dbname?host=/cloudsql/<connection-name>; sealer-credential and layer-verifier-credential: the loopback tail @127.0.0.1:<port>/<dbname> (starts with @, no credentials)'
+        description: >-
+          create-roles: the NON-SECRET tail of the verifier DSN, e.g. @/dbname?host=/cloudsql/<connection-name>; sealer-credential and layer-verifier-credential: the loopback tail
+          @127.0.0.1:<port>/<dbname> (starts with @, no credentials)
         required: false
         type: string
       confirm:

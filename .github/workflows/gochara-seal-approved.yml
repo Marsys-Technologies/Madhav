@@ -29,17 +29,27 @@
 # Honest limits (packet §R10a-2): the approval is NOT an independent human check (same account); GitHub enforces the pause, no admin bypass and protected-branch
 # use, not independence or attribution beyond the login; the database enforces that a receipt exists naming the manifest and a verifier-persisted brief, not that this workflow
 # computed it honestly. The approval comment's run/attempt are CLAIMED by the approver, not API metadata. The sealer credential outlives a run (runbook §5.3: five places).
-# CAPACITY: (C-08) the verification job's task timeout is 28800 s (8 h; `--task-timeout` of gochara-verification-job-deploy.yml, the same number the executor and cloud-run checkers pin), and the single source
-# in this file is VERIFICATION_TASK_TIMEOUT_SECONDS below. A GitHub-hosted job is killed at 6 h (360 min), so ONE hosted job cannot wait 8 h: the wait is split across two chained hosted jobs. `brief_start`
-# runs the pre-checks, starts the execution and polls it for SEAL_WAIT_FIRST_LEG_SECONDS; `brief` polls on until the execution is terminal, then reads, checks and retains the brief. Both legs share ONE absolute
-# deadline = execution start + task timeout + SEAL_WAIT_MARGIN_SECONDS (queueing/start-up slack), so the wait is always >= the task timeout plus the margin; each job's timeout-minutes (a literal, as GitHub does not allow
+# CAPACITY: (C-08) the verification job's task timeout is 28800 s (8 h; `--task-timeout` of gochara-verification-job-deploy.yml, the same number the executor and cloud-run checkers pin), and the
+# single source
+# in this file is VERIFICATION_TASK_TIMEOUT_SECONDS below. A GitHub-hosted job is killed at 6 h (360 min), so ONE hosted job cannot wait 8 h: the wait is split across two chained hosted jobs.
+# `brief_start`
+# runs the pre-checks, starts the execution and polls it for SEAL_WAIT_FIRST_LEG_SECONDS; `brief` polls on until the execution is terminal, then reads, checks and retains the brief. Both legs share
+# ONE absolute
+# deadline = execution start + task timeout + SEAL_WAIT_MARGIN_SECONDS (queueing/start-up slack), so the wait is always >= the task timeout plus the margin; each job's timeout-minutes (a literal, as
+# GitHub does not allow
 # `env` there) is pinned against these numbers by platform/tests/unit/gochara_seal_workflow_static.test.ts. The seal job is 30 min — Stream A's ESTIMATES (not
-# measured on a real build; the first seal's own timings are the first measurement) for the sealing transaction are ~0.7 s at the expected size and ~35 s at 50x, behind a 15 min statement_timeout and a 2 min lock_timeout. The approval wait does not count against either.
+# measured on a real build; the first seal's own timings are the first measurement) for the sealing transaction are ~0.7 s at the expected size and ~35 s at 50x, behind a 15 min statement_timeout and
+# a 2 min lock_timeout. The approval wait does not count against either.
 # DEPENDENCIES before any dispatch: Stream A's pipeline/orchestrator/seal_job.py; the verification job defined by #2976 at THIS SAME commit (same-commit rule); acts 12/13/14 (the workflow
 # identity reads ONLY that job's logs through a log view, may execute that one job with overrides, and holds the Cloud SQL client right); the sealer DSN (Secret Manager secret
 # `gochara-sealer-db-url`, read at run time by the seal job; no GitHub secret) must use the runner's loopback proxy tail (@127.0.0.1:5432/<db>).
-# WIRE (ST-WIRE-2): the compact line carries contract_version seal_brief_transport/1 and producer {commit, image_digest, execution_id}; the approval file is seal_approval/2 with the REQUIRED brief_id and
-# producer_execution_id; the seal job runs from THIS checkout of github.sha and first checks its own implementation digest against the registry lock (exit 4: own_checkout_digest_mismatch / own_checkout_digest_unregistered). The lock is machine-owned (SR-CHURN-CUT 3: CI regenerates it, a PR never carries it), so BOTH jobs first apply the verified `ci-generated` artifact of a successful ci.yml run for github.sha (.github/actions/apply-generated-overlay; platform/scripts/governance/apply_generated_overlay.py) — the bytes deploy.yml bakes into the image — and fail closed, named, if it is absent or unverified (the brief job also runs the own-checkout check before any approval is requested); the verification job's definition carries GOCHARA_RUNNER_IMAGE_DIGEST (set by #2976 from the digest it resolves) or the verifier refuses to brief (producer_identity_absent).
+# WIRE (ST-WIRE-2): the compact line carries contract_version seal_brief_transport/1 and producer {commit, image_digest, execution_id}; the approval file is seal_approval/2 with the REQUIRED brief_id
+# and
+# producer_execution_id; the seal job runs from THIS checkout of github.sha and first checks its own implementation digest against the registry lock (exit 4: own_checkout_digest_mismatch /
+# own_checkout_digest_unregistered). The lock is machine-owned (SR-CHURN-CUT 3: CI regenerates it, a PR never carries it), so BOTH jobs first apply the verified `ci-generated` artifact of a successful
+# ci.yml run for github.sha (.github/actions/apply-generated-overlay; platform/scripts/governance/apply_generated_overlay.py) — the bytes deploy.yml bakes into the image — and fail closed, named, if
+# it is absent or unverified (the brief job also runs the own-checkout check before any approval is requested); the verification job's definition carries GOCHARA_RUNNER_IMAGE_DIGEST (set by #2976 from
+# the digest it resolves) or the verifier refuses to brief (producer_identity_absent).
 name: Gochara approved seal (P08; operator dispatched)
 
 on:

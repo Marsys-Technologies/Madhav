@@ -4,7 +4,7 @@ audience_tier: super_admin
 mcp_base_url: ${MCP_BASE_URL:-http://localhost:8080}
 steps:
   - tool: chart_summary
-    args: { divisional_charts: ["D1","D9","D10"] }
+    args: {divisional_charts: ["D1","D9","D10"]}
   - tool: query_chart_facts
-    args: { category: aspect, divisional_chart: D9 }
+    args: {category: aspect, divisional_chart: D9}
 metrics: [round_trips, response_bytes, wall_time_ms]

@@ -268,7 +268,9 @@ mechanisms:
       ga_positions_writer bhava_cusps rows (sripati_madhya) — Sripati system per Parashara.
       N.5: L1 is the authority; cusp degrees are referenced by fact_id, never re-derived.
     uncited_extension: false
-    evidence_link: "W4.3 ablation runner: structural-only recommendation (always_unit_modifier=True); no per-toggle ablation required — modifier is 1.0 by design; W4.4: excluded from weight fitting (STRUCTURAL_ONLY_IDS)"
+    evidence_link: >-
+      W4.3 ablation runner: structural-only recommendation (always_unit_modifier=True); no per-toggle ablation required — modifier is 1.0 by design; W4.4: excluded from weight fitting
+      (STRUCTURAL_ONLY_IDS)
     weight_type: structural_modifier=1.0
     module_path: services.gochara_v3.mechanisms.w28_bhava_degrees
 
@@ -288,7 +290,9 @@ mechanisms:
       uncited_extension families and 2 DB-inherited families),
       bg_transit_rules / bg_transit_av_gates (classical_citation columns, db_inherited source).
     uncited_extension: false
-    evidence_link: "W4.3 ablation runner: structural-only recommendation (always_unit_modifier=True); no per-toggle ablation required — modifier is 1.0 by design; W4.4: excluded from weight fitting (STRUCTURAL_ONLY_IDS)"
+    evidence_link: >-
+      W4.3 ablation runner: structural-only recommendation (always_unit_modifier=True); no per-toggle ablation required — modifier is 1.0 by design; W4.4: excluded from weight fitting
+      (STRUCTURAL_ONLY_IDS)
     weight_type: structural_modifier=1.0
     module_path: services.gochara_v3.mechanisms.w29_citation_resolution
 
