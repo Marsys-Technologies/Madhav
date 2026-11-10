@@ -2,20 +2,20 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { parse } from 'yaml'
+import { parseWorkflow, requireStep, shellSource } from './helpers/gochara_workflow_fixture'
 import { ancestryGit, runWorkflowShell } from './helpers/gochara_workflow_shell'
 
 const root = resolve(__dirname, '../../..')
 const text = readFileSync(resolve(root, '.github/workflows/gochara-verification-job-deploy.yml'), 'utf8')
-const wf = parse(text) as any
+const wf = parseWorkflow(text)
 const job = wf.jobs.define
 const code = text.split('\n').filter((l) => !l.trim().startsWith('#')).join('\n')
-const deploy = (job.steps as any[]).find((s) => String(s.run ?? '').includes('gcloud run jobs deploy'))
+const deploy = requireStep(job.steps, (s) => String(s.run ?? '').includes('gcloud run jobs deploy'))
 
 describe('gochara-verification-job-deploy.yml', () => {
   it.each(['yes', 'no'])('executes the reviewed-ancestor guard when contained by main: %s', contained => {
-    const guard = job.steps.find((s: any) => String(s.name).startsWith('Bind the definition'))
-    const result = runWorkflowShell(guard.run, { git: ancestryGit }, {
+    const guard = requireStep(job.steps, (s) => String(s.name).startsWith('Bind the definition'))
+    const result = runWorkflowShell(shellSource(guard), { git: ancestryGit }, {
       GITHUB_SHA: 'a'.repeat(40), J56_REVIEWED_ON_MAIN: contained,
     })
     expect(result.status, result.stderr).toBe(contained === 'yes' ? 0 : 1)
@@ -33,8 +33,8 @@ describe('gochara-verification-job-deploy.yml', () => {
     }
     if (args.includes("describe")) console.log("{}");`
   const runDefinition = (exists: boolean | 'error') => {
-    const readback = job.steps.find((s: any) => String(s.run).includes('gochara_verification_job_readback.py'))
-    return runWorkflowShell(`${deploy.run}\n${readback.run}`, {
+    const readback = requireStep(job.steps, (s) => String(s.run).includes('gochara_verification_job_readback.py'))
+    return runWorkflowShell(`${shellSource(deploy)}\n${shellSource(readback)}`, {
       gcloud: existence(exists), curl: 'console.log("{}");', python3: '',
     }, { ...wf.env, IMAGE_DIGEST: `sha256:${'b'.repeat(64)}`, GITHUB_SHA: 'a'.repeat(40) })
   }
@@ -81,8 +81,8 @@ describe('gochara-verification-job-deploy.yml', () => {
   })
 
   it.each([0, 23])('executes the isolation preflight and propagates its exit %i', exit => {
-    const preflight = job.steps.find((s: any) => String(s.name).startsWith('Run the secret-isolation preflight'))
-    const result = runWorkflowShell(preflight.run, { npx: `process.exit(${exit});` })
+    const preflight = requireStep(job.steps, (s) => String(s.name).startsWith('Run the secret-isolation preflight'))
+    const result = runWorkflowShell(shellSource(preflight), { npx: `process.exit(${exit});` })
     expect(result.status, result.stderr).toBe(exit)
     expect(result.calls).toHaveLength(1)
     expect(result.calls[0].command).toBe('npx')
@@ -120,7 +120,7 @@ describe('gochara-verification-job-deploy.yml', () => {
     expect(code).not.toMatch(/gcloud run jobs execute|docker\/build-push-action|secrets versions|environment:/)
   })
   it('refuses to define the job unless an image exists for the dispatched commit, deploys by its digest, and reads the WHOLE definition back', () => {
-    const steps = job.steps as any[]
+    const steps = job.steps
     const check = steps.findIndex((s) => String(s.run ?? '').includes('gcloud artifacts docker images describe'))
     const dep = steps.indexOf(deploy)
     expect(check).toBeGreaterThanOrEqual(0)
@@ -131,21 +131,21 @@ describe('gochara-verification-job-deploy.yml', () => {
     for (const flag of ['--image-digest', '--service-account', '--runner-commit', '--secret-name', '--cloudsql-instance', '--timeout-seconds', '--memory', '--cpu']) expect(rb).toContain(flag)
   })
   it('R13-3: INVOKES the #2961 isolation preflight explicitly, after the deploy, in strict mode', () => {
-    const steps = job.steps as any[]
+    const steps = job.steps
     const pre = steps.findIndex((s) => String(s.run ?? '').includes('data-plane-secret-isolation-preflight.ts'))
     expect(pre).toBeGreaterThan(steps.indexOf(deploy))
-    expect(steps[pre].env.DATA_PLANE_SECRET_ISOLATION_MODE).toBe('strict')
-    expect(steps[pre].env.GOOGLE_CLOUD_PROJECT).toBe('madhav-astrology')
-    expect(steps[pre].env.DATA_PLANE_VERIFIER_PHASE).toBe('deployable')   // R15-1: the phase is declared, never inferred
-    expect(steps[pre].env.DATA_PLANE_VERIFIER_CONTROL_EXCEPTIONS).toBe('${{ vars.DATA_PLANE_VERIFIER_CONTROL_EXCEPTIONS }}')   // F-R16-2: the declared-exceptions channel is wired
+    expect(steps[pre].env?.DATA_PLANE_SECRET_ISOLATION_MODE).toBe('strict')
+    expect(steps[pre].env?.GOOGLE_CLOUD_PROJECT).toBe('madhav-astrology')
+    expect(steps[pre].env?.DATA_PLANE_VERIFIER_PHASE).toBe('deployable')   // R15-1: the phase is declared, never inferred
+    expect(steps[pre].env?.DATA_PLANE_VERIFIER_CONTROL_EXCEPTIONS).toBe('${{ vars.DATA_PLANE_VERIFIER_CONTROL_EXCEPTIONS }}')   // F-R16-2: the declared-exceptions channel is wired
   })
   it('R13-3: shares ONE concurrency group with the sealing workflow', () => {
     expect(wf.concurrency.group).toBe('gochara-verification-and-sealing')
     expect(wf.concurrency['cancel-in-progress']).toBe(false)
   })
   it('F-R15-3: reads maxRetries from the v2 REST representation (a presence-bearing union member) in addition to the v1 describe', () => {
-    const steps = job.steps as any[]
-    const rb = steps.find((st) => String(st.run ?? '').includes('gochara_verification_job_readback.py'))
+    const steps = job.steps
+    const rb = requireStep(steps, (st) => String(st.run ?? '').includes('gochara_verification_job_readback.py'))
     expect(String(rb.run)).toContain('https://run.googleapis.com/v2/projects/madhav-astrology/locations/')
     expect(String(rb.run)).toContain('--v2-job-file job.v2.json')
   })
