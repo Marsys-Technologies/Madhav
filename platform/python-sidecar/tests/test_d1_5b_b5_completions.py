@@ -151,8 +151,8 @@ class TestD2HoraClass:
         rows = self._rows()
         assert rows, "expected hora rows"
         assert all(r["fact_category"] == "varga_hora_class" for r in rows)
-        # chart_divisionals CHECK constraint (migration 210) allows this value
-        assert all(r["verification_pass_status"] == "classical_match" for r in rows)
+        # Hora classification runs a single derivation without an independent check.
+        assert {r["verification_pass_status"] for r in rows} == {"single"}
 
 
 # ── Item 4: CR-46 ph_nimitta anchor dedup ─────────────────────────────────────
