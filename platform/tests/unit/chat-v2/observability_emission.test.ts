@@ -1,16 +1,13 @@
 /**
- * C.4 — data-observability emitted in route.ts onFinish.
- *
- * Source-level assertions verifying the route imports observabilityPart
- * and emits it with query_id + trace_url.
+ * C.4 — The shared adapter dispatcher emits data-observability with a query ID and trace URL.
  */
 
 import { describe, it, expect } from 'vitest'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 
-const routeSrc = fs.readFileSync(
-  path.resolve(import.meta.dirname, '../../../src/app/api/chat/consult/route.ts'),
+const pipelineSrc = fs.readFileSync(
+  path.resolve(import.meta.dirname, '../../../src/lib/pipelines/shared/run_adapter_dispatch.ts'),
   'utf8',
 )
 
@@ -20,17 +17,9 @@ const drawerSrc = fs.readFileSync(
 )
 
 describe('C.4 — data-observability emission + trace deep-link', () => {
-  it('route.ts imports observabilityPart from data_parts', () => {
-    expect(routeSrc).toContain('observabilityPart')
-  })
-
-  it.skip('[CI-AUDIT-2026-05-30 unimplemented in route.ts] route.ts emits data-observability with query_id and trace_url in onFinish', () => {
-    expect(routeSrc).toContain("type: 'data-observability'")
-    expect(routeSrc).toContain('observabilityPart({ query_id: queryId, trace_url:')
-  })
-
-  it.skip('[CI-AUDIT-2026-05-30 unimplemented in route.ts] trace_url follows /observatory/trace/<query_id> pattern', () => {
-    expect(routeSrc).toContain('/observatory/trace/${queryId}')
+  it('emits observability with the query ID and its trace URL', () => {
+    expect(pipelineSrc).toContain("type: 'data-observability'")
+    expect(pipelineSrc).toContain('observabilityPart({ query_id: queryId, trace_url: `/observatory/trace/${queryId}` })')
   })
 
   it('PerMessageDetailsDrawer reads observability data part (primary source)', () => {

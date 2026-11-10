@@ -22,7 +22,6 @@ import {
   queryPanchanga,
   queryPanchangaOrNull,
   PanchangaNotFoundError,
-  type BirthPanchanga,
 } from '../query_panchanga'
 
 // ── FORENSIC reference row (native 1984-02-05, 10:43 IST, Bhubaneswar) ────────

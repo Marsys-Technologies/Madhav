@@ -67,7 +67,7 @@ async function postAction(url: string, body: Record<string, string>) {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function AssetTable({ buildId, chartId, assets }: Props) {
+export function AssetTable({ buildId, assets }: Props) {
   const [cascadeAsset, setCascadeAsset] = useState<string | null>(null)
 
   if (assets.length === 0) {

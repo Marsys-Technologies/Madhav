@@ -12,26 +12,11 @@
 import 'server-only'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { query } from '@/lib/db/client'
 import { validateServiceToken } from '@/lib/mcp/service_token'
 
 // extractPrincipal removed (Stream A 3.tier_excision 2026-05-28); audience_tier excised from the auth surface.
 
-interface DataSourceExpectedRow {
-  tool_name: string
-  category: string
-  expected_rows: number
-  actual_rows: number | null
-  backfill_phase: string | null
-  notes: string | null
-  updated_at: string
-}
 
-interface ToolCaveatRow {
-  tool_name: string
-  caveat_text: string
-  severity: string
-}
 
 export async function GET(req: NextRequest): Promise<Response> {
   if (!validateServiceToken(req)) {

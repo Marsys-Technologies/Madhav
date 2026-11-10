@@ -373,8 +373,7 @@ app.post('/mcp', async (req: Request, res: Response) => {
   // Precedence: x-mcp-model-family header override > per-key binding > 'universal' fallback.
   // The header lets a client override at runtime (e.g. testing a different profile).
   const ALLOWED_FAMILIES = ['anthropic', 'gemini', 'openai', 'deepseek'] as const
-  type ModelFamily = typeof ALLOWED_FAMILIES[number]
-  const headerFamily = typeof req.headers['x-mcp-model-family'] === 'string'
+    const headerFamily = typeof req.headers['x-mcp-model-family'] === 'string'
     ? req.headers['x-mcp-model-family']
     : undefined
   const effectiveFamily: string = (

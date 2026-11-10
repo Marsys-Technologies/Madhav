@@ -32,18 +32,6 @@ import { POST } from '../task/route'
 
 const TEST_QUEUE = 'amjis-build-queue'
 
-function makeReq(body: unknown, headers: Record<string, string> = {}): Request {
-  return new Request('http://localhost/api/build/task', {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      // Design A: only Cloud Tasks queue header is checked; no bearer needed.
-      'x-cloudtasks-queuename': TEST_QUEUE,
-      ...headers,
-    },
-    body: JSON.stringify(body),
-  })
-}
 
 beforeEach(() => {
   mockInvokeBuildJob.mockReset()

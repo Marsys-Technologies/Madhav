@@ -12,13 +12,19 @@ vi.stubGlobal('fetch', mockFetch)
 import { registerChartBundleResource } from '../resources/chart_bundle_resource.js'
 import { registerMultiAyanamshaResource } from '../resources/multi_ayanamsha_resource.js'
 
+type ResourceHandler = (uri: { href: string; pathname: string }, params: Record<string, string>) => Promise<{ contents: { text: string }[] }>
+
 function makeMockServer() {
-  const handlers: Map<string, (...args: unknown[]) => unknown> = new Map()
+  const handlers = new Map<string, ResourceHandler>()
   return {
-    resource: vi.fn((_name: string, _template: unknown, handler: unknown) => {
-      handlers.set(_name as string, handler as (...args: unknown[]) => unknown)
+    resource: vi.fn((_name: string, _template: unknown, handler: ResourceHandler) => {
+      handlers.set(_name, handler)
     }),
-    getHandler: (name: string) => handlers.get(name),
+    getHandler(name: string): ResourceHandler {
+      const handler = handlers.get(name)
+      if (!handler) throw new Error(`Resource handler not registered: ${name}`)
+      return handler
+    },
   }
 }
 
@@ -60,11 +66,11 @@ describe('registerChartBundleResource', () => {
     })
 
     registerChartBundleResource(server as never)
-    const handler = server.getHandler('chart-bundle') as Function
+    const handler = server.getHandler('chart-bundle')
     const uri = { href: `marsys://chart-bundle/${CHART_ID}`, pathname: `/${CHART_ID}` }
     const result = await handler(uri, {})
 
-    const text = result.contents[0].text as string
+    const text = result.contents[0].text
     expect(text).toContain('Shukla Tritiya')
     expect(text).toContain('Ravivara')
     expect(text).toContain('Gajakesari')
@@ -75,11 +81,11 @@ describe('registerChartBundleResource', () => {
     mockFetch.mockRejectedValueOnce(new Error('network error'))
 
     registerChartBundleResource(server as never)
-    const handler = server.getHandler('chart-bundle') as Function
+    const handler = server.getHandler('chart-bundle')
     const uri = { href: `marsys://chart-bundle/${CHART_ID}`, pathname: `/${CHART_ID}` }
     const result = await handler(uri, {})
 
-    const text = result.contents[0].text as string
+    const text = result.contents[0].text
     expect(text).toContain('Bundle data not yet loaded')
   })
 
@@ -87,11 +93,11 @@ describe('registerChartBundleResource', () => {
     mockFetch.mockResolvedValueOnce({ ok: false, status: 404 })
 
     registerChartBundleResource(server as never)
-    const handler = server.getHandler('chart-bundle') as Function
+    const handler = server.getHandler('chart-bundle')
     const uri = { href: `marsys://chart-bundle/${CHART_ID}`, pathname: `/${CHART_ID}` }
     const result = await handler(uri, {})
 
-    const text = result.contents[0].text as string
+    const text = result.contents[0].text
     expect(text).toContain('Bundle data not yet loaded')
   })
 })
@@ -123,11 +129,11 @@ describe('registerMultiAyanamshaResource', () => {
     })
 
     registerMultiAyanamshaResource(server as never)
-    const handler = server.getHandler('multi-ayanamsha') as Function
+    const handler = server.getHandler('multi-ayanamsha')
     const uri = { href: `marsys://multi-ayanamsha/${CHART_ID}`, pathname: `/${CHART_ID}` }
     const result = await handler(uri, {})
 
-    const text = result.contents[0].text as string
+    const text = result.contents[0].text
     expect(text).toContain('lahiri')
     expect(text).toContain('complete')
     expect(text).toContain('not_built')
@@ -137,11 +143,11 @@ describe('registerMultiAyanamshaResource', () => {
     mockFetch.mockRejectedValueOnce(new Error('timeout'))
 
     registerMultiAyanamshaResource(server as never)
-    const handler = server.getHandler('multi-ayanamsha') as Function
+    const handler = server.getHandler('multi-ayanamsha')
     const uri = { href: `marsys://multi-ayanamsha/${CHART_ID}`, pathname: `/${CHART_ID}` }
     const result = await handler(uri, {})
 
-    const text = result.contents[0].text as string
+    const text = result.contents[0].text
     expect(text).toContain('Trigger a build first')
   })
 })

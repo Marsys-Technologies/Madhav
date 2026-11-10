@@ -1,29 +1,29 @@
 import { describe, it, expect } from 'vitest';
 import { GoogleAdapter } from '../../../src/lib/providers/google/adapter';
-import { GOOGLE_MANIFEST } from '../../../src/lib/providers/google/manifest';
+import { googleProviderManifest } from '../../../src/lib/providers/google/manifest';
 import { CapabilityUnsupportedError } from '../../../src/lib/providers/adapter';
 
-describe('GOOGLE_MANIFEST', () => {
+describe('googleProviderManifest', () => {
   it('validates cleanly at import', () => {
-    expect(GOOGLE_MANIFEST).toBeDefined();
+    expect(googleProviderManifest).toBeDefined();
   });
   it('extendedThinking = native_budget', () => {
-    expect(GOOGLE_MANIFEST.extendedThinking).toBe('native_budget');
+    expect(googleProviderManifest.extendedThinking).toBe('native_budget');
   });
   it('promptCaching = cached_content_api', () => {
-    expect(GOOGLE_MANIFEST.promptCaching).toBe('cached_content_api');
+    expect(googleProviderManifest.promptCaching).toBe('cached_content_api');
   });
   it('webSearch = grounding', () => {
-    expect(GOOGLE_MANIFEST.webSearch).toBe('grounding');
+    expect(googleProviderManifest.webSearch).toBe('grounding');
   });
   it('maxContextTokens = 2_000_000', () => {
-    expect(GOOGLE_MANIFEST.maxContextTokens).toBe(2_000_000);
+    expect(googleProviderManifest.maxContextTokens).toBe(2_000_000);
   });
   it('inputAudio = true', () => {
-    expect(GOOGLE_MANIFEST.inputAudio).toBe(true);
+    expect(googleProviderManifest.inputAudio).toBe(true);
   });
   it('inputVideo = true', () => {
-    expect(GOOGLE_MANIFEST.inputVideo).toBe(true);
+    expect(googleProviderManifest.inputVideo).toBe(true);
   });
 });
 
@@ -34,8 +34,8 @@ describe('GoogleAdapter', () => {
     expect(adapter.providerId).toBe('google');
   });
 
-  it('getManifest() returns GOOGLE_MANIFEST', () => {
-    expect(adapter.getManifest()).toBe(GOOGLE_MANIFEST);
+  it('getManifest() returns googleProviderManifest', () => {
+    expect(adapter.getManifest()).toBe(googleProviderManifest);
   });
 
   it('chat() yields events', async () => {

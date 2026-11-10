@@ -363,7 +363,7 @@ def update_multiplier(
                 "life_events used for calibration ONLY — never fed into prediction generation"
             ),
             "queried_at": queried_at,
-            "b3_citation_compliant": True,
+            "b3_citation_compliant": bool(effective_citation.strip()),
         },
     }
 
@@ -453,6 +453,8 @@ def apply_multiplier(
                 "life_events used for calibration ONLY — never fed into prediction generation"
             ),
             "queried_at": queried_at,
-            "b3_citation_compliant": True,
+            "b3_citation_compliant": (
+                bool((row.get("source_citation") or "").strip()) if row is not None else None
+            ),
         },
     }

@@ -29,7 +29,7 @@
  */
 import { readFileSync } from 'fs'
 import { loadTranscript, lenientParseJson, bareToolName } from './transcript_utils.js'
-import type { NormalizedTranscript, TranscriptCall } from './types.js'
+import type { NormalizedTranscript } from './types.js'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // §6.1 — Experience telemetry (fully mechanical)

@@ -71,7 +71,7 @@ async function revokeAllRelationGrantees(
   client: PoolClient,
   objectKind: 'TABLE' | 'SEQUENCE',
   relation: string,
-  owner: string,
+  _owner: string,
 ): Promise<void> {
   const grantees = await client.query<{ grantee: string }>(`
     SELECT DISTINCT COALESCE(grantee.rolname, 'PUBLIC') AS grantee

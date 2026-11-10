@@ -38,7 +38,7 @@ function formatCostCell(label: string, cost: number | null) {
   )
 }
 
-export function TimingRibbon({ trace, selectedStepId, onSelectStep }: TimingRibbonProps) {
+export function TimingRibbon({ trace, onSelectStep }: TimingRibbonProps) {
   // Build gantt steps with pseudo-timing (stacked latency, since we don't have start_ms in TraceDocument)
   const steps: GanttStep[] = []
   let cursor = 0

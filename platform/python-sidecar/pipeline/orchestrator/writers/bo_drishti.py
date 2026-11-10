@@ -20,6 +20,7 @@ from typing import Any
 
 from . import WriterBase, ContextSpec, WriterResult, register
 from bodha_writers.data_plane_contracts import l2_producer, stable_semantic_uuid
+from brahmagyan.verification_tiers import DOCUMENTED_APPROXIMATION
 
 logger = logging.getLogger(__name__)
 
@@ -266,7 +267,7 @@ def _build_lens(
         "lens_template_version": LENS_TEMPLATE_VERSION,
         "lens_formula_version": LENS_FORMULA_VERSION,
         "points_only_assertion": True,  # absolute guard: no verdict stored
-        "verification_pass_status": "documented_approximation",
+        "verification_pass_status": DOCUMENTED_APPROXIMATION,
         "citation_ref": f"bo_drishti/{question_type}/{aya}",
         "computed_at": now,
         "engine_version": ENGINE_VERSION,

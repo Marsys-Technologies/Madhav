@@ -205,39 +205,6 @@ function unwrapDoubleEncodedToolBundleResults(data: unknown): unknown {
   return { ...root, result: { ...result, results: unwrapped } }
 }
 
-// ── DB proxy helper ───────────────────────────────────────────────────────────
-
-/**
- * Minimal DB proxy: calls platform API which holds the actual PG connection.
- * The MCP server does not hold a direct DB connection.
- */
-async function platformQuery(
-  sql: string,
-  params: unknown[]
-): Promise<{ rows: Record<string, unknown>[] }> {
-  const res = await fetch(`${PLATFORM_URL}/api/mcp/db/query`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sql, params }),
-    signal: AbortSignal.timeout(15_000),
-  })
-  if (!res.ok) {
-    throw new Error(`[registry_bridge] platform DB query failed: ${res.status}`)
-  }
-  return res.json() as Promise<{ rows: Record<string, unknown>[] }>
-}
-
-/**
- * Build a SynergyContext for capability handlers.
- */
-function buildCtx(chartId?: string) {
-  return {
-    db: { query: platformQuery },
-    chart_id: chartId,
-    lel_enabled: false,
-  }
-}
-
 // ── Unified envelope helper (R5 W1 — mirrors register_p1_ganita.ts's envelope()) ──
 
 // Three-arg call sites are UNCHANGED (format defaults to 'legacy', v3Extras undefined) —

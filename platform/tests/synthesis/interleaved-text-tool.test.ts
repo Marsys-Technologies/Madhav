@@ -16,7 +16,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   ANTHROPIC_LOOP_CONFIG,
-  GOOGLE_LOOP_CONFIG,
+  googleLoopConfig,
   OPENAI_LOOP_CONFIG,
   DEEPSEEK_LOOP_CONFIG,
   NVIDIA_LOOP_CONFIG,
@@ -29,7 +29,7 @@ describe('E-S6: interleaved text+tool ordering — provider support matrix', () 
   })
 
   it('Google supports interleaved text+tool (Gemini 2.5 Pro)', () => {
-    expect(GOOGLE_LOOP_CONFIG.supportsInterleavedTextTool).toBe(true)
+    expect(googleLoopConfig.supportsInterleavedTextTool).toBe(true)
   })
 
   it('OpenAI does NOT support interleaved text+tool (Chat Completions)', () => {
@@ -85,6 +85,6 @@ describe('E-S6: stream-position ordering invariant', () => {
   })
 
   it('Google loop config signals that stream position must be respected', () => {
-    expect(GOOGLE_LOOP_CONFIG.supportsInterleavedTextTool).toBe(true)
+    expect(googleLoopConfig.supportsInterleavedTextTool).toBe(true)
   })
 })

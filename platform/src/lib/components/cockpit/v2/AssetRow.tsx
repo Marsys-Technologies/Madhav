@@ -104,7 +104,6 @@ function ServiceHealthPill({
   // Same block geometry as AssetProgressBar (full-width 28px track + right-edge
   // state pill), so a service row reads consistently with the data rows.
   // Gold brand palette for lit/service_ok (F2: revert green→gold, native ruling 2026-06-26)
-  const fill = isGreen ? 'rgba(176,137,58,0.92)' : isRunning ? 'rgba(168,124,48,0.7)' : isError ? 'rgba(232,108,108,0.55)' : 'rgba(122,86,24,0.0)'
   const stroke = isGreen ? 'rgba(212,166,72,0.9)' : isRunning ? 'rgba(200,154,70,0.75)' : isError ? 'rgba(232,108,108,0.85)' : 'rgba(122,86,24,0.4)'
   const pillColor = isGreen ? 'rgba(236,197,106,0.95)' : isRunning ? 'rgba(236,197,106,0.95)' : isError ? 'rgba(232,108,108,1)' : 'rgba(155,131,80,0.8)'
   const pill = isGreen ? 'LIVE' : isRunning ? 'PROBING' : isError ? 'FAILED' : 'DORMANT'
@@ -241,7 +240,7 @@ function rebuildActionForAsset(asset: AssetRowType, state: string): 'build' | 'r
     : state === 'dormant' ? 'build' : 'rebuild'
 }
 
-export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, isActiveAsset, highlighted, allAssets, substep, onRunStarted, preparation = false }: Props) {
+export function AssetRow({ asset, stat, chartId, activeRunId, isActiveAsset, highlighted, allAssets, substep, onRunStarted, preparation = false }: Props) {
   const [pendingCascade, setPendingCascade] = useState<ConfirmPending | null>(null)
   const [pendingBlock, setPendingBlock] = useState<BlockerEntry[] | null>(null)
   const { isSuperAdmin } = useUserRole()

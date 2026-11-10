@@ -45,14 +45,18 @@
   source_text: "classical_tradition"
   source_chapter: "Navagraha bīja tradition; compiled in Mantra Mahodadhi (Mahīdhara, 16th c.);"
   source_verse: "BPHS Ch.91-94 (Upaya-adhyaya) — upāya context only, not the mantra's source"
-  classical_attestation_text: "No verbatim classical attestation located. The prāṃ prīṃ prauṃ saḥ navagraha bīja class belongs to the tantric/āgamic layer transmitted through compilations such as Mantra Mahodadhi (Mahīdhara, 16th c.) and the Navagraha stotra literature. The BPHS verbatim quotation previously stored here could not be located in BPHS and was removed as fabricated (PARIŚEṢA-V4 F-178, owner ruling R-2)."
+  classical_attestation_text: >-
+    No verbatim classical attestation located. The prāṃ prīṃ prauṃ saḥ navagraha bīja class belongs to the tantric/āgamic layer transmitted through compilations such as Mantra Mahodadhi (Mahīdhara,
+    16th c.) and the Navagraha stotra literature. The BPHS verbatim quotation previously stored here could not be located in BPHS and was removed as fabricated (PARIŚEṢA-V4 F-178, owner ruling R-2).
 
 - remedy_id: "mnt_sun_aditya_hridayam_002"
   planet: "Sun"
   domain: "spirituality"
   category: "mantras"
   deity: "Surya"
-  remedy_text: "Recite the complete Aditya Hridayam stotram daily at sunrise. This 31-verse hymn from Valmiki Ramayana is the most powerful Sun propitiation. Sage Agastya taught it to Rama before battle."
+  remedy_text: >-
+    Recite the complete Aditya Hridayam stotram daily at sunrise. This 31-verse hymn from Valmiki Ramayana is the most powerful Sun propitiation. Sage Agastya taught it to Rama before
+    battle.
   mantra_sanskrit: "ततो युद्धपरिश्रान्तं समरे चिन्तया स्थितम्। रावणं चाग्रतो दृष्ट्वा युद्धाय समुपस्थितम्॥"
   mantra_transliteration: "Tato yuddhapariśrāntaṃ samare cintayā sthitam. Rāvaṇaṃ cāgrato dṛṣṭvā yuddhāya samupasthitam."
   ingredients_jsonb: {"items": ["water in copper vessel for arghya", "red flowers"], "optional": ["incense"]}
@@ -62,14 +66,18 @@
   source_text: "BPHS"
   source_chapter: "Ch. 91"
   source_verse: "Verse 1"
-  classical_attestation_text: "BPHS Ch.91 v.1: 'The Aditya Hridayam is the supreme remedy for Solar afflictions; its recitation at dawn destroys all obstacles and bestows victory.' (Santhanam trans., Ranjan Publications, public domain)"
+  classical_attestation_text: >-
+    BPHS Ch.91 v.1: 'The Aditya Hridayam is the supreme remedy for Solar afflictions; its recitation at dawn destroys all obstacles and bestows victory.' (Santhanam trans., Ranjan Publications, public
+    domain)
 
 - remedy_id: "mnt_moon_chandra_beeja_003"
   planet: "Moon"
   domain: "health"
   category: "mantras"
   deity: "Chandra"
-  remedy_text: "Chant the Chandra Beeja Mantra 108 times on Mondays, especially during Shukla Paksha (waxing Moon). Beneficial for mental health, emotional stability, and Moon-related ailments (cough, cold, water-related issues)."
+  remedy_text: >-
+    Chant the Chandra Beeja Mantra 108 times on Mondays, especially during Shukla Paksha (waxing Moon). Beneficial for mental health, emotional stability, and Moon-related ailments (cough, cold,
+    water-related issues).
   mantra_sanskrit: "ॐ श्रां श्रीं श्रौं सः चन्द्राय नमः"
   mantra_transliteration: "Om Shraam Shreem Shraum Sah Chandraya Namah"
   ingredients_jsonb: {"items": ["white flowers", "milk for abhisheka", "white sandalwood paste"], "optional": ["camphor"]}
@@ -79,14 +87,18 @@
   source_text: "classical_tradition"
   source_chapter: "Navagraha bīja tradition; compiled in Mantra Mahodadhi (Mahīdhara, 16th c.);"
   source_verse: "BPHS Ch.91-94 (Upaya-adhyaya) — upāya context only, not the mantra's source"
-  classical_attestation_text: "No verbatim classical attestation located. The prāṃ prīṃ prauṃ saḥ navagraha bīja class belongs to the tantric/āgamic layer transmitted through compilations such as Mantra Mahodadhi (Mahīdhara, 16th c.) and the Navagraha stotra literature. The BPHS verbatim quotation previously stored here could not be located in BPHS and was removed as fabricated (PARIŚEṢA-V4 F-178, owner ruling R-2)."
+  classical_attestation_text: >-
+    No verbatim classical attestation located. The prāṃ prīṃ prauṃ saḥ navagraha bīja class belongs to the tantric/āgamic layer transmitted through compilations such as Mantra Mahodadhi (Mahīdhara,
+    16th c.) and the Navagraha stotra literature. The BPHS verbatim quotation previously stored here could not be located in BPHS and was removed as fabricated (PARIŚEṢA-V4 F-178, owner ruling R-2).
 
 - remedy_id: "mnt_mars_kuja_beeja_004"
   planet: "Mars"
   domain: "marriage"
   category: "mantras"
   deity: "Mangala"
-  remedy_text: "For Kuja Dosha (Mars affliction affecting marriage), chant the Mars Beeja Mantra 21,000 times over 40 days. Perform on Tuesdays. Mars in 1H, 4H, 7H, 8H, or 12H from ascendant or Moon creates Mangala Dosha."
+  remedy_text: >-
+    For Kuja Dosha (Mars affliction affecting marriage), chant the Mars Beeja Mantra 21,000 times over 40 days. Perform on Tuesdays. Mars in 1H, 4H, 7H, 8H, or 12H from ascendant or Moon creates
+    Mangala Dosha.
   mantra_sanskrit: "ॐ क्रां क्रीं क्रौं सः भौमाय नमः"
   mantra_transliteration: "Om Kraam Kreem Kraum Sah Bhaumaya Namah"
   ingredients_jsonb: {"items": ["red flowers (hibiscus preferred)", "red sandalwood", "red cloth"], "optional": ["coral bead mala"]}
@@ -96,14 +108,18 @@
   source_text: "classical_tradition"
   source_chapter: "Navagraha bīja tradition; compiled in Mantra Mahodadhi (Mahīdhara, 16th c.);"
   source_verse: "BPHS Ch.91-94 (Upaya-adhyaya) — upāya context only, not the mantra's source"
-  classical_attestation_text: "No verbatim classical attestation located. The prāṃ prīṃ prauṃ saḥ navagraha bīja class belongs to the tantric/āgamic layer transmitted through compilations such as Mantra Mahodadhi (Mahīdhara, 16th c.) and the Navagraha stotra literature. The BPHS verbatim quotation previously stored here could not be located in BPHS and was removed as fabricated (PARIŚEṢA-V4 F-178, owner ruling R-2)."
+  classical_attestation_text: >-
+    No verbatim classical attestation located. The prāṃ prīṃ prauṃ saḥ navagraha bīja class belongs to the tantric/āgamic layer transmitted through compilations such as Mantra Mahodadhi (Mahīdhara,
+    16th c.) and the Navagraha stotra literature. The BPHS verbatim quotation previously stored here could not be located in BPHS and was removed as fabricated (PARIŚEṢA-V4 F-178, owner ruling R-2).
 
 - remedy_id: "mnt_mercury_budha_beeja_005"
   planet: "Mercury"
   domain: "education"
   category: "mantras"
   deity: "Budha"
-  remedy_text: "Chant the Budha Beeja Mantra on Wednesdays for Mercury-related issues: stammering, learning difficulties, business problems, skin ailments. 17,000 japa over 40 days is the full purascharana."
+  remedy_text: >-
+    Chant the Budha Beeja Mantra on Wednesdays for Mercury-related issues: stammering, learning difficulties, business problems, skin ailments. 17,000 japa over 40 days is the full
+    purascharana.
   mantra_sanskrit: "ॐ ब्रां ब्रीं ब्रौं सः बुधाय नमः"
   mantra_transliteration: "Om Braam Breem Braum Sah Budhaya Namah"
   ingredients_jsonb: {"items": ["green flowers", "moong dal (green lentils)", "books to donate"], "optional": ["emerald or green tourmaline mala"]}
@@ -113,7 +129,9 @@
   source_text: "classical_tradition"
   source_chapter: "Navagraha bīja tradition; compiled in Mantra Mahodadhi (Mahīdhara, 16th c.);"
   source_verse: "BPHS Ch.91-94 (Upaya-adhyaya) — upāya context only, not the mantra's source"
-  classical_attestation_text: "No verbatim classical attestation located. The prāṃ prīṃ prauṃ saḥ navagraha bīja class belongs to the tantric/āgamic layer transmitted through compilations such as Mantra Mahodadhi (Mahīdhara, 16th c.) and the Navagraha stotra literature. The BPHS verbatim quotation previously stored here could not be located in BPHS and was removed as fabricated (PARIŚEṢA-V4 F-178, owner ruling R-2)."
+  classical_attestation_text: >-
+    No verbatim classical attestation located. The prāṃ prīṃ prauṃ saḥ navagraha bīja class belongs to the tantric/āgamic layer transmitted through compilations such as Mantra Mahodadhi (Mahīdhara,
+    16th c.) and the Navagraha stotra literature. The BPHS verbatim quotation previously stored here could not be located in BPHS and was removed as fabricated (PARIŚEṢA-V4 F-178, owner ruling R-2).
 
 - remedy_id: "mnt_jupiter_guru_beeja_006"
   planet: "Jupiter"
@@ -130,7 +148,9 @@
   source_text: "classical_tradition"
   source_chapter: "Navagraha bīja tradition; compiled in Mantra Mahodadhi (Mahīdhara, 16th c.);"
   source_verse: "BPHS Ch.91-94 (Upaya-adhyaya) — upāya context only, not the mantra's source"
-  classical_attestation_text: "No verbatim classical attestation located. The prāṃ prīṃ prauṃ saḥ navagraha bīja class belongs to the tantric/āgamic layer transmitted through compilations such as Mantra Mahodadhi (Mahīdhara, 16th c.) and the Navagraha stotra literature. The BPHS verbatim quotation previously stored here could not be located in BPHS and was removed as fabricated (PARIŚEṢA-V4 F-178, owner ruling R-2)."
+  classical_attestation_text: >-
+    No verbatim classical attestation located. The prāṃ prīṃ prauṃ saḥ navagraha bīja class belongs to the tantric/āgamic layer transmitted through compilations such as Mantra Mahodadhi (Mahīdhara,
+    16th c.) and the Navagraha stotra literature. The BPHS verbatim quotation previously stored here could not be located in BPHS and was removed as fabricated (PARIŚEṢA-V4 F-178, owner ruling R-2).
 
 - remedy_id: "mnt_venus_shukra_beeja_007"
   planet: "Venus"
@@ -147,7 +167,9 @@
   source_text: "classical_tradition"
   source_chapter: "Navagraha bīja tradition; compiled in Mantra Mahodadhi (Mahīdhara, 16th c.);"
   source_verse: "BPHS Ch.91-94 (Upaya-adhyaya) — upāya context only, not the mantra's source"
-  classical_attestation_text: "No verbatim classical attestation located. The prāṃ prīṃ prauṃ saḥ navagraha bīja class belongs to the tantric/āgamic layer transmitted through compilations such as Mantra Mahodadhi (Mahīdhara, 16th c.) and the Navagraha stotra literature. The BPHS verbatim quotation previously stored here could not be located in BPHS and was removed as fabricated (PARIŚEṢA-V4 F-178, owner ruling R-2)."
+  classical_attestation_text: >-
+    No verbatim classical attestation located. The prāṃ prīṃ prauṃ saḥ navagraha bīja class belongs to the tantric/āgamic layer transmitted through compilations such as Mantra Mahodadhi (Mahīdhara,
+    16th c.) and the Navagraha stotra literature. The BPHS verbatim quotation previously stored here could not be located in BPHS and was removed as fabricated (PARIŚEṢA-V4 F-178, owner ruling R-2).
 
 - remedy_id: "mnt_saturn_shani_beeja_008"
   planet: "Saturn"
@@ -164,7 +186,9 @@
   source_text: "classical_tradition"
   source_chapter: "Navagraha bīja tradition; compiled in Mantra Mahodadhi (Mahīdhara, 16th c.);"
   source_verse: "BPHS Ch.91-94 (Upaya-adhyaya) — upāya context only, not the mantra's source"
-  classical_attestation_text: "No verbatim classical attestation located. The prāṃ prīṃ prauṃ saḥ navagraha bīja class belongs to the tantric/āgamic layer transmitted through compilations such as Mantra Mahodadhi (Mahīdhara, 16th c.) and the Navagraha stotra literature. The BPHS verbatim quotation previously stored here could not be located in BPHS and was removed as fabricated (PARIŚEṢA-V4 F-178, owner ruling R-2)."
+  classical_attestation_text: >-
+    No verbatim classical attestation located. The prāṃ prīṃ prauṃ saḥ navagraha bīja class belongs to the tantric/āgamic layer transmitted through compilations such as Mantra Mahodadhi (Mahīdhara,
+    16th c.) and the Navagraha stotra literature. The BPHS verbatim quotation previously stored here could not be located in BPHS and was removed as fabricated (PARIŚEṢA-V4 F-178, owner ruling R-2).
 
 - remedy_id: "mnt_rahu_beeja_009"
   planet: "Rahu"
@@ -181,7 +205,9 @@
   source_text: "classical_tradition"
   source_chapter: "Navagraha bīja tradition; compiled in Mantra Mahodadhi (Mahīdhara, 16th c.);"
   source_verse: "BPHS Ch.91-94 (Upaya-adhyaya) — upāya context only, not the mantra's source"
-  classical_attestation_text: "No verbatim classical attestation located. The prāṃ prīṃ prauṃ saḥ navagraha bīja class belongs to the tantric/āgamic layer transmitted through compilations such as Mantra Mahodadhi (Mahīdhara, 16th c.) and the Navagraha stotra literature. The BPHS verbatim quotation previously stored here could not be located in BPHS and was removed as fabricated (PARIŚEṢA-V4 F-178, owner ruling R-2)."
+  classical_attestation_text: >-
+    No verbatim classical attestation located. The prāṃ prīṃ prauṃ saḥ navagraha bīja class belongs to the tantric/āgamic layer transmitted through compilations such as Mantra Mahodadhi (Mahīdhara,
+    16th c.) and the Navagraha stotra literature. The BPHS verbatim quotation previously stored here could not be located in BPHS and was removed as fabricated (PARIŚEṢA-V4 F-178, owner ruling R-2).
 
 - remedy_id: "mnt_ketu_beeja_010"
   planet: "Ketu"
@@ -198,14 +224,18 @@
   source_text: "classical_tradition"
   source_chapter: "Navagraha bīja tradition; compiled in Mantra Mahodadhi (Mahīdhara, 16th c.);"
   source_verse: "BPHS Ch.91-94 (Upaya-adhyaya) — upāya context only, not the mantra's source"
-  classical_attestation_text: "No verbatim classical attestation located. The prāṃ prīṃ prauṃ saḥ navagraha bīja class belongs to the tantric/āgamic layer transmitted through compilations such as Mantra Mahodadhi (Mahīdhara, 16th c.) and the Navagraha stotra literature. The BPHS verbatim quotation previously stored here could not be located in BPHS and was removed as fabricated (PARIŚEṢA-V4 F-178, owner ruling R-2)."
+  classical_attestation_text: >-
+    No verbatim classical attestation located. The prāṃ prīṃ prauṃ saḥ navagraha bīja class belongs to the tantric/āgamic layer transmitted through compilations such as Mantra Mahodadhi (Mahīdhara,
+    16th c.) and the Navagraha stotra literature. The BPHS verbatim quotation previously stored here could not be located in BPHS and was removed as fabricated (PARIŚEṢA-V4 F-178, owner ruling R-2).
 
 - remedy_id: "mnt_mahamrityunjaya_011"
   planet: "Saturn"
   domain: "health"
   category: "mantras"
   deity: "Shiva"
-  remedy_text: "The Mahamrityunjaya Mantra is the supreme mantra for overcoming serious illness, accidents, and fear of death. Prescribed especially for Saturn, Mars, and Ketu afflictions to the 8th house or its lord."
+  remedy_text: >-
+    The Mahamrityunjaya Mantra is the supreme mantra for overcoming serious illness, accidents, and fear of death. Prescribed especially for Saturn, Mars, and Ketu afflictions to the 8th house or its
+    lord.
   mantra_sanskrit: "ॐ त्र्यम्बकं यजामहे सुगन्धिं पुष्टिवर्धनम् उर्वारुकमिव बन्धनान् मृत्योर्मुक्षीय मामृतात्"
   mantra_transliteration: "Om Tryambakam Yajamahe Sugandhim Pushti-Vardhanam Urvarukamiva Bandhanan Mrityor Mukshiya Mamritat"
   ingredients_jsonb: {"items": ["bilva leaves (bel patra)", "white flowers", "milk and honey mixture"], "optional": ["rudrabhisheka with panchamrita (5 substances)"]}
@@ -215,14 +245,18 @@
   source_text: "BPHS"
   source_chapter: "Ch. 93"
   source_verse: "Verse 1-3"
-  classical_attestation_text: "BPHS Ch.93 v.1-3: 'The Mahamrityunjaya mantra from the Rigveda (7.59.12) is prescribed for all severe afflictions involving the 8th house. It conquers death and disease.' (Santhanam trans., Ranjan Publications, public domain)"
+  classical_attestation_text: >-
+    BPHS Ch.93 v.1-3: 'The Mahamrityunjaya mantra from the Rigveda (7.59.12) is prescribed for all severe afflictions involving the 8th house. It conquers death and disease.' (Santhanam trans., Ranjan
+    Publications, public domain)
 
 - remedy_id: "mnt_gayatri_012"
   planet: "Sun"
   domain: "spirituality"
   category: "mantras"
   deity: "Savitri (Solar deity)"
-  remedy_text: "The Gayatri Mantra is the universal solar mantra from the Rigveda. Chanting 108 times at sunrise, noon, and sunset (Sandhya Vandanam) propitiates the Sun and purifies the intellect (Dhi). Prescribed for all Sun afflictions."
+  remedy_text: >-
+    The Gayatri Mantra is the universal solar mantra from the Rigveda. Chanting 108 times at sunrise, noon, and sunset (Sandhya Vandanam) propitiates the Sun and purifies the intellect (Dhi).
+    Prescribed for all Sun afflictions.
   mantra_sanskrit: "ॐ भूर्भुवः स्वः तत्सवितुर्वरेण्यं भर्गो देवस्य धीमहि धियो यो नः प्रचोदयात्"
   mantra_transliteration: "Om Bhur Bhuvah Svah Tat Savitur Varenyam Bhargo Devasya Dhimahi Dhiyo Yo Nah Prachodayat"
   ingredients_jsonb: {"items": ["water (for arghya offering to rising sun)", "copper vessel"], "optional": ["rudraksha mala"]}
@@ -232,14 +266,18 @@
   source_text: "BPHS"
   source_chapter: "Ch. 91"
   source_verse: "Verse 2"
-  classical_attestation_text: "BPHS Ch.91 v.2: 'The Gayatri mantra (RV 3.62.10) is the supreme remedy for Solar affliction — its repetition at the three sandhyas (dawn, noon, dusk) purifies the practitioner.' (Santhanam trans., Ranjan Publications, public domain)"
+  classical_attestation_text: >-
+    BPHS Ch.91 v.2: 'The Gayatri mantra (RV 3.62.10) is the supreme remedy for Solar affliction — its repetition at the three sandhyas (dawn, noon, dusk) purifies the practitioner.' (Santhanam trans.,
+    Ranjan Publications, public domain)
 
 - remedy_id: "mnt_durgasaptashati_013"
   planet: "Moon"
   domain: "health"
   category: "mantras"
   deity: "Durga"
-  remedy_text: "Recitation of the Durga Saptashati (Devi Mahatmyam, 700 verses) is the supreme remedy for afflicted Moon causing mental disturbances, depression, and fear. Prescribed during Rahu-Moon or Saturn-Moon transits."
+  remedy_text: >-
+    Recitation of the Durga Saptashati (Devi Mahatmyam, 700 verses) is the supreme remedy for afflicted Moon causing mental disturbances, depression, and fear. Prescribed during Rahu-Moon or
+    Saturn-Moon transits.
   mantra_sanskrit: "या देवी सर्वभूतेषु शक्तिरूपेण संस्थिता। नमस्तस्यै नमस्तस्यै नमस्तस्यै नमो नमः॥"
   mantra_transliteration: "Ya Devi Sarva-Bhuteshu Shakti-Rupena Samsthita. Namastasyai Namastasyai Namastasyai Namo Namah."
   ingredients_jsonb: {"items": ["red hibiscus flowers", "vermilion", "bilva leaves"], "optional": ["red cloth offering", "coconut"]}
@@ -249,14 +287,18 @@
   source_text: "Phaladeepika"
   source_chapter: "Ch. 27"
   source_verse: "Verse 15-18"
-  classical_attestation_text: "Phaladeepika Ch.27 v.15-18: 'When the Moon is afflicted by malefics causing mental disturbance, the recitation of Devi Mahatmyam seven times brings relief.' (Sareen trans., Sagar Publications, public domain)"
+  classical_attestation_text: >-
+    Phaladeepika Ch.27 v.15-18: 'When the Moon is afflicted by malefics causing mental disturbance, the recitation of Devi Mahatmyam seven times brings relief.' (Sareen trans., Sagar Publications,
+    public domain)
 
 - remedy_id: "mnt_vishnu_sahasranama_014"
   planet: "Jupiter"
   domain: "wealth"
   category: "mantras"
   deity: "Vishnu"
-  remedy_text: "Daily recitation of the Vishnu Sahasranama (1000 names of Vishnu) strengthens Jupiter and brings blessings of wealth, learning, and progeny. Most effective for Jupiter Mahadasha. Found in Mahabharata Anushasana Parva."
+  remedy_text: >-
+    Daily recitation of the Vishnu Sahasranama (1000 names of Vishnu) strengthens Jupiter and brings blessings of wealth, learning, and progeny. Most effective for Jupiter Mahadasha. Found in
+    Mahabharata Anushasana Parva.
   mantra_sanskrit: "विश्वं विष्णुर्वषट्कारो भूतभव्यभवत्प्रभुः। भूतकृद्भूतभृद्भावो भूतात्मा भूतभावनः॥"
   mantra_transliteration: "Vishvam Vishnur Vashatkaaro Bhuta-Bhavya-Bhavat-Prabhuh. Bhuta-Krid Bhuta-Bhrid Bhavo Bhuta-Atma Bhuta-Bhavanah."
   ingredients_jsonb: {"items": ["yellow flowers", "tulsi (holy basil)", "ghee lamp"], "optional": ["yellow sapphire or topaz mala"]}
@@ -266,14 +308,18 @@
   source_text: "BPHS"
   source_chapter: "Ch. 91"
   source_verse: "Verse 30"
-  classical_attestation_text: "BPHS Ch.91 v.30: 'The Vishnu Sahasranama, recited on Thursdays with tulsi and yellow flowers, propitiates Jupiter and grants the blessings of Guru.' (Santhanam trans., Ranjan Publications, public domain)"
+  classical_attestation_text: >-
+    BPHS Ch.91 v.30: 'The Vishnu Sahasranama, recited on Thursdays with tulsi and yellow flowers, propitiates Jupiter and grants the blessings of Guru.' (Santhanam trans., Ranjan Publications, public
+    domain)
 
 - remedy_id: "mnt_hanuman_chalisa_015"
   planet: "Mars"
   domain: "career"
   category: "mantras"
   deity: "Hanuman"
-  remedy_text: "Daily recitation of the Hanuman Chalisa (40 verses by Tulsidas) propitiates Mars and overcomes fear, enemies, obstacles, and black magic. Most effective for Mars-afflicted or Kuja Dosha natives."
+  remedy_text: >-
+    Daily recitation of the Hanuman Chalisa (40 verses by Tulsidas) propitiates Mars and overcomes fear, enemies, obstacles, and black magic. Most effective for Mars-afflicted or Kuja Dosha
+    natives.
   mantra_sanskrit: "जय हनुमान ज्ञान गुण सागर। जय कपीश तिहुँ लोक उजागर॥"
   mantra_transliteration: "Jai Hanuman Gyana Guna Sagar. Jai Kapish Tihun Lok Ujagar."
   ingredients_jsonb: {"items": ["red vermilion (sindur)", "jasmine oil", "red flowers"], "optional": ["betel leaves", "beetle nut"]}
@@ -283,14 +329,18 @@
   source_text: "Phaladeepika"
   source_chapter: "Ch. 27"
   source_verse: "Verse 8-10"
-  classical_attestation_text: "Phaladeepika Ch.27 v.8-10: 'Mars affliction is removed by worship of Skanda (Kartikeya/Murugan) or Hanuman on Tuesdays; the Hanuman Chalisa is an efficacious prayer for Mars and Saturn both.' (Sareen trans., Sagar Publications, public domain)"
+  classical_attestation_text: >-
+    Phaladeepika Ch.27 v.8-10: 'Mars affliction is removed by worship of Skanda (Kartikeya/Murugan) or Hanuman on Tuesdays; the Hanuman Chalisa is an efficacious prayer for Mars and Saturn both.'
+    (Sareen trans., Sagar Publications, public domain)
 
 - remedy_id: "mnt_lakshmi_ashtakam_016"
   planet: "Venus"
   domain: "wealth"
   category: "mantras"
   deity: "Lakshmi"
-  remedy_text: "Recite the Lakshmi Ashtakam (8 verses) or Sri Sukta (from Rigveda) on Fridays for Venus-related wealth blessings, prosperity, and removal of poverty. Sri Sukta is the most classical Lakshmi hymn."
+  remedy_text: >-
+    Recite the Lakshmi Ashtakam (8 verses) or Sri Sukta (from Rigveda) on Fridays for Venus-related wealth blessings, prosperity, and removal of poverty. Sri Sukta is the most classical Lakshmi
+    hymn.
   mantra_sanskrit: "ॐ श्री ह्रीं श्रीं कमले कमलालये प्रसीद प्रसीद। ॐ श्री ह्रीं श्रीं महालक्ष्म्यै नमः॥"
   mantra_transliteration: "Om Shri Hrim Shrim Kamale Kamalalaye Prasida Prasida. Om Shri Hrim Shrim Mahalakshmyai Namah."
   ingredients_jsonb: {"items": ["white lotus or white flowers", "rice with turmeric", "gold coins or jewelry"], "optional": ["silver vessel with water", "ghee lamp"]}
@@ -300,14 +350,18 @@
   source_text: "BPHS"
   source_chapter: "Ch. 91"
   source_verse: "Verse 33"
-  classical_attestation_text: "BPHS Ch.91 v.33: 'Venus is propitiated through Lakshmi worship on Fridays; the Sri Sukta from the Rigveda and the Lakshmi Ashtakam are the classical hymns for Venus remediation.' (Santhanam trans., Ranjan Publications, public domain)"
+  classical_attestation_text: >-
+    BPHS Ch.91 v.33: 'Venus is propitiated through Lakshmi worship on Fridays; the Sri Sukta from the Rigveda and the Lakshmi Ashtakam are the classical hymns for Venus remediation.' (Santhanam
+    trans., Ranjan Publications, public domain)
 
 - remedy_id: "mnt_navagraha_stotra_017"
   planet: "Saturn"
   domain: "general"
   category: "mantras"
   deity: "Navagraha (Nine Planets)"
-  remedy_text: "The Navagraha Stotra propitiates all nine planets simultaneously. Especially useful when multiple planets are afflicted, or when the practitioner cannot determine which single planet needs propitiation. Recite 108 times daily."
+  remedy_text: >-
+    The Navagraha Stotra propitiates all nine planets simultaneously. Especially useful when multiple planets are afflicted, or when the practitioner cannot determine which single planet needs
+    propitiation. Recite 108 times daily.
   mantra_sanskrit: "ब्रह्मा मुरारिस्त्रिपुरान्तकारी भानुः शशी भूमिसुतो बुधश्च। गुरुश्च शुक्रः शनिराहुकेतवः सर्वे ग्रहाः शान्तिकरा भवन्तु॥"
   mantra_transliteration: "Brahma Muraris Tripurantakari Bhanuh Shashi Bhumisuto Budhashcha. Gurushcha Shukrah Shani-Rahu-Ketavah Sarve Grahah Shantikara Bhavantu."
   ingredients_jsonb: {"items": ["nine varieties of grains (navadhanya)", "nine types of flowers"], "optional": ["nine colored threads"]}
@@ -317,14 +371,18 @@
   source_text: "Phaladeepika"
   source_chapter: "Ch. 27"
   source_verse: "Verse 1-3"
-  classical_attestation_text: "Phaladeepika Ch.27 v.1-3: 'When multiple planets afflict the native, reciting the Navagraha Stotra on nine consecutive Sundays with nine grains propitiates all nine at once.' (Sareen trans., Sagar Publications, public domain)"
+  classical_attestation_text: >-
+    Phaladeepika Ch.27 v.1-3: 'When multiple planets afflict the native, reciting the Navagraha Stotra on nine consecutive Sundays with nine grains propitiates all nine at once.' (Sareen trans., Sagar
+    Publications, public domain)
 
 - remedy_id: "mnt_shiva_panchakshara_018"
   planet: "Saturn"
   domain: "spirituality"
   category: "mantras"
   deity: "Shiva"
-  remedy_text: "The Shiva Panchakshara mantra (five syllables: Na-Ma-Shi-Va-Ya) is the fundamental remedy for all Saturn, Ketu, and 8th house afflictions. BPHS prescribes Om Namah Shivaya recitation for Sade Sati relief."
+  remedy_text: >-
+    The Shiva Panchakshara mantra (five syllables: Na-Ma-Shi-Va-Ya) is the fundamental remedy for all Saturn, Ketu, and 8th house afflictions. BPHS prescribes Om Namah Shivaya recitation for Sade Sati
+    relief.
   mantra_sanskrit: "ॐ नमः शिवाय"
   mantra_transliteration: "Om Namah Shivaya"
   ingredients_jsonb: {"items": ["bilva (bel) leaves", "water for abhisheka", "vibhuti (sacred ash)"], "optional": ["white flowers", "milk"]}
@@ -334,4 +392,6 @@
   source_text: "BPHS"
   source_chapter: "Ch. 93"
   source_verse: "Verse 5"
-  classical_attestation_text: "BPHS Ch.93 v.5: 'The five-syllable mantra of Shiva (Panchakshara: Na-Ma-Shi-Va-Ya) is the supreme remedy for Saturn and Ketu afflictions and for Sade Sati relief.' (Santhanam trans., Ranjan Publications, public domain)"
+  classical_attestation_text: >-
+    BPHS Ch.93 v.5: 'The five-syllable mantra of Shiva (Panchakshara: Na-Ma-Shi-Va-Ya) is the supreme remedy for Saturn and Ketu afflictions and for Sade Sati relief.' (Santhanam trans., Ranjan
+    Publications, public domain)

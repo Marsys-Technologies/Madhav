@@ -1,6 +1,5 @@
 'use client'
 
-import { motion } from 'framer-motion'
 
 const LAYER_NAMES: Record<string, string> = {
   brahmagyan: 'Brahma Jñāna',
@@ -46,7 +45,6 @@ interface PlanBarProps {
 export function PlanBar({ plan, currentAssetId, assetStateMap }: PlanBarProps) {
   if (plan.length === 0) return null
   const clusters = groupIntoClusters(plan)
-  const total = plan.length
   const prefersReducedMotion = typeof window !== 'undefined'
     && typeof window.matchMedia === 'function'
     && window.matchMedia('(prefers-reduced-motion: reduce)').matches

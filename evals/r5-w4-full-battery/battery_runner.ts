@@ -104,7 +104,14 @@ interface ToolCallResult {
 // This unwrap tries, in order: structuredContent.object, a real (non-placeholder) content[0].text
 // parse, the sibling `result.result` key, then falls back to the raw `result` object itself so
 // nothing is silently dropped.
-function unwrapPayload(result: any): { parsed: unknown; raw: string } {
+interface McpToolPayload {
+  structuredContent?: { object?: unknown }
+  content?: { type: string; text?: string }[]
+  result?: unknown
+  isError?: boolean
+}
+
+function unwrapPayload(result: McpToolPayload | undefined): { parsed: unknown; raw: string } {
   if (result?.structuredContent?.object !== undefined) {
     const parsed = result.structuredContent.object
     return { parsed, raw: JSON.stringify(parsed) }
@@ -125,8 +132,8 @@ function unwrapPayload(result: any): { parsed: unknown; raw: string } {
 
 async function callTool(name: string, args: Record<string, unknown>): Promise<ToolCallResult> {
   const r = await mcpCall('tools/call', { name, arguments: args })
-  const rpcResult = (r.body as { result?: unknown; error?: unknown } | null) ?? {}
-  const result = (rpcResult as { result?: { content?: Array<{ type: string; text?: string }>; isError?: boolean } }).result
+  const rpcResult = (r.body as { result?: McpToolPayload; error?: unknown } | null) ?? {}
+  const result = rpcResult.result
   const { parsed: parsedContent, raw: rawText } = unwrapPayload(result)
   return {
     tool: name,
@@ -134,8 +141,8 @@ async function callTool(name: string, args: Record<string, unknown>): Promise<To
     httpOk: r.ok,
     httpStatus: r.status,
     latencyMs: Math.round(r.latencyMs * 10) / 10,
-    rpcError: (rpcResult as { error?: unknown }).error ?? null,
-    toolIsError: (result as any)?.isError ?? null,
+    rpcError: rpcResult.error ?? null,
+    toolIsError: result?.isError ?? null,
     rawText,
     bytes: rawText ? Buffer.byteLength(rawText, 'utf8') : 0,
     parsedContent,
@@ -156,12 +163,6 @@ function totalBytes(calls: ToolCallResult[]): number {
 }
 function anyTransportError(calls: ToolCallResult[]): boolean {
   return calls.some((c) => c.transportError)
-}
-function hasChartHeader(calls: ToolCallResult[]): boolean {
-  return calls.some((c) => {
-    const pc = c.parsedContent as Record<string, unknown> | null
-    return !!(pc && (pc['chart_header'] || (pc['content'] && (pc['content'] as any)['chart_header'])))
-  })
 }
 function getField(c: ToolCallResult, path: string[]): unknown {
   let cur: unknown = c.parsedContent
@@ -458,8 +459,7 @@ items.push({
   run: async () => {
     const c1 = await callTool('judgment_query', { chart_id: NATIVE_CHART_ID, domain: 'career', response_format: 'v3' })
     const calls = [c1]
-    const c = c1.parsedContent as any
-    const receipt = c?.completeness_receipt ?? c?.receipt ?? c?.content?.completeness_receipt
+    const receipt = getField(c1, ['completeness_receipt']) ?? getField(c1, ['receipt']) ?? getField(c1, ['content', 'completeness_receipt'])
     const text = textOf(calls)
     const hasBhava = /bhava/i.test(text)
     const hasBhavesha = /bhavesha/i.test(text)
@@ -820,8 +820,6 @@ items.push({
     // drill-continuity verdict.
     const turn2 = await callTool('bodha_discoveries_get', { chart_id: NATIVE_CHART_ID, limit: 10 })
     const calls = [turn1, turn2]
-    const t1 = turn1.parsedContent as any
-    const t2text = textOf([turn2])
     const drillPointerFieldPresent = /drill_pointer/i.test(textOf([turn1]))
     return {
       calls,
@@ -996,12 +994,10 @@ items.push({
   run: async () => {
     const c1 = await callTool('judgment_query', { chart_id: ABHINANDAN_CHART_ID, bhava: 1, response_format: 'v3' })
     const calls = [c1]
-    const c = c1.parsedContent as any
-    const chartHeader = c?.chart_header ?? c?.content?.chart_header
+    const chartHeader = getField(c1, ['chart_header']) ?? getField(c1, ['content', 'chart_header'])
     const text = textOf(calls)
     const headerSaysAries = chartHeader ? /aries/i.test(JSON.stringify(chartHeader)) : /aries/i.test(text)
     const headerSaysPisces = chartHeader ? /pisces/i.test(JSON.stringify(chartHeader)) : false
-    const answerCorrectsPremise = /(aries.*not pisces|actually aries|correction|lagna is aries|not pisces)/i.test(text) || (headerSaysAries && !/pisces\s+lagna\s+is\s+correct/i.test(text))
     return {
       calls,
       assertions: [

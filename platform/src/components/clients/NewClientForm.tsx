@@ -2,7 +2,7 @@
 
 import { PageTitle } from '@/components/journey1/Titles'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useJsApiLoader } from '@react-google-maps/api'
@@ -80,11 +80,6 @@ interface FormErrors {
 
 function todayIso(): string {
   return new Date().toISOString().split('T')[0]
-}
-
-function offsetFromTimezoneId(tzId: string): string {
-  const found = TIMEZONES.find((t) => t.value === tzId)
-  return found ? String(found.offset) : ''
 }
 
 function timezoneFromOffset(
@@ -213,6 +208,8 @@ function GenderSelect({
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const listboxId = useId()
+  const [activeIndex, setActiveIndex] = useState(0)
 
   useEffect(() => {
     if (!open) return
@@ -223,7 +220,13 @@ function GenderSelect({
     return () => document.removeEventListener('mousedown', handler)
   }, [open])
 
-  const selected = GENDER_OPTIONS.find((o) => o.value === value)
+  const selectedIndex = GENDER_OPTIONS.findIndex((o) => o.value === value)
+  const selected = GENDER_OPTIONS[selectedIndex]
+
+  function choose(option: GenderValue) {
+    onChange(option)
+    setOpen(false)
+  }
 
   return (
     <div ref={ref} className="relative">
@@ -232,9 +235,35 @@ function GenderSelect({
         role="combobox"
         aria-haspopup="listbox"
         aria-expanded={open}
+        aria-controls={listboxId}
+        aria-activedescendant={open ? `${listboxId}-${activeIndex}` : undefined}
         aria-label="Gender"
         id="gender"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          setActiveIndex(Math.max(0, selectedIndex))
+          setOpen(!open)
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'Tab') {
+            setOpen(false)
+          } else if (event.key === 'Escape' && open) {
+            event.preventDefault()
+            setOpen(false)
+          } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+            event.preventDefault()
+            if (!open) {
+              setActiveIndex(Math.max(0, selectedIndex))
+              setOpen(true)
+            } else {
+              const delta = event.key === 'ArrowDown' ? 1 : -1
+              setActiveIndex((index) => Math.max(0, Math.min(GENDER_OPTIONS.length - 1, index + delta)))
+            }
+          } else if (open && (event.key === 'Enter' || event.key === ' ')) {
+            event.preventDefault()
+            const option = GENDER_OPTIONS[activeIndex]
+            if (option) choose(option.value)
+          }
+        }}
         className={cn(
           'w-full h-9 rounded-md border px-3 py-1 text-sm text-left flex items-center justify-between',
           'transition-colors duration-150 focus:outline-none focus:ring-1',
@@ -250,44 +279,38 @@ function GenderSelect({
         <span aria-hidden="true" className="text-[9px] ml-1" style={{ color: 'oklch(0.50 0.015 75)' }}>▼</span>
       </button>
 
-      {open && (
-        <ul
-          role="listbox"
-          aria-label="Gender options"
-          className="absolute z-50 w-full mt-0.5 rounded-md border py-0.5 shadow-lg"
-          style={{
-            background: 'var(--brand-charcoal)',
-            borderColor: 'var(--brand-gold-hairline)',
-          }}
-        >
-          {GENDER_OPTIONS.map((opt) => (
-            <li
-              key={opt.value || '__empty'}
-              role="option"
-              aria-selected={value === opt.value}
-              className="px-3 py-1.5 text-sm cursor-pointer transition-colors duration-100"
-              style={{
-                color: value === opt.value ? 'var(--brand-gold)' : 'var(--brand-gold-cream)',
-                background: value === opt.value ? 'oklch(0.78 0.13 80 / 0.10)' : 'transparent',
-              }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.background = 'oklch(0.78 0.13 80 / 0.08)'
-              }}
-              onMouseLeave={(e) => {
-                const el = e.currentTarget as HTMLElement
-                el.style.background = value === opt.value ? 'oklch(0.78 0.13 80 / 0.10)' : 'transparent'
-              }}
-              onMouseDown={(e) => {
-                e.preventDefault()
-                onChange(opt.value as GenderValue)
-                setOpen(false)
-              }}
-            >
-              {opt.label}
-            </li>
-          ))}
-        </ul>
-      )}
+      <ul
+        id={listboxId}
+        hidden={!open}
+        role="listbox"
+        aria-label="Gender options"
+        className="absolute z-50 w-full mt-0.5 rounded-md border py-0.5 shadow-lg"
+        style={{
+          background: 'var(--brand-charcoal)',
+          borderColor: 'var(--brand-gold-hairline)',
+        }}
+      >
+        {GENDER_OPTIONS.map((opt, index) => (
+          <li
+            key={opt.value || '__empty'}
+            id={`${listboxId}-${index}`}
+            role="option"
+            aria-selected={value === opt.value}
+            className="px-3 py-1.5 text-sm cursor-pointer transition-colors duration-100"
+            style={{
+              color: value === opt.value ? 'var(--brand-gold)' : 'var(--brand-gold-cream)',
+              background: activeIndex === index || value === opt.value ? 'oklch(0.78 0.13 80 / 0.10)' : 'transparent',
+            }}
+            onMouseEnter={() => setActiveIndex(index)}
+            onMouseDown={(e) => {
+              e.preventDefault()
+              choose(opt.value)
+            }}
+          >
+            {opt.label}
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }
@@ -642,7 +665,7 @@ export function NewClientForm() {
       } as React.CSSProperties}
     >
       {/* R3.5: global style for gmp-placeautocomplete theming */}
-      {/* eslint-disable-next-line react/no-danger */}
+      { }
       <style dangerouslySetInnerHTML={{ __html: PLACES_WIDGET_CSS }} />
 
       {/* ── R3.1: Icon-only back link on the same line as the title ─────── */}

@@ -3,7 +3,7 @@
  * Covers: useKeyboardShortcuts, useScrollAnchor, a11y attrs, mobile viewport
  * AC.CO6.1 – AC.CO6.7 + AC.CO6.9 (≥25 tests)
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { renderHook, act, render, screen } from '@testing-library/react'
 import { fireEvent } from '@testing-library/dom'
 import { useKeyboardShortcuts } from '@/lib/hooks/useKeyboardShortcuts'

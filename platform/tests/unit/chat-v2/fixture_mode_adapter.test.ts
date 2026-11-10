@@ -8,7 +8,7 @@
  *  - loadFixture throws descriptive error for malformed JSON
  *  - listFixtures returns available scenarios for a provider
  */
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { describe, it, expect, afterEach, vi } from 'vitest'
 import fs from 'node:fs'
 import path from 'path'
 import {

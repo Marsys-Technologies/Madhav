@@ -193,7 +193,6 @@ const DOMAIN_RULES: ReadonlyArray<readonly [Domain, RegExp]> = [
 ]
 
 const WIDTH_BROAD = /\b(overall|whole|entire|complete|comprehensive|full|everything|all aspects|holistic|360|big picture|life reading)\b/i
-const WIDTH_NARROW = /\b(just|only|specific|exactly|single|one thing|precisely|quick fact)\b/i
 
 const DEPTH_DEEP = /\b(deep ?dive|detailed|in depth|in-depth|thorough|acharya|ācārya|exhaustive|granular|elaborate|comprehensive analysis)\b/i
 const DEPTH_SHALLOW = /\b(quick|brief|summary|short|tldr|tl;dr|in a nutshell|one line|glance|snapshot)\b/i
@@ -366,16 +365,6 @@ function gateFallbackPrompt(rendered: string, entitlement: Entitlement): string 
 }
 
 // ── Classifier ────────────────────────────────────────────────────────────────
-
-function firstMatch<T>(query: string, rules: ReadonlyArray<readonly [T, RegExp]>, matched: string[], kind: string): T | null {
-  for (const [value, re] of rules) {
-    if (re.test(query)) {
-      matched.push(`${kind}:${String(value)}`)
-      return value
-    }
-  }
-  return null
-}
 
 /** Optional caller context — the ONLY authorization signal this deterministic classifier honors. */
 export type ClassifyContext = {

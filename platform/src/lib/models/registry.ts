@@ -995,7 +995,7 @@ export const NVIDIA_FAST_PLANNER_QUERY_CLASSES = [
 /**
  * Return the NVIDIA NIM model ID most appropriate for the given query class.
  *
- * Called by the UQE planner when NVIDIA_PLANNER_ENABLED is true. The caller
+ * Called by the UQE planner when MARSYS_FLAG_NVIDIA_PLANNER_ENABLED is true. The caller
  * is responsible for checking the feature flag — this function always returns
  * a valid model ID regardless.
  *
@@ -1030,7 +1030,7 @@ export function getNvidiaPlanner(queryClass: string): string {
  * - Hybrid Mamba-Transformer handles the full L1+L2.5 corpus in a single pass
  *   without chunking, preserving cross-document signal relationships
  *
- * Called by the context_assembly step when NVIDIA_PLANNER_ENABLED is true.
+ * Called by the context_assembly step when MARSYS_FLAG_NVIDIA_PLANNER_ENABLED is true.
  */
 export function getNvidiaContextAssembler(): string {
   return 'nvidia/nemotron-3-super-120b-a12b'

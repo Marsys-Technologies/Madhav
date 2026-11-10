@@ -35,7 +35,7 @@ export function registerChartOverview(server: McpServer): void {
   server.resource(
     'chart-overview',
     new ResourceTemplate('marsys://chart-overview', { list: undefined }),
-    async (_uri) => ({
+    async () => ({
       contents: [
         {
           uri: 'marsys://chart-overview',

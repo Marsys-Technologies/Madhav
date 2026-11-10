@@ -107,7 +107,7 @@ export function log(entry: Omit<LogEntry, 'timestamp' | 'service'>): void {
   const compact = Object.fromEntries(
     Object.entries(full).filter(([, v]) => v !== undefined)
   )
-  // eslint-disable-next-line no-console
+
   console.log(JSON.stringify(redactEntry(compact)))
 }
 
@@ -132,6 +132,6 @@ export function logError(entry: Omit<LogEntry, 'timestamp' | 'service' | 'level'
   const compact = Object.fromEntries(
     Object.entries(full).filter(([, v]) => v !== undefined)
   )
-  // eslint-disable-next-line no-console
+
   console.error(JSON.stringify(redactEntry(compact)))
 }

@@ -15,6 +15,7 @@
  * changed here.
  */
 
+import { FEATURE_FLAGS } from '@/lib/config/feature_flags'
 import { validateCitationsForStream } from '@/lib/synthesis/streaming_citation_validator'
 import { configService } from '@/lib/config/index'
 import type { PipelinePlan } from '@/lib/pipeline/types'
@@ -43,7 +44,7 @@ export function runValidationStage(args: {
   let citationL2Verified = 0
   try {
     const assembledContextJson = JSON.stringify({ bundle, tool_results: validToolResults })
-    const overrideOn = configService.getFlag('CITATION_GATE_OVERRIDE')
+    const overrideOn = configService.getFlag(FEATURE_FLAGS.citationGateOverride)
     const validation = validateCitationsForStream(
       accumulatedText,
       assembledContextJson,

@@ -41,10 +41,10 @@ function makeMockServer() {
   const registeredResources: Array<{ uri: string | RegExp }> = []
 
   const server = {
-    prompt: vi.fn((name: string, description: string, _schema: unknown, _cb: unknown) => {
+    prompt: vi.fn((name: string, description: string) => {
       registeredPrompts.push({ name, description })
     }),
-    resource: vi.fn((uriOrTemplate: string | { uriTemplate: string }, _descOrMeta: unknown, _cb?: unknown) => {
+    resource: vi.fn((uriOrTemplate: string | { uriTemplate: string }) => {
       const uri = typeof uriOrTemplate === 'string'
         ? uriOrTemplate
         : uriOrTemplate.uriTemplate

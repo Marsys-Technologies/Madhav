@@ -32,11 +32,11 @@ export function loadTranscript(path: string): NormalizedTranscript {
 
 export function normalizeTranscript(raw: RawTranscript): NormalizedTranscript {
   if (Array.isArray(raw)) {
-    return { calls: raw, final_answer: deriveFinalAnswerFromCalls(raw) }
+    return { calls: raw, final_answer: missingFinalAnswer() }
   }
   return {
     calls: raw.calls ?? [],
-    final_answer: raw.final_answer ?? deriveFinalAnswerFromCalls(raw.calls ?? []),
+    final_answer: raw.final_answer ?? missingFinalAnswer(),
     query: raw.query,
     domain: raw.domain,
     chart_id: raw.chart_id,
@@ -56,7 +56,7 @@ export function normalizeTranscript(raw: RawTranscript): NormalizedTranscript {
  * given it explicitly (see CLI --final-answer flag in each script). This fallback marks the
  * gap honestly instead of fabricating prose from tool output.
  */
-function deriveFinalAnswerFromCalls(_calls: TranscriptCall[]): string {
+function missingFinalAnswer(): string {
   return ''
 }
 

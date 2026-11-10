@@ -52,8 +52,9 @@ export type MemberAlignment = 'aligned' | 'partial' | 'dissent'
 // ── Adjudication ──────────────────────────────────────────────────────────────
 
 export interface DivergenceSummary {
-  has_divergence: boolean
-  divergence_count: number
+  // Null means the adjudicator response could not be evaluated.
+  has_divergence: boolean | null
+  divergence_count: number | null
   summary_text: string
 }
 

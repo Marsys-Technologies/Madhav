@@ -5,7 +5,7 @@
  * NIM uses an OpenAI-compatible API endpoint; the adapter wraps the existing
  * NIM routing in the model registry.
  *
- * The NVIDIA_PLANNER_ENABLED flag controls whether UQE planner calls route
+ * The MARSYS_FLAG_NVIDIA_PLANNER_ENABLED flag controls whether UQE planner calls route
  * to NIM by query class (existing behavior; orthogonal to this adapter).
  * This adapter handles the chat streaming path for NIM stacks selected via
  * the stack picker.
@@ -178,7 +178,7 @@ export class NVIDIAAdapter implements CapabilityAdapter {
     // (OpenAI-compat). For models that don't: throws CapabilityUnsupportedError
     // so the dispatcher surfaces a "switch stack" hint.
     //
-    // The NVIDIA_PLANNER_ENABLED planner routing (existing behavior) is orthogonal
+    // The MARSYS_FLAG_NVIDIA_PLANNER_ENABLED planner routing (existing behavior) is orthogonal
     // to this — it routes certain query classes to NIM regardless of stack selection.
     // The agentic loop is only active when NIM is the explicitly selected stack.
     const maxIterations = request.maxIterations ?? 8;
@@ -200,7 +200,7 @@ export class NVIDIAAdapter implements CapabilityAdapter {
           'mistralai/mistral-7b-instruct-v0.3',
           'mistralai/mixtral-8x7b-instruct-v0.1',
         ],
-        // NVIDIA_PLANNER_ENABLED routing is preserved (orthogonal to this)
+        // MARSYS_FLAG_NVIDIA_PLANNER_ENABLED routing is preserved (orthogonal to this)
         preservePlannerRouting: true,
         supportsInterleavedTextTool: false,
       },

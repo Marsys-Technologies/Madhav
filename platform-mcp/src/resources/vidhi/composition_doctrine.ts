@@ -153,12 +153,13 @@ export interface DossierPageView {
  *   gestalt volunteer.
  */
 export function buildReadingContract(page: DossierPageView): ReadingContract {
-  if (page.synthesis_gate !== 'OPEN') {
+  const synthesisGate = page.synthesis_gate === 'OPEN' ? 'OPEN' : 'BLOCKED';
+  if (synthesisGate === 'BLOCKED') {
     const pct = page.coverage_so_far?.pct;
     return {
       contract: 'reading_contract',
       version: READING_CONTRACT_VERSION,
-      synthesis_gate: 'BLOCKED',
+      synthesis_gate: synthesisGate,
       stages: [], // STRUCTURAL GATE: no composition content until the gate is OPEN.
       gate_note:
         `synthesis_gate: BLOCKED${pct !== undefined ? ` (${pct}% accounted)` : ''} — the ` +
@@ -178,7 +179,7 @@ export function buildReadingContract(page: DossierPageView): ReadingContract {
   return {
     contract: 'reading_contract',
     version: READING_CONTRACT_VERSION,
-    synthesis_gate: 'OPEN',
+    synthesis_gate: synthesisGate,
     stages,
     gate_note:
       'synthesis_gate: OPEN — the whole territory is accounted. Compose the reading in the six ' +

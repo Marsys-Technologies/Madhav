@@ -6,7 +6,7 @@
  * [PHASE-C-03]
  */
 
-import { useRef, useCallback, useState } from 'react'
+import { useCallback, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { NodeDetailModal } from './NodeDetailModal'
 
@@ -56,35 +56,10 @@ interface Props {
   chartId: string
 }
 
-export function LiveBuildGraph({ buildId, chartId }: Props) {
-  const [graphData, setGraphData] = useState<GraphData>({ nodes: [], links: [] })
+export function LiveBuildGraph({ buildId }: Props) {
+  const [graphData] = useState<GraphData>({ nodes: [], links: [] })
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null)
   const connected = false
-  const esRef = useRef<EventSource | null>(null)
-
-  const addNode = useCallback((node: GraphNode) => {
-    setGraphData((prev) => {
-      if (prev.nodes.find((n) => n.id === node.id)) {
-        return { ...prev, nodes: prev.nodes.map((n) => n.id === node.id ? { ...n, ...node } : n) }
-      }
-      return { ...prev, nodes: [...prev.nodes, node] }
-    })
-  }, [])
-
-  const addEdge = useCallback((edge: GraphEdge) => {
-    setGraphData((prev) => {
-      const key = `${edge.source}__${edge.target}`
-      if (prev.links.find((l) => `${l.source}__${l.target}` === key)) return prev
-      return { ...prev, links: [...prev.links, edge] }
-    })
-  }, [])
-
-  const updateNodeStatus = useCallback((id: string, status: NodeStatus) => {
-    setGraphData((prev) => ({
-      ...prev,
-      nodes: prev.nodes.map((n) => n.id === id ? { ...n, status } : n),
-    }))
-  }, [])
 
   const handleNodeClick = useCallback((node: unknown) => {
     setSelectedNode(node as GraphNode)

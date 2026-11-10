@@ -3,7 +3,9 @@ wave: 2
 lane: W2.9
 description: "Citation resolution catalog — maps all gochara citation strings to classical text verse_refs"
 citation_status: cited
-classical_citation: "All three citation sources cataloged: citations.py (14 constants in __all__), primitives.py (12 primitive families + sign_occupation addendum), bg_transit_rules / bg_transit_av_gates (dynamic DB columns)"
+classical_citation: >-
+  All three citation sources cataloged: citations.py (14 constants in __all__), primitives.py (12 primitive families + sign_occupation addendum), bg_transit_rules / bg_transit_av_gates (dynamic DB
+  columns)
 v1_lineage:
   replaces: "citation strings unresolved — no link from window sentences to classical_text_chunks verse_refs"
   v1_module: services/gochara_grammar/citations.py

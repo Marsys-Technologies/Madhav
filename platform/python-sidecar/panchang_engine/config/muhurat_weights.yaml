@@ -30,7 +30,7 @@ defaults:
   planet: 0.10
   native: 0.10
   avoid_penalty: 1.0  # Knockout — full negation when in compound inauspicious window.
-                      # NEVER change this value (master plan §4.4.1 hard constraint).
+# NEVER change this value (master plan §4.4.1 hard constraint).
 
 events:
   vivah:
@@ -40,7 +40,7 @@ events:
     # second (Shukla paksha Dashami, Panchami etc.). Vara follows.
     # Sum: 0.40+0.20+0.05+0.15+0.10+0.10 = 1.00
     nakshatra: 0.40    # Highest weight — which star the Moon occupies on the wedding day
-                       # is the single most debated variable in classical vivah muhurta.
+    # is the single most debated variable in classical vivah muhurta.
     tithi: 0.20        # Shukla paksha Dashami, Panchami, Dvitiya etc. still matter greatly.
     vara: 0.05         # Vara is important but secondary — Thu/Fri/Wed suffice; no override.
     yoga: 0.15         # Sarvartha Siddhi, Amrit Siddhi add meaningful uplift.
@@ -71,7 +71,7 @@ events:
     # as kāraka of commerce makes the planet factor meaningfully higher here.
     # Sum: 0.25+0.15+0.25+0.15+0.10+0.10 = 1.00
     yoga: 0.25         # Guru Pushya, Sarvartha Siddhi, Tripushkar are famously
-                       # commerce-amplifying; MC 5.1 names these explicitly.
+    # commerce-amplifying; MC 5.1 names these explicitly.
     planet: 0.15       # Non-combust Jupiter (wealth) and Mercury (commerce) both matter.
     nakshatra: 0.25    # Pushya is supreme; Swati, Hasta, Revati also cited in MC 5.1.
     tithi: 0.15        # Labha tithis (gain-oriented Shukla paksha) still contribute.
@@ -87,10 +87,10 @@ events:
     # determines safe passage; thus nakshatra stays high.
     # Sum: 0.20+0.15+0.30+0.15+0.10+0.10 = 1.00
     vara: 0.20         # Saturday strongly avoided (Saturn delays); Thursday/Friday excel.
-                       # BS §Yatra: vara determines directional auspiciousness.
+    # BS §Yatra: vara determines directional auspiciousness.
     tithi: 0.15        # Shukla paksha preferred for outward journeys (MC 6.1).
     nakshatra: 0.30    # BS gives the longest nakshatra list for travel; Ashwini,
-                       # Mrigashira, Swati, Revati are premiere travel nakshatras.
+    # Mrigashira, Swati, Revati are premiere travel nakshatras.
     yoga: 0.15         # Sarvartha Siddhi ensures success at destination.
     planet: 0.10       # Non-combust Jupiter/Venus for safe passage.
     native: 0.10       # Tara Bala personal factor.
@@ -105,9 +105,9 @@ events:
     # for long-term holding — nakshatra stays high.
     # Sum: 0.30+0.25+0.15+0.10+0.10+0.10 = 1.00
     yoga: 0.30         # Tripushkar/Dwipushkar (MC §11) are the defining yogas for
-                       # purchases; higher weight than any other event category.
+    # purchases; higher weight than any other event category.
     nakshatra: 0.25    # Fixed nakshatras (Rohini, Uttara Phalguni, Uttara Ashadha)
-                       # are especially prized for stable, permanent acquisitions.
+    # are especially prized for stable, permanent acquisitions.
     tithi: 0.15        # Stable Shukla tithis (Dashami, Dvadashi as Tripushkar amplifier).
     vara: 0.10         # Thursday/Wednesday preferred; Saturday avoided.
     planet: 0.10       # Non-combust Jupiter (wealth accumulation) for real estate.
@@ -125,8 +125,8 @@ events:
     # auspiciousness for mantra initiation.
     # Sum: 0.15+0.20+0.30+0.15+0.10+0.10 = 1.00
     native: 0.20       # Personal Tara Bala — highest for any event; diksha is personal.
-                       # MC 8.1 and tantric traditions emphasize the initiate's
-                       # chart compatibility with the initiation date.
+    # MC 8.1 and tantric traditions emphasize the initiate's
+    # chart compatibility with the initiation date.
     tithi: 0.15        # Ekadashi and Purnima are premier (MC 8.1); Shukla paksha overall.
     nakshatra: 0.30    # Pushya (Guru's star), Punarvasu, Shravana (Vishnu) are supreme.
     yoga: 0.15         # Guru Pushya, Amrit Siddhi add meaningful spiritual amplification.

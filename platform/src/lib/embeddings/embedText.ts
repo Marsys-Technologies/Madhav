@@ -1,3 +1,4 @@
+import { readGoogleCloudEnv } from '@/lib/config/google_cloud_env'
 import 'server-only'
 import { GoogleAuth } from 'google-auth-library'
 import { buildKey, cacheGetOrCompute } from '@/lib/cache/shared_cache'
@@ -27,9 +28,9 @@ function getAuth(): GoogleAuth {
 }
 
 function predictEndpoint(): string {
-  const project = process.env['GCP_PROJECT'] ?? ''
+  const project = readGoogleCloudEnv('GOOGLE_CLOUD_PROJECT') ?? ''
   const location = process.env['VERTEX_AI_LOCATION'] ?? ''
-  if (!project) throw new Error('GCP_PROJECT not set')
+  if (!project) throw new Error('GOOGLE_CLOUD_PROJECT not set')
   if (!location) throw new Error('VERTEX_AI_LOCATION not set')
   return (
     `https://${location}-aiplatform.googleapis.com/v1/projects/${project}` +

@@ -30,7 +30,7 @@ vi.mock('@/lib/models/runtime_config', () => ({
 import { runCheckpoint4_5 } from '../checkpoint_4_5'
 import { runCheckpoint5_5 } from '../checkpoint_5_5'
 import { runCheckpoint8_5 } from '../checkpoint_8_5'
-import type { Checkpoint45Input, Checkpoint55Input, Checkpoint85Input, StructuredPrediction } from '../types'
+import type { Checkpoint45Input, Checkpoint55Input, Checkpoint85Input } from '../types'
 
 function makeInput45(): Checkpoint45Input {
   return {

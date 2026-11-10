@@ -66,7 +66,7 @@ describe('RC-14 deprecated_tool_gate — census + governance parity', () => {
 describe('RC-14 deprecated_tool_gate — runtime behavior', () => {
   function makeGatedServer() {
     const registered: string[] = []
-    const server = { tool: (name: string, ..._rest: unknown[]) => { registered.push(name) } }
+    const server = { tool: (name: string) => { registered.push(name) } }
     const gate = applyDeprecatedToolGate(server)
     return { server, registered, gate }
   }

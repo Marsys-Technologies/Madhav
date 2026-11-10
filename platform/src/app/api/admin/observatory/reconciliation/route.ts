@@ -1,7 +1,7 @@
 // POST /api/admin/observatory/reconciliation
 //
 // Triggers a reconciliation run for one (provider, period) tuple. Gated by
-// `OBSERVATORY_ENABLED` flag + `requireSuperAdmin()` via the shared
+// `MARSYS_FLAG_OBSERVATORY_ENABLED` flag + `requireSuperAdmin()` via the shared
 // `guardObservatoryRoute()`.
 //
 // S2.1 (this session) ships only the framework — the per-provider reconciler

@@ -160,7 +160,7 @@ def _check_narration(text_value: str | None, context: str) -> None:
 
 # ── FORENSIC gate (campaign §C) ───────────────────────────────────────────────
 
-def forensic_gate(chart_output: dict[str, Any], ayanamsha_id: str) -> None:
+def forensic_gate(chart_output: dict[str, Any], ayanamsha_id: str) -> bool:
     """
     Assert FORENSIC anchors against engine output.
     Halts (raises) if any anchor fails.
@@ -212,6 +212,7 @@ def forensic_gate(chart_output: dict[str, Any], ayanamsha_id: str) -> None:
         "[FORENSIC] PASS: Sun=Capricorn, Moon=Purva Bhadrapada, Lagna=Aries (%s)",
         ayanamsha_id,
     )
+    return not failures
 
 
 def _write_halt_log(gate_name: str, msg: str) -> None:
@@ -340,7 +341,7 @@ def _build_position_rows(
                 "citation_ref": cref,
                 "citation_human": chum,
                 "source_calculation": f"pyjhora_adapter.positions/{eng_ver}",
-                "verification_pass_status": "single",
+                "verification_pass_status": UNVERIFIED_DEFAULT,
                 "engine_version": eng_ver,
                 "computed_at": computed_at,
             })
@@ -423,7 +424,7 @@ def _chalit_row(
         "citation_ref": _citation_ref(category, subject, key, chart_id, ayanamsha_id, eng_ver),
         "citation_human": citation_human,
         "source_calculation": f"pyjhora_adapter.houses.compute_bhava_chalit/{eng_ver}",
-        "verification_pass_status": "single",
+        "verification_pass_status": UNVERIFIED_DEFAULT,
         "engine_version": eng_ver,
         "computed_at": computed_at,
     }
@@ -680,7 +681,7 @@ def build_ga_positions(
         "build_id": build_id,
         "ayanamshas": {},
         "total_chart_facts_rows": 0,
-        "forensic_pass": False,
+        "forensic_pass": None,
     }
 
     logger.info(
@@ -705,7 +706,7 @@ def build_ga_positions(
             # str(): the orchestrator hands a uuid.UUID, which never == the str constant, so the gate was skipped.
             if str(chart_id) == CANONICAL_CHART_ID:
                 try:
-                    forensic_gate(chart_output, canonical_id)
+                    summary["forensic_pass"] = forensic_gate(chart_output, canonical_id)
                 except Exception:
                     logger.error("FORENSIC gate ga_positions executed passed=False chart=canonical ayanamsha=%s", canonical_id)
                     raise
@@ -713,7 +714,6 @@ def build_ga_positions(
             else:
                 logger.debug("FORENSIC gate ga_positions skipped chart=skipped-non-canonical ayanamsha=%s", canonical_id)
 
-            summary["forensic_pass"] = True
 
             # Build chart_facts atomic rows
             cf_rows = _build_position_rows(
@@ -810,6 +810,7 @@ def _update_asset_throughput(
 # not a convention (CARR_SPIKE_REPORT open item 4; known_findings.json ga_positions). Only the flag is
 # corrected here; the adapter now reports the same flag at source (N-185): this guard stays as defence in depth.
 from pyjhora_adapter.positions import MEAN_NODE_GRAHA_NAMES  # noqa: E402  (single definition; the adapter now reports the same flag)
+from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
 
 
 def _is_retrograde(graha: dict[str, Any]) -> bool:

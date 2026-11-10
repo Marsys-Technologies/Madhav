@@ -105,7 +105,7 @@ def test_removing_the_required_readback_dependency_is_detected(jobs):
 def test_the_ci_junit_check_rejects_skipped_oracles(jobs, tmp_path, skipped):
     steps = jobs['governance-readback-tests']['steps']
     step = next(s for s in steps if '--junitxml=' in str(s.get('run', '')))
-    command = next(shlex.split(line) for line in step['run'].splitlines() if 'ET.parse(' in line)
+    command = next(shlex.split(line) for line in step['run'].replace('\\\n', '').splitlines() if 'ET.parse(' in line)
     report = '<testsuites><testsuite><testcase>' + ('<skipped />' if skipped else '') + '</testcase></testsuite></testsuites>'
     (tmp_path / 'gochara-readbacks.xml').write_text(report)
     proc = subprocess.run([sys.executable, *command[1:]], cwd=tmp_path, capture_output=True, text=True)

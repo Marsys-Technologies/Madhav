@@ -27,7 +27,6 @@ import { resolveDisposableA51Config } from './gochara_a5_1_disposable_url'
 const TEST_DB_URL = process.env.GOCHARA_A51_TEST_DATABASE_URL
 
 const MIGRATIONS_DIR = path.resolve(process.cwd(), 'migrations')
-const PREFLIGHT_DIR = path.resolve(process.cwd(), '../platform/python-sidecar/scripts/kala_gochara_cutover')
 const M1233 = '1233_gochara_p1_period_anchor.sql'
 const MIGRATION_FILES = [
   '1153_gochara_sky_event_substrate.sql',
@@ -35,13 +34,6 @@ const MIGRATION_FILES = [
   '1155_gochara_relationship_record.sql',
   '1156_gochara_eval_window.sql',
   '1157_gochara_av_polarity_declaration.sql',
-] as const
-const PREFLIGHT_FILES = [
-  'preflight_1153_sky_event_substrate.sql',
-  'preflight_1154_rule_path_registry.sql',
-  'preflight_1155_relationship_record.sql',
-  'preflight_1156_eval_window.sql',
-  'preflight_1157_av_polarity_declaration.sql',
 ] as const
 const PARENT_FILES = [
   '1081_nirmana_l3_gochara_ledger_coverage_publication.sql',
@@ -87,9 +79,6 @@ const CID_R = '10000000-0000-4000-8000-000000000016'         // (OBJ_MARS, 6) 5.
 const CID_P = '10000000-0000-4000-8000-000000000017'         // (OBJ_MARS, 7) 5.3
 const CID_T2 = '10000000-0000-4000-8000-000000000018'        // (OBJ_MARS, 8) truncated, 5.5
 const CID_MOON = '10000000-0000-4000-8000-000000000019'      // (OBJ_MOON, 1)
-const EVENT_1 = '10000000-0000-4000-8000-000000000021'
-const RECORD_1 = '10000000-0000-4000-8000-000000000031'
-const WINDOW_1 = '10000000-0000-4000-8000-000000000041'
 const COV_KIND = 'body_target'
 const COV_KEY = 'mars:karaka'
 const HORIZON = "tstzrange('2025-01-01T00:00Z','2026-01-01T00:00Z','[)')"
@@ -102,14 +91,7 @@ const uuid = (): string => `20000000-0000-4000-8000-${String(++seq).padStart(12,
 function mig(name: string): string {
   return readFileSync(join(MIGRATIONS_DIR, name), 'utf8')
 }
-function preflight(name: string): string {
-  return readFileSync(join(PREFLIGHT_DIR, name), 'utf8')
-}
-const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 /** 'pending' if `p` has not settled within `ms` (either way), else 'settled'. */
-async function settledWithin(p: Promise<unknown>, ms = 500): Promise<'settled' | 'pending'> {
-  return Promise.race([p.then(() => 'settled' as const, () => 'settled' as const), sleep(ms).then(() => 'pending' as const)])
-}
 
 let pool: Pool
 type Q = Pick<PoolClient, 'query'>
@@ -438,45 +420,7 @@ async function insertRecord(c: Q, o: RecordOpts = {}): Promise<string> {
   return id
 }
 
-async function insertWindow(c: Q, o: {
-  id?: string; generation?: string; eventClass?: string; pathId?: string; ruleVersion?: string;
-  intervalSql?: string; peakSql?: string; scoreSql?: string; evidenceForSql?: string;
-  evidenceAgainstSql?: string; valence?: string; covKind?: string; covKey?: string; factsOverride?: string;
-  nullStatesSql?: string; severitySql?: string;
-} = {}): Promise<string> {
-  const id = o.id ?? uuid()
-  const generation = o.generation ?? GEN_F
-  const eventClass = o.eventClass ?? 'marriage'
-  const covKind = o.covKind ?? 'event_class'
-  const covKey = o.covKey ?? eventClass
-  const facts = o.factsOverride ?? await factsFor(c, generation, covKind, covKey)
-  await c.query(
-    `INSERT INTO ka_gochara_eval_window
-       (window_id, chart_id, generation, event_class, path_id, rule_version, interval,
-        peak_instant, score, evidence_for, evidence_against, outcome_valence_for_native,
-        severity, coverage_partition_kind, coverage_partition_key, coverage_facts, null_states_used)
-     VALUES ($1, $2, $3, $4, $5, $6,
-             ${o.intervalSql ?? `tstzrange('2025-03-01T00:00Z','2025-04-01T00:00Z')`},
-             ${o.peakSql ?? `'2025-03-10T00:00Z'`}, ${o.scoreSql ?? '0.8'},
-             ${o.evidenceForSql ?? '0.8'}, ${o.evidenceAgainstSql ?? 'NULL'}, $7,
-             ${o.severitySql ?? 'NULL'}, $8, $9, $10::jsonb, ${o.nullStatesSql ?? `'{}'`})`,
-    [id, CHART, generation, eventClass, o.pathId ?? 'P1', o.ruleVersion ?? 'v1',
-      o.valence ?? 'favourable', covKind, covKey, facts],
-  )
-  return id
-}
 
-async function addMembership(c: Q, windowId: string, recordId: string, o: {
-  generation?: string; eventClass?: string; pathId?: string; ruleVersion?: string;
-} = {}): Promise<void> {
-  await c.query(
-    `INSERT INTO ka_gochara_eval_window_record
-       (window_id, record_id, chart_id, generation, event_class, path_id, rule_version)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-    [windowId, recordId, CHART, o.generation ?? GEN_F, o.eventClass ?? 'marriage',
-      o.pathId ?? 'P1', o.ruleVersion ?? 'v1'],
-  )
-}
 
 /** The governed publication protocol: chart lock FIRST, then the manifest flip, then the seal. */
 async function publishAndSeal(c: Q, generation: string): Promise<void> {
@@ -553,18 +497,6 @@ async function seedFixtures(): Promise<void> {
   })
 }
 
-async function tableExists(name: string): Promise<boolean> {
-  const res = await pool.query<{ present: boolean }>(`SELECT to_regclass($1) IS NOT NULL AS present`, [`public.${name}`])
-  return res.rows[0]!.present
-}
-async function functionExists(sig: string): Promise<boolean> {
-  const res = await pool.query<{ present: boolean }>(`SELECT to_regprocedure($1) IS NOT NULL AS present`, [`public.${sig}`])
-  return res.rows[0]!.present
-}
-async function ledgerFiles(): Promise<string[]> {
-  const res = await pool.query<{ filename: string }>(`SELECT filename FROM _migrations_applied ORDER BY filename`)
-  return res.rows.map(r => r.filename)
-}
 async function withTempDir<T>(files: readonly string[], fn: (dir: string) => Promise<T>): Promise<T> {
   const dir = mkdtempSync(join(tmpdir(), 'gochara-a51-migrations-'))
   try {
@@ -573,10 +505,6 @@ async function withTempDir<T>(files: readonly string[], fn: (dir: string) => Pro
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }
-}
-async function sealCount(generation: string): Promise<number> {
-  const r = await pool.query<{ n: number }>(`SELECT COUNT(*)::int AS n FROM ka_gochara_generation_seal WHERE chart_id = $1 AND generation = $2`, [CHART, generation])
-  return r.rows[0]!.n
 }
 
 

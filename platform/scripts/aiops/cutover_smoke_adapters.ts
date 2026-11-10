@@ -106,7 +106,6 @@ function runSmoke() {
   // Parse vitest verbose output for pass/fail counts
   const passMatch = stdout.match(/Tests\s+(\d+) passed/)
   const failMatch = stdout.match(/(\d+) failed/)
-  const totalMatch = stdout.match(/Tests\s+\d+.*?(\d+)\)/)
   const pass  = passMatch  ? parseInt(passMatch[1],  10) : 0
   const fail  = failMatch  ? parseInt(failMatch[1],  10) : 0
   const total = pass + fail

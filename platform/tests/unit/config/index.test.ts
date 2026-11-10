@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { createConfigService, type FeatureFlag } from '@/lib/config/index'
 
 describe('ConfigService', () => {

@@ -27,7 +27,8 @@ queue:
     parallel_safe_with: [SRP-F-2, SRP-A-1]
     check_commands:
       - >-
-        grep -c "msr_sql\|temporal\|kp_query\|query_kp_ruling_planets\|pattern_register\|resonance_register\|cluster_atlas\|contradiction_register\|query_ucn_walk\|query_cdlm_lookup\|query_rm_walk\|query_jaimini_drishti\|timeline_query\|query_signal_state"
+        grep -c
+        "msr_sql\|temporal\|kp_query\|query_kp_ruling_planets\|pattern_register\|resonance_register\|cluster_atlas\|contradiction_register\|query_ucn_walk\|query_cdlm_lookup\|query_rm_walk\|query_jaimini_drishti\|timeline_query\|query_signal_state"
         platform/src/lib/mcp/primitives_registry.ts | grep -q "^14$"
     human_gate:
       action: merge_and_deploy

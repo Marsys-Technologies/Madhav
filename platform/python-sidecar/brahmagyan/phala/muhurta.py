@@ -1055,7 +1055,8 @@ def _fetch_tara_bala_baseline(
                 cur.execute(
                     """SELECT fact_subject, fact_value_text FROM chart_facts
                        WHERE chart_id = %s AND ayanamsha_id = %s
-                         AND fact_category = 'tara_bala_natal_baseline'""",
+                         AND fact_category = 'tara_bala_natal_baseline' AND fact_key = 'tara_class'
+                       ORDER BY fact_subject, computed_at ASC NULLS FIRST, fact_id""",
                     [chart_id, ayanamsha_id],
                 )
                 for row in cur.fetchall():

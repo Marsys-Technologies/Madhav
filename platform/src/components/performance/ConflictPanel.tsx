@@ -55,7 +55,7 @@ export function ConflictPanel() {
   React.useEffect(() => {
     const initialFetch = setTimeout(() => void fetchPatches(), 0);
     return () => clearTimeout(initialFetch);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, []);
 
   async function handleAction(

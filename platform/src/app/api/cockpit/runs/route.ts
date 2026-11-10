@@ -49,7 +49,6 @@ export async function POST(req: NextRequest) {
     scope_target = null,
     action,
     clear_before = false,
-    force_l0 = false,
   } = body as {
     chart_id: string
     scope: BuildScope

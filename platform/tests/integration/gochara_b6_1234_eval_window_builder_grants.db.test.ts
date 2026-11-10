@@ -21,7 +21,6 @@ import { resolveDisposableA51Config } from './gochara_a5_1_disposable_url'
 const TEST_DB_URL = process.env.GOCHARA_A51_TEST_DATABASE_URL
 
 const MIGRATIONS_DIR = path.resolve(process.cwd(), 'migrations')
-const PREFLIGHT_DIR = path.resolve(process.cwd(), '../platform/python-sidecar/scripts/kala_gochara_cutover')
 const M1216 = '1216_gochara_contract_builder_grants.sql'
 const M1220 = '1220_gochara_contract_builder_function_execute.sql'
 const M1234 = '1234_gochara_eval_window_builder_grants.sql'
@@ -31,13 +30,6 @@ const MIGRATION_FILES = [
   '1155_gochara_relationship_record.sql',
   '1156_gochara_eval_window.sql',
   '1157_gochara_av_polarity_declaration.sql',
-] as const
-const PREFLIGHT_FILES = [
-  'preflight_1153_sky_event_substrate.sql',
-  'preflight_1154_rule_path_registry.sql',
-  'preflight_1155_relationship_record.sql',
-  'preflight_1156_eval_window.sql',
-  'preflight_1157_av_polarity_declaration.sql',
 ] as const
 const PARENT_FILES = [
   '1081_nirmana_l3_gochara_ledger_coverage_publication.sql',
@@ -83,9 +75,6 @@ const CID_R = '10000000-0000-4000-8000-000000000016'         // (OBJ_MARS, 6) 5.
 const CID_P = '10000000-0000-4000-8000-000000000017'         // (OBJ_MARS, 7) 5.3
 const CID_T2 = '10000000-0000-4000-8000-000000000018'        // (OBJ_MARS, 8) truncated, 5.5
 const CID_MOON = '10000000-0000-4000-8000-000000000019'      // (OBJ_MOON, 1)
-const EVENT_1 = '10000000-0000-4000-8000-000000000021'
-const RECORD_1 = '10000000-0000-4000-8000-000000000031'
-const WINDOW_1 = '10000000-0000-4000-8000-000000000041'
 const COV_KIND = 'body_target'
 const COV_KEY = 'mars:karaka'
 const HORIZON = "tstzrange('2025-01-01T00:00Z','2026-01-01T00:00Z','[)')"
@@ -98,14 +87,7 @@ const uuid = (): string => `20000000-0000-4000-8000-${String(++seq).padStart(12,
 function mig(name: string): string {
   return readFileSync(join(MIGRATIONS_DIR, name), 'utf8')
 }
-function preflight(name: string): string {
-  return readFileSync(join(PREFLIGHT_DIR, name), 'utf8')
-}
-const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 /** 'pending' if `p` has not settled within `ms` (either way), else 'settled'. */
-async function settledWithin(p: Promise<unknown>, ms = 500): Promise<'settled' | 'pending'> {
-  return Promise.race([p.then(() => 'settled' as const, () => 'settled' as const), sleep(ms).then(() => 'pending' as const)])
-}
 
 let pool: Pool
 type Q = Pick<PoolClient, 'query'>
@@ -126,14 +108,6 @@ async function tx<T>(fn: (c: PoolClient) => Promise<T>): Promise<T> {
   }
 }
 
-async function dropRole(): Promise<void> {
-  await pool.query(`DO $d$ BEGIN
-    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'a51_app') THEN
-      EXECUTE 'DROP OWNED BY a51_app CASCADE';
-      EXECUTE 'DROP ROLE a51_app';
-    END IF;
-  END $d$`)
-}
 
 async function resetSchema(): Promise<void> {
   await pool.query(`
@@ -182,13 +156,6 @@ async function resetSchema(): Promise<void> {
 }
 
 /** The normalised runtime/migration role: USAGE on public, owner of the application tables, NO CREATE. */
-async function createAppRole(): Promise<void> {
-  await dropRole()
-  await pool.query(`CREATE ROLE a51_app NOLOGIN`)
-  await pool.query(`REVOKE CREATE ON SCHEMA public FROM PUBLIC`)
-  await pool.query(`GRANT USAGE ON SCHEMA public TO a51_app`)
-  for (const t of [...LEGACY_TABLES, '_migrations_applied']) await pool.query(`ALTER TABLE ${t} OWNER TO a51_app`)
-}
 
 // ── Fixture writers ─────────────────────────────────────────────────────────
 async function seedLegacyConvention(c: Q, id: string): Promise<void> {
@@ -475,12 +442,6 @@ async function addMembership(c: Q, windowId: string, recordId: string, o: {
 }
 
 /** The governed publication protocol: chart lock FIRST, then the manifest flip, then the seal. */
-async function publishAndSeal(c: Q, generation: string): Promise<void> {
-  await c.query(`SELECT ka_gochara_lock_chart($1)`, [CHART])
-  await c.query(`UPDATE kala_gochara_publication SET status = 'published', published_at = now()
-                 WHERE chart_id = $1 AND generation = $2`, [CHART, generation])
-  await c.query(`SELECT ka_gochara_seal_generation($1, $2)`, [CHART, generation])
-}
 
 /**
  * Full fixture stack, in FK order, in TWO transactions — the enforced lock
@@ -549,18 +510,6 @@ async function seedFixtures(): Promise<void> {
   })
 }
 
-async function tableExists(name: string): Promise<boolean> {
-  const res = await pool.query<{ present: boolean }>(`SELECT to_regclass($1) IS NOT NULL AS present`, [`public.${name}`])
-  return res.rows[0]!.present
-}
-async function functionExists(sig: string): Promise<boolean> {
-  const res = await pool.query<{ present: boolean }>(`SELECT to_regprocedure($1) IS NOT NULL AS present`, [`public.${sig}`])
-  return res.rows[0]!.present
-}
-async function ledgerFiles(): Promise<string[]> {
-  const res = await pool.query<{ filename: string }>(`SELECT filename FROM _migrations_applied ORDER BY filename`)
-  return res.rows.map(r => r.filename)
-}
 async function withTempDir<T>(files: readonly string[], fn: (dir: string) => Promise<T>): Promise<T> {
   const dir = mkdtempSync(join(tmpdir(), 'gochara-a51-migrations-'))
   try {
@@ -569,10 +518,6 @@ async function withTempDir<T>(files: readonly string[], fn: (dir: string) => Pro
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }
-}
-async function sealCount(generation: string): Promise<number> {
-  const r = await pool.query<{ n: number }>(`SELECT COUNT(*)::int AS n FROM ka_gochara_generation_seal WHERE chart_id = $1 AND generation = $2`, [CHART, generation])
-  return r.rows[0]!.n
 }
 
 

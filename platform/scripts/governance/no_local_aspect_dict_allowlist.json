@@ -1,21 +1,16 @@
 {
   "schema_version": "1.0",
-  "description": "Pre-existing local aspect-dict sites. Stream B (B-02) migrates each to brahmagyan.aspects oracle. Remove entries as B-02 PRs land.",
+  "description": "Ruled Gochara kernel convention and its independent verifier restatements.",
   "entries": [
     {
-      "file": "platform/python-sidecar/ga_writers/ga_strength_writer.py",
-      "line": 302,
-      "justification": "Pre-existing local aspect-strength dict; B-02 stream will migrate to brahmagyan.aspects oracle. Line updated 231→302 (2026-10-02, S-L1 integration branch: the merged lanes #2854/#2941/#2893/#2960 add 71 lines above the unchanged dict; verified by check_no_local_aspect_dict.py); 230→231 (2026-10-02, TI-l1-writer-fixes-001: one import line added above); earlier 224→230 (2026-09-29, l3/gochara-autonomous-wp0-7): branch insertions above (_citation_human_strength G-10 clause, +6 lines) shifted the unchanged, byte-identical dict; verified against origin/main:224-232."
+      "file": "platform/python-sidecar/services/gochara_grammar/primitives.py",
+      "line": 193,
+      "justification": "Retains the pre-existing legacy nodal convention used by the served Gochara grammar. The committed century contract pins this source through the ka_gochara_v5 writer dependency digest. The legacy nodal values and the governed kernel convention are tested independently."
     },
     {
       "file": "platform/python-sidecar/services/gochara_kernel/convention.py",
       "line": 45,
       "justification": "SPECIAL_DRISHTI_DEG is the DELIBERATE pinned doctrine for the new gochara kernel, not an oracle bypass: WP1_CONTRACTS.md §7 + §2.2 N-14 (RULED) — Rāhu/Ketu cast NO dṛṣṭi (empty angle set), superseding the served nodal entries (F-29). brahmagyan.aspects.get_graha_aspects() carries the OPPOSITE nodal convention ('Rahu/Ketu cast the same special aspects as Jupiter', aspects.py:26), so importing it would violate the N-14 ruling. B-02 migration would require an oracle-side doctrinal change first; out of this lane's scope."
-    },
-    {
-      "file": "platform/python-sidecar/services/gochara_grammar/primitives.py",
-      "line": 193,
-      "justification": "SPECIAL_DRISHTI_DEG — F-52 known defect; B-02 stream will migrate to brahmagyan.aspects oracle. Line updated 189→190 (2026-09-30, pravaha/a5-tier0s-repairs): A5.4 kakṣyā-key commit added the brahmagyan.graha_vocabulary import + KAKSHYA_ARC_DEG helper above; the dict itself is byte-identical. Line updated 190→192 (2026-09-30, pravaha/a5-tier0s-repairs r6 rework): further insertions above (tara/kakṣya key helpers); the dict remains byte-identical to origin/main. Line updated 192→193 (Lahiri-primary combined batch, PR-5): one import line (`from services.ayanamsha_ids import PRIMARY_AYANAMSHA_ID`) added above; the dict itself is byte-identical."
     },
     {
       "file": "platform/python-sidecar/services/gochara_kernel/inventory_verifier.py",

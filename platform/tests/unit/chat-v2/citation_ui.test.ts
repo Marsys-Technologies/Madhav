@@ -16,8 +16,8 @@ const consumeSrc = readFileSync(
   resolve(__dirname, '../../../src/components/consume/ConsumeChatV2.tsx'),
   'utf8',
 )
-const routeSrc = readFileSync(
-  resolve(__dirname, '../../../src/app/api/chat/consult/route.ts'),
+const finishSrc = readFileSync(
+  resolve(__dirname, '../../../src/lib/pipelines/shared/onfinish_writethrough.ts'),
   'utf8',
 )
 const dataPartsSrc = readFileSync(
@@ -84,12 +84,9 @@ describe('ConsumeChatV2 β4 citation wiring', () => {
 // ── Route citation emission ───────────────────────────────────────────────────
 
 describe('consume route β4 citation emission', () => {
-  it('imports extractCitations', () => {
-    expect(routeSrc).toContain('extractCitations')
-  })
-
-  it.skip('[CI-AUDIT-2026-05-30 unimplemented in route.ts] emits data-citation parts in onFinish', () => {
-    expect(routeSrc).toContain("type: 'data-citation'")
+  it('extracts citations and emits citation parts after synthesis', () => {
+    expect(finishSrc).toContain('extractCitations(opts.assistantText)')
+    expect(finishSrc).toContain("type: 'data-citation'")
   })
 })
 

@@ -244,7 +244,7 @@ describe('kala_dasha_sandhi_get — tiling property (mandatory property test)', 
       arr.push(b)
       byLevel.set(b.level_n, arr)
     }
-    for (const [_level, starts] of byLevel) {
+    for (const starts of byLevel.values()) {
       const sorted = [...starts].sort((a, b) => a.boundary_date.localeCompare(b.boundary_date))
       for (let i = 0; i < sorted.length - 1; i++) {
         // The corresponding end boundary must equal the next start boundary

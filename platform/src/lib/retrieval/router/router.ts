@@ -22,13 +22,12 @@
  */
 
 import { classifyQuery, isModelFallbackEligible } from './classifier'
-import { selectTools, buildTerminationPolicy, getBudget } from './tool_selector'
+import { selectTools, buildTerminationPolicy } from './tool_selector'
 import type {
   RouteResult,
   RouteTrajectory,
   RoutingHints,
   ClassifierResult,
-  RouteClass,
 } from './types'
 
 // ── Route function ─────────────────────────────────────────────────────────────

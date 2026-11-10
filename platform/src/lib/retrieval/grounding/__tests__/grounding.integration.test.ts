@@ -40,9 +40,7 @@ const NATIVE_CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
 // across rebuilds that may change signal_ids.
 
 let groundableSignalIds: string[] = []
-let groundableAyanamsha: string = 'lahiri_chitrapaksha'
 let orphanSignalIds: string[] = []
-let orphanAyanamsha: string = 'lahiri_chitrapaksha'
 let firstResolvableFactId: string | null = null
 let firstGroundableSignalId: string | null = null
 
@@ -70,7 +68,6 @@ beforeAll(async () => {
 
   groundableSignalIds = [...new Set(groundableRows.map(r => r.signal_id))]
   if (groundableRows.length > 0) {
-    groundableAyanamsha = groundableRows[0].ayanamsha_id
     firstResolvableFactId = groundableRows[0].fact_id
     firstGroundableSignalId = groundableRows[0].signal_id
   }
@@ -96,9 +93,6 @@ beforeAll(async () => {
   )
 
   orphanSignalIds = [...new Set(orphanRows.map(r => r.signal_id))]
-  if (orphanRows.length > 0) {
-    orphanAyanamsha = orphanRows[0].ayanamsha_id
-  }
 })
 
 // ── I1 — Signals with resolvable facts resolve correctly ──────────────────────

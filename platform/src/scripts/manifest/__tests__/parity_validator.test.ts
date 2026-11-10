@@ -18,7 +18,6 @@ import {
   buildManifestIndex,
   runParityCheck,
   CURRENT_STATUSES,
-  type CanonicalArtifactRow,
   type Manifest,
   type ManifestEntry,
 } from '../parity_validator'

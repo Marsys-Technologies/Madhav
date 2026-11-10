@@ -131,12 +131,12 @@ function parseAdjudicatorOutput(
     json = JSON.parse(cleaned)
   } catch {
     telemetry.recordMetric('panel', 'adjudicator_parse_error', 1)
-    // Fallback: treat raw as final_answer with no divergence
+    // Preserve the raw answer when divergence cannot be evaluated.
     return {
       final_answer: raw,
       divergence_summary: {
-        has_divergence: false,
-        divergence_count: 0,
+        has_divergence: null,
+        divergence_count: null,
         summary_text: 'parse error — adjudicator output was not JSON',
       },
       member_alignment: {},
@@ -152,8 +152,8 @@ function parseAdjudicatorOutput(
     return {
       final_answer: typeof data?.final_answer === 'string' ? data.final_answer : raw,
       divergence_summary: {
-        has_divergence: false,
-        divergence_count: 0,
+        has_divergence: null,
+        divergence_count: null,
         summary_text: 'schema validation failed — adjudicator output malformed',
       },
       member_alignment: {},

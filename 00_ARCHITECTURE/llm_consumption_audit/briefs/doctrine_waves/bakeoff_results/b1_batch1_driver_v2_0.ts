@@ -68,13 +68,12 @@
  * does not read gochara_resonance_map at all.
  */
 import { readFileSync, writeFileSync } from 'node:fs'
-import { createHash } from 'node:crypto'
 import type { ChartContext, EventClass, TemporalCurveModel } from '/Users/Dev/Vibe-Coding/Apps/Madhav/.claude/worktrees/wave-D-4b-B1-full-rerun-2/platform/scripts/audit/t0_retrodiction/lib/a3_scoring_harness/model_interface'
 import { pratyantarLordModel } from '/Users/Dev/Vibe-Coding/Apps/Madhav/.claude/worktrees/wave-D-4b-B1-full-rerun-2/platform/scripts/audit/t0_retrodiction/lib/a3_scoring_harness/model_interface'
 import { permissionSystemModel, type PermissionModelOptions } from '/Users/Dev/Vibe-Coding/Apps/Madhav/.claude/worktrees/wave-D-4b-B1-full-rerun-2/platform/scripts/audit/t0_retrodiction/lib/a3_scoring_harness/permission_model'
 import { runMirroredScoringHarness, type MirroredScoringParams } from '/Users/Dev/Vibe-Coding/Apps/Madhav/.claude/worktrees/wave-D-4b-B1-full-rerun-2/platform/scripts/audit/t0_retrodiction/lib/a3_scoring_harness/harness'
 import { assertRosterBindable, RosterBindFailureError } from '/Users/Dev/Vibe-Coding/Apps/Madhav/.claude/worktrees/wave-D-4b-B1-full-rerun-2/platform/scripts/audit/t0_retrodiction/lib/a3_scoring_harness/roster_bind'
-import { assertNoSealedSplitEvents, filterToTrainScope, TEST_SPLIT_BOUNDARY } from '/Users/Dev/Vibe-Coding/Apps/Madhav/.claude/worktrees/wave-D-4b-B1-full-rerun-2/platform/scripts/audit/t0_retrodiction/lib/a3_scoring_harness/sealed_split_guard'
+import { assertNoSealedSplitEvents, filterToTrainScope } from '/Users/Dev/Vibe-Coding/Apps/Madhav/.claude/worktrees/wave-D-4b-B1-full-rerun-2/platform/scripts/audit/t0_retrodiction/lib/a3_scoring_harness/sealed_split_guard'
 import type { CurveEvent, DateConfidence, EventShape } from '/Users/Dev/Vibe-Coding/Apps/Madhav/.claude/worktrees/wave-D-4b-B1-full-rerun-2/platform/scripts/audit/t0_retrodiction/lib/a3_scoring_harness/shape_scoring'
 import { shuffledBirthControlCurve } from '/Users/Dev/Vibe-Coding/Apps/Madhav/.claude/worktrees/wave-D-4b-B1-full-rerun-2/platform/scripts/audit/t0_retrodiction/lib/a3_scoring_harness/curve_controls'
 import {
@@ -245,7 +244,6 @@ async function main() {
   const allCurveEvents: CurveEvent[] = RAW_EVENTS.map(toCurveEvent)
   const trainCurveEvents = filterToTrainScope(allCurveEvents)
   const trainIds = new Set(trainCurveEvents.map((e) => e.eventId))
-  const rawById = new Map(RAW_EVENTS.map((r) => [r.eventId, r]))
   const trainRaw = RAW_EVENTS.filter((r) => trainIds.has(r.eventId))
   const scoredRaw = trainRaw.filter((r) => !r.scoringExcluded)
   console.error(

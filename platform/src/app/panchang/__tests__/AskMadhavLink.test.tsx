@@ -67,7 +67,7 @@ describe('serialiseContext', () => {
 
   it('30-day range simulation (AC.4C8.6) — truncates gracefully', () => {
     // A 30-day range would be ~30× the single-day payload ≈ 120-150 KB
-    const thirtyDays = Array.from({ length: 30 }, (_, i) => buildFakePanchang(5))
+    const thirtyDays = Array.from({ length: 30 }, () => buildFakePanchang(5))
     const rangeCtx = { range: thirtyDays, date: '2026-05-20' }
     const serialised = serialiseContext(rangeCtx)
     const result = JSON.parse(serialised) as Record<string, unknown>

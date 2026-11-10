@@ -1,7 +1,8 @@
+import { readGoogleCloudEnv } from '@/lib/config/google_cloud_env'
 import { ExecutionsClient, JobsClient } from '@google-cloud/run'
 
 const REGION = 'asia-south1'
-const PROJECT = process.env.GCP_PROJECT ?? 'madhav-astrology'
+const PROJECT = readGoogleCloudEnv('GOOGLE_CLOUD_PROJECT') ?? 'madhav-astrology'
 // Single source of truth: BUILD_JOB_NAME (set in deploy.yml). Falls back to the
 // real deployed job name, NOT the legacy `marsys-build-pipeline-job` which does
 // not exist (Orchestrator Convergence Phase 1, 2026-06-12).

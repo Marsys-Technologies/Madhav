@@ -50,7 +50,6 @@ export async function GET(request: Request): Promise<Response> {
 
   const downstreamSet = computeDownstreamClosure([asset_id], registry)
 
-  const meta = new Map(rows.map(r => [r.asset_id, r]))
   const downstream = rows
     .filter(r => downstreamSet.has(r.asset_id))
     .map(r => ({

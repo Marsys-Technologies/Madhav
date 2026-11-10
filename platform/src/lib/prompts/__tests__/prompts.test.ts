@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { renderTemplate, getDefaultRegistry, createRegistry } from '../index'
 import { buildOpeningBlock } from '../templates/shared'
 import type { PromptTemplate, QueryClass } from '../index'

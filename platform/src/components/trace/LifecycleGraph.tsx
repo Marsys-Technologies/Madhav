@@ -154,9 +154,6 @@ export function LifecycleGraph({
 
   // Retrieval: all 21 tools; dim unfired ones
   const firedTools = new Set(retrieval.map(r => r.tool_name))
-  const synthStep = steps.find(
-    s => s.step_name === 'synthesis' || s.step_name === 'synthesis_done',
-  )
 
   return (
     <div className="p-3 space-y-0" data-testid="lifecycle-graph">

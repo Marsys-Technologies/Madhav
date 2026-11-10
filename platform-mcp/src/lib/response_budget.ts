@@ -563,7 +563,7 @@ export function finalizeMcpBudget<T extends Record<string, unknown>>(
   // Re-measure the WHOLE object now that trim_report + merged pointers are attached —
   // the step the original mechanism skipped.
   if (estimateBytes(content) > maxBytes) {
-    let report = [...combinedTrimReport]
+    const report = [...combinedTrimReport]
     // Drop the single largest-by-bytes entry at a time until under budget or only one
     // entry remains (never go to a fully-empty array here — see the null fallback below).
     while (report.length > 1 && estimateBytes(content) > maxBytes) {

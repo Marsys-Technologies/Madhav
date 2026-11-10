@@ -6,7 +6,6 @@
  */
 
 import type { CapabilityUri } from '@/lib/retrieval/registry/types'
-import { getCapability, listCapabilities } from '@/lib/retrieval/registry'
 
 export interface ToolError {
   uri: CapabilityUri

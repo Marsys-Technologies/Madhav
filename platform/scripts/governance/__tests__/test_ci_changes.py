@@ -752,7 +752,7 @@ def test_p07_ci_rejects_skipped_or_missing_migration_1235_cases(jobs, tmp_path, 
              if "tests/test_migration_1235_evidence_function.py" in str(s.get("run", ""))]
     assert len(steps) == 1, "required migration 1235 CI command is missing"
     step = steps[0]
-    command = next(shlex.split(line) for line in step["run"].splitlines() if "ET.parse(" in line)
+    command = next(shlex.split(line) for line in step["run"].replace('\\\n', '').splitlines() if "ET.parse(" in line)
     cases = ["<testcase />"] * case_count
     if skipped and cases:
         cases[0] = "<testcase><skipped /></testcase>"
@@ -772,7 +772,7 @@ def test_p07_ci_rejects_skipped_or_missing_mcp_cases(jobs, tmp_path, case_count,
     steps = [s for s in jobs["governance-readback-tests"]["steps"]
              if s.get("name") == step_name]
     assert len(steps) == 1
-    command = next(shlex.split(line) for line in steps[0]["run"].splitlines() if "ET.parse(" in line)
+    command = next(shlex.split(line) for line in steps[0]["run"].replace('\\\n', '').splitlines() if "ET.parse(" in line)
     cases = ["<testcase />"] * case_count
     if skipped and cases:
         cases[0] = "<testcase><skipped /></testcase>"

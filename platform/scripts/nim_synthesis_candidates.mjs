@@ -39,7 +39,7 @@ console.log(`Key: ${apiKey.slice(0, 12)}…`)
 console.log(`Time: ${new Date().toISOString()}`)
 console.log('Timeout: 30s per model\n')
 
-async function test(modelId, note) {
+async function test(modelId) {
   const ac = new AbortController()
   const timer = setTimeout(() => ac.abort(), 30_000)
   const start = Date.now()
@@ -66,7 +66,7 @@ async function test(modelId, note) {
     const body = await res.text().catch(() => '').then(t => t.slice(0, 100).replace(/\n/g, ' '))
     const sym = res.status === 404 ? '❌' : res.status === 410 ? '☠️' : res.status === 429 ? '🔁' : '⚠️'
     return { ok: false, ms, result: `${sym}  HTTP ${res.status} in ${ms}ms  ${body}` }
-  } catch (err) {
+  } catch {
     clearTimeout(timer)
     const ms = Date.now() - start
     return { ok: false, ms, result: `⏱   Timeout after ${ms}ms` }

@@ -65,7 +65,9 @@ on:
         required: false
         default: false
       gochara_contracts_schema_migration:
-        description: 'Explicitly authorize the temporary protected schema window for exact Gochara contract migrations 1153-1157, 1204, 1206, 1232, 1233, 1235, 1240 (Pravāha A5.1 + B6.0 v1.5 amendment AM-7 + AM-5 search-completeness storage)'
+        description: >-
+          Explicitly authorize the temporary protected schema window for exact Gochara contract migrations 1153-1157, 1204, 1206, 1232, 1233, 1235, 1240 (Pravāha A5.1 + B6.0 v1.5 amendment AM-7 + AM-5
+          search-completeness storage)
         type: boolean
         required: false
         default: false
@@ -294,8 +296,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      actions: read # read the CI workflow's conclusion for this SHA
-      id-token: write # WIF auth: the gate reads each component's DEPLOYED commit from Cloud Run (#2169)
+      actions: read  # read the CI workflow's conclusion for this SHA
+      id-token: write  # WIF auth: the gate reads each component's DEPLOYED commit from Cloud Run (#2169)
     outputs:
       web: ${{ steps.diff.outputs.web }}
       sidecar: ${{ steps.diff.outputs.sidecar }}
@@ -609,7 +611,8 @@ jobs:
           DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL: ${{ vars.DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL }}
           DATA_PLANE_SECRET_ISOLATION_MODE: strict
           DATA_PLANE_VERIFIER_PHASE: ${{ vars.DATA_PLANE_VERIFIER_PHASE }}   # R15-1: staged (act 3 done) | deployable (act 10 done); required once the verifier service account exists
-          DATA_PLANE_VERIFIER_CONTROL_EXCEPTIONS: ${{ vars.DATA_PLANE_VERIFIER_CONTROL_EXCEPTIONS }}   # F-R16-2: optional 'resource|role|member;…' — the owner's declared control-plane exceptions (read by assertVerifierInheritedControl)
+          # F-R16-2: optional 'resource|role|member;…' — the owner's declared control-plane exceptions (read by assertVerifierInheritedControl)
+          DATA_PLANE_VERIFIER_CONTROL_EXCEPTIONS: ${{ vars.DATA_PLANE_VERIFIER_CONTROL_EXCEPTIONS }}
         run: |
           if (cd platform && npx tsx scripts/data-plane-secret-isolation-preflight.ts); then
             echo "state=strict" >> "$GITHUB_OUTPUT"
@@ -880,7 +883,9 @@ jobs:
             1033_planner_inquiry_lifecycle.sql,1034_nirmana_purna_anvesana_wave1_output_digest_specs.sql,1037_planner_inquiry_action_reservations.sql,1038_planner_managed_prashna_jobs.sql,1039_purna_inquiry_protected_ownership.sql,1040_planner_inquiry_successor_lifecycle.sql
 
       - name: Revoke temporary Pūrṇa schema capability
-        if: ${{ always() && steps.purna-admin-route.outcome == 'success' && (steps.bootstrap-state.outputs.purna == 'armed' || steps.bootstrap-state.outputs.purna == 'interrupted' || steps.bootstrap-state.outputs.purna == 'cleanup_required') }}
+        if: >-
+          ${{ always() && steps.purna-admin-route.outcome == 'success' && (steps.bootstrap-state.outputs.purna == 'armed' || steps.bootstrap-state.outputs.purna == 'interrupted' ||
+          steps.bootstrap-state.outputs.purna == 'cleanup_required') }}
         env:
           DATA_PLANE_MIGRATOR_DATABASE_URL: ${{ secrets.DATA_PLANE_MIGRATOR_DATABASE_URL }}
         run: cd platform && npx tsx scripts/purna-inquiry-schema-capability.ts revoke
@@ -889,7 +894,9 @@ jobs:
       # If a prior runner died after preflight COMMIT, `interrupted` makes the next
       # run clean the privileged bootstrap first and then stop for explicit rearm.
       - name: Close and attest Pūrṇa protected-owner handoff
-        if: ${{ always() && steps.purna-admin-route.outcome == 'success' && (steps.bootstrap-state.outputs.purna == 'armed' || steps.bootstrap-state.outputs.purna == 'interrupted' || steps.bootstrap-state.outputs.purna == 'cleanup_required') }}
+        if: >-
+          ${{ always() && steps.purna-admin-route.outcome == 'success' && (steps.bootstrap-state.outputs.purna == 'armed' || steps.bootstrap-state.outputs.purna == 'interrupted' ||
+          steps.bootstrap-state.outputs.purna == 'cleanup_required') }}
         env:
           PURNA_INQUIRY_ADMIN_DATABASE_URL: ${{ secrets.PURNA_INQUIRY_ADMIN_DATABASE_URL }}
         run: |
@@ -956,7 +963,8 @@ jobs:
           DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL: ${{ vars.DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL }}
           DATA_PLANE_SECRET_ISOLATION_MODE: pre_transition
           DATA_PLANE_VERIFIER_PHASE: ${{ vars.DATA_PLANE_VERIFIER_PHASE }}   # R15-1: staged (act 3 done) | deployable (act 10 done); required once the verifier service account exists
-          DATA_PLANE_VERIFIER_CONTROL_EXCEPTIONS: ${{ vars.DATA_PLANE_VERIFIER_CONTROL_EXCEPTIONS }}   # F-R16-2: optional 'resource|role|member;…' — the owner's declared control-plane exceptions (read by assertVerifierInheritedControl)
+          # F-R16-2: optional 'resource|role|member;…' — the owner's declared control-plane exceptions (read by assertVerifierInheritedControl)
+          DATA_PLANE_VERIFIER_CONTROL_EXCEPTIONS: ${{ vars.DATA_PLANE_VERIFIER_CONTROL_EXCEPTIONS }}
         run: cd platform && npx tsx scripts/data-plane-secret-isolation-preflight.ts
 
       - name: Execute Native-authorized automated cutover under backup, restore, lease and quiescence
@@ -1021,7 +1029,8 @@ jobs:
           DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL: ${{ vars.DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL }}
           DATA_PLANE_SECRET_ISOLATION_MODE: strict
           DATA_PLANE_VERIFIER_PHASE: ${{ vars.DATA_PLANE_VERIFIER_PHASE }}   # R15-1: staged (act 3 done) | deployable (act 10 done); required once the verifier service account exists
-          DATA_PLANE_VERIFIER_CONTROL_EXCEPTIONS: ${{ vars.DATA_PLANE_VERIFIER_CONTROL_EXCEPTIONS }}   # F-R16-2: optional 'resource|role|member;…' — the owner's declared control-plane exceptions (read by assertVerifierInheritedControl)
+          # F-R16-2: optional 'resource|role|member;…' — the owner's declared control-plane exceptions (read by assertVerifierInheritedControl)
+          DATA_PLANE_VERIFIER_CONTROL_EXCEPTIONS: ${{ vars.DATA_PLANE_VERIFIER_CONTROL_EXCEPTIONS }}
         run: cd platform && npx tsx scripts/data-plane-secret-isolation-preflight.ts
 
       - name: Re-attest protected data-plane semantic state with deployment-only migrator
@@ -1048,7 +1057,8 @@ jobs:
     if: >-
       always() &&
       github.event_name == 'workflow_dispatch' &&
-      (inputs.jataka_schema_migration == true || inputs.ai_console_schema_migration == true || inputs.ai_metering_schema_migration == true || inputs.gochara_schema_migration == true || inputs.gochara_contracts_schema_migration == true || inputs.kala_schema_migration == true) &&
+      (inputs.jataka_schema_migration == true || inputs.ai_console_schema_migration == true || inputs.ai_metering_schema_migration == true || inputs.gochara_schema_migration == true ||
+      inputs.gochara_contracts_schema_migration == true || inputs.kala_schema_migration == true) &&
       needs.changes.result == 'success' &&
       needs.migration-state.result == 'success' &&
       needs.migration-state.outputs.data_plane == 'marked' &&
@@ -1353,7 +1363,8 @@ jobs:
           DATA_PLANE_DEPLOY_PRINCIPAL: serviceAccount:github-actions@madhav-astrology.iam.gserviceaccount.com
           DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL: ${{ vars.DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL }}
           DATA_PLANE_VERIFIER_PHASE: ${{ vars.DATA_PLANE_VERIFIER_PHASE }}   # R15-1: staged (act 3 done) | deployable (act 10 done); required once the verifier service account exists
-          DATA_PLANE_VERIFIER_CONTROL_EXCEPTIONS: ${{ vars.DATA_PLANE_VERIFIER_CONTROL_EXCEPTIONS }}   # F-R16-2: optional 'resource|role|member;…' — the owner's declared control-plane exceptions (read by assertVerifierInheritedControl)
+          # F-R16-2: optional 'resource|role|member;…' — the owner's declared control-plane exceptions (read by assertVerifierInheritedControl)
+          DATA_PLANE_VERIFIER_CONTROL_EXCEPTIONS: ${{ vars.DATA_PLANE_VERIFIER_CONTROL_EXCEPTIONS }}
         run: cd platform && npx tsx scripts/data-plane-secret-isolation-preflight.ts
 
       - name: Re-attest protected data-plane semantic state with routine credential
@@ -1589,7 +1600,14 @@ jobs:
             --network-tags=amjis-web-cli-egress
             --vpc-egress=private-ranges-only
             --remove-secrets=WATCHDOG_SECRET
-            --remove-env-vars="^|^WATCHDOG_LEGACY_FALLBACK_ENABLED|# ── 4.observability (Wave 4) ──────────────────────────────────────────|# Vertex AI region pin for batched embeddings (lib/embeddings/embedText.ts).|# Region must match the prod Cloud Run region (asia-south1) to keep|# Vertex calls in-region for both latency + egress cost.|# NOTE: NEXT_PUBLIC_FIREBASE_* intentionally absent from runtime env_vars.|# These are NEXT_PUBLIC_ flags baked into the bundle at build time (see|# build-args above). Cloud Run env_vars are never read by Next.js at|# runtime — setting them here has zero effect and misleadingly implies|# that rotating them without a full rebuild would take effect.|# Campaign definitions|labels|and non-server receipts use this|# distinct Cloud-SQL principal.  Its absent secret fails those|# writes closed; neither the migrator nor legacy-owner credential|# is ever present in the serving revision.|# Server-reconstructed evidence (probe_accepted|integrity_verified|# asset_frozen|stage_transition_accepted|foundation_lane_accepted)|# uses this distinct Cloud-SQL principal instead. Its absent secret|# fails those writes closed the same way -- this was missing from|# the serving revision from when the ingress writer role and its|# secret were first provisioned (2026-08-27) until this line."
+            --remove-env-vars="^|^WATCHDOG_LEGACY_FALLBACK_ENABLED|# ── 4.observability (Wave 4) ──────────────────────────────────────────|# Vertex AI region pin for batched embeddings
+            (lib/embeddings/embedText.ts).|# Region must match the prod Cloud Run region (asia-south1) to keep|# Vertex calls in-region for both latency + egress cost.|# NOTE: NEXT_PUBLIC_FIREBASE_*
+            intentionally absent from runtime env_vars.|# These are NEXT_PUBLIC_ flags baked into the bundle at build time (see|# build-args above). Cloud Run env_vars are never read by Next.js at|#
+            runtime — setting them here has zero effect and misleadingly implies|# that rotating them without a full rebuild would take effect.|# Campaign definitions|labels|and non-server receipts
+            use this|# distinct Cloud-SQL principal.  Its absent secret fails those|# writes closed; neither the migrator nor legacy-owner credential|# is ever present in the serving revision.|#
+            Server-reconstructed evidence (probe_accepted|integrity_verified|# asset_frozen|stage_transition_accepted|foundation_lane_accepted)|# uses this distinct Cloud-SQL principal instead. Its
+            absent secret|# fails those writes closed the same way -- this was missing from|# the serving revision from when the ingress writer role and its|# secret were first provisioned
+            (2026-08-27) until this line."
           # Pūrṇa inquiry state uses a separate LOGIN member of role_web_serve;
           # its secret is provisioned before merge and never falls back to DB_USER.
           # The signing ring is likewise dedicated and mounted only in web.
@@ -2255,7 +2273,8 @@ jobs:
         id: canary_key
         run: |
           KEY=$(gcloud secrets versions access latest --secret="mcp-canary-key" --project=madhav-astrology 2>/tmp/canary_key_err) || {
-            echo "::warning::Could not read mcp-canary-key from Secret Manager — verify its existing secret-specific deploy-identity binding and enabled version. Smoke will FAIL LOUD on the auth probes (by design; see mcp_end_to_end_smoke.sh)."
+            echo "::warning::Could not read mcp-canary-key from Secret Manager — \
+          verify its existing secret-specific deploy-identity binding and enabled version. Smoke will FAIL LOUD on the auth probes (by design; see mcp_end_to_end_smoke.sh)."
             cat /tmp/canary_key_err || true
             KEY=""
           }
@@ -2394,7 +2413,7 @@ jobs:
         env:
           DEPLOY_URL: ${{ steps.deploy.outputs.url }}
         run: echo "Deployed to $DEPLOY_URL"
-      # ── /PARISHODHANA Phase C item 2 ──
+  # ── /PARISHODHANA Phase C item 2 ──
   # ── /4.edge_and_infra_hygiene ──
 
   # ── Orchestrator Convergence Phase 1: brahma-pipeline job image under CI ──

@@ -18,7 +18,7 @@ import type { DimensionResult, TurnObservation } from '../types'
 export const READER_COMPREHENSION_DIMENSION = 'reader_comprehension' as const
 
 // The param is kept (unused) so this matches the DimensionScorer signature every other dimension implements.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+
 export function scoreReaderComprehension(_obs: TurnObservation): DimensionResult {
   return {
     dimension: READER_COMPREHENSION_DIMENSION,

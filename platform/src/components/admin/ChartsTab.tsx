@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -198,15 +198,14 @@ function ChartAccessPanel({
     ),
   })
 
-  const localCharts = data?.charts ?? []
+  const localCharts = useMemo(() => data?.charts ?? [], [data?.charts])
 
   useEffect(() => {
     if (data?.charts) {
       const count = data.charts.filter(c => c.granted && !c.is_own).length
       onGrantCountKnown(guest.id, count)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data?.charts])
+  }, [data?.charts, guest.id, onGrantCountKnown])
 
   function handleToggled(chartId: string, nowGranted: boolean) {
     queryClient.setQueryData<{ charts: AdminChartGrant[] }>(
@@ -322,9 +321,9 @@ export function ChartsTab({
     router.replace(`/admin?tab=charts&guest=${id}`, { scroll: false })
   }
 
-  function handleGrantCountKnown(guestId: string, count: number) {
-    setGrantCounts(prev => ({ ...prev, [guestId]: count }))
-  }
+  const handleGrantCountKnown = useCallback((guestId: string, count: number) => {
+    setGrantCounts(prev => prev[guestId] === count ? prev : { ...prev, [guestId]: count })
+  }, [])
 
   const selectedGuest = useMemo(
     () => guests.find(g => g.id === selectedId) ?? null,

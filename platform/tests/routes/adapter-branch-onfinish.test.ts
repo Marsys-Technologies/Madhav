@@ -19,7 +19,7 @@
  *      adapter branch will supply (functional unit tests on the helpers).
  */
 
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 

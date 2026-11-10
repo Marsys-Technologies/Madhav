@@ -79,7 +79,9 @@ sessions:
     blocked_by: [R11F-A-S6]
     commit_sha: "b0aa2a51"
     pr_url: null
-    notes: "Screenshots to visual_evidence/anthropic/. Triage fix e80d2333 (planner null-coercion extended to all soft-optional fields). Smoke PASS on port 3001. HTTP 200, Saturn dasha dates returned, tool-flow timeline captured."
+    notes: >-
+      Screenshots to visual_evidence/anthropic/. Triage fix e80d2333 (planner null-coercion extended to all soft-optional fields). Smoke PASS on port 3001. HTTP 200, Saturn dasha dates returned,
+      tool-flow timeline captured.
 
   # ──────────────────────────────────────────────────────────────────────────────
   # PHASE B — Other Providers (B1+B3 parallel-eligible; B2/B4 serial after B1/B3)
@@ -105,7 +107,9 @@ sessions:
     blocked_by: [R11F-B-S1]
     commit_sha: "310519dd"
     pr_url: null
-    notes: "Smoke PASS: 5 Gemini tools fired, Saturn dates returned. 3 production fixes: adapter message conversion, types.ts name field, Gemini non-empty function_response.name. Test assertion corrected (user→tool role conversion)."
+    notes: >-
+      Smoke PASS: 5 Gemini tools fired, Saturn dates returned. 3 production fixes: adapter message conversion, types.ts name field, Gemini non-empty function_response.name. Test assertion
+      corrected (user→tool role conversion).
 
   - id: R11F-B-S3
     phase: B

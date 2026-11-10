@@ -14,7 +14,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { ANTHROPIC_MANIFEST } from '../../src/lib/providers/anthropic/manifest'
-import { GOOGLE_MANIFEST } from '../../src/lib/providers/google/manifest'
+import { googleProviderManifest } from '../../src/lib/providers/google/manifest'
 import { OPENAI_MANIFEST } from '../../src/lib/providers/openai/manifest'
 import { DEEPSEEK_MANIFEST } from '../../src/lib/providers/deepseek/manifest'
 import { NVIDIA_MANIFEST } from '../../src/lib/providers/nvidia/manifest'
@@ -30,7 +30,7 @@ describe('D-S0: promptCaching — per-provider manifest values', () => {
   })
 
   it('Google uses cached_content_api (separate cachedContent API call)', () => {
-    expect(GOOGLE_MANIFEST.promptCaching).toBe('cached_content_api')
+    expect(googleProviderManifest.promptCaching).toBe('cached_content_api')
   })
 
   it('OpenAI uses automatic (no explicit breakpoints; 25% hit cost)', () => {

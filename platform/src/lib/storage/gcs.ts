@@ -1,3 +1,4 @@
+import { readGoogleCloudEnv } from '@/lib/config/google_cloud_env'
 import { Storage } from '@google-cloud/storage'
 import { telemetry } from '../telemetry/index'
 
@@ -5,7 +6,7 @@ let _storage: Storage | null = null
 
 function getStorage(): Storage {
   if (!_storage) {
-    _storage = new Storage({ projectId: process.env.GCP_PROJECT })
+    _storage = new Storage({ projectId: readGoogleCloudEnv('GOOGLE_CLOUD_PROJECT') })
   }
   return _storage
 }

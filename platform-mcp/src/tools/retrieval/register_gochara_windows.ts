@@ -514,10 +514,10 @@ export function deriveResolutionDisclosure(
   }
 }
 
-function withResolutionDisclosure<T extends GocharaWindowRow>(
-  rows: T[]
-): Array<T & { resolution_disclosure: ResolutionDisclosure }> {
-  return rows.map((row) => ({ ...row, resolution_disclosure: deriveResolutionDisclosure(row) }))
+function deriveResolutionDisclosures(
+  rows: readonly GocharaWindowRow[]
+): ResolutionDisclosure[] {
+  return rows.map((row) => deriveResolutionDisclosure(row))
 }
 
 /**
@@ -1924,7 +1924,7 @@ export async function computeGocharaActivation(
   // PARIṢKĀRA MR-11(b): attach resolution_disclosure to every served window
   // (PK-R-1 — a decade-era row must be labeled as CONTEXT, never presented
   // as a timing claim, stored or implied).
-  const disclosures = rows.map((row) => deriveResolutionDisclosure(row))
+  const disclosures = deriveResolutionDisclosures(rows)
   const windowsWithDisclosure = enrichedWindows.map((window, i) => ({
     ...window,
     resolution_disclosure: disclosures[i] ?? null,
@@ -2038,7 +2038,7 @@ const ForecastInputSchema = z.object({
 // ── C2: nested era⊃month⊃day hierarchy (SAMPŪRTI-γ C2) ──────────────────────
 
 /** Enriched window type: GocharaWindowRow with resolution_disclosure attached
- * (produced by the `withResolutionDisclosure` helper above). */
+ * (computed from the row resolution). */
 export type ServedWindow = GocharaWindowRow & { resolution_disclosure: unknown }
 
 /** A node in the era⊃month⊃day hierarchy tree. */
@@ -2265,7 +2265,7 @@ export async function computeGocharaForecast(
   const verseRefMap = await fetchVerseRefs(citationStrings, principal)
   const enrichedWindows = enrichWindowsWithVerseRefs(rows as unknown as Array<{ active_sentences: unknown[] }>, rows, verseRefMap)
   // PARIṢKĀRA MR-11(b): resolution_disclosure per served window (PK-R-1).
-  const disclosures = rows.map((row) => deriveResolutionDisclosure(row))
+  const disclosures = deriveResolutionDisclosures(rows)
   // C1: attach term_breakdown_summary (human-readable λ_v3 decomposition) and
   // resolution_disclosure to every served window before budget assembly.
   const windowsWithDisclosure = enrichedWindows.map((window, i) => ({
@@ -2679,7 +2679,7 @@ export async function computeGocharaElectionAvoidance(
   // W5.1: compute facets (real detector per I3).
   const facets = computeWindowFacets(rows)
   // PARIṢKĀRA MR-11(b): page-level context-only summary (PK-R-1).
-  const electionAvoidanceDisclosures = rows.map((row) => deriveResolutionDisclosure(row))
+  const electionAvoidanceDisclosures = deriveResolutionDisclosures(rows)
   const { context_only_rows_in_page, context_only_note } = summarizeResolutionDisclosure(
     electionAvoidanceDisclosures
   )

@@ -246,7 +246,7 @@ describe('adjudicate — JSON parse error fallback', () => {
     const result = await adjudicate(threeSuccessOutputs, fakeSynthesisRequest, threeMembers)
 
     expect(result.final_answer).toBe(rawText)
-    expect(result.divergence_summary.has_divergence).toBe(false)
+    expect(result.divergence_summary).toMatchObject({ has_divergence: null, divergence_count: null })
     expect(result.divergence_summary.summary_text).toMatch(/parse error/)
     expect(result.member_alignment).toEqual({})
   })

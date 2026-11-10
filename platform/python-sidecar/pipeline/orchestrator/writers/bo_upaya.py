@@ -36,7 +36,14 @@ from . import WriterBase, ContextSpec, WriterResult, register
 from bodha_writers.data_plane_contracts import l2_producer, stable_semantic_uuid
 from bodha_writers.vichara_token import vichara_token_from_row
 from brahmagyan.graha_vocabulary import to_title
-from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
+from ga_writers._karaka_roles import (
+    KARAKA_ABBREVIATIONS_8,
+    KARAKA_ALLOWED_GRAHAS,
+    KarakaDependencyMissing,
+    fetch_kn_rao_karaka_rows,
+    kn_rao_graha_by_rank,
+)
+from brahmagyan.verification_tiers import DOCUMENTED_APPROXIMATION, UNVERIFIED_DEFAULT
 
 logger = logging.getLogger(__name__)
 
@@ -377,36 +384,31 @@ def _fetch_graha_house_placements(conn: Any, chart_id: str, aya: str) -> dict[st
 def _fetch_yoga_karaka_flags(conn: Any, chart_id: str, aya: str) -> set[str]:
     """Returns set of grahas that are yoga-karakas."""
     rows = conn.execute(
-        """SELECT fact_key FROM chart_facts
+        """SELECT fact_subject FROM chart_facts
            WHERE chart_id = %s AND ayanamsha_id = %s
-             AND fact_category = 'graha_yoga_karaka_flag'
+             AND fact_category = 'graha_yoga_karaka_flag' AND fact_key = 'is_yoga_karaka'
              AND fact_value_text IN ('true', '1', 'yes', 'yoga_karaka')""",
         [chart_id, aya],
     ).fetchall()
     result: set[str] = set()
     for r in rows:
-        key = str(r[0] if isinstance(r, tuple) else r.get("fact_key", ""))
-        graha = key.split(":")[0]
+        subject = str(r[0] if isinstance(r, tuple) else r.get("fact_subject", ""))
+        graha = to_title(subject)
         if graha in KNOWN_GRAHAS:
             result.add(graha)
     return result
 
 
 def _fetch_chara_roles(conn: Any, chart_id: str, aya: str) -> dict[str, str]:
-    """graha → chara karaka role (AK/AmK/BK/etc.)."""
-    rows = conn.execute(
-        """SELECT fact_key, fact_value_text FROM chart_facts
-           WHERE chart_id = %s AND ayanamsha_id = %s AND fact_category = 'karaka_chara_position'""",
-        [chart_id, aya],
-    ).fetchall()
-    out: dict[str, str] = {}
-    for r in rows:
-        key = str(r[0] if isinstance(r, tuple) else r.get("fact_key", ""))
-        val = str(r[1] if isinstance(r, tuple) else r.get("fact_value_text") or "")
-        graha = key.split(":")[0]
-        if graha in KNOWN_GRAHAS and val:
-            out[graha] = val
-    return out
+    """Return stored roles from the headline KN Rao school, or an honest gap."""
+    fetched = fetch_kn_rao_karaka_rows(conn, chart_id, aya)
+    try:
+        grahas = kn_rao_graha_by_rank(
+            fetched, chart_id, aya, consumer="bo_upaya", allowed_grahas=KARAKA_ALLOWED_GRAHAS,
+        )
+    except KarakaDependencyMissing:
+        return {}
+    return dict(zip(grahas, KARAKA_ABBREVIATIONS_8, strict=True))
 
 
 def _fetch_dispositor_terminal_strength(conn: Any, chart_id: str, aya: str) -> dict[str, float]:
@@ -1044,9 +1046,9 @@ def _fetch_active_doshas_by_graha(conn: Any, chart_id: str, aya: str) -> dict[st
         """SELECT fact_subject, fact_value_text, fact_value_jsonb
            FROM chart_facts
            WHERE chart_id = %s AND ayanamsha_id = %s
-             AND fact_category = 'dosha_label'
+             AND fact_category = 'dosha_label' AND fact_key = 'dosha_name'
              AND fact_value_jsonb->>'fires' = 'true'
-           ORDER BY fact_subject""",
+           ORDER BY fact_subject, fact_id""",
         [chart_id, aya],
     ).fetchall()
     out: dict[str, list[str]] = {}
@@ -1561,7 +1563,7 @@ def _build_resonances_and_prescriptions(
                     "rather than a measured-looking 1.00."
                 ),
             }),
-            "verification_pass_status": "documented_approximation",
+            "verification_pass_status": DOCUMENTED_APPROXIMATION,
             "citation_ref": f"bo_upaya/resonance/{graha}",
             # F-117 (§N.7 item 1): "shadbala" in missing_inputs means NO L1 shadbala row
             # exists for this graha — structurally true for Rahu/Ketu, for whom classical
@@ -1727,7 +1729,7 @@ def _build_resonances_and_prescriptions(
                     or bool(maraka_verdict and maraka_verdict.get("verdict") == "contraindicated")
                 ),
                 "cross_tradition_corroboration_count": 1,
-                "verification_pass_status": "documented_approximation",
+                "verification_pass_status": DOCUMENTED_APPROXIMATION,
                 "citation_ref": f"brahma_remedy_corpus/{corpus_row.get('remedy_id')}",
                 "citation_human": f"G27 remedy {corpus_row.get('remedy_id')} for {graha}",
                 "computed_at": now,

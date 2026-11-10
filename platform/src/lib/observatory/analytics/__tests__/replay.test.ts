@@ -31,19 +31,6 @@ import {
   replayAndRecost,
 } from '../replay'
 
-interface QueryCall {
-  sql: string
-  params: unknown[]
-}
-
-function lastNCalls(n: number): QueryCall[] {
-  const calls = queryMock.mock.calls.map((c) => ({
-    sql: c[0] as string,
-    params: (c[1] ?? []) as unknown[],
-  }))
-  return calls.slice(-n)
-}
-
 beforeEach(() => {
   queryMock.mockReset()
 })

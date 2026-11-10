@@ -171,7 +171,7 @@ Causal Graph Model relationships: Mars-Saturn mutual aspect, 7H stellium.
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    for await (const _ of runAgenticLoop(mockAdapter as any, request as any, async () => '', ANTHROPIC_LOOP_CONFIG)) {
+    for await (const {} of runAgenticLoop(mockAdapter as any, request as any, async () => '', ANTHROPIC_LOOP_CONFIG)) {
       // consume
     }
 
@@ -218,7 +218,7 @@ describe('RT.2 — Adversarial model always returns tool_use; cap holds at MAX_I
     let caughtError: unknown = null
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      for await (const _ of runAgenticLoop(mockAdapter as any, request as any, async () => '{"dashaStart":"2027-01-01"}', ANTHROPIC_LOOP_CONFIG)) {
+      for await (const {} of runAgenticLoop(mockAdapter as any, request as any, async () => '{"dashaStart":"2027-01-01"}', ANTHROPIC_LOOP_CONFIG)) {
         // consume
       }
     } catch (err) {
@@ -266,7 +266,7 @@ describe('RT.2 — Adversarial model always returns tool_use; cap holds at MAX_I
 
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      for await (const _ of runAgenticLoop(mockAdapter as any, request as any, mockExecutor, ANTHROPIC_LOOP_CONFIG)) {
+      for await (const {} of runAgenticLoop(mockAdapter as any, request as any, mockExecutor, ANTHROPIC_LOOP_CONFIG)) {
         // consume
       }
     } catch {
@@ -424,7 +424,7 @@ describe('RT.3 — Hallucinated tool result flows through as tool attribution, n
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    for await (const _ of runAgenticLoop(mockAdapter as any, request as any, hallucinatingExecutor, ANTHROPIC_LOOP_CONFIG)) {
+    for await (const {} of runAgenticLoop(mockAdapter as any, request as any, hallucinatingExecutor, ANTHROPIC_LOOP_CONFIG)) {
       // consume
     }
 

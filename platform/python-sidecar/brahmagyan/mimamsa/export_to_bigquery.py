@@ -576,7 +576,7 @@ def run_acceptance_gate(dry_run: bool = False) -> dict[str, Any]:
     AC3: source_citation is non-null on all export_log rows
     AC4: life_events never appears in export_log
 
-    Returns: {passed: bool, checks: list}
+    Returns: {gate_passed: bool | None, checks: list}
     """
     checks: list[dict[str, Any]] = []
 
@@ -616,7 +616,7 @@ def run_acceptance_gate(dry_run: bool = False) -> dict[str, Any]:
         checks.append({
             "id": "AC2",
             "desc": f"BQ dataset {BQ_DATASET} accessible",
-            "passed": True,  # Not a failure — library may not be installed in all envs
+            "passed": None,
             "value": "google-cloud-bigquery not installed — skipped",
         })
     except Exception as exc:
@@ -672,7 +672,8 @@ def run_acceptance_gate(dry_run: bool = False) -> dict[str, Any]:
             "error": str(exc),
         })
 
-    passed = all(c["passed"] for c in checks)
+    statuses = [c["passed"] for c in checks]
+    passed = False if False in statuses else None if None in statuses else all(statuses)
     return {
         "gate": "MI-5-5 acceptance gate",
         "gate_passed": passed,

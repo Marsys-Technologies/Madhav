@@ -41,6 +41,9 @@ import os
 from datetime import datetime, timedelta
 from typing import Any
 
+from brahmagyan.fact_identity_parser import SIGN_NAME_TO_NUM
+from brahmagyan.l0_dignity_reference import DIGNITY_REFERENCE
+
 logger = logging.getLogger(__name__)
 
 # ── Constants ──────────────────────────────────────────────────────────────────
@@ -60,17 +63,13 @@ SOURCE_CITATION = (
 # 7 classical planets (nodes excluded from Shadbala per classical tradition)
 CLASSICAL_PLANETS = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"]
 
-# ── Exaltation / Debilitation / Mooltrikona / Own sign data ──────────────────
+_REFERENCE_BY_PLANET = {row["graha"]: row for row in DIGNITY_REFERENCE}
 
-PLANET_DIGNITY = {
-    "Sun":     {"exalt": 1,  "exalt_deg": 10.0, "debil": 7,  "mool": 5,  "own": [5]},
-    "Moon":    {"exalt": 2,  "exalt_deg": 3.0,  "debil": 8,  "mool": 2,  "own": [4]},
-    "Mars":    {"exalt": 10, "exalt_deg": 28.0, "debil": 4,  "mool": 1,  "own": [1, 8]},
-    "Mercury": {"exalt": 6,  "exalt_deg": 15.0, "debil": 12, "mool": 6,  "own": [3, 6]},
-    "Jupiter": {"exalt": 4,  "exalt_deg": 5.0,  "debil": 10, "mool": 9,  "own": [9, 12]},
-    "Venus":   {"exalt": 12, "exalt_deg": 27.0, "debil": 6,  "mool": 7,  "own": [2, 7]},
-    "Saturn":  {"exalt": 7,  "exalt_deg": 20.0, "debil": 1,  "mool": 11, "own": [10, 11]},
-}
+
+def _exaltation_longitude(planet: str) -> float:
+    reference = _REFERENCE_BY_PLANET[planet]
+    return (SIGN_NAME_TO_NUM[reference["exaltation_sign"]] - 1) * 30.0 + reference["exaltation_degree"]
+
 
 # Natural (Naisargika) Bala in Rupas — BPHS Ch.27
 NAISARGIKA_BALA = {
@@ -195,9 +194,7 @@ def _distance_from_exaltation(lon: float, planet: str) -> float:
     Compute distance of planet from its exaltation degree (absolute degrees).
     Returns 0-180 (0 = at exaltation, 180 = at debilitation).
     """
-    dig = PLANET_DIGNITY[planet]
-    exalt_lon = (dig["exalt"] - 1) * 30.0 + dig["exalt_deg"]
-    debil_lon = (exalt_lon + 180.0) % 360.0
+    exalt_lon = _exaltation_longitude(planet)
     dist = (lon - exalt_lon) % 360.0
     if dist > 180.0:
         dist = 360.0 - dist
@@ -225,22 +222,22 @@ def compute_sthana_bala(positions: dict[str, dict]) -> dict[str, float]:
         lon = p.get("sidereal_longitude", 0.0)
         sign_id = p.get("sign_id", 1)
         house = p.get("house", 1)
-        dig = PLANET_DIGNITY[planet]
+        reference = _REFERENCE_BY_PLANET[planet]
 
         # Uchcha Bala: at exaltation = 60, at debilitation = 0
-        exalt_lon = (dig["exalt"] - 1) * 30.0 + dig["exalt_deg"]
+        exalt_lon = _exaltation_longitude(planet)
         debil_lon = (exalt_lon + 180.0) % 360.0
         dist_from_debil = (lon - debil_lon) % 360.0
         if dist_from_debil > 180.0:
             dist_from_debil = 360.0 - dist_from_debil
         uchcha = dist_from_debil * (60.0 / 180.0)
 
-        # Saptavargaja Bala (simplified: based on D1 dignity)
-        if sign_id == dig["exalt"]:
+        # This simplified D1 score uses sign membership, without degree gates.
+        if sign_id == SIGN_NAME_TO_NUM[reference["exaltation_sign"]]:
             saptavarga = 45.0  # Exaltation
-        elif sign_id == dig["mool"]:
+        elif sign_id == SIGN_NAME_TO_NUM[reference["moolatrikona_sign"]]:
             saptavarga = 37.5  # Mooltrikona
-        elif sign_id in dig["own"]:
+        elif any(sign_id == SIGN_NAME_TO_NUM[sign] for sign in reference["own_signs"]):
             saptavarga = 30.0  # Own sign
         else:
             saptavarga = 15.0  # Other sign

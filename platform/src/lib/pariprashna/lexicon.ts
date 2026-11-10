@@ -426,7 +426,7 @@ export function resolveReaderLabel(
 
 /** Default `onUnmapped` handler: a CI-visible console warning, tagged for grep-ability. */
 function defaultUnmappedWarning(message: string, _uri: string): void {
-  // eslint-disable-next-line no-console
+
   console.warn(`[pariprashna/lexicon] ${message}`)
 }
 

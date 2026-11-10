@@ -207,6 +207,7 @@ async function callSidecar<T>(
 export async function recordOutcome(
   _predictionId: string,
   _outcomeObserved: boolean,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Kept for callers of this retired API.
   _opts: {
     technique?: string
     ayanamshaId?: string

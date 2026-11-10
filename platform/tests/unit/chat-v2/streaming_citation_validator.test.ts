@@ -16,7 +16,7 @@ import { join } from 'path'
 
 const src = (rel: string) => readFileSync(join(process.cwd(), rel), 'utf-8')
 
-const route = src('src/app/api/chat/consult/route.ts')
+const dispatcher = src('src/lib/pipelines/shared/run_adapter_dispatch.ts')
 const validatorSrc = src('src/lib/synthesis/streaming_citation_validator.ts')
 
 // ── Unit: validateCitationsForStream ──────────────────────────────────────────
@@ -111,15 +111,11 @@ describe('validateCitationsForStream — schema compliance', () => {
 
 // ── Source assertions: route and validator module ─────────────────────────────
 
-describe('route.ts — β10 citation gate at the wire', () => {
-  it('imports validateCitationsForStream (not validateCitations directly)', () => {
-    expect(route).toContain('validateCitationsForStream')
-    expect(route).not.toContain("import { validateCitations }")
-  })
-
-  it.skip('[CI-AUDIT-2026-05-30 unimplemented in route.ts] emits citation_gate data part via writer.write', () => {
-    expect(route).toContain("'data-citation-gate'")
-    expect(route).toContain('citationValidation.dataPart')
+describe('adapter dispatch — citation gate at the wire', () => {
+  it('validates streamed citations and emits the resulting gate', () => {
+    expect(dispatcher).toContain('validateCitationsForStream(')
+    expect(dispatcher).toContain("type: 'data-citation-gate'")
+    expect(dispatcher).toContain('data: adapterCitationValidation.dataPart')
   })
 })
 

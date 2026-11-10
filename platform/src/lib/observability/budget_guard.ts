@@ -105,7 +105,7 @@ export async function handleBudgetAlert(
       // If the gate doesn't exist in the spec yet, log + continue — the
       // gate_status row is still durable and operator can flip manually.
       const msg = err instanceof Error ? err.message : String(err)
-      // eslint-disable-next-line no-console
+
       console.error('[budget_guard] setGate failed (gate may be unregistered):', msg)
     }
   }

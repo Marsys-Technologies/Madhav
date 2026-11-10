@@ -18,7 +18,7 @@ meta:
 locked_decisions:
   D_R1: "ph_sodhana = KEEP BOTH. Registry ratified as-is. ADD birth-time rectification as a separate capability (fill 333/334 rectification stubs + writer)."
   D_R2: "U3 §3.5 = DROPPED. Delete 339 stub. Currents logic stays."
-  N4:   "L4 + U2 bounded at Sukshma. No Prana / level-5 / chart_dashas_prana — anywhere."
+  N4: "L4 + U2 bounded at Sukshma. No Prana / level-5 / chart_dashas_prana — anywhere."
 
 phase_0_provisioning:
   role: Sthapati
@@ -72,7 +72,9 @@ waves:
     blocked_by: [R3_u2_lifetime, R4_rectification]
     tasks:
       - id: R6_stub_cleanup
-        do: "Delete 337_phala_outlook.sql + 339_kala_convergence_current_breakdown.sql. Confirm 333/334 filled (R4), 338 filled (R3). End: one real file per migration number, zero dead stubs, zero duplicate-number collisions."
+        do: >-
+          Delete 337_phala_outlook.sql + 339_kala_convergence_current_breakdown.sql. Confirm 333/334 filled (R4), 338 filled (R3). End: one real file per migration number, zero dead stubs, zero
+          duplicate-number collisions.
       - id: R7_rename_test
         do: "Rename test_phala_outlook.py → test_phala_phaladesa.py; repoint to phala_phaladesa table."
 

@@ -1,9 +1,9 @@
-import { describe, it } from 'vitest'
-import type { MsrSignal, Message, Chart } from '../types'
+import { expectTypeOf, describe, it } from 'vitest'
+import type { MsrSignal, Message } from '../types'
 
 describe('DB types - compile check', () => {
   it('MsrSignal has required fields', () => {
-    const _s: MsrSignal = {
+    const signal: MsrSignal = {
       signal_id: 'SIG.MSR.001',
       native_id: 'abhisek',
       domain: 'career',
@@ -21,9 +21,9 @@ describe('DB types - compile check', () => {
       source_version: '3.0',
       ingested_at: new Date().toISOString(),
     }
+    expectTypeOf(signal.native_id).toEqualTypeOf<string>()
   })
   it('Message has native_id', () => {
-    const m = {} as Message
-    const _: string = m.native_id
+    expectTypeOf<Message['native_id']>().toEqualTypeOf<string>()
   })
 })

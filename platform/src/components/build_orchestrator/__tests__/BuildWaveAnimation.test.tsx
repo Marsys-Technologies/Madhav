@@ -39,8 +39,9 @@ vi.mock('framer-motion', () => {
     motion: motionProxy,
     AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
     useAnimationFrame: (cb: (t: number) => void) => {
-      // Call once synchronously with t=0 so pulse state initialises
-      React.useEffect(() => { cb(0) }, [])
+      // Initialise pulse state once, using the callback from mount.
+      const initialCallback = React.useRef(cb)
+      React.useEffect(() => { initialCallback.current(0) }, [])
     },
   }
 })

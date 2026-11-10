@@ -42,7 +42,7 @@ describe('CR-44 description-vs-payload audit', () => {
     const divergences = auditDescriptionPayload(TOOLS_DIR, REPO_ROOT)
     const unexplained = divergences.filter((d) => !EXPLAINED.has(`${d.tool}::${d.claimed_field}`))
     if (unexplained.length > 0) {
-      // eslint-disable-next-line no-console
+
       console.error('CR-44 UNEXPLAINED divergences:\n' + unexplained.map(
         (d) => `  ${d.tool}: description claims \`${d.claimed_field}\` but the handler never emits it (${d.file})`,
       ).join('\n'))

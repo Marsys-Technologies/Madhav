@@ -8,7 +8,9 @@ v1_lineage:
   replaces: "no v1 equivalent — new annual-context PERMISSION generator"
   v1_module: null
   change_type: new_generator
-  note: "Sudarśana house placement was not evaluated in v1 permission.py; W2.7c adds it as an independent candidate generator reading sudarshana_rows from ClassContext.sudarshana_rows (populated by Sudarshana varsha tables, W0.2)"
+  note: >-
+    Sudarśana house placement was not evaluated in v1 permission.py; W2.7c adds it as an independent candidate generator reading sudarshana_rows from ClassContext.sudarshana_rows (populated by
+    Sudarshana varsha tables, W0.2)
 module_path: services/gochara_v3/mechanisms/w27_annual_stack.py
 function: compute_sudarshana
 admission_state: candidate

@@ -6,7 +6,6 @@ import { describe, it, expect } from 'vitest'
 import {
   checkB11Compliance,
   B11_REQUIRED_LAYERS,
-  B11_FULL_LAYERS,
 } from '@/lib/synthesis/b11_guard'
 
 const ALL_LAYERS_CONTEXT = `

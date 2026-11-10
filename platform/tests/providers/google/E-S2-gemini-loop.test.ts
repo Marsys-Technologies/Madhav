@@ -4,14 +4,14 @@
  * Verifies the Gemini finish_reason=function_calls agentic loop:
  * - GoogleAdapter.tools() returns mode='finish_reason_function_calls'
  * - isToolUseSignal() correctly identifies Gemini function-call signals
- * - GOOGLE_LOOP_CONFIG is correctly shaped
+ * - googleLoopConfig is correctly shaped
  */
 
 import { describe, it, expect } from 'vitest'
 import { GoogleAdapter } from '../../../src/lib/providers/google/adapter'
 import {
   isToolUseSignal,
-  GOOGLE_LOOP_CONFIG,
+  googleLoopConfig,
 } from '../../../src/lib/synthesis/agentic_loop'
 
 describe('E-S2: GoogleAdapter.tools() — finish_reason_function_calls shape', () => {
@@ -69,20 +69,20 @@ describe('E-S2: isToolUseSignal — Gemini finish_reason_function_calls', () => 
   })
 })
 
-describe('E-S2: GOOGLE_LOOP_CONFIG invariants', () => {
+describe('E-S2: googleLoopConfig invariants', () => {
   it('has providerId=google', () => {
-    expect(GOOGLE_LOOP_CONFIG.providerId).toBe('google')
+    expect(googleLoopConfig.providerId).toBe('google')
   })
 
   it('terminationSignal=finish_reason_function_calls', () => {
-    expect(GOOGLE_LOOP_CONFIG.terminationSignal).toBe('finish_reason_function_calls')
+    expect(googleLoopConfig.terminationSignal).toBe('finish_reason_function_calls')
   })
 
   it('supportsInterleavedTextTool=true', () => {
-    expect(GOOGLE_LOOP_CONFIG.supportsInterleavedTextTool).toBe(true)
+    expect(googleLoopConfig.supportsInterleavedTextTool).toBe(true)
   })
 
   it('hasReasoningMiddleware=false (Gemini uses native thinking, not extractReasoningMiddleware)', () => {
-    expect(GOOGLE_LOOP_CONFIG.hasReasoningMiddleware).toBe(false)
+    expect(googleLoopConfig.hasReasoningMiddleware).toBe(false)
   })
 })

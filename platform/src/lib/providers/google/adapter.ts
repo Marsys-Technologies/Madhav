@@ -42,13 +42,13 @@ import type {
   StructuredOutputsRequest,
   StructuredOutputsResponse,
 } from '../types';
-import { GOOGLE_MANIFEST } from './manifest';
+import { googleProviderManifest } from './manifest';
 
 export class GoogleAdapter implements CapabilityAdapter {
   readonly providerId = 'google';
 
   getManifest(): ProviderCapabilities {
-    return GOOGLE_MANIFEST;
+    return googleProviderManifest;
   }
 
   /**
@@ -294,7 +294,7 @@ export class GoogleAdapter implements CapabilityAdapter {
     //
     // Gemini terminates a tool-use turn with finish_reason === 'FUNCTION_CALL'
     // (SDK enum value) which normalizes to 'function_calls' in our unified layer.
-    // The loop reuses agentic_loop.ts engine with GOOGLE_LOOP_CONFIG.
+    // The loop reuses agentic_loop.ts engine with googleLoopConfig.
     //
     // Function call format: functionCalls[] array in the response candidate.
     // Interleaved text+tool ordering is preserved by Gemini 2.5 Pro.

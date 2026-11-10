@@ -47,8 +47,6 @@ import {
   applyJanmaMicroRulesOrNull,
   ADVERSE_TARA_INDICES,
   SEVERE_TARA_INDICES,
-  type TaraMicroRule,
-  type JanmaMicroRules,
   type JanmaMicroRuleContext,
 } from '../lib/kala_janma_micro_rules.js'
 

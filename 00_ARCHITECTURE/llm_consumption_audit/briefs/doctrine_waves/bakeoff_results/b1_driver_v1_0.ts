@@ -45,7 +45,7 @@
  */
 import { readFileSync, writeFileSync } from 'node:fs'
 import type { ChartContext, EventClass, TemporalCurveModel } from '../../../../../platform/scripts/audit/t0_retrodiction/lib/a3_scoring_harness/model_interface'
-import { buildActiveRoster, buildActiveRosterWithEnsemble } from '../../../../../platform/scripts/audit/t0_retrodiction/lib/a3_scoring_harness/roster'
+import { buildActiveRoster } from '../../../../../platform/scripts/audit/t0_retrodiction/lib/a3_scoring_harness/roster'
 import { assertRosterBindable, RosterBindFailureError } from '../../../../../platform/scripts/audit/t0_retrodiction/lib/a3_scoring_harness/roster_bind'
 import { runMirroredScoringHarness, type MirroredScoringParams } from '../../../../../platform/scripts/audit/t0_retrodiction/lib/a3_scoring_harness/harness'
 import type { CurveEvent, DateConfidence, EventShape } from '../../../../../platform/scripts/audit/t0_retrodiction/lib/a3_scoring_harness/shape_scoring'
@@ -195,7 +195,12 @@ async function main() {
 
   // ── §2: per-event, per-model scoring (CRPS primary + hit-rate secondary) ──
   const params: MirroredScoringParams = { percentile: 0.9, shuffleCount: 1000, includeSecondaryBattery: true }
-  const results: Record<string, any[]> = {}
+  type ResultRow = { eventId: string } & (
+    | { eventClass: EventClass; range: [string, string]; result: ReturnType<typeof runMirroredScoringHarness> }
+    | { eventClass: EventClass; error: string }
+    | { eventClass: null; skipped: 'unresolved_event_class'; reason: string }
+  )
+  const results: Record<string, ResultRow[]> = {}
   let eventIdx = 0
   for (const raw of events) {
     eventIdx++

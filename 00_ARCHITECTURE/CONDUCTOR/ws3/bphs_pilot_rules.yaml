@@ -979,7 +979,9 @@ rules:
     school: parashari
     confidence: 0.72
     confidence_rationale: "Sloka with qualifier ('very strong', 'may manifest') = 0.8; partial cross-text corroboration — Brihat Jataka does not fully agree on retrograde = exaltation = 0.9 multiplier. 0.8 × 0.9 = 0.72."
-    caveats: "Some traditions consider retrogrades as weakened, not strengthened. The 'equal to exaltation' claim is Parashari but contested. Results of retrograde planets often have an internalized or revisionary quality."
+    caveats: >-
+      Some traditions consider retrogrades as weakened, not strengthened. The 'equal to exaltation' claim is Parashari but contested. Results of retrograde planets often have an internalized
+      or revisionary quality.
     verified: true
     stub: false
     stub_reason: null
@@ -1388,7 +1390,9 @@ rules:
     school: parashari
     confidence: 0.95
     confidence_rationale: "Declarative aspect rules = 1.0; ≥2 texts confirm special aspects = 1.3. capped at 0.95."
-    caveats: "Partial aspects: BPHS also mentions 1/4 aspect strength for planets aspecting the 3rd/10th (Mars), 1/2 strength for 4th/8th (Jupiter for opposite planets), 3/4 strength for 5th/9th. These proportional aspects are from other planets' positions as well."
+    caveats: >-
+      Partial aspects: BPHS also mentions 1/4 aspect strength for planets aspecting the 3rd/10th (Mars), 1/2 strength for 4th/8th (Jupiter for opposite planets), 3/4 strength for 5th/9th.
+      These proportional aspects are from other planets' positions as well.
     verified: true
     stub: false
     stub_reason: null
@@ -2327,6 +2331,7 @@ rules:
     verified: true
     stub: false
     stub_reason: null
+---
 # BPHS Rule Extraction — Batch 02 (Rules 101–200)
 # Session: bphs-pilot | Extraction date: 2026-06-05
 # Coverage: Bhava significations + planets in bhavas (BPHS Ch. 11–22)
@@ -2683,7 +2688,9 @@ rules:
     school: parashari
     confidence: 0.80
     confidence_rationale: "Sloka = 0.8; Saravali confirms Mars-in-Lagna martial nature = 1.15. 0.80."
-    caveats: "Mars in own sign (Aries, Scorpio) or exaltation (Capricorn) in 1H is exceptionally powerful and protective despite the aggression. Mars in 1H for Cancer Lagna — where it is yogakaraka — is particularly beneficial."
+    caveats: >-
+      Mars in own sign (Aries, Scorpio) or exaltation (Capricorn) in 1H is exceptionally powerful and protective despite the aggression. Mars in 1H for Cancer Lagna — where it is yogakaraka
+      — is particularly beneficial.
     verified: true
     stub: false
     stub_reason: null
@@ -3055,7 +3062,9 @@ rules:
     school: parashari
     confidence: 0.80
     confidence_rationale: "Sloka = 0.8; Saravali and Phaladeepika confirm Venus-7H marriage happiness = 1.0. 0.80."
-    caveats: "Venus in its own sign (Taurus/Libra) or exalted (Pisces) in 7H amplifies these effects dramatically. Afflicted Venus in 7H can produce marital discord despite the initial attractiveness."
+    caveats: >-
+      Venus in its own sign (Taurus/Libra) or exalted (Pisces) in 7H amplifies these effects dramatically. Afflicted Venus in 7H can produce marital discord despite the initial
+      attractiveness.
     verified: true
     stub: false
     stub_reason: null
@@ -3507,7 +3516,9 @@ rules:
     school: parashari
     confidence: 0.88
     confidence_rationale: "Declarative principle with examples = 1.0; Saravali and Phaladeepika confirm Karako bhavo nashto = 1.15. 0.92 → 0.88."
-    caveats: "This rule is contested in practice — many astrologers find Jupiter in 5H does not reliably reduce children. The degree of debilitation of the karaka and aspects received modulate this rule."
+    caveats: >-
+      This rule is contested in practice — many astrologers find Jupiter in 5H does not reliably reduce children. The degree of debilitation of the karaka and aspects received modulate this
+      rule.
     verified: true
     stub: false
     stub_reason: null
@@ -3585,7 +3596,9 @@ rules:
     school: parashari
     confidence: 0.88
     confidence_rationale: "Declarative yoga condition = 1.0; Saravali and Phaladeepika confirm Viparita Raja Yoga = 1.15. 0.92 → 0.88."
-    caveats: "Viparita Raja Yoga's benefits depend on the involved dusthana lords not aspecting or weakening good houses. A strong Viparita Yoga can backfire if the dusthana lord also aspects 1H/5H/9H malefically."
+    caveats: >-
+      Viparita Raja Yoga's benefits depend on the involved dusthana lords not aspecting or weakening good houses. A strong Viparita Yoga can backfire if the dusthana lord also aspects
+      1H/5H/9H malefically.
     verified: true
     stub: false
     stub_reason: null
@@ -3663,7 +3676,9 @@ rules:
     school: parashari
     confidence: 0.95
     confidence_rationale: "Declarative fundamental yoga rule = 1.0; universally confirmed across Saravali, Phaladeepika, Brihat Jataka = 1.3. capped at 0.95."
-    caveats: "The lagna lord is simultaneously kendra and trikona lord — its conjunction with any other kendra or trikona lord forms Raja Yoga. A single planet ruling both kendra and trikona is yogakaraka."
+    caveats: >-
+      The lagna lord is simultaneously kendra and trikona lord — its conjunction with any other kendra or trikona lord forms Raja Yoga. A single planet ruling both kendra and trikona is
+      yogakaraka.
     verified: true
     stub: false
     stub_reason: null
@@ -4080,7 +4095,9 @@ rules:
     school: parashari
     confidence: 0.72
     confidence_rationale: "Sloka = 0.8; Saravali confirms Moon-10H public career = 0.9. 0.72."
-    caveats: "Moon's dig bala is maximum in the 4H, not the 10H — this is opposite to what I stated. Correction: Moon has zero dig bala in 10H. This does not prevent career success but the Moon is directionally weakest here."
+    caveats: >-
+      Moon's dig bala is maximum in the 4H, not the 10H — this is opposite to what I stated. Correction: Moon has zero dig bala in 10H. This does not prevent career success but the Moon is
+      directionally weakest here.
     verified: true
     stub: false
     stub_reason: null
@@ -4537,7 +4554,7 @@ rules:
         "A house with its lord in a kendra or trikona, AND occupied by a benefic, AND
         aspected by its natural karaka is triply strengthened. Such a house delivers its
         maximum positive potential consistently throughout life."
-    condition: A bhava is simultaneously supported by all three factors: strong lord placement, benefic occupancy, AND karaka's positive aspect.
+    condition: "A bhava is simultaneously supported by all three factors: strong lord placement, benefic occupancy, AND karaka's positive aspect."
     assertion: >
       Triple bhava strength (lord in good position + benefic occupant + strong karaka aspect)
       produces the maximum positive manifestation of that house's significations throughout
@@ -4560,7 +4577,7 @@ rules:
         "A house that has its lord in a dusthana (6th, 8th, or 12th), AND is occupied by
         a malefic, AND has its karaka afflicted is triply weakened. Such a house delivers
         difficult or absent results related to its significations."
-    condition: A bhava is simultaneously afflicted by all three negative factors: dusthana lord placement, malefic occupancy, AND afflicted karaka.
+    condition: "A bhava is simultaneously afflicted by all three negative factors: dusthana lord placement, malefic occupancy, AND afflicted karaka."
     assertion: >
       Triple bhava weakness (lord in dusthana + malefic occupant + afflicted karaka) produces
       consistent difficulty with that house's significations; the native must work against
@@ -4673,6 +4690,7 @@ rules:
     verified: true
     stub: false
     stub_reason: null
+---
 # BPHS Rule Extraction — Batch 03 (Rules 201–300)
 # Session: bphs-pilot | Extraction date: 2026-06-05
 # Coverage: Yogas — Pancha Mahapurusha, Raja, Dhana, Arishta, Neecha Bhanga (BPHS Ch. 35–39, 75–76)
@@ -4926,7 +4944,9 @@ rules:
     school: parashari
     confidence: 0.80
     confidence_rationale: "Sloka = 0.8; Saravali and Phaladeepika confirm this yoga = 1.0. 0.80."
-    caveats: "Mercury within combustion range of Sun (within 14°) weakens this yoga — the intellectual function is overshadowed by solar ego. Mercury at 15-28° from Sun in the same sign gives the best Budha-Aditya results."
+    caveats: >-
+      Mercury within combustion range of Sun (within 14°) weakens this yoga — the intellectual function is overshadowed by solar ego. Mercury at 15-28° from Sun in the same sign gives the
+      best Budha-Aditya results.
     verified: true
     stub: false
     stub_reason: null
@@ -5052,7 +5072,9 @@ rules:
     school: parashari
     confidence: 0.92
     confidence_rationale: "Declarative fundamental Raja Yoga rule = 1.0; Saravali, Phaladeepika confirm = 1.15. 0.92."
-    caveats: "The concept of 'king' should be contextualised to the native's social and historical context — in modern times it indicates the highest levels of authority, recognition, or professional success in one's field."
+    caveats: >-
+      The concept of 'king' should be contextualised to the native's social and historical context — in modern times it indicates the highest levels of authority, recognition, or
+      professional success in one's field.
     verified: true
     stub: false
     stub_reason: null
@@ -5130,7 +5152,9 @@ rules:
     school: parashari
     confidence: 0.88
     confidence_rationale: "Declarative = 1.0; Saravali and Phaladeepika confirm Saraswati yoga = 1.15. 0.88."
-    caveats: "All three planets must be in good dignity (not debilitated or heavily afflicted) for the yoga to fully manifest. Even with this yoga, other chart factors determine the specific domain of expression."
+    caveats: >-
+      All three planets must be in good dignity (not debilitated or heavily afflicted) for the yoga to fully manifest. Even with this yoga, other chart factors determine the specific domain
+      of expression.
     verified: true
     stub: false
     stub_reason: null
@@ -5284,7 +5308,9 @@ rules:
     school: parashari
     confidence: 0.80
     confidence_rationale: "Sloka = 0.8; Saravali confirms Kemadruma yoga definition = 1.0. 0.80."
-    caveats: "Kemadruma yoga is cancelled by several factors: Moon in kendra from lagna, a strong benefic aspecting Moon, or the Moon in an auspicious sign. Many charts with apparent Kemadruma are effectively cancelled by one of these factors."
+    caveats: >-
+      Kemadruma yoga is cancelled by several factors: Moon in kendra from lagna, a strong benefic aspecting Moon, or the Moon in an auspicious sign. Many charts with apparent Kemadruma are
+      effectively cancelled by one of these factors.
     verified: true
     stub: false
     stub_reason: null
@@ -5636,7 +5662,9 @@ rules:
     school: parashari
     confidence: 0.92
     confidence_rationale: "Declarative yoga conditions with three named sub-types = 1.0; Saravali and Phaladeepika confirm all three Viparita variants = 1.15. 0.92."
-    caveats: "These yogas are most beneficial when the dusthana lord is strong in the dusthana and does not simultaneously aspect important auspicious houses. Harsha yoga from 6L in 8H can also shorten life if the 8L is also involved."
+    caveats: >-
+      These yogas are most beneficial when the dusthana lord is strong in the dusthana and does not simultaneously aspect important auspicious houses. Harsha yoga from 6L in 8H can also
+      shorten life if the 8L is also involved.
     verified: true
     stub: false
     stub_reason: null
@@ -5719,7 +5747,9 @@ rules:
     school: parashari
     confidence: 0.65
     confidence_rationale: "Sloka with complex conditional = 0.65 textual_strength (multiple conditions, some implicit); partial Saravali corroboration = 1.0. 0.65."
-    caveats: "This three-planet configuration is rare and the exact aspect requirements are complex — the verse may be referring to a specific simultaneous aspect pattern rather than sequential aspects."
+    caveats: >-
+      This three-planet configuration is rare and the exact aspect requirements are complex — the verse may be referring to a specific simultaneous aspect pattern rather than sequential
+      aspects.
     verified: true
     stub: false
     stub_reason: null
@@ -5831,7 +5861,9 @@ rules:
     school: parashari
     confidence: 0.65
     confidence_rationale: "Sloka with implicit condition = 0.8; significant variation across texts on whether Kalasarpa is in BPHS proper or a later addition = 0.8 multiplier. 0.65."
-    caveats: "The term 'Kalasarpa' does not appear explicitly in many BPHS editions — it may be a later textual addition. Its classical authority is disputed. BPHS does describe the basic planetary hemming concept. This rule follows the BPHS Chapter 76 proxy that covers the underlying principle."
+    caveats: >-
+      The term 'Kalasarpa' does not appear explicitly in many BPHS editions — it may be a later textual addition. Its classical authority is disputed. BPHS does describe the basic planetary
+      hemming concept. This rule follows the BPHS Chapter 76 proxy that covers the underlying principle.
     verified: true
     stub: false
     stub_reason: null
@@ -6393,7 +6425,9 @@ rules:
     school: parashari
     confidence: 0.65
     confidence_rationale: "Sloka = 0.8; partial Saravali on nodal hemming = 0.8. 0.65."
-    caveats: "Different commentators define Sarpa yoga differently — some require all planets between Rahu and Ketu in direction of motion; others simply require hemming on one side. This rule uses the simpler definition."
+    caveats: >-
+      Different commentators define Sarpa yoga differently — some require all planets between Rahu and Ketu in direction of motion; others simply require hemming on one side. This rule uses
+      the simpler definition.
     verified: true
     stub: false
     stub_reason: null
@@ -7134,6 +7168,7 @@ rules:
     verified: true
     stub: false
     stub_reason: null
+---
 # BPHS Rule Extraction — Batch 04 (Rules 301–400)
 # Session: bphs-pilot | Extraction date: 2026-06-05
 # Coverage: Dashas + Ashtakavarga (BPHS Ch. 46–53, 66–69)
@@ -7268,7 +7303,9 @@ rules:
     school: parashari
     confidence: 0.80
     confidence_rationale: "Sloka with positive assertion = 0.8; Saravali confirms Jupiter-dasha auspiciousness = 1.0. 0.80."
-    caveats: "Even 'most auspicious' Jupiter dashas bring challenges if Jupiter rules dusthana houses or is severely afflicted. The unconditional positive statement in BPHS is partially an ideal — actual results depend on Jupiter's natal state."
+    caveats: >-
+      Even 'most auspicious' Jupiter dashas bring challenges if Jupiter rules dusthana houses or is severely afflicted. The unconditional positive statement in BPHS is partially an ideal —
+      actual results depend on Jupiter's natal state.
     verified: true
     stub: false
     stub_reason: null
@@ -7416,7 +7453,9 @@ rules:
     school: parashari
     confidence: 0.72
     confidence_rationale: "Sloka with conditional = 0.8; partial Saravali = 0.9. 0.72."
-    caveats: "If both Saturn and Moon are functionally auspicious for the lagna, the tension is reduced — a yogakaraka Saturn in Saturn-Moon period can give mixed results that are ultimately positive."
+    caveats: >-
+      If both Saturn and Moon are functionally auspicious for the lagna, the tension is reduced — a yogakaraka Saturn in Saturn-Moon period can give mixed results that are ultimately
+      positive.
     verified: true
     stub: false
     stub_reason: null
@@ -7516,7 +7555,9 @@ rules:
     school: parashari
     confidence: 0.72
     confidence_rationale: "Sloka = 0.8; Saravali partially confirms Mars-Saturn friction = 0.9. 0.72."
-    caveats: "When both Mars and Saturn are yogakaraka for the lagna (e.g., Saturn is yogakaraka for Cancer Lagna but Mars is also strong), the friction can be redirected into disciplined competitive achievement."
+    caveats: >-
+      When both Mars and Saturn are yogakaraka for the lagna (e.g., Saturn is yogakaraka for Cancer Lagna but Mars is also strong), the friction can be redirected into disciplined
+      competitive achievement.
     verified: true
     stub: false
     stub_reason: null
@@ -7718,7 +7759,9 @@ rules:
     school: parashari
     confidence: 0.92
     confidence_rationale: "Declarative system definition = 1.0; Saravali confirms Ashtakavarga system = 1.15. 0.92."
-    caveats: "Ashtakavarga is a complex system with multiple levels; the Bhinna Ashtakavarga (individual planet's 8-point tables) and Sarvashtakavarga (combined totals) serve different interpretive functions."
+    caveats: >-
+      Ashtakavarga is a complex system with multiple levels; the Bhinna Ashtakavarga (individual planet's 8-point tables) and Sarvashtakavarga (combined totals) serve different interpretive
+      functions.
     verified: true
     stub: false
     stub_reason: null
@@ -7741,7 +7784,9 @@ rules:
     school: parashari
     confidence: 0.92
     confidence_rationale: "Declarative threshold = 1.0; Saravali confirms the 5-bindu threshold = 1.15. 0.92."
-    caveats: "The 5-bindu threshold is a general rule; in critical dashas (like Rahu-Saturn), even 5 bindus may not prevent challenges. The bindu count must be read alongside the transiting planet's natal strength."
+    caveats: >-
+      The 5-bindu threshold is a general rule; in critical dashas (like Rahu-Saturn), even 5 bindus may not prevent challenges. The bindu count must be read alongside the transiting planet's
+      natal strength.
     verified: true
     stub: false
     stub_reason: null
@@ -8021,7 +8066,9 @@ rules:
     school: parashari
     confidence: 0.88
     confidence_rationale: "Declarative = 1.0; Saravali confirms Saturn-from-Moon auspicious positions = 1.15. 0.88."
-    caveats: "Saturn in 11H from Moon is often cited as the most financially productive transit position. During Sade Sati however, Saturn is simultaneously in 1H from Moon which complicates the 11H transit reading."
+    caveats: >-
+      Saturn in 11H from Moon is often cited as the most financially productive transit position. During Sade Sati however, Saturn is simultaneously in 1H from Moon which complicates the 11H
+      transit reading.
     verified: true
     stub: false
     stub_reason: null
@@ -8635,7 +8682,9 @@ rules:
     school: parashari
     confidence: 0.72
     confidence_rationale: "Sloka with compound condition = 0.8; partial Saravali = 0.9. 0.72."
-    caveats: "Separation prediction requires ethical care in delivery. The dasha-transit convergence indicates stress on the relationship, not inevitable separation — many couples navigate these periods without separating."
+    caveats: >-
+      Separation prediction requires ethical care in delivery. The dasha-transit convergence indicates stress on the relationship, not inevitable separation — many couples navigate these
+      periods without separating.
     verified: true
     stub: false
     stub_reason: null
@@ -8757,7 +8806,9 @@ rules:
     school: parashari
     confidence: 0.80
     confidence_rationale: "Sloka = 0.8; Saravali confirms 8H-connected malefic dasha in longevity window = 1.0. 0.80."
-    caveats: "This principle requires prior completion of full longevity analysis (Pindayus, Amsayus, Nisargayus). Astrological death prediction requires extreme ethical care and should not be made without extensive multi-system confirmation."
+    caveats: >-
+      This principle requires prior completion of full longevity analysis (Pindayus, Amsayus, Nisargayus). Astrological death prediction requires extreme ethical care and should not be made
+      without extensive multi-system confirmation.
     verified: true
     stub: false
     stub_reason: null
@@ -9423,7 +9474,9 @@ rules:
     school: parashari
     confidence: 0.88
     confidence_rationale: "Declarative = 1.0; Saravali confirms Sade Sati second phase as most intense = 1.15. 0.88."
-    caveats: "Sade Sati second-phase intensity is heavily modulated by Saturn's natal strength and the Moon's natal strength; a strong Moon in a strong sign weathers this transit much better than a weak waning Moon."
+    caveats: >-
+      Sade Sati second-phase intensity is heavily modulated by Saturn's natal strength and the Moon's natal strength; a strong Moon in a strong sign weathers this transit much better than a
+      weak waning Moon.
     verified: true
     stub: false
     stub_reason: null
@@ -9576,6 +9629,7 @@ rules:
     verified: true
     stub: false
     stub_reason: null
+---
 # BPHS Rule Extraction — Batch 05 (Rules 401–500)
 # Session: bphs-pilot | Extraction date: 2026-06-05
 # Coverage: Nakshatras + Aspects + Remedies (BPHS Ch. 5, 26, 81–85)
@@ -10281,7 +10335,9 @@ rules:
     school: parashari
     confidence: 0.92
     confidence_rationale: "Declarative muhurta classification = 1.0; Saravali confirms nakshatra quality types = 1.15. 0.92."
-    caveats: "Nakshatra quality classifications are primarily used in muhurta (election astrology); for natal chart reading, the deity, ruling planet, and nature (Deva/Manushya/Rakshasa) are more relevant."
+    caveats: >-
+      Nakshatra quality classifications are primarily used in muhurta (election astrology); for natal chart reading, the deity, ruling planet, and nature (Deva/Manushya/Rakshasa) are more
+      relevant.
     verified: true
     stub: false
     stub_reason: null
@@ -10335,7 +10391,9 @@ rules:
     school: parashari
     confidence: 0.92
     confidence_rationale: "Declarative = 1.0; Saravali, Phaladeepika confirm gemstone assignments = 1.15. 0.92."
-    caveats: "Gemstones should only be worn after careful chart analysis — strengthening a functional malefic through its gemstone can harm more than help. Professional astrological guidance is recommended."
+    caveats: >-
+      Gemstones should only be worn after careful chart analysis — strengthening a functional malefic through its gemstone can harm more than help. Professional astrological guidance is
+      recommended.
     verified: true
     stub: false
     stub_reason: null
@@ -10471,7 +10529,9 @@ rules:
     school: parashari
     confidence: 0.80
     confidence_rationale: "Sloka = 0.8; partial Saravali = 1.0. 0.80."
-    caveats: "The sign-based aspect (vs. degree-based) is a fundamental characteristic of Jyotish — unlike Western astrology's orb-based system. Some practitioners add degree-based refinements as a supplementary tool."
+    caveats: >-
+      The sign-based aspect (vs. degree-based) is a fundamental characteristic of Jyotish — unlike Western astrology's orb-based system. Some practitioners add degree-based refinements as a
+      supplementary tool.
     verified: true
     stub: false
     stub_reason: null
@@ -10494,7 +10554,9 @@ rules:
     school: parashari
     confidence: 0.65
     confidence_rationale: "Sloka with strong qualitative claim = 0.8; partial Saravali — this specific claim about retrograde aspect intensity is less universally confirmed = 0.8. 0.65."
-    caveats: "The claim that retrograde aspects are 'more powerful' is specific to BPHS and not universally accepted. Some traditions hold that retrograde aspects are less predictable rather than more powerful."
+    caveats: >-
+      The claim that retrograde aspects are 'more powerful' is specific to BPHS and not universally accepted. Some traditions hold that retrograde aspects are less predictable rather than
+      more powerful.
     verified: true
     stub: false
     stub_reason: null
@@ -10542,7 +10604,9 @@ rules:
     school: parashari
     confidence: 0.80
     confidence_rationale: "Sloka = 0.8; partial Saravali corroboration on Saturn's restrictive aspect = 1.0. 0.80."
-    caveats: "This principle is a general tendency — context determines whether Saturn's aspect on a malefic is truly beneficial or whether it simply creates a more controlled form of malefic expression."
+    caveats: >-
+      This principle is a general tendency — context determines whether Saturn's aspect on a malefic is truly beneficial or whether it simply creates a more controlled form of malefic
+      expression.
     verified: true
     stub: false
     stub_reason: null
@@ -10617,7 +10681,9 @@ rules:
     school: parashari
     confidence: 0.88
     confidence_rationale: "Declarative = 1.0; Saravali confirms basic muhurta principles = 1.15. 0.88."
-    caveats: "Muhurta selection is a complex sub-discipline with many additional factors (Panchanga: tithi, vara, nakshatra, yoga, karana). This rule captures the most fundamental natal-chart-like requirements."
+    caveats: >-
+      Muhurta selection is a complex sub-discipline with many additional factors (Panchanga: tithi, vara, nakshatra, yoga, karana). This rule captures the most fundamental natal-chart-like
+      requirements.
     verified: true
     stub: false
     stub_reason: null
@@ -10640,7 +10706,9 @@ rules:
     school: parashari
     confidence: 0.88
     confidence_rationale: "Declarative = 1.0; Saravali confirms Rahu Kalam inauspiciousness = 1.15. 0.88."
-    caveats: "Rahu Kalam times vary by day: Sunday = 4:30pm, Monday = 7:30am, Tuesday = 3pm, Wednesday = 12pm, Thursday = 1:30pm, Friday = 10:30am, Saturday = 9am (approximately; actual times depend on local sunrise/sunset). These are the traditional weekly Rahu Kalam sequences."
+    caveats: >-
+      Rahu Kalam times vary by day: Sunday = 4:30pm, Monday = 7:30am, Tuesday = 3pm, Wednesday = 12pm, Thursday = 1:30pm, Friday = 10:30am, Saturday = 9am (approximately; actual times depend
+      on local sunrise/sunset). These are the traditional weekly Rahu Kalam sequences.
     verified: true
     stub: false
     stub_reason: null
@@ -10794,7 +10862,9 @@ rules:
     school: parashari
     confidence: 0.88
     confidence_rationale: "Declarative compatibility scoring = 1.0; Saravali confirms Gana scores = 1.15. 0.88."
-    caveats: "Gana is one of 8 factors (Ashtakuta) in compatibility analysis; a single low score does not make a marriage inauspicious — the total Guna score (36 points maximum) determines overall compatibility."
+    caveats: >-
+      Gana is one of 8 factors (Ashtakuta) in compatibility analysis; a single low score does not make a marriage inauspicious — the total Guna score (36 points maximum) determines overall
+      compatibility.
     verified: true
     stub: false
     stub_reason: null
@@ -10810,7 +10880,7 @@ rules:
         are born in the same Nadi (Adi, Madhya, or Antya), Nadi Dosha is present. The dosha
         is said to cause health issues, childlessness, or separation. It carries the maximum
         8 points in Ashtakuta when matching (same Nadi)."
-    condition: Both marriage partners are born in the same Nadi (nakshatra nadi: Adi, Madhya, or Antya).
+    condition: "Both marriage partners are born in the same Nadi (nakshatra nadi: Adi, Madhya, or Antya)."
     assertion: >
       Nadi Dosha is the most weighted Ashtakuta factor (8 points); when both partners share
       the same Nadi, they receive 0 out of 8 points, creating a significant compatibility
@@ -10821,7 +10891,9 @@ rules:
     school: parashari
     confidence: 0.88
     confidence_rationale: "Declarative = 1.0; Saravali confirms Nadi Dosha's maximum weight = 1.15. 0.88."
-    caveats: "Nadi Dosha can be cancelled by: partners having the same first name of birth star, Jupiter's aspect on both charts, or strong 7H in both charts. The cancellation conditions vary across traditions."
+    caveats: >-
+      Nadi Dosha can be cancelled by: partners having the same first name of birth star, Jupiter's aspect on both charts, or strong 7H in both charts. The cancellation conditions vary across
+      traditions.
     verified: true
     stub: false
     stub_reason: null
@@ -11030,7 +11102,9 @@ rules:
     school: parashari
     confidence: 0.88
     confidence_rationale: "Declarative = 1.0; Saravali and Phaladeepika confirm the functional malefic gemstone caution = 1.15. 0.88."
-    caveats: "This is the most important practical principle in gemstone prescription — more important than the gemstone assignment itself. All reputable Jyotish practitioners verify functional lordship before recommending gemstones."
+    caveats: >-
+      This is the most important practical principle in gemstone prescription — more important than the gemstone assignment itself. All reputable Jyotish practitioners verify functional
+      lordship before recommending gemstones.
     verified: true
     stub: false
     stub_reason: null
@@ -11055,7 +11129,9 @@ rules:
     school: parashari
     confidence: 0.88
     confidence_rationale: "Declarative = 1.0; Saravali confirms Saturn gemstone caution = 1.15. 0.88."
-    caveats: "The 'try iron/mantra first' protocol for Blue Sapphire is standard practice among most traditional Jyotish practitioners — the gemstone is the most powerful and therefore requires the most caution."
+    caveats: >-
+      The 'try iron/mantra first' protocol for Blue Sapphire is standard practice among most traditional Jyotish practitioners — the gemstone is the most powerful and therefore requires the
+      most caution.
     verified: true
     stub: false
     stub_reason: null
@@ -11418,7 +11494,9 @@ rules:
     school: parashari
     confidence: 0.80
     confidence_rationale: "Declarative = 1.0; Saravali confirms Shanti ceremonies = 1.0. 0.80."
-    caveats: "Shanti ceremonies are complex traditional rituals that require qualified priests for proper execution; the astrological prescription identifies the appropriate ceremony, not the ritual procedure itself."
+    caveats: >-
+      Shanti ceremonies are complex traditional rituals that require qualified priests for proper execution; the astrological prescription identifies the appropriate ceremony, not the ritual
+      procedure itself.
     verified: true
     stub: false
     stub_reason: null
@@ -11517,7 +11595,9 @@ rules:
     school: parashari
     confidence: 0.80
     confidence_rationale: "Sloka = 0.8; Saravali partially confirms Rahu remedy prescriptions = 1.0. 0.80."
-    caveats: "Rahu and Ketu remedies are more complex than those for the traditional seven planets because the nodes function through their dispositors; addressing the dispositor's weakness often provides more direct benefit."
+    caveats: >-
+      Rahu and Ketu remedies are more complex than those for the traditional seven planets because the nodes function through their dispositors; addressing the dispositor's weakness often
+      provides more direct benefit.
     verified: true
     stub: false
     stub_reason: null
@@ -11639,7 +11719,9 @@ rules:
     school: parashari
     confidence: 0.80
     confidence_rationale: "Sloka = 0.8; Saravali and Phaladeepika confirm Pitru Dosha identification and remedy = 1.0. 0.80."
-    caveats: "Pitru Dosha is a significant consideration in many traditional families; the astrological indication should be confirmed by both the chart analysis and the native's family history before prescribing elaborate Tarpan ceremonies."
+    caveats: >-
+      Pitru Dosha is a significant consideration in many traditional families; the astrological indication should be confirmed by both the chart analysis and the native's family history
+      before prescribing elaborate Tarpan ceremonies.
     verified: true
     stub: false
     stub_reason: null
@@ -11767,7 +11849,9 @@ rules:
     school: parashari
     confidence: 0.88
     confidence_rationale: "Declarative = 1.0; universally confirmed across Saravali, Phaladeepika = 1.15. 0.88."
-    caveats: "Saturday can be used for Saturn-specific activities (agriculture, construction foundations, legal documentation) but is traditionally avoided for auspicious beginnings like marriage or new business."
+    caveats: >-
+      Saturday can be used for Saturn-specific activities (agriculture, construction foundations, legal documentation) but is traditionally avoided for auspicious beginnings like marriage or
+      new business.
     verified: true
     stub: false
     stub_reason: null
@@ -11791,7 +11875,9 @@ rules:
     school: parashari
     confidence: 0.72
     confidence_rationale: "Sloka = 0.8; partial corroboration from traditional Jyotish sources = 0.9. 0.72."
-    caveats: "Kaal Sarpa Dosha's classical status in BPHS is debated — the name and specific puja remedies may be post-BPHS traditions. The underlying nodal-hemming principle is in BPHS; the specific remedy prescriptions may be later additions."
+    caveats: >-
+      Kaal Sarpa Dosha's classical status in BPHS is debated — the name and specific puja remedies may be post-BPHS traditions. The underlying nodal-hemming principle is in BPHS; the
+      specific remedy prescriptions may be later additions.
     verified: true
     stub: false
     stub_reason: null
@@ -11890,7 +11976,9 @@ rules:
     school: parashari
     confidence: 0.72
     confidence_rationale: "Sloka = 0.8; partial cross-text on synastry = 0.9. 0.72."
-    caveats: "BPHS's primary treatment of chart relationships is through Ashtakuta (birth nakshatra compatibility) rather than synastry aspects. This rule extrapolates from the general aspect principle."
+    caveats: >-
+      BPHS's primary treatment of chart relationships is through Ashtakuta (birth nakshatra compatibility) rather than synastry aspects. This rule extrapolates from the general aspect
+      principle.
     verified: true
     stub: false
     stub_reason: null
@@ -11915,7 +12003,9 @@ rules:
     school: parashari
     confidence: 0.80
     confidence_rationale: "Declarative = 1.0; Saravali confirms birth muhurta principles = 1.0. 0.80."
-    caveats: "Birth muhurta selection requires ethical consideration — the goal is to find the best available window, not to override natural timing inappropriately. Medical safety always takes precedence."
+    caveats: >-
+      Birth muhurta selection requires ethical consideration — the goal is to find the best available window, not to override natural timing inappropriately. Medical safety always takes
+      precedence.
     verified: true
     stub: false
     stub_reason: null
@@ -12013,7 +12103,9 @@ rules:
     school: parashari
     confidence: 0.80
     confidence_rationale: "Declarative = 1.0; Saravali confirms Saturn-Moon melancholy = 1.0. 0.80."
-    caveats: "Saturn-Moon aspect in own or exaltation sign is much less harmful — a Saturn exalted in Libra aspecting the Moon in Aries is less damaging than a debilitated Saturn in Aries aspecting Moon in Cancer."
+    caveats: >-
+      Saturn-Moon aspect in own or exaltation sign is much less harmful — a Saturn exalted in Libra aspecting the Moon in Aries is less damaging than a debilitated Saturn in Aries aspecting
+      Moon in Cancer.
     verified: true
     stub: false
     stub_reason: null

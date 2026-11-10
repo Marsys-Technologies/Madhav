@@ -31,7 +31,9 @@ phase_0_provisioning:
     - id: SETUP-2
       action: "Branch feature/l4-phala-autonomous + per-asset sub-branches for parallel agents."
     - id: SETUP-3
-      action: "CI health: run the suite; quarantine the 3 known pre-existing main failures as known_residuals (exit-code-3 whitelist) if unrelated to L4; deep-fix any L4-blocking failure. CI-green must be a reliable signal before merges."
+      action: >-
+        CI health: run the suite; quarantine the 3 known pre-existing main failures as known_residuals (exit-code-3 whitelist) if unrelated to L4; deep-fix any L4-blocking failure. CI-green must
+        be a reliable signal before merges.
     - id: SETUP-4
       action: "Apply pre-req migrations 326–329 to prod via the migrate runner (the A7 gate). Verify in _migrations_applied. Smṛti-logged (Tier-2)."
     - id: SETUP-5
@@ -39,9 +41,15 @@ phase_0_provisioning:
     - id: SETUP-6
       action: "Cloud SQL Auth Proxy up (5433); npm ci + pip install in the worktree; confirm env (DATABASE_URL, GCS, Gemini/DeepSeek keys)."
     - id: SETUP-6b
-      action: "INFRA GAP FIX (orchestrator-readiness §2; BLOCKING): add `COPY platform/python-sidecar/services/ ./platform/python-sidecar/services/` to Dockerfile.pipeline (next to the other writer COPYs). ALL L3 ka_* + L4 ph_* writers import `from services.<asset>`; services/ is in NO Dockerfile → ModuleNotFoundError + silent job hang. L3 masked this via the reconcile path (CF.L3.8); L4 uses the orchestrator click-Build path so it WILL fire. Also verify the web Dockerfile builds src/lib/schools/ (U4) + the build-run plan-builder topo-sorts the new ph_* assets. Rebuild the pipeline image after the COPY."
+      action: >-
+        INFRA GAP FIX (orchestrator-readiness §2; BLOCKING): add `COPY platform/python-sidecar/services/ ./platform/python-sidecar/services/` to Dockerfile.pipeline (next to the other writer
+        COPYs). ALL L3 ka_* + L4 ph_* writers import `from services.<asset>`; services/ is in NO Dockerfile → ModuleNotFoundError + silent job hang. L3 masked this via the reconcile path
+        (CF.L3.8); L4 uses the orchestrator click-Build path so it WILL fire. Also verify the web Dockerfile builds src/lib/schools/ (U4) + the build-run plan-builder topo-sorts the new ph_*
+        assets. Rebuild the pipeline image after the COPY.
     - id: SETUP-7
-      action: "Pre-fan-out: pre-allocate migs 330–340 (two-174 trap — confirm global max across BOTH dirs first; 330 also DROPs kala_timeline); pin ratified params (I-7/8/11/16/17 + U3 bounds D33 + G-LADDER D21); register the 3 new assets + update the 5 existing (CS1)."
+      action: >-
+        Pre-fan-out: pre-allocate migs 330–340 (two-174 trap — confirm global max across BOTH dirs first; 330 also DROPs kala_timeline); pin ratified params (I-7/8/11/16/17 + U3 bounds D33 +
+        G-LADDER D21); register the 3 new assets + update the 5 existing (CS1).
     - id: GATE-0
       action: "Green-to-build: all SETUP pass → fan out the parallel DAG. A SETUP failure unresolved after the 6-attempt deep-fix ladder → Tier-2 park + Smṛti (native halt ONLY on Tier-3 budget)."
       blocking: true
@@ -59,8 +67,11 @@ waves:
       - id: u4_school_consensus_activation
         brief: CLAUDECODE_BRIEF_U4_SCHOOL_CONSENSUS_ACTIVATION_v1_0.md
         soft_needs: [u1_dasha_consensus]   # Yoginī engine reads yogini dāśā (data already in prod; U1 only confirms the path)
-        hard_internal_gate: "CHART-GENERALITY GATE (D28): a synthetic fixture chart MUST yield DIFFERENT school scores than the native BEFORE persist/wire. + Task A.0: populate school_signal_coverage first."
-        note: "De-hardcode 7 TS engines (read live L1–L3), resolve Tājika/BNN flags, persist (340), wire; disagreement-intelligence + per-domain authority-weighting (D36). FILE-DISJOINT from U3's Python ka_sangam edit → parallel."
+        hard_internal_gate: >-
+          CHART-GENERALITY GATE (D28): a synthetic fixture chart MUST yield DIFFERENT school scores than the native BEFORE persist/wire. + Task A.0: populate school_signal_coverage first.
+        note: >-
+          De-hardcode 7 TS engines (read live L1–L3), resolve Tājika/BNN flags, persist (340), wire; disagreement-intelligence + per-domain authority-weighting (D36). FILE-DISJOINT from U3's
+          Python ka_sangam edit → parallel.
       - id: u3_convergence_currents_pass1
         brief: CLAUDECODE_BRIEF_U3_CONVERGENCE_CURRENTS_ENRICHMENT_v1_0.md
         note: "Add the 6 currents (ashtakavarga/eclipse/t2t/station/vedha/tājika) to I-16; re-normalize weights (D33 bounds); spine re-derivation gate ([0,1] preserved). Owns the ka_sangam edit."
@@ -84,7 +95,9 @@ waves:
       - id: ph_nimitta
         brief: CLAUDECODE_BRIEF_L4_PH_NIMITTA_v1_0.md
         migration: 330
-        hard_internal_gate: "SPINE-FIRST (D26): prove ONE anchor end-to-end across ALL 8 axes + 5 elevations (real source → derived domain → magnitude + ranged confidence + causal chain + dāśā+school consensus + karmic-arc + actionability + contradiction → cites real ids → anti-drift clean) BEFORE P4 fans out. Failure → deep-fix ladder, not native."
+        hard_internal_gate: >-
+          SPINE-FIRST (D26): prove ONE anchor end-to-end across ALL 8 axes + 5 elevations (real source → derived domain → magnitude + ranged confidence + causal chain + dāśā+school consensus +
+          karmic-arc + actionability + contradiction → cites real ids → anti-drift clean) BEFORE P4 fans out. Failure → deep-fix ladder, not native.
         note: "Inherits kala_bhavishya (D37, 50 projections); mig 330 DROPs kala_timeline."
 
   - wave: P4
@@ -99,7 +112,9 @@ waves:
         brief: CLAUDECODE_BRIEF_L4_PH_PRATIKARA_v1_0.md
         migration: 332
         soft_needs: [ph_muhurta]   # P3 remedy-init borrows muhūrta windows; degrade gracefully if muhūrta not yet merged
-        note: "CONSUME bodha_rm store (no remedy authoring). P1 economics + P2 program + P3 muhūrta-init + P4 proportionality/loop + P5 cross-tradition. Acharya-review remedies SURFACED-with-flag, never auto-prescribed."
+        note: >-
+          CONSUME bodha_rm store (no remedy authoring). P1 economics + P2 program + P3 muhūrta-init + P4 proportionality/loop + P5 cross-tradition. Acharya-review remedies SURFACED-with-flag,
+          never auto-prescribed.
       - id: ph_sankrama
         brief: CLAUDECODE_BRIEF_L4_PH_SANKRAMA_v1_0.md
         migration: 335
@@ -107,7 +122,9 @@ waves:
       - id: ph_sodhana
         brief: CLAUDECODE_BRIEF_L4_PH_SODHANA_v1_0.md
         migration: 333
-        hard_internal_gate: "LEAKAGE FIREWALL (D41): a test MUST prove no post-2020/late-disclosed event contributes to the fit (validation-only) BEFORE any verdict. + tiered cost-guard (cheap filter → full-machinery on survivors). Canonical chart NOT mutated."
+        hard_internal_gate: >-
+          LEAKAGE FIREWALL (D41): a test MUST prove no post-2020/late-disclosed event contributes to the fit (validation-only) BEFORE any verdict. + tiered cost-guard (cheap filter →
+          full-machinery on survivors). Canonical chart NOT mutated.
         note: "PyJHora compute_ascendant per candidate; whole-instrument scoring; body-witness + consensus cross-check; confidence interval. INDEPENDENT of muhurta/pratikara/sankrama → parallel."
 
   - wave: P5
@@ -116,7 +133,8 @@ waves:
         brief: CLAUDECODE_BRIEF_L4_PH_SUDDHA_SODHANA_v1_0.md
         migration: 334
         blocked_by: [ph_sodhana]
-        hard_internal_gate: "NO-AUTO-OVERRIDE (D43/B.10): a test MUST prove the writer NEVER UPDATEs charts/chart_facts — it only FLAGS + STAGES a revision for one-click native adoption (async, non-blocking)."
+        hard_internal_gate: >-
+          NO-AUTO-OVERRIDE (D43/B.10): a test MUST prove the writer NEVER UPDATEs charts/chart_facts — it only FLAGS + STAGES a revision for one-click native adoption (async, non-blocking).
         note: "Decisiveness verdict + self-correcting verification loop + hypotheses-ledger + self-falsifier."
 
   - wave: P6
@@ -133,22 +151,30 @@ waves:
       - id: ph_phaladesa
         brief: CLAUDECODE_BRIEF_L4_PH_PHALADESA_v1_0.md
         migration: 337
-        hard_internal_gate: "B.11 GATE: compose ALL sub-assets present in the horizon + store composed_sub_asset_ids. + DETERMINISTIC-FIRST GATE: the LLM narrates only the fixed scaffold; a test asserts no narrative claim lacks a composed-item + trace."
-        note: "CONSUME bodha_chart_gestalt (no duplication). Narrative weave + apex item + honest registers + multi-horizon/lens/person-anchor/traceability. + F5 cross-links (reads ph_pramana tiers; surfaces ph_suddha revision flag)."
+        hard_internal_gate: >-
+          B.11 GATE: compose ALL sub-assets present in the horizon + store composed_sub_asset_ids. + DETERMINISTIC-FIRST GATE: the LLM narrates only the fixed scaffold; a test asserts no
+          narrative claim lacks a composed-item + trace.
+        note: >-
+          CONSUME bodha_chart_gestalt (no duplication). Narrative weave + apex item + honest registers + multi-horizon/lens/person-anchor/traceability. + F5 cross-links (reads ph_pramana tiers;
+          surfaces ph_suddha revision flag).
 
 # ---- SEAL (autonomous, AI-assessed) — the HARD VISUAL gate is FIRST ----
 seal:
-  - "HARD VISUAL COCKPIT GATE (#1 L3 lesson): deployed Cloud Run revision == merge SHA; the LIVE cockpit Phala panel shows 8 assets lit with real counts + zero error/missing_table; verify on prod AND localhost. Green JSON / 'SEALED' report / unmerged-branch fix are ALL false positives."
+  - "HARD VISUAL COCKPIT GATE (#1 L3 lesson): deployed Cloud Run revision == merge SHA; the LIVE cockpit Phala panel shows 8 assets lit with real counts + zero error/missing_table; verify on prod
+    AND localhost. Green JSON / 'SEALED' report / unmerged-branch fix are ALL false positives."
   - "Anti-drift final audit: every ph_* writer → zero non-phala writes + zero .commit()/.rollback(); ledgers resolve. Canonical chart 482012f1 UNCHANGED (ph_sodhana hypothesis-only)."
   - "PROD-VERIFY every AC against prod. FORENSIC 7/7."
   - "Promote all ph_* DRAFT→CURRENT; set every target_floor = achieved count. Re-seal L3 (U2/U3/U4)."
-  - "Author L4_PHALA_CLOSE_v1_0.md + the L5 Mīmāṃsā onboarding contract (drafted by ph_pramana); update CURRENT_STATE + SESSION_LOG; merge + push (CI-green gate); final Vimarśaka audit (temporal + anti-drift)."
+  - "Author L4_PHALA_CLOSE_v1_0.md + the L5 Mīmāṃsā onboarding contract (drafted by ph_pramana); update CURRENT_STATE + SESSION_LOG; merge + push (CI-green gate); final Vimarśaka audit (temporal
+    + anti-drift)."
 
 # ---- AUTONOMOUS EXECUTION (every band; no human gate) ----
 autonomous_execution:
   - "Each Śilpī agent runs in an ISOLATED worktree sub-branch off feature/l4-phala-autonomous; parallel bands = parallel sub-branches, merged at the band gate."
-  - "Per asset: write code+tests → run the asset's hard gate (if any) → commit → Vimarśaka audit → merge to band → at band gate merge to feature → CI-green → DEPLOY (migrate runner applies the migration; Cloud Run sidecar rebuilds) → BUILD/DATA-GEN (orchestrator click-Build runs the writer for 482012f1 → rows in phala_*) → PROD-VERIFY ACs. ALL autonomous."
-  - "Failures: the deep-fix ladder (B.1 — 6 attempts, escalating to multi-model-parallel) resolves without a native halt; destructive ops via the disposition classifier (B.2); Tier-2 decisions Smṛti-logged."
+  - "Per asset: write code+tests → run the asset's hard gate (if any) → commit → Vimarśaka audit → merge to band → at band gate merge to feature → CI-green → DEPLOY (migrate runner applies the
+    migration; Cloud Run sidecar rebuilds) → BUILD/DATA-GEN (orchestrator click-Build runs the writer for 482012f1 → rows in phala_*) → PROD-VERIFY ACs. ALL autonomous."
+  - "Failures: the deep-fix ladder (B.1 — 6 attempts, escalating to multi-model-parallel) resolves without a native halt; destructive ops via the disposition classifier (B.2); Tier-2 decisions
+    Smṛti-logged."
   - "The chart-revision flag (ph_suddha_sodhana D43): STAGED + async-notified; does NOT block the build (build completes on the recorded chart; adoption is a post-seal one-click native action)."
 
 # ---- CROSS-CUTTING GATES (every asset) ----

@@ -10,11 +10,11 @@
  *   1. Cloud SQL proxy running locally on 5433 (or direct DB accessible via DATABASE_URL).
  *      cloud-sql-proxy madhav-astrology:asia-south1:amjis-postgres --port=5433
  *   2. ADC auth: `gcloud auth application-default login`
- *   3. GCP_PROJECT and VERTEX_AI_LOCATION env vars set (or defaults below).
+ *   3. GOOGLE_CLOUD_PROJECT and VERTEX_AI_LOCATION env vars set (or defaults below).
  *
  * Run from platform/ dir:
  *   DATABASE_URL="postgresql://amjis_app:<pw>@127.0.0.1:5433/amjis" \
- *   GCP_PROJECT=madhav-astrology \
+ *   GOOGLE_CLOUD_PROJECT=madhav-astrology \
  *   VERTEX_AI_LOCATION=asia-south1 \
  *   npx tsx --conditions=react-server scripts/backfill_conversation_embeddings.ts
  *
@@ -63,11 +63,12 @@
  * correct, and only, place for it to run.
  */
 
+import { readGoogleCloudEnv } from '../src/lib/config/google_cloud_env'
 import { Pool } from 'pg'
 import { GoogleAuth } from 'google-auth-library'
 import { readTurnParts } from '../src/lib/pariprashna/store/reader'
 
-const GCP_PROJECT      = process.env.GCP_PROJECT         ?? 'madhav-astrology'
+const projectId      = readGoogleCloudEnv('GOOGLE_CLOUD_PROJECT')         ?? 'madhav-astrology'
 const VERTEX_LOCATION  = process.env.VERTEX_AI_LOCATION  ?? 'asia-south1'
 const VERTEX_MODEL     = 'text-multilingual-embedding-002'
 const EMBED_DIM        = 768
@@ -83,7 +84,7 @@ const auth = new GoogleAuth({ scopes: ['https://www.googleapis.com/auth/cloud-pl
 
 async function embedText(text: string): Promise<number[]> {
   const endpoint =
-    `https://${VERTEX_LOCATION}-aiplatform.googleapis.com/v1/projects/${GCP_PROJECT}` +
+    `https://${VERTEX_LOCATION}-aiplatform.googleapis.com/v1/projects/${projectId}` +
     `/locations/${VERTEX_LOCATION}/publishers/google/models/${VERTEX_MODEL}:predict`
 
   const client = await auth.getClient()

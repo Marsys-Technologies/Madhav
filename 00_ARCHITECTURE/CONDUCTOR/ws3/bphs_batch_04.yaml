@@ -132,7 +132,9 @@ rules:
     school: parashari
     confidence: 0.80
     confidence_rationale: "Sloka with positive assertion = 0.8; Saravali confirms Jupiter-dasha auspiciousness = 1.0. 0.80."
-    caveats: "Even 'most auspicious' Jupiter dashas bring challenges if Jupiter rules dusthana houses or is severely afflicted. The unconditional positive statement in BPHS is partially an ideal — actual results depend on Jupiter's natal state."
+    caveats: >-
+      Even 'most auspicious' Jupiter dashas bring challenges if Jupiter rules dusthana houses or is severely afflicted. The unconditional positive statement in BPHS is partially an ideal — actual
+      results depend on Jupiter's natal state.
     verified: true
     stub: false
     stub_reason: null
@@ -280,7 +282,9 @@ rules:
     school: parashari
     confidence: 0.72
     confidence_rationale: "Sloka with conditional = 0.8; partial Saravali = 0.9. 0.72."
-    caveats: "If both Saturn and Moon are functionally auspicious for the lagna, the tension is reduced — a yogakaraka Saturn in Saturn-Moon period can give mixed results that are ultimately positive."
+    caveats: >-
+      If both Saturn and Moon are functionally auspicious for the lagna, the tension is reduced — a yogakaraka Saturn in Saturn-Moon period can give mixed results that are ultimately
+      positive.
     verified: true
     stub: false
     stub_reason: null
@@ -380,7 +384,9 @@ rules:
     school: parashari
     confidence: 0.72
     confidence_rationale: "Sloka = 0.8; Saravali partially confirms Mars-Saturn friction = 0.9. 0.72."
-    caveats: "When both Mars and Saturn are yogakaraka for the lagna (e.g., Saturn is yogakaraka for Cancer Lagna but Mars is also strong), the friction can be redirected into disciplined competitive achievement."
+    caveats: >-
+      When both Mars and Saturn are yogakaraka for the lagna (e.g., Saturn is yogakaraka for Cancer Lagna but Mars is also strong), the friction can be redirected into disciplined competitive
+      achievement.
     verified: true
     stub: false
     stub_reason: null
@@ -582,7 +588,9 @@ rules:
     school: parashari
     confidence: 0.92
     confidence_rationale: "Declarative system definition = 1.0; Saravali confirms Ashtakavarga system = 1.15. 0.92."
-    caveats: "Ashtakavarga is a complex system with multiple levels; the Bhinna Ashtakavarga (individual planet's 8-point tables) and Sarvashtakavarga (combined totals) serve different interpretive functions."
+    caveats: >-
+      Ashtakavarga is a complex system with multiple levels; the Bhinna Ashtakavarga (individual planet's 8-point tables) and Sarvashtakavarga (combined totals) serve different interpretive
+      functions.
     verified: true
     stub: false
     stub_reason: null
@@ -605,7 +613,9 @@ rules:
     school: parashari
     confidence: 0.92
     confidence_rationale: "Declarative threshold = 1.0; Saravali confirms the 5-bindu threshold = 1.15. 0.92."
-    caveats: "The 5-bindu threshold is a general rule; in critical dashas (like Rahu-Saturn), even 5 bindus may not prevent challenges. The bindu count must be read alongside the transiting planet's natal strength."
+    caveats: >-
+      The 5-bindu threshold is a general rule; in critical dashas (like Rahu-Saturn), even 5 bindus may not prevent challenges. The bindu count must be read alongside the transiting planet's
+      natal strength.
     verified: true
     stub: false
     stub_reason: null
@@ -885,7 +895,9 @@ rules:
     school: parashari
     confidence: 0.88
     confidence_rationale: "Declarative = 1.0; Saravali confirms Saturn-from-Moon auspicious positions = 1.15. 0.88."
-    caveats: "Saturn in 11H from Moon is often cited as the most financially productive transit position. During Sade Sati however, Saturn is simultaneously in 1H from Moon which complicates the 11H transit reading."
+    caveats: >-
+      Saturn in 11H from Moon is often cited as the most financially productive transit position. During Sade Sati however, Saturn is simultaneously in 1H from Moon which complicates the 11H
+      transit reading.
     verified: true
     stub: false
     stub_reason: null
@@ -1499,7 +1511,9 @@ rules:
     school: parashari
     confidence: 0.72
     confidence_rationale: "Sloka with compound condition = 0.8; partial Saravali = 0.9. 0.72."
-    caveats: "Separation prediction requires ethical care in delivery. The dasha-transit convergence indicates stress on the relationship, not inevitable separation — many couples navigate these periods without separating."
+    caveats: >-
+      Separation prediction requires ethical care in delivery. The dasha-transit convergence indicates stress on the relationship, not inevitable separation — many couples navigate these periods
+      without separating.
     verified: true
     stub: false
     stub_reason: null
@@ -1621,7 +1635,9 @@ rules:
     school: parashari
     confidence: 0.80
     confidence_rationale: "Sloka = 0.8; Saravali confirms 8H-connected malefic dasha in longevity window = 1.0. 0.80."
-    caveats: "This principle requires prior completion of full longevity analysis (Pindayus, Amsayus, Nisargayus). Astrological death prediction requires extreme ethical care and should not be made without extensive multi-system confirmation."
+    caveats: >-
+      This principle requires prior completion of full longevity analysis (Pindayus, Amsayus, Nisargayus). Astrological death prediction requires extreme ethical care and should not be made
+      without extensive multi-system confirmation.
     verified: true
     stub: false
     stub_reason: null
@@ -2287,7 +2303,9 @@ rules:
     school: parashari
     confidence: 0.88
     confidence_rationale: "Declarative = 1.0; Saravali confirms Sade Sati second phase as most intense = 1.15. 0.88."
-    caveats: "Sade Sati second-phase intensity is heavily modulated by Saturn's natal strength and the Moon's natal strength; a strong Moon in a strong sign weathers this transit much better than a weak waning Moon."
+    caveats: >-
+      Sade Sati second-phase intensity is heavily modulated by Saturn's natal strength and the Moon's natal strength; a strong Moon in a strong sign weathers this transit much better than a weak
+      waning Moon.
     verified: true
     stub: false
     stub_reason: null

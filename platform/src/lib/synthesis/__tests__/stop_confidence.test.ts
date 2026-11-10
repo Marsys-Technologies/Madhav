@@ -3,11 +3,11 @@
  * [BUILD-ORCH-J-09, J-10]
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
 
-import { computeConfidence, DEFAULT_STOP_CONFIDENCE_THRESHOLD } from '../stop_confidence'
+import { computeConfidence } from '../stop_confidence'
 import { checkB11Floor, formatB11Injection } from '../b11_floor'
 import type { LoopToolResult } from '../agentic_loop'
 

@@ -58,28 +58,9 @@ import { POST as POST_TASK } from '../task/route'
 
 const TEST_AUDIENCE = 'https://amjis-web-test.run.app/api/build/task'
 
-function makeFakeJwt(aud: string): string {
-  const header  = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url')
-  const payload = Buffer.from(JSON.stringify({ aud, iss: 'test', sub: 'cloud-tasks' })).toString('base64url')
-  return `${header}.${payload}.fakesig`
-}
 
-function makeReq(url: string, body: unknown, headers: Record<string, string> = {}): Request {
-  return new Request(url, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', ...headers },
-    body: JSON.stringify(body),
-  })
-}
 
 /** makeReq variant that includes Cloud Tasks OIDC headers for /api/build/task calls. */
-function makeTaskReq(body: unknown, headers: Record<string, string> = {}): Request {
-  return makeReq('http://localhost/api/build/task', body, {
-    'x-cloudtasks-queuename': 'mars-build-queue',
-    authorization: `Bearer ${makeFakeJwt(TEST_AUDIENCE)}`,
-    ...headers,
-  })
-}
 
 beforeEach(() => {
   mockQuery.mockReset()

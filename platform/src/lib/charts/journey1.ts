@@ -26,7 +26,7 @@ const SIGNS = [
 // `selected[0]`, a silent pick of a non-primary frame. `charts.ayanamsa` only selects which of
 // the OTHER four are shown as the labelled cross-check set (`journey1CrossCheckFrames`).
 // The argument is accepted for call-site compatibility and deliberately ignored.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+
 export function journey1Frame(_stored?: string | null): string {
   return DEFAULT_AYANAMSHA;
 }

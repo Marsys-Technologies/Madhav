@@ -52,7 +52,7 @@ import { recordCalibrationStamp } from '@/lib/predictions/calibration_producer'
  * for the event so this matches both the AI SDK's `UIMessageStreamWriter<...>`
  * (which uses a discriminated-union event type) and the test capturing writer.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 export interface WriteThroughWriter {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   write: (event: any) => void

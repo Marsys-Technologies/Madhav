@@ -33,6 +33,18 @@ beforeEach(() => {
 // ── No divergence ─────────────────────────────────────────────────────────────
 
 describe('classifyDivergence — no divergence', () => {
+  it('leaves divergence unknown when the adjudicator response could not be evaluated', () => {
+    const adjudication = makeAdjudication(false, 'Malformed adjudicator response')
+    adjudication.divergence_summary.has_divergence = null
+    adjudication.divergence_summary.divergence_count = null
+
+    expect(classifyDivergence(threeMemberOutputs, adjudication)).toEqual({
+      has_divergence: null,
+      instances: [],
+      member_alignment_summary: {},
+    })
+  })
+
   it('returns has_divergence=false and empty instances when adjudication reports no divergence', () => {
     const adjudication = makeAdjudication(false, 'All members aligned on the 7th house reading.')
     const result = classifyDivergence(threeMemberOutputs, adjudication)

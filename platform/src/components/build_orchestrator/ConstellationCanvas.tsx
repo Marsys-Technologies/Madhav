@@ -16,7 +16,6 @@ interface ConstellationCanvasProps {
 }
 
 export default function ConstellationCanvas({
-  chartId,
   waveStates = [],
 }: ConstellationCanvasProps) {
   return (

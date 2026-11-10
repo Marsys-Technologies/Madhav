@@ -574,7 +574,8 @@ function sanitizeZeroSupportStatement(row: Record<string, unknown>): Record<stri
 // is capped to its top 3 entries by salience with a recover_via pointer for
 // the full chain. Trims byte weight to stay clear of DUAL_OUTPUT_TEXT_THRESHOLD_BYTES.
 function trimInsightRow(row: Record<string, unknown>): Record<string, unknown> {
-  const { surface_formula_version: _drop, ...rest0 } = row
+  const rest0 = { ...row }
+  delete rest0.surface_formula_version
   const rest = sanitizeZeroSupportStatement(rest0)
   const pc = getProvenanceChain(rest)
   if (!pc) return rest

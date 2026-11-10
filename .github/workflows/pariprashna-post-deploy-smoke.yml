@@ -176,8 +176,12 @@ jobs:
             esac
             if [ "${#FIREBASE_ADMIN_CREDENTIALS}" -lt 500 ]; then shaped=0; fi
             if [ "$shaped" -eq 0 ]; then
-              echo "::error::[p3-e-smoke] FIREBASE_ADMIN_CREDENTIALS is set but is NOT a plausible service-account JSON object (expected a value starting with '{' and at least 500 bytes long; the real credential is ~2300). Observed length: ${#FIREBASE_ADMIN_CREDENTIALS} bytes. This is a MISCONFIGURED SECRET, not an engine failure — do NOT read this run as a behavioural red against the deployed revision."
-              echo "::error::[p3-e-smoke] Repair (operator only — a credential operation, out of scope for automated agents): re-upload the same service-account JSON that Cloud Run already uses, e.g. 'gcloud secrets versions access 1 --secret=firebase-admin-credentials --project=madhav-astrology | gh secret set FIREBASE_ADMIN_CREDENTIALS --repo Marsys-Technologies/Madhav'"
+              echo "::error::[p3-e-smoke] FIREBASE_ADMIN_CREDENTIALS is set but is NOT a plausible service-account JSON object (expected a value starting with '{' and at least 500 bytes \
+          long; the real credential is ~2300). Observed length: ${#FIREBASE_ADMIN_CREDENTIALS} bytes. This is a MISCONFIGURED SECRET, not an engine failure — do NOT read this run as a \
+          behavioural red against the deployed revision."
+              echo "::error::[p3-e-smoke] Repair (operator only — a credential operation, out of scope for automated agents): re-upload the same service-account JSON that Cloud Run \
+          already uses, e.g. 'gcloud secrets versions access 1 --secret=firebase-admin-credentials --project=madhav-astrology | gh secret set FIREBASE_ADMIN_CREDENTIALS --repo \
+          Marsys-Technologies/Madhav'"
               fail=1
             fi
           fi
@@ -259,7 +263,8 @@ jobs:
         working-directory: .
         run: |
           echo "::error::[p3-e-smoke] Post-deploy behaviour smoke FAILED — see the step above for which assertion failed and why."
-          echo "::error::[p3-e-smoke] This is a real engine-behaviour check (receipt assembly / persistence chain, facts_consumed grounding, citation pipeline, safety-gate execution, non-trivial prose, zero stream errors) — NOT a liveness ping. Do not count this toward green×7 (DD-7 / W-1) until it is understood."
+          echo "::error::[p3-e-smoke] This is a real engine-behaviour check (receipt assembly / persistence chain, facts_consumed grounding, citation pipeline, safety-gate execution, \
+          non-trivial prose, zero stream errors) — NOT a liveness ping. Do not count this toward green×7 (DD-7 / W-1) until it is understood."
 
   # ── §N.8 fix (#2415, CONDUCTOR ruling cycle 291, D-NATIVE-12 authority) ──
   # PROBLEM THIS CLOSES: `behaviour-smoke` above deliberately SKIPS (not
@@ -291,7 +296,10 @@ jobs:
           result="${{ needs.behaviour-smoke.result }}"
           echo "behaviour-smoke result: $result"
           if [ "$result" != "success" ]; then
-            echo "::error::[p3-e-smoke] behaviour-smoke did not report success (result=$result) on trigger '${{ github.event_name }}', which IS one of the triggers the DD-7/W-1 green×7 cadence polls. Failing this job so the overall workflow-run conclusion cannot be misread as a green with zero real live turns behind it. A 'skipped' result here is most likely an upstream deploy that failed (see behaviour-smoke's own if: guard) — that is a legitimate reason to skip the live turn, but it must never count toward green×7 either. (#2415, CONDUCTOR ruling cycle 291, CLAUDE.md §N.8: a green needs a detector that actually ran and measured the claim it asserts.)"
+            echo "::error::[p3-e-smoke] behaviour-smoke did not report success (result=$result) on trigger '${{ github.event_name }}', which IS one of the triggers the DD-7/W-1 green×7 \
+          cadence polls. Failing this job so the overall workflow-run conclusion cannot be misread as a green with zero real live turns behind it. A 'skipped' result here is most likely \
+          an upstream deploy that failed (see behaviour-smoke's own if: guard) — that is a legitimate reason to skip the live turn, but it must never count toward green×7 either. (#2415, \
+          CONDUCTOR ruling cycle 291, CLAUDE.md §N.8: a green needs a detector that actually ran and measured the claim it asserts.)"
             exit 1
           fi
           echo "[p3-e-smoke] behaviour-smoke genuinely succeeded — this run is a legitimate candidate for the green×7 counter."

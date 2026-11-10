@@ -266,8 +266,7 @@ describe('SharingPanel — UI grant/revoke flow (AC.3)', () => {
   })
 
   it('AC.3 — clicking Revoke DELETEs against /api/clients/[id]/grants?principal_id=…', async () => {
-    const fetcher = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = typeof input === 'string' ? input : input.toString()
+    const fetcher = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
       if (init?.method === 'DELETE') {
         return new Response(JSON.stringify({ revoked: 'g1' }), { status: 200 })
       }

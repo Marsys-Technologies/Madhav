@@ -24,11 +24,11 @@ beforeEach(() => {
 
 describe('terminalizeFailedRun', () => {
   it('issues exactly one statement carrying the message + runId', async () => {
-    await terminalizeFailedRun('run-123', 'invokeRunJob failed: missing GCP_PROJECT env var')
+    await terminalizeFailedRun('run-123', 'invokeRunJob failed: missing GOOGLE_CLOUD_PROJECT env var')
 
     expect(mockQuery).toHaveBeenCalledOnce()
     const [sql, params] = mockQuery.mock.calls[0]!
-    expect(params).toEqual(['invokeRunJob failed: missing GCP_PROJECT env var', 'run-123'])
+    expect(params).toEqual(['invokeRunJob failed: missing GOOGLE_CLOUD_PROJECT env var', 'run-123'])
     // Both tables written from the same statement (proof the value reaches both,
     // not just build_runs as the pre-fix idiom did).
     expect(sql).toMatch(/UPDATE build_runs/)

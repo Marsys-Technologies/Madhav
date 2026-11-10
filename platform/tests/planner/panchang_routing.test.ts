@@ -155,9 +155,6 @@ describe(`Panchang routing gate — ${queries.length} probe queries`, () => {
           `Expected "${probe.expected_tool}" for query "${probe.query}", got: [${[...routed].join(', ')}]\nRationale: ${probe.rationale}`,
         ).toBe(true)
 
-        // No false positives: confirm the WRONG tool is NOT selected
-        const wrongTool =
-          probe.expected_tool === 'query_panchanga' ? 'query_ephemeris' : 'query_panchanga'
         // For single-tool queries, the wrong tool should NOT be the sole additional tool
         // (We allow the router to add extra tools in edge cases, but the expected tool MUST be present)
         // The primary assertion above already covers correctness.

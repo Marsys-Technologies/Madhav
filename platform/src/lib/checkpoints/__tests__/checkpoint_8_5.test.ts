@@ -68,7 +68,8 @@ describe('checkpoint_8_5 — flag OFF', () => {
   it('returns skipped=true when CHECKPOINT_8_5_ENABLED is false', async () => {
     const result = await runCheckpoint8_5(makeInput())
     expect(result.skipped).toBe(true)
-    expect(result.verdict).toBe('pass')
+    expect(result.verdict).toBeNull()
+    expect(result.confidence).toBeNull()
     expect(mockRunAdapter).not.toHaveBeenCalled()
   })
 })
@@ -217,7 +218,7 @@ describe('checkpoint_8_5 — prediction extraction', () => {
     expect((result.prediction as Record<string, unknown>)?.outcome).toBeUndefined()
   })
 
-  it('falls back to no-prediction on malformed prediction sub-object', async () => {
+  it('reports an unknown verdict for a malformed prediction sub-object', async () => {
     mockGetFlag.mockImplementation((flag: string) =>
       flag === 'CHECKPOINT_8_5_ENABLED' || flag === 'CHECKPOINT_8_5_PREDICTION_EXTRACT'
     )
@@ -233,11 +234,10 @@ describe('checkpoint_8_5 — prediction extraction', () => {
       }),
       usage: { inputTokens: 0, outputTokens: 0 }, finishReason: 'stop', intermediate: [],
     })
-    // Zod safeParse on the outer schema should succeed but inner prediction validation fails
-    // The outer schema uses .optional() so a bad prediction is stripped
     const result = await runCheckpoint8_5(makeInput({ query_class: 'predictive' }))
-    // Either prediction is absent or the whole response falls back to pass with warning
-    expect(result.verdict).toBe('pass')
+    expect(result.verdict).toBeNull()
+    expect(result.confidence).toBeNull()
+    expect(result.prediction).toBeUndefined()
   })
 })
 
@@ -259,17 +259,19 @@ describe('checkpoint_8_5 — parse failure', () => {
     mockGetFlag.mockImplementation((flag: string) => flag === 'CHECKPOINT_8_5_ENABLED')
   })
 
-  it('defaults to pass on invalid JSON', async () => {
+  it('reports an unknown verdict on invalid JSON', async () => {
     mockRunAdapter.mockResolvedValue({ finalText: '{ broken json', usage: { inputTokens: 0, outputTokens: 0 }, finishReason: 'stop', intermediate: [] })
     const result = await runCheckpoint8_5(makeInput())
-    expect(result.verdict).toBe('pass')
+    expect(result.verdict).toBeNull()
+    expect(result.confidence).toBeNull()
     expect(result.reasoning).toContain('parse failed')
   })
 
-  it('defaults to pass when runAdapter rejects', async () => {
+  it('reports an unknown verdict when runAdapter rejects', async () => {
     mockRunAdapter.mockRejectedValue(new Error('model overloaded'))
     const result = await runCheckpoint8_5(makeInput())
-    expect(result.verdict).toBe('pass')
+    expect(result.verdict).toBeNull()
+    expect(result.confidence).toBeNull()
     expect(result.reasoning).toContain('Checkpoint error')
   })
 })

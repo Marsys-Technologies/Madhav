@@ -372,7 +372,7 @@ describe('query_chart_facts', () => {
       fact_subject: 'Punya Saham',
     })
     const db = mockDb([invariantRow])
-    const store = await query_chart_facts({ chart_id: NATIVE_CHART_ID, ayanamsha_id: 'lahiri' }, db)
+    await query_chart_facts({ chart_id: NATIVE_CHART_ID, ayanamsha_id: 'lahiri' }, db)
     // The SQL should include INVARIANT rows — verify via mock call
     const sql: string = (db.query as ReturnType<typeof vi.fn>).mock.calls[0][0]
     expect(sql).toContain("'INVARIANT'")

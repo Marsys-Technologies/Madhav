@@ -58,6 +58,7 @@ _GRAHA_DISPLAY: dict[str, str] = {
 # The names are the L0 lexicon's (`bg_nakshatra` name_en), derived: the L1 facts this emitter reads carry the
 # same spelling (Mrigasira / Moola / Dhanishtha for nos. 5 / 19 / 23). Never re-spelled in this file.
 from brahmagyan.nakshatra_vocabulary import CANONICAL_NAKSHATRA_NAMES, canonical_nakshatra  # noqa: E402  (late import)
+from brahmagyan.verification_tiers import DOCUMENTED_APPROXIMATION
 NAKSHATRA_ORDER: list[str] = list(CANONICAL_NAKSHATRA_NAMES)
 # The configuration_jsonb `nakshatra` this emitter stores is the L1 fact's own text; the integrity check of
 # bo_nakshatra_semantic (migration 669, widened by migration 1364 to accept both spellings) bounds it to this vocabulary.
@@ -237,7 +238,7 @@ def build_signal_row(
         vargottama_amplification=0.0,
         neechabhanga_modifier=1.0,
         cancellation_modifier=1.0,
-        verification_pass_status="documented_approximation",
+        verification_pass_status=DOCUMENTED_APPROXIMATION,
         class_prior=NAKSHATRA_SEMANTIC_CLASS_PRIOR,
         varga_id="D1",
         specificity=specificity,
@@ -352,7 +353,7 @@ def build_signal_row(
         "pada_precision_flag": is_gandanta,
         "cross_system_consensus_count": None,
         "channel_render_priority_jsonb": None,
-        "verification_pass_status": "documented_approximation",
+        "verification_pass_status": DOCUMENTED_APPROXIMATION,
         "verification_method": "l1_fact_composition_deterministic",
         "citation_ref": f"bo_nakshatra_semantic/{graha_code}",
         "citation_human": f"Nakshatra-semantic profile: {graha_display}",

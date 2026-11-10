@@ -89,7 +89,8 @@ phase_B:
         - migrate: "apply 121/122/124 (query_trace_steps partitions) — now unblocked; verify chart_id non-NULL first"
         - hygiene: "gcloud run services update amjis-web --remove-env-vars BUILD_TASK_AUTH_BYPASS"
         - eval: "run answer:eval ONCE (consolidated)"
-        - ledger: "apply OPERATOR_LEDGER_PATCH_PYJHORA_POSTMERGE_v1_0.md; CURRENT_STATE bump (verify next free version on origin/main); OPERATOR_ACTIONS_PENDING; single SESSION_LOG entry for S1+S2+S3+B"
+        - ledger: "apply OPERATOR_LEDGER_PATCH_PYJHORA_POSTMERGE_v1_0.md; CURRENT_STATE bump (verify next free version on origin/main); OPERATOR_ACTIONS_PENDING; single SESSION_LOG entry for
+            S1+S2+S3+B"
         - redteam: "IS.8(b) if cadence due"
       on_done: [run_log: RUN_COMPLETE]
 

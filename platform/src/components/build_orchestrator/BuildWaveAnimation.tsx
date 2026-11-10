@@ -4,7 +4,7 @@
 // Shows a wave of light progressing around the 12-house wheel as builds complete
 // H-04: Initial implementation with 5-ayanamsha arc, phase-based opacity, completion ring
 
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { motion, AnimatePresence, useAnimationFrame } from 'framer-motion'
 
 // ── Types ──────────────────────────────────────────────────────────────────────

@@ -497,7 +497,7 @@ const examples8_5: LabeledExample<Parameters<typeof runCheckpoint8_5>[0]>[] = [
 interface EvalResult {
   label: string
   expected: CheckpointVerdict
-  actual: CheckpointVerdict
+  actual: CheckpointVerdict | null
   match: boolean
   latency_ms: number
 }
@@ -505,7 +505,7 @@ interface EvalResult {
 async function runEval<T>(
   name: string,
   examples: LabeledExample<T>[],
-  runner: (input: T) => Promise<{ verdict: CheckpointVerdict; latency_ms: number }>,
+  runner: (input: T) => Promise<{ verdict: CheckpointVerdict | null; latency_ms: number }>,
 ): Promise<void> {
   console.log(`\n${'─'.repeat(60)}`)
   console.log(`Checkpoint ${name} — ${examples.length} examples`)
@@ -530,7 +530,7 @@ async function runEval<T>(
       results.push({
         label: ex.label,
         expected: ex.expected_verdict,
-        actual: 'pass',
+        actual: null,
         match: false,
         latency_ms: 0,
       })

@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 
 // Mock getActiveCharts so the component doesn't hit the DB.
 vi.mock('@/lib/build/dataSource', () => ({

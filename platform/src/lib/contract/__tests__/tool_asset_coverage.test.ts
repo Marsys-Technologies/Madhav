@@ -62,7 +62,7 @@ describe('Unit 3.tool_asset_recon — tool ↔ asset reconciliation (G6 gate)', 
     const report = auditToolAssetReconciliation()
 
     // Print a tiny summary line for log readability (vitest --reporter=verbose surfaces this).
-    // eslint-disable-next-line no-console
+
     console.log(
       `[G6] assets=${report.total_assets} tools=${report.total_tools} ` +
       `covered=${report.covered_assets.length} uncovered=${report.uncovered_assets.length} ` +

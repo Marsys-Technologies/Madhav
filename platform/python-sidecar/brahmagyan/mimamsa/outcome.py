@@ -486,8 +486,8 @@ def run_acceptance_gate(chart_id: str | None = None) -> dict[str, Any]:
                 "ayanamsha_id": "lahiri",
                 "recorded_at": "2026-06-04T00:00:00+00:00",
                 "l1_ground_truth": "FORENSIC v8.0 §5.1 DSH.V.023–028; LEL v1.7",
-                "b3_citation_compliant": True,
-                "leakage_guard_passed": True,
+                "b3_citation_compliant": None,
+                "leakage_guard_passed": None,
             },
         }
         missing_top = required_keys - set(mock_response.keys())

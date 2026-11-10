@@ -278,7 +278,7 @@ describe('kala_bundle_get — tool registration', () => {
   it('registerKalaTemporalRetrievalTool(server, principal) registers kala_bundle_get tool', () => {
     let registeredName: string | null = null
     const mockServer = {
-      tool: (name: string, _desc: string, _schema: unknown, _handler: unknown) => {
+      tool: (name: string) => {
         registeredName = name
       },
     } as unknown as McpServer

@@ -8,7 +8,6 @@ import {
   PenSquare,
   Trash2,
   Plus,
-  PanelLeft,
   ArrowLeft,
   Search,
   X,
@@ -91,7 +90,6 @@ function groupByDate(conversations: ConversationRow[]) {
 
 export function ConversationSidebar({
   chartId,
-  chartName,
   conversations,
   currentConversationId,
   onRenamed,

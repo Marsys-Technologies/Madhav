@@ -1,9 +1,10 @@
+import { FEATURE_FLAGS } from '@/lib/config/feature_flags'
 import 'server-only'
 import { getFlag } from '@/lib/config'
 import { getServerUserWithProfile } from '@/lib/auth/access-control'
 
 export async function AuthGate({ children }: { children: React.ReactNode }) {
-  if (!getFlag('OBSERVATORY_ENABLED')) {
+  if (!getFlag(FEATURE_FLAGS.observatory)) {
     return (
       <main role="alert" data-testid="observatory-disabled" className="p-8">
         <h1 className="text-xl font-semibold">Observatory is disabled</h1>

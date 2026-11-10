@@ -120,7 +120,7 @@ test.describe('Walkthrough W1–W15 — default provider (Gemini)', () => {
     const stepperPromise = page.waitForSelector('[data-testid="v2-stage-stepper"]', { timeout: 20_000 }).catch(() => null)
     await sendQuery(page)
 
-    const stepper = await stepperPromise
+    await stepperPromise
     await page.screenshot({ path: 'test-results/chat-v2/w1-stage-stepper.png' }).catch(() => null)
 
     // Stage stepper is ephemeral; verify at least the assistant message appears
@@ -406,7 +406,6 @@ test.describe('Walkthrough W1–W15 — default provider (Gemini)', () => {
       await expect(chips.first()).toBeVisible()
 
       // Raw SIG.MSR references should NOT be surfacing as plain prose
-      const msgText = await assistantMsg.textContent().catch(() => '')
       // Raw format "(F.D1.LAG.01)" should be rendered, not appear as plain text
       // This is a soft check — if chips exist, rendering is working
 

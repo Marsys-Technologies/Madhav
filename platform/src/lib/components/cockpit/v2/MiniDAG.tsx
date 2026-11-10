@@ -103,7 +103,6 @@ export function MiniDAG({ targetAssetId, planAssetIds, assets }: MiniDAGProps) {
         const from = posMap.get(e.from)
         const to = posMap.get(e.to)
         if (!from || !to) return null
-        const mx = (from.x + to.x) / 2
         const my = (from.y + to.y) / 2
         return (
           <motion.path

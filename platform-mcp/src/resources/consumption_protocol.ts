@@ -123,7 +123,7 @@ export function registerConsumptionProtocol(server: McpServer): void {
   server.resource(
     'consumption-protocol',
     new ResourceTemplate('marsys://consumption-protocol', { list: undefined }),
-    async (_uri) => ({
+    async () => ({
       contents: [
         {
           uri: 'marsys://consumption-protocol',

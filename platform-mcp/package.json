@@ -11,6 +11,8 @@
     "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
     "typecheck": "tsc --noEmit",
+    "lint": "eslint",
+    "lint:evals": "cd .. && eslint --config platform-mcp/eslint.config.mjs evals --max-warnings 0",
     "test": "vitest run",
     "accuracy:capture": "vitest run test/accuracy/run.test.ts --reporter=verbose",
     "accuracy:diff": "tsx test/accuracy/diff.ts",
@@ -35,8 +37,10 @@
     "@types/express": "^4.17.21",
     "@types/node": "^20.14.0",
     "@types/pg": "^8.20.0",
+    "eslint": "9.39.4",
     "tsx": "^4.15.0",
     "typescript": "^5.5.0",
+    "typescript-eslint": "8.58.2",
     "vitest": "^2.1.9"
   }
 }

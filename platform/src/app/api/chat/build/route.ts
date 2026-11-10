@@ -1,12 +1,11 @@
 import { meterSharedModel, meteringRequest, setMeteringAttribution } from '@/lib/metering/context'
 import { streamText, stepCountIs, createIdGenerator, convertToModelMessages } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
-import { NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
 import { buildTools } from '@/lib/claude/build-tools'
 import { buildSystemPrompt } from '@/lib/claude/system-prompts'
-import type { ModelMessage, UIMessage } from 'ai'
+import type { UIMessage } from 'ai'
 import { insertConversationWithId, getConversation } from '@/lib/conversations'
 import { archivedReadOnlyResponse, isCorrectionArchived } from '@/lib/conversations/readOnly'
 import { checkReadingReadiness } from '@/lib/charts/readingGate'
@@ -108,7 +107,7 @@ async function executeMeteredRequest(request: Request) {
       })
     : null
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const result = streamText({
     model: meterSharedModel(anthropic('claude-sonnet-4-6'), 'anthropic', 'claude-sonnet-4-6', 'build'),
     system: systemPrompt,

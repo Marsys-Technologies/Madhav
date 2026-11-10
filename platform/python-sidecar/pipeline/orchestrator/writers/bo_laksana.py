@@ -59,6 +59,7 @@ from bodha_writers.formulas import (
     DIGNITY_SCORE as _FML_DIGNITY_SCORE,
     HOUSE_WEIGHT as _FML_HOUSE_WEIGHT,
 )
+from brahmagyan.verification_tiers import DOCUMENTED_APPROXIMATION
 
 logger = logging.getLogger(__name__)
 
@@ -1032,7 +1033,9 @@ def _build_dignity_lookup(conn: Any, chart_id: str, ayanamsha_id: str) -> dict[s
         """SELECT fact_subject, fact_value_text FROM chart_facts
            WHERE chart_id=%s AND ayanamsha_id=%s
              AND fact_category='graha_dignity_per_varga'
-             AND fact_value_jsonb->>'varga' = 'D1'""",
+             AND fact_key = 'dignity_state'
+             AND fact_value_jsonb->>'varga' = 'D1'
+           ORDER BY fact_subject, computed_at DESC NULLS LAST, fact_id""",
         [chart_id, ayanamsha_id])
     lookup: dict[str, str] = {}
     for r in rows:
@@ -1572,7 +1575,7 @@ def _load_vichara_divergence_signals(
             "pada_precision_flag": None,
             "cross_system_consensus_count": None,
             "channel_render_priority_jsonb": None,
-            "verification_pass_status": "documented_approximation",
+            "verification_pass_status": DOCUMENTED_APPROXIMATION,
             "verification_method": "chart_vichara_projection",
             "citation_ref": f"chart_vichara/{subj}/{dom}",
             "citation_human": f"ga_vichara varga_ratification_divergence: {subj} in {dom}",
@@ -2837,7 +2840,9 @@ def _build_d1_dignity_map(
         """SELECT fact_id, fact_subject, fact_value_text FROM chart_facts
            WHERE chart_id=%s AND ayanamsha_id=%s
              AND fact_category='graha_dignity_per_varga'
-             AND fact_value_jsonb->>'varga' = 'D1'""",
+             AND fact_key = 'dignity_state'
+             AND fact_value_jsonb->>'varga' = 'D1'
+           ORDER BY fact_subject, computed_at DESC NULLS LAST, fact_id""",
         [chart_id, ayanamsha_id])
     d1: dict[str, tuple[str, str | None]] = {}
     for r in rows:
@@ -3233,7 +3238,7 @@ def _build_navamsha_cross_check_signals(
             "pada_precision_flag":                      None,
             "cross_system_consensus_count":             None,
             "channel_render_priority_jsonb":            None,
-            "verification_pass_status":                 "documented_approximation",
+            "verification_pass_status":                 DOCUMENTED_APPROXIMATION,
             "verification_method":                      "L1_divisional_cross_check",
             "citation_ref":                             f"chart_divisionals/D9/{graha}",
             "citation_human":                           (

@@ -116,7 +116,8 @@ describe('checkpoint_5_5 — flag OFF', () => {
   it('returns skipped=true when CHECKPOINT_5_5_ENABLED is false', async () => {
     const result = await runCheckpoint5_5(makeInput())
     expect(result.skipped).toBe(true)
-    expect(result.verdict).toBe('pass')
+    expect(result.verdict).toBeNull()
+    expect(result.confidence).toBeNull()
     expect(mockRunAdapter).not.toHaveBeenCalled()
   })
 })
@@ -243,17 +244,19 @@ describe('checkpoint_5_5 — parse failure', () => {
     mockGetFlag.mockImplementation((flag: string) => flag === 'CHECKPOINT_5_5_ENABLED')
   })
 
-  it('defaults to pass on invalid JSON', async () => {
+  it('reports an unknown verdict on invalid JSON', async () => {
     mockRunAdapter.mockResolvedValue({ finalText: 'not json', usage: { inputTokens: 0, outputTokens: 0 }, finishReason: 'stop', intermediate: [] })
     const result = await runCheckpoint5_5(makeInput())
-    expect(result.verdict).toBe('pass')
+    expect(result.verdict).toBeNull()
+    expect(result.confidence).toBeNull()
     expect(result.reasoning).toContain('parse failed')
   })
 
-  it('defaults to pass when runAdapter throws', async () => {
+  it('reports an unknown verdict when runAdapter throws', async () => {
     mockRunAdapter.mockRejectedValue(new Error('timeout'))
     const result = await runCheckpoint5_5(makeInput())
-    expect(result.verdict).toBe('pass')
+    expect(result.verdict).toBeNull()
+    expect(result.confidence).toBeNull()
     expect(result.reasoning).toContain('Checkpoint error')
   })
 })

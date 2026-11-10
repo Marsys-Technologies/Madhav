@@ -3,7 +3,6 @@
 import { useMemo, useState, useRef, useEffect } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import type { AssetRow } from '@/app/api/cockpit/registry/route'
-import type { AssetStats } from '@/app/api/cockpit/stats/route'
 import type { ActiveRun } from '@/hooks/useActiveRun'
 
 // ── Types ──────────────────────────────────────────────────────────────────────

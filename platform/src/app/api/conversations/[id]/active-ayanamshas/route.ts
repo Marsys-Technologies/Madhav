@@ -87,9 +87,6 @@ interface ConversationRow {
   active_ayanamshas?: string[] | null
 }
 
-interface BuildRow {
-  ayanamshas: string[] | null
-}
 
 interface ColumnExistsRow {
   exists: boolean

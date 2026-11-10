@@ -24,14 +24,9 @@ import { join } from 'path'
 
 import {
   LOOP_CONFIG_BY_PROVIDER,
-  createLoopState,
   runAgenticLoop,
   MAX_ITERATIONS,
   ANTHROPIC_LOOP_CONFIG,
-  GOOGLE_LOOP_CONFIG,
-  OPENAI_LOOP_CONFIG,
-  DEEPSEEK_LOOP_CONFIG,
-  NVIDIA_LOOP_CONFIG,
 } from '../../src/lib/synthesis/agentic_loop'
 
 // ─── AC.a structural assertion ───────────────────────────────────────────────
@@ -136,7 +131,7 @@ describe('B.11 FLOOR CONTRACT — agentic loop preserves injected context', () =
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    for await (const _ of runAgenticLoop(mockAdapter as any, initialRequest as any, async () => '', ANTHROPIC_LOOP_CONFIG)) {
+    for await (const {} of runAgenticLoop(mockAdapter as any, initialRequest as any, async () => '', ANTHROPIC_LOOP_CONFIG)) {
       // consume
     }
 
@@ -169,7 +164,7 @@ describe('B.11 FLOOR CONTRACT — cap enforcement is independent of floor contex
     let threw = false
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      for await (const _ of runAgenticLoop(mockAdapter as any, request as any, async () => '{}', ANTHROPIC_LOOP_CONFIG)) {
+      for await (const {} of runAgenticLoop(mockAdapter as any, request as any, async () => '{}', ANTHROPIC_LOOP_CONFIG)) {
         // consume
       }
     } catch (err) {

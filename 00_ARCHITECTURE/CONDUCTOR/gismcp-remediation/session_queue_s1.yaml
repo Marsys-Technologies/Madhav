@@ -72,7 +72,8 @@ sessions:
       - "test -f /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S1/platform/src/lib/retrieve/__tests__/query_tara_balam.test.ts"
       - "test -f /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S1/platform/src/lib/retrieve/__tests__/query_chandra_balam.test.ts"
       - "test -f /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S1/platform/src/lib/retrieve/__tests__/jaimini_chara_dasha.test.ts"
-      - "DB_PROXY_PORT=5433 cd /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S1/platform && npx vitest run src/lib/retrieve/__tests__/query_tara_balam.test.ts src/lib/retrieve/__tests__/query_chandra_balam.test.ts src/lib/retrieve/__tests__/jaimini_chara_dasha.test.ts 2>&1 | grep -qE '0 failed|Tests.*pass'"
+      - "DB_PROXY_PORT=5433 cd /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S1/platform && npx vitest run src/lib/retrieve/__tests__/query_tara_balam.test.ts
+        src/lib/retrieve/__tests__/query_chandra_balam.test.ts src/lib/retrieve/__tests__/jaimini_chara_dasha.test.ts 2>&1 | grep -qE '0 failed|Tests.*pass'"
 
   - id: R2-T2
     title: "MCP smoke + full platform vitest + Stream 1 seal"

@@ -96,7 +96,7 @@ describe('trace-audit: writeTraceStep() persists required tool_use fields', () =
     await writeTraceStep(step)
 
     expect(query).toHaveBeenCalledTimes(1)
-    const [sql, params] = vi.mocked(query).mock.calls[0]
+    const [sql] = vi.mocked(query).mock.calls[0]
 
     // Verify INSERT INTO query_trace_steps
     expect(sql).toContain('INSERT INTO public.query_trace_steps')
@@ -160,7 +160,7 @@ describe('trace-audit: writeTraceStep() persists required tool_use fields', () =
     const step = makeToolUseStep()
     await writeTraceStep(step)
 
-    const [sql, params] = vi.mocked(query).mock.calls[0]
+    const [, params] = vi.mocked(query).mock.calls[0]
     const paramsArr = params as unknown[]
 
     // Field 1: step_type (positional $7 = index 6; mcp_tool is $6)

@@ -31,15 +31,7 @@ import { POST } from '../cancel/[buildId]/route'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function makeReq(): Request {
-  return new Request('http://localhost/api/build/cancel/test-build-id', {
-    method: 'POST',
-  })
-}
 
-function makeParams(buildId: string): { params: Promise<{ buildId: string }> } {
-  return { params: Promise.resolve({ buildId }) }
-}
 
 /** Sets up the standard auth mocks for a given user + role. */
 function setupAuth(uid: string, role: 'guest' | 'super_admin' = 'guest') {

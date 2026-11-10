@@ -6,13 +6,13 @@
  * reflection, error_recovery, and budget_governor.
  */
 
-import { getCapability, listCapabilities } from '@/lib/retrieval/registry'
+import { getCapability } from '@/lib/retrieval/registry'
 import type { CapabilityUri, CapabilityContext } from '@/lib/retrieval/registry/types'
 import { BudgetGovernor } from './budget_governor'
 import { ThinkingAccumulatorImpl, parseThinkingBlocks } from './chain_of_thought'
-import { getToolCatalog, loadToolSchema, prioritizeCatalog } from './deferred_tool_loader'
+import { getToolCatalog, prioritizeCatalog } from './deferred_tool_loader'
 import { planNextAction, shouldStopEarly } from './adaptive_planner'
-import { shouldReflect, reflect, formatReflectionForLLM } from './reflection'
+import { shouldReflect, reflect } from './reflection'
 import { classifyError, planRecovery } from './error_recovery'
 import type { LoopState } from './adaptive_planner'
 

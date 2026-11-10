@@ -26,11 +26,6 @@ import { POST } from '../route'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function makeReq(opts: { auth?: string } = {}): Request {
-  const headers: Record<string, string> = { 'content-type': 'application/json' }
-  if (opts.auth !== undefined) headers['Authorization'] = opts.auth
-  return new Request('http://localhost/api/build/reap', { method: 'POST', headers })
-}
 
 // ─── Setup ────────────────────────────────────────────────────────────────────
 

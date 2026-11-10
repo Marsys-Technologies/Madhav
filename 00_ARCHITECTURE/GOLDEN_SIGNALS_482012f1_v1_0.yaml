@@ -34,7 +34,9 @@
   source: "FORENSIC v6.0 KP.PLN.MERCURY/KP.PLN.MARS + KP.SIG.11; earned gold"
   battery_result_2026_07_10: PARTIAL
   blocking_register_rows: [KP-1, KP-2]
-  notes: "Planet-level lords served and correct (MER sub_lord=Rahu, MAR star_lord=Rahu match FORENSIC §4.2). House-significator chains (KP.SIG.*) unserved; all graha_kp_lords signals are domain-tagged character/relationship only, so wealth-routed retrieval never sees them."
+  notes: >-
+    Planet-level lords served and correct (MER sub_lord=Rahu, MAR star_lord=Rahu match FORENSIC §4.2). House-significator chains (KP.SIG.*) unserved; all graha_kp_lords signals are
+    domain-tagged character/relationship only, so wealth-routed retrieval never sees them.
 
 - id: GS-03
   question: "How strong is Mercury in my chart and why does it matter?"
@@ -42,7 +44,9 @@
   source: "DEEP_ANALYSIS SIG.09 + CVG.01; earned gold (sole-vargottama in any Mercury judgment)"
   battery_result_2026_07_10: PARTIAL
   blocking_register_rows: [S-1, NEW-4]
-  notes: "MD lordship and D1/D9 same-sign rows served; vargottama_per_varga + graha_special_state_rollup.MER.is_vargottama facts EXIST in chart_facts but graha_portrait narration never says 'vargottama'. Yogi-planet status unserved (S-1). Digest labels Mercury 'weakest_graha' — direct inversion of CVG.01 (NEW-4)."
+  notes: >-
+    MD lordship and D1/D9 same-sign rows served; vargottama_per_varga + graha_special_state_rollup.MER.is_vargottama facts EXIST in chart_facts but graha_portrait narration never says
+    'vargottama'. Yogi-planet status unserved (S-1). Digest labels Mercury 'weakest_graha' — direct inversion of CVG.01 (NEW-4).
 
 - id: GS-04
   question: "Was I under Sade Sati during 2022-2025, and which phase?"
@@ -50,7 +54,10 @@
   source: "DEEP_ANALYSIS SIG.13 + CTR.07; LEL EVT.2020/EVT.2023 signals_that_matched; earned gold"
   battery_result_2026_07_10: PARTIAL
   blocking_register_rows: [NEW-6]
-  notes: "Data plane rich (15 Saturn-period categories, sade_sati_cycle/phase rows exist, CYCLE_5 anumukha 2025-03-29 to 2027-06-02 Pisces matches CTR.07 window). But serving is EAV shrapnel needing pagination archaeology; cycle numbering starts pre-birth (CYCLE_1 1961-1968) and differs per category family, so 'cycle 2' is unanswerable directly; NO flagship instrument (judgment/pact/digest) surfaces Sade Sati at all."
+  notes: >-
+    Data plane rich (15 Saturn-period categories, sade_sati_cycle/phase rows exist, CYCLE_5 anumukha 2025-03-29 to 2027-06-02 Pisces matches CTR.07 window). But serving is EAV shrapnel
+    needing pagination archaeology; cycle numbering starts pre-birth (CYCLE_1 1961-1968) and differs per category family, so 'cycle 2' is unanswerable directly; NO flagship instrument
+    (judgment/pact/digest) surfaces Sade Sati at all.
 
 - id: GS-05
   question: "What explains my grandfather's passing in 2009?"
@@ -58,7 +65,9 @@
   source: "DEEP_ANALYSIS CTR.03 + CVG.02; LEL EVT.2009 ('among the strongest retrodictive matches'); earned gold"
   battery_result_2026_07_10: PASS
   blocking_register_rows: []
-  notes: "get_dashas serves Saturn-Jupiter AD 2008-02-05 to 2010-08-18 with Jupiter 9L own-sign metadata; graha_portrait grades Jupiter 2.66 rupas vs 6.50 required = weak. All three atoms retrievable. (Uccha-bala rank-7 granularity not exposed, but weakness itself is.)"
+  notes: >-
+    get_dashas serves Saturn-Jupiter AD 2008-02-05 to 2010-08-18 with Jupiter 9L own-sign metadata; graha_portrait grades Jupiter 2.66 rupas vs 6.50 required = weak. All three atoms
+    retrievable. (Uccha-bala rank-7 granularity not exposed, but weakness itself is.)
 
 - id: GS-06
   question: "What is the strongest placement in my 7th house?"
@@ -74,7 +83,9 @@
   source: "DEEP_ANALYSIS SIG.15 + CVG.08; LEL EVT.2013.12 wedding ('STRONGEST MATCH in the corpus')"
   battery_result_2026_07_10: PARTIAL
   blocking_register_rows: [Y-1]
-  notes: "judgment_query(marriage): occupants Mars+Saturn from lagna AND chandra, Venus 7L in 9, verdict contested (-1.5) — good. But Sasha Mahapurusha / Hidden-Raja-Yoga framing absent (yoga catalog is requires_pass, never confirmed-firing); bearing_yogas slot instead served Ardha Chandra."
+  notes: >-
+    judgment_query(marriage): occupants Mars+Saturn from lagna AND chandra, Venus 7L in 9, verdict contested (-1.5) — good. But Sasha Mahapurusha / Hidden-Raja-Yoga framing absent (yoga
+    catalog is requires_pass, never confirmed-firing); bearing_yogas slot instead served Ardha Chandra.
 
 - id: GS-08
   question: "Is my Saturn strong or weak? Reconcile the verdicts."
@@ -82,7 +93,10 @@
   source: "DEEP_ANALYSIS CTR.01 (Shadbala #2 vs Shuddha Pinda #7 paradox)"
   battery_result_2026_07_10: PARTIAL
   blocking_register_rows: [NEW-4, NEW-5]
-  notes: "Portrait serves Saturn 3.611 rupas but grades it 'weak (deficit)' vs 5.0 requirement with no intra-chart ranking (Saturn is the highest shadbala served among grahas probed) — the CTR.01 paradox is invisible. No Shuddha Pinda / ashtakavarga in portrait. Narration also emits degenerate parivartana 'Saturn_in_Capricorn_Saturn_in_Capricorn mutual exchange' (Saturn is in Libra) — NEW-5."
+  notes: >-
+    Portrait serves Saturn 3.611 rupas but grades it 'weak (deficit)' vs 5.0 requirement with no intra-chart ranking (Saturn is the highest shadbala served among grahas probed) — the CTR.01
+    paradox is invisible. No Shuddha Pinda / ashtakavarga in portrait. Narration also emits degenerate parivartana 'Saturn_in_Capricorn_Saturn_in_Capricorn mutual exchange' (Saturn is in
+    Libra) — NEW-5.
 
 - id: GS-09
   question: "Will I earn from foreign lands? What is my foreign-income architecture?"
@@ -90,7 +104,9 @@
   source: "DEEP_ANALYSIS SIG.04/SIG.05 + CVG.03; LEL EVT.2019 US move"
   battery_result_2026_07_10: PARTIAL
   blocking_register_rows: [S-1]
-  notes: "atmakaraka_graha=Moon fact served (karakamsa_position); Moon house_d1=11 Aquarius served. Chalit-12 drift (CTR.04) not exposed by any instrument (get_dashas shows Moon house 12 vs chart_facts 11 with no house-system label — see NEW-3); no instrument composes the AK+12H foreign-income chain."
+  notes: >-
+    atmakaraka_graha=Moon fact served (karakamsa_position); Moon house_d1=11 Aquarius served. Chalit-12 drift (CTR.04) not exposed by any instrument (get_dashas shows Moon house 12 vs
+    chart_facts 11 with no house-system label — see NEW-3); no instrument composes the AK+12H foreign-income chain.
 
 - id: GS-10
   question: "What is happening in my navamsha 12th house?"
@@ -98,7 +114,9 @@
   source: "DEEP_ANALYSIS SIG.06 + CVG.03"
   battery_result_2026_07_10: PARTIAL
   blocking_register_rows: [NEW-2]
-  notes: "query_chart_facts(divisional_chart=D9, sign=Gemini) returns 0 rows even though D9_JUP = Gemini 12H exists (served by graha_portrait) — the sign filter appears to bind only to D1 sign (NEW-2). Stellium reconstructable only planet-by-planet via portraits."
+  notes: >-
+    query_chart_facts(divisional_chart=D9, sign=Gemini) returns 0 rows even though D9_JUP = Gemini 12H exists (served by graha_portrait) — the sign filter appears to bind only to D1 sign
+    (NEW-2). Stellium reconstructable only planet-by-planet via portraits.
 
 - id: GS-11
   question: "Do I have Saraswati Yoga, and is it operating?"
@@ -106,7 +124,9 @@
   source: "DEEP_ANALYSIS SIG.07 (CYSS 91); LEL XIMB admission/enrollment events"
   battery_result_2026_07_10: FAIL
   blocking_register_rows: [Y-1]
-  notes: "Yoga estate is a requires_pass catalog (yoga_fires = 0 rows). Saraswati never surfaced in judgment bearing_yogas or top wealth signals; false-positive catalog entries (e.g. Kemadruma for a chart that actually has Anapha) ARE served instead."
+  notes: >-
+    Yoga estate is a requires_pass catalog (yoga_fires = 0 rows). Saraswati never surfaced in judgment bearing_yogas or top wealth signals; false-positive catalog entries (e.g. Kemadruma for
+    a chart that actually has Anapha) ARE served instead.
 
 - id: GS-12
   question: "Do I have Lakshmi Yoga / dharma-wealth combinations?"
@@ -130,7 +150,9 @@
   source: "DEEP_ANALYSIS SIG.12; LEL Mercury-Venus AD 2014-2016 company-crash match"
   battery_result_2026_07_10: PARTIAL
   blocking_register_rows: [NEW-4]
-  notes: "Venus shadbala 2.3592 served (lowest among all grahas probed this run) but no rank fact; chart digest asserts weakest_graha='Mercury' (2.5 rupas > Venus) — contradicts both its own served values and the archive."
+  notes: >-
+    Venus shadbala 2.3592 served (lowest among all grahas probed this run) but no rank fact; chart digest asserts weakest_graha='Mercury' (2.5 rupas > Venus) — contradicts both its own
+    served values and the archive.
 
 - id: GS-15
   question: "Why is my 10th house the densest part of my chart?"
@@ -146,7 +168,9 @@
   source: "DEEP_ANALYSIS §HSE.02.B/BVB analysis (7H Bhavabala rank 12 vs max-dignity occupant)"
   battery_result_2026_07_10: FAIL
   blocking_register_rows: [S-1, NEW-7]
-  notes: "judgment_query(marriage) never consults house bhava-bala; no instrument serves the strength-vs-dignity house paradox; Bhrigu Bindu unserved (S-1). NEW-7: bhava-bala integration gap in judgment_query."
+  notes: >-
+    judgment_query(marriage) never consults house bhava-bala; no instrument serves the strength-vs-dignity house paradox; Bhrigu Bindu unserved (S-1). NEW-7: bhava-bala integration gap in
+    judgment_query.
 
 - id: GS-17
   question: "Why did I have twins in January 2022?"
@@ -154,7 +178,9 @@
   source: "LEL EVT.2022.01.04 ('TWINS = Rahu signature at AD level is the textbook explanation')"
   battery_result_2026_07_10: FAIL
   blocking_register_rows: [NEW-1]
-  notes: "pact_query(progeny, as_of=2022-01-15): PROMISE+CONFIRMATION pass, but ACTIVATION reports 'no promise-carrying dasha running, next window 2054-08-18' — it checks mahadasha lords only and is blind to the running Mercury-Rahu AD and to node-as-agent logic. The event's actual timing lords are invisible to the flagship timing instrument."
+  notes: >-
+    pact_query(progeny, as_of=2022-01-15): PROMISE+CONFIRMATION pass, but ACTIVATION reports 'no promise-carrying dasha running, next window 2054-08-18' — it checks mahadasha lords only and
+    is blind to the running Mercury-Rahu AD and to node-as-agent logic. The event's actual timing lords are invisible to the flagship timing instrument.
 
 - id: GS-18
   question: "What was activating when I lost my job and pivoted in April 2023?"
@@ -162,7 +188,9 @@
   source: "LEL EVT.2023.04 ('STRONG MATCH'); DEEP_ANALYSIS CTR.03 + CVG.02 + SIG.13"
   battery_result_2026_07_10: PARTIAL
   blocking_register_rows: [NEW-1]
-  notes: "pact_query(career, as_of=2023-04-01) completes the chain via Mercury MD, but its ACTIVATION reason cites 'Saturn (level 2, 2024-12-04 to 2027-08-14) running as of 2023-04-01' — a future AD reported as active (as_of date filter broken at level 2). The actual Mercury-Jupiter AD is never named; Sade Sati overlay absent."
+  notes: >-
+    pact_query(career, as_of=2023-04-01) completes the chain via Mercury MD, but its ACTIVATION reason cites 'Saturn (level 2, 2024-12-04 to 2027-08-14) running as of 2023-04-01' — a future
+    AD reported as active (as_of date filter broken at level 2). The actual Mercury-Jupiter AD is never named; Sade Sati overlay absent.
 
 - id: GS-19
   question: "What explains my father's passing in November 2018?"
@@ -170,7 +198,9 @@
   source: "LEL EVT.2018.11.28 ('four-fold convergence'); DEEP_ANALYSIS CTR.03 + SIG.04/05"
   battery_result_2026_07_10: PARTIAL
   blocking_register_rows: [NEW-3]
-  notes: "All L1 ingredients exist separately (dasha rows, AK fact, Jupiter weakness) but no instrument composes them; get_dashas natal metadata for Moon (house 12 vs chart_facts 11, unlabeled house system) and Saturn/Ketu (wrong sign/house — NEW-3) make the composition untrustworthy; transit trigger layer unreachable in pact."
+  notes: >-
+    All L1 ingredients exist separately (dasha rows, AK fact, Jupiter weakness) but no instrument composes them; get_dashas natal metadata for Moon (house 12 vs chart_facts 11, unlabeled
+    house system) and Saturn/Ketu (wrong sign/house — NEW-3) make the composition untrustworthy; transit trigger layer unreachable in pact.
 
 - id: GS-20
   question: "Where is my Upapada Lagna and what clusters with it?"
@@ -186,7 +216,9 @@
   source: "DEEP_ANALYSIS SIG.11; LEL EVT.1998 headaches + EVT.2020 panic-attack matches"
   battery_result_2026_07_10: PARTIAL
   blocking_register_rows: [Y-1]
-  notes: "yoga_label.anapha exists with BPHS/Saravali citations but fire_reason=requires_pass (catalog, not confirmed) and constituent_facts = a Sun position row, not Moon/Saturn. Kemadruma is co-served in the same catalog — mutually exclusive with Anapha — and Kemadruma even appears as a bearing_yoga inside wealth/career judgment_query."
+  notes: >-
+    yoga_label.anapha exists with BPHS/Saravali citations but fire_reason=requires_pass (catalog, not confirmed) and constituent_facts = a Sun position row, not Moon/Saturn. Kemadruma is
+    co-served in the same catalog — mutually exclusive with Anapha — and Kemadruma even appears as a bearing_yoga inside wealth/career judgment_query.
 
 - id: GS-22
   question: "What did my chart promise about children and their timing?"
@@ -194,12 +226,20 @@
   source: "LEL EVT.2022.01.04 signals_that_matched (SIG.10, SIG.09, CVG.02); FORENSIC §5 dashas"
   battery_result_2026_07_10: PARTIAL
   blocking_register_rows: [NEW-1]
-  notes: "PROMISE (convergent_moderate, bhavesha Sun, karaka Jupiter) and D7 CONFIRMATION serve correctly. Timing side fails as in GS-17. Archive discrepancy noted: LEL says 'Ketu in 5H Leo' but L1 build has Ketu in Scorpio 8H (Jyeshtha, consistent with FORENSIC KP §4.2) — the LEL note appears to be an archive error, not an engine defect."
+  notes: >-
+    PROMISE (convergent_moderate, bhavesha Sun, karaka Jupiter) and D7 CONFIRMATION serve correctly. Timing side fails as in GS-17. Archive discrepancy noted: LEL says 'Ketu in 5H Leo' but
+    L1 build has Ketu in Scorpio 8H (Jyeshtha, consistent with FORENSIC KP §4.2) — the LEL note appears to be an archive error, not an engine defect.
 
 - id: GS-23
   question: "My Saturn is exalted in Libra in the rashi chart but debilitated in the navamsha — is that D9 weakness classically redeemed, and does the platform say so?"
-  must_surface_atoms: [Saturn exalted D1 Libra, Saturn debilitated D9 Aries, neecha_bhanga_raja_yoga rule 2 (nbry_rule_2_exaltation_lord_kendra) fired in D9 context, D9-context redemption (varga-of-weakness rule), classification neecha_bhanga_redeemed (NOT broken_promise)]
-  source: "R6A.3 fix-iteration (register item Y-13): pure-D9-context NBRY firing (saturn@D9:nbry_rule_2_exaltation_lord_kendra, bhanga_active=true) was discarded by the D1-only filter in bo_laksana _build_nbry_redemption_map, leaving the D9 cross-check at broken_promise. Permanent unit gate: tests/test_r6a3_d9_cross_check_redemption.py::TestY13GoldenGateLiveCase"
+  must_surface_atoms: [Saturn exalted D1 Libra, Saturn debilitated D9 Aries, neecha_bhanga_raja_yoga rule 2 (nbry_rule_2_exaltation_lord_kendra) fired in D9 context,
+                       D9-context redemption (varga-of-weakness rule), classification neecha_bhanga_redeemed (NOT broken_promise)]
+  source: >-
+    R6A.3 fix-iteration (register item Y-13): pure-D9-context NBRY firing (saturn@D9:nbry_rule_2_exaltation_lord_kendra, bhanga_active=true) was discarded by the D1-only filter in bo_laksana
+    _build_nbry_redemption_map, leaving the D9 cross-check at broken_promise. Permanent unit gate: tests/test_r6a3_d9_cross_check_redemption.py::TestY13GoldenGateLiveCase
   battery_result_2026_07_10: FAIL
   blocking_register_rows: [Y-13]
-  notes: "Caught live on the guarded rebuild of 482012f1 (2026-07-10), chart since restored. Fix widens redemption consult to the varga where the weakness lives, behavior-gated to the broken_promise branch only; provenance carries redeemed_weakness_varga: D9. blocking_register_rows to be cleared by the conductor once Ring-2 confirms on fresh rebuilt data. Related open question (NOT covered by this row): 5th-ayanamsha concordant_strong divergence — conductor/Ring-2 to adjudicate ayanamsha-sensitive D9 sign flip vs second defect."
+  notes: >-
+    Caught live on the guarded rebuild of 482012f1 (2026-07-10), chart since restored. Fix widens redemption consult to the varga where the weakness lives, behavior-gated to the
+    broken_promise branch only; provenance carries redeemed_weakness_varga: D9. blocking_register_rows to be cleared by the conductor once Ring-2 confirms on fresh rebuilt data. Related open
+    question (NOT covered by this row): 5th-ayanamsha concordant_strong divergence — conductor/Ring-2 to adjudicate ayanamsha-sensitive D9 sign flip vs second defect.

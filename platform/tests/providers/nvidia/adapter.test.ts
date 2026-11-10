@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { NVIDIAAdapter } from '../../../src/lib/providers/nvidia/adapter';
 import { NVIDIA_MANIFEST } from '../../../src/lib/providers/nvidia/manifest';
-import { CapabilityUnsupportedError } from '../../../src/lib/providers/adapter';
 
 describe('NVIDIA_MANIFEST', () => {
   it('validates cleanly at import', () => {

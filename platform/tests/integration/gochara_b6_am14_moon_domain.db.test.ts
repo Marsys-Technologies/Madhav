@@ -49,18 +49,6 @@ const BUILDER = 'data_plane_builder'
 const SEALER = 'gochara_sealer'
 const VERIFIER = 'gochara_verifier'   // PC-4: the independent re-derivation is written by this principal, never by the builder (the builder holds NO privilege on the verification table)
 // What migration 1206 §7 grants the builder EXECUTE on (12 own helpers + 5 contract functions its guards call).
-const BUILDER_OWN_FUNCTIONS = [
-  'ka_gochara_sha256_hex(text)', 'ka_gochara_uuidv8(text)', 'ka_gochara_canonical_json(jsonb)',
-  'ka_gochara_utc_ts(timestamptz)', 'ka_gochara_uuid_set_ok(uuid[])',
-  'ka_gochara_search_input_digest(text, jsonb, text, text, text[])', 'ka_gochara_search_l1_facts_digest(uuid, text[])',
-  'ka_gochara_search_dasha_digest(uuid, uuid[])', 'ka_gochara_search_av_entry(text)',
-  'ka_gochara_search_inventory_preimage(uuid, text, text)', 'ka_gochara_search_inventory_digest(uuid, text, text)',
-  'ka_gochara_search_ledger_digest(uuid, text, text)',
-] as const
-const BUILDER_CONTRACT_FUNCTIONS = [
-  'ka_gochara_lock_chart(uuid)', 'ka_gochara_lock_global_shared()', 'ka_gochara_generation_is_sealed(uuid, text)',
-  'ka_gochara_generation_governed(text)', 'ka_gochara_horizon_finite_ok(tstzrange)',
-] as const
 // the verifier's EXECUTE set: the guard chain of its one INSERT (same as the 1206 suite)
 const VERIFIER_FUNCTIONS = ['ka_gochara_lock_chart(uuid)', 'ka_gochara_generation_is_sealed(uuid, text)'] as const
 // The seal principal's functions (names; unique in the schema).
@@ -88,13 +76,11 @@ const LEGACY_OTHER = 'legacy:c1'           // bridged to CONV_OTHER (an INCOMPAT
 const LEGACY_NOBRIDGE = 'legacy:c2'        // registered, NEVER bridged
 const AV_DECL = 'av-build:l1:482012f1:v1'
 const LO = '2025-01-01T00:00:00Z'
-const MID = '2025-02-01T00:00:00Z'
 const HI = '2025-03-01T00:00:00Z'
 const HORIZON_SQL = `tstzrange('${LO}','${HI}','[)')`
 const VEC = { bg_transit_rules: 'd1', bg_transit_av_gates: 'd2' }
 const VEC_SCOPE = { ...VEC, stored_scope: 'stored_non_moon' }   // AM-14: the scope bound to the manifest
 const B_P6 = 'spec:GOCHARA_DESIGN_SPECS@1.4#§2.2/P6'
-const B_EMPTY = 'oracle:O-RP-8'
 const B_NA = 'spec:GOCHARA_DESIGN_SPECS@1.4#§2.2/na'
 const CLS = 'marriage'
 
@@ -123,23 +109,10 @@ const inputDigest = (c: { conv: string; vec: unknown; l1: string; dasha: string;
 type Ob = readonly [agent: string, relation: string, role: string, target: string, frame: string, person: string]
 const obBytes = (path_: string, ver: string, o: Ob, cls = CLS): string => [cls, path_, ver, ...o].join('|')
 const obId = (path_: string, ver: string, o: Ob): string => uuidv8(obBytes(path_, ver, o))
-const P1A: Ob = ['jupiter', 'residence', 'lord', 'lord_of:7', 'dasha_lord', 'self']
-const P1B: Ob = ['jupiter', 'residence', 'occupant', 'occupant_of:7', 'dasha_lord', 'self']
-const P5A: Ob = ['saturn', 'residence', 'av_qualifier', 'house_span:7', 'lagna', 'self']
-const P5B: Ob = ['saturn', 'residence', 'av_qualifier', 'house_span:8', 'lagna', 'self']
 
 interface PinRef { path: string; ver?: string; disp: 'included' | 'computed_empty' | 'excluded'; reason?: string; ruling?: string; basis?: string; ids: string[] }
 const sortC = (xs: string[]): string[] => [...xs].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))
-function tsInventoryDigest(conv: string, input: string, pins: PinRef[], obs: string[]): string {
-  const lines = [`convention=${conv}`, `horizon=[${LO},${HI})`, `input=${input}`]
-  for (const p of [...pins].sort((a, b) => (`${a.path}|${a.ver ?? '1.0'}` < `${b.path}|${b.ver ?? '1.0'}` ? -1 : 1)))
-    lines.push(`pin=${p.path}|${p.ver ?? '1.0'}|${p.disp}|${p.reason ?? ''}|${p.ruling ?? ''}|${p.basis ?? ''}|${sortC(p.ids).join(',')}`)
-  for (const o of sortC(obs)) lines.push(`ob=${o}`)
-  return sha(lines.join('\n'))
-}
 // ledger_digest preimage (v1.1): `input=<input_digest>` first, so an EMPTY ledger is input-bound too
-const tsLedgerDigest = (rows: Array<[string, string, string, string]>, input: string): string =>
-  sha(['input=' + input, ...sortC(rows.map(([id, lo, hi, st]) => `${id}|${lo}|${hi}|${st}|${input}`))].join('\n'))
 
 // ── harness ────────────────────────────────────────────────────────────────────
 let pool: Pool
@@ -299,23 +272,6 @@ async function publication(c: Q, gen: string, vec: unknown = VEC, legacy = LEGAC
      (chart_id, generation, writer_asset_id, convention_id, input_generation_vector, ephemeris_backend, horizon, row_counts, content_digest, status)
      VALUES ($1,$2,'ka_gochara',$3,$4::jsonb,'{}',${HORIZON_SQL},'{}','digest','candidate')`, [CHART, gen, legacy, JSON.stringify(vec)])
 }
-async function snapshotLive(c: Q, gen: string, vec: unknown = VEC, conv = CONV): Promise<Snap> {
-  const q = async (sqlText: string, args: unknown[]): Promise<string> => (await c.query<{ v: string }>(sqlText, args)).rows[0]!.v
-  const l1 = await q(`SELECT ka_gochara_search_l1_facts_digest($1,$2::text[]) AS v`, [CHART, ['F1', 'F2']])
-  const dasha = await q(`SELECT ka_gochara_search_dasha_digest($1,$2::uuid[]) AS v`, [CHART, DASHA_IDS])
-  const av = [await q(`SELECT ka_gochara_search_av_entry($1) AS v`, [AV_DECL])]
-  return snapshotWith(c, gen, { conv, vec, l1, dasha, av })
-}
-async function snapshotWith(c: Q, gen: string, s: Omit<Snap, 'digest'>): Promise<Snap> {
-  const digest = inputDigest(s)
-  await c.query(
-    `INSERT INTO ka_gochara_search_input_snapshot
-       (chart_id, generation, convention_id, input_generation_vector, consumed_fact_ids, consumed_dasha_row_ids,
-        av_declarations, l1_facts_digest, dasha_digest, input_digest)
-     VALUES ($1,$2,$3,$4::jsonb,$5,$6,$7,$8,$9,$10)`,
-    [CHART, gen, s.conv, JSON.stringify(s.vec), ['F1', 'F2'], DASHA_IDS, s.av, s.l1, s.dasha, digest])
-  return { ...s, digest }
-}
 async function header(c: Q, gen: string, input: string, cls = CLS, horizon = HORIZON_SQL): Promise<void> {
   await c.query(`INSERT INTO ka_gochara_search_inventory (chart_id, generation, event_class, horizon, input_digest)
                  VALUES ($1,$2,$3,${horizon},$4)`, [CHART, gen, cls, input])
@@ -390,36 +346,6 @@ async function publishAndSeal(gen: string, opts: { role?: string; tz?: string } 
 /** A GOOD two-path build: p1@1.0 (A,B) + p5a@1.0 (A,B) included; every other registry version excluded;
  *  every obligation covered over the horizon; finalised; partition written; verified by a hash of the
  *  stored rows. `between` runs inside the build transaction before finalisation. */
-interface Built { gen: string; snap: Snap; ids: { p1: string[]; p5a: string[] }; dig: { inv: string; led: string } }
-async function goodBuild(gen: string, o: {
-  vec?: unknown; skipP5aObligations?: boolean; p5a?: 'included' | 'computed_empty' | 'none'
-  noVerify?: boolean; verifyDigest?: string; noPartition?: boolean; partitionRelations?: string[]
-  tz?: string; role?: string
-  between?: (c: PoolClient, b: { snap: Snap; ids: { p1: string[]; p5a: string[] } }) => Promise<void>
-} = {}): Promise<Built> {
-  return tx(async c => {
-    await chartCtx(c)
-    await publication(c, gen, o.vec)
-    const snap = await snapshotLive(c, gen, o.vec ?? VEC)
-    await header(c, gen, snap.digest)
-    const p1 = [obId('p1', '1.0', P1A), obId('p1', '1.0', P1B)]
-    const p5a = [obId('p5a', '1.0', P5A), obId('p5a', '1.0', P5B)]
-    const mode = o.p5a ?? 'included'
-    await pin(c, gen, { path: 'p1', disp: 'included', ids: p1 })
-    if (mode === 'included') await pin(c, gen, { path: 'p5a', disp: 'included', ids: p5a })
-    if (mode === 'computed_empty') await pin(c, gen, { path: 'p5a', disp: 'computed_empty', basis: B_EMPTY, ids: [] })
-    await pinRest(c, gen, [['p1', '1.0'], ...(mode === 'none' ? [] : [['p5a', '1.0'] as [string, string]])])
-    await ob(c, gen, 'p1', P1A); await ob(c, gen, 'p1', P1B)
-    if (mode === 'included' && !o.skipP5aObligations) { await ob(c, gen, 'p5a', P5A); await ob(c, gen, 'p5a', P5B) }
-    const covered = [...p1, ...(mode === 'included' && !o.skipP5aObligations ? p5a : [])]
-    for (const id of covered) await iv(c, gen, id, LO, HI, snap.digest)
-    if (o.between) await o.between(c, { snap, ids: { p1, p5a } })
-    const dig = await finalize(c, gen)
-    if (!o.noPartition) await partition(c, gen, { relations: o.partitionRelations })
-    if (!o.noVerify) await verify(c, gen, o.verifyDigest ?? dig.inv)
-    return { gen, snap, ids: { p1, p5a }, dig }
-  }, { tz: o.tz, role: o.role })
-}
 const refused = async (p: Promise<unknown>, re: RegExp): Promise<void> => { await expect(p).rejects.toThrow(re) }
 
 

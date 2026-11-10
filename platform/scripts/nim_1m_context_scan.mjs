@@ -66,7 +66,7 @@ async function testModel(id) {
       return { live: true, ms, reply: c }
     }
     return { live: false, ms, reply: `HTTP ${r.status}` }
-  } catch (e) {
+  } catch {
     clearTimeout(t)
     return { live: false, ms: Date.now() - t0, reply: `Timeout/Error` }
   }

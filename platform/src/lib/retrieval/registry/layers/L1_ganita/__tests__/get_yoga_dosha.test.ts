@@ -68,10 +68,13 @@ describe('getYogaDoshaCapability — kala_sarpa_reconciliation (D-1.6 Lane S-2 i
   })
 
   it('agrees=true when dosha_label kala_sarpa fires=true and per-varga D1 fires=true', async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [{ total: '1' }] })   // countResult
+    mockQuery.mockResolvedValueOnce({ rows: [{ total: '2' }] })   // countResult
     mockQuery.mockResolvedValueOnce({
       rows: [{
-        ayanamsha_id: 'lahiri_chitrapaksha', fact_category: 'dosha_label', fact_subject: 'kala_sarpa',
+        ayanamsha_id: 'lahiri_chitrapaksha', fact_category: 'dosha_label', fact_subject: 'kala_sarpa', fact_key: 'alternate',
+        fact_value_jsonb: { fires: false, catalog_only: false },
+      }, {
+        ayanamsha_id: 'lahiri_chitrapaksha', fact_category: 'dosha_label', fact_subject: 'kala_sarpa', fact_key: 'dosha_name',
         fact_value_jsonb: { fires: true, catalog_only: false },
       }],
     }) // result (paged rows)
@@ -121,7 +124,7 @@ describe('getYogaDoshaCapability — kala_sarpa_reconciliation (D-1.6 Lane S-2 i
     mockQuery.mockResolvedValueOnce({ rows: [{ total: '1' }] })
     mockQuery.mockResolvedValueOnce({
       rows: [{
-        ayanamsha_id: 'lahiri_chitrapaksha', fact_category: 'dosha_label', fact_subject: 'kala_sarpa',
+        ayanamsha_id: 'lahiri_chitrapaksha', fact_category: 'dosha_label', fact_subject: 'kala_sarpa', fact_key: 'dosha_name',
         fact_value_jsonb: { fires: true, catalog_only: false },
       }],
     })

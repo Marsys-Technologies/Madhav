@@ -263,7 +263,7 @@ interface ProbeResult {
   rows_min_met?: boolean
 }
 
-async function probeOne(scenario: Scenario, run_index: number): Promise<ProbeResult> {
+async function probeOne(scenario: Scenario, _run_index: number): Promise<ProbeResult> {
   const tool = scenario.tool
   const isVarshaphalaTimeWindow =
     scenario.scenario_name.includes('plan.time_window 2026-2028')

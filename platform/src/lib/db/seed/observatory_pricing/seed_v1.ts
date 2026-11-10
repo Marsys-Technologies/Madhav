@@ -171,14 +171,14 @@ export { PRICING_V1 }
 if (require.main === module) {
   seedObservatoryPricingV1()
     .then(({ attempted, inserted }) => {
-      // eslint-disable-next-line no-console
+
       console.log(
         `[observatory_pricing/seed_v1] attempted=${attempted} inserted=${inserted} skipped=${attempted - inserted}`,
       )
       process.exit(0)
     })
     .catch((err: unknown) => {
-      // eslint-disable-next-line no-console
+
       console.error('[observatory_pricing/seed_v1] failed:', err)
       process.exit(1)
     })

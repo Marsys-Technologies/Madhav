@@ -299,7 +299,7 @@ export function registerChartSnapshot(server: McpServer, principal: Principal): 
   server.resource(
     'chart-snapshot',
     new ResourceTemplate('marsys://chart-snapshot/{chart_id}', { list: undefined }),
-    async (uri, _variables) => {
+    async (uri) => {
       // Extract chart_id from the URI path (matches chart_bundle_resource.ts pattern)
       const chartId = (uri.pathname ?? '').replace(/^\//, '')
       if (!chartId) {

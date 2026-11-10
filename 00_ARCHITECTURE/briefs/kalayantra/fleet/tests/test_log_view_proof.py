@@ -168,7 +168,7 @@ def test_v7_the_cli_exits_zero_only_when_proven_and_retains_counts_never_payload
 def test_v8_the_real_workflow_reads_the_view_unfiltered_before_the_extraction_and_retains_the_proof():
     text = (REPO / ".github" / "workflows" / "gochara-seal-approved.yml").read_text()
     start = text.index("- name: Retrieve the brief from the execution's logs")
-    step = text[start:text.index("      - name:", start + 10)]
+    step = text[start:text.index("      - name:", start + 10)].replace("\\\n", "")
     probe = next(ln for ln in step.splitlines() if "view_probe_logs.json" in ln and "gcloud logging read" in ln)
     assert "--view=gochara_verification_job" in probe and "--bucket=_Default --location=global" in probe and "--limit=200" in probe
     assert "resource.type" not in probe and "job_name" not in probe              # no resource filter: a foreign entry could show up in it

@@ -7,7 +7,7 @@
  * L0FR Stream A — authored 2026-06-07
  */
 
-import { formatBundleForPrompt, type BulkContextBundle } from './bundler'
+import type { BulkContextBundle } from './bundler'
 import { CostTracker } from '../shared/cost_tracker'
 
 export interface SynthesisRequest {
@@ -41,24 +41,6 @@ export async function synthesize(
   // vertexClient: VertexAIClient  // injected in production
 ): Promise<SynthesisResult> {
   const tracker = new CostTracker()
-  const bundleText = formatBundleForPrompt(request.bundle)
-
-  const systemPrompt = [
-    'You are Madhav, an acharya-grade Jyotish instrument.',
-    'Provide precise, citation-backed answers from the provided retrieval context.',
-    'Format citations as [source: marsys://...].',
-    'Do not fabricate computations — cite only what is in the context.',
-    '',
-    bundleText,
-  ].join('\n')
-
-  // TODO: Wire to actual Vertex AI Gemini 2.5 Flash call
-  // const response = await vertexClient.generateContent({
-  //   model: 'gemini-2.5-flash',
-  //   systemInstruction: systemPrompt,
-  //   contents: [{ role: 'user', parts: [{ text: request.query }] }],
-  // })
-
   // Stub response for pattern validation
   const stubAnswer = `[SYNTHESIS_STUB] Query: "${request.query}"\n\nContext sections available: ${request.bundle.sections.map(s => s.uri).join(', ')}\n\nFull synthesis requires Vertex AI Gemini 2.5 Flash (wired in Stream E/production).`
 

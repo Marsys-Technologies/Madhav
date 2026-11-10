@@ -143,7 +143,6 @@ console.log(`CONSUME_UI_V2_ENABLED=${envVal}`)
 console.log(line)
 
 const colCheck = 44
-const colPass = 6
 for (const r of rows) {
   const label = r.check.padEnd(colCheck).slice(0, colCheck)
   const status = r.pass ? ' PASS' : ' FAIL'

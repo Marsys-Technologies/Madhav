@@ -20,7 +20,6 @@ import type {
   PerSchoolSignalResult,
 } from '@/lib/tools/multi_school_signal_lookup'
 import type {
-  ConvergenceScoreLookupInput,
   ConvergenceScoreLookupOutput,
   ConvergenceScoreRow,
 } from '@/lib/tools/convergence_score_lookup'

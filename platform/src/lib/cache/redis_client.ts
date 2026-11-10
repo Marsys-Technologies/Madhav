@@ -59,14 +59,14 @@ export function getRedis(): Redis | null {
       // Demote to warn — Redis-unreachable is an expected degraded state.
       // We do NOT mark the client permanently dead on transient errors;
       // ioredis handles reconnect. We only swallow to keep the process alive.
-      // eslint-disable-next-line no-console
+
       console.warn('[redis] connection error:', err.message)
     })
 
     return _client
   } catch (err) {
     _disabledReason = err instanceof Error ? err.message : String(err)
-    // eslint-disable-next-line no-console
+
     console.warn('[redis] init failed:', _disabledReason)
     _client = null
     return null

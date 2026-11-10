@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { createToolCache } from '../tool_cache'
 import { executeWithCache } from '../with_cache'
 import type { QueryPlan, ToolBundle, RetrievalTool } from '../../retrieval/shared_types'

@@ -1,7 +1,7 @@
 'use client'
 
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
-import { isOnPlan, getClassColor } from '../colors'
+import { isOnPlan } from '../colors'
 import type { SessionIndex } from '@/lib/build/types'
 
 interface Props {

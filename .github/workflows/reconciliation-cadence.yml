@@ -66,4 +66,5 @@ jobs:
       - name: Surface static-pass exit status
         if: steps.static_pass.outcome == 'failure'
         run: |
-          echo "::warning::Reconciliation cadence found register/code divergence(s) this run — see the uploaded report artifact. This does not fail the workflow (divergence is a finding to triage, not a build break)."
+          echo "::warning::Reconciliation cadence found register/code divergence(s) this run — \
+          see the uploaded report artifact. This does not fail the workflow (divergence is a finding to triage, not a build break)."

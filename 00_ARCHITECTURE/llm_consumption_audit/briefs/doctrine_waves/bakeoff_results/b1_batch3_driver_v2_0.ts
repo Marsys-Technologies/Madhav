@@ -106,7 +106,7 @@ import { buildActiveRoster } from '/Users/Dev/Vibe-Coding/Apps/Madhav/.claude/wo
 import { hierarchicalEnsembleModel } from '/Users/Dev/Vibe-Coding/Apps/Madhav/.claude/worktrees/wave-D-4b-B1-full-rerun-2/platform/scripts/audit/t0_retrodiction/lib/a3_scoring_harness/ensemble_model'
 import { runMirroredScoringHarness, type MirroredScoringParams } from '/Users/Dev/Vibe-Coding/Apps/Madhav/.claude/worktrees/wave-D-4b-B1-full-rerun-2/platform/scripts/audit/t0_retrodiction/lib/a3_scoring_harness/harness'
 import { assertRosterBindable, RosterBindFailureError } from '/Users/Dev/Vibe-Coding/Apps/Madhav/.claude/worktrees/wave-D-4b-B1-full-rerun-2/platform/scripts/audit/t0_retrodiction/lib/a3_scoring_harness/roster_bind'
-import { assertNoSealedSplitEvents, filterToTrainScope, TEST_SPLIT_BOUNDARY } from '/Users/Dev/Vibe-Coding/Apps/Madhav/.claude/worktrees/wave-D-4b-B1-full-rerun-2/platform/scripts/audit/t0_retrodiction/lib/a3_scoring_harness/sealed_split_guard'
+import { assertNoSealedSplitEvents, filterToTrainScope } from '/Users/Dev/Vibe-Coding/Apps/Madhav/.claude/worktrees/wave-D-4b-B1-full-rerun-2/platform/scripts/audit/t0_retrodiction/lib/a3_scoring_harness/sealed_split_guard'
 import type { CurveEvent, DateConfidence, EventShape } from '/Users/Dev/Vibe-Coding/Apps/Madhav/.claude/worktrees/wave-D-4b-B1-full-rerun-2/platform/scripts/audit/t0_retrodiction/lib/a3_scoring_harness/shape_scoring'
 import { shuffledBirthControlCurve } from '/Users/Dev/Vibe-Coding/Apps/Madhav/.claude/worktrees/wave-D-4b-B1-full-rerun-2/platform/scripts/audit/t0_retrodiction/lib/a3_scoring_harness/curve_controls'
 import {

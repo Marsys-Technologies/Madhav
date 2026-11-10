@@ -25,6 +25,7 @@ from . import WriterBase, ContextSpec, WriterResult, register
 from bodha_writers.data_plane_contracts import l2_producer
 from brahmagyan.graha_vocabulary import to_title
 from brahmagyan.domain_vocabulary import CANONICAL_DOMAINS, CANONICAL_DOMAINS_SORTED
+from brahmagyan.verification_tiers import SINGLE_PASS as LEGACY_SINGLE_PASS
 
 logger = logging.getLogger(__name__)
 
@@ -348,7 +349,7 @@ def _build_nodes_for_aya(
             # by a second pass. Demoted to "single_pass" -- verification_vocab.py's
             # declared alias of "single", both resolving to formulas.py
             # VERIFICATION_RESCALE 0.85 vs 1.00 for two_pass_verified (#1729/D-CND-05).
-            "verification_pass_status": "single_pass",
+            "verification_pass_status": LEGACY_SINGLE_PASS,
             "citation_ref": f"bo_bimba/graha/{graha}",
             "citation_human": f"Graha node: {graha}",
             "computed_at": now,
@@ -403,7 +404,7 @@ def _build_nodes_for_aya(
             # by a second pass. Demoted to "single_pass" -- verification_vocab.py's
             # declared alias of "single", both resolving to formulas.py
             # VERIFICATION_RESCALE 0.85 vs 1.00 for two_pass_verified (#1729/D-CND-05).
-            "verification_pass_status": "single_pass",
+            "verification_pass_status": LEGACY_SINGLE_PASS,
             "citation_ref": f"bo_bimba/bhava/{h}",
             "citation_human": f"Bhava node: house {h}",
             "computed_at": now,
@@ -453,7 +454,7 @@ def _build_nodes_for_aya(
             # by a second pass. Demoted to "single_pass" -- verification_vocab.py's
             # declared alias of "single", both resolving to formulas.py
             # VERIFICATION_RESCALE 0.85 vs 1.00 for two_pass_verified (#1729/D-CND-05).
-            "verification_pass_status": "single_pass",
+            "verification_pass_status": LEGACY_SINGLE_PASS,
             "citation_ref": f"bo_bimba/domain/{domain}",
             "citation_human": f"Domain node: {domain}",
             "computed_at": now,

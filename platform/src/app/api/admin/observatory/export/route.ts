@@ -2,7 +2,7 @@
 //
 // Phase O — O.3 Export — usage-event export endpoint. Authored by
 // USTAD_S3_4_EXPORT_O3_CLOSE. Gated through the shared observatory guard
-// (OBSERVATORY_ENABLED feature flag + super-admin role check). Output is
+// (MARSYS_FLAG_OBSERVATORY_ENABLED feature flag + super-admin role check). Output is
 // either CSV with `Content-Disposition: attachment` or JSON with an
 // `export_meta` wrapper. The route enforces a 90-day window cap and a
 // 50 000-row limit cap before touching the DB.

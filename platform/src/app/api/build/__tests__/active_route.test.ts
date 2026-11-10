@@ -30,9 +30,6 @@ import { GET } from '../active/route'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function makeReq(): Request {
-  return new Request('http://localhost/api/build/active', { method: 'GET' })
-}
 
 /** Build row factory. */
 function makeBuildRow(overrides: Partial<{

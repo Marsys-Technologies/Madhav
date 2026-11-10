@@ -229,7 +229,7 @@ describe('R11F-B-S3: iteration cap — AgenticLoopCapExceeded after MAX_ITERATIO
     const toolExecutor = vi.fn().mockResolvedValue('result')
 
     async function drainLoop() {
-      for await (const _e of runAgenticLoop(adapter, BASE_REQUEST, toolExecutor, OPENAI_LOOP_CONFIG)) {
+      for await (const {} of runAgenticLoop(adapter, BASE_REQUEST, toolExecutor, OPENAI_LOOP_CONFIG)) {
         // drain
       }
     }
@@ -242,7 +242,7 @@ describe('R11F-B-S3: iteration cap — AgenticLoopCapExceeded after MAX_ITERATIO
     const toolExecutor = vi.fn().mockResolvedValue('result')
 
     try {
-      for await (const _e of runAgenticLoop(adapter, BASE_REQUEST, toolExecutor, OPENAI_LOOP_CONFIG)) {
+      for await (const {} of runAgenticLoop(adapter, BASE_REQUEST, toolExecutor, OPENAI_LOOP_CONFIG)) {
         // drain
       }
     } catch (err) {
@@ -258,7 +258,7 @@ describe('R11F-B-S3: iteration cap — AgenticLoopCapExceeded after MAX_ITERATIO
     const toolExecutor = vi.fn().mockResolvedValue('result')
 
     try {
-      for await (const _e of runAgenticLoop(adapter, BASE_REQUEST, toolExecutor, OPENAI_LOOP_CONFIG)) {
+      for await (const {} of runAgenticLoop(adapter, BASE_REQUEST, toolExecutor, OPENAI_LOOP_CONFIG)) {
         // drain
       }
     } catch (err) {

@@ -117,7 +117,7 @@ test.describe('/clients/[id]/build — R3b Build mode', () => {
 
   // ── Auth guard ─────────────────────────────────────────────────────────────
 
-  test('unauthenticated request redirects away from build page', async ({ context, page }) => {
+  test('unauthenticated request redirects away from build page', async ({ context }) => {
     // Open a fresh context without the session cookie
     const freshContext = await context.browser()!.newContext()
     const freshPage = await freshContext.newPage()

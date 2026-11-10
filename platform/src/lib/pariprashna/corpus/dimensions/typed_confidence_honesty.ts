@@ -21,7 +21,7 @@ import type { DimensionResult, TurnObservation } from '../types'
 export const TYPED_CONFIDENCE_HONESTY_DIMENSION = 'typed_confidence_honesty' as const
 
 // The param is kept (unused) so this matches the DimensionScorer signature every other dimension implements.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+
 export function scoreTypedConfidenceHonesty(_obs: TurnObservation): DimensionResult {
   return {
     dimension: TYPED_CONFIDENCE_HONESTY_DIMENSION,

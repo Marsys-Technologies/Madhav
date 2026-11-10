@@ -1,6 +1,5 @@
 import type { PromptTemplate } from '../types'
 import {
-  REQUIRED_PLACEHOLDERS_BASE,
   STYLE_SUFFIXES,
 } from './shared'
 

@@ -51,7 +51,8 @@ jobs:
           gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/approvals" > approvals.json
           echo "reviews returned: $(jq 'length' approvals.json)"
           echo "keys of the first review: $(jq -c '.[0] | keys' approvals.json)"
-          jq -r 'to_entries[] | "position \(.key): state=\(.value.state) login=\(.value.user.login) environments=\([.value.environments[].name] | join(",")) comment=\((.value.comment // "") | gsub("\n";" ") | .[0:160])"' approvals.json
+          jq -r 'to_entries[] | "position \(.key): state=\(.value.state) login=\(.value.user.login) environments=\([.value.environments[].name] | join(",")) comment=\((.value.comment // '\
+          '"") | gsub("\n";" ") | .[0:160])"' approvals.json
           jq -e 'any(.[]; (.environments // []) | any(.name == "gochara-seal"))' approvals.json >/dev/null
           {
             echo "## Gate proof — approval history exactly as the API returned it"
@@ -60,7 +61,8 @@ jobs:
             jq -r 'to_entries[] | "position \(.key): state=\(.value.state) login=\(.value.user.login) comment=\((.value.comment // "") | gsub("\n";" ") | .[0:160])"' approvals.json
             echo '```'
             echo
-            echo "Record in the proof report: the refusal text of the non-protected-branch dispatch; the position order above (oldest-first or newest-first); whether an attempt field exists (keys line)."
+            echo "Record in the proof report: the refusal text of the non-protected-branch dispatch; \
+          the position order above (oldest-first or newest-first); whether an attempt field exists (keys line)."
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Retain the history (non-secret) for the proof report

@@ -34,7 +34,6 @@
  *
  * Usage:
  *   DATABASE_URL="postgresql://amjis_app:<pw>@localhost:5433/amjis" \
- *   GCP_PROJECT=madhav-astrology \
  *   npx tsx platform/scripts/bootstrap/bootstrap_classical_texts_jaimini.ts
  *
  *   With --dry-run: parse and report counts without writing to DB.
@@ -45,7 +44,6 @@ import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import {
   chunkVerse,
-  estimateTokens,
   type RawVerse,
   type ClassicalChunk,
 } from './lib/classical_text_chunker.js';

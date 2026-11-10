@@ -280,7 +280,7 @@ async function safeComputeCost(
       db,
     )
   } catch (err) {
-    // eslint-disable-next-line no-console
+
     console.error('[openai_observed] computeCost failed:', err)
     return null
   }
@@ -295,7 +295,7 @@ async function safePersist(
     const cost = await safeComputeCost(request, observed, db)
     return await persistObservation(request, observed, cost, db)
   } catch (err) {
-    // eslint-disable-next-line no-console
+
     console.error('[openai_observed] persistObservation failed:', err)
     return null
   }

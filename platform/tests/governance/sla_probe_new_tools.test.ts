@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 // D7 Step 4: RETRIEVAL_TOOLS from lib/retrieve retired — check bridge + spec instead
-import { TOOL_NAME_TO_URI } from '@/lib/retrieval/registry/tool_name_bridge'
 import { RETRIEVAL_CAPABILITY_SPEC, getCapability } from '@/lib/router/retrieval_capability_spec'
 
 const NEW_TOOLS = ['query_muhurat', 'query_jaimini_drishti', 'query_v7_additions']

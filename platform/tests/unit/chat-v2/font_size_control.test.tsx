@@ -5,7 +5,7 @@
  * Click-path: Chat V2 header → click Aa+ → text grows → click again → max →
  *   further click is no-op → click Aa− → shrinks one step.
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { render, act } from '@testing-library/react'
 import React, { useState } from 'react'
 import { TEXT_SCALES } from '@/hooks/useChatPreferences'

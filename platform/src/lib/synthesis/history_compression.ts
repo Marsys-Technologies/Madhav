@@ -95,7 +95,7 @@ export interface CompressionOptions {
  *   conversationId + tailStart index), prepends the summary as a synthetic
  *   user/assistant pair, and appends the verbatim tail.
  *
- * Called from route.ts when HISTORY_COMPRESSION_ENABLED=true.
+ * Called from route.ts when MARSYS_FLAG_HISTORY_COMPRESSION_ENABLED=true.
  */
 export async function compressHistory(
   messages: ModelMessage[],

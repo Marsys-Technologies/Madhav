@@ -65,8 +65,8 @@ describe('platform-mcp: pre-fix generation label', () => {
   it('synth_chart_brief_get: pre-fix empirical row is downgraded, post-fix empirical row is not; flags + disclosure present', async () => {
     const r = await handlers['synth_chart_brief_get']!({ chart_id: CHART_ID, depth: 'standard' })
     expect(r.isError).toBeFalsy()
-    const c = (JSON.parse(r.content[0]!.text) as { content: Record<string, any> }).content
-    const strata = c.calibration_strata as Array<Record<string, any>>
+    const c = (JSON.parse(r.content[0]!.text) as { content: Record<string, unknown> }).content
+    const strata = c.calibration_strata as Array<Record<string, unknown>>
     const pre = strata.find(s => s.insight_id === 'co_pre')!
     const post = strata.find(s => s.insight_id === 'co_post')!
     expect(pre.evidence_grade).toBe('unvalidated_prefix')
@@ -80,12 +80,12 @@ describe('platform-mcp: pre-fix generation label', () => {
     expect(String(post.statement)).toContain('28.6% across 7 events (evidence: empirical)')
     expect(c.generation_flags).toEqual(['l5_rows_pre_fix_generation'])
     expect(c.generation_disclosure).toMatchObject({ pre_fix_rows: 4, post_fix_rows: 1, empirical_downgraded_rows: 2, structural_proxy_rows: 1 })
-    const lb = (c.load_bearing_signals as Array<Record<string, any>>)[0]!
+    const lb = (c.load_bearing_signals as Array<Record<string, unknown>>)[0]!
     expect(lb.statement).not.toContain('Removing this signal would materially alter the reading.')
     expect(lb.statement).toContain('structural proxy only')
     expect(lb.claim_status).toBe('structural_proxy_only')
     // verdict rows are not rewritten (only labelled); layer constants stay (stricter)
-    const v = (c.verdict_summary as Array<Record<string, any>>)[0]!
+    const v = (c.verdict_summary as Array<Record<string, unknown>>)[0]!
     expect(v.statement).toContain('promised (grade 8.8/10)')
     expect(c.calibration_mode).toBe('STRUCTURAL')
     // a pre-fix verdict row whose stored grade was 'empirical' is hedged in the narrated themes
@@ -96,7 +96,7 @@ describe('platform-mcp: pre-fix generation label', () => {
 
   it('mimamsa_insight_get: layer constants stay prior_only/STRUCTURAL, note defers to unit-level grade, inner disclosure passes through', async () => {
     const r = await handlers['mimamsa_insight_get']!({ chart_id: CHART_ID })
-    const c = (JSON.parse(r.content[0]!.text) as { content: Record<string, any> }).content
+    const c = (JSON.parse(r.content[0]!.text) as { content: Record<string, unknown> }).content
     expect(c.calibration_status).toBe('prior_only')
     expect(c.mode).toBe('STRUCTURAL')
     expect(c.note).toContain('unvalidated_prefix')

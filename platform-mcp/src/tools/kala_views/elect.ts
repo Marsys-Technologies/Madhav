@@ -150,8 +150,7 @@ export const KalaElectInputShape = {
   budget_kb: z.number().min(1).max(200).optional().describe('Response size ceiling in KB. Default 40.'),
 }
 
-const KalaElectZod = z.object(KalaElectInputShape)
-export type KalaElectInput = z.infer<typeof KalaElectZod>
+export type KalaElectInput = z.infer<z.ZodObject<typeof KalaElectInputShape>>
 
 // ── Response shape (envelope + ELECT-specific candidate slate) ─────────────────────────
 

@@ -5,32 +5,43 @@
 # ZERO human approval gates. Safety = automated rails (see execution plan §6).
 # ─────────────────────────────────────────────────────────────────────────────
 program: PLATFORM_MODERNIZATION
-plan:            00_ARCHITECTURE/PLATFORM_MODERNIZATION_MASTER_PLAN_v2_0.md   # v2.1
-execution_plan:  00_ARCHITECTURE/PLATFORM_MODERNIZATION_EXECUTION_PLAN_v1_0.md
-program_state:   00_ARCHITECTURE/CONDUCTOR/modernization/PROGRAM_STATE.md
-seal_artifact:   00_ARCHITECTURE/PLATFORM_MODERNIZATION_CLOSE_v1_0.md          # batch 5 close
-status:          SEALED                # arc closed 2026-05-28 via 4.red_team_seal
-integration:     conductor_cherry_pick_to_main_on_green
-human_gates:     none
-prod_mode:       zero_touch          # prod DB/deploy/secret/flag ops run autonomously
-context_budget_subagents: 20         # re-kick after this many sub-agent spawns
+plan: 00_ARCHITECTURE/PLATFORM_MODERNIZATION_MASTER_PLAN_v2_0.md  # v2.1
+execution_plan: 00_ARCHITECTURE/PLATFORM_MODERNIZATION_EXECUTION_PLAN_v1_0.md
+program_state: 00_ARCHITECTURE/CONDUCTOR/modernization/PROGRAM_STATE.md
+seal_artifact: 00_ARCHITECTURE/PLATFORM_MODERNIZATION_CLOSE_v1_0.md  # batch 5 close
+status: SEALED  # arc closed 2026-05-28 via 4.red_team_seal
+integration: conductor_cherry_pick_to_main_on_green
+human_gates: none
+prod_mode: zero_touch  # prod DB/deploy/secret/flag ops run autonomously
+context_budget_subagents: 20  # re-kick after this many sub-agent spawns
 
 streams:
-  A: { worktree: ../MadhavStreamA, branch: prog/stream-a }
-  B: { worktree: ../MadhavStreamB, branch: prog/stream-b }
-  C: { worktree: ../MadhavStreamC, branch: prog/stream-c }
+  A: {worktree: ../MadhavStreamA, branch: prog/stream-a}
+  B: {worktree: ../MadhavStreamB, branch: prog/stream-b}
+  C: {worktree: ../MadhavStreamC, branch: prog/stream-c}
 
 # Hard gates — a check_command exiting 0 = GREEN (barrier opens). Until green, any
 # unit listing the gate in blockedBy is INELIGIBLE.
 gates:
-  naming_ci:        { status: GREEN,   check: "python platform/scripts/governance/naming_lint.py", note: "Set by 0a.0 Batch 1; 77 baseline." }
-  jh_oracle_pinned: { status: GREEN,   check: "test -f python-sidecar/natal_engine/fixtures/jh_oracle.json", note: "Pinned 2026-05-28 JH True Chitra 23°37'09.78\"." }
-  G1_jh_parity:     { status: GREEN,   check: "pytest python-sidecar/natal_engine/tests/test_jh_parity.py -q", note: "Set by 1.2 Batch 2; 31/31 tests; residual 7.62\" under 60\" tol." }
-  G2_authz_live:    { status: GREEN,   check: "pnpm vitest run platform/src/lib/auth/__tests__/authorize_chart_access.test.ts", note: "Set by 2c Batch 2; 6/6 tests; authorizeChartAccess + RLS." }
-  G3_contract:      { status: GREEN,   check: "pnpm vitest run platform/src/lib/contract/__tests__/unified_contract.test.ts", note: "Set by 2b Batch 2; 6/6 tests." }
-  G4_no_native_lit: { status: GREEN,   check: "platform/scripts/governance/assert_no_native_literal.sh", note: "Set by 2a Batch 3; exit 0." }
-  G5b_onfinish:     { status: GREEN,   check: "pnpm vitest run platform/src/app/api/chat/__tests__/onfinish_parity.golden.test.ts", note: "Set by 3.cutover Batch 4; 18/18 golden tests; runOnFinishWriteThrough closes 6 parity gaps." }
-  G6_tool_coverage: { status: GREEN,   check: "pnpm vitest run platform/src/lib/contract/__tests__/tool_asset_coverage.test.ts", note: "Set by 3.tool_asset_recon Batch 3; 19 assets / 77 tools / 0 orphans / 0 redundancies / 0 ayanamsha mismatches." }
+  naming_ci: {status: GREEN, check: 'python platform/scripts/governance/naming_lint.py', note: 'Set by 0a.0 Batch 1; 77 baseline.'}
+  jh_oracle_pinned: {status: GREEN, check: 'test -f python-sidecar/natal_engine/fixtures/jh_oracle.json', note: 'Pinned 2026-05-28 JH True Chitra 23°37''09.78".'}
+  G1_jh_parity: {status: GREEN, check: 'pytest python-sidecar/natal_engine/tests/test_jh_parity.py -q', note: 'Set by 1.2 Batch 2; 31/31 tests; residual 7.62" under 60" tol.'}
+  G2_authz_live:
+    {status: GREEN, check: 'pnpm vitest run platform/src/lib/auth/__tests__/authorize_chart_access.test.ts', note: 'Set by 2c Batch 2; 6/6 tests; authorizeChartAccess + RLS.'}
+  G3_contract: {status: GREEN, check: 'pnpm vitest run platform/src/lib/contract/__tests__/unified_contract.test.ts', note: 'Set by 2b Batch 2; 6/6 tests.'}
+  G4_no_native_lit: {status: GREEN, check: 'platform/scripts/governance/assert_no_native_literal.sh', note: 'Set by 2a Batch 3; exit 0.'}
+  G5b_onfinish:
+    {
+      status: GREEN,
+      check: 'pnpm vitest run platform/src/app/api/chat/__tests__/onfinish_parity.golden.test.ts',
+      note: 'Set by 3.cutover Batch 4; 18/18 golden tests; runOnFinishWriteThrough closes 6 parity gaps.',
+    }
+  G6_tool_coverage:
+    {
+      status: GREEN,
+      check: 'pnpm vitest run platform/src/lib/contract/__tests__/tool_asset_coverage.test.ts',
+      note: 'Set by 3.tool_asset_recon Batch 3; 19 assets / 77 tools / 0 orphans / 0 redundancies / 0 ayanamsha mismatches.',
+    }
 
 units:
   # ── Program support — build FIRST so it can track everything (ephemeral) ──────
@@ -39,11 +50,11 @@ units:
     brief: briefs/BRIEF_0t_program_tracker.md
     stream: A
     blockedBy: []
-    may_touch: ["tools/program-tracker/**"]
-    must_not_touch: ["platform/src/**", "platform-mcp/src/**", "platform/migrations/**"]
-    check_commands: ["node tools/program-tracker/test/smoke.mjs"]
+    may_touch: ['tools/program-tracker/**']
+    must_not_touch: ['platform/src/**', 'platform-mcp/src/**', 'platform/migrations/**']
+    check_commands: ['node tools/program-tracker/test/smoke.mjs']
     on_red: rollback
-    lifecycle: ephemeral   # rm -rf tools/program-tracker/ + delete amjis-tracker at program close
+    lifecycle: ephemeral  # rm -rf tools/program-tracker/ + delete amjis-tracker at program close
 
   # ── Wave 0a — pure, safe renames (behind naming_ci) ───────────────────────────
   - id: 0a.0
@@ -51,9 +62,9 @@ units:
     brief: briefs/BRIEF_0a0_naming_ci.md
     stream: A
     blockedBy: []
-    may_touch: ["platform/scripts/governance/**", ".github/workflows/ci.yml"]
-    must_not_touch: ["platform/src/app/**", "platform-mcp/src/**"]
-    check_commands: ["python platform/scripts/governance/naming_lint.py --self-test"]
+    may_touch: ['platform/scripts/governance/**', '.github/workflows/ci.yml']
+    must_not_touch: ['platform/src/app/**', 'platform-mcp/src/**']
+    check_commands: ['python platform/scripts/governance/naming_lint.py --self-test']
     on_red: rollback
     sets_gate: naming_ci
 
@@ -62,9 +73,19 @@ units:
     brief: briefs/BRIEF_0a1_route_renames.md
     stream: A
     blockedBy: [naming_ci]
-    may_touch: ["platform/src/app/api/chat/consume/**", "platform/src/app/api/chat/consult/**", "platform/src/app/consume/**", "platform/src/app/consult/**", "platform/src/app/api/panchang/**", "platform/src/app/api/panchanga/**", "platform/src/app/clients/[id]/consume/**", "platform/src/app/clients/[id]/consult/**"]
-    must_not_touch: ["platform/src/lib/synthesis/**", "platform-mcp/**", "platform/migrations/**"]
-    check_commands: ["pnpm vitest run platform/src/app/api/chat", "python platform/scripts/governance/naming_lint.py"]
+    may_touch:
+      [
+        'platform/src/app/api/chat/consume/**',
+        'platform/src/app/api/chat/consult/**',
+        'platform/src/app/consume/**',
+        'platform/src/app/consult/**',
+        'platform/src/app/api/panchang/**',
+        'platform/src/app/api/panchanga/**',
+        'platform/src/app/clients/[id]/consume/**',
+        'platform/src/app/clients/[id]/consult/**',
+      ]
+    must_not_touch: ['platform/src/lib/synthesis/**', 'platform-mcp/**', 'platform/migrations/**']
+    check_commands: ['pnpm vitest run platform/src/app/api/chat', 'python platform/scripts/governance/naming_lint.py']
     on_red: rollback
 
   # ── Wave 0b — behaviour-altering (kept out of the rename batch) ────────────────
@@ -73,30 +94,39 @@ units:
     brief: briefs/BRIEF_0b1_b11_adapter_gate.md
     stream: B
     blockedBy: []
-    may_touch: ["platform/src/app/api/chat/consume/route.ts", "platform/src/lib/synthesis/streaming_citation_validator.ts", "platform/src/app/api/chat/__tests__/**"]
-    must_not_touch: ["platform/src/lib/synthesis/orchestrator.ts", "platform/src/lib/synthesis/single_model_strategy.ts"]
-    check_commands: ["pnpm vitest run platform/src/app/api/chat"]
+    may_touch: ['platform/src/app/api/chat/consume/route.ts', 'platform/src/lib/synthesis/streaming_citation_validator.ts', 'platform/src/app/api/chat/__tests__/**']
+    must_not_touch: ['platform/src/lib/synthesis/orchestrator.ts', 'platform/src/lib/synthesis/single_model_strategy.ts']
+    check_commands: ['pnpm vitest run platform/src/app/api/chat']
     on_red: rollback
-    contributes_gate: G5b_onfinish   # citation-gate-on-adapter is half of G5b
+    contributes_gate: G5b_onfinish  # citation-gate-on-adapter is half of G5b
 
   - id: 0b.2
     wave: 0b
     brief: briefs/BRIEF_0b2_secret_dbpw_remediation.md
     stream: B
     blockedBy: []
-    may_touch: ["platform/scripts/**", "scripts/**", ".github/workflows/deploy.yml", "platform/cloudbuild*.yaml", "platform-mcp/cloudbuild.yaml"]
-    must_not_touch: ["platform/src/**", "platform-mcp/src/**"]
-    check_commands: ["platform/scripts/governance/secret_scan.sh"]
-    on_red: halt_queue   # leaked-secret failure is systemic
+    may_touch: ['platform/scripts/**', 'scripts/**', '.github/workflows/deploy.yml', 'platform/cloudbuild*.yaml', 'platform-mcp/cloudbuild.yaml']
+    must_not_touch: ['platform/src/**', 'platform-mcp/src/**']
+    check_commands: ['platform/scripts/governance/secret_scan.sh']
+    on_red: halt_queue  # leaked-secret failure is systemic
 
   - id: 0b.3
     wave: 0b
     brief: briefs/BRIEF_0b3_mirror_retirement.md
     stream: C
     blockedBy: []
-    may_touch: ["CLAUDE.md", "00_ARCHITECTURE/GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md", "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md", "00_ARCHITECTURE/NATIVE_DIRECTIVES_FOR_REVISION_v1_0.md", ".geminirules", ".gemini/**", "platform/scripts/governance/mirror_enforcer.py"]
-    must_not_touch: ["platform/src/**", "platform-mcp/src/**", "platform/migrations/**"]
-    check_commands: ["python platform/scripts/governance/drift_detector.py"]
+    may_touch:
+      [
+        'CLAUDE.md',
+        '00_ARCHITECTURE/GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md',
+        '00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md',
+        '00_ARCHITECTURE/NATIVE_DIRECTIVES_FOR_REVISION_v1_0.md',
+        '.geminirules',
+        '.gemini/**',
+        'platform/scripts/governance/mirror_enforcer.py',
+      ]
+    must_not_touch: ['platform/src/**', 'platform-mcp/src/**', 'platform/migrations/**']
+    check_commands: ['python platform/scripts/governance/drift_detector.py']
     on_red: rollback
 
   # ── Wave 1 — JH-equivalent engine (gates all of L2.5) ─────────────────────────
@@ -105,9 +135,9 @@ units:
     brief: briefs/BRIEF_1_1_engine_scaffold.md
     stream: C
     blockedBy: [naming_ci]
-    may_touch: ["platform/python-sidecar/natal_engine/**"]
-    must_not_touch: ["platform/python-sidecar/routers/**", "platform/src/**"]
-    check_commands: ["pytest platform/python-sidecar/natal_engine/tests/test_scaffold.py -q"]
+    may_touch: ['platform/python-sidecar/natal_engine/**']
+    must_not_touch: ['platform/python-sidecar/routers/**', 'platform/src/**']
+    check_commands: ['pytest platform/python-sidecar/natal_engine/tests/test_scaffold.py -q']
     on_red: rollback
 
   - id: 1.2
@@ -115,10 +145,10 @@ units:
     brief: briefs/BRIEF_1_2_engine_to_parity.md
     stream: C
     blockedBy: [1.1, jh_oracle_pinned]
-    may_touch: ["platform/python-sidecar/natal_engine/**"]
-    must_not_touch: ["platform/python-sidecar/routers/**", "platform/src/**"]
-    check_commands: ["pytest python-sidecar/natal_engine/tests/test_jh_parity.py -q"]
-    on_red: halt_queue   # engine parity failure blocks all of L2.5 — stop and surface
+    may_touch: ['platform/python-sidecar/natal_engine/**']
+    must_not_touch: ['platform/python-sidecar/routers/**', 'platform/src/**']
+    check_commands: ['pytest python-sidecar/natal_engine/tests/test_jh_parity.py -q']
+    on_red: halt_queue  # engine parity failure blocks all of L2.5 — stop and surface
     sets_gate: G1_jh_parity
 
   # ── Waves 2/3/4 — placeholders; briefs authored when their gates approach ──────
@@ -128,9 +158,9 @@ units:
     stream: A
     blockedBy: [naming_ci]
     sets_gate: G3_contract
-    may_touch: ["platform/src/lib/contract/**", "platform/src/lib/retrieve/index.ts", "00_ARCHITECTURE/CAPABILITY_MANIFEST.json", "platform-mcp/src/**"]
-    must_not_touch: ["platform/src/app/api/chat/consume/route.ts", "platform/migrations/**", "platform/python-sidecar/**"]
-    check_commands: ["npx vitest run platform/src/lib/contract/__tests__/unified_contract.test.ts"]
+    may_touch: ['platform/src/lib/contract/**', 'platform/src/lib/retrieve/index.ts', '00_ARCHITECTURE/CAPABILITY_MANIFEST.json', 'platform-mcp/src/**']
+    must_not_touch: ['platform/src/app/api/chat/consume/route.ts', 'platform/migrations/**', 'platform/python-sidecar/**']
+    check_commands: ['npx vitest run platform/src/lib/contract/__tests__/unified_contract.test.ts']
     on_red: rollback
   - id: 2c
     wave: 2
@@ -138,20 +168,21 @@ units:
     stream: B
     blockedBy: [naming_ci]
     sets_gate: G2_authz_live
-    file_fence_note: "shares the charts table with 2a — NEVER run concurrently with 2a; shares platform/migrations/** with 2d — coordinate migration numbers or serialize"
-    may_touch: ["platform/src/lib/auth/**", "platform/src/app/api/clients/**", "platform/src/app/api/chat/consume/route.ts", "platform/migrations/**", "platform/src/app/dashboard/**"]
-    must_not_touch: ["platform/src/lib/retrieve/**", "platform/python-sidecar/**", "platform/src/lib/contract/**"]
-    check_commands: ["npx vitest run platform/src/lib/auth/__tests__/authorize_chart_access.test.ts"]
+    file_fence_note: 'shares the charts table with 2a — NEVER run concurrently with 2a; shares platform/migrations/** with 2d — coordinate migration numbers or serialize'
+    may_touch:
+      ['platform/src/lib/auth/**', 'platform/src/app/api/clients/**', 'platform/src/app/api/chat/consume/route.ts', 'platform/migrations/**', 'platform/src/app/dashboard/**']
+    must_not_touch: ['platform/src/lib/retrieve/**', 'platform/python-sidecar/**', 'platform/src/lib/contract/**']
+    check_commands: ['npx vitest run platform/src/lib/auth/__tests__/authorize_chart_access.test.ts']
     on_red: rollback
   - id: 2d
     wave: 2
     brief: briefs/BRIEF_2d_command_center.md
     stream: C
     blockedBy: [naming_ci]
-    file_fence_note: "shares platform/migrations/** with 2c — coordinate migration numbers or serialize the migration step"
-    may_touch: ["platform/src/app/cockpit/**", "platform/src/lib/config/**", "platform/migrations/**", "platform/src/lib/gates/**"]
-    must_not_touch: ["platform/python-sidecar/**", "platform/src/lib/auth/**", "platform/src/lib/contract/**"]
-    check_commands: ["npx vitest run platform/src/app/cockpit/__tests__/command_center.test.ts"]
+    file_fence_note: 'shares platform/migrations/** with 2c — coordinate migration numbers or serialize the migration step'
+    may_touch: ['platform/src/app/cockpit/**', 'platform/src/lib/config/**', 'platform/migrations/**', 'platform/src/lib/gates/**']
+    must_not_touch: ['platform/python-sidecar/**', 'platform/src/lib/auth/**', 'platform/src/lib/contract/**']
+    check_commands: ['npx vitest run platform/src/app/cockpit/__tests__/command_center.test.ts']
     on_red: rollback
   - id: 2a
     wave: 2
@@ -159,30 +190,32 @@ units:
     stream: C
     blockedBy: [G1_jh_parity]
     sets_gate: G4_no_native_lit
-    file_fence_note: "touches lib/retrieve (NATIVE removal) → tool-layer units (3.gateway/3.dejudge/3.tool_asset_recon) run AFTER 2a, never concurrent. Shares platform/migrations with 3.tier_excision → distinct number blocks (continue from 085)."
-    may_touch: ["platform/migrations/**", "platform/python-sidecar/**", "platform/src/lib/retrieve/**", "025_HOLISTIC_SYNTHESIS/**", "01_FACTS_LAYER/**"]
-    must_not_touch: ["platform/src/lib/pipelines/**", "platform/src/app/api/chat/consume/route.ts", "platform-mcp/src/**", "platform/src/app/**", "platform/src/lib/disclosure/**"]
-    check_commands: ["platform/scripts/governance/assert_no_native_literal.sh"]
+    file_fence_note: >-
+      touches lib/retrieve (NATIVE removal) → tool-layer units (3.gateway/3.dejudge/3.tool_asset_recon) run AFTER 2a, never concurrent. Shares platform/migrations with 3.tier_excision → distinct
+      number blocks (continue from 085).
+    may_touch: ['platform/migrations/**', 'platform/python-sidecar/**', 'platform/src/lib/retrieve/**', '025_HOLISTIC_SYNTHESIS/**', '01_FACTS_LAYER/**']
+    must_not_touch: ['platform/src/lib/pipelines/**', 'platform/src/app/api/chat/consume/route.ts', 'platform-mcp/src/**', 'platform/src/app/**', 'platform/src/lib/disclosure/**']
+    check_commands: ['platform/scripts/governance/assert_no_native_literal.sh']
     on_red: halt_queue
   - id: 3.dejudge
     wave: 3
     brief: briefs/BRIEF_3_dejudge.md
     stream: C
     blockedBy: [G3_contract, 2a]
-    file_fence_note: "shares lib/retrieve with 2a/3.gateway/3.tool_asset_recon — serialize the tool layer"
-    may_touch: ["platform/src/lib/retrieve/msr_sql.ts", "platform-mcp/src/tools/query_signals.ts"]
-    must_not_touch: ["platform/src/lib/pipelines/**", "platform/src/app/**", "platform/python-sidecar/**"]
-    check_commands: ["npx vitest run platform/src/lib/retrieve"]
+    file_fence_note: 'shares lib/retrieve with 2a/3.gateway/3.tool_asset_recon — serialize the tool layer'
+    may_touch: ['platform/src/lib/retrieve/msr_sql.ts', 'platform-mcp/src/tools/query_signals.ts']
+    must_not_touch: ['platform/src/lib/pipelines/**', 'platform/src/app/**', 'platform/python-sidecar/**']
+    check_commands: ['npx vitest run platform/src/lib/retrieve']
     on_red: rollback
   - id: 3.gateway_pipeline_isolation
     wave: 3
     brief: briefs/BRIEF_3_gateway_pipeline_isolation.md
     stream: A
     blockedBy: [G3_contract, 2a]
-    file_fence_note: "touches lib/retrieve dispatch + consume/route.ts — serialize after 2a; not concurrent with 3.dejudge/3.tool_asset_recon"
-    may_touch: ["platform/src/lib/pipelines/**", "platform/src/lib/gateway/**", "platform/src/app/api/chat/consume/route.ts", "platform/src/lib/synthesis/**"]
-    must_not_touch: ["platform/python-sidecar/**", "platform/src/app/clients/**", "platform/src/lib/disclosure/**"]
-    check_commands: ["npx vitest run platform/src/lib/gateway platform/src/lib/pipelines"]
+    file_fence_note: 'touches lib/retrieve dispatch + consume/route.ts — serialize after 2a; not concurrent with 3.dejudge/3.tool_asset_recon'
+    may_touch: ['platform/src/lib/pipelines/**', 'platform/src/lib/gateway/**', 'platform/src/app/api/chat/consume/route.ts', 'platform/src/lib/synthesis/**']
+    must_not_touch: ['platform/python-sidecar/**', 'platform/src/app/clients/**', 'platform/src/lib/disclosure/**']
+    check_commands: ['npx vitest run platform/src/lib/gateway platform/src/lib/pipelines']
     on_red: rollback
   - id: 3.tool_asset_recon
     wave: 3
@@ -190,30 +223,30 @@ units:
     stream: C
     blockedBy: [G3_contract, 2a]
     sets_gate: G6_tool_coverage
-    file_fence_note: "touches lib/contract + lib/retrieve + manifest — serialize after 2a; not concurrent with 3.gateway/3.dejudge"
-    may_touch: ["platform/src/lib/contract/**", "platform/src/lib/retrieve/**", "00_ARCHITECTURE/CAPABILITY_MANIFEST.json", "platform-mcp/src/**"]
-    must_not_touch: ["platform/src/app/**", "platform/python-sidecar/**", "platform/src/lib/pipelines/**", "025_HOLISTIC_SYNTHESIS/**"]
-    check_commands: ["npx vitest run platform/src/lib/contract/__tests__/tool_asset_coverage.test.ts"]
+    file_fence_note: 'touches lib/contract + lib/retrieve + manifest — serialize after 2a; not concurrent with 3.gateway/3.dejudge'
+    may_touch: ['platform/src/lib/contract/**', 'platform/src/lib/retrieve/**', '00_ARCHITECTURE/CAPABILITY_MANIFEST.json', 'platform-mcp/src/**']
+    must_not_touch: ['platform/src/app/**', 'platform/python-sidecar/**', 'platform/src/lib/pipelines/**', '025_HOLISTIC_SYNTHESIS/**']
+    check_commands: ['npx vitest run platform/src/lib/contract/__tests__/tool_asset_coverage.test.ts']
     on_red: rollback
-    note: "re-map every tool→NEW asset; coverage + no-redundancy + no-orphan; LLM-client fit (§13). Native-raised."
+    note: 're-map every tool→NEW asset; coverage + no-redundancy + no-orphan; LLM-client fit (§13). Native-raised.'
   - id: hygiene.test_chart_id
     wave: 3-hygiene
     brief: briefs/BRIEF_hygiene_test_chart_id.md
     stream: C
     blockedBy: [2a]
     priority: high
-    may_touch: ["platform/src/lib/retrieve/__tests__/**"]
-    must_not_touch: ["platform/python-sidecar/**"]
-    check_commands: ["npx vitest run platform/src/lib/retrieve"]
+    may_touch: ['platform/src/lib/retrieve/__tests__/**']
+    must_not_touch: ['platform/python-sidecar/**']
+    check_commands: ['npx vitest run platform/src/lib/retrieve']
     on_red: rollback
   - id: hygiene.flag_cleanup
     wave: 3-hygiene
     brief: briefs/BRIEF_hygiene_flag_cleanup.md
     stream: B
     blockedBy: [3.dejudge]
-    may_touch: ["platform/src/lib/feature_flags.ts", ".github/workflows/deploy.yml"]
-    must_not_touch: ["platform/src/lib/retrieve/**", "platform/python-sidecar/**"]
-    check_commands: ["python platform/scripts/governance/naming_lint.py"]
+    may_touch: ['platform/src/lib/feature_flags.ts', '.github/workflows/deploy.yml']
+    must_not_touch: ['platform/src/lib/retrieve/**', 'platform/python-sidecar/**']
+    check_commands: ['python platform/scripts/governance/naming_lint.py']
     on_red: rollback
   - id: 3.cutover
     wave: 3
@@ -221,37 +254,62 @@ units:
     stream: A
     blockedBy: [2a, 3.gateway_pipeline_isolation, 0b.1]
     sets_gate: G5b_onfinish
-    may_touch: ["platform/src/app/api/chat/consume/route.ts", "platform/src/lib/synthesis/**", "platform/src/lib/pipelines/**", "platform/src/components/consume/**", ".github/workflows/deploy.yml"]
-    must_not_touch: ["platform/python-sidecar/**", "platform/src/app/clients/**", "platform/src/lib/synthesis/orchestrator.ts"]
-    check_commands: ["npx vitest run platform/src/app/api/chat/__tests__/onfinish_parity.golden.test.ts"]
+    may_touch:
+      [
+        'platform/src/app/api/chat/consume/route.ts',
+        'platform/src/lib/synthesis/**',
+        'platform/src/lib/pipelines/**',
+        'platform/src/components/consume/**',
+        '.github/workflows/deploy.yml',
+      ]
+    must_not_touch: ['platform/python-sidecar/**', 'platform/src/app/clients/**', 'platform/src/lib/synthesis/orchestrator.ts']
+    check_commands: ['npx vitest run platform/src/app/api/chat/__tests__/onfinish_parity.golden.test.ts']
     on_red: halt_queue
   - id: 3.consult_nav
     wave: 3
     brief: briefs/BRIEF_3_consult_nav.md
     stream: B
     blockedBy: [2c]
-    may_touch: ["platform/src/app/clients/**", "platform/src/app/dashboard/**", "platform/src/app/(super-admin)/**", "platform/src/components/nav/**", "platform/src/components/sharing/**"]
-    must_not_touch: ["platform/src/lib/retrieve/**", "platform/python-sidecar/**", "platform/src/app/api/chat/consume/route.ts", "platform/src/lib/disclosure/**"]
-    check_commands: ["npx vitest run platform/src/app/clients platform/src/app/dashboard"]
+    may_touch:
+      ['platform/src/app/clients/**', 'platform/src/app/dashboard/**', 'platform/src/app/(super-admin)/**', 'platform/src/components/nav/**', 'platform/src/components/sharing/**']
+    must_not_touch: ['platform/src/lib/retrieve/**', 'platform/python-sidecar/**', 'platform/src/app/api/chat/consume/route.ts', 'platform/src/lib/disclosure/**']
+    check_commands: ['npx vitest run platform/src/app/clients platform/src/app/dashboard']
     on_red: rollback
   - id: 3.tier_excision
     wave: 3
     brief: briefs/BRIEF_3_tier_excision.md
     stream: A
     blockedBy: [G2_authz_live]
-    file_fence_note: "shares platform/migrations with 2a → distinct number blocks; shares platform-mcp/src with 3.tool_asset_recon → not concurrent"
-    may_touch: ["platform/src/lib/disclosure/**", "platform-mcp/src/**", "platform/migrations/**", "platform/src/components/disclosure/**", "platform/src/components/consume/TierPicker.tsx", "platform/src/app/api/mcp/health/**", "platform/src/app/api/mcp/keys/**"]
-    must_not_touch: ["platform/src/lib/retrieve/**", "platform/src/lib/pipelines/**", "platform/src/app/clients/**", "025_HOLISTIC_SYNTHESIS/**"]
-    check_commands: ["npx vitest run platform-mcp platform/src/app/api/mcp"]
+    file_fence_note: 'shares platform/migrations with 2a → distinct number blocks; shares platform-mcp/src with 3.tool_asset_recon → not concurrent'
+    may_touch:
+      [
+        'platform/src/lib/disclosure/**',
+        'platform-mcp/src/**',
+        'platform/migrations/**',
+        'platform/src/components/disclosure/**',
+        'platform/src/components/consume/TierPicker.tsx',
+        'platform/src/app/api/mcp/health/**',
+        'platform/src/app/api/mcp/keys/**',
+      ]
+    must_not_touch: ['platform/src/lib/retrieve/**', 'platform/src/lib/pipelines/**', 'platform/src/app/clients/**', '025_HOLISTIC_SYNTHESIS/**']
+    check_commands: ['npx vitest run platform-mcp platform/src/app/api/mcp']
     on_red: rollback
   - id: 3.legacy_delete
     wave: 3
     brief: briefs/BRIEF_3_legacy_delete.md
     stream: A
     blockedBy: [3.cutover, G5b_onfinish]
-    may_touch: ["platform/src/lib/synthesis/orchestrator.ts", "platform/src/lib/synthesis/single_model_strategy.ts", "platform/src/lib/synthesis/panel_strategy.ts", "platform/src/app/api/chat/consume/route.ts", "platform/src/app/api/mcp/execute/**", "platform-mcp/src/client.ts"]
-    must_not_touch: ["platform/src/lib/synthesis/panel/**", "platform/python-sidecar/**", "platform/src/lib/retrieve/**"]
-    check_commands: ["npx vitest run platform/src/app/api/chat"]
+    may_touch:
+      [
+        'platform/src/lib/synthesis/orchestrator.ts',
+        'platform/src/lib/synthesis/single_model_strategy.ts',
+        'platform/src/lib/synthesis/panel_strategy.ts',
+        'platform/src/app/api/chat/consume/route.ts',
+        'platform/src/app/api/mcp/execute/**',
+        'platform-mcp/src/client.ts',
+      ]
+    must_not_touch: ['platform/src/lib/synthesis/panel/**', 'platform/python-sidecar/**', 'platform/src/lib/retrieve/**']
+    check_commands: ['npx vitest run platform/src/app/api/chat']
     on_red: rollback
   # ── Wave 4 — the final seal (SQL upgrade + HA + partition deliberately deferred per §9 incremental call) ──
   - id: 4.refactor_pipeline_shim
@@ -259,62 +317,77 @@ units:
     brief: briefs/BRIEF_4_refactor_pipeline_shim.md
     stream: A
     blockedBy: [3.legacy_delete]
-    may_touch: ["platform/src/app/api/chat/consult/route.ts", "platform/src/app/api/chat/consume/route.ts", "platform/src/lib/pipelines/**", "platform/src/lib/feature_flags.ts", ".github/workflows/deploy.yml"]
-    must_not_touch: ["platform/src/lib/synthesis/panel/**", "platform/python-sidecar/**", "chart_facts"]
-    check_commands: ["npx vitest run platform/src/app/api/chat"]
+    may_touch:
+      [
+        'platform/src/app/api/chat/consult/route.ts',
+        'platform/src/app/api/chat/consume/route.ts',
+        'platform/src/lib/pipelines/**',
+        'platform/src/lib/feature_flags.ts',
+        '.github/workflows/deploy.yml',
+      ]
+    must_not_touch: ['platform/src/lib/synthesis/panel/**', 'platform/python-sidecar/**', 'chart_facts']
+    check_commands: ['npx vitest run platform/src/app/api/chat']
     on_red: rollback
   - id: 4.build_trigger
     wave: 4
     brief: briefs/BRIEF_4_build_trigger.md
     stream: B
     blockedBy: [3.consult_nav, 3.legacy_delete]
-    may_touch: ["platform/src/app/clients/[id]/build/**", "platform/src/app/api/build/**", "platform/src/lib/build/**", "platform/src/app/cockpit/**", ".github/workflows/deploy.yml", "platform/python-sidecar/**"]
-    must_not_touch: ["platform/src/lib/retrieve/**", "platform/src/lib/pipelines/**", "platform/src/lib/synthesis/panel/**"]
-    check_commands: ["npx vitest run platform/src/app/api/build platform/src/lib/build"]
+    may_touch:
+      [
+        'platform/src/app/clients/[id]/build/**',
+        'platform/src/app/api/build/**',
+        'platform/src/lib/build/**',
+        'platform/src/app/cockpit/**',
+        '.github/workflows/deploy.yml',
+        'platform/python-sidecar/**',
+      ]
+    must_not_touch: ['platform/src/lib/retrieve/**', 'platform/src/lib/pipelines/**', 'platform/src/lib/synthesis/panel/**']
+    check_commands: ['npx vitest run platform/src/app/api/build platform/src/lib/build']
     on_red: halt_queue
   - id: 4.memorystore_caching
     wave: 4
     brief: briefs/BRIEF_4_memorystore_caching.md
     stream: C
     blockedBy: [3.cutover]
-    may_touch: ["platform/src/lib/cache/**", "platform/src/lib/retrieve/**", "platform/src/lib/embeddings/**", ".github/workflows/deploy.yml", "platform-mcp/src/**"]
-    must_not_touch: ["platform/python-sidecar/**", "platform/src/lib/synthesis/panel/**", "chart_facts"]
-    check_commands: ["npx vitest run platform/src/lib/cache"]
+    may_touch: ['platform/src/lib/cache/**', 'platform/src/lib/retrieve/**', 'platform/src/lib/embeddings/**', '.github/workflows/deploy.yml', 'platform-mcp/src/**']
+    must_not_touch: ['platform/python-sidecar/**', 'platform/src/lib/synthesis/panel/**', 'chart_facts']
+    check_commands: ['npx vitest run platform/src/lib/cache']
     on_red: rollback
   - id: 4.edge_and_infra_hygiene
     wave: 4
     brief: briefs/BRIEF_4_edge_and_infra_hygiene.md
     stream: A
     blockedBy: [3.cutover, 4.refactor_pipeline_shim]
-    file_fence_note: "touches deploy.yml — coordinate with 4.refactor_pipeline_shim/4.build_trigger/4.memorystore (each may also edit deploy.yml; serialize OR distinct sections)"
-    may_touch: ["deploy.yml", ".github/workflows/**", "platform-mcp/cloudbuild.yaml", "platform/cloudbuild*.yaml", "infra/**", "iam/**"]
-    must_not_touch: ["chart_facts", "platform/python-sidecar/natal_engine/**", "platform/src/lib/synthesis/panel/**"]
-    check_commands: ["bash platform/scripts/governance/edge_security_smoke.sh"]
+    file_fence_note: 'touches deploy.yml — coordinate with 4.refactor_pipeline_shim/4.build_trigger/4.memorystore (each may also edit deploy.yml; serialize OR distinct sections)'
+    may_touch: ['deploy.yml', '.github/workflows/**', 'platform-mcp/cloudbuild.yaml', 'platform/cloudbuild*.yaml', 'infra/**', 'iam/**']
+    must_not_touch: ['chart_facts', 'platform/python-sidecar/natal_engine/**', 'platform/src/lib/synthesis/panel/**']
+    check_commands: ['bash platform/scripts/governance/edge_security_smoke.sh']
     on_red: halt_queue
   - id: 4.observability
     wave: 4
     brief: briefs/BRIEF_4_observability.md
     stream: B
     blockedBy: [3.cutover]
-    may_touch: ["platform/src/lib/observability/**", "platform/src/lib/embeddings/**", "platform/src/**/trace.ts", ".github/workflows/deploy.yml", "infra/monitoring/**"]
-    must_not_touch: ["chart_facts", "platform/python-sidecar/natal_engine/**", "platform/src/lib/synthesis/panel/**"]
-    check_commands: ["npx vitest run platform/src/lib/observability platform/src/lib/embeddings"]
+    may_touch: ['platform/src/lib/observability/**', 'platform/src/lib/embeddings/**', 'platform/src/**/trace.ts', '.github/workflows/deploy.yml', 'infra/monitoring/**']
+    must_not_touch: ['chart_facts', 'platform/python-sidecar/natal_engine/**', 'platform/src/lib/synthesis/panel/**']
+    check_commands: ['npx vitest run platform/src/lib/observability platform/src/lib/embeddings']
     on_red: rollback
   - id: 4.learning_loop
     wave: 4
     brief: briefs/BRIEF_4_learning_loop.md
     stream: C
     blockedBy: [3.cutover, 4.observability]
-    may_touch: ["platform/src/lib/predictions/**", "platform/src/app/api/chat/consult/route.ts", "platform/src/lib/synthesis/**", "scripts/answer_eval*"]
-    must_not_touch: ["chart_facts", "platform/src/lib/synthesis/panel/**", "platform/python-sidecar/**"]
-    check_commands: ["npx vitest run platform/src/lib/predictions"]
+    may_touch: ['platform/src/lib/predictions/**', 'platform/src/app/api/chat/consult/route.ts', 'platform/src/lib/synthesis/**', 'scripts/answer_eval*']
+    must_not_touch: ['chart_facts', 'platform/src/lib/synthesis/panel/**', 'platform/python-sidecar/**']
+    check_commands: ['npx vitest run platform/src/lib/predictions']
     on_red: rollback
   - id: 4.red_team_seal
     wave: 4
     brief: briefs/BRIEF_4_red_team_seal.md
     stream: A
     blockedBy: [4.refactor_pipeline_shim, 4.build_trigger, 4.memorystore_caching, 4.edge_and_infra_hygiene, 4.observability, 4.learning_loop]
-    may_touch: ["00_ARCHITECTURE/**", "CLAUDE.md", "tools/program-tracker/**"]
-    must_not_touch: ["platform/python-sidecar/natal_engine/**", "chart_facts"]
-    check_commands: ["python platform/scripts/governance/drift_detector.py"]
+    may_touch: ['00_ARCHITECTURE/**', 'CLAUDE.md', 'tools/program-tracker/**']
+    must_not_touch: ['platform/python-sidecar/natal_engine/**', 'chart_facts']
+    check_commands: ['python platform/scripts/governance/drift_detector.py']
     on_red: halt_queue

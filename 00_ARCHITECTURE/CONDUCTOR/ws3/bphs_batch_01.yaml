@@ -200,7 +200,9 @@ rules:
     scope: graha
     school: parashari
     confidence: 0.72
-    confidence_rationale: "0.8 textual_strength but verse is brief and compressed; cross-text partial confirm (Jaimini association) = 0.9 (slight partial contradiction on Jaimini reference). min(1.0, 0.8 × 0.9) = 0.72."
+    confidence_rationale: >-
+      0.8 textual_strength but verse is brief and compressed; cross-text partial confirm (Jaimini association) = 0.9 (slight partial contradiction on Jaimini reference). min(1.0, 0.8 × 0.9) =
+      0.72.
     caveats: "The reference to 'Jaimini school' in this verse is debated — likely a scribal note, not a school attribution."
     verified: true
     stub: false
@@ -223,7 +225,8 @@ rules:
     scope: graha
     school: parashari
     confidence: 0.95
-    confidence_rationale: "Sutra-style declarative = 1.0 textual_strength; confirmed by Brihat Jataka 1.5, Saravali Ch.4, Phaladeepika — ≥2 texts = 1.3 corroboration. min(1.0, 1.0 × 1.3) → capped at 0.95."
+    confidence_rationale: >-
+      Sutra-style declarative = 1.0 textual_strength; confirmed by Brihat Jataka 1.5, Saravali Ch.4, Phaladeepika — ≥2 texts = 1.3 corroboration. min(1.0, 1.0 × 1.3) → capped at 0.95.
     caveats: "Exaltation effects are modulated by house placement and other aspects/conjunctions."
     verified: true
     stub: false
@@ -368,7 +371,9 @@ rules:
     scope: graha
     school: parashari
     confidence: 0.65
-    confidence_rationale: "Sloka with qualifier 'according to some scholars' = 0.65 textual_strength; partial contradiction from other texts that place Rahu exaltation in Gemini = 0.85 multiplier. min(1.0, 0.65 × 0.85) = 0.55."
+    confidence_rationale: >-
+      Sloka with qualifier 'according to some scholars' = 0.65 textual_strength; partial contradiction from other texts that place Rahu exaltation in Gemini = 0.85 multiplier. min(1.0, 0.65 ×
+      0.85) = 0.55.
     caveats: "Rahu/Ketu exaltation is contested across classical texts. Gemini/Sagittarius, Taurus/Scorpio, and no-exaltation schools all exist. This rule represents the BPHS position."
     verified: true
     stub: false
@@ -417,7 +422,9 @@ rules:
     scope: graha
     school: parashari
     confidence: 0.92
-    confidence_rationale: "Declarative with specific degree ranges = 1.0; Saravali and Brihat Jataka confirm moolatrikona concept = 1.15. min(1.0, 1.0 × 1.15) → capped at 0.92 (minor degree-range variations across texts noted)."
+    confidence_rationale: >-
+      Declarative with specific degree ranges = 1.0; Saravali and Brihat Jataka confirm moolatrikona concept = 1.15. min(1.0, 1.0 × 1.15) → capped at 0.92 (minor degree-range variations across
+      texts noted).
     caveats: "Degree ranges vary slightly across traditions and commentators. Rahu/Ketu have no moolatrikona in BPHS."
     verified: true
     stub: false
@@ -517,7 +524,9 @@ rules:
     scope: graha
     school: parashari
     confidence: 0.88
-    confidence_rationale: "Declarative = 1.0; Saravali confirms = 1.15. But verse is extrapolative (BPHS states the full-strength positions; the zero-strength corollary is standard but derived). 0.8 × 1.15 = 0.92 → adjusted to 0.88 for derived nature."
+    confidence_rationale: >-
+      Declarative = 1.0; Saravali confirms = 1.15. But verse is extrapolative (BPHS states the full-strength positions; the zero-strength corollary is standard but derived). 0.8 × 1.15 = 0.92 →
+      adjusted to 0.88 for derived nature.
     caveats: "Zero dig bala does not mean the planet is powerless — other strength factors still apply."
     verified: true
     stub: false
@@ -542,7 +551,9 @@ rules:
     scope: graha
     school: parashari
     confidence: 0.88
-    confidence_rationale: "Declarative rule = 1.0; Saravali and Brihat Jataka confirm planetary war concept but differ slightly on the latitude criterion = 1.15 corroboration with minor variation. 0.8 × 1.15 = 0.92 → adjusted to 0.88."
+    confidence_rationale: >-
+      Declarative rule = 1.0; Saravali and Brihat Jataka confirm planetary war concept but differ slightly on the latitude criterion = 1.15 corroboration with minor variation. 0.8 × 1.15 = 0.92 →
+      adjusted to 0.88.
     caveats: "Sun and Moon do not participate in graha yuddha. Rahu/Ketu are also excluded. The latitude criterion is contested — some use brightness."
     verified: true
     stub: false
@@ -587,7 +598,9 @@ rules:
     scope: graha
     school: parashari
     confidence: 0.88
-    confidence_rationale: "Declarative karakatva list = 1.0; Brihat Jataka 2.2, Saravali Ch.7 confirm these significations = 1.15. But 'some' significations (copper, wheat) are more secondary. 0.8 × 1.15 = 0.92 → adjusted to 0.88."
+    confidence_rationale: >-
+      Declarative karakatva list = 1.0; Brihat Jataka 2.2, Saravali Ch.7 confirm these significations = 1.15. But 'some' significations (copper, wheat) are more secondary. 0.8 × 1.15 = 0.92 →
+      adjusted to 0.88.
     caveats: "Karakatva (signification) must be read as a tendency, not a mechanical outcome; the house of the karakaand its relationship to the karaka planet matters."
     verified: true
     stub: false
@@ -953,7 +966,8 @@ rules:
     scope: graha
     school: parashari
     confidence: 0.88
-    confidence_rationale: "Declarative with specific orbs = 1.0; Saravali and Brihat Jataka confirm combustion concept with slight orb variations = 1.15. 0.92 → adjusted to 0.88 for orb variation across texts."
+    confidence_rationale: >-
+      Declarative with specific orbs = 1.0; Saravali and Brihat Jataka confirm combustion concept with slight orb variations = 1.15. 0.92 → adjusted to 0.88 for orb variation across texts.
     caveats: "Combustion orbs vary across traditions. A combust planet is not entirely powerless — it can still give results through the Sun and 10H; exact orbs are most critical."
     verified: true
     stub: false
@@ -978,8 +992,12 @@ rules:
     scope: graha
     school: parashari
     confidence: 0.72
-    confidence_rationale: "Sloka with qualifier ('very strong', 'may manifest') = 0.8; partial cross-text corroboration — Brihat Jataka does not fully agree on retrograde = exaltation = 0.9 multiplier. 0.8 × 0.9 = 0.72."
-    caveats: "Some traditions consider retrogrades as weakened, not strengthened. The 'equal to exaltation' claim is Parashari but contested. Results of retrograde planets often have an internalized or revisionary quality."
+    confidence_rationale: >-
+      Sloka with qualifier ('very strong', 'may manifest') = 0.8; partial cross-text corroboration — Brihat Jataka does not fully agree on retrograde = exaltation = 0.9 multiplier. 0.8 × 0.9 =
+      0.72.
+    caveats: >-
+      Some traditions consider retrogrades as weakened, not strengthened. The 'equal to exaltation' claim is Parashari but contested. Results of retrograde planets often have an internalized or
+      revisionary quality.
     verified: true
     stub: false
     stub_reason: null
@@ -1388,7 +1406,9 @@ rules:
     school: parashari
     confidence: 0.95
     confidence_rationale: "Declarative aspect rules = 1.0; ≥2 texts confirm special aspects = 1.3. capped at 0.95."
-    caveats: "Partial aspects: BPHS also mentions 1/4 aspect strength for planets aspecting the 3rd/10th (Mars), 1/2 strength for 4th/8th (Jupiter for opposite planets), 3/4 strength for 5th/9th. These proportional aspects are from other planets' positions as well."
+    caveats: >-
+      Partial aspects: BPHS also mentions 1/4 aspect strength for planets aspecting the 3rd/10th (Mars), 1/2 strength for 4th/8th (Jupiter for opposite planets), 3/4 strength for 5th/9th. These
+      proportional aspects are from other planets' positions as well.
     verified: true
     stub: false
     stub_reason: null
@@ -2297,7 +2317,8 @@ rules:
     scope: graha
     school: parashari
     confidence: 0.65
-    confidence_rationale: "Sloka with unusual claim = 0.8; the 'cazimi' principle is recognized in BPHS but with complexity — partial Saravali contradicts (Saravali says all combustion is harmful) = 0.8. 0.65."
+    confidence_rationale: >-
+      Sloka with unusual claim = 0.8; the 'cazimi' principle is recognized in BPHS but with complexity — partial Saravali contradicts (Saravali says all combustion is harmful) = 0.8. 0.65.
     caveats: "The cazimi exemption from combustion is debated. Many classical texts do not distinguish cazimi as special — this is more clearly articulated in KP and Western traditions than in BPHS."
     verified: true
     stub: false

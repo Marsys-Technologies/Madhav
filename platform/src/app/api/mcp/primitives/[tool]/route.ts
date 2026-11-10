@@ -28,8 +28,6 @@ import '@/lib/retrieval/registry/catalog'
 // DO NOT restore lib/mcp/primitives_registry imports — see RETRIEVAL_D7_CALLER_MAP_v1_0.md §2.4
 import {
   getToolByName,
-  resolveToolUri,
-  TOOL_NAME_TO_URI,
   isAllowedSurgicalTool,
   isPerChartPrimitive,
   MCP_TO_RETRIEVAL_TOOL,

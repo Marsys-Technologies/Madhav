@@ -20,14 +20,11 @@ vi.mock('@/lib/firebase/server', () => ({ getServerUser: mockGetServerUser }))
 vi.mock('@/lib/build/jobInvoker', () => ({ invokeRunJob: mockInvokeRunJob }))
 vi.mock('@/lib/cloud_run/jobs', () => ({ getJobImageTag: mockGetJobImageTag }))
 
-import { POST, GET } from '../route'
-import writerDigestInventory from '@/generated/nirmana-writer-digests.json'
+import { POST } from '../route'
 
 const VICTIM_CHART = '482012f1-710e-4a25-994a-93821f5871aa'
 const OWNER_UID = 'victim-uid'
 const ADMIN_UID = 'admin-uid'
-
-const DIGESTS = writerDigestInventory.writers as Record<string, string>
 
 /**
  * Two real Kāla writers that carry a real sidecar digest, so the unpatched route
@@ -36,7 +33,6 @@ const DIGESTS = writerDigestInventory.writers as Record<string, string>
  * that some earlier unrelated validation happened to reject the request.
  */
 const A1 = 'ka_kshetra'
-const A2 = 'ka_avadhi'
 
 const G1 = 'mi_kula' // real global writer (mimamsa, scope=global)
 const PC = 'mi_abhilekha' // real per-chart writer in the same layer
@@ -73,9 +69,6 @@ function makeReq(body: object): NextRequest {
   })
 }
 
-function makeGetReq(chartId: string): NextRequest {
-  return new NextRequest(`http://localhost/api/cockpit/runs?chart_id=${chartId}`)
-}
 
 /**
  * SQL-shape-dispatching mock rather than ordered mockResolvedValueOnce, so the

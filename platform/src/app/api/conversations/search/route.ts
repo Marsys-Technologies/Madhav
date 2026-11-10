@@ -2,7 +2,6 @@ import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
 import { res } from '@/lib/errors/errors'
 import { embedText } from '@/lib/embeddings/embedText'
-import { getFlag } from '@/lib/config'
 
 interface SearchResult {
   id: string

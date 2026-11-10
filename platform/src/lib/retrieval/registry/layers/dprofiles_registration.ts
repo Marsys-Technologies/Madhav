@@ -20,7 +20,7 @@
 
 import { registerCapability } from '../index'
 import type { CapabilityDescriptor } from '../types'
-import { orchestrate, getMcpSurface, getProfile, PROFILE_VERSION, ANTHROPIC_PROFILE, GEMINI_PROFILE, OPENAI_PROFILE, DEEPSEEK_PROFILE, UNIVERSAL_PROFILE } from '../../maro'
+import { orchestrate, getMcpSurface, PROFILE_VERSION, ANTHROPIC_PROFILE, GEMINI_PROFILE, OPENAI_PROFILE, DEEPSEEK_PROFILE, UNIVERSAL_PROFILE } from '../../maro'
 import type { ModelFamily } from '../../maro'
 
 // ── marsys://tool/maro/orchestrate ─────────────────────────────────────────────

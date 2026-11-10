@@ -64,7 +64,7 @@ export interface SynthesisRequest {
   conversation_id?: string
   /** Phase 4: optional consumer callback. When AUDIT_ENABLED, route.ts wires this. */
   onAuditEvent?: (event: SynthesisAuditEvent) => void
-  /** Phase 7: per-query opt-in for panel synthesis. Only active when PANEL_MODE_ENABLED=true. */
+  /** Phase 7: per-query opt-in for panel synthesis. Requires the panel synthesis feature flag. */
   panel_opt_in?: boolean
   /** UQE-9 (W2-BUGS B2W-7): pre-allocated step_seq for the context_assembly trace
    *  step. When present the orchestrator uses it; otherwise falls back to the

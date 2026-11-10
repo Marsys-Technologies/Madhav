@@ -26,7 +26,7 @@ export interface PlanAction {
  * This is the mid-loop re-planning logic.
  */
 export function planNextAction(state: LoopState, max_iterations: number): PlanAction {
-  const { iteration, tools_called, results_gathered } = state
+  const { iteration, results_gathered } = state
 
   // If we're at the max, synthesize what we have
   if (iteration >= max_iterations) {

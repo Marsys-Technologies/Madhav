@@ -149,7 +149,7 @@ describe('R11F-B-S5: DeepSeek round-trip — tools forwarded + loop terminates o
     const adapter = new DeepSeekAdapter()
     const toolExecutor = vi.fn().mockResolvedValue('Signal MSR.042: Rahu 12H')
 
-    for await (const _e of runAgenticLoop(adapter, BASE_REQUEST, toolExecutor, DEEPSEEK_LOOP_CONFIG)) {
+    for await (const {} of runAgenticLoop(adapter, BASE_REQUEST, toolExecutor, DEEPSEEK_LOOP_CONFIG)) {
       // drain
     }
 
@@ -167,7 +167,7 @@ describe('R11F-B-S5: DeepSeek round-trip — tools forwarded + loop terminates o
     const adapter = new DeepSeekAdapter()
     const toolExecutor = vi.fn().mockResolvedValue('Signal MSR.042: Rahu 12H isolation')
 
-    for await (const _e of runAgenticLoop(adapter, BASE_REQUEST, toolExecutor, DEEPSEEK_LOOP_CONFIG)) {
+    for await (const {} of runAgenticLoop(adapter, BASE_REQUEST, toolExecutor, DEEPSEEK_LOOP_CONFIG)) {
       // drain
     }
 
@@ -204,7 +204,7 @@ describe('R11F-B-S5: DeepSeek round-trip — tools forwarded + loop terminates o
     const adapter = new DeepSeekAdapter()
     const toolExecutor = vi.fn().mockResolvedValue('result')
 
-    for await (const _e of runAgenticLoop(adapter, BASE_REQUEST, toolExecutor, DEEPSEEK_LOOP_CONFIG)) {
+    for await (const {} of runAgenticLoop(adapter, BASE_REQUEST, toolExecutor, DEEPSEEK_LOOP_CONFIG)) {
       // drain
     }
 
@@ -228,7 +228,7 @@ describe('R11F-B-S5: iteration cap — AgenticLoopCapExceeded after MAX_ITERATIO
     const toolExecutor = vi.fn().mockResolvedValue('result')
 
     async function drainLoop() {
-      for await (const _e of runAgenticLoop(adapter, BASE_REQUEST, toolExecutor, DEEPSEEK_LOOP_CONFIG)) {
+      for await (const {} of runAgenticLoop(adapter, BASE_REQUEST, toolExecutor, DEEPSEEK_LOOP_CONFIG)) {
         // drain
       }
     }
@@ -241,7 +241,7 @@ describe('R11F-B-S5: iteration cap — AgenticLoopCapExceeded after MAX_ITERATIO
     const toolExecutor = vi.fn().mockResolvedValue('result')
 
     try {
-      for await (const _e of runAgenticLoop(adapter, BASE_REQUEST, toolExecutor, DEEPSEEK_LOOP_CONFIG)) {
+      for await (const {} of runAgenticLoop(adapter, BASE_REQUEST, toolExecutor, DEEPSEEK_LOOP_CONFIG)) {
         // drain
       }
     } catch (err) {
@@ -256,7 +256,7 @@ describe('R11F-B-S5: iteration cap — AgenticLoopCapExceeded after MAX_ITERATIO
     const toolExecutor = vi.fn().mockResolvedValue('result')
 
     try {
-      for await (const _e of runAgenticLoop(adapter, BASE_REQUEST, toolExecutor, DEEPSEEK_LOOP_CONFIG)) {
+      for await (const {} of runAgenticLoop(adapter, BASE_REQUEST, toolExecutor, DEEPSEEK_LOOP_CONFIG)) {
         // drain
       }
     } catch (err) {
@@ -283,7 +283,7 @@ describe('R11F-B-S5: B.11 floor — system prompt preserved across loop iteratio
     const adapter = new DeepSeekAdapter()
     const toolExecutor = vi.fn().mockResolvedValue('MSR.042 data')
 
-    for await (const _e of runAgenticLoop(adapter, BASE_REQUEST, toolExecutor, DEEPSEEK_LOOP_CONFIG)) {
+    for await (const {} of runAgenticLoop(adapter, BASE_REQUEST, toolExecutor, DEEPSEEK_LOOP_CONFIG)) {
       // drain
     }
 
@@ -306,7 +306,7 @@ describe('R11F-B-S5: B.11 floor — system prompt preserved across loop iteratio
     const adapter = new DeepSeekAdapter()
     const toolExecutor = vi.fn().mockResolvedValue('MSR.042 data')
 
-    for await (const _e of runAgenticLoop(adapter, BASE_REQUEST, toolExecutor, DEEPSEEK_LOOP_CONFIG)) {
+    for await (const {} of runAgenticLoop(adapter, BASE_REQUEST, toolExecutor, DEEPSEEK_LOOP_CONFIG)) {
       // drain
     }
 

@@ -30,7 +30,7 @@ import type {
   QueryChartFactsInput,
   FactProvenance,
 } from './types'
-import { CHART_FACTS_CATEGORIES, FORENSIC_V8_REQUIRED_DOMAINS } from './types'
+import { FORENSIC_V8_REQUIRED_DOMAINS } from './types'
 import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '@/lib/retrieval/address_resolver'
 
 // ─── DB client interface (injected; avoids hard coupling to pg Pool) ──────────
@@ -409,7 +409,6 @@ export async function query_chart_facts(
     conditions.push(`(cf.fact_id LIKE $${paramIdx++} OR cf.fact_subject = $${paramIdx++})`)
     params.push(`PLN.${planet.toUpperCase()}.%`)
     params.push(planet)
-    paramIdx  // already bumped above
   }
 
   if (house) {

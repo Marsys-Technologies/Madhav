@@ -53,18 +53,18 @@ function installFetchMock(): {
 
 describe('embeddings/embedText', () => {
   const ENV = {
-    GCP_PROJECT: process.env['GCP_PROJECT'],
+    GOOGLE_CLOUD_PROJECT: process.env['GOOGLE_CLOUD_PROJECT'],
     VERTEX_AI_LOCATION: process.env['VERTEX_AI_LOCATION'],
   }
 
   beforeEach(() => {
-    process.env['GCP_PROJECT'] = 'test-proj'
+    process.env['GOOGLE_CLOUD_PROJECT'] = 'test-proj'
     process.env['VERTEX_AI_LOCATION'] = 'asia-south1'
   })
 
   afterEach(() => {
-    if (ENV.GCP_PROJECT === undefined) delete process.env['GCP_PROJECT']
-    else process.env['GCP_PROJECT'] = ENV.GCP_PROJECT
+    if (ENV.GOOGLE_CLOUD_PROJECT === undefined) delete process.env['GOOGLE_CLOUD_PROJECT']
+    else process.env['GOOGLE_CLOUD_PROJECT'] = ENV.GOOGLE_CLOUD_PROJECT
     if (ENV.VERTEX_AI_LOCATION === undefined) delete process.env['VERTEX_AI_LOCATION']
     else process.env['VERTEX_AI_LOCATION'] = ENV.VERTEX_AI_LOCATION
   })

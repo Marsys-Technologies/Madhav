@@ -127,7 +127,6 @@ describe('D-S1: assembleWithCacheBreakpoints — cacheEnabled=true', () => {
 
   it('message order: tools → system → history → rag → current', () => {
     const messages = assembleWithCacheBreakpoints(fullSections, true)
-    const roles = messages.map(m => ({ role: m.role, snippet: (m.content as string).slice(0, 10) }))
     // tools (system) → system prompt (system) → history turns (user+assistant) → rag (user) → current (user)
     expect(messages[0].content).toBe('tools JSON here')
     expect(messages[1].content).toBe('synthesis system prompt')

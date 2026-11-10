@@ -21,7 +21,7 @@ const ENV: JobInvokerEnv = {
 describe('readJobInvokerEnv', () => {
   it('returns env block with sane defaults', () => {
     const out = readJobInvokerEnv({
-      GCP_PROJECT: 'p',
+      GOOGLE_CLOUD_PROJECT: 'p',
     } as unknown as NodeJS.ProcessEnv)
     expect(out.gcpProject).toBe('p')
     expect(out.jobLocation).toBe('asia-south1')
@@ -30,13 +30,13 @@ describe('readJobInvokerEnv', () => {
 
   it('overrides default jobId when BUILD_JOB_NAME is set', () => {
     const out = readJobInvokerEnv({
-      GCP_PROJECT: 'p',
+      GOOGLE_CLOUD_PROJECT: 'p',
       BUILD_JOB_NAME: 'staging-build-job',
     } as unknown as NodeJS.ProcessEnv)
     expect(out.jobId).toBe('staging-build-job')
   })
 
-  it('throws when GCP_PROJECT is missing', () => {
+  it('throws when GOOGLE_CLOUD_PROJECT is missing', () => {
     expect(() => readJobInvokerEnv({} as unknown as NodeJS.ProcessEnv)).toThrow()
   })
 })

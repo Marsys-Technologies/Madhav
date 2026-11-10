@@ -45,7 +45,7 @@ function makeRes() {
   const res = {
     status: (s: number) => { statusCode = s; return res },
     json: (b: unknown) => { jsonBody = b },
-    redirect: (_s: number, _url: string) => { redirected = true },
+    redirect: () => { redirected = true },
     cookie: () => res,
   }
   return {

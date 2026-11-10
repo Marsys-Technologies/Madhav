@@ -197,11 +197,6 @@ function computeDiff(fixture: GoldenFixture, runResult: AccuracyRunResult | null
     }
   }
 
-  const totalExpectedRows = fixtureCategories.reduce((sum, cat) => {
-    const exp = fixture[cat] as { expected_min_rows: number }
-    return sum + exp.expected_min_rows
-  }, 0)
-
   const totalActualRows = Object.values(detail).reduce((sum, d) => sum + d.actual_rows, 0)
 
   const diff: AccuracyDiff = {

@@ -61,11 +61,8 @@ function mockQuerySequence(
   buildAyanamshas: string[] | null = null,
 ) {
   const mockQuery = vi.mocked(query)
-  let callIndex = 0
 
   mockQuery.mockImplementation(async (sql: string) => {
-    callIndex++
-
     // Call 1: information_schema probe
     if (sql.includes('information_schema')) {
       return { rows: [{ exists: columnExists }] } as never

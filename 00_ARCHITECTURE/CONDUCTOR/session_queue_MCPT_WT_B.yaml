@@ -18,23 +18,22 @@ notes: >
 external_gates: {}
 
 entries:
-
-- session_id: v3.2-S1
-  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_MCPT_V32_S1_v1_0.md
-  branch: feature/mcpt-bphs
-  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-BPHS
-  depends_on: []
-  requires_brief_authoring: false
-  requires_human_approval: false
-  push_to_remote: true
-  gate_command: >
-    cd /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-BPHS &&
-    test -f platform/scripts/bootstrap/bootstrap_classical_texts_bphs.ts &&
-    test -f platform/scripts/bootstrap/lib/classical_text_chunker.ts &&
-    test -f platform/scripts/bootstrap/lib/classical_text_embedder.ts &&
-    test -f 00_ARCHITECTURE/BRIEFS/SOURCE_INVENTORY_BPHS_v1_0.md &&
-    psql "$DATABASE_URL_PROD" -c "SELECT count(*) FROM classical_texts WHERE work='BPHS'" | grep -qE "^\s+[1-9][0-9]{3,}" &&
-    psql "$DATABASE_URL_PROD" -c "SELECT count(*) FROM build_manifests WHERE asset_id='classical_texts' AND build_id LIKE 'mcpt-v32-bphs-%'" | grep -q "1"
-  est_tokens: 100000
-  est_duration_min: 240
-  status: pending
+  - session_id: v3.2-S1
+    brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_MCPT_V32_S1_v1_0.md
+    branch: feature/mcpt-bphs
+    worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-BPHS
+    depends_on: []
+    requires_brief_authoring: false
+    requires_human_approval: false
+    push_to_remote: true
+    gate_command: >
+      cd /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-BPHS &&
+      test -f platform/scripts/bootstrap/bootstrap_classical_texts_bphs.ts &&
+      test -f platform/scripts/bootstrap/lib/classical_text_chunker.ts &&
+      test -f platform/scripts/bootstrap/lib/classical_text_embedder.ts &&
+      test -f 00_ARCHITECTURE/BRIEFS/SOURCE_INVENTORY_BPHS_v1_0.md &&
+      psql "$DATABASE_URL_PROD" -c "SELECT count(*) FROM classical_texts WHERE work='BPHS'" | grep -qE "^\s+[1-9][0-9]{3,}" &&
+      psql "$DATABASE_URL_PROD" -c "SELECT count(*) FROM build_manifests WHERE asset_id='classical_texts' AND build_id LIKE 'mcpt-v32-bphs-%'" | grep -q "1"
+    est_tokens: 100000
+    est_duration_min: 240
+    status: pending

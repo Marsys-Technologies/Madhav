@@ -108,7 +108,6 @@ function setupMocks(opts: {
 
   mockGetServerUser.mockResolvedValue({ uid })
 
-  let engineCallCount = 0
   let ayanamshaCallIndex = 0
 
   mockQuery.mockImplementation((sql: string, _params: unknown[]) => {
@@ -126,7 +125,6 @@ function setupMocks(opts: {
 
     // 3. Engine version lookup
     if (/FROM engine_versions/.test(sql)) {
-      engineCallCount++
       if (currentEngineVersion === null) {
         return Promise.resolve({ rows: [] })
       }

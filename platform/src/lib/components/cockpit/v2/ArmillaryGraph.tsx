@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import type { AssetWithState } from './LiveDependencyGraph'
 import type { ActiveRun } from '@/hooks/useActiveRun'
 
@@ -160,7 +160,7 @@ export function ArmillaryGraph({ assets, activeRun, onNodeClick, hoveredId, onHo
   }, [activeRun, assets, onHover, onNodeClick])
 
   // ── Hover handlers (single source: hoverRef) ──
-  function setTip(text: { title: string; sub: string; state: string; color: string } | null) {
+  const setTip = useCallback((text: { title: string; sub: string; state: string; color: string } | null) => {
     const tip = tipRef.current; if (!tip) return
     if (!text) { tip.style.opacity = '0'; return }
     tip.querySelector('.arm-sa')!.textContent = text.title
@@ -168,12 +168,12 @@ export function ArmillaryGraph({ assets, activeRun, onNodeClick, hoveredId, onHo
     const st = tip.querySelector('.arm-st') as HTMLElement
     st.textContent = text.state; st.style.color = text.color
     tip.style.opacity = '1'
-  }
-  function applyAssetHover(id: string | null) {
+  }, [])
+  const applyAssetHover = useCallback((id: string | null) => {
     const a = id ? assetsRef.current.find(x => x.asset_id === id) : null
     hoverRef.current = { assetId: id, layer: a ? (a.layer as Layer) : null }
     setTip(a ? { title: a.sanskrit_name, sub: a.english_name, state: `● ${a.state}  ·  ${LAYER_NAMES[a.layer] ?? a.layer}`, color: stateColor(a.state) } : null)
-  }
+  }, [setTip])
   function layerEnter(L: Layer) {
     hoverRef.current = { assetId: null, layer: L }
     const members = assetsRef.current.filter(a => a.layer === L)
@@ -264,7 +264,7 @@ export function ArmillaryGraph({ assets, activeRun, onNodeClick, hoveredId, onHo
   }, [assets])
 
   // External bond: table-row hover → bloom that asset's layer + highlight the bead.
-  useEffect(() => { applyAssetHover(hoveredId ?? null) }, [hoveredId])
+  useEffect(() => { applyAssetHover(hoveredId ?? null) }, [hoveredId, applyAssetHover])
 
   // ── Resize ──
   useEffect(() => {

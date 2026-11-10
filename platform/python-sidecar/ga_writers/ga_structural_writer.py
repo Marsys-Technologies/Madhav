@@ -7121,8 +7121,8 @@ def build_ga_structural(
         "ayanamshas": {},
         "total_chart_facts_rows": 0,
         "upstream_check": None,
-        "forensic_pass": False,
-        "two_pass_verified": False,
+        "forensic_pass": None,
+        "two_pass_verified": None,
         "argala_count": 0,
         "virodha_count": 0,
         "yoga_fires_count": 0,
@@ -7178,14 +7178,13 @@ def build_ga_structural(
             # str(): the orchestrator hands a uuid.UUID, which never == the str constant, so the gate was skipped.
             if str(chart_id) == CANONICAL_CHART_ID:
                 try:
-                    forensic_gate(chart_output, canonical_id)
+                    summary["forensic_pass"] = forensic_gate(chart_output, canonical_id)
                 except Exception:
                     logger.error("FORENSIC gate ga_structural executed passed=False chart=canonical ayanamsha=%s", canonical_id)
                     raise
                 logger.info("FORENSIC gate ga_structural executed passed=True chart=canonical ayanamsha=%s", canonical_id)
             else:
                 logger.debug("FORENSIC gate ga_structural skipped chart=skipped-non-canonical ayanamsha=%s", canonical_id)
-            summary["forensic_pass"] = True
 
             # Build all rows
             all_rows: list[dict[str, Any]] = []
@@ -7225,13 +7224,12 @@ def build_ga_structural(
                 ay_conn, chart_id, build_id, canonical_id, computed_at, eng_ver
             ))
 
-            # Two-pass verification passes
+            # Structural checks do not independently re-derive the values.
             try:
                 _verify_no_duplicate_fact_ids(all_rows)
                 _verify_no_ga3_overlap(all_rows)
                 _verify_citation_completeness(all_rows)
                 _linter_check_rows(all_rows)
-                summary["two_pass_verified"] = True
             except Exception as exc:
                 msg = f"TWO_PASS_FAILED [{canonical_id}]: {exc}"
                 _write_halt_log("TWO_PASS_STRUCTURAL", msg)
