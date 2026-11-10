@@ -109,24 +109,18 @@ def test_d60_deity_rows_stay_within_chart_divisionals_vocab():
     )
 
 
-def test_saptavargaja_rows_stay_within_chart_divisionals_vocab():
-    """The saptavargaja bala rows (M-18 fix) must emit a
-    chart_divisionals-legal verification_pass_status."""
-    import inspect
+def test_saptavargaja_rows_stay_within_chart_divisionals_vocab(monkeypatch):
+    """The Saptavargaja writer emits a tier accepted by chart_divisionals."""
     from ga_writers import ga_vargas_writer as mod
 
-    src = inspect.getsource(mod)
-    # Structural guard: the specific literal this lane's fix landed on.
-    assert '"verification_pass_status": "single"' in src, (
-        "saptavargaja verification_pass_status fix (M-18/M-22) not found — "
-        "regression risk: chart_divisionals only allows "
-        f"{sorted(RESTRICTED_TABLE_VOCAB)}"
+    # Mars in its own sign does not need a compound relationship to score.
+    monkeypatch.setattr(mod, "_compute_compound_relation_matrix", lambda _: {})
+    rows = mod._build_saptavargaja_rows(
+        "test-chart-id", "lahiri_chitrapaksha", "test-build-id", 9, "D9",
+        {"Lagna": {"sign_idx": 0}, "Mars": {"sign_idx": 0, "degree_in_sign": 5.0}},
     )
-    assert '"verification_pass_status": "documented_approximation"' not in src, (
-        "ga_vargas_writer.py must never emit 'documented_approximation' — "
-        "chart_divisionals' CHECK constraint does not allow it "
-        "(psycopg.errors.CheckViolation on insert)"
-    )
+    assert len(rows) == 1
+    assert rows[0]["verification_pass_status"] in RESTRICTED_TABLE_VOCAB
 
 
 def test_ga_dashas_writer_verify_functions_never_return_chart_facts_only_tiers():

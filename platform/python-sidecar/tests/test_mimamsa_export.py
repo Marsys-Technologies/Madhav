@@ -186,14 +186,11 @@ class TestExportTableLogEntry:
 # ── 3. BQ dataset accessibility ───────────────────────────────────────────────
 
 class TestBigQueryAccessible:
-    def test_gate_ac2_passes_when_bq_missing(self):
-        """AC2 passes (skip) when google-cloud-bigquery not installed."""
+    def test_gate_ac2_is_unknown_when_bq_missing(self):
+        """A missing BigQuery dependency leaves the probe and gate unmeasured."""
         m = _mod()
 
         # Mock AC1 and AC3/AC4 so they pass
-        mock_row = MagicMock()
-        mock_row.__getitem__ = MagicMock(side_effect=lambda i: 0)
-
         mock_conn = MagicMock()
         mock_conn.__enter__ = MagicMock(return_value=mock_conn)
         mock_conn.__exit__ = MagicMock(return_value=False)
@@ -207,7 +204,8 @@ class TestBigQueryAccessible:
 
         ac2 = next((c for c in result["checks"] if c["id"] == "AC2"), None)
         assert ac2 is not None
-        assert ac2["passed"] is True  # Skipped = pass (not a hard requirement in CI)
+        assert ac2["passed"] is None
+        assert result["gate_passed"] is None
 
 
 # ── 4. life_events egress guard (SS N-109 / lifeevents-audit F1) ───────────────
