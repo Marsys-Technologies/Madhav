@@ -67,7 +67,8 @@ waves:
       - id: u4_school_consensus_activation
         brief: CLAUDECODE_BRIEF_U4_SCHOOL_CONSENSUS_ACTIVATION_v1_0.md
         soft_needs: [u1_dasha_consensus]   # Yoginī engine reads yogini dāśā (data already in prod; U1 only confirms the path)
-        hard_internal_gate: "CHART-GENERALITY GATE (D28): a synthetic fixture chart MUST yield DIFFERENT school scores than the native BEFORE persist/wire. + Task A.0: populate school_signal_coverage first."
+        hard_internal_gate: >-
+          CHART-GENERALITY GATE (D28): a synthetic fixture chart MUST yield DIFFERENT school scores than the native BEFORE persist/wire. + Task A.0: populate school_signal_coverage first.
         note: >-
           De-hardcode 7 TS engines (read live L1–L3), resolve Tājika/BNN flags, persist (340), wire; disagreement-intelligence + per-domain authority-weighting (D36). FILE-DISJOINT from U3's
           Python ka_sangam edit → parallel.
@@ -132,7 +133,8 @@ waves:
         brief: CLAUDECODE_BRIEF_L4_PH_SUDDHA_SODHANA_v1_0.md
         migration: 334
         blocked_by: [ph_sodhana]
-        hard_internal_gate: "NO-AUTO-OVERRIDE (D43/B.10): a test MUST prove the writer NEVER UPDATEs charts/chart_facts — it only FLAGS + STAGES a revision for one-click native adoption (async, non-blocking)."
+        hard_internal_gate: >-
+          NO-AUTO-OVERRIDE (D43/B.10): a test MUST prove the writer NEVER UPDATEs charts/chart_facts — it only FLAGS + STAGES a revision for one-click native adoption (async, non-blocking).
         note: "Decisiveness verdict + self-correcting verification loop + hypotheses-ledger + self-falsifier."
 
   - wave: P6

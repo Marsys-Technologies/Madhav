@@ -70,7 +70,9 @@
   domain: 'marriage'
   category: 'vrata'
   deity: 'Mangala / Hanuman'
-  remedy_text: 'Observe Tuesday fast (Mangala Vrata) for Kuja Dosha remediation. Take one meal after sunset; avoid salt and oil. Observe for 21 consecutive Tuesdays. Worship Hanuman on each Tuesday fast day.'
+  remedy_text: >-
+    Observe Tuesday fast (Mangala Vrata) for Kuja Dosha remediation. Take one meal after sunset; avoid salt and oil. Observe for 21 consecutive Tuesdays. Worship Hanuman on each Tuesday fast
+    day.
   mantra_sanskrit: 'ॐ क्रां क्रीं क्रौं सः भौमाय नमः'
   mantra_transliteration: 'Om Kraam Kreem Kraum Sah Bhaumaya Namah'
   ingredients_jsonb:

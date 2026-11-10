@@ -728,7 +728,9 @@ rules:
     school: parashari
     confidence: 0.80
     confidence_rationale: "Sloka = 0.8; Saravali and Phaladeepika confirm Venus-7H marriage happiness = 1.0. 0.80."
-    caveats: "Venus in its own sign (Taurus/Libra) or exalted (Pisces) in 7H amplifies these effects dramatically. Afflicted Venus in 7H can produce marital discord despite the initial attractiveness."
+    caveats: >-
+      Venus in its own sign (Taurus/Libra) or exalted (Pisces) in 7H amplifies these effects dramatically. Afflicted Venus in 7H can produce marital discord despite the initial
+      attractiveness.
     verified: true
     stub: false
     stub_reason: null
@@ -1180,7 +1182,9 @@ rules:
     school: parashari
     confidence: 0.88
     confidence_rationale: "Declarative principle with examples = 1.0; Saravali and Phaladeepika confirm Karako bhavo nashto = 1.15. 0.92 → 0.88."
-    caveats: "This rule is contested in practice — many astrologers find Jupiter in 5H does not reliably reduce children. The degree of debilitation of the karaka and aspects received modulate this rule."
+    caveats: >-
+      This rule is contested in practice — many astrologers find Jupiter in 5H does not reliably reduce children. The degree of debilitation of the karaka and aspects received modulate this
+      rule.
     verified: true
     stub: false
     stub_reason: null

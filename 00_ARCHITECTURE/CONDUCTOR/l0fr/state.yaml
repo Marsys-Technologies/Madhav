@@ -43,8 +43,11 @@ brahma_pipeline_path: platform/python-sidecar
 # Vimarśaka-A attempt 1 completed 2026-06-07T05:38+05:30 — REJECT_WITH_FEEDBACK (12/15 PASS); rework items: audience_tier kill-list, canonical_id schema (SAT vs Saturn), /api/retrieval/L0 route
 # Stream G completed 2026-06-07T05:55+05:30 — pyjhora_adapter + /api/pyhora + 3 capabilities + migration 174; smoke PASS; status set to review
 # Stream E completed 2026-06-07 — Pañcāṅga service + 6 L1 Ganita capabilities; AC1-AC2-AC4 PASS (13/15 tests green, 2 skipped DB); tier-2 autonomy override logged to smriti; status set to review
-# Stream B completed 2026-06-07 — ephemeris_daily 825,084 rows (1900-2150 × 9 bodies); JPL spot check 0.29 arcsec PASS; 6 L0 capabilities + sidecar routes; tier-2 autonomy override (proceed despite vimarsaka_a=reject); status set to review; SHA 5ebd680f
-# Stream F completed 2026-06-07T06:25+05:30 — 200 rows brahma_remedy_corpus (10 categories); 7 capabilities portal+MCP; all 5 ACs PASS; tier-2 autonomy override (blocked_on_A overridden per brief §2 independence clause); status set to review; SHA 233b27ca
+# Stream B completed 2026-06-07 — ephemeris_daily 825,084 rows (1900-2150 × 9 bodies); JPL spot check 0.29 arcsec PASS; 6 L0 capabilities + sidecar routes; tier-2 autonomy override (proceed
+# despite vimarsaka_a=reject); status set to review; SHA 5ebd680f
+# Stream F completed 2026-06-07T06:25+05:30 — 200 rows brahma_remedy_corpus (10 categories); 7 capabilities portal+MCP; all 5 ACs PASS; tier-2 autonomy override (blocked_on_A overridden per
+# brief §2 independence clause); status set to review; SHA 233b27ca
 # Stream C Phase 1 completed 2026-06-07T06:38+05:30 — 2643 chunks (BPHS 1723 + JP 741 + PD 179); 100% embedded; smoke PASS; status set to midway_review; SHA 665931e1
 # Stream C Phase 2 completed 2026-06-07T09:30+05:30 — 8432 total chunks (11 texts); 100% embedded; 5 capabilities in all 3 channels; parity_check PASS; smoke PASS; status set to review; SHA 44431225
-# Vimarśaka-Z attempt 1 completed 2026-06-07T09:45+05:30 — DELTA_DEPLOY; 14 PASS / 2 SOFT_FAIL / 5 KNOWN_RESIDUAL / 2 HARD_FAIL; HF1=global_build_image_predates_l0fr; HF2=migration_174_not_applied; smriti: vimarsaka_z_attempt_1.md; next: fixup stream A-prime (rebuild pipeline image) + fixup stream G-prime (apply migration 174 + merge stream G)
+# Vimarśaka-Z attempt 1 completed 2026-06-07T09:45+05:30 — DELTA_DEPLOY; 14 PASS / 2 SOFT_FAIL / 5 KNOWN_RESIDUAL / 2 HARD_FAIL; HF1=global_build_image_predates_l0fr;
+# HF2=migration_174_not_applied; smriti: vimarsaka_z_attempt_1.md; next: fixup stream A-prime (rebuild pipeline image) + fixup stream G-prime (apply migration 174 + merge stream G)

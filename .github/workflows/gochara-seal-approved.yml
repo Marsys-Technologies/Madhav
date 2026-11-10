@@ -13,7 +13,8 @@
 #     4. reads the EXECUTED resource (`jobs executions describe`): image digest, service account, runner commit, arguments, the one secret binding, no retries (R13-3). Log labels are NOT
 #        producer attestation: Cloud Logging does not authenticate who writes an entry;
 #     5. reassembles the brief from the execution's logs (root jsonPayload; the chunk transport), CHECKS it (digest recomputed, persisted receipt, candidate gate clean, every grain
-#        VERIFIED, policy all_null_candidate/1 or window_qualification/1 with its frozen table bound, sealing revision = this commit), writes the retained ENVELOPE (execution id, image digest, run, attempt, commit, brief digest, brief id),
+#        VERIFIED, policy all_null_candidate/1 or window_qualification/1 with its frozen table bound, sealing revision = this commit), writes the retained ENVELOPE (execution id, image
+# digest, run, attempt, commit, brief digest, brief id),
 #        DISPLAYS it in the run summary and RETAINS it under a name carrying run id + attempt. The approver reads THIS before approving.
 #   job `seal`   (environment `gochara-seal` — the approval gate; the sealer credential exists ONLY here)
 #     6. waits for the approval (one required reviewer: the owner's account; the steward approves on his authority — native ruling #2). The wait is not job time;

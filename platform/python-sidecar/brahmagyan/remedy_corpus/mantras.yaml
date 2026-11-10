@@ -54,7 +54,9 @@
   domain: "spirituality"
   category: "mantras"
   deity: "Surya"
-  remedy_text: "Recite the complete Aditya Hridayam stotram daily at sunrise. This 31-verse hymn from Valmiki Ramayana is the most powerful Sun propitiation. Sage Agastya taught it to Rama before battle."
+  remedy_text: >-
+    Recite the complete Aditya Hridayam stotram daily at sunrise. This 31-verse hymn from Valmiki Ramayana is the most powerful Sun propitiation. Sage Agastya taught it to Rama before
+    battle.
   mantra_sanskrit: "ततो युद्धपरिश्रान्तं समरे चिन्तया स्थितम्। रावणं चाग्रतो दृष्ट्वा युद्धाय समुपस्थितम्॥"
   mantra_transliteration: "Tato yuddhapariśrāntaṃ samare cintayā sthitam. Rāvaṇaṃ cāgrato dṛṣṭvā yuddhāya samupasthitam."
   ingredients_jsonb: {"items": ["water in copper vessel for arghya", "red flowers"], "optional": ["incense"]}
@@ -115,7 +117,9 @@
   domain: "education"
   category: "mantras"
   deity: "Budha"
-  remedy_text: "Chant the Budha Beeja Mantra on Wednesdays for Mercury-related issues: stammering, learning difficulties, business problems, skin ailments. 17,000 japa over 40 days is the full purascharana."
+  remedy_text: >-
+    Chant the Budha Beeja Mantra on Wednesdays for Mercury-related issues: stammering, learning difficulties, business problems, skin ailments. 17,000 japa over 40 days is the full
+    purascharana.
   mantra_sanskrit: "ॐ ब्रां ब्रीं ब्रौं सः बुधाय नमः"
   mantra_transliteration: "Om Braam Breem Braum Sah Budhaya Namah"
   ingredients_jsonb: {"items": ["green flowers", "moong dal (green lentils)", "books to donate"], "optional": ["emerald or green tourmaline mala"]}

@@ -972,7 +972,9 @@ rules:
     school: parashari
     confidence: 0.80
     confidence_rationale: "Sloka = 0.8; partial Saravali corroboration on Saturn's restrictive aspect = 1.0. 0.80."
-    caveats: "This principle is a general tendency — context determines whether Saturn's aspect on a malefic is truly beneficial or whether it simply creates a more controlled form of malefic expression."
+    caveats: >-
+      This principle is a general tendency — context determines whether Saturn's aspect on a malefic is truly beneficial or whether it simply creates a more controlled form of malefic
+      expression.
     verified: true
     stub: false
     stub_reason: null
@@ -2342,7 +2344,9 @@ rules:
     school: parashari
     confidence: 0.72
     confidence_rationale: "Sloka = 0.8; partial cross-text on synastry = 0.9. 0.72."
-    caveats: "BPHS's primary treatment of chart relationships is through Ashtakuta (birth nakshatra compatibility) rather than synastry aspects. This rule extrapolates from the general aspect principle."
+    caveats: >-
+      BPHS's primary treatment of chart relationships is through Ashtakuta (birth nakshatra compatibility) rather than synastry aspects. This rule extrapolates from the general aspect
+      principle.
     verified: true
     stub: false
     stub_reason: null

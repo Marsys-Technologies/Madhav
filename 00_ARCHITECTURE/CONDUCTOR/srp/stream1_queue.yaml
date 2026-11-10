@@ -29,7 +29,8 @@ batches:
         check_commands:
           # All 14 UDA tools present in SURGICAL_TOOLS
           - >-
-            grep -c "temporal\|kp_query\|query_kp_ruling_planets\|resonance_register\|cluster_atlas\|contradiction_register\|query_ucn_walk\|query_cdlm_lookup\|query_rm_walk\|query_jaimini_drishti\|timeline_query\|query_signal_state"
+            grep -c
+            "temporal\|kp_query\|query_kp_ruling_planets\|resonance_register\|cluster_atlas\|contradiction_register\|query_ucn_walk\|query_cdlm_lookup\|query_rm_walk\|query_jaimini_drishti\|timeline_query\|query_signal_state"
             /Users/Dev/Vibe-Coding/Apps/MadhavSRP-F1/platform/src/lib/mcp/primitives_registry.ts
             | awk '$1 >= 10'
           # forward_looking reads from params

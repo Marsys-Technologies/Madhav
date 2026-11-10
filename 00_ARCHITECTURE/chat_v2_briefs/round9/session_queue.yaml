@@ -27,7 +27,8 @@ sessions:
     depends_on: [R8-S3]
     status: BLOCKED
     block_reason: "depends_on R8-S3 which has not merged to main as of 2026-05-20"
-    acceptance_check: "cd platform && npx tsc --noEmit && npx prisma migrate status && test -f src/lib/embeddings/embedConversationMessage.ts && grep -q 'semantic' src/app/api/conversations/search/route.ts"
+    acceptance_check: >-
+      cd platform && npx tsc --noEmit && npx prisma migrate status && test -f src/lib/embeddings/embedConversationMessage.ts && grep -q 'semantic' src/app/api/conversations/search/route.ts
     commit_template: "feat(chat-v2/r9-s2): semantic conversation search — vector embeddings + hybrid trgm+cosine scoring + sidebar toggle"
     estimated_loc: "+150 (migration + embedding pipeline + search API extension)"
     risk: high

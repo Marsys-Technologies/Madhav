@@ -282,7 +282,9 @@ rules:
     school: parashari
     confidence: 0.72
     confidence_rationale: "Sloka with conditional = 0.8; partial Saravali = 0.9. 0.72."
-    caveats: "If both Saturn and Moon are functionally auspicious for the lagna, the tension is reduced — a yogakaraka Saturn in Saturn-Moon period can give mixed results that are ultimately positive."
+    caveats: >-
+      If both Saturn and Moon are functionally auspicious for the lagna, the tension is reduced — a yogakaraka Saturn in Saturn-Moon period can give mixed results that are ultimately
+      positive.
     verified: true
     stub: false
     stub_reason: null

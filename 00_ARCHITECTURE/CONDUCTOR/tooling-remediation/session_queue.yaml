@@ -107,7 +107,9 @@ entries:
 - session_id: TR-P1-S2
   wave: 1
   phase: 1
-  description: "Phase 1.3 + 1.4: query_signals filter enforcement (forward_looking, min_confidence, valence, temporal_activation, domains[]); query_ephemeris date_range + sample_step + return_changes_only"
+  description: >-
+    Phase 1.3 + 1.4: query_signals filter enforcement (forward_looking, min_confidence, valence, temporal_activation, domains[]); query_ephemeris date_range + sample_step +
+    return_changes_only
   brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_TOOLING_REMEDIATION_TR-P1-S2_v1_0.md
   branch: feature/tooling-remediation
   worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix
@@ -287,7 +289,9 @@ entries:
 - session_id: TR-P10-S1
   wave: 1
   phase: 10
-  description: "Phase 10.1–10.5: planner prompt R-rule additions — session-start diagnostic, no date estimation, log_prediction mandatory, flag_disagreement mandatory, cross-school before high-confidence"
+  description: >-
+    Phase 10.1–10.5: planner prompt R-rule additions — session-start diagnostic, no date estimation, log_prediction mandatory, flag_disagreement mandatory, cross-school before
+    high-confidence
   brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_TOOLING_REMEDIATION_TR-P10-S1_v1_0.md
   branch: feature/tooling-remediation
   worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix

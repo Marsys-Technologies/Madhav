@@ -47,7 +47,8 @@
     }
   timing_rules_jsonb: {'day': 'daily, especially Monday', 'time': 'before bed', 'duration_weeks': 8}
   cost_tier: 'accessible'
-  contraindications: 'Avoid during pregnancy. May cause drowsiness — do not drive after. Not prescribed when Moon governs a house with heavy Saturn or Mars influence without Vata-grounding modifications.'
+  contraindications: >-
+    Avoid during pregnancy. May cause drowsiness — do not drive after. Not prescribed when Moon governs a house with heavy Saturn or Mars influence without Vata-grounding modifications.
   source_text: 'BPHS'
   source_chapter: 'Ch. 94'
   source_verse: 'Verse 36'
@@ -174,7 +175,8 @@
   ingredients_jsonb:
     {
       'ingredients': ['sesame (til) oil — warm (150-200ml per session)', 'optional additions': ['camphor', 'eucalyptus oil for joint pain']],
-      'preparation': 'Warm sesame oil; massage entire body from head to feet for 15-30 minutes; leave oil on for 20 minutes; shower with warm water; do NOT shampoo hair on Saturdays (classical injunction)',
+      'preparation': 'Warm sesame oil; massage entire body from head to feet for 15-30 minutes; leave oil on for 20 minutes; shower with warm water;
+        do NOT shampoo hair on Saturdays (classical injunction)',
       'frequency': 'Saturdays during Saturn dasha or Sade Sati',
     }
   timing_rules_jsonb: {'day': 'Saturday', 'time': 'morning before bath', 'duration_weeks': 'ongoing, especially during Sade Sati'}

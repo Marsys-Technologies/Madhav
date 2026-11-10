@@ -80,7 +80,9 @@ mechanisms:
       (gate_kind='sav_threshold') encode the same threshold logic via min_sav_score.
       SAV total 337 bindus / 12 signs = 28.08 per-sign mean used as damp/neutral/amplify boundary.
     uncited_extension: false
-    evidence_link: "W4.3 ablation runner (w43_ablation_runner.py): structural-proxy + unit test coverage; W4.4 weight fitting (w44_weight_fitting.py): per-mechanism delta_hit_rate via pooled cross-chart fit"
+    evidence_link: >-
+      W4.3 ablation runner (w43_ablation_runner.py): structural-proxy + unit test coverage; W4.4 weight fitting (w44_weight_fitting.py): per-mechanism delta_hit_rate via pooled cross-chart
+      fit
     weight_type: fitted
     module_path: services.gochara_v3.mechanisms.w21_av_gating
 
@@ -98,7 +100,9 @@ mechanisms:
       quality based on Moon's nakshatra at ingress relative to janma nakshatra.
       bg_transit_moorti reference table (27 rows) encodes the same rule.
     uncited_extension: false
-    evidence_link: "W4.3 ablation runner (w43_ablation_runner.py): structural-proxy + unit test coverage; W4.4 weight fitting (w44_weight_fitting.py): per-mechanism delta_hit_rate via pooled cross-chart fit"
+    evidence_link: >-
+      W4.3 ablation runner (w43_ablation_runner.py): structural-proxy + unit test coverage; W4.4 weight fitting (w44_weight_fitting.py): per-mechanism delta_hit_rate via pooled cross-chart
+      fit
     weight_type: fitted
     module_path: services.gochara_v3.mechanisms.w22_moorti_nirnaya
 
@@ -116,7 +120,9 @@ mechanisms:
       9-Tara cycle: Janma(1.00), Sampat(1.15), Vipat(0.75), Kshema(1.10),
       Pratyak(0.80), Sadhana(1.05), Naidhana(0.70), Mitra(1.15), Paramamitra(1.20).
     uncited_extension: false
-    evidence_link: "W4.3 ablation runner (w43_ablation_runner.py): structural-proxy + unit test coverage; W4.4 weight fitting (w44_weight_fitting.py): per-mechanism delta_hit_rate via pooled cross-chart fit"
+    evidence_link: >-
+      W4.3 ablation runner (w43_ablation_runner.py): structural-proxy + unit test coverage; W4.4 weight fitting (w44_weight_fitting.py): per-mechanism delta_hit_rate via pooled cross-chart
+      fit
     weight_type: fitted
     module_path: services.gochara_v3.mechanisms.w23_tara_bala
 
@@ -134,7 +140,9 @@ mechanisms:
       per-phase timestamps (sade_sati_phase category) and cancellation data
       (sade_sati_cancellation_check category) in chart_facts (~11k rows).
     uncited_extension: false
-    evidence_link: "W4.3 ablation runner (w43_ablation_runner.py): structural-proxy + unit test coverage; W4.4 weight fitting (w44_weight_fitting.py): per-mechanism delta_hit_rate via pooled cross-chart fit"
+    evidence_link: >-
+      W4.3 ablation runner (w43_ablation_runner.py): structural-proxy + unit test coverage; W4.4 weight fitting (w44_weight_fitting.py): per-mechanism delta_hit_rate via pooled cross-chart
+      fit
     weight_type: fitted
     module_path: services.gochara_v3.mechanisms.w24_sade_sati
 
@@ -152,7 +160,9 @@ mechanisms:
       (ADJUDICATION-9 tier-iii). Malefic transits through inner rings represent
       increasing siege intensity; Saturn and Mars are primary siege planets.
     uncited_extension: false
-    evidence_link: "W4.3 ablation runner (w43_ablation_runner.py): structural-proxy + unit test coverage; W4.4 weight fitting (w44_weight_fitting.py): per-mechanism delta_hit_rate via pooled cross-chart fit"
+    evidence_link: >-
+      W4.3 ablation runner (w43_ablation_runner.py): structural-proxy + unit test coverage; W4.4 weight fitting (w44_weight_fitting.py): per-mechanism delta_hit_rate via pooled cross-chart
+      fit
     weight_type: fitted
     module_path: services.gochara_v3.mechanisms.w25_kota_chakra
 
@@ -170,7 +180,9 @@ mechanisms:
       of gochara effects when they occur near sensitive natal degrees.
       bg_sky_events / bg_sky_calendar table (31,059-row sky calendar) holds real eclipse events.
     uncited_extension: false
-    evidence_link: "W4.3 ablation runner (w43_ablation_runner.py): structural-proxy + unit test coverage; W4.4 weight fitting (w44_weight_fitting.py): per-mechanism delta_hit_rate via pooled cross-chart fit"
+    evidence_link: >-
+      W4.3 ablation runner (w43_ablation_runner.py): structural-proxy + unit test coverage; W4.4 weight fitting (w44_weight_fitting.py): per-mechanism delta_hit_rate via pooled cross-chart
+      fit
     weight_type: fitted
     module_path: services.gochara_v3.mechanisms.w26_real_eclipses
 
@@ -190,7 +202,9 @@ mechanisms:
       significator. Krsna Misra / Tajaka tradition — Pravesa chart annual tone per domain.
       Sudarsana Cakra Paddhati — house placement of transit body modifies classical effectiveness.
     uncited_extension: false
-    evidence_link: "W4.3 ablation runner (w43_ablation_runner.py): structural-proxy + unit test coverage; W4.4 weight fitting (w44_weight_fitting.py): per-mechanism delta_hit_rate via pooled cross-chart fit"
+    evidence_link: >-
+      W4.3 ablation runner (w43_ablation_runner.py): structural-proxy + unit test coverage; W4.4 weight fitting (w44_weight_fitting.py): per-mechanism delta_hit_rate via pooled cross-chart
+      fit
     weight_type: fitted
     module_path: services.gochara_v3.mechanisms.w27_annual_stack
 

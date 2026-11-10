@@ -1013,7 +1013,10 @@ sessions:
     worktree: ../MadhavBO-C
     branch: feature/build-orch/stream-c
     title: "stub asset writers (no-op emit)"
-    desc: "For each of A2-A14: create platform/python-sidecar/pipeline/writers/{forensic_writer,chart_facts_writer,panchanga_writer,dashas_writer,vargas_writer,sensitive_points_writer,t1_structural_writer,sade_sati_writer,msr_writer,cdlm_writer,cgm_writer,rm_writer,ucn_digest_writer}.py with stub implementations that emit build_events but write no data. Stubs return rows_written=0. This enables end-to-end pipeline smoke without real writers."
+    desc: >-
+      For each of A2-A14: create
+      platform/python-sidecar/pipeline/writers/{forensic_writer,chart_facts_writer,panchanga_writer,dashas_writer,vargas_writer,sensitive_points_writer,t1_structural_writer,sade_sati_writer,msr_writer,cdlm_writer,cgm_writer,rm_writer,ucn_digest_writer}.py
+      with stub implementations that emit build_events but write no data. Stubs return rows_written=0. This enables end-to-end pipeline smoke without real writers.
     depends_on: [C-06]
     parallel_eligible: false
     estimated_hours: 4

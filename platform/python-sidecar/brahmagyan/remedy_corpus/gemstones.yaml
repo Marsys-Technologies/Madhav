@@ -47,7 +47,8 @@
     {'setting_metal': 'silver', 'finger': 'little finger', 'hand': 'right', 'minimum_carats': 4, 'quality_notes': 'round, lustrous, no spots; natural saltwater preferred'}
   timing_rules_jsonb: {'day': 'Monday', 'time': 'within 2 hours of moonrise', 'paksha': 'Shukla', 'month_note': 'Kartika or Shravana month preferred'}
   cost_tier: 'moderate'
-  contraindications: 'Avoid during balsashad yoga or when Moon is waning and combust. Not recommended for Gemini or Virgo ascendants where Moon rules 2H/4H without specific yogas requiring Moon strengthening.'
+  contraindications: >-
+    Avoid during balsashad yoga or when Moon is waning and combust. Not recommended for Gemini or Virgo ascendants where Moon rules 2H/4H without specific yogas requiring Moon strengthening.
   source_text: 'BPHS'
   source_chapter: 'Ch. 93'
   source_verse: 'Verse 13-17'

@@ -1054,7 +1054,9 @@ rules:
     school: parashari
     confidence: 0.65
     confidence_rationale: "Sloka with complex conditional = 0.65 textual_strength (multiple conditions, some implicit); partial Saravali corroboration = 1.0. 0.65."
-    caveats: "This three-planet configuration is rare and the exact aspect requirements are complex — the verse may be referring to a specific simultaneous aspect pattern rather than sequential aspects."
+    caveats: >-
+      This three-planet configuration is rare and the exact aspect requirements are complex — the verse may be referring to a specific simultaneous aspect pattern rather than sequential
+      aspects.
     verified: true
     stub: false
     stub_reason: null
@@ -1255,7 +1257,8 @@ rules:
     scope: yoga
     school: parashari
     confidence: 0.0
-    confidence_rationale: "The specific BPHS verse listing Pancha Mahapurusha cancellation conditions (conjunction with enemies, combustion effects on yoga strength) needs precise chapter-verse trace."
+    confidence_rationale: >-
+      The specific BPHS verse listing Pancha Mahapurusha cancellation conditions (conjunction with enemies, combustion effects on yoga strength) needs precise chapter-verse trace.
     caveats: null
     verified: false
     stub: true
