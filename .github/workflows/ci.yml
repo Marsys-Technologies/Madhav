@@ -285,11 +285,15 @@ jobs:
           cache: 'npm'
           cache-dependency-path: platform/package-lock.json
       - run: npm ci
+      - name: ESLint — full web platform
+        run: npm run lint
       # platform's program reaches platform-mcp sources through the K9-6 registry test
       # (views_registry.integration.test.ts imports tools/kala_views/register_all), so
       # their MCP SDK / zod imports must resolve here as well.
       - name: Install platform-mcp dependencies for imported sources
         run: npm ci --prefix ../platform-mcp
+      - name: ESLint — MCP server
+        run: npm run lint --prefix ../platform-mcp -- --max-warnings 0
       - name: tsc — src only (exclude tests)
         # Capture tsc output; only fail on errors outside test directories.
         # Uses || true so set -e doesn't abort before we can inspect output.
@@ -3430,7 +3434,17 @@ jobs:
             platform/python-sidecar/requirements-ci.txt
 
       - name: Install Python dependencies
-        run: pip install pyyaml pytest
+        run: pip install pyyaml pytest yamllint==1.38.0
+
+      - name: YAML syntax and duplicate keys
+        run: |
+          yamllint -d '{rules: {key-duplicates: enable}}' --strict \
+            .github platform \
+            00_ARCHITECTURE/CONDUCTOR/ws3/bphs_pilot_rules.yaml \
+            00_ARCHITECTURE/CONDUCTOR/ws3/brahmagyan_concordance.yaml
+
+      - name: Observatory OpenAPI formatting
+        run: yamllint --strict platform/src/app/api/admin/observatory/openapi.yaml
 
       - name: SR-A6-GCW — protected migration window scheduling
         # Required through the existing Governance Gates aggregate, including merge_group.
