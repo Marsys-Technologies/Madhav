@@ -10,6 +10,7 @@ import { ChartsTab } from './ChartsTab'
 import { AiAccessTab } from './AiAccessTab'
 import { ADMIN_BLOCKS } from './AdminNavigation'
 import { adminGhostBtn } from './styles'
+import folio from './folio-context.module.css'
 import { PageTitle, type PageName } from '@/components/journey1/Titles'
 import type { AdminAccessRequest, AdminUser } from './types'
 import type { AuditLogEntry } from '@/app/api/admin/audit-log/route'
@@ -60,13 +61,19 @@ export function AdminClient({ currentUserId }: { currentUserId: string }) {
 
   const pendingCount = (requestsQuery.data?.requests ?? []).filter(r => r.status === 'pending').length
   const showRequestRecovery = requestsQuery.isError || (requestsQuery.isPending && requestsQuery.isFetched)
+  const portalHeader = activeTab === 'overview' || activeTab === 'pending'
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className={portalHeader ? folio.context : undefined}>
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <PageTitle name={title} />
+            {portalHeader && (
+              <p className={folio.scope}>
+                {activeTab === 'overview' ? 'Portal scope · administration overview' : 'Portal scope'}
+              </p>
+            )}
             <p className="mt-1 text-sm text-muted-foreground">
               Portal administration in four blocks. Your account, preferences, personas and AI defaults stay under My Account.
             </p>
@@ -75,7 +82,6 @@ export function AdminClient({ currentUserId }: { currentUserId: string }) {
       </div>
 
       {activeTab === 'overview' && <>
-        <p className="j5-eyebrow">Portal scope · administration overview</p>
         <div className="j6-blocks">{ADMIN_BLOCKS.map(block => <Link className="j5-panel" key={block.href} href={block.href}><h2>{block.label}</h2><p className="j1-note">{block.description}</p></Link>)}</div>
         <div className="j5-panel"><h2>People and access</h2><p>{requestsQuery.isPending ? 'Requests loading…' : requestsQuery.isError ? 'Request count unavailable' : `${pendingCount} requests awaiting review`}</p><div className="j6-links"><Link href="/admin?tab=users">Users</Link><Link href="/admin?tab=charts">Chart Management</Link>{aiAccessEnabled && <Link href="/admin?tab=ai-access">AI Access</Link>}<Link href="/admin/administration-log">Administration Log</Link><Link href="/admin/mcp/keys">MCP / Client Keys</Link></div></div>
         <div className="j5-panel"><h2>Activity scope</h2><div className="j6-links"><Link href="/account/ai-cockpit/observatory">My activity</Link><Link href="/admin/activity?scope=portal">Portal activity</Link><Link href="/admin/activity?scope=user">Selected user activity</Link></div><p className="j1-note">Inspecting a user never impersonates them or changes their settings.</p></div>

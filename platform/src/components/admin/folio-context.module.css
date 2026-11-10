@@ -1,0 +1,28 @@
+.context {
+  --folio-ink: #242920;
+  --folio-muted: #52584a;
+  background: #f5efe2;
+  border-radius: 12px;
+  padding: clamp(16px, 3vw, 24px);
+  overflow-wrap: anywhere;
+  font-family: system-ui, sans-serif;
+}
+
+.context :global(.j1-title) > span {
+  color: var(--folio-ink);
+  font-family: inherit;
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-variant: normal;
+  line-height: 1.2;
+}
+
+.context :global(.j1-title) > small,
+.context p {
+  color: var(--folio-muted);
+}
+
+.scope {
+  margin: 8px 0 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
