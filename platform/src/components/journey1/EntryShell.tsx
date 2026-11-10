@@ -43,12 +43,14 @@ const GRAHAS = [
 export function EntryShell({
   name,
   children,
+  className,
 }: {
   name: PageName;
   children: ReactNode;
+  className?: string;
 }) {
   return (
-    <main className="j1 j1-entry">
+    <main className={className ? `j1 j1-entry ${className}` : "j1 j1-entry"}>
       <div className="j1-cosmos" aria-hidden="true">
         {Array.from({ length: 26 }, (_, i) => (
           <i

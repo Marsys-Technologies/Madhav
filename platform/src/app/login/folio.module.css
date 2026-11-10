@@ -1,0 +1,114 @@
+.folio:global(.j1-entry) {
+  --j1-text: #242920;
+  --folio-muted: #52584a;
+  --folio-action: #2e563e;
+  --folio-panel: #fcf8ee;
+  --folio-selected: #e6eadb;
+  --folio-border: #716d5e;
+  background: #f5efe2;
+  color: var(--j1-text);
+  color-scheme: light;
+  font-family: system-ui, sans-serif;
+}
+
+.folio :global(.j1-cosmos) {
+  display: none;
+}
+
+.folio :global(.j1-entry-column) {
+  padding-block-start: clamp(24px, 5vw, 64px);
+  gap: 20px;
+}
+
+.folio :global(.j1-entry-card) {
+  background: var(--folio-panel);
+  border: 1px solid #a5a18e;
+  padding: clamp(16px, 5vw, 28px);
+}
+
+.folio :global(.j1-entry-brand) > svg {
+  background: var(--j1-text);
+  border-radius: 12px;
+  max-inline-size: 100%;
+  padding: 8px 16px;
+}
+
+.folio :global(.j1-title) > span,
+.heading {
+  font-family: Georgia, serif;
+  color: var(--j1-text);
+}
+
+.heading {
+  font-size: 1.5rem;
+  line-height: 1.2;
+  margin-block: 0 4px;
+}
+
+.folio :global(.j1-title) > small,
+.folio :global(.j1-descriptor),
+.folio :global(.j1-note),
+.folio :global(.j1-field) > span,
+.folio :global(.j1-field) > :global(.j1-password-label),
+.folio footer {
+  color: var(--folio-muted);
+}
+
+.folio :global(.j1-tabs),
+.folio :global(.j1-field) input,
+.folio :global(.j1-icon) {
+  background: var(--folio-panel);
+  border: 1px solid var(--folio-border);
+  color: var(--j1-text);
+}
+
+.folio :global(.j1-tabs) button {
+  min-height: 44px;
+  color: var(--folio-muted);
+}
+
+.folio :global(.j1-tabs) button[aria-pressed="true"] {
+  background: var(--folio-selected);
+  box-shadow: inset 0 -3px var(--folio-action);
+  color: var(--j1-text);
+  font-weight: 600;
+}
+
+.folio :global(.j1-password) button {
+  width: 44px;
+  height: 44px;
+  top: 1px;
+  color: var(--folio-muted);
+}
+
+.folio :global(.j1-btn) {
+  background: var(--folio-action);
+  border-color: var(--folio-action);
+  color: #fffaf0;
+}
+
+.folio :global(.j1-error) {
+  background: var(--folio-panel);
+  border-color: #802e28;
+  color: #802e28;
+}
+
+.folio :is(button, a, input):focus-visible {
+  outline: 3px solid var(--folio-action);
+  outline-offset: 4px;
+}
+
+.help {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  justify-content: space-between;
+}
+
+.folio .help a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--folio-action);
+  text-decoration: underline;
+}

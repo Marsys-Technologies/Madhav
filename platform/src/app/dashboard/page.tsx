@@ -10,6 +10,7 @@ import type { ChartWithMeta, RosterStats } from '@/lib/roster/types'
 import { PageTitle } from '@/components/journey1/Titles'
 import { emptyChartReadiness, getChartReadinessMap } from '@/lib/charts/readiness'
 import { ChartCreatedToast } from '@/components/brahma/ChartCreatedToast'
+import styles from './folio.module.css'
 
 /**
  * Dashboard — role-gated roster (Unit 3.consult_nav, Commit 1).
@@ -91,13 +92,13 @@ export default async function DashboardPage() {
   }
 
   return (
-    <div className="relative min-h-full overflow-hidden" data-testid="dashboard-root" data-role={role}>
+    <div className={`relative min-h-full overflow-hidden ${styles.folio}`} data-testid="dashboard-root" data-role={role}>
       {/* Chart-created toast: shown when ?chart_created=[id] is present in URL */}
       <Suspense>
         <ChartCreatedToast />
       </Suspense>
       <div className="j1-container">
-        <div className="flex items-center justify-between mb-6">
+        <div className={styles.heading}>
           <PageTitle name="charts"/>
           {canCreateChart && (
             <Link href="/clients/new" aria-label="Nava Jātaka (new chart)" className="j1-btn j1-btn-secondary" data-testid="new-client-link">
