@@ -74,7 +74,10 @@ async function callGemini(prompt: string): Promise<GraderCallResult> {
       const errText = await res.text().catch(() => '')
       return { ok: false, text: null, error: `gemini HTTP ${res.status}: ${errText.slice(0, 300)}` }
     }
-    const j = (await res.json()) as any
+    const j = (await res.json()) as {
+      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> }; finishReason?: string }>
+      usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number }
+    } | null
     const text = j?.candidates?.[0]?.content?.parts?.[0]?.text ?? null
     const tokensIn = j?.usageMetadata?.promptTokenCount
     const tokensOut = j?.usageMetadata?.candidatesTokenCount
@@ -104,7 +107,10 @@ async function callDeepSeek(prompt: string): Promise<GraderCallResult> {
       const errText = await res.text().catch(() => '')
       return { ok: false, text: null, error: `deepseek HTTP ${res.status}: ${errText.slice(0, 300)}` }
     }
-    const j = (await res.json()) as any
+    const j = (await res.json()) as {
+      choices?: Array<{ message?: { content?: string } }>
+      usage?: { prompt_tokens?: number; completion_tokens?: number }
+    } | null
     const text = j?.choices?.[0]?.message?.content ?? null
     const tokensIn = j?.usage?.prompt_tokens
     const tokensOut = j?.usage?.completion_tokens
