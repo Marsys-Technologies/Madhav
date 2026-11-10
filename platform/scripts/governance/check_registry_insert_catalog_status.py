@@ -45,16 +45,16 @@ What it does NOT flag, deliberately
     Reported as a warning, never a failure — the guard does not claim reach it lacks.
   - Anything outside the two migration directories.
 
-Baseline: pre-existing offenders are allowlisted by filename in ALLOWLIST below, each
-with the reason it is closed. Migration 660 corrected their DATA; the files themselves
-are applied and immutable (CLAUDE.md §N.4 — never edit an applied migration), so they
-are quarantined rather than fixed.
+Baseline: exact repository paths and SHA-256 digests identify the applied,
+immutable migrations exempt from this check (CLAUDE.md §N.4). Dispositions
+below refer to later source evidence and do not attest to live database state.
 
 Exit codes: 0 clean, 1 violation(s), 2 invocation error.
 """
 from __future__ import annotations
 
 import argparse
+import hashlib
 import re
 import sys
 from pathlib import Path
@@ -65,44 +65,65 @@ MIGRATION_DIRS = (
     Path("platform/supabase/migrations"),
 )
 
-# Applied, immutable migrations that omitted catalog_status before this guard existed.
-# Their DATA was corrected by 294 (L0/L1 assets) and 660 (L2 Bodha assets); the files
-# stay as they are because an applied migration is never edited.
+# Historical source exceptions. Match both path and bytes before exempting any finding.
 ALLOWLIST: dict[str, str] = {
-    # ── L2 Bodha: data corrected by migration 660 (this session) ──────────────
-    "358_bodha_orphaned_writer_registry.sql":
-        "bo_chart_gestalt / bo_cdlm_summary / bo_cgm_motifs / bo_cgm_paths — data corrected by 326/327 and 660",
-    "438_bo_sudarshana_asset_registry.sql": "bo_sudarshana — data corrected by 660",
-    "445_bodha_mechanisms.sql": "bo_yantra_mechanism — data corrected by 660",
-    "446_bo_laksana_rerank_registry.sql": "bo_laksana_rerank — data corrected by 660",
-    "450_bo_nakshatra_semantic_asset_registry.sql": "bo_nakshatra_semantic — data corrected by 660",
-    "451_bo_arudha_asset_registry.sql": "bo_arudha — data corrected by 660",
-    "452_bo_special_lagna_asset_registry.sql": "bo_special_lagna — data corrected by 660",
-    "453_bo_vargottama_dhana_asset_registry.sql": "bo_vargottama_dhana — data corrected by 660",
-
-    # ── Other layers: file quarantined here, DATA still uncorrected ───────────
-    # These are NOT closed. Writing this guard surfaced that the omission reaches
-    # far beyond L2: 46 assets are catalog_status='DRAFT' live, and L3 (11), L4 (9)
-    # and L5 (15) are DRAFT in their ENTIRETY — layers that CLAUDE.md §E records as
-    # CLOSED and SEALED. Because the cockpit filters on catalog_status, three sealed
-    # layers are invisible in it.
-    #
-    # An applied migration is never edited (CLAUDE.md §N.4), so the file-level
-    # violation is permanently unfixable and is quarantined here. The DATA fix
-    # belongs to each layer's own session and its own migration range — L2 must not
-    # write another layer's registry rows (charter C5). Raised for routing as a
-    # NIRMĀṆA adjudication issue; see L2_STATE.md § ADJUDICATIONS RAISED.
-    "266_bg_transit_tables.sql": "L0 — file immutable; live DRAFT set is L0's to correct",
-    "291_ga_prashna_asset_registry.sql": "L1 — file immutable; ga_prashna disposition is L1's",
-    "292_ga_nakshatra_registry.sql": "L1 — file immutable; live row is CURRENT, no data defect",
-    "435_ga_vichara.sql": "L1 — file immutable; ga_vichara IS live-DRAFT, L1's to correct",
-    "440_vidhi_registry_schema.sql": "L0/vidhi — file immutable; bg_vidhi_floors IS live-DRAFT, L0's to correct",
-    "174_brahmagyan_naming_reconciliation.sql": "L0 — file immutable; live rows are CURRENT, no data defect",
-    "179_l0_phase_alpha_asset_registry.sql": "L0 — file immutable; live rows are CURRENT, no data defect",
-    "195_ganita_naming_reconciliation.sql": "L1 — file immutable; live rows are CURRENT, no data defect",
-    "423_ba_lel_r2_2_step1_chart_scope.sql": "L5 — file immutable; lel_events IS live-DRAFT, L5's to correct",
-    "240_ga_yoga.sql": "L1 — file immutable; live row is CURRENT, no data defect",
-    "262_bg_prashna_rules_asset_registry.sql": "L0 — file immutable; live row is CURRENT, no data defect",
+    # bo_chart_gestalt / bo_cdlm_summary / bo_cgm_motifs / bo_cgm_paths — data corrected by 326/327 and 660
+    "platform/migrations/358_bodha_orphaned_writer_registry.sql":
+        "b4216382bb279f5e97bc141904962f7c1583539d995b756950be119582634496",
+    # bo_sudarshana — data corrected by 660
+    "platform/migrations/438_bo_sudarshana_asset_registry.sql":
+        "0ae74c6f782f5413a40cea37603bc8ddb4b9a1caa7a56aa8f1ee3940ad777de8",
+    # bo_yantra_mechanism — data corrected by 660
+    "platform/migrations/445_bodha_mechanisms.sql":
+        "5bbfc9a3c0477d4237369efcc8b6d256771c50ae5fc3c049bc68769a1ee6fca9",
+    # bo_laksana_rerank — data corrected by 660
+    "platform/migrations/446_bo_laksana_rerank_registry.sql":
+        "c355605fe1ee27ba47e0b5adbd35b568ea05fbbfab761fdf3120dc020d6f19e3",
+    # bo_nakshatra_semantic — data corrected by 660
+    "platform/migrations/450_bo_nakshatra_semantic_asset_registry.sql":
+        "dd71357eaf0cb3f56dad6b7645fc781f80ae180c8a3f3919ae257dfa6d3b28b7",
+    # bo_arudha — data corrected by 660
+    "platform/migrations/451_bo_arudha_asset_registry.sql":
+        "7608b8e236482118f20be6817c291f095da3a88f0d74b68fcc7a56d38c13a331",
+    # bo_special_lagna — data corrected by 660
+    "platform/migrations/452_bo_special_lagna_asset_registry.sql":
+        "a3397791ce3120a86fe2576b7400ea9d56868b8bbd56ede751ff4c1eccece8e2",
+    # bo_vargottama_dhana — data corrected by 660
+    "platform/migrations/453_bo_vargottama_dhana_asset_registry.sql":
+        "a08c8206cc02d9e16cfc5d831a977702de89f328166038b72c0df213fe638e7e",
+    # 294 promotes both bg_transit_engine and bg_transit_rules.
+    "platform/migrations/266_bg_transit_tables.sql":
+        "0c1ec8e3eb8ac57adfb32e0597c77d217ab386f280c6fe811594122a021cbe1b",
+    # 650 records the owner-approved dormant disposition.
+    "platform/migrations/291_ga_prashna_asset_registry.sql":
+        "c6b7c35020cff5af0e8c0b7d5f66037195f3195e61034c895406c5a223e39a88",
+    # 294 promotes ga_nakshatra.
+    "platform/migrations/292_ga_nakshatra_registry.sql":
+        "39943574018a85258c381069b3d055364f482651b03f927d899f4a0af7287332",
+    # 650 promotes ga_vichara.
+    "platform/migrations/435_ga_vichara.sql":
+        "9d7301556a60ff9f87ce5088b553def7f8d72db7b5cad37e159a9a436668217a",
+    # 642 records CURRENT primitives and the intentional DRAFT floors.
+    "platform/migrations/440_vidhi_registry_schema.sql":
+        "a4e0761f2bea17cb231b9fc289c741ee053c42d05de962b97d56ab64d9c5c8ff",
+    # L0 — file immutable; live rows are CURRENT, no data defect
+    "platform/supabase/migrations/174_brahmagyan_naming_reconciliation.sql":
+        "173152db2607efa51ffd0ffd7ac626b71a3683ec8cdddf1fe2f1d91969a3cc2c",
+    # L0 — file immutable; live rows are CURRENT, no data defect
+    "platform/supabase/migrations/179_l0_phase_alpha_asset_registry.sql":
+        "80a9418aa2fb95c6bc7b580249d1cb4acde5c51aeab44876b07fd47e95b9f794",
+    # L1 — file immutable; live rows are CURRENT, no data defect
+    "platform/supabase/migrations/195_ganita_naming_reconciliation.sql":
+        "358b4558b45652fe5496de6396f34fb3491c4b027c8fc01f18feda1b159f1d78",
+    # 691 promotes lel_events.
+    "platform/supabase/migrations/423_ba_lel_r2_2_step1_chart_scope.sql":
+        "a53007047c5d5b4ad0f79212a9c9d651e5ca2746bbe3319f5cc8e0c67c1df126",
+    # L1 — file immutable; live row is CURRENT, no data defect
+    "platform/migrations/240_ga_yoga.sql":
+        "daf58ccc136be72ab6b17103e4b175b47be27b025a03ca3e60779b0b01acd96b",
+    # 294 promotes bg_prashna_rules.
+    "platform/migrations/262_bg_prashna_rules_asset_registry.sql":
+        "d5c9b6b2565e5e8f6959a986050a1f5806dbd1007edf9c7800df7e0170996d8a",
 }
 
 # INSERT INTO asset_registry ( ... ) — capture the parenthesised column list.
@@ -213,6 +234,7 @@ def main() -> int:
     all_warnings: list[str] = []
     allowlisted = 0
     scanned = 0
+    missing_exceptions = set(ALLOWLIST)
 
     for rel_dir in MIGRATION_DIRS:
         directory = REPO_ROOT / rel_dir
@@ -222,12 +244,18 @@ def main() -> int:
             scanned += 1
             violations, warnings = scan_file(path)
             all_warnings.extend(warnings)
-            if not violations:
-                continue
-            if path.name in ALLOWLIST:
-                allowlisted += len(violations)
-                continue
+            rel_path = path.relative_to(REPO_ROOT).as_posix()
+            expected_digest = ALLOWLIST.get(rel_path)
+            if expected_digest is not None:
+                missing_exceptions.discard(rel_path)
+                if hashlib.sha256(path.read_bytes()).hexdigest() == expected_digest:
+                    allowlisted += len(violations)
+                    continue
+                all_violations.append(f"{rel_path} — immutable migration bytes changed")
             all_violations.extend(violations)
+
+    for rel_path in sorted(missing_exceptions):
+        all_violations.append(f"{rel_path} — immutable migration missing")
 
     for warning in all_warnings:
         print(f"  [warn] {warning}")
