@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, within, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, within, waitFor } from "@testing-library/react";
 const state = vi.hoisted(() => ({ path: "/clients/chart-test" }));
 vi.mock("next/navigation", () => ({
   usePathname: () => state.path,
@@ -64,18 +64,33 @@ describe("Journey 1 shared navigation", () => {
       }),
     ).toBeNull();
   });
-  it("can enter and leave deferred workflows without changing hook order", () => {
-    const view = render(<JourneyShell {...props}>Chart overview</JourneyShell>);
+  it("keeps Consultation and Prediction Review in the chart workspace", async () => {
     state.path = "/clients/chart-test/pariprashna";
-    view.rerender(<JourneyShell {...props}>Chart overview</JourneyShell>);
-    expect(screen.getByText("Chart overview")).toBeInTheDocument();
-    expect(screen.queryByText("Existing consultation shell")).toBeNull();
+    const view = await act(async () =>
+      render(<JourneyShell {...props}>Consultation</JourneyShell>),
+    );
+    expect(screen.getByTestId("chart-page-frame")).toHaveAttribute("data-workspace", "consultation");
+    expect(screen.getByRole("main")).toHaveTextContent("Consultation");
+
     state.path = "/clients/chart-test/samiksha";
     view.rerender(<JourneyShell {...props}>Prediction review</JourneyShell>);
+    expect(screen.getByTestId("chart-page-frame")).toHaveAttribute("data-chart-id", "chart-test");
+    expect(screen.getByTestId("chart-page-frame")).not.toHaveAttribute("data-workspace");
+    expect(screen.getByRole("main")).toHaveTextContent("Prediction review");
+    expect(screen.getByRole("navigation", { name: "Primary navigation" })).toBeInTheDocument();
+  });
+  it("can enter and leave a saved legacy consultation without changing hook order", async () => {
+    const view = await act(async () =>
+      render(<JourneyShell {...props}>Chart overview</JourneyShell>),
+    );
+    state.path = "/clients/chart-test/consult/saved-reading";
+    view.rerender(<JourneyShell {...props}>Saved reading</JourneyShell>);
     expect(screen.getByText("Existing consultation shell")).toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "Primary navigation" })).toBeNull();
+
     state.path = "/clients/chart-test/edit";
     view.rerender(<JourneyShell {...props}>Chart details</JourneyShell>);
-    expect(screen.getByText("Chart details")).toBeInTheDocument();
-    expect(screen.queryByText("Existing consultation shell")).toBeNull();
+    expect(screen.getByRole("main")).toHaveTextContent("Chart details");
+    expect(screen.getByRole("navigation", { name: "Primary navigation" })).toBeInTheDocument();
   });
 });

@@ -12,11 +12,20 @@ export default async function BuildCockpitPage() {
   // layout guard alone can be skipped by a crafted RSC request (SS N-373).
   await requireSuperAdminPage()
   const now = new Date()
+  const startOfToday = new Date(now)
+  startOfToday.setUTCHours(0, 0, 0, 0)
+  const period = {
+    from: startOfToday.toISOString(),
+    // Both readers require the exclusive end to follow the start, even at midnight.
+    to: new Date(Math.max(now.getTime(), startOfToday.getTime() + 1)).toISOString(),
+  }
+  const drilldown = new URLSearchParams({ scope: 'portal', ...period })
   let activity: Awaited<ReturnType<typeof usageSummary>> | null = null
   let feed: 'current' | 'delayed' = 'delayed'
   if (meteringEnabled()) {
     try {
-      const filter = parseUsageFilter(new URL('https://local.invalid/?view=summary&from=' + encodeURIComponent(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).toISOString()) + '&to=' + encodeURIComponent(now.toISOString())), { ownerId: null })
+      const summary = new URLSearchParams({ view: 'summary', ...period })
+      const filter = parseUsageFilter(new URL(`https://local.invalid/?${summary}`), { ownerId: null })
       activity = await usageSummary(filter, { ownerId: null })
     } catch { /* A failed data source is not a zero. */ }
   }
@@ -32,9 +41,9 @@ export default async function BuildCockpitPage() {
       <Link href="/observatory" className="rounded-xl border border-[#57401c] bg-[#14110b] p-6 transition-colors hover:border-[#d2a23c]"><p className="text-xs uppercase tracking-[0.17em] text-[#ac8a48]">Activity</p><h2 className="mt-2 text-3xl text-[#ecc56a]" style={{ fontFamily: 'var(--font-cormorant), Georgia, serif' }}>Observatory</h2><p className="mt-3 text-sm text-[#b8aa8d]">Overview, analytics, and conversation-level consumption.</p><p className="mt-6 text-sm text-[#d2a23c]">Open Observatory →</p></Link>
     </div>
     <section aria-label="Today at a glance" className="grid gap-3 sm:grid-cols-3">
-      <Link href="/observatory" className="rounded-xl border border-[#382b18] bg-[#14110b] p-5"><p className="text-xs uppercase tracking-widest text-[#ac8a48]">Calls today · UTC</p><p className="mt-2 text-3xl text-[#ecc56a] tabular-nums">{calls == null ? 'Not reported' : calls.toLocaleString('en-IN')}</p>{validationCalls !== null && validationCalls > 0 && <p className="mt-2 text-xs text-[#a99c82]">Includes {validationCalls.toLocaleString('en-IN')} automated {validationCalls === 1 ? 'check' : 'checks'}</p>}</Link>
-      <Link href="/observatory/analytics" className="rounded-xl border border-[#382b18] bg-[#14110b] p-5"><p className="text-xs uppercase tracking-widest text-[#ac8a48]">Call health</p><p className="mt-2 text-3xl text-[#ecc56a] tabular-nums">{failures == null ? 'Not reported' : failures === 0 ? 'No failed calls' : `${failures} failed`}</p></Link>
-      <Link href="/observatory/consumption" className="rounded-xl border border-[#382b18] bg-[#14110b] p-5"><p className="text-xs uppercase tracking-widest text-[#ac8a48]">Usage evidence</p><p className="mt-2 text-3xl text-[#ecc56a] tabular-nums">{calls === 0 ? 'No calls' : complete == null ? 'Not reported' : `${complete}% complete`}</p></Link>
+      <Link href={`/admin/activity?${drilldown}`} className="rounded-xl border border-[#382b18] bg-[#14110b] p-5"><p className="text-xs uppercase tracking-widest text-[#ac8a48]">Calls today · UTC</p><p className="mt-2 text-3xl text-[#ecc56a] tabular-nums">{calls == null ? 'Not reported' : calls.toLocaleString('en-IN')}</p>{validationCalls !== null && validationCalls > 0 && <p className="mt-2 text-xs text-[#a99c82]">Includes {validationCalls.toLocaleString('en-IN')} automated {validationCalls === 1 ? 'check' : 'checks'}</p>}</Link>
+      <Link href={`/admin/analytics?${drilldown}`} className="rounded-xl border border-[#382b18] bg-[#14110b] p-5"><p className="text-xs uppercase tracking-widest text-[#ac8a48]">Call health</p><p className="mt-2 text-3xl text-[#ecc56a] tabular-nums">{failures == null ? 'Not reported' : failures === 0 ? 'No failed calls' : `${failures} failed`}</p></Link>
+      <Link href={`/admin/analytics?${drilldown}`} className="rounded-xl border border-[#382b18] bg-[#14110b] p-5"><p className="text-xs uppercase tracking-widest text-[#ac8a48]">Usage evidence</p><p className="mt-2 text-3xl text-[#ecc56a] tabular-nums">{calls === 0 ? 'No calls' : complete == null ? 'Not reported' : `${complete}% complete`}</p></Link>
     </section>
     {feed === 'delayed' && <p className="text-xs text-[#a99c82]">Build status feed delayed. The AI Console and Observatory remain available.</p>}
   </main>
