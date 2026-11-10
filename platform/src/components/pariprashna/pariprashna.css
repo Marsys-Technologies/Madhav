@@ -841,3 +841,68 @@
   gap: 12px;
   flex-shrink: 0;
 }
+
+/* Folio applies to live consultation chrome and the History panel only. */
+.pp-consultation[data-folio-chrome] {
+  --folio-paper: #f5efe2;
+  --folio-panel: #fcf8ee;
+  --folio-ink: #242920;
+  --folio-muted: #52584a;
+  --folio-action: #2e563e;
+  --folio-control: #716d5e;
+  --folio-selected: #e6eadb;
+}
+
+.pp-consultation[data-folio-chrome] .pp-page-header,
+.pp-consultation[data-folio-chrome] .pp-panel-left .pp-workspace-panel {
+  --pp-ink: var(--folio-ink);
+  --pp-ink-dim: var(--folio-muted);
+  --pp-gold: var(--folio-action);
+  --pp-rule: var(--folio-control);
+  --pp-tint-2: var(--folio-selected);
+  color: var(--pp-ink);
+  color-scheme: light;
+}
+
+.pp-consultation[data-folio-chrome] .pp-page-header {
+  background: var(--folio-paper);
+  border-radius: 12px;
+}
+
+.pp-consultation[data-folio-chrome] .pp-page-header .j1-title > span {
+  color: var(--pp-ink);
+  font-family: Georgia, serif;
+}
+
+.pp-consultation[data-folio-chrome] .pp-page-header .j1-title > small {
+  color: var(--pp-ink-dim);
+}
+
+.pp-consultation[data-folio-chrome] .pp-chart-identity {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.pp-consultation[data-folio-chrome] .pp-page-header .pp-icon-button,
+.pp-consultation[data-folio-chrome] .pp-panel-left .pp-workspace-panel,
+.pp-consultation[data-folio-chrome] .pp-panel-left .pp-history-filter select {
+  background: var(--folio-panel);
+  border-color: var(--folio-control);
+}
+
+.pp-consultation[data-folio-chrome] .pp-panel-left .pp-history-search input::placeholder {
+  color: var(--folio-muted);
+}
+
+.pp-consultation[data-folio-chrome] .pp-panel-left :is(.pp-history-search input, .pp-history-filter select) {
+  font-size: 1rem;
+}
+
+.pp-consultation[data-folio-chrome] .pp-panel-left .pp-history-list li[data-active="true"] {
+  box-shadow: inset 3px 0 var(--folio-action);
+}
+
+.pp-consultation[data-folio-chrome] .pp-panel-left .pp-workspace-panel :is(a, button, input, select):focus-visible {
+  outline: 3px solid var(--folio-action);
+  outline-offset: -3px;
+}

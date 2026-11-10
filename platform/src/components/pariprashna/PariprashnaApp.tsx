@@ -558,6 +558,7 @@ export function PariprashnaSurface({
       >
         <div
           className="pp-root pp-consultation"
+          data-folio-chrome={isFixtureHost ? undefined : ""}
           data-vh-source={vv.supported ? "visual-viewport" : "fallback"}
           data-compact-viewport={vv.height != null && vv.height < 550}
           style={{
