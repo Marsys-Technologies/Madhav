@@ -54,6 +54,18 @@ afterEach(() => {
   window.history.pushState({}, '', '/')
 })
 
+it('keeps the password input and its visibility control separately named', () => {
+  const { container } = render(<LoginPage />)
+  const password = container.querySelector<HTMLInputElement>('input[type="password"]')
+  const show = screen.getByRole('button', { name: 'Show password' })
+
+  expect(password).toHaveAccessibleName('Password')
+  expect(password?.labels?.[0]).not.toContainElement(show)
+  fireEvent.click(show)
+  expect(screen.getByRole('textbox', { name: 'Password' })).toBe(password)
+  expect(screen.getByRole('button', { name: 'Hide password' })).toHaveAttribute('aria-pressed', 'true')
+})
+
 describe('login redirect after sign-in honours only a safe next', () => {
   it('a good next (/share/<slug>) is navigated to', async () => {
     setLocationSearch(`?next=${encodeURIComponent('/share/AbC123xyz0')}`)
