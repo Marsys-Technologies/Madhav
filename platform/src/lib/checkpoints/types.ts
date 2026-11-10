@@ -26,8 +26,9 @@ export const CheckpointVerdictSchema = z.enum(['pass', 'warn', 'halt'])
 
 export interface CheckpointResult {
   checkpoint_id: string
-  verdict: CheckpointVerdict
-  confidence: number
+  /** Null when the checkpoint produced no validated decision. */
+  verdict: CheckpointVerdict | null
+  confidence: number | null
   reasoning: string
   latency_ms: number
   /** true when the feature flag is OFF — checkpoint was not invoked */
@@ -175,8 +176,8 @@ export interface CheckpointDashaResult extends CheckpointResult {
 export function skippedResult(checkpoint_id: string): CheckpointResult {
   return {
     checkpoint_id,
-    verdict: 'pass',
-    confidence: 1,
+    verdict: null,
+    confidence: null,
     reasoning: 'checkpoint disabled (flag OFF)',
     latency_ms: 0,
     skipped: true,

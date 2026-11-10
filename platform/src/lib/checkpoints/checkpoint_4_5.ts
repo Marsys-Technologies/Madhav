@@ -82,9 +82,9 @@ export async function runCheckpoint4_5(input: Checkpoint45Input): Promise<Checkp
       telemetry.recordMetric('checkpoint_4_5', 'parse_error', 1)
       return {
         checkpoint_id: CHECKPOINT_ID,
-        verdict: 'pass',
-        confidence: 0.5,
-        reasoning: 'LLM output parse failed — defaulting to pass with warning',
+        verdict: null,
+        confidence: null,
+        reasoning: 'LLM output parse failed; verdict unavailable',
         latency_ms,
         skipped: false,
       }
@@ -95,9 +95,9 @@ export async function runCheckpoint4_5(input: Checkpoint45Input): Promise<Checkp
       telemetry.recordMetric('checkpoint_4_5', 'schema_error', 1)
       return {
         checkpoint_id: CHECKPOINT_ID,
-        verdict: 'pass',
-        confidence: 0.5,
-        reasoning: 'LLM output schema invalid — defaulting to pass with warning',
+        verdict: null,
+        confidence: null,
+        reasoning: 'LLM output schema invalid; verdict unavailable',
         latency_ms,
         skipped: false,
       }
@@ -129,9 +129,9 @@ export async function runCheckpoint4_5(input: Checkpoint45Input): Promise<Checkp
     telemetry.recordError('checkpoint_4_5', 'unexpected_error', err as Error)
     return {
       checkpoint_id: CHECKPOINT_ID,
-      verdict: 'pass',
-      confidence: 0.5,
-      reasoning: `Checkpoint error — defaulting to pass: ${(err as Error).message}`,
+      verdict: null,
+      confidence: null,
+      reasoning: `Checkpoint error: ${(err as Error).message}`,
       latency_ms: Date.now() - started,
       skipped: false,
     }

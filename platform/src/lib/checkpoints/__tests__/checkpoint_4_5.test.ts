@@ -73,7 +73,8 @@ describe('checkpoint_4_5 — flag OFF', () => {
     mockGetFlag.mockReturnValue(false)
     const result = await runCheckpoint4_5(makeInput())
     expect(result.skipped).toBe(true)
-    expect(result.verdict).toBe('pass')
+    expect(result.verdict).toBeNull()
+    expect(result.confidence).toBeNull()
     expect(mockRunAdapter).not.toHaveBeenCalled()
   })
 })
@@ -184,14 +185,15 @@ describe('checkpoint_4_5 — parse failure', () => {
     mockGetFlag.mockImplementation((flag: string) => flag === 'CHECKPOINT_4_5_ENABLED')
   })
 
-  it('defaults to pass when LLM returns invalid JSON', async () => {
+  it('reports an unknown verdict when LLM returns invalid JSON', async () => {
     mockRunAdapter.mockResolvedValue({ finalText: 'not json at all', usage: { inputTokens: 0, outputTokens: 0 }, finishReason: 'stop', intermediate: [] })
     const result = await runCheckpoint4_5(makeInput())
-    expect(result.verdict).toBe('pass')
+    expect(result.verdict).toBeNull()
+    expect(result.confidence).toBeNull()
     expect(result.reasoning).toContain('parse failed')
   })
 
-  it('defaults to pass when LLM returns JSON with wrong schema', async () => {
+  it('reports an unknown verdict when LLM returns JSON with wrong schema', async () => {
     mockRunAdapter.mockResolvedValue({
       finalText: JSON.stringify({ foo: 'bar', baz: 123 }),
       usage: { inputTokens: 0, outputTokens: 0 },
@@ -199,14 +201,16 @@ describe('checkpoint_4_5 — parse failure', () => {
       intermediate: [],
     })
     const result = await runCheckpoint4_5(makeInput())
-    expect(result.verdict).toBe('pass')
+    expect(result.verdict).toBeNull()
+    expect(result.confidence).toBeNull()
     expect(result.reasoning).toContain('schema invalid')
   })
 
-  it('defaults to pass when runAdapter throws', async () => {
+  it('reports an unknown verdict when runAdapter throws', async () => {
     mockRunAdapter.mockRejectedValue(new Error('network timeout'))
     const result = await runCheckpoint4_5(makeInput())
-    expect(result.verdict).toBe('pass')
+    expect(result.verdict).toBeNull()
+    expect(result.confidence).toBeNull()
     expect(result.reasoning).toContain('Checkpoint error')
   })
 })
