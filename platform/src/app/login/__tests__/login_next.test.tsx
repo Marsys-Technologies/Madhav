@@ -54,6 +54,19 @@ afterEach(() => {
   window.history.pushState({}, '', '/')
 })
 
+it('keeps username autofill while disabling keyboard corrections', () => {
+  render(<LoginPage />)
+  const username = screen.getByRole('textbox', { name: 'Username' })
+
+  expect(username).toHaveAttribute('autocomplete', 'username')
+  expect(username).toHaveAttribute('autocorrect', 'off')
+  expect(username).toHaveAttribute('autocapitalize', 'none')
+  expect(username).toHaveAttribute('spellcheck', 'false')
+
+  fireEvent.click(screen.getByRole('button', { name: 'Email' }))
+  expect(screen.getByRole('textbox', { name: 'Email' })).toHaveAttribute('autocomplete', 'email')
+})
+
 it('keeps the password input and its visibility control separately named', () => {
   const { container } = render(<LoginPage />)
   const password = container.querySelector<HTMLInputElement>('input[type="password"]')

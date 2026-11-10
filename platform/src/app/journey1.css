@@ -164,6 +164,9 @@
   background: #080705;
   border: 1px solid #302718;
 }
+.j1-sign-in-form input {
+  font-size: 16px;
+}
 .j1-field textarea {
   resize: vertical;
 }

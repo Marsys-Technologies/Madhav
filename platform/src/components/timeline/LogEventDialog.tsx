@@ -64,7 +64,7 @@ export function LogEventDialog({ chartId, onSuccess }: LogEventDialogProps) {
             <input
               required
               maxLength={10}
-              className="mt-1 block w-full rounded-md border border-border bg-input px-3 py-1.5"
+              className="mt-1 block w-full rounded-md border border-border bg-input px-3 py-1.5 text-base"
               placeholder="YYYY-MM-DD, YYYY-MM-XX, or YYYY"
               value={date}
               onChange={e => setDate(e.target.value)}
@@ -74,7 +74,7 @@ export function LogEventDialog({ chartId, onSuccess }: LogEventDialogProps) {
             Event type
             <select
               required
-              className="mt-1 block w-full rounded-md border border-border bg-input px-3 py-1.5"
+              className="mt-1 block w-full rounded-md border border-border bg-input px-3 py-1.5 text-base"
               value={eventClass}
               onChange={e => setEventClass(e.target.value)}
             >
@@ -90,7 +90,7 @@ export function LogEventDialog({ chartId, onSuccess }: LogEventDialogProps) {
               required
               rows={3}
               maxLength={4000}
-              className="mt-1 block w-full rounded-md border border-border bg-input px-3 py-1.5"
+              className="mt-1 block w-full rounded-md border border-border bg-input px-3 py-1.5 text-base"
               value={description}
               onChange={e => setDescription(e.target.value)}
             />

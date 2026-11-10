@@ -118,7 +118,7 @@ export default function LoginPage() {
 
   return (
     <EntryShell name="login">
-      <form onSubmit={handleSubmit} className="j1-form" aria-busy={submitting}>
+      <form onSubmit={handleSubmit} className="j1-form j1-sign-in-form" aria-busy={submitting}>
         <div>
           <h2 className="j1-note" style={{ fontSize: 24, color: "#ecc56a" }}>
             Welcome back
@@ -148,6 +148,9 @@ export default function LoginPage() {
             required
             type={tab === "email" ? "email" : "text"}
             autoComplete={tab === "email" ? "email" : "username"}
+            autoCorrect="off"
+            autoCapitalize="none"
+            spellCheck={false}
             maxLength={254}
             value={identifier}
             onChange={(e) => setIdentifier(e.target.value)}
