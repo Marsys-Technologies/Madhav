@@ -18,150 +18,150 @@ external_gates: {}
 
 entries:
 
-# ─────────────────────────────────────────────────────────────────────────────
-# v3.1.0-S1 — Code-level fixes (F.1–F.5, F.7)
-# ─────────────────────────────────────────────────────────────────────────────
+  # ─────────────────────────────────────────────────────────────────────────────
+  # v3.1.0-S1 — Code-level fixes (F.1–F.5, F.7)
+  # ─────────────────────────────────────────────────────────────────────────────
 
-- session_id: v3.1.0-S1
-  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_MCPT_V310_S1_v1_0.md
-  branch: feature/mcpt-foundation
-  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FDN
-  depends_on: []
-  requires_brief_authoring: false
-  requires_human_approval: false
-  push_to_remote: true
-  gate_command: >
-    cd /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FDN &&
-    ! grep -rn "arbitrateBudgets\|budget_arbiter" platform/src/app/api/mcp/ &&
-    grep -q "params?.text" platform/src/lib/retrieve/vector_search.ts &&
-    grep -q "update-secrets=MCP_INTERNAL_TOKEN" platform-mcp/cloudbuild.yaml &&
-    grep -q "Map<string" platform-mcp/src/auth.ts &&
-    cd platform-mcp && npm test 2>&1 | tail -5 &&
-    cd ../platform && npm test 2>&1 | tail -5
-  expected_artifacts: []
-  est_tokens: 100000
-  est_duration_min: 90
-  status: pending
+  - session_id: v3.1.0-S1
+    brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_MCPT_V310_S1_v1_0.md
+    branch: feature/mcpt-foundation
+    worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FDN
+    depends_on: []
+    requires_brief_authoring: false
+    requires_human_approval: false
+    push_to_remote: true
+    gate_command: >
+      cd /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FDN &&
+      ! grep -rn "arbitrateBudgets\|budget_arbiter" platform/src/app/api/mcp/ &&
+      grep -q "params?.text" platform/src/lib/retrieve/vector_search.ts &&
+      grep -q "update-secrets=MCP_INTERNAL_TOKEN" platform-mcp/cloudbuild.yaml &&
+      grep -q "Map<string" platform-mcp/src/auth.ts &&
+      cd platform-mcp && npm test 2>&1 | tail -5 &&
+      cd ../platform && npm test 2>&1 | tail -5
+    expected_artifacts: []
+    est_tokens: 100000
+    est_duration_min: 90
+    status: pending
 
-# ─────────────────────────────────────────────────────────────────────────────
-# v3.1.0-S2 — Tier 2 bundles + SSE streaming (parallel-eligible with S3, S4)
-# ─────────────────────────────────────────────────────────────────────────────
+  # ─────────────────────────────────────────────────────────────────────────────
+  # v3.1.0-S2 — Tier 2 bundles + SSE streaming (parallel-eligible with S3, S4)
+  # ─────────────────────────────────────────────────────────────────────────────
 
-- session_id: v3.1.0-S2
-  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_MCPT_V310_S2_v1_0.md
-  branch: feature/mcpt-foundation
-  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FDN
-  depends_on: [v3.1.0-S1]
-  parallel_with: [v3.1.0-S3, v3.1.0-S4]
-  requires_human_approval: false
-  push_to_remote: true
-  gate_command: >
-    cd /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FDN &&
-    test -f platform-mcp/src/bundles/holistic_bundle.ts &&
-    test -f platform-mcp/src/bundles/multi_school_bundle.ts &&
-    test -f platform/supabase/migrations/072_mcp_bundle_cache.sql &&
-    grep -q "holistic_bundle" platform-mcp/src/server.ts &&
-    cd platform-mcp && npm test -- bundles/ 2>&1 | tail -10
-  est_tokens: 120000
-  est_duration_min: 180
-  status: pending
+  - session_id: v3.1.0-S2
+    brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_MCPT_V310_S2_v1_0.md
+    branch: feature/mcpt-foundation
+    worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FDN
+    depends_on: [v3.1.0-S1]
+    parallel_with: [v3.1.0-S3, v3.1.0-S4]
+    requires_human_approval: false
+    push_to_remote: true
+    gate_command: >
+      cd /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FDN &&
+      test -f platform-mcp/src/bundles/holistic_bundle.ts &&
+      test -f platform-mcp/src/bundles/multi_school_bundle.ts &&
+      test -f platform/supabase/migrations/072_mcp_bundle_cache.sql &&
+      grep -q "holistic_bundle" platform-mcp/src/server.ts &&
+      cd platform-mcp && npm test -- bundles/ 2>&1 | tail -10
+    est_tokens: 120000
+    est_duration_min: 180
+    status: pending
 
-# ─────────────────────────────────────────────────────────────────────────────
-# v3.1.0-S3 — Resources + tool description regeneration (parallel-eligible)
-# ─────────────────────────────────────────────────────────────────────────────
+  # ─────────────────────────────────────────────────────────────────────────────
+  # v3.1.0-S3 — Resources + tool description regeneration (parallel-eligible)
+  # ─────────────────────────────────────────────────────────────────────────────
 
-- session_id: v3.1.0-S3
-  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_MCPT_V310_S3_v1_0.md
-  branch: feature/mcpt-foundation
-  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FDN
-  depends_on: [v3.1.0-S1]
-  parallel_with: [v3.1.0-S2, v3.1.0-S4]
-  requires_human_approval: false
-  push_to_remote: true
-  gate_command: >
-    cd /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FDN &&
-    test -f platform-mcp/src/resources/chart_snapshot.ts &&
-    test -f platform-mcp/src/resources/chart_overview.ts &&
-    test -f platform-mcp/src/resources/house_rules.ts &&
-    test -f platform-mcp/src/resources/capabilities.ts &&
-    test -f platform-mcp/src/resources/school_conventions.ts &&
-    test -f platform-mcp/src/resources/house_rules_variants/super_admin.md &&
-    test -f platform-mcp/src/resources/house_rules_variants/acharya.md &&
-    test -f platform-mcp/src/resources/house_rules_variants/client.md &&
-    cd platform-mcp && npm test -- resources/ 2>&1 | tail -10
-  est_tokens: 130000
-  est_duration_min: 180
-  status: pending
+  - session_id: v3.1.0-S3
+    brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_MCPT_V310_S3_v1_0.md
+    branch: feature/mcpt-foundation
+    worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FDN
+    depends_on: [v3.1.0-S1]
+    parallel_with: [v3.1.0-S2, v3.1.0-S4]
+    requires_human_approval: false
+    push_to_remote: true
+    gate_command: >
+      cd /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FDN &&
+      test -f platform-mcp/src/resources/chart_snapshot.ts &&
+      test -f platform-mcp/src/resources/chart_overview.ts &&
+      test -f platform-mcp/src/resources/house_rules.ts &&
+      test -f platform-mcp/src/resources/capabilities.ts &&
+      test -f platform-mcp/src/resources/school_conventions.ts &&
+      test -f platform-mcp/src/resources/house_rules_variants/super_admin.md &&
+      test -f platform-mcp/src/resources/house_rules_variants/acharya.md &&
+      test -f platform-mcp/src/resources/house_rules_variants/client.md &&
+      cd platform-mcp && npm test -- resources/ 2>&1 | tail -10
+    est_tokens: 130000
+    est_duration_min: 180
+    status: pending
 
-# ─────────────────────────────────────────────────────────────────────────────
-# v3.1.0-S4 — Perf system + audit subsystem (parallel-eligible)
-# ─────────────────────────────────────────────────────────────────────────────
+  # ─────────────────────────────────────────────────────────────────────────────
+  # v3.1.0-S4 — Perf system + audit subsystem (parallel-eligible)
+  # ─────────────────────────────────────────────────────────────────────────────
 
-- session_id: v3.1.0-S4
-  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_MCPT_V310_S4_v1_0.md
-  branch: feature/mcpt-foundation
-  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FDN
-  depends_on: [v3.1.0-S1]
-  parallel_with: [v3.1.0-S2, v3.1.0-S3]
-  requires_human_approval: false
-  push_to_remote: true
-  gate_command: >
-    cd /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FDN &&
-    test -f platform/supabase/migrations/073_perf_log_extensions.sql &&
-    test -f platform/supabase/migrations/074_audit_findings.sql &&
-    test -f platform/supabase/migrations/075_prediction_outcomes.sql &&
-    test -f platform/supabase/migrations/076_data_source_expected_and_caveats.sql &&
-    test -f platform/src/lib/perf/audit_nightly.ts &&
-    test -f platform-mcp/src/tools/tool_health.ts &&
-    test -f platform-mcp/src/tools/data_coverage.ts &&
-    ! grep -rn "openai\|anthropic\|gemini\|@google/generative-ai" platform/src/lib/perf/heuristics/ &&
-    cd platform && npm test -- perf/ 2>&1 | tail -10 &&
-    cd ../platform-mcp && npm test -- tool_health 2>&1 | tail -10
-  est_tokens: 150000
-  est_duration_min: 240
-  status: pending
+  - session_id: v3.1.0-S4
+    brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_MCPT_V310_S4_v1_0.md
+    branch: feature/mcpt-foundation
+    worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FDN
+    depends_on: [v3.1.0-S1]
+    parallel_with: [v3.1.0-S2, v3.1.0-S3]
+    requires_human_approval: false
+    push_to_remote: true
+    gate_command: >
+      cd /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FDN &&
+      test -f platform/supabase/migrations/073_perf_log_extensions.sql &&
+      test -f platform/supabase/migrations/074_audit_findings.sql &&
+      test -f platform/supabase/migrations/075_prediction_outcomes.sql &&
+      test -f platform/supabase/migrations/076_data_source_expected_and_caveats.sql &&
+      test -f platform/src/lib/perf/audit_nightly.ts &&
+      test -f platform-mcp/src/tools/tool_health.ts &&
+      test -f platform-mcp/src/tools/data_coverage.ts &&
+      ! grep -rn "openai\|anthropic\|gemini\|@google/generative-ai" platform/src/lib/perf/heuristics/ &&
+      cd platform && npm test -- perf/ 2>&1 | tail -10 &&
+      cd ../platform-mcp && npm test -- tool_health 2>&1 | tail -10
+    est_tokens: 150000
+    est_duration_min: 240
+    status: pending
 
-# ─────────────────────────────────────────────────────────────────────────────
-# v3.1.0-S5 — Operator dashboard at /admin/mcp/health
-# ─────────────────────────────────────────────────────────────────────────────
+  # ─────────────────────────────────────────────────────────────────────────────
+  # v3.1.0-S5 — Operator dashboard at /admin/mcp/health
+  # ─────────────────────────────────────────────────────────────────────────────
 
-- session_id: v3.1.0-S5
-  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_MCPT_V310_S5_v1_0.md
-  branch: feature/mcpt-foundation
-  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FDN
-  depends_on: [v3.1.0-S3, v3.1.0-S4]
-  requires_human_approval: false
-  push_to_remote: true
-  gate_command: >
-    cd /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FDN &&
-    test -f platform/src/app/admin/mcp/health/page.tsx &&
-    test -f platform/src/app/admin/mcp/health/tabs/AuditFindings.tsx &&
-    test -f platform/src/lib/alerts/dispatch.ts &&
-    test -f platform/supabase/migrations/077_mcp_alerts_config_and_tool_registry.sql &&
-    cd platform && npm test -- admin/mcp/health 2>&1 | tail -10
-  est_tokens: 130000
-  est_duration_min: 240
-  status: pending
+  - session_id: v3.1.0-S5
+    brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_MCPT_V310_S5_v1_0.md
+    branch: feature/mcpt-foundation
+    worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FDN
+    depends_on: [v3.1.0-S3, v3.1.0-S4]
+    requires_human_approval: false
+    push_to_remote: true
+    gate_command: >
+      cd /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FDN &&
+      test -f platform/src/app/admin/mcp/health/page.tsx &&
+      test -f platform/src/app/admin/mcp/health/tabs/AuditFindings.tsx &&
+      test -f platform/src/lib/alerts/dispatch.ts &&
+      test -f platform/supabase/migrations/077_mcp_alerts_config_and_tool_registry.sql &&
+      cd platform && npm test -- admin/mcp/health 2>&1 | tail -10
+    est_tokens: 130000
+    est_duration_min: 240
+    status: pending
 
-# ─────────────────────────────────────────────────────────────────────────────
-# v3.1.0-S6 — Foundation sealing + merge to feature/mcpt-final
-# ─────────────────────────────────────────────────────────────────────────────
+  # ─────────────────────────────────────────────────────────────────────────────
+  # v3.1.0-S6 — Foundation sealing + merge to feature/mcpt-final
+  # ─────────────────────────────────────────────────────────────────────────────
 
-- session_id: v3.1.0-S6
-  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_MCPT_V310_S6_v1_0.md
-  branch: feature/mcpt-foundation
-  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FDN
-  depends_on: [v3.1.0-S2, v3.1.0-S3, v3.1.0-S4, v3.1.0-S5]
-  requires_human_approval: false
-  push_to_remote: true
-  gate_command: >
-    cd /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FDN &&
-    test -f 00_ARCHITECTURE/MCPT_V310_CLOSE.md &&
-    grep -q "MARSYS_FLAG_MCP_V3_ENABLED.*true" platform/src/lib/feature_flags.ts &&
-    grep -q "MCPT_V310_CLOSE" 00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md &&
-    grep -q "MCP Transformation" CLAUDE.md &&
-    git log --oneline feature/mcpt-final -1 | grep -q "MCPT v3.1.0" &&
-    cd platform && npm test 2>&1 | tail -5
-  est_tokens: 90000
-  est_duration_min: 120
-  status: pending
+  - session_id: v3.1.0-S6
+    brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_MCPT_V310_S6_v1_0.md
+    branch: feature/mcpt-foundation
+    worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FDN
+    depends_on: [v3.1.0-S2, v3.1.0-S3, v3.1.0-S4, v3.1.0-S5]
+    requires_human_approval: false
+    push_to_remote: true
+    gate_command: >
+      cd /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FDN &&
+      test -f 00_ARCHITECTURE/MCPT_V310_CLOSE.md &&
+      grep -q "MARSYS_FLAG_MCP_V3_ENABLED.*true" platform/src/lib/feature_flags.ts &&
+      grep -q "MCPT_V310_CLOSE" 00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md &&
+      grep -q "MCP Transformation" CLAUDE.md &&
+      git log --oneline feature/mcpt-final -1 | grep -q "MCPT v3.1.0" &&
+      cd platform && npm test 2>&1 | tail -5
+    est_tokens: 90000
+    est_duration_min: 120
+    status: pending

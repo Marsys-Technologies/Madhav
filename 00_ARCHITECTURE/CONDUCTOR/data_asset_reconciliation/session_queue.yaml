@@ -288,9 +288,9 @@ sessions:
       - "test -f /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/EPHEMERIS_BOOTSTRAP_LOG.txt"
       - "grep -q 'bootstrap_complete: true' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/EPHEMERIS_BOOTSTRAP_LOG.txt"
       - "grep -q 'exit_code: 0' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/EPHEMERIS_BOOTSTRAP_LOG.txt"
-    # NOTE: Staging has 560646 rows (1930-06-13 to 2100-12-31). Missing 1900-01-01 to 1930-06-12 (100080 rows)
-    # due to prior partial r4 attempt being truncated before the successful background run. Coverage of
-    # 1930-2100 is sufficient for the native (born 1984) — all relevant dasha/transit periods present.
+      # NOTE: Staging has 560646 rows (1930-06-13 to 2100-12-31). Missing 1900-01-01 to 1930-06-12 (100080 rows)
+      # due to prior partial r4 attempt being truncated before the successful background run. Coverage of
+      # 1930-2100 is sufficient for the native (born 1984) — all relevant dasha/transit periods present.
 
   - id: DAR-P6-S23
     phase: 6

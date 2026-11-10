@@ -731,7 +731,7 @@ entries:
       - >-
         `git worktree list` = 35 entries, `prunable` = 0 — so "prune the prunable" removes NOTHING.
         Audit the remaining 24 by the same standard. Do not remove any belonging to an active campaign (§7).
-      - Delete the redundant local branch satyadipa/orchestrator-lit-predicate (superseded by  #870).
+      - Delete the redundant local branch satyadipa/orchestrator-lit-predicate (superseded by  # 870).
       - Give each active/future campaign its own dedicated worktree/clone; the shared checkout is
         never a build surface again.
 

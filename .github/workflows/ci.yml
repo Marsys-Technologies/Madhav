@@ -3697,12 +3697,9 @@ jobs:
           git ls-files -z '*.yaml' '*.yml' |
             xargs -0 yamllint -d '{rules: {key-duplicates: enable}}' --strict
 
-      - name: Maintained YAML formatting
-        # The generated pnpm lockfile and historical evidence remain covered by the structural check.
-        run: |
-          git ls-files -z '*.yaml' '*.yml' ':(exclude)00_ARCHITECTURE/**' ':(exclude)01_FACTS_LAYER/**' \
-            ':(exclude)verification_artifacts/**' ':(exclude)platform/pnpm-lock.yaml' |
-            xargs -0 yamllint --strict
+      - name: Tracked YAML formatting
+        # Only exact recorded revisions can bypass style. Structural lint above has no exceptions.
+        run: python3 -B platform/scripts/governance/check_yaml_style.py
 
       - name: Observatory OpenAPI formatting
         run: yamllint --strict platform/src/app/api/admin/observatory/openapi.yaml
