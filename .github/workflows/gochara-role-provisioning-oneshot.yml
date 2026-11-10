@@ -31,7 +31,9 @@ on:
   workflow_dispatch:
     inputs:
       stage:
-        description: 'create-roles (acts 1+2a), sealer-password (act 2b, staged), grant-l1-reads (J-4b-a55j: L1 SELECT + schema public USAGE), sealer-credential (J-4b-a55j) or layer-verifier-credential (O-W56-C)'
+        description: >-
+          create-roles (acts 1+2a), sealer-password (act 2b, staged), grant-l1-reads (J-4b-a55j: L1 SELECT + schema public USAGE), sealer-credential (J-4b-a55j) or layer-verifier-credential
+          (O-W56-C)
         required: true
         type: choice
         options: [create-roles, sealer-password, grant-l1-reads, sealer-credential, layer-verifier-credential]

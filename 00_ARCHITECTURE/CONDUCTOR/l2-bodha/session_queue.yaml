@@ -23,7 +23,7 @@ governing:
   - 00_ARCHITECTURE/AUTONOMY_RESILIENCE_PATTERN_v1_0.md          # 3-tier escalation; deep-fix ladder; Vimarśaka
   - 00_ARCHITECTURE/BUILD_GUARANTOR_SWARM_CHARTER_v1_0.md        # role roster (+ Pramāṇa-Bodha for this run)
   - 00_ARCHITECTURE/L2_BODHA_SCHEMA_REDESIGN_v1_0.md             # the enriched table contract (DDL source)
-  - 00_ARCHITECTURE/L2_BODHA_JUDGMENT_SUBSTRATE_STRATEGY_v1_0.md # the judgment guarantees Pramāṇa-Bodha verifies
+  - 00_ARCHITECTURE/L2_BODHA_JUDGMENT_SUBSTRATE_STRATEGY_v1_0.md  # the judgment guarantees Pramāṇa-Bodha verifies
   - 00_ARCHITECTURE/L2_BODHA_STORAGE_ARCHITECTURE_v1_0.md        # embedding protocol + S1-S5
   - 00_ARCHITECTURE/L2_BODHA_RETRIEVAL_STRATEGY_v1_0.md          # F1 de-dup + lel_enabled propagation
   - 00_ARCHITECTURE/LEL_TOGGLE_GOVERNING_PRINCIPLE_v1_0.md       # lel_origin tagging + zero-leak proof
@@ -106,7 +106,9 @@ sessions:
     asset: bo_karanajala+bo_bimba
     depends_on: ["WA-LAKSANA"]
     gates: ["standing", "cross_subsystem_noise_guard", "graph_anti_drift"]
-    work: "ONE igraph compute → multi-entity nodes (source_subsystem-tagged) + edges (full value-vector) + sub_graphs/motifs/topology/paths + bodha_contradictions + the CROSS-SUBSYSTEM EDGE family (§XS, computed at L2 from L1 facts + L0 mappings, noise-guarded) + compute-WIDE centrality + the recursive-traversal retrieval primitive + query_cross_subsystem."
+    work: >-
+      ONE igraph compute → multi-entity nodes (source_subsystem-tagged) + edges (full value-vector) + sub_graphs/motifs/topology/paths + bodha_contradictions + the CROSS-SUBSYSTEM EDGE family
+      (§XS, computed at L2 from L1 facts + L0 mappings, noise-guarded) + compute-WIDE centrality + the recursive-traversal retrieval primitive + query_cross_subsystem.
     status: pending
     halt_conditions: ["cross-subsystem every-pair noise (edge count unbounded)", "an edge underlying_msr_signal_ids does not resolve"]
   - id: WB-SAMSKARA
@@ -114,7 +116,9 @@ sessions:
     asset: bo_samskara
     depends_on: ["WA-LAKSANA"]
     gates: ["standing", "embedding_consistency", "real_semantics_proof"]
-    work: "REAL Vertex text-multilingual-embedding-002 embeddings of signal_summary_text (replace placeholder_hash); shared pinned constant; per-row stamping; cross-layer consistency CI check; 1:1 with MSR; the signal↔classical bridge tool."
+    work: >-
+      REAL Vertex text-multilingual-embedding-002 embeddings of signal_summary_text (replace placeholder_hash); shared pinned constant; per-row stamping; cross-layer consistency CI check; 1:1
+      with MSR; the signal↔classical bridge tool.
     status: pending
     halt_conditions: ["model/dim mismatch vs classical_text_chunks", "related signals not cosine-near (hash not replaced)"]
   - id: WB-SAMVADA
@@ -122,7 +126,9 @@ sessions:
     asset: bo_samvada
     depends_on: ["WA-LAKSANA"]
     gates: ["standing", "pillars_meet_reachability", "no_pre_answer"]
-    work: "THIN-writer gestalt (bodha_chart_gestalt: defining threads + headline/watch-list/central-question + domain-verdict map + outliers + zoom spine) + vw_chart_digest view + query_ucd/query_zoom. The pillars-meet reachability proof."
+    work: >-
+      THIN-writer gestalt (bodha_chart_gestalt: defining threads + headline/watch-list/central-question + domain-verdict map + outliers + zoom spine) + vw_chart_digest view +
+      query_ucd/query_zoom. The pillars-meet reachability proof.
     status: pending
     halt_conditions: ["the gestalt stores a verdict/conclusion (pre-answer)", "a stored item unreachable from the digest"]
 
@@ -132,7 +138,9 @@ sessions:
     asset: bo_upaya
     depends_on: ["WA-LAKSANA", "WB-SANGATI"]
     gates: ["standing", "l0_grounding_absolute", "two_planes_no_dated_schedule", "subsystem_remedy_coverage"]
-    work: "RM 6 tables; SEED FIX (owns resonances + summed count_sql); R1 causal-root; R2 do-not-remedy (remediation_advisability); R3 evidence ledger + mechanism + dissents; R4 fit/program/question-reachable; R5 subsystem-coverage (medical/vastu/nakshatra remedials — widen taxonomy + query by all affliction keys + coverage audit)."
+    work: >-
+      RM 6 tables; SEED FIX (owns resonances + summed count_sql); R1 causal-root; R2 do-not-remedy (remediation_advisability); R3 evidence ledger + mechanism + dissents; R4
+      fit/program/question-reachable; R5 subsystem-coverage (medical/vastu/nakshatra remedials — widen taxonomy + query by all affliction keys + coverage audit).
     status: pending
     halt_conditions: ["a prescription has no resolvable brahma_remedy_corpus citation (invented)", "a dated remedy schedule computed (L3 leak)"]
   - id: WC-DRISHTI
@@ -150,7 +158,10 @@ sessions:
     asset: bo_anveshana
     depends_on: ["WB-SANGATI", "WB-KARANAJALA", "WB-SAMSKARA", "WC-DRISHTI"]
     gates: ["standing", "discovery_not_fabricated", "meaningfulness_gate", "subsystem_discovery_coverage"]
-    work: "The DISCOVERY ENGINE: non-obviousness score + graph-mining (structural holes/brokers/motifs/articulation) + embedding outliers + distributional anomalies; D1-D7 (lived-impact, meaningfulness gate, corroboration, surface-depth delta, falsifiable hypothesis, novelty, ruthless ranking); S.1 intra-subsystem + S.2 CROSS-subsystem crown-jewel (mines the CGM cross-subsystem edges) + S.3 coverage; bodha_discoveries + bodha_anomalies + query_discoveries."
+    work: >-
+      The DISCOVERY ENGINE: non-obviousness score + graph-mining (structural holes/brokers/motifs/articulation) + embedding outliers + distributional anomalies; D1-D7 (lived-impact,
+      meaningfulness gate, corroboration, surface-depth delta, falsifiable hypothesis, novelty, ruthless ranking); S.1 intra-subsystem + S.2 CROSS-subsystem crown-jewel (mines the CGM
+      cross-subsystem edges) + S.3 coverage; bodha_discoveries + bodha_anomalies + query_discoveries.
     status: pending
     halt_conditions: ["a discovery does not trace to real substrate (fabricated)", "a subsystem un-mined"]
 
@@ -160,7 +171,9 @@ sessions:
     asset: bo_pramana_mapa
     depends_on: ["WC-UPAYA", "WC-DRISHTI", "WD-ANVESHANA"]
     gates: ["standing", "anti_drift_itemized_seal", "judgment_integrity_audit"]
-    work: "The CONSCIENCE: itemized anti-drift seal gate + judgment-integrity audit (ledger independence, no-pre-answer, pillars-meet reachability, tunnel-vision, epistemic + L0-grounding coverage, embedding consistency, LEL zero-leak) + calibration-readiness frame + retrievable self-assessment. + the full L2_bodha retrieval tool layer + the extended coverage gate."
+    work: >-
+      The CONSCIENCE: itemized anti-drift seal gate + judgment-integrity audit (ledger independence, no-pre-answer, pillars-meet reachability, tunnel-vision, epistemic + L0-grounding coverage,
+      embedding consistency, LEL zero-leak) + calibration-readiness frame + retrievable self-assessment. + the full L2_bodha retrieval tool layer + the extended coverage gate.
     status: pending
     halt_conditions: ["any load-bearing audit fails (anti-drift / pillars-meet / no-pre-answer) — SEAL BLOCKER → deep-fix"]
 

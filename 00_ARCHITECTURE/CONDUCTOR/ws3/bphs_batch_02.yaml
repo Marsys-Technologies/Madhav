@@ -354,7 +354,9 @@ rules:
     school: parashari
     confidence: 0.80
     confidence_rationale: "Sloka = 0.8; Saravali confirms Mars-in-Lagna martial nature = 1.15. 0.80."
-    caveats: "Mars in own sign (Aries, Scorpio) or exaltation (Capricorn) in 1H is exceptionally powerful and protective despite the aggression. Mars in 1H for Cancer Lagna — where it is yogakaraka — is particularly beneficial."
+    caveats: >-
+      Mars in own sign (Aries, Scorpio) or exaltation (Capricorn) in 1H is exceptionally powerful and protective despite the aggression. Mars in 1H for Cancer Lagna — where it is yogakaraka — is
+      particularly beneficial.
     verified: true
     stub: false
     stub_reason: null
@@ -1256,7 +1258,9 @@ rules:
     school: parashari
     confidence: 0.88
     confidence_rationale: "Declarative yoga condition = 1.0; Saravali and Phaladeepika confirm Viparita Raja Yoga = 1.15. 0.92 → 0.88."
-    caveats: "Viparita Raja Yoga's benefits depend on the involved dusthana lords not aspecting or weakening good houses. A strong Viparita Yoga can backfire if the dusthana lord also aspects 1H/5H/9H malefically."
+    caveats: >-
+      Viparita Raja Yoga's benefits depend on the involved dusthana lords not aspecting or weakening good houses. A strong Viparita Yoga can backfire if the dusthana lord also aspects 1H/5H/9H
+      malefically.
     verified: true
     stub: false
     stub_reason: null
@@ -1334,7 +1338,9 @@ rules:
     school: parashari
     confidence: 0.95
     confidence_rationale: "Declarative fundamental yoga rule = 1.0; universally confirmed across Saravali, Phaladeepika, Brihat Jataka = 1.3. capped at 0.95."
-    caveats: "The lagna lord is simultaneously kendra and trikona lord — its conjunction with any other kendra or trikona lord forms Raja Yoga. A single planet ruling both kendra and trikona is yogakaraka."
+    caveats: >-
+      The lagna lord is simultaneously kendra and trikona lord — its conjunction with any other kendra or trikona lord forms Raja Yoga. A single planet ruling both kendra and trikona is
+      yogakaraka.
     verified: true
     stub: false
     stub_reason: null
@@ -1751,7 +1757,9 @@ rules:
     school: parashari
     confidence: 0.72
     confidence_rationale: "Sloka = 0.8; Saravali confirms Moon-10H public career = 0.9. 0.72."
-    caveats: "Moon's dig bala is maximum in the 4H, not the 10H — this is opposite to what I stated. Correction: Moon has zero dig bala in 10H. This does not prevent career success but the Moon is directionally weakest here."
+    caveats: >-
+      Moon's dig bala is maximum in the 4H, not the 10H — this is opposite to what I stated. Correction: Moon has zero dig bala in 10H. This does not prevent career success but the Moon is
+      directionally weakest here.
     verified: true
     stub: false
     stub_reason: null
@@ -2208,7 +2216,7 @@ rules:
         "A house with its lord in a kendra or trikona, AND occupied by a benefic, AND
         aspected by its natural karaka is triply strengthened. Such a house delivers its
         maximum positive potential consistently throughout life."
-    condition: A bhava is simultaneously supported by all three factors: strong lord placement, benefic occupancy, AND karaka's positive aspect.
+    condition: "A bhava is simultaneously supported by all three factors: strong lord placement, benefic occupancy, AND karaka's positive aspect."
     assertion: >
       Triple bhava strength (lord in good position + benefic occupant + strong karaka aspect)
       produces the maximum positive manifestation of that house's significations throughout
@@ -2231,7 +2239,7 @@ rules:
         "A house that has its lord in a dusthana (6th, 8th, or 12th), AND is occupied by
         a malefic, AND has its karaka afflicted is triply weakened. Such a house delivers
         difficult or absent results related to its significations."
-    condition: A bhava is simultaneously afflicted by all three negative factors: dusthana lord placement, malefic occupancy, AND afflicted karaka.
+    condition: "A bhava is simultaneously afflicted by all three negative factors: dusthana lord placement, malefic occupancy, AND afflicted karaka."
     assertion: >
       Triple bhava weakness (lord in dusthana + malefic occupant + afflicted karaka) produces
       consistent difficulty with that house's significations; the native must work against

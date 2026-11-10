@@ -14,10 +14,10 @@
 # Rule corpus: ~1,637 rules (BPHS 761 + Jaimini 360 + KP 280 + Tajaka 236)
 # ============================================================================
 
-concordance_version: "1.1"
-authored_date: "2026-06-05"
-amended_date: "2026-06-05"
-amendment_ref: "Stream E postdeploy-e-multi-school e5"
+concordance_version: '1.1'
+authored_date: '2026-06-05'
+amended_date: '2026-06-05'
+amendment_ref: 'Stream E postdeploy-e-multi-school e5'
 total_topics: 210
 rule_corpus_size: 1637
 schools: [parashari, jaimini, kp, tajaka]
@@ -45,9 +45,8 @@ schools: [parashari, jaimini, kp, tajaka]
 # ────────────────────────────────────────────────────────────────────────────
 
 topics:
-
   - topic_id: TC.001
-    topic: "Planetary exaltation — Sun"
+    topic: 'Planetary exaltation — Sun'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp, tajaka]
     core_agreement: >
@@ -72,7 +71,7 @@ topics:
     rule_refs: [BPHS.3.21.1, JAIMINI.1.1.5.1, KP.1.ch3.dignity.1, TAJAKA.ch2.v5.1]
 
   - topic_id: TC.002
-    topic: "Planetary exaltation — Moon"
+    topic: 'Planetary exaltation — Moon'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp, tajaka]
     core_agreement: >
@@ -92,7 +91,7 @@ topics:
     rule_refs: [BPHS.3.21.2, KP.1.ch3.dignity.2, TAJAKA.ch2.v5.2]
 
   - topic_id: TC.003
-    topic: "Planetary exaltation — Mars"
+    topic: 'Planetary exaltation — Mars'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp, tajaka]
     core_agreement: >
@@ -105,7 +104,7 @@ topics:
     rule_refs: [BPHS.3.21.3, KP.1.ch3.dignity.3, TAJAKA.ch2.v5.3]
 
   - topic_id: TC.004
-    topic: "Planetary exaltation — Mercury"
+    topic: 'Planetary exaltation — Mercury'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp, tajaka]
     core_agreement: >
@@ -121,7 +120,7 @@ topics:
     rule_refs: [BPHS.3.21.4, KP.1.ch3.dignity.4, TAJAKA.ch2.v5.4]
 
   - topic_id: TC.005
-    topic: "Planetary exaltation — Jupiter"
+    topic: 'Planetary exaltation — Jupiter'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp, tajaka]
     core_agreement: >
@@ -132,7 +131,7 @@ topics:
     rule_refs: [BPHS.3.21.5, KP.1.ch3.dignity.5, TAJAKA.ch2.v5.5]
 
   - topic_id: TC.006
-    topic: "Planetary exaltation — Venus"
+    topic: 'Planetary exaltation — Venus'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp, tajaka]
     core_agreement: >
@@ -147,7 +146,7 @@ topics:
     rule_refs: [BPHS.3.21.6, KP.1.ch3.dignity.6, TAJAKA.ch2.v5.6]
 
   - topic_id: TC.007
-    topic: "Planetary exaltation — Saturn"
+    topic: 'Planetary exaltation — Saturn'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp, tajaka]
     core_agreement: >
@@ -162,7 +161,7 @@ topics:
     rule_refs: [BPHS.3.21.7, KP.1.ch3.dignity.7, TAJAKA.ch2.v5.7]
 
   - topic_id: TC.008
-    topic: "Planetary exaltation — Rahu"
+    topic: 'Planetary exaltation — Rahu'
     pattern: QUALIFY
     schools_addressing: [parashari, jaimini, kp]
     core_agreement: >
@@ -189,7 +188,7 @@ topics:
     flag: C6
 
   - topic_id: TC.009
-    topic: "Planetary exaltation — Ketu"
+    topic: 'Planetary exaltation — Ketu'
     pattern: QUALIFY
     schools_addressing: [parashari, kp]
     core_agreement: >
@@ -209,12 +208,12 @@ topics:
     rule_refs: [BPHS.3.22.2, KP.1.ch3.ketu.1]
     flag: C6
 
-# ────────────────────────────────────────────────────────────────────────────
-# SECTION 2: PLANETARY DEBILITATION (TC.010–TC.018)
-# ────────────────────────────────────────────────────────────────────────────
+  # ────────────────────────────────────────────────────────────────────────────
+  # SECTION 2: PLANETARY DEBILITATION (TC.010–TC.018)
+  # ────────────────────────────────────────────────────────────────────────────
 
   - topic_id: TC.010
-    topic: "Planetary debilitation — Sun"
+    topic: 'Planetary debilitation — Sun'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp, tajaka]
     core_agreement: >
@@ -236,7 +235,7 @@ topics:
     rule_refs: [BPHS.3.21.1, KP.1.ch3.dignity.1, TAJAKA.ch2.v6.1]
 
   - topic_id: TC.011
-    topic: "Neecha-bhanga raja yoga (cancellation of debilitation)"
+    topic: 'Neecha-bhanga raja yoga (cancellation of debilitation)'
     pattern: QUALIFY
     schools_addressing: [parashari, jaimini, kp]
     core_agreement: >
@@ -265,7 +264,7 @@ topics:
     rule_refs: [BPHS.26.1.1, KP.2.ch8.dignity.1, JAIMINI.1.3.1.1]
 
   - topic_id: TC.012
-    topic: "Planetary own-sign (Swakshetra) dignity"
+    topic: 'Planetary own-sign (Swakshetra) dignity'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp, tajaka]
     core_agreement: >
@@ -284,12 +283,12 @@ topics:
     conflicts: []
     rule_refs: [BPHS.3.20.1, JAIMINI.1.1.7.1, KP.1.ch3.dignity.8, TAJAKA.ch2.v7.1]
 
-# ────────────────────────────────────────────────────────────────────────────
-# SECTION 3: PLANETARY NATURAL SIGNIFICATIONS (NAISARGIKA KARAKATWA)
-# ────────────────────────────────────────────────────────────────────────────
+  # ────────────────────────────────────────────────────────────────────────────
+  # SECTION 3: PLANETARY NATURAL SIGNIFICATIONS (NAISARGIKA KARAKATWA)
+  # ────────────────────────────────────────────────────────────────────────────
 
   - topic_id: TC.013
-    topic: "Natural significator (karaka) of self, soul, father — Sun"
+    topic: 'Natural significator (karaka) of self, soul, father — Sun'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp, tajaka]
     core_agreement: >
@@ -307,7 +306,7 @@ topics:
     flag: C1
 
   - topic_id: TC.014
-    topic: "Natural significator — Moon (mind, mother, emotions)"
+    topic: 'Natural significator — Moon (mind, mother, emotions)'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp, tajaka]
     core_agreement: >
@@ -324,7 +323,7 @@ topics:
     flag: C1
 
   - topic_id: TC.015
-    topic: "Karaka frameworks — PARALLEL assessment axes (C1)"
+    topic: 'Karaka frameworks — PARALLEL assessment axes (C1)'
     pattern: ORTHOGONAL
     schools_addressing: [parashari, jaimini, kp, tajaka]
     c1_flag: true
@@ -347,7 +346,7 @@ topics:
     flag: C1
 
   - topic_id: TC.016
-    topic: "Natural significator — Mars (siblings, courage, land)"
+    topic: 'Natural significator — Mars (siblings, courage, land)'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp, tajaka]
     core_agreement: >
@@ -361,7 +360,7 @@ topics:
     flag: C1
 
   - topic_id: TC.017
-    topic: "Natural significator — Jupiter (children, wisdom, guru)"
+    topic: 'Natural significator — Jupiter (children, wisdom, guru)'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp, tajaka]
     core_agreement: >
@@ -379,7 +378,7 @@ topics:
     flag: C1
 
   - topic_id: TC.018
-    topic: "Natural significator — Venus (spouse, luxury, arts)"
+    topic: 'Natural significator — Venus (spouse, luxury, arts)'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp, tajaka]
     core_agreement: >
@@ -392,12 +391,12 @@ topics:
     rule_refs: [BPHS.10.1.6, JAIMINI.1.1.5.1, KP.2.ch5.karaka.6]
     flag: C1
 
-# ────────────────────────────────────────────────────────────────────────────
-# SECTION 4: HOUSE SIGNIFICATIONS (TC.019–TC.078)
-# ────────────────────────────────────────────────────────────────────────────
+  # ────────────────────────────────────────────────────────────────────────────
+  # SECTION 4: HOUSE SIGNIFICATIONS (TC.019–TC.078)
+  # ────────────────────────────────────────────────────────────────────────────
 
   - topic_id: TC.019
-    topic: "House 1 (Lagna / Ascendant) — core significations"
+    topic: 'House 1 (Lagna / Ascendant) — core significations'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp, tajaka]
     core_agreement: >
@@ -421,7 +420,7 @@ topics:
     flag: C3
 
   - topic_id: TC.020
-    topic: "House 2 (Dhana) — wealth, speech, family, food"
+    topic: 'House 2 (Dhana) — wealth, speech, family, food'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp, tajaka]
     core_agreement: >
@@ -430,7 +429,7 @@ topics:
       across all systems.
     qualifications:
       - school: kp
-        note: "[C3] Placidus 2nd cusp sub-lord determines wealth fructification."
+        note: '[C3] Placidus 2nd cusp sub-lord determines wealth fructification.'
       - school: jaimini
         note: >
           Jaimini assesses 2nd house from the Karakamsha (AK in Navamsa) for
@@ -440,7 +439,7 @@ topics:
     flag: C3
 
   - topic_id: TC.021
-    topic: "House 3 — courage, siblings, short journeys, communication"
+    topic: 'House 3 — courage, siblings, short journeys, communication'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp, tajaka]
     core_agreement: >
@@ -456,7 +455,7 @@ topics:
     flag: C3
 
   - topic_id: TC.022
-    topic: "House 4 — mother, home, education, happiness"
+    topic: 'House 4 — mother, home, education, happiness'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp, tajaka]
     core_agreement: >
@@ -476,7 +475,7 @@ topics:
     flag: C3
 
   - topic_id: TC.023
-    topic: "House 5 — intelligence, children, purva-punya, speculation"
+    topic: 'House 5 — intelligence, children, purva-punya, speculation'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp, tajaka]
     core_agreement: >
@@ -496,7 +495,7 @@ topics:
     flag: C3
 
   - topic_id: TC.024
-    topic: "House 6 — enemies, disease, debts, service"
+    topic: 'House 6 — enemies, disease, debts, service'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp, tajaka]
     core_agreement: >
@@ -514,7 +513,7 @@ topics:
     flag: C3
 
   - topic_id: TC.025
-    topic: "House 7 — spouse, partnership, business partner, foreign travel"
+    topic: 'House 7 — spouse, partnership, business partner, foreign travel'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp, tajaka]
     core_agreement: >
@@ -541,7 +540,7 @@ topics:
     flag: C3
 
   - topic_id: TC.026
-    topic: "House 8 — longevity, hidden matters, transformation, inheritance"
+    topic: 'House 8 — longevity, hidden matters, transformation, inheritance'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp, tajaka]
     core_agreement: >
@@ -562,7 +561,7 @@ topics:
     flag: C3
 
   - topic_id: TC.027
-    topic: "House 9 — dharma, father, fortune, guru, long journeys"
+    topic: 'House 9 — dharma, father, fortune, guru, long journeys'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp, tajaka]
     core_agreement: >
@@ -584,7 +583,7 @@ topics:
     flag: C3
 
   - topic_id: TC.028
-    topic: "House 10 — career, authority, status, government, actions"
+    topic: 'House 10 — career, authority, status, government, actions'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp, tajaka]
     core_agreement: >
@@ -606,7 +605,7 @@ topics:
     flag: C3
 
   - topic_id: TC.029
-    topic: "House 11 — gains, income, elder siblings, fulfillment of desires"
+    topic: 'House 11 — gains, income, elder siblings, fulfillment of desires'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp, tajaka]
     core_agreement: >
@@ -624,7 +623,7 @@ topics:
     flag: C3
 
   - topic_id: TC.030
-    topic: "House 12 — losses, moksha, foreign settlement, expenses, hospitals"
+    topic: 'House 12 — losses, moksha, foreign settlement, expenses, hospitals'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp, tajaka]
     core_agreement: >
@@ -643,10 +642,10 @@ topics:
     rule_refs: [BPHS.11.12.1, JAIMINI.1.3.14.1, KP.2.ch6.houses.12, TAJAKA.ch3.v3.7]
     flag: C3
 
-# ── House cusp system note (C3) ──────────────────────────────────────────────
+  # ── House cusp system note (C3) ──────────────────────────────────────────────
 
   - topic_id: TC.031
-    topic: "House cusp convention — SYSTEM-DEFINING (C3)"
+    topic: 'House cusp convention — SYSTEM-DEFINING (C3)'
     pattern: ORTHOGONAL
     schools_addressing: [parashari, jaimini, kp, tajaka]
     c3_flag: true
@@ -673,12 +672,12 @@ topics:
     rule_refs: [BPHS.4.1.1, JAIMINI.1.1.1.1, KP.1.ch1.intro.1, TAJAKA.ch1.v2.1]
     flag: C3
 
-# ────────────────────────────────────────────────────────────────────────────
-# SECTION 5: PLANET-IN-HOUSE RESULTS — SELECT ENTRIES (TC.032–TC.041)
-# ────────────────────────────────────────────────────────────────────────────
+  # ────────────────────────────────────────────────────────────────────────────
+  # SECTION 5: PLANET-IN-HOUSE RESULTS — SELECT ENTRIES (TC.032–TC.041)
+  # ────────────────────────────────────────────────────────────────────────────
 
   - topic_id: TC.032
-    topic: "Sun in 1st house — general results"
+    topic: 'Sun in 1st house — general results'
     pattern: QUALIFY
     schools_addressing: [parashari, jaimini, kp, tajaka]
     core_agreement: >
@@ -701,7 +700,7 @@ topics:
     rule_refs: [BPHS.33.1.1, KP.3.ch10.sun.1]
 
   - topic_id: TC.033
-    topic: "Saturn in 1st house — general results"
+    topic: 'Saturn in 1st house — general results'
     pattern: QUALIFY
     schools_addressing: [parashari, jaimini, kp, tajaka]
     core_agreement: >
@@ -729,7 +728,7 @@ topics:
     rule_refs: [BPHS.33.7.1, KP.3.ch10.saturn.1, TAJAKA.ch5.v4.1]
 
   - topic_id: TC.034
-    topic: "Jupiter in 1st house — general results"
+    topic: 'Jupiter in 1st house — general results'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp, tajaka]
     core_agreement: >
@@ -746,7 +745,7 @@ topics:
     rule_refs: [BPHS.33.5.1, KP.3.ch10.jupiter.1]
 
   - topic_id: TC.035
-    topic: "Venus in 7th house — marriage results"
+    topic: 'Venus in 7th house — marriage results'
     pattern: QUALIFY
     schools_addressing: [parashari, jaimini, kp, tajaka]
     core_agreement: >
@@ -774,7 +773,7 @@ topics:
     rule_refs: [BPHS.33.6.7.1, JAIMINI.1.3.9.1, KP.3.ch10.venus.7.1]
 
   - topic_id: TC.036
-    topic: "Rahu in 12th house — results"
+    topic: 'Rahu in 12th house — results'
     pattern: QUALIFY
     schools_addressing: [parashari, jaimini, kp]
     core_agreement: >
@@ -801,12 +800,12 @@ topics:
     rule_refs: [BPHS.33.8.12.1, JAIMINI.1.3.14.1, KP.3.ch10.rahu.12.1]
     flag: C6
 
-# ────────────────────────────────────────────────────────────────────────────
-# SECTION 6: MAJOR YOGAS (TC.042–TC.072)
-# ────────────────────────────────────────────────────────────────────────────
+  # ────────────────────────────────────────────────────────────────────────────
+  # SECTION 6: MAJOR YOGAS (TC.042–TC.072)
+  # ────────────────────────────────────────────────────────────────────────────
 
   - topic_id: TC.042
-    topic: "Pancha Mahapurusha Yoga — Ruchaka (Mars)"
+    topic: 'Pancha Mahapurusha Yoga — Ruchaka (Mars)'
     pattern: QUALIFY
     schools_addressing: [parashari, jaimini, kp]
     core_agreement: >
@@ -829,7 +828,7 @@ topics:
     rule_refs: [BPHS.36.1.1, KP.4.ch12.yoga.1]
 
   - topic_id: TC.043
-    topic: "Pancha Mahapurusha Yoga — Hamsa (Jupiter)"
+    topic: 'Pancha Mahapurusha Yoga — Hamsa (Jupiter)'
     pattern: QUALIFY
     schools_addressing: [parashari, jaimini, kp]
     core_agreement: >
@@ -848,7 +847,7 @@ topics:
     rule_refs: [BPHS.36.5.1, KP.4.ch12.yoga.5]
 
   - topic_id: TC.044
-    topic: "Pancha Mahapurusha Yoga — Malavya (Venus)"
+    topic: 'Pancha Mahapurusha Yoga — Malavya (Venus)'
     pattern: QUALIFY
     schools_addressing: [parashari, jaimini, kp]
     core_agreement: >
@@ -863,7 +862,7 @@ topics:
     rule_refs: [BPHS.36.4.1, KP.4.ch12.yoga.4]
 
   - topic_id: TC.045
-    topic: "Pancha Mahapurusha Yoga — Sasa (Saturn)"
+    topic: 'Pancha Mahapurusha Yoga — Sasa (Saturn)'
     pattern: QUALIFY
     schools_addressing: [parashari, jaimini, kp]
     core_agreement: >
@@ -884,7 +883,7 @@ topics:
     rule_refs: [BPHS.36.3.1, KP.4.ch12.yoga.3]
 
   - topic_id: TC.046
-    topic: "Raja Yoga — 9th and 10th lord conjunction/mutual aspect"
+    topic: 'Raja Yoga — 9th and 10th lord conjunction/mutual aspect'
     pattern: QUALIFY
     schools_addressing: [parashari, jaimini, kp]
     core_agreement: >
@@ -912,7 +911,7 @@ topics:
     rule_refs: [BPHS.40.1.1, JAIMINI.1.3.12.1, KP.4.ch13.yoga.1]
 
   - topic_id: TC.047
-    topic: "Dhana Yoga — 2nd and 11th lord conjunction"
+    topic: 'Dhana Yoga — 2nd and 11th lord conjunction'
     pattern: QUALIFY
     schools_addressing: [parashari, jaimini, kp]
     core_agreement: >
@@ -934,7 +933,7 @@ topics:
     rule_refs: [BPHS.41.1.1, KP.4.ch14.yoga.1]
 
   - topic_id: TC.048
-    topic: "Gajakesari Yoga — Jupiter in kendra from Moon"
+    topic: 'Gajakesari Yoga — Jupiter in kendra from Moon'
     pattern: QUALIFY
     schools_addressing: [parashari, jaimini, kp]
     core_agreement: >
@@ -956,7 +955,7 @@ topics:
     rule_refs: [BPHS.37.1.1, KP.4.ch12.yoga.6]
 
   - topic_id: TC.049
-    topic: "Kemadruma Yoga — no planets adjacent to Moon"
+    topic: 'Kemadruma Yoga — no planets adjacent to Moon'
     pattern: QUALIFY
     schools_addressing: [parashari, jaimini, kp]
     core_agreement: >
@@ -978,7 +977,7 @@ topics:
     rule_refs: [BPHS.37.2.1, KP.4.ch12.yoga.7]
 
   - topic_id: TC.050
-    topic: "Viparita Raja Yoga — 6th/8th/12th lord in 6th/8th/12th"
+    topic: 'Viparita Raja Yoga — 6th/8th/12th lord in 6th/8th/12th'
     pattern: QUALIFY
     schools_addressing: [parashari, kp]
     core_agreement: >
@@ -1001,7 +1000,7 @@ topics:
     rule_refs: [BPHS.38.1.1, KP.4.ch13.yoga.2]
 
   - topic_id: TC.051
-    topic: "Graha Yuddha (Planetary War)"
+    topic: 'Graha Yuddha (Planetary War)'
     pattern: QUALIFY
     schools_addressing: [parashari, kp]
     core_agreement: >
@@ -1024,12 +1023,12 @@ topics:
     silent: [jaimini, tajaka]
     rule_refs: [BPHS.3.58.1, KP.1.ch2.graha_war.1]
 
-# ────────────────────────────────────────────────────────────────────────────
-# SECTION 7: ASPECT SYSTEMS — ORTHOGONAL (C2) (TC.052–TC.066)
-# ────────────────────────────────────────────────────────────────────────────
+  # ────────────────────────────────────────────────────────────────────────────
+  # SECTION 7: ASPECT SYSTEMS — ORTHOGONAL (C2) (TC.052–TC.066)
+  # ────────────────────────────────────────────────────────────────────────────
 
   - topic_id: TC.052
-    topic: "Aspect systems — ORTHOGONAL meta-entry (C2)"
+    topic: 'Aspect systems — ORTHOGONAL meta-entry (C2)'
     pattern: ORTHOGONAL
     schools_addressing: [parashari, jaimini, kp, tajaka]
     c2_flag: true
@@ -1127,7 +1126,7 @@ topics:
     flag: C2
 
   - topic_id: TC.056
-    topic: "Jaimini rashi drishti — moveable signs aspect fixed signs"
+    topic: 'Jaimini rashi drishti — moveable signs aspect fixed signs'
     pattern: ORTHOGONAL
     aspect_system: jaimini_rashi_drishti
     schools_addressing: [jaimini]
@@ -1142,7 +1141,7 @@ topics:
     flag: C2
 
   - topic_id: TC.057
-    topic: "Jaimini rashi drishti — fixed signs aspect moveable signs"
+    topic: 'Jaimini rashi drishti — fixed signs aspect moveable signs'
     pattern: ORTHOGONAL
     aspect_system: jaimini_rashi_drishti
     schools_addressing: [jaimini]
@@ -1156,7 +1155,7 @@ topics:
     flag: C2
 
   - topic_id: TC.058
-    topic: "Jaimini rashi drishti — common/mutable signs aspect each other"
+    topic: 'Jaimini rashi drishti — common/mutable signs aspect each other'
     pattern: ORTHOGONAL
     aspect_system: jaimini_rashi_drishti
     schools_addressing: [jaimini]
@@ -1169,7 +1168,7 @@ topics:
     flag: C2
 
   - topic_id: TC.059
-    topic: "Tajaka Itthasala — applying aspect between annual chart planets"
+    topic: 'Tajaka Itthasala — applying aspect between annual chart planets'
     pattern: ORTHOGONAL
     aspect_system: tajaka_itthasala
     schools_addressing: [tajaka]
@@ -1186,7 +1185,7 @@ topics:
     flag: C2
 
   - topic_id: TC.060
-    topic: "Tajaka Ishrafa — separating aspect in annual chart"
+    topic: 'Tajaka Ishrafa — separating aspect in annual chart'
     pattern: ORTHOGONAL
     aspect_system: tajaka_itthasala
     schools_addressing: [tajaka]
@@ -1199,7 +1198,7 @@ topics:
     flag: C2
 
   - topic_id: TC.061
-    topic: "Tajaka Nakta — transferred Itthasala via third planet"
+    topic: 'Tajaka Nakta — transferred Itthasala via third planet'
     pattern: ORTHOGONAL
     aspect_system: tajaka_itthasala
     schools_addressing: [tajaka]
@@ -1212,7 +1211,7 @@ topics:
     flag: C2
 
   - topic_id: TC.062
-    topic: "Tajaka Musaripa — frustration of Itthasala"
+    topic: 'Tajaka Musaripa — frustration of Itthasala'
     pattern: ORTHOGONAL
     aspect_system: tajaka_itthasala
     schools_addressing: [tajaka]
@@ -1224,12 +1223,12 @@ topics:
     rule_refs: [TAJAKA.ch4.v6.1]
     flag: C2
 
-# ────────────────────────────────────────────────────────────────────────────
-# SECTION 8: STRENGTH SYSTEMS — NON-COMPARABLE (C4) (TC.063–TC.072)
-# ────────────────────────────────────────────────────────────────────────────
+  # ────────────────────────────────────────────────────────────────────────────
+  # SECTION 8: STRENGTH SYSTEMS — NON-COMPARABLE (C4) (TC.063–TC.072)
+  # ────────────────────────────────────────────────────────────────────────────
 
   - topic_id: TC.063
-    topic: "Strength systems — NON-COMPARABLE meta-entry (C4)"
+    topic: 'Strength systems — NON-COMPARABLE meta-entry (C4)'
     pattern: ORTHOGONAL
     schools_addressing: [parashari, jaimini, kp, tajaka]
     c4_flag: true
@@ -1266,7 +1265,7 @@ topics:
     flag: C4
 
   - topic_id: TC.064
-    topic: "Parashari Shadbala — Dig Bala (directional strength)"
+    topic: 'Parashari Shadbala — Dig Bala (directional strength)'
     pattern: SILENT
     schools_addressing: [parashari]
     core_agreement: >
@@ -1281,7 +1280,7 @@ topics:
     flag: C4
 
   - topic_id: TC.065
-    topic: "Parashari Shadbala — Cheshta Bala (motional strength / retrogression factor)"
+    topic: 'Parashari Shadbala — Cheshta Bala (motional strength / retrogression factor)'
     pattern: CONFLICT
     schools_addressing: [parashari, kp]
     core_agreement: null
@@ -1315,7 +1314,7 @@ topics:
     cross_flag: C7
 
   - topic_id: TC.066
-    topic: "Tajaka five-dignity assessment — Panchadhikara"
+    topic: 'Tajaka five-dignity assessment — Panchadhikara'
     pattern: ORTHOGONAL
     schools_addressing: [tajaka]
     note_on_other_schools: >
@@ -1330,12 +1329,12 @@ topics:
     rule_refs: [TAJAKA.ch2.v8.1, TAJAKA.ch2.v9.1]
     flag: C4
 
-# ────────────────────────────────────────────────────────────────────────────
-# SECTION 9: RETROGRADE PLANETS — CONFLICT (C7) (TC.067–TC.072)
-# ────────────────────────────────────────────────────────────────────────────
+  # ────────────────────────────────────────────────────────────────────────────
+  # SECTION 9: RETROGRADE PLANETS — CONFLICT (C7) (TC.067–TC.072)
+  # ────────────────────────────────────────────────────────────────────────────
 
   - topic_id: TC.067
-    topic: "Retrograde planets — general treatment (C7 CONFLICT)"
+    topic: 'Retrograde planets — general treatment (C7 CONFLICT)'
     pattern: CONFLICT
     schools_addressing: [parashari, kp]
     c7_flag: true
@@ -1368,7 +1367,7 @@ topics:
     flag: C7
 
   - topic_id: TC.068
-    topic: "Retrograde Mercury — specific effects"
+    topic: 'Retrograde Mercury — specific effects'
     pattern: CONFLICT
     schools_addressing: [parashari, kp]
     c7_flag: true
@@ -1394,7 +1393,7 @@ topics:
     flag: C7
 
   - topic_id: TC.069
-    topic: "Retrograde Jupiter — specific effects"
+    topic: 'Retrograde Jupiter — specific effects'
     pattern: CONFLICT
     schools_addressing: [parashari, kp]
     c7_flag: true
@@ -1422,7 +1421,7 @@ topics:
     flag: C7
 
   - topic_id: TC.070
-    topic: "Retrograde Saturn — specific effects"
+    topic: 'Retrograde Saturn — specific effects'
     pattern: CONFLICT
     schools_addressing: [parashari, kp]
     c7_flag: true
@@ -1444,7 +1443,7 @@ topics:
     flag: C7
 
   - topic_id: TC.071
-    topic: "Retrograde Venus — specific effects"
+    topic: 'Retrograde Venus — specific effects'
     pattern: CONFLICT
     schools_addressing: [parashari, kp]
     c7_flag: true
@@ -1465,7 +1464,7 @@ topics:
     flag: C7
 
   - topic_id: TC.072
-    topic: "Retrograde Mars — specific effects"
+    topic: 'Retrograde Mars — specific effects'
     pattern: CONFLICT
     schools_addressing: [parashari, kp]
     c7_flag: true
@@ -1488,12 +1487,12 @@ topics:
     rule_refs: [BPHS.3.29.5, KP.1.ch3.retro.mars.1]
     flag: C7
 
-# ────────────────────────────────────────────────────────────────────────────
-# SECTION 10: TIMING SYSTEMS — NON-COMPARABLE (C5) (TC.073–TC.087)
-# ────────────────────────────────────────────────────────────────────────────
+  # ────────────────────────────────────────────────────────────────────────────
+  # SECTION 10: TIMING SYSTEMS — NON-COMPARABLE (C5) (TC.073–TC.087)
+  # ────────────────────────────────────────────────────────────────────────────
 
   - topic_id: TC.073
-    topic: "Timing systems — NON-COMPARABLE meta-entry (C5)"
+    topic: 'Timing systems — NON-COMPARABLE meta-entry (C5)'
     pattern: ORTHOGONAL
     schools_addressing: [parashari, jaimini, kp, tajaka]
     c5_flag: true
@@ -1538,7 +1537,7 @@ topics:
     flag: C5
 
   - topic_id: TC.074
-    topic: "Vimshottari Dasha — Moon nakshatra seed"
+    topic: 'Vimshottari Dasha — Moon nakshatra seed'
     pattern: QUALIFY
     schools_addressing: [parashari, kp]
     core_agreement: >
@@ -1559,7 +1558,7 @@ topics:
     flag: C5
 
   - topic_id: TC.075
-    topic: "Jaimini Chara Dasha — sign-based periods"
+    topic: 'Jaimini Chara Dasha — sign-based periods'
     pattern: ORTHOGONAL
     schools_addressing: [jaimini]
     note_on_other_schools: >
@@ -1574,7 +1573,7 @@ topics:
     flag: C5
 
   - topic_id: TC.076
-    topic: "KP triple-significator timing method"
+    topic: 'KP triple-significator timing method'
     pattern: ORTHOGONAL
     schools_addressing: [kp]
     note_on_other_schools: >
@@ -1590,7 +1589,7 @@ topics:
     flag: C5
 
   - topic_id: TC.077
-    topic: "Tajaka Mudda Dasha — intra-year timing"
+    topic: 'Tajaka Mudda Dasha — intra-year timing'
     pattern: ORTHOGONAL
     schools_addressing: [tajaka]
     note_on_other_schools: >
@@ -1606,7 +1605,7 @@ topics:
     flag: C5
 
   - topic_id: TC.078
-    topic: "Sade Sati — Saturn transit over natal Moon (three 2.5-year phases)"
+    topic: 'Sade Sati — Saturn transit over natal Moon (three 2.5-year phases)'
     pattern: QUALIFY
     schools_addressing: [parashari, kp]
     core_agreement: >
@@ -1634,7 +1633,7 @@ topics:
     rule_refs: [BPHS.48.5.1, KP.5.ch16.transit.5]
 
   - topic_id: TC.079
-    topic: "Ashtama Shani — Saturn transit over 8th from natal Moon"
+    topic: 'Ashtama Shani — Saturn transit over 8th from natal Moon'
     pattern: QUALIFY
     schools_addressing: [parashari, kp]
     core_agreement: >
@@ -1658,7 +1657,7 @@ topics:
     rule_refs: [BPHS.48.6.1, KP.5.ch16.transit.6]
 
   - topic_id: TC.080
-    topic: "Jupiter transit — annual transit effects"
+    topic: 'Jupiter transit — annual transit effects'
     pattern: QUALIFY
     schools_addressing: [parashari, kp, tajaka]
     core_agreement: >
@@ -1685,12 +1684,12 @@ topics:
     silent: [jaimini]
     rule_refs: [BPHS.48.3.1, KP.5.ch16.transit.3, TAJAKA.ch7.v2.1]
 
-# ────────────────────────────────────────────────────────────────────────────
-# SECTION 11: DASHA RESULTS — VIMSHOTTARI VS JAIMINI CHARA (TC.081–TC.095)
-# ────────────────────────────────────────────────────────────────────────────
+  # ────────────────────────────────────────────────────────────────────────────
+  # SECTION 11: DASHA RESULTS — VIMSHOTTARI VS JAIMINI CHARA (TC.081–TC.095)
+  # ────────────────────────────────────────────────────────────────────────────
 
   - topic_id: TC.081
-    topic: "Vimshottari Rahu Mahadasha — general results"
+    topic: 'Vimshottari Rahu Mahadasha — general results'
     pattern: QUALIFY
     schools_addressing: [parashari, kp]
     core_agreement: >
@@ -1718,7 +1717,7 @@ topics:
     flag: C6
 
   - topic_id: TC.082
-    topic: "Vimshottari Saturn Mahadasha — general results"
+    topic: 'Vimshottari Saturn Mahadasha — general results'
     pattern: QUALIFY
     schools_addressing: [parashari, kp]
     core_agreement: >
@@ -1743,7 +1742,7 @@ topics:
     rule_refs: [BPHS.47.7.1, KP.5.ch17.saturn.1]
 
   - topic_id: TC.083
-    topic: "Jaimini Chara Dasha — Aries sign period"
+    topic: 'Jaimini Chara Dasha — Aries sign period'
     pattern: ORTHOGONAL
     schools_addressing: [jaimini]
     note_on_other_schools: >
@@ -1758,7 +1757,7 @@ topics:
     flag: C5
 
   - topic_id: TC.084
-    topic: "Ketu Mahadasha — spiritualization, moksha tendency"
+    topic: 'Ketu Mahadasha — spiritualization, moksha tendency'
     pattern: QUALIFY
     schools_addressing: [parashari, jaimini, kp]
     core_agreement: >
@@ -1790,7 +1789,7 @@ topics:
     flag: C6
 
   - topic_id: TC.085
-    topic: "Dasha of yogakaraka planet — enhanced results"
+    topic: 'Dasha of yogakaraka planet — enhanced results'
     pattern: QUALIFY
     schools_addressing: [parashari, kp]
     core_agreement: >
@@ -1813,12 +1812,12 @@ topics:
     silent: [jaimini, tajaka]
     rule_refs: [BPHS.40.2.1, KP.4.ch13.yogakaraka.1]
 
-# ────────────────────────────────────────────────────────────────────────────
-# SECTION 12: RAHU/KETU TREATMENT (C6) (TC.086–TC.095)
-# ────────────────────────────────────────────────────────────────────────────
+  # ────────────────────────────────────────────────────────────────────────────
+  # SECTION 12: RAHU/KETU TREATMENT (C6) (TC.086–TC.095)
+  # ────────────────────────────────────────────────────────────────────────────
 
   - topic_id: TC.086
-    topic: "Rahu/Ketu general nature — C6 meta-entry"
+    topic: 'Rahu/Ketu general nature — C6 meta-entry'
     pattern: ORTHOGONAL
     schools_addressing: [parashari, jaimini, kp, tajaka]
     c6_flag: true
@@ -1850,7 +1849,7 @@ topics:
     flag: C6
 
   - topic_id: TC.087
-    topic: "Rahu conjunct natal Sun — general effects"
+    topic: 'Rahu conjunct natal Sun — general effects'
     pattern: QUALIFY
     schools_addressing: [parashari, jaimini, kp]
     core_agreement: >
@@ -1880,7 +1879,7 @@ topics:
     flag: C6
 
   - topic_id: TC.088
-    topic: "Ketu conjunct natal Moon — general effects"
+    topic: 'Ketu conjunct natal Moon — general effects'
     pattern: QUALIFY
     schools_addressing: [parashari, jaimini, kp]
     core_agreement: >
@@ -1908,7 +1907,7 @@ topics:
     flag: C6
 
   - topic_id: TC.089
-    topic: "Rahu in 1st house — general effects"
+    topic: 'Rahu in 1st house — general effects'
     pattern: QUALIFY
     schools_addressing: [parashari, kp]
     core_agreement: >
@@ -1934,7 +1933,7 @@ topics:
     flag: C6
 
   - topic_id: TC.090
-    topic: "Ketu in 1st house — general effects"
+    topic: 'Ketu in 1st house — general effects'
     pattern: QUALIFY
     schools_addressing: [parashari, kp]
     core_agreement: >
@@ -1959,7 +1958,7 @@ topics:
     flag: C6
 
   - topic_id: TC.091
-    topic: "Rahu as Atmakaraka (Jaimini) — 8-karaka scheme"
+    topic: 'Rahu as Atmakaraka (Jaimini) — 8-karaka scheme'
     pattern: ORTHOGONAL
     schools_addressing: [jaimini]
     note_on_other_schools: >
@@ -1974,7 +1973,7 @@ topics:
     flag: [C1, C6]
 
   - topic_id: TC.092
-    topic: "Ketu in 12th from Karakamsha — moksha indicator (Jaimini)"
+    topic: 'Ketu in 12th from Karakamsha — moksha indicator (Jaimini)'
     pattern: ORTHOGONAL
     schools_addressing: [jaimini]
     note_on_other_schools: >
@@ -1988,12 +1987,12 @@ topics:
     rule_refs: [JAIMINI.1.3.14.1]
     flag: C6
 
-# ────────────────────────────────────────────────────────────────────────────
-# SECTION 13: KARAKA FRAMEWORKS — PARALLEL (C1) (TC.093–TC.107)
-# ────────────────────────────────────────────────────────────────────────────
+  # ────────────────────────────────────────────────────────────────────────────
+  # SECTION 13: KARAKA FRAMEWORKS — PARALLEL (C1) (TC.093–TC.107)
+  # ────────────────────────────────────────────────────────────────────────────
 
   - topic_id: TC.093
-    topic: "Karakamsha — Atmakaraka in navamsa (Jaimini)"
+    topic: 'Karakamsha — Atmakaraka in navamsa (Jaimini)'
     pattern: ORTHOGONAL
     schools_addressing: [jaimini]
     note_on_other_schools: >
@@ -2009,7 +2008,7 @@ topics:
     flag: C1
 
   - topic_id: TC.094
-    topic: "Upapada Lagna (UL) — Jaimini marriage indicator"
+    topic: 'Upapada Lagna (UL) — Jaimini marriage indicator'
     pattern: ORTHOGONAL
     schools_addressing: [jaimini]
     note_on_other_schools: >
@@ -2024,7 +2023,7 @@ topics:
     flag: C1
 
   - topic_id: TC.095
-    topic: "Arudha Lagna (AL) — image and maya projection (Jaimini)"
+    topic: 'Arudha Lagna (AL) — image and maya projection (Jaimini)'
     pattern: ORTHOGONAL
     schools_addressing: [jaimini]
     note_on_other_schools: >
@@ -2038,7 +2037,7 @@ topics:
     flag: C1
 
   - topic_id: TC.096
-    topic: "KP significator determination — house occupancy + nakshatra lord"
+    topic: 'KP significator determination — house occupancy + nakshatra lord'
     pattern: ORTHOGONAL
     schools_addressing: [kp]
     note_on_other_schools: >
@@ -2052,12 +2051,12 @@ topics:
     rule_refs: [KP.1.ch2.significators.2, KP.1.ch2.significators.3]
     flag: C1
 
-# ────────────────────────────────────────────────────────────────────────────
-# SECTION 14: PLANETARY FRIENDSHIPS AND ENMITY (TC.097–TC.106)
-# ────────────────────────────────────────────────────────────────────────────
+  # ────────────────────────────────────────────────────────────────────────────
+  # SECTION 14: PLANETARY FRIENDSHIPS AND ENMITY (TC.097–TC.106)
+  # ────────────────────────────────────────────────────────────────────────────
 
   - topic_id: TC.097
-    topic: "Permanent planetary friendship scheme (naisargika maitri)"
+    topic: 'Permanent planetary friendship scheme (naisargika maitri)'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp]
     core_agreement: >
@@ -2076,7 +2075,7 @@ topics:
     rule_refs: [BPHS.3.55.1, BPHS.3.56.1, BPHS.3.57.1, KP.1.ch2.friendship.1, JAIMINI.1.1.6.1]
 
   - topic_id: TC.098
-    topic: "Temporary planetary friendship (tatkalika maitri)"
+    topic: 'Temporary planetary friendship (tatkalika maitri)'
     pattern: AGREE
     schools_addressing: [parashari, kp]
     core_agreement: >
@@ -2094,7 +2093,7 @@ topics:
     rule_refs: [BPHS.3.60.1, KP.1.ch2.friendship.2]
 
   - topic_id: TC.099
-    topic: "Planetary combustion (astas) — close conjunction with Sun"
+    topic: 'Planetary combustion (astas) — close conjunction with Sun'
     pattern: QUALIFY
     schools_addressing: [parashari, jaimini, kp]
     core_agreement: >
@@ -2122,12 +2121,12 @@ topics:
     silent: [tajaka]
     rule_refs: [BPHS.3.45.1, KP.1.ch2.combustion.1, JAIMINI.1.1.7.2]
 
-# ────────────────────────────────────────────────────────────────────────────
-# SECTION 15: NAKSHATRA SYSTEM (TC.100–TC.109)
-# ────────────────────────────────────────────────────────────────────────────
+  # ────────────────────────────────────────────────────────────────────────────
+  # SECTION 15: NAKSHATRA SYSTEM (TC.100–TC.109)
+  # ────────────────────────────────────────────────────────────────────────────
 
   - topic_id: TC.100
-    topic: "27 nakshatras — foundational division of the zodiac"
+    topic: '27 nakshatras — foundational division of the zodiac'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp, tajaka]
     core_agreement: >
@@ -2147,7 +2146,7 @@ topics:
     rule_refs: [BPHS.5.1.1, JAIMINI.1.1.1.1, KP.1.ch1.intro.1, TAJAKA.ch3.v1.1]
 
   - topic_id: TC.101
-    topic: "Nakshatra lords (Vimshottari sequence) — agreement on sequence"
+    topic: 'Nakshatra lords (Vimshottari sequence) — agreement on sequence'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp, tajaka]
     core_agreement: >
@@ -2160,7 +2159,7 @@ topics:
     rule_refs: [BPHS.46.3.1, KP.1.ch1.intro.1, JAIMINI.1.1.1.1]
 
   - topic_id: TC.102
-    topic: "Abhijit nakshatra — 28th nakshatra recognition"
+    topic: 'Abhijit nakshatra — 28th nakshatra recognition'
     pattern: QUALIFY
     schools_addressing: [parashari, kp]
     core_agreement: >
@@ -2181,7 +2180,7 @@ topics:
     rule_refs: [BPHS.5.28.1, KP.1.ch1.nakshatra.28]
 
   - topic_id: TC.103
-    topic: "Nakshatra-based health indicators"
+    topic: 'Nakshatra-based health indicators'
     pattern: QUALIFY
     schools_addressing: [parashari, kp]
     core_agreement: >
@@ -2204,12 +2203,12 @@ topics:
     silent: [jaimini, tajaka]
     rule_refs: [BPHS.5.2.1, KP.2.ch7.health.1]
 
-# ────────────────────────────────────────────────────────────────────────────
-# SECTION 16: REMEDIES (TC.104–TC.118)
-# ────────────────────────────────────────────────────────────────────────────
+  # ────────────────────────────────────────────────────────────────────────────
+  # SECTION 16: REMEDIES (TC.104–TC.118)
+  # ────────────────────────────────────────────────────────────────────────────
 
   - topic_id: TC.104
-    topic: "Gemstone remedies — general principle"
+    topic: 'Gemstone remedies — general principle'
     pattern: QUALIFY
     schools_addressing: [parashari, jaimini, kp]
     core_agreement: >
@@ -2241,7 +2240,7 @@ topics:
     rule_refs: [BPHS.81.1.1, JAIMINI.4.2.1.1, KP.6.ch20.remedies.1]
 
   - topic_id: TC.105
-    topic: "Mantra remedies — planetary beeja mantras"
+    topic: 'Mantra remedies — planetary beeja mantras'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp]
     core_agreement: >
@@ -2261,7 +2260,7 @@ topics:
     rule_refs: [BPHS.81.2.1, KP.6.ch20.remedies.2]
 
   - topic_id: TC.106
-    topic: "Dana (charitable donation) as remedy"
+    topic: 'Dana (charitable donation) as remedy'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp]
     core_agreement: >
@@ -2280,7 +2279,7 @@ topics:
     rule_refs: [BPHS.81.3.1]
 
   - topic_id: TC.107
-    topic: "Muhurta (electional astrology) — auspicious timing principles"
+    topic: 'Muhurta (electional astrology) — auspicious timing principles'
     pattern: QUALIFY
     schools_addressing: [parashari, jaimini, kp, tajaka]
     core_agreement: >
@@ -2303,12 +2302,12 @@ topics:
     conflicts: []
     rule_refs: [BPHS.65.1.1, KP.6.ch22.muhurta.1, TAJAKA.ch8.v1.1]
 
-# ────────────────────────────────────────────────────────────────────────────
-# SECTION 17: SPECIAL TOPICS — NAVAMSA, DIVISIONAL CHARTS (TC.108–TC.117)
-# ────────────────────────────────────────────────────────────────────────────
+  # ────────────────────────────────────────────────────────────────────────────
+  # SECTION 17: SPECIAL TOPICS — NAVAMSA, DIVISIONAL CHARTS (TC.108–TC.117)
+  # ────────────────────────────────────────────────────────────────────────────
 
   - topic_id: TC.108
-    topic: "Navamsa (D9) — spouse and dharma chart"
+    topic: 'Navamsa (D9) — spouse and dharma chart'
     pattern: QUALIFY
     schools_addressing: [parashari, jaimini, kp]
     core_agreement: >
@@ -2339,7 +2338,7 @@ topics:
     rule_refs: [BPHS.6.1.1, JAIMINI.1.3.1.1, KP.1.ch4.divisional.1]
 
   - topic_id: TC.109
-    topic: "Vargottama planet — in same sign in both Rashi and Navamsa"
+    topic: 'Vargottama planet — in same sign in both Rashi and Navamsa'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp]
     core_agreement: >
@@ -2357,7 +2356,7 @@ topics:
     rule_refs: [BPHS.6.2.1, JAIMINI.1.1.8.1, KP.1.ch4.vargottama.1]
 
   - topic_id: TC.110
-    topic: "Drekkana (D3) — siblings and co-borns"
+    topic: 'Drekkana (D3) — siblings and co-borns'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp]
     core_agreement: >
@@ -2370,7 +2369,7 @@ topics:
     rule_refs: [BPHS.6.3.1, KP.1.ch4.divisional.3]
 
   - topic_id: TC.111
-    topic: "Dashamsha (D10) — career and professional life"
+    topic: 'Dashamsha (D10) — career and professional life'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp]
     core_agreement: >
@@ -2387,7 +2386,7 @@ topics:
     rule_refs: [BPHS.6.10.1, JAIMINI.2.3.2.1, KP.1.ch4.divisional.10]
 
   - topic_id: TC.112
-    topic: "Muntha (Tajaka annual chart progressed ascendant)"
+    topic: 'Muntha (Tajaka annual chart progressed ascendant)'
     pattern: ORTHOGONAL
     schools_addressing: [tajaka]
     note_on_other_schools: >
@@ -2400,7 +2399,7 @@ topics:
     rule_refs: [TAJAKA.ch5.v1.1, TAJAKA.ch5.v2.1]
 
   - topic_id: TC.113
-    topic: "Varshaphal — annual chart (Tajaka Varsha Kundali)"
+    topic: 'Varshaphal — annual chart (Tajaka Varsha Kundali)'
     pattern: ORTHOGONAL
     schools_addressing: [tajaka]
     note_on_other_schools: >
@@ -2414,12 +2413,12 @@ topics:
       triangulation increases probability but the methodologies must remain distinct.
     rule_refs: [TAJAKA.ch1.v1.1, TAJAKA.ch1.v2.1]
 
-# ────────────────────────────────────────────────────────────────────────────
-# SECTION 18: ASHTAKAVARGA (TC.114–TC.118)
-# ────────────────────────────────────────────────────────────────────────────
+  # ────────────────────────────────────────────────────────────────────────────
+  # SECTION 18: ASHTAKAVARGA (TC.114–TC.118)
+  # ────────────────────────────────────────────────────────────────────────────
 
   - topic_id: TC.114
-    topic: "Ashtakavarga — transit strength measurement"
+    topic: 'Ashtakavarga — transit strength measurement'
     pattern: QUALIFY
     schools_addressing: [parashari, kp]
     core_agreement: >
@@ -2458,12 +2457,12 @@ topics:
     silent: [jaimini, kp, tajaka]
     rule_refs: [BPHS.66.5.1]
 
-# ────────────────────────────────────────────────────────────────────────────
-# SECTION 19: SPECIAL TOPICS (TC.116–TC.130)
-# ────────────────────────────────────────────────────────────────────────────
+  # ────────────────────────────────────────────────────────────────────────────
+  # SECTION 19: SPECIAL TOPICS (TC.116–TC.130)
+  # ────────────────────────────────────────────────────────────────────────────
 
   - topic_id: TC.116
-    topic: "Marriage timing — multi-system assessment"
+    topic: 'Marriage timing — multi-system assessment'
     pattern: ORTHOGONAL
     schools_addressing: [parashari, jaimini, kp, tajaka]
     c1_flag: true
@@ -2489,7 +2488,7 @@ topics:
     flag: [C1, C3, C5]
 
   - topic_id: TC.117
-    topic: "Child birth timing — multi-system assessment"
+    topic: 'Child birth timing — multi-system assessment'
     pattern: ORTHOGONAL
     schools_addressing: [parashari, jaimini, kp]
     c1_flag: true
@@ -2508,7 +2507,7 @@ topics:
     flag: [C1, C5]
 
   - topic_id: TC.118
-    topic: "Career/profession assessment — multi-system"
+    topic: 'Career/profession assessment — multi-system'
     pattern: ORTHOGONAL
     schools_addressing: [parashari, jaimini, kp, tajaka]
     c1_flag: true
@@ -2531,7 +2530,7 @@ topics:
     flag: [C1, C5]
 
   - topic_id: TC.119
-    topic: "Longevity determination — Parashari methods"
+    topic: 'Longevity determination — Parashari methods'
     pattern: QUALIFY
     schools_addressing: [parashari, kp]
     core_agreement: >
@@ -2555,7 +2554,7 @@ topics:
     rule_refs: [BPHS.44.1.1, KP.4.ch11.longevity.1]
 
   - topic_id: TC.120
-    topic: "Foreign travel and settlement — house indicators"
+    topic: 'Foreign travel and settlement — house indicators'
     pattern: QUALIFY
     schools_addressing: [parashari, kp, tajaka]
     core_agreement: >
@@ -2583,7 +2582,7 @@ topics:
     rule_refs: [BPHS.11.12.2, KP.4.ch11.foreign.1, TAJAKA.ch7.v5.1]
 
   - topic_id: TC.121
-    topic: "Financial gains and wealth — house indicators"
+    topic: 'Financial gains and wealth — house indicators'
     pattern: QUALIFY
     schools_addressing: [parashari, jaimini, kp, tajaka]
     core_agreement: >
@@ -2610,7 +2609,7 @@ topics:
     rule_refs: [BPHS.15.1.1, JAIMINI.1.3.5.1, KP.4.ch11.wealth.1, TAJAKA.ch7.v6.1]
 
   - topic_id: TC.122
-    topic: "Education and intellect — house indicators"
+    topic: 'Education and intellect — house indicators'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp]
     core_agreement: >
@@ -2630,7 +2629,7 @@ topics:
     rule_refs: [BPHS.11.4.2, KP.4.ch11.education.1, JAIMINI.1.3.6.2]
 
   - topic_id: TC.123
-    topic: "Spiritual liberation (moksha) indicators"
+    topic: 'Spiritual liberation (moksha) indicators'
     pattern: QUALIFY
     schools_addressing: [parashari, jaimini, kp]
     core_agreement: >
@@ -2661,7 +2660,7 @@ topics:
     rule_refs: [BPHS.11.12.3, JAIMINI.1.3.14.2, KP.4.ch11.moksha.1]
 
   - topic_id: TC.124
-    topic: "Pitra dosha — affliction related to departed ancestors"
+    topic: 'Pitra dosha — affliction related to departed ancestors'
     pattern: QUALIFY
     schools_addressing: [parashari, jaimini]
     core_agreement: >
@@ -2686,7 +2685,7 @@ topics:
     rule_refs: [BPHS.17.1.1, JAIMINI.1.1.5.4]
 
   - topic_id: TC.125
-    topic: "Mangala Dosha (Kuja Dosha) — Mars in 1/2/4/7/8/12"
+    topic: 'Mangala Dosha (Kuja Dosha) — Mars in 1/2/4/7/8/12'
     pattern: QUALIFY
     schools_addressing: [parashari, jaimini, kp]
     core_agreement: >
@@ -2714,7 +2713,7 @@ topics:
     rule_refs: [BPHS.73.1.1, JAIMINI.2.3.3.1, KP.4.ch11.mangala.1]
 
   - topic_id: TC.126
-    topic: "Combustion of Venus — effects on marriage"
+    topic: 'Combustion of Venus — effects on marriage'
     pattern: QUALIFY
     schools_addressing: [parashari, kp]
     core_agreement: >
@@ -2736,12 +2735,12 @@ topics:
     silent: [jaimini, tajaka]
     rule_refs: [BPHS.3.45.6, KP.1.ch2.combustion.venus.1]
 
-# ────────────────────────────────────────────────────────────────────────────
-# SECTION 20: LAGNA AND ASCENDANT MATTERS (TC.127–TC.136)
-# ────────────────────────────────────────────────────────────────────────────
+  # ────────────────────────────────────────────────────────────────────────────
+  # SECTION 20: LAGNA AND ASCENDANT MATTERS (TC.127–TC.136)
+  # ────────────────────────────────────────────────────────────────────────────
 
   - topic_id: TC.127
-    topic: "Lagna lord in 1st house — self-determination and health"
+    topic: 'Lagna lord in 1st house — self-determination and health'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp]
     core_agreement: >
@@ -2758,7 +2757,7 @@ topics:
     rule_refs: [BPHS.33.1.11, KP.3.ch11.lagna.1, JAIMINI.1.3.2.2]
 
   - topic_id: TC.128
-    topic: "Lagna lord in 8th house — challenges to health and longevity"
+    topic: 'Lagna lord in 8th house — challenges to health and longevity'
     pattern: QUALIFY
     schools_addressing: [parashari, jaimini, kp]
     core_agreement: >
@@ -2787,7 +2786,7 @@ topics:
     rule_refs: [BPHS.33.1.8, KP.3.ch11.lagna8.1, JAIMINI.1.3.8.1]
 
   - topic_id: TC.129
-    topic: "Lagna lord in 12th house — expenses, spirituality, foreign"
+    topic: 'Lagna lord in 12th house — expenses, spirituality, foreign'
     pattern: QUALIFY
     schools_addressing: [parashari, jaimini, kp]
     core_agreement: >
@@ -2810,7 +2809,7 @@ topics:
     rule_refs: [BPHS.33.1.12, KP.3.ch11.lagna12.1]
 
   - topic_id: TC.130
-    topic: "Trikona (trinal) house lords — benefic functional role"
+    topic: 'Trikona (trinal) house lords — benefic functional role'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp]
     core_agreement: >
@@ -2828,12 +2827,12 @@ topics:
     silent: [tajaka]
     rule_refs: [BPHS.34.1.1, JAIMINI.1.3.4.1, KP.2.ch6.trines.1]
 
-# ────────────────────────────────────────────────────────────────────────────
-# SECTION 21: SPECIAL YOGAS — ADVANCED (TC.131–TC.145)
-# ────────────────────────────────────────────────────────────────────────────
+  # ────────────────────────────────────────────────────────────────────────────
+  # SECTION 21: SPECIAL YOGAS — ADVANCED (TC.131–TC.145)
+  # ────────────────────────────────────────────────────────────────────────────
 
   - topic_id: TC.131
-    topic: "Chandra-Mangala Yoga — Moon conjunct Mars"
+    topic: 'Chandra-Mangala Yoga — Moon conjunct Mars'
     pattern: QUALIFY
     schools_addressing: [parashari, kp]
     core_agreement: >
@@ -2856,7 +2855,7 @@ topics:
     rule_refs: [BPHS.37.3.1, KP.4.ch12.yoga.8]
 
   - topic_id: TC.132
-    topic: "Saraswati Yoga — Jupiter + Venus + Mercury in kendra/trikona"
+    topic: 'Saraswati Yoga — Jupiter + Venus + Mercury in kendra/trikona'
     pattern: QUALIFY
     schools_addressing: [parashari, jaimini, kp]
     core_agreement: >
@@ -2877,7 +2876,7 @@ topics:
     rule_refs: [BPHS.37.4.1, KP.4.ch12.yoga.9]
 
   - topic_id: TC.133
-    topic: "Parivartana Yoga (mutual exchange) — lagna lord and 9th lord"
+    topic: 'Parivartana Yoga (mutual exchange) — lagna lord and 9th lord'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp]
     core_agreement: >
@@ -2894,7 +2893,7 @@ topics:
     rule_refs: [BPHS.38.3.1, KP.4.ch12.parivartana.1]
 
   - topic_id: TC.134
-    topic: "Kesari Yoga — Jupiter in kendra from Moon"
+    topic: 'Kesari Yoga — Jupiter in kendra from Moon'
     pattern: QUALIFY
     schools_addressing: [parashari, kp]
     core_agreement: >
@@ -2913,7 +2912,7 @@ topics:
     rule_refs: [BPHS.37.1.1, KP.4.ch12.yoga.6]
 
   - topic_id: TC.135
-    topic: "Shasha Yoga vs. Sasa Yoga — disambiguation"
+    topic: 'Shasha Yoga vs. Sasa Yoga — disambiguation'
     pattern: AGREE
     schools_addressing: [parashari]
     core_agreement: >
@@ -2927,7 +2926,7 @@ topics:
     rule_refs: [BPHS.36.3.1]
 
   - topic_id: TC.136
-    topic: "Argala (intervention) — Jaimini planets blocking or influencing"
+    topic: 'Argala (intervention) — Jaimini planets blocking or influencing'
     pattern: ORTHOGONAL
     schools_addressing: [jaimini]
     note_on_other_schools: >
@@ -2942,7 +2941,7 @@ topics:
     flag: C1
 
   - topic_id: TC.137
-    topic: "Prasna (horary) astrology — use of rising chart at time of query"
+    topic: 'Prasna (horary) astrology — use of rising chart at time of query'
     pattern: QUALIFY
     schools_addressing: [parashari, kp]
     core_agreement: >
@@ -2965,12 +2964,12 @@ topics:
     silent: [jaimini, tajaka]
     rule_refs: [BPHS.55.1.1, KP.6.ch18.prasna.1]
 
-# ────────────────────────────────────────────────────────────────────────────
-# SECTION 22: PLANETARY PERIODS — ANTARDASHA RESULTS (TC.138–TC.145)
-# ────────────────────────────────────────────────────────────────────────────
+  # ────────────────────────────────────────────────────────────────────────────
+  # SECTION 22: PLANETARY PERIODS — ANTARDASHA RESULTS (TC.138–TC.145)
+  # ────────────────────────────────────────────────────────────────────────────
 
   - topic_id: TC.138
-    topic: "Rahu Antardasha in Jupiter Mahadasha"
+    topic: 'Rahu Antardasha in Jupiter Mahadasha'
     pattern: QUALIFY
     schools_addressing: [parashari, kp]
     core_agreement: >
@@ -2994,7 +2993,7 @@ topics:
     rule_refs: [BPHS.47.5.8, KP.5.ch17.jup_rahu.1]
 
   - topic_id: TC.139
-    topic: "Saturn Antardasha in Rahu Mahadasha"
+    topic: 'Saturn Antardasha in Rahu Mahadasha'
     pattern: QUALIFY
     schools_addressing: [parashari, kp]
     core_agreement: >
@@ -3019,7 +3018,7 @@ topics:
     rule_refs: [BPHS.47.6.7, KP.5.ch17.rahu_sat.1]
 
   - topic_id: TC.140
-    topic: "Mars Antardasha in Saturn Mahadasha"
+    topic: 'Mars Antardasha in Saturn Mahadasha'
     pattern: QUALIFY
     schools_addressing: [parashari, kp]
     core_agreement: >
@@ -3044,7 +3043,7 @@ topics:
     rule_refs: [BPHS.47.7.5, KP.5.ch17.sat_mars.1]
 
   - topic_id: TC.141
-    topic: "Venus Antardasha in Venus Mahadasha — double Venus period"
+    topic: 'Venus Antardasha in Venus Mahadasha — double Venus period'
     pattern: QUALIFY
     schools_addressing: [parashari, kp]
     core_agreement: >
@@ -3071,7 +3070,7 @@ topics:
     rule_refs: [BPHS.47.4.4, KP.5.ch17.venus_venus.1]
 
   - topic_id: TC.142
-    topic: "Jupiter Antardasha in Mercury Mahadasha"
+    topic: 'Jupiter Antardasha in Mercury Mahadasha'
     pattern: QUALIFY
     schools_addressing: [parashari, kp]
     core_agreement: >
@@ -3092,12 +3091,12 @@ topics:
     silent: [jaimini, tajaka]
     rule_refs: [BPHS.47.9.5, KP.5.ch17.mer_jup.1]
 
-# ────────────────────────────────────────────────────────────────────────────
-# SECTION 23: ADDITIONAL SPECIAL TOPICS (TC.143–TC.160)
-# ────────────────────────────────────────────────────────────────────────────
+  # ────────────────────────────────────────────────────────────────────────────
+  # SECTION 23: ADDITIONAL SPECIAL TOPICS (TC.143–TC.160)
+  # ────────────────────────────────────────────────────────────────────────────
 
   - topic_id: TC.143
-    topic: "Bhava madhya vs. cusp — house analysis starting point"
+    topic: 'Bhava madhya vs. cusp — house analysis starting point'
     pattern: CONFLICT
     schools_addressing: [parashari, kp]
     core_agreement: null
@@ -3126,7 +3125,7 @@ topics:
     flag: C3
 
   - topic_id: TC.144
-    topic: "Nodes as eclipse degrees — eclipses as sensitive natal points"
+    topic: 'Nodes as eclipse degrees — eclipses as sensitive natal points'
     pattern: QUALIFY
     schools_addressing: [parashari, jaimini, kp]
     core_agreement: >
@@ -3155,7 +3154,7 @@ topics:
     flag: C6
 
   - topic_id: TC.145
-    topic: "Pushkara navamsa and Pushkara bhaga — auspicious sensitive degrees"
+    topic: 'Pushkara navamsa and Pushkara bhaga — auspicious sensitive degrees'
     pattern: QUALIFY
     schools_addressing: [parashari, jaimini]
     core_agreement: >
@@ -3178,7 +3177,7 @@ topics:
     rule_refs: [BPHS.6.5.1, JAIMINI.1.1.9.1]
 
   - topic_id: TC.146
-    topic: "Benefic vs. malefic planet classification — natural"
+    topic: 'Benefic vs. malefic planet classification — natural'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp, tajaka]
     core_agreement: >
@@ -3200,7 +3199,7 @@ topics:
     rule_refs: [BPHS.3.7.1, JAIMINI.1.1.7.1, KP.1.ch2.benefic.1, TAJAKA.ch2.v3.1]
 
   - topic_id: TC.147
-    topic: "Functional malefics by lagna — concept varies by system"
+    topic: 'Functional malefics by lagna — concept varies by system'
     pattern: QUALIFY
     schools_addressing: [parashari, kp]
     core_agreement: >
@@ -3225,7 +3224,7 @@ topics:
     rule_refs: [BPHS.34.2.1, KP.2.ch6.functional.1]
 
   - topic_id: TC.148
-    topic: "Nadi astrology — thumb-print/leaf reading tradition"
+    topic: 'Nadi astrology — thumb-print/leaf reading tradition'
     pattern: SILENT
     schools_addressing: []
     note_on_other_schools: >
@@ -3236,7 +3235,7 @@ topics:
     rule_refs: []
 
   - topic_id: TC.149
-    topic: "Lal Kitab — karmic debt remedies"
+    topic: 'Lal Kitab — karmic debt remedies'
     pattern: SILENT
     schools_addressing: []
     note_on_other_schools: >
@@ -3246,7 +3245,7 @@ topics:
     rule_refs: []
 
   - topic_id: TC.150
-    topic: "Shri Pati / Sripati house system — relation to Parashari"
+    topic: 'Shri Pati / Sripati house system — relation to Parashari'
     pattern: QUALIFY
     schools_addressing: [parashari]
     core_agreement: >
@@ -3267,12 +3266,12 @@ topics:
     rule_refs: [BPHS.4.1.1]
     flag: C3
 
-# ────────────────────────────────────────────────────────────────────────────
-# SECTION 24: JAIMINI-SPECIFIC TOPICS (TC.151–TC.163)
-# ────────────────────────────────────────────────────────────────────────────
+  # ────────────────────────────────────────────────────────────────────────────
+  # SECTION 24: JAIMINI-SPECIFIC TOPICS (TC.151–TC.163)
+  # ────────────────────────────────────────────────────────────────────────────
 
   - topic_id: TC.151
-    topic: "Jaimini Shoola Dasha — death and adversity timing"
+    topic: 'Jaimini Shoola Dasha — death and adversity timing'
     pattern: ORTHOGONAL
     schools_addressing: [jaimini]
     note_on_other_schools: >
@@ -3286,7 +3285,7 @@ topics:
     flag: C5
 
   - topic_id: TC.152
-    topic: "Jaimini Sthira Dasha — fixed planetary periods for natal analysis"
+    topic: 'Jaimini Sthira Dasha — fixed planetary periods for natal analysis'
     pattern: ORTHOGONAL
     schools_addressing: [jaimini]
     note_on_other_schools: >
@@ -3300,7 +3299,7 @@ topics:
     flag: C5
 
   - topic_id: TC.153
-    topic: "Jaimini Varnada Lagna — secondary ascendant for Varnada Dasha"
+    topic: 'Jaimini Varnada Lagna — secondary ascendant for Varnada Dasha'
     pattern: ORTHOGONAL
     schools_addressing: [jaimini]
     note_on_other_schools: >
@@ -3312,7 +3311,7 @@ topics:
     flag: C1
 
   - topic_id: TC.154
-    topic: "Jaimini Hora Lagna — financial assessment secondary ascendant"
+    topic: 'Jaimini Hora Lagna — financial assessment secondary ascendant'
     pattern: ORTHOGONAL
     schools_addressing: [jaimini]
     note_on_other_schools: >
@@ -3324,7 +3323,7 @@ topics:
     flag: C1
 
   - topic_id: TC.155
-    topic: "Jaimini Ghatika Lagna — power and authority indicator"
+    topic: 'Jaimini Ghatika Lagna — power and authority indicator'
     pattern: ORTHOGONAL
     schools_addressing: [jaimini]
     note_on_other_schools: >
@@ -3336,7 +3335,7 @@ topics:
     flag: C1
 
   - topic_id: TC.156
-    topic: "Jaimini Atmakaraka in Sagittarius navamsa — spiritual teacher"
+    topic: 'Jaimini Atmakaraka in Sagittarius navamsa — spiritual teacher'
     pattern: ORTHOGONAL
     schools_addressing: [jaimini]
     note_on_other_schools: >
@@ -3349,7 +3348,7 @@ topics:
     flag: C1
 
   - topic_id: TC.157
-    topic: "Jaimini Brahma (Brahma Graha) — lifespan indicator"
+    topic: 'Jaimini Brahma (Brahma Graha) — lifespan indicator'
     pattern: ORTHOGONAL
     schools_addressing: [jaimini]
     note_on_other_schools: >
@@ -3362,12 +3361,12 @@ topics:
     rule_refs: [JAIMINI.3.1.1.1]
     flag: C5
 
-# ────────────────────────────────────────────────────────────────────────────
-# SECTION 25: KP-SPECIFIC TOPICS (TC.158–TC.165)
-# ────────────────────────────────────────────────────────────────────────────
+  # ────────────────────────────────────────────────────────────────────────────
+  # SECTION 25: KP-SPECIFIC TOPICS (TC.158–TC.165)
+  # ────────────────────────────────────────────────────────────────────────────
 
   - topic_id: TC.158
-    topic: "KP sub-lord of cusp 1 — health determination"
+    topic: 'KP sub-lord of cusp 1 — health determination'
     pattern: ORTHOGONAL
     schools_addressing: [kp]
     note_on_other_schools: >
@@ -3382,7 +3381,7 @@ topics:
     flag: [C1, C3]
 
   - topic_id: TC.159
-    topic: "KP sub-lord of cusp 7 — marriage determination"
+    topic: 'KP sub-lord of cusp 7 — marriage determination'
     pattern: ORTHOGONAL
     schools_addressing: [kp]
     note_on_other_schools: >
@@ -3396,7 +3395,7 @@ topics:
     flag: C3
 
   - topic_id: TC.160
-    topic: "KP sub-lord of cusp 10 — career determination"
+    topic: 'KP sub-lord of cusp 10 — career determination'
     pattern: ORTHOGONAL
     schools_addressing: [kp]
     note_on_other_schools: >
@@ -3409,7 +3408,7 @@ topics:
     flag: C3
 
   - topic_id: TC.161
-    topic: "KP ruling planets method — planets ruling the moment"
+    topic: 'KP ruling planets method — planets ruling the moment'
     pattern: ORTHOGONAL
     schools_addressing: [kp]
     note_on_other_schools: >
@@ -3422,7 +3421,7 @@ topics:
     rule_refs: [KP.6.ch18.ruling_planets.1]
 
   - topic_id: TC.162
-    topic: "KP stellar astrology basis — nakshatra is more important than sign"
+    topic: 'KP stellar astrology basis — nakshatra is more important than sign'
     pattern: CONFLICT
     schools_addressing: [parashari, kp]
     core_agreement: null
@@ -3448,12 +3447,12 @@ topics:
     silent: [jaimini, tajaka]
     rule_refs: [BPHS.3.20.1, KP.1.ch1.intro.2]
 
-# ────────────────────────────────────────────────────────────────────────────
-# SECTION 26: TAJAKA-SPECIFIC TOPICS (TC.163–TC.172)
-# ────────────────────────────────────────────────────────────────────────────
+  # ────────────────────────────────────────────────────────────────────────────
+  # SECTION 26: TAJAKA-SPECIFIC TOPICS (TC.163–TC.172)
+  # ────────────────────────────────────────────────────────────────────────────
 
   - topic_id: TC.163
-    topic: "Tajaka Sahams — special sensitive points in annual chart"
+    topic: 'Tajaka Sahams — special sensitive points in annual chart'
     pattern: ORTHOGONAL
     schools_addressing: [tajaka]
     note_on_other_schools: >
@@ -3467,7 +3466,7 @@ topics:
     rule_refs: [TAJAKA.ch9.v1.1, TAJAKA.ch9.v2.1]
 
   - topic_id: TC.164
-    topic: "Tajaka Varshesh (year lord) — planet ruling the Varsha year"
+    topic: 'Tajaka Varshesh (year lord) — planet ruling the Varsha year'
     pattern: ORTHOGONAL
     schools_addressing: [tajaka]
     note_on_other_schools: >
@@ -3481,7 +3480,7 @@ topics:
     rule_refs: [TAJAKA.ch5.v3.1, TAJAKA.ch5.v4.1]
 
   - topic_id: TC.165
-    topic: "Tajaka Tri-Pataki chakra — three-sign transit indicator"
+    topic: 'Tajaka Tri-Pataki chakra — three-sign transit indicator'
     pattern: ORTHOGONAL
     schools_addressing: [tajaka]
     note_on_other_schools: >
@@ -3494,7 +3493,7 @@ topics:
     rule_refs: [TAJAKA.ch6.v3.1]
 
   - topic_id: TC.166
-    topic: "Tajaka Itthasala with Varsha Lagna lord — promise of the year"
+    topic: 'Tajaka Itthasala with Varsha Lagna lord — promise of the year'
     pattern: ORTHOGONAL
     schools_addressing: [tajaka]
     note_on_other_schools: >
@@ -3509,12 +3508,12 @@ topics:
     rule_refs: [TAJAKA.ch4.v2.2, TAJAKA.ch7.v1.1]
     flag: C2
 
-# ────────────────────────────────────────────────────────────────────────────
-# SECTION 27: ADDITIONAL AGREEMENT ENTRIES — WIDELY SHARED PRINCIPLES (TC.167–TC.210)
-# ────────────────────────────────────────────────────────────────────────────
+  # ────────────────────────────────────────────────────────────────────────────
+  # SECTION 27: ADDITIONAL AGREEMENT ENTRIES — WIDELY SHARED PRINCIPLES (TC.167–TC.210)
+  # ────────────────────────────────────────────────────────────────────────────
 
   - topic_id: TC.167
-    topic: "Tithi (lunar day) — importance in muhurta and panchanga"
+    topic: 'Tithi (lunar day) — importance in muhurta and panchanga'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp, tajaka]
     core_agreement: >
@@ -3526,7 +3525,7 @@ topics:
     rule_refs: [BPHS.65.2.1, KP.6.ch22.panchanga.1, TAJAKA.ch8.v2.1]
 
   - topic_id: TC.168
-    topic: "Vara (weekday) — planetary lordship of days"
+    topic: 'Vara (weekday) — planetary lordship of days'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp, tajaka]
     core_agreement: >
@@ -3538,7 +3537,7 @@ topics:
     rule_refs: [BPHS.65.3.1, KP.6.ch22.panchanga.2, TAJAKA.ch8.v3.1]
 
   - topic_id: TC.169
-    topic: "Ayanamsha (sidereal vs tropical zodiac) — Lahiri as standard"
+    topic: 'Ayanamsha (sidereal vs tropical zodiac) — Lahiri as standard'
     pattern: QUALIFY
     schools_addressing: [parashari, jaimini, kp, tajaka]
     core_agreement: >
@@ -3569,7 +3568,7 @@ topics:
     rule_refs: [BPHS.3.1.1, KP.1.ch1.ayanamsha.1, JAIMINI.1.1.1.2, TAJAKA.ch1.v3.1]
 
   - topic_id: TC.170
-    topic: "Tropical vs. sidereal zodiac — KP ayanamsha vs. Lahiri"
+    topic: 'Tropical vs. sidereal zodiac — KP ayanamsha vs. Lahiri'
     pattern: CONFLICT
     schools_addressing: [parashari, kp]
     core_agreement: null
@@ -3595,7 +3594,7 @@ topics:
     rule_refs: [BPHS.3.1.1, KP.1.ch1.ayanamsha.2]
 
   - topic_id: TC.171
-    topic: "Hora (half-sign) — 2-degree subdivision for hourly rule"
+    topic: 'Hora (half-sign) — 2-degree subdivision for hourly rule'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp, tajaka]
     core_agreement: >
@@ -3608,7 +3607,7 @@ topics:
     rule_refs: [BPHS.6.1.2, KP.6.ch22.hora.1, TAJAKA.ch8.v4.1]
 
   - topic_id: TC.172
-    topic: "Sarpa Dosha — affliction from snake-related karmas"
+    topic: 'Sarpa Dosha — affliction from snake-related karmas'
     pattern: QUALIFY
     schools_addressing: [parashari, jaimini]
     core_agreement: >
@@ -3635,7 +3634,7 @@ topics:
     flag: C6
 
   - topic_id: TC.173
-    topic: "Balarishtha Yoga — early life challenges to survival"
+    topic: 'Balarishtha Yoga — early life challenges to survival'
     pattern: QUALIFY
     schools_addressing: [parashari, jaimini, kp]
     core_agreement: >
@@ -3659,7 +3658,7 @@ topics:
     rule_refs: [BPHS.73.3.1, KP.4.ch11.balarishtha.1]
 
   - topic_id: TC.174
-    topic: "Vimshottari starting balance — remaining dasha at birth"
+    topic: 'Vimshottari starting balance — remaining dasha at birth'
     pattern: AGREE
     schools_addressing: [parashari, kp]
     core_agreement: >
@@ -3673,7 +3672,7 @@ topics:
     rule_refs: [BPHS.46.2.1, KP.5.ch15.balance.1]
 
   - topic_id: TC.175
-    topic: "Dasha of lagna lord — general importance"
+    topic: 'Dasha of lagna lord — general importance'
     pattern: AGREE
     schools_addressing: [parashari, kp]
     core_agreement: >
@@ -3692,7 +3691,7 @@ topics:
     rule_refs: [BPHS.47.1.2, KP.5.ch17.lagnaLord.1]
 
   - topic_id: TC.176
-    topic: "Transit of planets over natal Moon sign — general sensitivity"
+    topic: 'Transit of planets over natal Moon sign — general sensitivity'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp, tajaka]
     core_agreement: >
@@ -3716,7 +3715,7 @@ topics:
     rule_refs: [BPHS.48.1.1, KP.5.ch16.transit.1, JAIMINI.2.3.4.1, TAJAKA.ch7.v7.1]
 
   - topic_id: TC.177
-    topic: "Lagnesh (lagna lord) — most important planet in the chart"
+    topic: 'Lagnesh (lagna lord) — most important planet in the chart'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp, tajaka]
     core_agreement: >
@@ -3734,7 +3733,7 @@ topics:
     rule_refs: [BPHS.34.1.2, JAIMINI.1.1.5.2, KP.1.ch2.lagnesh.1, TAJAKA.ch3.v1.2]
 
   - topic_id: TC.178
-    topic: "11th house as fulfillment — all good things come from 11th"
+    topic: '11th house as fulfillment — all good things come from 11th'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp, tajaka]
     core_agreement: >
@@ -3749,7 +3748,7 @@ topics:
     rule_refs: [BPHS.11.11.2, JAIMINI.1.3.13.1, KP.2.ch6.houses.11, TAJAKA.ch3.v3.6]
 
   - topic_id: TC.179
-    topic: "Planetary combustion threshold — Sun as combustor"
+    topic: 'Planetary combustion threshold — Sun as combustor'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp, tajaka]
     core_agreement: >
@@ -3814,7 +3813,7 @@ topics:
     flag: C6
 
   - topic_id: TC.182
-    topic: "Birth rectification — Moon nakshatra and lagna degree accuracy"
+    topic: 'Birth rectification — Moon nakshatra and lagna degree accuracy'
     pattern: QUALIFY
     schools_addressing: [parashari, jaimini, kp]
     core_agreement: >
@@ -3841,7 +3840,7 @@ topics:
     rule_refs: [BPHS.1.1.1, KP.1.ch1.rectification.1, JAIMINI.1.4.1.1]
 
   - topic_id: TC.183
-    topic: "Panchanga — five limbs of the almanac"
+    topic: 'Panchanga — five limbs of the almanac'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp, tajaka]
     core_agreement: >
@@ -3859,7 +3858,7 @@ topics:
     rule_refs: [BPHS.65.1.1, KP.6.ch22.panchanga.3, TAJAKA.ch8.v2.1]
 
   - topic_id: TC.184
-    topic: "Yoga (Panchanga) — 27 yoga divisions"
+    topic: 'Yoga (Panchanga) — 27 yoga divisions'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp, tajaka]
     core_agreement: >
@@ -3871,7 +3870,7 @@ topics:
     rule_refs: [BPHS.65.4.1, KP.6.ch22.yoga.1, TAJAKA.ch8.v5.1]
 
   - topic_id: TC.185
-    topic: "Dasha balance at birth — importance of accurate Moon degree"
+    topic: 'Dasha balance at birth — importance of accurate Moon degree'
     pattern: AGREE
     schools_addressing: [parashari, kp]
     core_agreement: >
@@ -3885,7 +3884,7 @@ topics:
     rule_refs: [BPHS.46.2.1, KP.5.ch15.balance.1]
 
   - topic_id: TC.186
-    topic: "Divisional charts — Panchamsha (D5) for spiritual inclinations"
+    topic: 'Divisional charts — Panchamsha (D5) for spiritual inclinations'
     pattern: QUALIFY
     schools_addressing: [parashari, jaimini]
     core_agreement: >
@@ -3902,7 +3901,7 @@ topics:
     rule_refs: [BPHS.6.5.1, JAIMINI.1.1.9.2]
 
   - topic_id: TC.187
-    topic: "Saptamsha (D7) — children and progeny"
+    topic: 'Saptamsha (D7) — children and progeny'
     pattern: QUALIFY
     schools_addressing: [parashari, jaimini, kp]
     core_agreement: >
@@ -3919,7 +3918,7 @@ topics:
     rule_refs: [BPHS.6.7.1, JAIMINI.1.3.7.2, KP.1.ch4.divisional.7]
 
   - topic_id: TC.188
-    topic: "Shodashamsha (D16) — vehicles and happiness"
+    topic: 'Shodashamsha (D16) — vehicles and happiness'
     pattern: QUALIFY
     schools_addressing: [parashari]
     core_agreement: >
@@ -3931,7 +3930,7 @@ topics:
     rule_refs: [BPHS.6.16.1]
 
   - topic_id: TC.189
-    topic: "Chaturvimshamsha (D24) — higher education and learning"
+    topic: 'Chaturvimshamsha (D24) — higher education and learning'
     pattern: QUALIFY
     schools_addressing: [parashari, jaimini]
     core_agreement: >
@@ -3944,7 +3943,7 @@ topics:
     rule_refs: [BPHS.6.24.1, JAIMINI.1.3.6.3]
 
   - topic_id: TC.190
-    topic: "Trimshamsha (D30) — misfortune and evils"
+    topic: 'Trimshamsha (D30) — misfortune and evils'
     pattern: QUALIFY
     schools_addressing: [parashari, jaimini]
     core_agreement: >
@@ -3958,7 +3957,7 @@ topics:
     rule_refs: [BPHS.6.30.1]
 
   - topic_id: TC.191
-    topic: "Shashtiamsha (D60) — cumulative past-life karma"
+    topic: 'Shashtiamsha (D60) — cumulative past-life karma'
     pattern: QUALIFY
     schools_addressing: [parashari, jaimini]
     core_agreement: >
@@ -3977,7 +3976,7 @@ topics:
     rule_refs: [BPHS.6.60.1]
 
   - topic_id: TC.192
-    topic: "Karaka bhaava naasha — significator in its own house destroys that house"
+    topic: 'Karaka bhaava naasha — significator in its own house destroys that house'
     pattern: QUALIFY
     schools_addressing: [parashari, jaimini]
     core_agreement: >
@@ -4012,7 +4011,7 @@ topics:
     flag: C1
 
   - topic_id: TC.193
-    topic: "Paka Lagna — digested/processed ascendant (Jaimini)"
+    topic: 'Paka Lagna — digested/processed ascendant (Jaimini)'
     pattern: ORTHOGONAL
     schools_addressing: [jaimini]
     note_on_other_schools: >
@@ -4026,7 +4025,7 @@ topics:
     flag: C1
 
   - topic_id: TC.194
-    topic: "Gnatikaraka — karmic group family, cousins, conflicts"
+    topic: 'Gnatikaraka — karmic group family, cousins, conflicts'
     pattern: ORTHOGONAL
     schools_addressing: [jaimini]
     note_on_other_schools: >
@@ -4039,7 +4038,7 @@ topics:
     flag: C1
 
   - topic_id: TC.195
-    topic: "Bhratrukaraka — sibling soul-connection (Jaimini)"
+    topic: 'Bhratrukaraka — sibling soul-connection (Jaimini)'
     pattern: ORTHOGONAL
     schools_addressing: [jaimini]
     note_on_other_schools: >
@@ -4068,7 +4067,7 @@ topics:
     flag: C1
 
   - topic_id: TC.197
-    topic: "Tajaka Patyayini Dasha — annual sub-period system"
+    topic: 'Tajaka Patyayini Dasha — annual sub-period system'
     pattern: ORTHOGONAL
     schools_addressing: [tajaka]
     note_on_other_schools: >
@@ -4082,7 +4081,7 @@ topics:
     flag: C5
 
   - topic_id: TC.198
-    topic: "Shadbala minimum thresholds — planet-specific required strength"
+    topic: 'Shadbala minimum thresholds — planet-specific required strength'
     pattern: QUALIFY
     schools_addressing: [parashari]
     core_agreement: >
@@ -4103,7 +4102,7 @@ topics:
     flag: C4
 
   - topic_id: TC.199
-    topic: "Conditional Beneficence — Jupiter for Taurus/Libra Lagna"
+    topic: 'Conditional Beneficence — Jupiter for Taurus/Libra Lagna'
     pattern: QUALIFY
     schools_addressing: [parashari, kp]
     core_agreement: >
@@ -4127,7 +4126,7 @@ topics:
     rule_refs: [BPHS.34.3.1, KP.2.ch6.functional.2]
 
   - topic_id: TC.200
-    topic: "Rahu/Ketu transit over natal ascendant — sensitivity period"
+    topic: 'Rahu/Ketu transit over natal ascendant — sensitivity period'
     pattern: QUALIFY
     schools_addressing: [parashari, kp]
     core_agreement: >
@@ -4152,7 +4151,7 @@ topics:
     flag: C6
 
   - topic_id: TC.201
-    topic: "Navamsa chart — independent chart reading (second chart)"
+    topic: 'Navamsa chart — independent chart reading (second chart)'
     pattern: QUALIFY
     schools_addressing: [parashari, jaimini]
     core_agreement: >
@@ -4175,7 +4174,7 @@ topics:
     rule_refs: [BPHS.6.1.1, JAIMINI.1.3.1.1]
 
   - topic_id: TC.202
-    topic: "Mandi and Gulika — shadow planets"
+    topic: 'Mandi and Gulika — shadow planets'
     pattern: QUALIFY
     schools_addressing: [parashari, jaimini, kp]
     core_agreement: >
@@ -4200,7 +4199,7 @@ topics:
     rule_refs: [BPHS.4.5.1, KP.1.ch2.gulika.1]
 
   - topic_id: TC.203
-    topic: "Hora Lagna vs. Ghati Lagna — wealth vs. power"
+    topic: 'Hora Lagna vs. Ghati Lagna — wealth vs. power'
     pattern: ORTHOGONAL
     schools_addressing: [jaimini]
     note_on_other_schools: >
@@ -4213,7 +4212,7 @@ topics:
     flag: C1
 
   - topic_id: TC.204
-    topic: "Marriage — multiple marriages and second spouse"
+    topic: 'Marriage — multiple marriages and second spouse'
     pattern: QUALIFY
     schools_addressing: [parashari, jaimini, kp]
     core_agreement: >
@@ -4241,7 +4240,7 @@ topics:
     rule_refs: [BPHS.18.2.1, JAIMINI.1.3.9.3, KP.4.ch11.marriage2.1]
 
   - topic_id: TC.205
-    topic: "Venus combust near Sun — delayed or absent marriage"
+    topic: 'Venus combust near Sun — delayed or absent marriage'
     pattern: QUALIFY
     schools_addressing: [parashari, kp]
     core_agreement: >
@@ -4266,7 +4265,7 @@ topics:
     rule_refs: [BPHS.3.45.6, KP.1.ch2.combustion.venus.1]
 
   - topic_id: TC.206
-    topic: "Shoola Dasha vs. Marak — adversity timing comparison"
+    topic: 'Shoola Dasha vs. Marak — adversity timing comparison'
     pattern: ORTHOGONAL
     schools_addressing: [parashari, jaimini]
     note_on_other_schools: >
@@ -4285,7 +4284,7 @@ topics:
     flag: C5
 
   - topic_id: TC.207
-    topic: "Drekkana (D3) for sibling health — detailed analysis"
+    topic: 'Drekkana (D3) for sibling health — detailed analysis'
     pattern: QUALIFY
     schools_addressing: [parashari, jaimini]
     core_agreement: >
@@ -4303,7 +4302,7 @@ topics:
     rule_refs: [BPHS.6.3.1]
 
   - topic_id: TC.208
-    topic: "Sudarshana Chakra — three-wheel chart reading"
+    topic: 'Sudarshana Chakra — three-wheel chart reading'
     pattern: ORTHOGONAL
     schools_addressing: [parashari]
     note_on_other_schools: >
@@ -4317,7 +4316,7 @@ topics:
     rule_refs: [BPHS.12.1.1]
 
   - topic_id: TC.209
-    topic: "Planetary friendship — compound/actual (tatva) maitri"
+    topic: 'Planetary friendship — compound/actual (tatva) maitri'
     pattern: AGREE
     schools_addressing: [parashari, kp]
     core_agreement: >
@@ -4331,7 +4330,7 @@ topics:
     rule_refs: [BPHS.3.61.1, KP.1.ch2.friendship.3]
 
   - topic_id: TC.210
-    topic: "Muhurta — avoidance of Rahu Kalam"
+    topic: 'Muhurta — avoidance of Rahu Kalam'
     pattern: AGREE
     schools_addressing: [parashari, jaimini, kp, tajaka]
     core_agreement: >
@@ -4349,7 +4348,6 @@ topics:
     conflicts: []
     rule_refs: [BPHS.65.5.1, KP.6.ch22.muhurta.rahu.1, TAJAKA.ch8.v6.1]
     flag: C6
-
 # ────────────────────────────────────────────────────────────────────────────
 # END OF BRAHMAGYAN CONCORDANCE v1.0
 # Total topics: 210

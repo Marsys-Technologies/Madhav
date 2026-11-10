@@ -703,7 +703,9 @@ rules:
     school: parashari
     confidence: 0.92
     confidence_rationale: "Declarative muhurta classification = 1.0; Saravali confirms nakshatra quality types = 1.15. 0.92."
-    caveats: "Nakshatra quality classifications are primarily used in muhurta (election astrology); for natal chart reading, the deity, ruling planet, and nature (Deva/Manushya/Rakshasa) are more relevant."
+    caveats: >-
+      Nakshatra quality classifications are primarily used in muhurta (election astrology); for natal chart reading, the deity, ruling planet, and nature (Deva/Manushya/Rakshasa) are more
+      relevant.
     verified: true
     stub: false
     stub_reason: null
@@ -757,7 +759,9 @@ rules:
     school: parashari
     confidence: 0.92
     confidence_rationale: "Declarative = 1.0; Saravali, Phaladeepika confirm gemstone assignments = 1.15. 0.92."
-    caveats: "Gemstones should only be worn after careful chart analysis — strengthening a functional malefic through its gemstone can harm more than help. Professional astrological guidance is recommended."
+    caveats: >-
+      Gemstones should only be worn after careful chart analysis — strengthening a functional malefic through its gemstone can harm more than help. Professional astrological guidance is
+      recommended.
     verified: true
     stub: false
     stub_reason: null
@@ -893,7 +897,9 @@ rules:
     school: parashari
     confidence: 0.80
     confidence_rationale: "Sloka = 0.8; partial Saravali = 1.0. 0.80."
-    caveats: "The sign-based aspect (vs. degree-based) is a fundamental characteristic of Jyotish — unlike Western astrology's orb-based system. Some practitioners add degree-based refinements as a supplementary tool."
+    caveats: >-
+      The sign-based aspect (vs. degree-based) is a fundamental characteristic of Jyotish — unlike Western astrology's orb-based system. Some practitioners add degree-based refinements as a
+      supplementary tool.
     verified: true
     stub: false
     stub_reason: null
@@ -916,7 +922,9 @@ rules:
     school: parashari
     confidence: 0.65
     confidence_rationale: "Sloka with strong qualitative claim = 0.8; partial Saravali — this specific claim about retrograde aspect intensity is less universally confirmed = 0.8. 0.65."
-    caveats: "The claim that retrograde aspects are 'more powerful' is specific to BPHS and not universally accepted. Some traditions hold that retrograde aspects are less predictable rather than more powerful."
+    caveats: >-
+      The claim that retrograde aspects are 'more powerful' is specific to BPHS and not universally accepted. Some traditions hold that retrograde aspects are less predictable rather than more
+      powerful.
     verified: true
     stub: false
     stub_reason: null
@@ -1039,7 +1047,9 @@ rules:
     school: parashari
     confidence: 0.88
     confidence_rationale: "Declarative = 1.0; Saravali confirms basic muhurta principles = 1.15. 0.88."
-    caveats: "Muhurta selection is a complex sub-discipline with many additional factors (Panchanga: tithi, vara, nakshatra, yoga, karana). This rule captures the most fundamental natal-chart-like requirements."
+    caveats: >-
+      Muhurta selection is a complex sub-discipline with many additional factors (Panchanga: tithi, vara, nakshatra, yoga, karana). This rule captures the most fundamental natal-chart-like
+      requirements.
     verified: true
     stub: false
     stub_reason: null
@@ -1062,7 +1072,9 @@ rules:
     school: parashari
     confidence: 0.88
     confidence_rationale: "Declarative = 1.0; Saravali confirms Rahu Kalam inauspiciousness = 1.15. 0.88."
-    caveats: "Rahu Kalam times vary by day: Sunday = 4:30pm, Monday = 7:30am, Tuesday = 3pm, Wednesday = 12pm, Thursday = 1:30pm, Friday = 10:30am, Saturday = 9am (approximately; actual times depend on local sunrise/sunset). These are the traditional weekly Rahu Kalam sequences."
+    caveats: >-
+      Rahu Kalam times vary by day: Sunday = 4:30pm, Monday = 7:30am, Tuesday = 3pm, Wednesday = 12pm, Thursday = 1:30pm, Friday = 10:30am, Saturday = 9am (approximately; actual times depend on
+      local sunrise/sunset). These are the traditional weekly Rahu Kalam sequences.
     verified: true
     stub: false
     stub_reason: null
@@ -1216,7 +1228,9 @@ rules:
     school: parashari
     confidence: 0.88
     confidence_rationale: "Declarative compatibility scoring = 1.0; Saravali confirms Gana scores = 1.15. 0.88."
-    caveats: "Gana is one of 8 factors (Ashtakuta) in compatibility analysis; a single low score does not make a marriage inauspicious — the total Guna score (36 points maximum) determines overall compatibility."
+    caveats: >-
+      Gana is one of 8 factors (Ashtakuta) in compatibility analysis; a single low score does not make a marriage inauspicious — the total Guna score (36 points maximum) determines overall
+      compatibility.
     verified: true
     stub: false
     stub_reason: null
@@ -1232,7 +1246,7 @@ rules:
         are born in the same Nadi (Adi, Madhya, or Antya), Nadi Dosha is present. The dosha
         is said to cause health issues, childlessness, or separation. It carries the maximum
         8 points in Ashtakuta when matching (same Nadi)."
-    condition: Both marriage partners are born in the same Nadi (nakshatra nadi: Adi, Madhya, or Antya).
+    condition: "Both marriage partners are born in the same Nadi (nakshatra nadi: Adi, Madhya, or Antya)."
     assertion: >
       Nadi Dosha is the most weighted Ashtakuta factor (8 points); when both partners share
       the same Nadi, they receive 0 out of 8 points, creating a significant compatibility
@@ -1243,7 +1257,9 @@ rules:
     school: parashari
     confidence: 0.88
     confidence_rationale: "Declarative = 1.0; Saravali confirms Nadi Dosha's maximum weight = 1.15. 0.88."
-    caveats: "Nadi Dosha can be cancelled by: partners having the same first name of birth star, Jupiter's aspect on both charts, or strong 7H in both charts. The cancellation conditions vary across traditions."
+    caveats: >-
+      Nadi Dosha can be cancelled by: partners having the same first name of birth star, Jupiter's aspect on both charts, or strong 7H in both charts. The cancellation conditions vary across
+      traditions.
     verified: true
     stub: false
     stub_reason: null
@@ -1452,7 +1468,9 @@ rules:
     school: parashari
     confidence: 0.88
     confidence_rationale: "Declarative = 1.0; Saravali and Phaladeepika confirm the functional malefic gemstone caution = 1.15. 0.88."
-    caveats: "This is the most important practical principle in gemstone prescription — more important than the gemstone assignment itself. All reputable Jyotish practitioners verify functional lordship before recommending gemstones."
+    caveats: >-
+      This is the most important practical principle in gemstone prescription — more important than the gemstone assignment itself. All reputable Jyotish practitioners verify functional lordship
+      before recommending gemstones.
     verified: true
     stub: false
     stub_reason: null
@@ -1477,7 +1495,9 @@ rules:
     school: parashari
     confidence: 0.88
     confidence_rationale: "Declarative = 1.0; Saravali confirms Saturn gemstone caution = 1.15. 0.88."
-    caveats: "The 'try iron/mantra first' protocol for Blue Sapphire is standard practice among most traditional Jyotish practitioners — the gemstone is the most powerful and therefore requires the most caution."
+    caveats: >-
+      The 'try iron/mantra first' protocol for Blue Sapphire is standard practice among most traditional Jyotish practitioners — the gemstone is the most powerful and therefore requires the most
+      caution.
     verified: true
     stub: false
     stub_reason: null
@@ -1840,7 +1860,9 @@ rules:
     school: parashari
     confidence: 0.80
     confidence_rationale: "Declarative = 1.0; Saravali confirms Shanti ceremonies = 1.0. 0.80."
-    caveats: "Shanti ceremonies are complex traditional rituals that require qualified priests for proper execution; the astrological prescription identifies the appropriate ceremony, not the ritual procedure itself."
+    caveats: >-
+      Shanti ceremonies are complex traditional rituals that require qualified priests for proper execution; the astrological prescription identifies the appropriate ceremony, not the ritual
+      procedure itself.
     verified: true
     stub: false
     stub_reason: null
@@ -1939,7 +1961,9 @@ rules:
     school: parashari
     confidence: 0.80
     confidence_rationale: "Sloka = 0.8; Saravali partially confirms Rahu remedy prescriptions = 1.0. 0.80."
-    caveats: "Rahu and Ketu remedies are more complex than those for the traditional seven planets because the nodes function through their dispositors; addressing the dispositor's weakness often provides more direct benefit."
+    caveats: >-
+      Rahu and Ketu remedies are more complex than those for the traditional seven planets because the nodes function through their dispositors; addressing the dispositor's weakness often
+      provides more direct benefit.
     verified: true
     stub: false
     stub_reason: null
@@ -2061,7 +2085,9 @@ rules:
     school: parashari
     confidence: 0.80
     confidence_rationale: "Sloka = 0.8; Saravali and Phaladeepika confirm Pitru Dosha identification and remedy = 1.0. 0.80."
-    caveats: "Pitru Dosha is a significant consideration in many traditional families; the astrological indication should be confirmed by both the chart analysis and the native's family history before prescribing elaborate Tarpan ceremonies."
+    caveats: >-
+      Pitru Dosha is a significant consideration in many traditional families; the astrological indication should be confirmed by both the chart analysis and the native's family history before
+      prescribing elaborate Tarpan ceremonies.
     verified: true
     stub: false
     stub_reason: null
@@ -2189,7 +2215,9 @@ rules:
     school: parashari
     confidence: 0.88
     confidence_rationale: "Declarative = 1.0; universally confirmed across Saravali, Phaladeepika = 1.15. 0.88."
-    caveats: "Saturday can be used for Saturn-specific activities (agriculture, construction foundations, legal documentation) but is traditionally avoided for auspicious beginnings like marriage or new business."
+    caveats: >-
+      Saturday can be used for Saturn-specific activities (agriculture, construction foundations, legal documentation) but is traditionally avoided for auspicious beginnings like marriage or new
+      business.
     verified: true
     stub: false
     stub_reason: null
@@ -2213,7 +2241,9 @@ rules:
     school: parashari
     confidence: 0.72
     confidence_rationale: "Sloka = 0.8; partial corroboration from traditional Jyotish sources = 0.9. 0.72."
-    caveats: "Kaal Sarpa Dosha's classical status in BPHS is debated — the name and specific puja remedies may be post-BPHS traditions. The underlying nodal-hemming principle is in BPHS; the specific remedy prescriptions may be later additions."
+    caveats: >-
+      Kaal Sarpa Dosha's classical status in BPHS is debated — the name and specific puja remedies may be post-BPHS traditions. The underlying nodal-hemming principle is in BPHS; the specific
+      remedy prescriptions may be later additions.
     verified: true
     stub: false
     stub_reason: null
@@ -2337,7 +2367,9 @@ rules:
     school: parashari
     confidence: 0.80
     confidence_rationale: "Declarative = 1.0; Saravali confirms birth muhurta principles = 1.0. 0.80."
-    caveats: "Birth muhurta selection requires ethical consideration — the goal is to find the best available window, not to override natural timing inappropriately. Medical safety always takes precedence."
+    caveats: >-
+      Birth muhurta selection requires ethical consideration — the goal is to find the best available window, not to override natural timing inappropriately. Medical safety always takes
+      precedence.
     verified: true
     stub: false
     stub_reason: null
@@ -2435,7 +2467,9 @@ rules:
     school: parashari
     confidence: 0.80
     confidence_rationale: "Declarative = 1.0; Saravali confirms Saturn-Moon melancholy = 1.0. 0.80."
-    caveats: "Saturn-Moon aspect in own or exaltation sign is much less harmful — a Saturn exalted in Libra aspecting the Moon in Aries is less damaging than a debilitated Saturn in Aries aspecting Moon in Cancer."
+    caveats: >-
+      Saturn-Moon aspect in own or exaltation sign is much less harmful — a Saturn exalted in Libra aspecting the Moon in Aries is less damaging than a debilitated Saturn in Aries aspecting Moon
+      in Cancer.
     verified: true
     stub: false
     stub_reason: null

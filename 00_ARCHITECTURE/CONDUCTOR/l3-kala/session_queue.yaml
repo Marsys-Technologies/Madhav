@@ -20,10 +20,14 @@ meta:
 # ---- PRE-FAN-OUT (the Conductor does these ONCE, before any agent spawns) ----
 pre_fan_out:
   - id: PRE-1
-    action: "Verify PART-A closeout gate green (L3_KALA_PRE_IMPL_CLOSEOUT_v1_0.md §F): OP1 branch-reconcile DONE, OP2 inputs committed to clean branch off origin/main, OP3 prod==main, OP4 prod residuals."
+    action: >-
+      Verify PART-A closeout gate green (L3_KALA_PRE_IMPL_CLOSEOUT_v1_0.md §F): OP1 branch-reconcile DONE, OP2 inputs committed to clean branch off origin/main, OP3 prod==main, OP4 prod
+      residuals.
     blocking: true   # HARD — do not proceed if any OP gate is red
   - id: PRE-2
-    action: "PRE-ALLOCATE the 8 migration numbers (CS2) in DAG order. Confirm canonical tree platform/supabase/migrations/ + next free number (the 'two-174' trap). Assign: K0, ka_yojaka, ka_sangam, ka_vighnakara, ka_kalasutra, ka_kala_darshana, ka_jivana_parva, ka_bhavishya_lekha."
+    action: >-
+      PRE-ALLOCATE the 8 migration numbers (CS2) in DAG order. Confirm canonical tree platform/supabase/migrations/ + next free number (the 'two-174' trap). Assign: K0, ka_yojaka, ka_sangam,
+      ka_vighnakara, ka_kalasutra, ka_kala_darshana, ka_jivana_parva, ka_bhavishya_lekha.
     blocking: true
   - id: PRE-3
     action: "Confirm the RATIFIED templates/weights doc is read-only-pinned; any 're-pick weight' impulse downstream = Tier-2 STUB+log, never a native halt."

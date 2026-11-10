@@ -286,7 +286,7 @@ jobs:
           cache-dependency-path: platform/package-lock.json
       - run: npm ci
       - name: ESLint — full web platform
-        run: npm run lint
+        run: npm run lint -- --max-warnings 0
       # platform's program reaches platform-mcp sources through the K9-6 registry test
       # (views_registry.integration.test.ts imports tools/kala_views/register_all), so
       # their MCP SDK / zod imports must resolve here as well.
@@ -3672,10 +3672,8 @@ jobs:
 
       - name: YAML syntax and duplicate keys
         run: |
-          yamllint -d '{rules: {key-duplicates: enable}}' --strict \
-            .github platform \
-            00_ARCHITECTURE/CONDUCTOR/ws3/bphs_pilot_rules.yaml \
-            00_ARCHITECTURE/CONDUCTOR/ws3/brahmagyan_concordance.yaml
+          git ls-files -z '*.yaml' '*.yml' |
+            xargs -0 yamllint -d '{rules: {key-duplicates: enable}}' --strict
 
       - name: Observatory OpenAPI formatting
         run: yamllint --strict platform/src/app/api/admin/observatory/openapi.yaml

@@ -313,7 +313,9 @@
   domain: "career"
   category: "mantras"
   deity: "Hanuman"
-  remedy_text: "Daily recitation of the Hanuman Chalisa (40 verses by Tulsidas) propitiates Mars and overcomes fear, enemies, obstacles, and black magic. Most effective for Mars-afflicted or Kuja Dosha natives."
+  remedy_text: >-
+    Daily recitation of the Hanuman Chalisa (40 verses by Tulsidas) propitiates Mars and overcomes fear, enemies, obstacles, and black magic. Most effective for Mars-afflicted or Kuja Dosha
+    natives.
   mantra_sanskrit: "जय हनुमान ज्ञान गुण सागर। जय कपीश तिहुँ लोक उजागर॥"
   mantra_transliteration: "Jai Hanuman Gyana Guna Sagar. Jai Kapish Tihun Lok Ujagar."
   ingredients_jsonb: {"items": ["red vermilion (sindur)", "jasmine oil", "red flowers"], "optional": ["betel leaves", "beetle nut"]}
@@ -332,7 +334,9 @@
   domain: "wealth"
   category: "mantras"
   deity: "Lakshmi"
-  remedy_text: "Recite the Lakshmi Ashtakam (8 verses) or Sri Sukta (from Rigveda) on Fridays for Venus-related wealth blessings, prosperity, and removal of poverty. Sri Sukta is the most classical Lakshmi hymn."
+  remedy_text: >-
+    Recite the Lakshmi Ashtakam (8 verses) or Sri Sukta (from Rigveda) on Fridays for Venus-related wealth blessings, prosperity, and removal of poverty. Sri Sukta is the most classical Lakshmi
+    hymn.
   mantra_sanskrit: "ॐ श्री ह्रीं श्रीं कमले कमलालये प्रसीद प्रसीद। ॐ श्री ह्रीं श्रीं महालक्ष्म्यै नमः॥"
   mantra_transliteration: "Om Shri Hrim Shrim Kamale Kamalalaye Prasida Prasida. Om Shri Hrim Shrim Mahalakshmyai Namah."
   ingredients_jsonb: {"items": ["white lotus or white flowers", "rice with turmeric", "gold coins or jewelry"], "optional": ["silver vessel with water", "ghee lamp"]}

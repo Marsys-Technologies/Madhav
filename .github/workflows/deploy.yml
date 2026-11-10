@@ -296,8 +296,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      actions: read # read the CI workflow's conclusion for this SHA
-      id-token: write # WIF auth: the gate reads each component's DEPLOYED commit from Cloud Run (#2169)
+      actions: read  # read the CI workflow's conclusion for this SHA
+      id-token: write  # WIF auth: the gate reads each component's DEPLOYED commit from Cloud Run (#2169)
     outputs:
       web: ${{ steps.diff.outputs.web }}
       sidecar: ${{ steps.diff.outputs.sidecar }}
@@ -1054,7 +1054,8 @@ jobs:
     if: >-
       always() &&
       github.event_name == 'workflow_dispatch' &&
-      (inputs.jataka_schema_migration == true || inputs.ai_console_schema_migration == true || inputs.ai_metering_schema_migration == true || inputs.gochara_schema_migration == true || inputs.gochara_contracts_schema_migration == true || inputs.kala_schema_migration == true) &&
+      (inputs.jataka_schema_migration == true || inputs.ai_console_schema_migration == true || inputs.ai_metering_schema_migration == true || inputs.gochara_schema_migration == true ||
+      inputs.gochara_contracts_schema_migration == true || inputs.kala_schema_migration == true) &&
       needs.changes.result == 'success' &&
       needs.migration-state.result == 'success' &&
       needs.migration-state.outputs.data_plane == 'marked' &&
@@ -2400,7 +2401,7 @@ jobs:
         env:
           DEPLOY_URL: ${{ steps.deploy.outputs.url }}
         run: echo "Deployed to $DEPLOY_URL"
-      # ── /PARISHODHANA Phase C item 2 ──
+  # ── /PARISHODHANA Phase C item 2 ──
   # ── /4.edge_and_infra_hygiene ──
 
   # ── Orchestrator Convergence Phase 1: brahma-pipeline job image under CI ──

@@ -83,7 +83,8 @@ entries:
   locks: [shared-checkout]
   scope:
     - Inventory every untracked/modified path vs origin/main.
-    - FIRST: commit SAMĀPTI's own planning artifacts — they are currently untracked in the shared
+    - >-
+      FIRST: commit SAMĀPTI's own planning artifacts — they are currently untracked in the shared
       checkout, which is the exact defect class this arc exists to fix:
       00_ARCHITECTURE/briefs/samapti/SAMAPTI_IMPLEMENTATION_BRIEF_v2_0.md,
       00_ARCHITECTURE/CONDUCTOR/SAMAPTI_CONDUCTOR_PROMPT_v1_0.md,
@@ -136,7 +137,8 @@ entries:
   depends_on: []
   locks: []
   scope:
-    - Record verbatim the deployed graha_portrait Ṣaḍbala sentence for the canonical chart, with
+    - >-
+      Record verbatim the deployed graha_portrait Ṣaḍbala sentence for the canonical chart, with
       revision id + timestamp. Known-good as of 2026-07-29T19:54Z:
       "Shadbala: 8.47 rupas vs 5.00 required — grade: strong (surplus) (+3.47 rupas)".
     - Cite the historical "weak" string from SUDDHA_VACA_REPORT as HISTORICAL — it is no longer
@@ -220,11 +222,14 @@ entries:
   locks: []
   fan_out: true                    # may spawn parallel read-only sub-auditors, one per file/subsystem
   scope:
-    - The defined starting set (SATYA_DIPA_REPORT §5, scoped-but-never-swept): runner.py,
+    - >-
+      The defined starting set (SATYA_DIPA_REPORT §5, scoped-but-never-swept): runner.py,
       staleness.py, dag_edge_guard.py, kala_derivation_completeness_guard.py, service_probes.py.
-    - Then codebase-wide: every boolean/grade/status/PASS in build + serving layers, against one
+    - >-
+      Then codebase-wide: every boolean/grade/status/PASS in build + serving layers, against one
       question — does a detector measure the claim it asserts?
-    - Known members to include: PB-3 §G item 9 (no-auto-promotion, true by inspection only, no
+    - >-
+      Known members to include: PB-3 §G item 9 (no-auto-promotion, true by inspection only, no
       detector); the MCP smoke test (A3); PB-2's byte-equality gate (B11).
     - Output: a findings register. Each finding ADVERSARIALLY VERIFIED — a refuter tries to reject it.
   verify: >
@@ -243,7 +248,8 @@ entries:
   locks: []
   fan_out: true
   scope:
-    - VERIFY-FIRST: SV-3 (#864 fdd6912c), SV-4 (#862 81509e07), P1-e ph_phaladesa/engine.py:39
+    - >-
+      VERIFY-FIRST: SV-3 (#864 fdd6912c), SV-4 (#862 81509e07), P1-e ph_phaladesa/engine.py:39
       (#837) are ALREADY CLOSED. Record with SHAs. Do not re-open.
     - Adversarially verify the 7 PLAUSIBLE P2 items before any fix — a REJECTED finding is a
       legitimate outcome and saves a lane.
@@ -282,7 +288,8 @@ entries:
   branch: samapti/nar-ga
   depends_on: [A8-NAR-TRIAGE]
   scope:
-    - ga_writers/gates.py:144 — run_g7_only_facts_gate_db Check 3's stale valid_statuses allowlist
+    - >-
+      ga_writers/gates.py:144 — run_g7_only_facts_gate_db Check 3's stale valid_statuses allowlist
       (a gate that mis-grades: a verified row can fail, a real gap can pass).
     - ga_sade_sati_writer.py:974, ga_nakshatra.py:289, ga_sensitive_writer.py:2677 (PLAUSIBLE).
     - NOT ga_nakshatra.py:87 — that is an §N.8 violation, routed to B-N8-FIX.
@@ -334,7 +341,8 @@ entries:
   branch: samapti/nar-ka
   depends_on: [A8-NAR-TRIAGE]
   scope:
-    - ka_bhavishya_lekha.py — TWO defects in one file, fix together, verify separately:
+    - >-
+      ka_bhavishya_lekha.py — TWO defects in one file, fix together, verify separately:
       (a) :226/:232 obstruction_summary/net_label fetched but never narrated (obstructed windows
       read identically to clear ones); (b) stale domain vocabulary finance/spiritual vs canonical
       wealth/spirituality — PARKED-HONEST twice, able to fail a live build. Close it here.
@@ -418,10 +426,12 @@ entries:
   branch: samapti/loop-g4g5
   depends_on: []
   scope:
-    - G4: the live resolve action bypasses L-5's recordConversationalOutcome (zero non-test callers)
+    - >-
+      G4: the live resolve action bypasses L-5's recordConversationalOutcome (zero non-test callers)
       and re-implements outcome→value locally. One map with a live caller, or a documented reason
       for two. Do not leave two with no stated relationship.
-    - G5: add compute_spine_bundle.ts, materialize.ts, register_spine_bundle.ts, query_calibration.ts
+    - >-
+      G5: add compute_spine_bundle.ts, materialize.ts, register_spine_bundle.ts, query_calibration.ts
       to serving_path_manifest.ts; add the spine-bundle URI to CALIBRATION_CONTEXT_ONLY_URIS; widen
       CALIBRATION_LEAK_KEYS to match a bare `calibration` key; give assertNoCalibrationLeak a real
       production call site.
@@ -443,7 +453,8 @@ entries:
       OR wire todayFractionOfSpan from a real date on the live SSE adapter path. Its sole producer
       today is the hardcoded fixture literal 0.3, so the dock card never renders on the real SSE path.
     - Dot 7px → 3px on whichever component ships.
-    - KalaRekhaTimeline.tsx: geometry domain window-padded → "reading-date to window-end" per §6.9;
+    - >-
+      KalaRekhaTimeline.tsx: geometry domain window-padded → "reading-date to window-end" per §6.9;
       fix start/end date-caption placement (currently under the padded-span extremes).
   verify: VER reads rendered geometry from the DEPLOYED route, not a test's DOM.
 
@@ -457,7 +468,8 @@ entries:
   branch: samapti/pb8-byte-equality
   depends_on: []
   scope:
-    - FOLLOWUP_PB-2_BYTE_EQUALITY_FIXTURE_COVERAGE.md. Two independent things are needed and
+    - >-
+      FOLLOWUP_PB-2_BYTE_EQUALITY_FIXTURE_COVERAGE.md. Two independent things are needed and
       NEITHER exists: (a) a fixture-corpus bridge — the 12-fixture corpus is the old C-2 harness
       shape and cannot be quickly repointed, and c2ProtocolAdapter.ts converts to a THIRD, UI-only
       shape so it does not solve it; (b) real-reading stream capture.
@@ -488,7 +500,8 @@ entries:
   branch: samapti/noop-event-register
   depends_on: []
   scope:
-    - Today: stdout (Cloud Logging, ~30d, and a --freshness=9999d query returned ZERO) or
+    - >-
+      Today: stdout (Cloud Logging, ~30d, and a --freshness=9999d query returned ZERO) or
       fire-and-forget Pub/Sub with a 600s per-connection window. There is no queryable history —
       which is why SATYA-DĪPA's Phase A had to abandon its primary forensic method.
     - Build a durable table or a Cloud Logging export sink. Persist BOTH asset.noop_completion and
@@ -534,7 +547,8 @@ entries:
     - TWO migration directories carry overlapping 4xx sequences — platform/migrations/ (highest 474)
       and platform/supabase/migrations/ (highest 473). This is why 467 was claimed three times.
     - (a) CI guard failing on a duplicate migration number ACROSS BOTH directories.
-    - (b) Standing protocol doc under 00_ARCHITECTURE/: merge lock, deploy window, the corrected
+    - >-
+      (b) Standing protocol doc under 00_ARCHITECTURE/: merge lock, deploy window, the corrected
       max()-across-both rule, and the local Cloud SQL Auth Proxy / ECONNREFUSED 5433 restart note.
     - (c) Record whether the two-directory split is intentional; if not, file a COSTED SPEC — do not
       perform the consolidation (outside this run's authorization).
@@ -565,7 +579,8 @@ entries:
   scope:
     - v1.0 cited this register as its item list; it contains ZERO SV-/FC-/INF-/EP- items. It is a
       2026-06-17 L1-closure register with its OWN open items nobody has closed.
-    - Disposition each: A4, B2/B3/B4 (connection-resilience guards still marked ⚠️ VERIFY, never
+    - >-
+      Disposition each: A4, B2/B3/B4 (connection-resilience guards still marked ⚠️ VERIFY, never
       confirmed), B5, B6, C2/C3/C4/C5, D3/D4, E3.
     - Most will be ALREADY-FIXED or OBSOLETE after a year of intervening work — but that must be
       CHECKED, not assumed. This is the reconciliation the register was written to make possible.
@@ -585,7 +600,8 @@ entries:
     - REPORT_PB.md — PB campaign close across PB-0→PB-4; must reflect the actual PB-4 outcome (C6).
     - Issue the PARK_PB-3_L-5 Pratinidhi MEMO, or record why B-LOOP-G4G5 supersedes it.
     - INF-3 Write-block root cause → DVA ruling, documented boundary or fix.
-    - The coordination-check accounting the original standing instruction asked for and that was
+    - >-
+      The coordination-check accounting the original standing instruction asked for and that was
       never compiled: which ŚUDDHA-VĀCA / PARISHODHANA / SATYA-DĪPA coordination checks were
       exercised, and their outcomes.
 
@@ -602,7 +618,8 @@ entries:
   depends_on: [B-NAR-BO, B-NAR-GA, B-NAR-MI, B-NAR-PH, B-NAR-KA, B-N8-FIX, B-N8-SWEEPFIX]
   locks: [build-lock]
   scope:
-    - VELOCITY DESIGN: six narration lanes + two §N.8 lanes each require a rebuild. ŚUDDHA-VĀCA
+    - >-
+      VELOCITY DESIGN: six narration lanes + two §N.8 lanes each require a rebuild. ŚUDDHA-VĀCA
       rebuilt per-lane. This run lands every writer fix FIRST, then rebuilds ONCE. Same correctness,
       a fraction of the wall-clock and blast radius.
     - Snapshot before any destructive write. TEST the rollback once before relying on it.
@@ -622,7 +639,8 @@ entries:
   scope:
     - Only if A6 produced a fix + completion plan. Snapshot-guarded.
     - Operator 1c826d5a 78/303 → 303/303; cb73cd3d 70/303 → 303/303.
-    - STANDING NATIVE INSTRUCTION, survives into this run: if it stalls again for the same
+    - >-
+      STANDING NATIVE INSTRUCTION, survives into this run: if it stalls again for the same
       unresolved reason, PARK-HONEST with the diagnosis. DO NOT FORCE IT.
   verify: VER queries build_substep_progress directly (read-only) for both charts.
 
@@ -634,9 +652,11 @@ entries:
   effort: high
   depends_on: [C1-REBUILD, C2-GOCHARA-RUN]
   scope:
-    - Record EP-1 as NOT-APPLICABLE with evidence: the falsely-lit population is EMPIRICALLY ZERO
+    - >-
+      Record EP-1 as NOT-APPLICABLE with evidence: the falsely-lit population is EMPIRICALLY ZERO
       per SATYA_DIPA_REPORT §4 ("Phase D has no work to do"). Not a completed re-audit; not an open item.
-    - Then do the real work: for every lit/service_ok asset, check build_substep_progress
+    - >-
+      Then do the real work: for every lit/service_ok asset, check build_substep_progress
       (READ-ONLY, never mutate) against the full plan, and rows_written against expected_rows.
     - Anything genuinely incomplete → snapshot-guarded rebuild in dependency order.
 
@@ -681,7 +701,8 @@ entries:
   depends_on: [C4-LOOP-LIVE-PROOF]
   gate: DVA ruling R-0/PB-4
   scope:
-    - Execute BRIEF_PB-4.md: history sidebar, empty state, "the Seal," mobile/a11y hardening,
+    - >-
+      Execute BRIEF_PB-4.md: history sidebar, empty state, "the Seal," mobile/a11y hardening,
       default flip, consult/consume retirement, dead-code deletion.
     - It was blocked in sequence on the PB-3.1 disposition — which C4 resolves.
   note: >
@@ -699,15 +720,18 @@ entries:
   depends_on: [A1-PRESERVE]
   runs_when: all_build_lanes_terminal      # CANNOT run while lanes hold worktrees
   scope:
-    - SEQUENCING CORRECTION vs v2.0: isolation is LATE, not early. v2.0 put worktree retirement at
+    - >-
+      SEQUENCING CORRECTION vs v2.0: isolation is LATE, not early. v2.0 put worktree retirement at
       T1, but in a swarm the worktrees are in active use for the whole run. Creation discipline is
       immediate (every lane cuts its own from origin/main); RETIREMENT waits until they are idle.
-    - Retire the 11 PB worktrees + their remote branches after confirming each is fully merged:
+    - >-
+      Retire the 11 PB worktrees + their remote branches after confirming each is fully merged:
       Madhav-pb-1-c1 / -pb-1-integrate / -pb-1-s1 / -pb-2-integrate / -pb-3-l1 / -l2 / -l3 /
       -l3-clean / -l4 / -l5 / -l6.
-    - `git worktree list` = 35 entries, `prunable` = 0 — so "prune the prunable" removes NOTHING.
+    - >-
+      `git worktree list` = 35 entries, `prunable` = 0 — so "prune the prunable" removes NOTHING.
       Audit the remaining 24 by the same standard. Do not remove any belonging to an active campaign (§7).
-    - Delete the redundant local branch satyadipa/orchestrator-lit-predicate (superseded by #870).
+    - Delete the redundant local branch satyadipa/orchestrator-lit-predicate (superseded by  #870).
     - Give each active/future campaign its own dedicated worktree/clone; the shared checkout is
       never a build surface again.
 
@@ -734,7 +758,8 @@ entries:
       highest applied number in BOTH directories.
     - 8.6 Live MCP tool catalog reconciles against the registry on origin/main.
     - 8.7 FORENSIC 7/7; row-count invariants; no asset lit with an incomplete substep plan.
-    - 8.8 drift_detector / schema_validator: ZERO NEW violations vs the A1 baseline (NOT "green" —
+    - >-
+      8.8 drift_detector / schema_validator: ZERO NEW violations vs the A1 baseline (NOT "green" —
       216/43 are tolerated exit-3 residuals). File a costed backlog-drain spec for the quarterly pass.
     - 8.9 SAMAPTI_CLOSE_REPORT_v1_0.md per v2.0 §15.
   verify: >

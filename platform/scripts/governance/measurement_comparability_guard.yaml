@@ -10,13 +10,13 @@
 # Ruling: SMR-2 (PRATINIDHI — engine swap = measurement-version event)
 # Conductor: SAMPURTI-Δ2 (PRAMANA), branch sampurti/d2-v5, 2026-08-13
 
-spec_version: "1.0"
-committed_at: "2026-08-13"
-committed_by: "CONDUCTOR of SAMPURTI-Δ2"
+spec_version: '1.0'
+committed_at: '2026-08-13'
+committed_by: 'CONDUCTOR of SAMPURTI-Δ2'
 plan_references:
-  - "SAMPURTI_IMPLEMENTATION_PLAN_v1_0.md §7.2d"
-  - "ALPHA_DAY_PLAN_v1_0.md §6.4 d4 (DHARĀ measurement discipline)"
-  - "SAMPURTI_REBASE_PLAN_v1_0.md R14 (measurement versioning)"
+  - 'SAMPURTI_IMPLEMENTATION_PLAN_v1_0.md §7.2d'
+  - 'ALPHA_DAY_PLAN_v1_0.md §6.4 d4 (DHARĀ measurement discipline)'
+  - 'SAMPURTI_REBASE_PLAN_v1_0.md R14 (measurement versioning)'
 
 # ── RULE 1: ENGINE IDENTITY ────────────────────────────────────────────────
 # Every measurement in the M4'/M5 family must use the SAME engine.
@@ -31,8 +31,8 @@ rules:
       re-baseline on DHARĀ; it is published BESIDE M4 for transparency but
       delta computations use M4'↔M5 only (same engine, same metric).
     check_field: engine
-    required_value: "analytic"
-    applies_to: ["M4_prime", "M5"]
+    required_value: 'analytic'
+    applies_to: ['M4_prime', 'M5']
     violation: BLOCK_PUBLICATION
 
   - id: R-ENG-2
@@ -42,12 +42,12 @@ rules:
       re-versioned. It remains the reference that documents the engine-swap
       magnitude. R14: measurements are never overwritten, always versioned beside.
     check_field: measurement_label
-    required_distinct_from: ["M4_prime", "M5"]
-    required_value: "M4"
-    applies_to: ["M4"]
+    required_distinct_from: ['M4_prime', 'M5']
+    required_value: 'M4'
+    applies_to: ['M4']
     violation: BLOCK_PUBLICATION
 
-# ── RULE 2: CLASS SET MATCHING ─────────────────────────────────────────────
+  # ── RULE 2: CLASS SET MATCHING ─────────────────────────────────────────────
   - id: R-CLASS-1
     name: delta_on_matched_subset_only
     description: >
@@ -57,8 +57,8 @@ rules:
       FIRST-MEASUREMENT row and is excluded from the delta table.
       This prevents class-count changes from confounding the gochara-effect signal.
     check_field: delta_class_set_rule
-    required_value: "matched_subset"
-    applies_to: ["M4_prime_vs_M5_delta"]
+    required_value: 'matched_subset'
+    applies_to: ['M4_prime_vs_M5_delta']
     violation: BLOCK_PUBLICATION
 
   - id: R-CLASS-2
@@ -70,8 +70,8 @@ rules:
       separately from the delta table; their absence from the delta is not
       a gap but a deliberate design property.
     check_field: new_class_measurement_epoch
-    required_value: "first_measurement"
-    applies_to: ["classes_added_post_M4_prime"]
+    required_value: 'first_measurement'
+    applies_to: ['classes_added_post_M4_prime']
     violation: WARN_AND_LABEL
 
   - id: R-CLASS-3
@@ -81,12 +81,12 @@ rules:
       exact class IDs included in that measurement's delta computation.
       This makes the matched-subset rule auditable without re-running.
     check_field: class_set
-    required_type: "list[str]"
+    required_type: 'list[str]'
     required_non_empty: true
-    applies_to: ["M4_prime", "M5"]
+    applies_to: ['M4_prime', 'M5']
     violation: BLOCK_PUBLICATION
 
-# ── RULE 3: SMR-2 GATE ─────────────────────────────────────────────────────
+  # ── RULE 3: SMR-2 GATE ─────────────────────────────────────────────────────
   - id: R-SMR-2
     name: smr2_recorded_before_m4_prime
     description: >
@@ -97,12 +97,12 @@ rules:
       The validator checks for the SMR-2 entry in CAMPAIGN_COORDINATION.md.
     check_field: smr2_recorded
     required_value: true
-    applies_to: ["M4_prime"]
+    applies_to: ['M4_prime']
     violation: BLOCK_PUBLICATION
     detection_command: >
       grep -c 'SMR-2' 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md
 
-# ── RULE 4: DEGENERATE-INTERVAL TRIPWIRE (R15) ─────────────────────────────
+  # ── RULE 4: DEGENERATE-INTERVAL TRIPWIRE (R15) ─────────────────────────────
   - id: R-DEGEN-1
     name: no_degenerate_intervals
     description: >
@@ -113,11 +113,11 @@ rules:
       in the matched subset must not be published as a delta — report as
       DEGENERATE_INTERVAL with a named park.
     check_field: test_era_event_count_matched_subset_total
-    required_comparison: "> 0"
-    applies_to: ["M4_prime_vs_M5_delta"]
+    required_comparison: '> 0'
+    applies_to: ['M4_prime_vs_M5_delta']
     violation: BLOCK_PUBLICATION
 
-# ── RULE 5: VERSION DISCIPLINE ─────────────────────────────────────────────
+  # ── RULE 5: VERSION DISCIPLINE ─────────────────────────────────────────────
   - id: R-VER-1
     name: measurement_version_bumped_on_engine_swap
     description: >
@@ -125,8 +125,8 @@ rules:
       M4' carries a distinct version label from M4. The version field in
       measurement artifacts must differ: M4.version != M4_prime.version.
     check_field: version
-    required_distinct_across: ["M4", "M4_prime"]
-    applies_to: ["M4_prime"]
+    required_distinct_across: ['M4', 'M4_prime']
+    applies_to: ['M4_prime']
     violation: BLOCK_PUBLICATION
 
   - id: R-VER-2
@@ -137,7 +137,7 @@ rules:
       A change from R=1024 requires a new measurement version (R14).
     check_field: null_replicates
     required_value: 1024
-    applies_to: ["M4_prime", "M5"]
+    applies_to: ['M4_prime', 'M5']
     violation: WARN_AND_LABEL
 
 # ── ENFORCEMENT LEVELS ──────────────────────────────────────────────────────

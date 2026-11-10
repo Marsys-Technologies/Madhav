@@ -58,7 +58,9 @@ entries:
 - session_id: TR-P1-S1
   wave: 1
   phase: 1
-  description: "Phase 1.1 + 1.2: chart_summary 0-rows root-cause trace+fix (at platform primitive layer, not MCP wrapper); query_transit_event — add event_type to schema as required enum, improve error message"
+  description: >-
+    Phase 1.1 + 1.2: chart_summary 0-rows root-cause trace+fix (at platform primitive layer, not MCP wrapper); query_transit_event — add event_type to schema as required enum, improve error
+    message
   brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_TOOLING_REMEDIATION_TR-P1-S1_v1_0.md
   branch: feature/tooling-remediation
   worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix
@@ -100,7 +102,6 @@ entries:
     - platform-mcp/src/tools/query_transit_event.ts (modified)
   est_tokens: 120000
   est_duration_min: 90
-  status: pending
   human_decision_prompt: null
 
 - session_id: TR-P1-S2
@@ -144,7 +145,6 @@ entries:
     COMMIT: git commit -m "fix(TR-P1-S2): query_signals filter enforcement; query_ephemeris date_range+sample_step"
   est_tokens: 120000
   est_duration_min: 90
-  status: pending
   human_decision_prompt: null
 
 - session_id: TR-P1-S3
@@ -185,7 +185,6 @@ entries:
     COMMIT: git commit -m "fix(TR-P1-S3): read_asset cwd+list_assets; query_panchanga 5 enrichment columns"
   est_tokens: 100000
   est_duration_min: 75
-  status: pending
   human_decision_prompt: null
 
 - session_id: TR-P4-S1
@@ -234,7 +233,6 @@ entries:
     COMMIT: git commit -m "feat(TR-P4-S1): add MCP wrappers — query_varshphal, query_divisional_chart, query_remedial_mantras"
   est_tokens: 120000
   est_duration_min: 90
-  status: pending
   human_decision_prompt: null
 
 - session_id: TR-P4-S2
@@ -284,7 +282,6 @@ entries:
     COMMIT: git commit -m "feat(TR-P4-S2): add MCP wrappers — muhurta_finder, tara_balam, chandra_balam"
   est_tokens: 100000
   est_duration_min: 75
-  status: pending
   human_decision_prompt: null
 
 - session_id: TR-P10-S1
@@ -343,7 +340,6 @@ entries:
     COMMIT: git commit -m "feat(TR-P10-S1): PLANNER_PROMPT v2.1 — R-TD.1, R-NDE.1, R-LP.1, R-FD.1, R-CS.1"
   est_tokens: 60000
   est_duration_min: 45
-  status: pending
   human_decision_prompt: null
 
 - session_id: TR-P10-S2
@@ -400,7 +396,6 @@ entries:
     Push after commit (wave 1 push boundary).
   est_tokens: 80000
   est_duration_min: 60
-  status: pending
   human_decision_prompt: null
 
 # ─────────────────────────────────────────────────────────

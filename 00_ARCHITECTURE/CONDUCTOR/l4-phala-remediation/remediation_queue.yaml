@@ -72,7 +72,9 @@ waves:
     blocked_by: [R3_u2_lifetime, R4_rectification]
     tasks:
       - id: R6_stub_cleanup
-        do: "Delete 337_phala_outlook.sql + 339_kala_convergence_current_breakdown.sql. Confirm 333/334 filled (R4), 338 filled (R3). End: one real file per migration number, zero dead stubs, zero duplicate-number collisions."
+        do: >-
+          Delete 337_phala_outlook.sql + 339_kala_convergence_current_breakdown.sql. Confirm 333/334 filled (R4), 338 filled (R3). End: one real file per migration number, zero dead stubs, zero
+          duplicate-number collisions.
       - id: R7_rename_test
         do: "Rename test_phala_outlook.py → test_phala_phaladesa.py; repoint to phala_phaladesa table."
 

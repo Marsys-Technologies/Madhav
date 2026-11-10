@@ -251,7 +251,9 @@ rules:
     school: parashari
     confidence: 0.80
     confidence_rationale: "Sloka = 0.8; Saravali and Phaladeepika confirm this yoga = 1.0. 0.80."
-    caveats: "Mercury within combustion range of Sun (within 14°) weakens this yoga — the intellectual function is overshadowed by solar ego. Mercury at 15-28° from Sun in the same sign gives the best Budha-Aditya results."
+    caveats: >-
+      Mercury within combustion range of Sun (within 14°) weakens this yoga — the intellectual function is overshadowed by solar ego. Mercury at 15-28° from Sun in the same sign gives the best
+      Budha-Aditya results.
     verified: true
     stub: false
     stub_reason: null
@@ -377,7 +379,9 @@ rules:
     school: parashari
     confidence: 0.92
     confidence_rationale: "Declarative fundamental Raja Yoga rule = 1.0; Saravali, Phaladeepika confirm = 1.15. 0.92."
-    caveats: "The concept of 'king' should be contextualised to the native's social and historical context — in modern times it indicates the highest levels of authority, recognition, or professional success in one's field."
+    caveats: >-
+      The concept of 'king' should be contextualised to the native's social and historical context — in modern times it indicates the highest levels of authority, recognition, or professional
+      success in one's field.
     verified: true
     stub: false
     stub_reason: null
@@ -455,7 +459,9 @@ rules:
     school: parashari
     confidence: 0.88
     confidence_rationale: "Declarative = 1.0; Saravali and Phaladeepika confirm Saraswati yoga = 1.15. 0.88."
-    caveats: "All three planets must be in good dignity (not debilitated or heavily afflicted) for the yoga to fully manifest. Even with this yoga, other chart factors determine the specific domain of expression."
+    caveats: >-
+      All three planets must be in good dignity (not debilitated or heavily afflicted) for the yoga to fully manifest. Even with this yoga, other chart factors determine the specific domain of
+      expression.
     verified: true
     stub: false
     stub_reason: null
@@ -609,7 +615,9 @@ rules:
     school: parashari
     confidence: 0.80
     confidence_rationale: "Sloka = 0.8; Saravali confirms Kemadruma yoga definition = 1.0. 0.80."
-    caveats: "Kemadruma yoga is cancelled by several factors: Moon in kendra from lagna, a strong benefic aspecting Moon, or the Moon in an auspicious sign. Many charts with apparent Kemadruma are effectively cancelled by one of these factors."
+    caveats: >-
+      Kemadruma yoga is cancelled by several factors: Moon in kendra from lagna, a strong benefic aspecting Moon, or the Moon in an auspicious sign. Many charts with apparent Kemadruma are
+      effectively cancelled by one of these factors.
     verified: true
     stub: false
     stub_reason: null
@@ -961,7 +969,9 @@ rules:
     school: parashari
     confidence: 0.92
     confidence_rationale: "Declarative yoga conditions with three named sub-types = 1.0; Saravali and Phaladeepika confirm all three Viparita variants = 1.15. 0.92."
-    caveats: "These yogas are most beneficial when the dusthana lord is strong in the dusthana and does not simultaneously aspect important auspicious houses. Harsha yoga from 6L in 8H can also shorten life if the 8L is also involved."
+    caveats: >-
+      These yogas are most beneficial when the dusthana lord is strong in the dusthana and does not simultaneously aspect important auspicious houses. Harsha yoga from 6L in 8H can also shorten
+      life if the 8L is also involved.
     verified: true
     stub: false
     stub_reason: null
@@ -1156,7 +1166,9 @@ rules:
     school: parashari
     confidence: 0.65
     confidence_rationale: "Sloka with implicit condition = 0.8; significant variation across texts on whether Kalasarpa is in BPHS proper or a later addition = 0.8 multiplier. 0.65."
-    caveats: "The term 'Kalasarpa' does not appear explicitly in many BPHS editions — it may be a later textual addition. Its classical authority is disputed. BPHS does describe the basic planetary hemming concept. This rule follows the BPHS Chapter 76 proxy that covers the underlying principle."
+    caveats: >-
+      The term 'Kalasarpa' does not appear explicitly in many BPHS editions — it may be a later textual addition. Its classical authority is disputed. BPHS does describe the basic planetary
+      hemming concept. This rule follows the BPHS Chapter 76 proxy that covers the underlying principle.
     verified: true
     stub: false
     stub_reason: null
@@ -1718,7 +1730,9 @@ rules:
     school: parashari
     confidence: 0.65
     confidence_rationale: "Sloka = 0.8; partial Saravali on nodal hemming = 0.8. 0.65."
-    caveats: "Different commentators define Sarpa yoga differently — some require all planets between Rahu and Ketu in direction of motion; others simply require hemming on one side. This rule uses the simpler definition."
+    caveats: >-
+      Different commentators define Sarpa yoga differently — some require all planets between Rahu and Ketu in direction of motion; others simply require hemming on one side. This rule uses the
+      simpler definition.
     verified: true
     stub: false
     stub_reason: null
