@@ -1,0 +1,54 @@
+@media screen {
+  .header {
+    background: #f5efe2;
+    padding: clamp(16px, 4vw, 24px);
+    border: 1px solid #a5a18e;
+    border-radius: 12px;
+    overflow-wrap: anywhere;
+  }
+
+  .header h1 {
+    color: #242920;
+    font-family: Georgia, serif;
+  }
+
+  .header p {
+    color: #52584a;
+  }
+
+  .transcript {
+    --foreground: var(--text-primary);
+    --muted-foreground: var(--on-dark-mut);
+    --muted: var(--obsidian-panel);
+    --border: var(--obsidian-border-lite);
+    background: var(--obsidian-bg);
+    border-radius: 12px;
+    color: var(--text-primary);
+    overflow-wrap: anywhere;
+  }
+
+  .transcript :global(.markdown-content) {
+    color: var(--text-primary);
+  }
+
+  .homeLink {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding-inline: 12px;
+    border-radius: 6px;
+    background: #fcf8ee;
+    text-decoration: underline;
+    text-underline-offset: 0.18em;
+  }
+
+  .homeLink,
+  .homeLink:hover {
+    color: #2e563e;
+  }
+
+  .homeLink:focus-visible {
+    outline: 3px solid #2e563e;
+    outline-offset: -4px;
+  }
+}

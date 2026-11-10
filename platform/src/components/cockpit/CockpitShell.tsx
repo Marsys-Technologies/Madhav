@@ -45,10 +45,10 @@ function StatusPill({ status }: { status: string | undefined }) {
   const map: Record<string, { label: string; cls: string }> = {
     queued:    { label: 'BUILDING',  cls: 'bg-[#d4a648]/10 text-[#d4a648] animate-pulse' },
     running:   { label: 'BUILDING',  cls: 'bg-[#d4a648]/10 text-[#d4a648] animate-pulse' },
-    success:   { label: 'COMPLETE',  cls: 'bg-[#4a8c5c]/10 text-[#4a8c5c]' },
-    failed:    { label: 'FAILED',    cls: 'bg-[#9c3a2a]/10 text-[#9c3a2a]' },
-    partial:   { label: 'PARTIAL',   cls: 'bg-[#c8842a]/10 text-[#c8842a]' },
-    cancelled: { label: 'STOPPED',   cls: 'bg-[#5a5550]/10 text-[#5a5550]' },
+    success:   { label: 'COMPLETE',  cls: 'bg-[#4a8c5c]/10 text-[var(--success)]' },
+    failed:    { label: 'FAILED',    cls: 'bg-[#9c3a2a]/10 text-[var(--danger)]' },
+    partial:   { label: 'PARTIAL',   cls: 'bg-[#c8842a]/10 text-[var(--warning)]' },
+    cancelled: { label: 'STOPPED',   cls: 'bg-[#5a5550]/10 text-[var(--text-secondary)]' },
   }
   const cfg = status ? (map[status] ?? { label: 'IDLE', cls: 'bg-[#1a1820] text-[#8a8070]' }) : { label: 'IDLE', cls: 'bg-[#1a1820] text-[#8a8070]' }
   return (
@@ -63,7 +63,7 @@ function StatusPill({ status }: { status: string | undefined }) {
 function BuildMetaCard({ build }: { build: BuildMeta | null }) {
   if (!build) {
     return (
-      <div className="rounded-lg border border-[#1a1820] bg-[#08070a] p-4 text-[#5a5550] text-sm">
+      <div className="rounded-lg border border-[#1a1820] bg-[#08070a] p-4 text-[var(--text-secondary)] text-sm">
         No builds yet.
       </div>
     )
@@ -133,19 +133,19 @@ export function CockpitShell({ chartId, chartName, birthDate, birthTime, birthPl
         {/* Left sidebar */}
         <aside className="w-72 shrink-0 border-r border-[#1a1820] bg-[#0d0c10] flex flex-col gap-4 p-4 overflow-y-auto">
           <div>
-            <p className="text-xs text-[#5a5550] uppercase tracking-widest mb-2">Current Build</p>
+            <p className="text-xs text-[var(--text-secondary)] uppercase tracking-widest mb-2">Current Build</p>
             <BuildMetaCard build={currentBuild} />
           </div>
 
           {/* Build history placeholder */}
           <div>
-            <p className="text-xs text-[#5a5550] uppercase tracking-widest mb-2">Build History</p>
+            <p className="text-xs text-[var(--text-secondary)] uppercase tracking-widest mb-2">Build History</p>
             {latestBuild ? (
-              <div className="rounded-lg border border-[#1a1820] bg-[#08070a] px-3 py-2 text-xs text-[#5a5550]">
+              <div className="rounded-lg border border-[#1a1820] bg-[#08070a] px-3 py-2 text-xs text-[var(--text-secondary)]">
                 {latestBuild.build_id.slice(0, 8)}… · {latestBuild.status}
               </div>
             ) : (
-              <div className="text-xs text-[#5a5550]">No prior builds.</div>
+              <div className="text-xs text-[var(--text-secondary)]">No prior builds.</div>
             )}
           </div>
         </aside>
@@ -179,7 +179,7 @@ export function CockpitShell({ chartId, chartName, birthDate, birthTime, birthPl
             )}
 
             {activeTab === 'ayanamsha' && (
-              <div className="text-[#5a5550] text-sm">
+              <div className="text-[var(--text-secondary)] text-sm">
                 Per-ayanamsha breakdown — available once build completes.
               </div>
             )}
@@ -193,13 +193,13 @@ export function CockpitShell({ chartId, chartName, birthDate, birthTime, birthPl
             )}
 
             {activeTab === 'eventlog' && (
-              <div className="text-[#5a5550] text-sm">
+              <div className="text-[var(--text-secondary)] text-sm">
                 Event log — streams build events as they arrive.
               </div>
             )}
 
             {activeTab === 'preview' && (
-              <div className="text-[#5a5550] text-sm">
+              <div className="text-[var(--text-secondary)] text-sm">
                 Data preview — query the built assets here.
               </div>
             )}

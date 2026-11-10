@@ -13,7 +13,7 @@
  *
  * Prod `life_events` is a HYBRID schema: the brahma columns (domain,
  * outcome_observed, event_type, …) coexist with the legacy NOT-NULL columns
- * (category, source_section, build_id, chart_state, provenance). So the INSERT
+ * (category, source_section, build_id, chart_state, provenance, date_confidence). So the INSERT
  * writes the UNION superset — mirroring lel_intake.py's brahma branch — or it
  * fails a NOT-NULL constraint against prod.
  *
@@ -73,6 +73,8 @@ export interface LelEvent {
   event_class: string
   /** ISO date (YYYY-MM-DD). */
   event_date: string
+  date_confidence?: 'exact' | 'month_known' | 'year_only'
+  category?: string
   /** Free-text event label. Defaults to event_class. */
   event_type?: string
   /** Prose description of the event. */
@@ -90,7 +92,8 @@ export interface LelEvent {
 
 /** Provenance stamped from the resolved principal (never from caller body). */
 export interface LelEventProvenance {
-  key_id: string
+  key_id: string | null
+  actor_uid?: string
   trace_id: string | null
   caller_context?: string | null
 }
@@ -121,8 +124,9 @@ export interface RecordLelEventResult {
  * (chart, class, date, description) coalesces via ON CONFLICT rather than
  * spawning a duplicate row.
  */
-export function deriveLelEventId(chartId: string, event: LelEvent): string {
-  const name = `LEL-INTAKE-API:${chartId}:${event.event_class}:${event.event_date}:${event.description}`
+export function deriveLelEventId(chartId: string, event: LelEvent, source = 'LEL-INTAKE-API'): string {
+  const precision = event.date_confidence && event.date_confidence !== 'exact' ? `:${event.date_confidence}` : ''
+  const name = `${source}:${chartId}:${event.event_class}:${event.event_date}${precision}:${event.description}`
   return uuidv5(name, LEL_UUID_NAMESPACE)
 }
 
@@ -161,6 +165,7 @@ export async function recordLelEvent(
     key_id: provenance?.key_id ?? null,
     trace_id: provenance?.trace_id ?? null,
     caller_context: provenance?.caller_context ?? null,
+    ...(provenance?.actor_uid ? { actor_uid: provenance.actor_uid } : {}),
   })
 
   // 2. INSERT the full NOT-NULL superset (brahma + legacy columns).
@@ -171,12 +176,13 @@ export async function recordLelEvent(
     `INSERT INTO life_events
         (chart_id, event_id, event_date, event_type, description,
          domain, outcome_observed, source_citation, recorded_at,
-         category, source_section, build_id, chart_state, provenance)
+         category, source_section, build_id, chart_state, provenance, date_confidence)
      VALUES ($1::uuid, $2::uuid, $3::date, $4, $5,
              $6, $7, $8, now(),
-             $9, $10, $11, $12::jsonb, $13::jsonb)
+             $9, $10, $11, $12::jsonb, $13::jsonb, $14)
      ON CONFLICT (chart_id, event_id) DO UPDATE SET
         event_date       = EXCLUDED.event_date,
+        date_confidence  = EXCLUDED.date_confidence,
         event_type       = EXCLUDED.event_type,
         description      = EXCLUDED.description,
         domain           = EXCLUDED.domain,
@@ -196,11 +202,12 @@ export async function recordLelEvent(
       event.domain,
       outcome_observed,
       source_citation,
-      event_type,          // category (=event_type)
+      event.category ?? event_type,
       source_citation,     // source_section
       BUILD_ID,            // build_id
       chart_state,         // chart_state (jsonb)
       row_provenance,      // provenance (jsonb)
+      event.date_confidence ?? 'exact',
     ]
   )
 

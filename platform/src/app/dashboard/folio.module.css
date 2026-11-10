@@ -1,0 +1,82 @@
+.folio {
+  background: var(--folio-canvas);
+  color: var(--folio-ink);
+}
+
+.heading,
+.folio [data-roster-empty] {
+  background: var(--folio-panel);
+  border: 1px solid var(--folio-divider);
+  border-radius: 12px;
+  padding: clamp(16px, 3vw, 24px);
+}
+
+.heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+  margin-block-end: 24px;
+  background: var(--folio-canvas);
+}
+
+.heading :global(.j1-title) > span,
+.folio [data-roster-empty] h2 {
+  color: var(--folio-ink);
+  font-family: var(--folio-font-heading);
+}
+
+.heading > :global(.j1-title) > span {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  line-height: 1.2;
+}
+
+.heading :global(.j1-title) > small,
+.folio [data-roster-empty] p {
+  color: var(--folio-muted);
+}
+
+.folio [data-roster-empty] {
+  min-height: 16rem;
+}
+
+.folio [data-roster-empty] > svg {
+  display: none;
+}
+
+.folio .heading > a,
+.folio [data-roster-empty] a {
+  background: var(--folio-action);
+  border-color: var(--folio-action);
+  box-shadow: none;
+  color: var(--folio-on-action);
+}
+
+.folio .heading > a :global(.j1-title) > :is(span, small) {
+  color: inherit;
+}
+
+.folio .heading > a:focus-visible,
+.folio [data-roster-empty] a:focus-visible {
+  outline: 3px solid var(--folio-action);
+  outline-offset: 4px;
+}
+
+
+.folio .heading > a:global(.j1-btn):hover,
+.folio [data-roster-empty] a:global(.j1-btn):hover {
+  color: var(--folio-on-action);
+}
+
+.folio [data-roster-filters] :is(input, select) {
+  color: var(--folio-ink);
+}
+
+.folio [data-roster-filters] :is(input, select, button):focus-visible {
+  outline-color: var(--folio-focus);
+}
+
+.folio [data-roster-table] a:hover {
+  color: var(--folio-action);
+}

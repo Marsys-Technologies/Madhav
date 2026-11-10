@@ -60,7 +60,7 @@ vi.mock('@/lib/db/client', () => ({
 
 const loadMessagesMock = vi.fn()
 vi.mock('@/lib/persistence/conversation_writer', () => ({
-  loadConversationMessagesV2: (id: string) => loadMessagesMock(id),
+  loadConversationMessagesV2: (...args: unknown[]) => loadMessagesMock(...args),
 }))
 
 const REASONING_TEXT = 'SECRET_REASONING_CHAIN_alpha'
@@ -370,7 +370,7 @@ describe('conversation read is not SELECT * (SS N-379 iii)', () => {
     expect(String(call[0])).toMatch(/^SELECT\s+title,\s*chart_id\s+FROM conversations\s+WHERE id=\$1$/i)
     expect(String(call[0])).not.toMatch(/\*/)
     expect(call[1]).toEqual(['conv-1'])
-    expect(loadMessagesMock).toHaveBeenCalledWith('conv-1')
+    expect(loadMessagesMock).toHaveBeenCalledWith('conv-1', { includeCanonicalText: true })
   })
 })
 

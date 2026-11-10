@@ -92,7 +92,7 @@ export function KalaRekhaTimeline({
               left: `${geo.windowStartFraction * 100}%`,
               transform: geo.windowStartFraction > 0.85 ? 'translateX(-100%)' : 'translateX(0%)',
               fontSize: '8px',
-              color: 'var(--pp-gold-tertiary, #7A5A1F)',
+              color: 'var(--pp-ink-dim, #B7AE9C)',
               fontFamily: 'var(--pp-font-mono, monospace)',
               whiteSpace: 'nowrap',
             }}
@@ -105,7 +105,7 @@ export function KalaRekhaTimeline({
               left: `${geo.windowEndFraction * 100}%`,
               transform: 'translateX(-100%)',
               fontSize: '8px',
-              color: 'var(--pp-gold-tertiary, #7A5A1F)',
+              color: 'var(--pp-ink-dim, #B7AE9C)',
               fontFamily: 'var(--pp-font-mono, monospace)',
               whiteSpace: 'nowrap',
             }}
@@ -116,7 +116,7 @@ export function KalaRekhaTimeline({
       ) : (
         <div
           className="flex justify-between"
-          style={{ fontSize: '8px', color: 'var(--pp-gold-tertiary, #7A5A1F)', fontFamily: 'var(--pp-font-mono, monospace)' }}
+          style={{ fontSize: '8px', color: 'var(--pp-ink-dim, #B7AE9C)', fontFamily: 'var(--pp-font-mono, monospace)' }}
           aria-hidden="true"
         >
           <span>{window?.start ?? '—'}</span>

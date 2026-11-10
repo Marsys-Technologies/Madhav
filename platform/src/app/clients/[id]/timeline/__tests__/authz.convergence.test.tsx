@@ -23,8 +23,7 @@
  *
  * These tests pin the convergence: both timeline modules must reach their
  * admit/deny decision through `resolveChartPageAccess`, on the same
- * `permission === 'deny'` bar the parent layout uses, and pin `canWrite` to the
- * canonical build bar.
+ * `permission === 'deny'` bar the parent layout uses.
  *
  * SCOPE, stated honestly: this convergence is NOT repo-wide. Independent
  * verification of this fix found `src/app/api/pyramid/route.ts` still running the
@@ -40,7 +39,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('server-only', () => ({}))
 
-const { mockQuery, mockResolveAccess, mockRedirect, mockGetServerUser, mockParseLEL } = vi.hoisted(() => ({
+const { mockQuery, mockResolveAccess, mockRedirect, mockGetServerUser, mockParseLEL, mockRequireSuperAdmin } = vi.hoisted(() => ({
   mockQuery: vi.fn(),
   mockResolveAccess: vi.fn(),
   mockRedirect: vi.fn((path: string) => {
@@ -48,8 +47,10 @@ const { mockQuery, mockResolveAccess, mockRedirect, mockGetServerUser, mockParse
   }),
   mockGetServerUser: vi.fn(),
   mockParseLEL: vi.fn(),
+  mockRequireSuperAdmin: vi.fn(),
 }))
 
+vi.mock('@/lib/auth/access-control', () => ({ requireSuperAdmin: mockRequireSuperAdmin }))
 vi.mock('@/lib/db/client', () => ({ query: mockQuery }))
 vi.mock('@/lib/auth/chart-page-guard', () => ({ resolveChartPageAccess: mockResolveAccess }))
 vi.mock('next/navigation', () => ({ redirect: mockRedirect }))
@@ -77,6 +78,7 @@ function findTimelineView(node: any): any {
 const CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
 const GRANTEE_UID = 'grantee-uid'
 const LEGACY_CLIENT_UID = 'legacy-client-uid'
+const event = { id: 'fixture-event', date: '2001-02-03', category: 'education', body: 'Fictional event' }
 
 /** The chart row as the DB actually holds it: owned by someone else, and a
  *  legacy `client_id` that does NOT match the grantee. */
@@ -87,10 +89,12 @@ function chartRow() {
 beforeEach(() => {
   vi.clearAllMocks()
   mockGetServerUser.mockResolvedValue({ uid: GRANTEE_UID })
-  mockParseLEL.mockResolvedValue({ events: [], predictions: [], parseErrors: [] })
+  mockRequireSuperAdmin.mockResolvedValue({ user: { uid: 'admin-1' } })
+  mockParseLEL.mockRejectedValue(new Error('ENOENT: legacy life-event Markdown is unavailable'))
   mockQuery.mockImplementation((sql: string) => {
     if (/FROM profiles/.test(sql)) return Promise.resolve({ rows: [{ role: 'guest', status: 'active' }], rowCount: 1 })
     if (/FROM charts/.test(sql)) return Promise.resolve({ rows: [chartRow()], rowCount: 1 })
+    if (/FROM life_events/.test(sql)) return Promise.resolve({ rows: [event], rowCount: 1 })
     return Promise.resolve({ rows: [], rowCount: 0 })
   })
   // Canonical model: this principal IS a legitimate chart_grants view-grantee.
@@ -133,33 +137,43 @@ describe('timeline page — V3-E-019 authorization-model convergence', () => {
     expect(mockResolveAccess).toHaveBeenCalledWith(CHART_ID)
   })
 
-  it('does NOT bounce a chart_grants view-grantee, and DOES read their LEL', async () => {
-    const mod = await import('../page')
-    await mod.default({ params: Promise.resolve({ id: CHART_ID }) })
-    expect(mockRedirect).not.toHaveBeenCalled()
-    expect(mockParseLEL).toHaveBeenCalledWith(CHART_ID)
-  })
-
-  // §N.8: `canWrite` had no detector at all until this assertion — a hostile
-  // mutation to `canWrite={true}`, handing the write UI to every view-grantee,
-  // survived the suite 6/6 green. The claim now has a check behind it.
-  it('passes canWrite=false for a view-grantee — no write UI for a read grant', async () => {
+  it('reads only the granted chart’s events when the legacy Markdown is unavailable', async () => {
     const mod = await import('../page')
     const el = await mod.default({ params: Promise.resolve({ id: CHART_ID }) })
-    const view = findTimelineView(el)
-    expect(view).not.toBeNull()
-    expect(view.props.canWrite).toBe(false)
+    expect(mockRedirect).not.toHaveBeenCalled()
+    expect(mockParseLEL).not.toHaveBeenCalled()
+    expect(mockQuery).toHaveBeenCalledWith(expect.stringMatching(/FROM life_events\s+WHERE chart_id = \$1/i), [CHART_ID])
+    expect(findTimelineView(el)?.props.events).toEqual([event])
+    expect(findTimelineView(el)?.props.canLogEvent).toBe(false)
+    expect(mockRequireSuperAdmin).not.toHaveBeenCalled()
   })
 
-  it('passes canWrite=true for an owner/super_admin — the canonical build bar', async () => {
+  it('enables chart event logging only for an active administrator', async () => {
     mockResolveAccess.mockResolvedValue({
-      user: { uid: 'owner-1' }, role: 'guest', permission: 'all', canBuild: true,
+      user: { uid: 'admin-1' }, role: 'super_admin', permission: 'all', canBuild: true,
     })
     const mod = await import('../page')
     const el = await mod.default({ params: Promise.resolve({ id: CHART_ID }) })
     const view = findTimelineView(el)
-    expect(view).not.toBeNull()
-    expect(view.props.canWrite).toBe(true)
+    expect(view?.props.events).toEqual([event])
+    expect(view?.props.canLogEvent).toBe(true)
+    expect(view?.props.chartId).toBe(CHART_ID)
+  })
+
+  it('keeps logging disabled for a guest who owns the chart', async () => {
+    mockResolveAccess.mockResolvedValue({ role: 'guest', permission: 'all', canBuild: true })
+    const mod = await import('../page')
+    const view = findTimelineView(await mod.default({ params: Promise.resolve({ id: CHART_ID }) }))
+    expect(view?.props.canLogEvent).toBe(false)
+  })
+
+  it('routes old prediction bookmarks to the same chart’s Prediction Review', async () => {
+    const mod = await import('../page')
+    await expect(mod.default({
+      params: Promise.resolve({ id: CHART_ID }),
+      searchParams: Promise.resolve({ tab: 'predictions' }),
+    })).rejects.toThrow(`REDIRECT:/clients/${CHART_ID}/samiksha`)
+    expect(mockQuery.mock.calls.some(([sql]) => /FROM life_events/.test(sql))).toBe(false)
   })
 
   it('still denies a principal the canonical model denies — and reads no LEL for them', async () => {
@@ -171,5 +185,6 @@ describe('timeline page — V3-E-019 authorization-model convergence', () => {
       mod.default({ params: Promise.resolve({ id: CHART_ID }) })
     ).rejects.toThrow('REDIRECT:/dashboard')
     expect(mockParseLEL).not.toHaveBeenCalled()
+    expect(mockQuery).not.toHaveBeenCalled()
   })
 })

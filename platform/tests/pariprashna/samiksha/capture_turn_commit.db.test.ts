@@ -21,7 +21,7 @@
  *
  * Gated on SAMIKSHA_E2E_DATABASE_URL (CI has no DB until PB-3.1 G3 wires one — lane A5).
  *
- * Run locally:
+ * Run locally against an empty, disposable Postgres database:
  *   SAMIKSHA_E2E_DATABASE_URL=postgres://... \
  *     npx vitest run tests/pariprashna/samiksha/capture_turn_commit.db.test.ts
  */
@@ -88,9 +88,10 @@ const TURN_TEXT = [
 ].join(' ')
 
 async function ensureSchema() {
-  // Idempotent DDL mirroring migration 467 (message_parts) + 470 (ledger) so the test is
-  // self-contained against a bare Postgres. When the real migrations are already applied
-  // (the preferred local setup), every statement here is a no-op.
+  // Minimal conversation ownership and the migration 467/470 tables used by the test.
+  await query(`CREATE TABLE IF NOT EXISTS conversations (
+    id uuid PRIMARY KEY,
+    chart_id uuid NOT NULL)`)
   await query(`CREATE TABLE IF NOT EXISTS conversation_messages (
     id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
     conversation_id uuid NOT NULL, parent_message_id uuid, role text NOT NULL,
@@ -134,6 +135,7 @@ async function cleanup() {
   await query('DELETE FROM brahma_mimamsa_prediction_ledger WHERE chart_id = $1', [CHART])
   await query('DELETE FROM message_parts WHERE message_id = $1', [MESSAGE_ID])
   await query('DELETE FROM conversation_messages WHERE conversation_id = $1', [CONVERSATION_ID])
+  await query('DELETE FROM conversations WHERE id = $1', [CONVERSATION_ID])
 }
 
 /** Replays the route's own part-assembly + capture, verbatim in shape. */
@@ -175,12 +177,13 @@ async function commitTurnAsRouteDoes() {
 run('PB-3.1 G1 — a committed turn writes `detected` rows and the loop runs from there', () => {
   beforeAll(async () => {
     await ensureSchema()
+    await cleanup()
+    await query('INSERT INTO conversations (id, chart_id) VALUES ($1, $2)', [CONVERSATION_ID, CHART])
     await query(
       `INSERT INTO conversation_messages (id, conversation_id, role, metadata_json)
        VALUES ($1, $2, 'user', '{}'::jsonb) ON CONFLICT (id) DO NOTHING`,
       [randomUUID(), CONVERSATION_ID],
     )
-    await cleanup()
   })
 
   afterAll(async () => {
@@ -292,6 +295,8 @@ run('PB-3.1 G1 — a committed turn writes `detected` rows and the loop runs fro
       expect(review.turnAnchors[r.message_part_id!]).toMatchObject({
         chartId: CHART,
         conversationId: CONVERSATION_ID,
+        turnOrdinal: 1,
+        sourcePartId: r.message_part_id,
       })
     }
   })

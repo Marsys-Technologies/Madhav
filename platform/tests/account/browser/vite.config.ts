@@ -9,6 +9,7 @@ export default defineConfig({
   define: {
     "process.env": JSON.stringify({
       NEXT_PUBLIC_MARSYS_FLAG_AI_CONSOLE_BYOK: "true",
+      MARSYS_FLAG_AI_CONSOLE_BYOK: "true",
       NEXT_PUBLIC_MARSYS_FLAG_AI_METERING_ENABLED: "true",
     }),
   },

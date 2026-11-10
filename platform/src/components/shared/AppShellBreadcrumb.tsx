@@ -21,38 +21,34 @@ export function AppShellBreadcrumb({
   // Consume and cockpit build have their own headers — breadcrumb is redundant there
   if (pathname.includes('/consume')) return null
   if (pathname.includes('/nirmana')) return null
-  if (segments.length === 0) return null
+  if (segments.length === 0 && !mobileNav) return null
 
   return (
-    <nav
-      aria-label="Breadcrumb"
-      className="flex h-10 items-center gap-1.5 border-b border-[rgba(212,175,55,0.12)] bg-[rgba(8,5,2,0.5)] px-4 text-sm"
-    >
+    <header className={`folio-nav-surface flex min-h-11 shrink-0 items-center gap-2 border-b px-3 text-sm md:px-4 ${segments.length === 0 ? 'md:hidden' : ''}`}>
       {mobileNav}
-      {segments.map((seg, i) => (
-        <span key={i} className="flex items-center gap-1.5">
-          {i > 0 && (
-            <span aria-hidden="true" className="select-none text-[rgba(212,175,55,0.2)]">
-              ·
-            </span>
-          )}
-          {seg.href && !seg.current ? (
-            <Link
-              href={seg.href}
-              className="text-[rgba(212,175,55,0.45)] transition-colors hover:text-[#fce29a]"
-            >
-              {seg.label}
-            </Link>
-          ) : (
-            <span
-              className={seg.current ? 'font-medium text-[#fce29a]' : 'text-[rgba(212,175,55,0.45)]'}
-              aria-current={seg.current ? 'page' : undefined}
-            >
-              {seg.label}
-            </span>
-          )}
-        </span>
-      ))}
-    </nav>
+      {segments.length > 0 && (
+        <nav aria-label="Breadcrumb" className="min-w-0">
+          <ol className="flex flex-wrap items-center gap-x-2">
+            {segments.map((segment, index) => (
+              <li key={index} className="flex min-w-0 items-center gap-2">
+                {index > 0 && <span aria-hidden="true" className="text-[var(--folio-muted)]">·</span>}
+                {segment.href && !segment.current ? (
+                  <Link href={segment.href} className="flex min-h-11 items-center [overflow-wrap:anywhere] text-[var(--folio-action)] underline underline-offset-4">
+                    {segment.label}
+                  </Link>
+                ) : (
+                  <span
+                    className="folio-nav-identity py-2 font-semibold"
+                    aria-current={segment.current ? 'page' : undefined}
+                  >
+                    {segment.label}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ol>
+        </nav>
+      )}
+    </header>
   )
 }

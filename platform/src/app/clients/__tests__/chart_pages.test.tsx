@@ -37,6 +37,7 @@ vi.mock('@/lib/db/client', () => ({ query: mockQuery }))
 vi.mock('@/lib/auth/chart-page-guard', () => ({ resolveChartPageAccess: mockResolveAccess }))
 vi.mock('next/navigation', () => ({
   redirect: mockRedirect,
+  permanentRedirect: mockRedirect,
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
   usePathname: () => '/clients/test-chart',
   useSearchParams: () => new URLSearchParams(),
@@ -55,6 +56,11 @@ vi.mock('@/components/cockpit/CockpitShell', () => ({
 vi.mock('@/components/consume/ConsumeChat', () => ({
   ConsumeChat: ({ chartId }: { chartId: string }) => (
     <div data-testid="consume-chat-mock" data-chart-id={chartId} />
+  ),
+}))
+vi.mock('@/app/panchang/components/PanchangClientView', () => ({
+  PanchangClientView: ({ fixedChartId, initialDate }: { fixedChartId: string; initialDate: string }) => (
+    <div data-testid="embedded-panchang" data-chart-id={fixedChartId} data-initial-date={initialDate} />
   ),
 }))
 vi.mock('@/components/profile/ChartHero', () => ({ ChartHero: () => null }))
@@ -244,6 +250,24 @@ describe('clients/[id]/panchang — personalized panchang', () => {
     expect(mockRedirect).toHaveBeenCalledWith('/dashboard')
   })
 
+  it.each([
+    ['2026-11-10T18:29:59Z', '2026-11-10'],
+    ['2026-11-10T18:30:00Z', '2026-11-11'],
+  ])('defaults to the IST date at %s', async (instant, date) => {
+    setAccess('view', 'guest')
+    mockQuery.mockResolvedValueOnce({ rows: [{ name: 'Chart' }] })
+    const { default: PanchangPage } = await import('../[id]/panchang/page')
+    vi.useFakeTimers({ toFake: ['Date'] })
+    try {
+      vi.setSystemTime(new Date(instant))
+      const jsx = await PanchangPage({ params: Promise.resolve({ id: TEST_CHART_ID }) })
+      const { getByTestId } = render(jsx)
+      expect(getByTestId('embedded-panchang')).toHaveAttribute('data-initial-date', date)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('AC.1 — view-only grantee CAN view personalized panchang', async () => {
     setAccess('view', 'guest')
     mockQuery.mockResolvedValueOnce({ rows: [{ name: 'Chart', birth_place: 'Bhubaneswar' }] })
@@ -252,12 +276,33 @@ describe('clients/[id]/panchang — personalized panchang', () => {
     const { getByTestId } = render(jsx)
     expect(getByTestId('chart-panchang-root').getAttribute('data-permission')).toBe('view')
     expect(getByTestId('chart-panchang-root').getAttribute('data-chart-id')).toBe(TEST_CHART_ID)
+    expect(getByTestId('embedded-panchang').getAttribute('data-chart-id')).toBe(TEST_CHART_ID)
+    const chartNav = getByTestId('chart-panchang-root').querySelector('nav')
+    expect(chartNav?.querySelector('[aria-current="page"]')?.getAttribute('href')).toBe(`/clients/${TEST_CHART_ID}/panchang`)
+    expect(chartNav?.querySelector('a[href$="/reports"]')).toBeNull()
   })
 })
 
 // ── Chart switcher — pure helper + interaction ──────────────────────────────
 
 describe('ChartSwitcher — switching logic (AC.2)', () => {
+  it('moves between options by keyboard and restores trigger focus on Escape', async () => {
+    const { ChartSwitcher } = await import('@/components/nav/ChartSwitcher')
+    const { getByRole, queryByRole } = render(
+      <ChartSwitcher currentChartId="a" charts={[{ id: 'a', name: 'Alpha' }, { id: 'b', name: 'Beta' }]} />,
+    )
+    const trigger = getByRole('button', { name: 'Switch chart: Alpha' })
+    fireEvent.click(trigger)
+    const alpha = getByRole('option', { name: 'Alpha' })
+    expect(alpha).toHaveFocus()
+    fireEvent.keyDown(alpha, { key: 'ArrowDown' })
+    const beta = getByRole('option', { name: 'Beta' })
+    expect(beta).toHaveFocus()
+    fireEvent.keyDown(beta, { key: 'Escape' })
+    expect(queryByRole('listbox')).toBeNull()
+    expect(trigger).toHaveFocus()
+  })
+
   it('computeSwitchHref — root chart page', async () => {
     const { computeSwitchHref } = await import('@/components/nav/ChartSwitcher')
     expect(computeSwitchHref('/clients/old', 'new')).toBe('/clients/new')
@@ -336,4 +381,13 @@ describe('ChartSwitcher — switching logic (AC.2)', () => {
     )
     expect(container.textContent?.toLowerCase()).not.toMatch(/tier|depth/)
   })
+})
+
+it('preserves repeated query values in the legacy reading bookmark', async () => {
+  const { default: alias } = await import('@/app/clients/[id]/consume/[conversationId]/page')
+  await expect(alias({
+    params: Promise.resolve({ id: 'chart', conversationId: 'reading' }),
+    searchParams: Promise.resolve({ audit: ['one', 'two'], ignored: undefined }),
+  })).rejects.toThrow('NEXT_REDIRECT')
+  expect(mockRedirect).toHaveBeenLastCalledWith('/clients/chart/consult/reading?audit=one&audit=two')
 })

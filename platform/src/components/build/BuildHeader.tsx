@@ -7,7 +7,7 @@ import { RefreshButton } from './RefreshButton'
 
 const NAV_LINKS = [
   { href: '/ai-console', label: 'AI Console', feature: 'aiConsole' as const },
-  { href: '/observatory', label: 'Observatory' },
+  { href: '/admin/activity?scope=mine', label: 'Observatory' },
 ]
 
 export function BuildHeader({ showAiConsole = false }: { showAiConsole?: boolean }) {
@@ -25,7 +25,7 @@ export function BuildHeader({ showAiConsole = false }: { showAiConsole?: boolean
           <nav aria-label="Cockpit sections" className="flex items-center gap-0.5">
             {navLinks.map(({ href, label }) => {
               const isActive =
-                href === '/cockpit' ? pathname === '/cockpit' : pathname.startsWith(href)
+                href === '/cockpit' ? pathname === '/cockpit' : pathname.startsWith(href.split('?')[0])
               return (
                 <Link
                   key={href}

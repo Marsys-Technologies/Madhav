@@ -1,0 +1,103 @@
+.context {
+  background: var(--folio-canvas);
+  border-radius: 12px;
+  padding: clamp(16px, 3vw, 24px);
+  overflow-wrap: anywhere;
+  font-family: system-ui, sans-serif;
+}
+
+.context :global(.j1-title) > span {
+  color: var(--folio-ink);
+  font-family: inherit;
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-variant: normal;
+  line-height: 1.2;
+}
+
+.context :global(.j1-title) > small,
+.context p {
+  color: var(--folio-muted);
+}
+
+.scope {
+  margin: 8px 0 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.directoryHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+  border-bottom: 1px solid var(--folio-divider);
+  background: var(--folio-canvas);
+  color: var(--folio-ink);
+  padding: 16px clamp(12px, 3vw, 24px);
+  font-family: var(--folio-font-body);
+}
+
+.directoryHeader h2 {
+  font: 600 1.125rem/1.25 var(--folio-font-heading);
+}
+
+.directoryControls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.directoryControls input,
+.directoryControls button {
+  min-height: var(--folio-target);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: .875rem;
+}
+
+.directoryControls input {
+  flex: 1 1 11rem;
+  min-width: 0;
+  max-width: 100%;
+  border: 1px solid var(--folio-boundary);
+  background: var(--folio-panel);
+  color: inherit;
+}
+
+.directoryControls input::placeholder { color: var(--folio-muted); }
+
+.directoryControls button {
+  background: var(--folio-action);
+  color: var(--folio-on-action);
+  font-weight: 600;
+}
+
+.directoryControls button:hover { filter: brightness(.92); }
+
+.directoryControls :is(input, button):focus-visible,
+.directoryResults:focus-visible {
+  outline: 2px solid var(--gold-lighter);
+  outline-offset: -2px;
+}
+
+.directoryControls input:focus-visible { outline-color: var(--folio-focus); }
+.directoryControls button:focus-visible { outline-color: var(--folio-on-action); }
+.directoryResults { max-width: 100%; overflow-x: auto; }
+
+.userRecord {
+  border: 1px solid var(--folio-divider);
+  border-radius: 12px;
+  background: var(--folio-panel);
+  color: var(--folio-ink);
+  padding: clamp(12px, 3vw, 24px);
+}
+
+.userRecord h2 {
+  margin-block-end: 12px;
+  font: 600 1.25rem/1.2 var(--folio-font-heading);
+}
+
+.userRecord dl dt { color: var(--folio-muted); }

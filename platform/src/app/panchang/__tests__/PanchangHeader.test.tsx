@@ -4,25 +4,35 @@
  * Tests: date controls, location switch, URL param persistence, personalise dropdown.
  * Navigation (router.push) is mocked; we verify the calls rather than
  * rendering a full Next.js router.
- * useChartList is mocked to return an empty loaded state (no charts) so the
- * personalise select is not disabled during tests.
+ * useChartList is mocked to return the loaded chart choices for each case.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { PanchangHeader, PRESET_LOCATIONS, resolveDate, resolveLocation } from '../components/PanchangHeader'
+import { PanchangClientView } from '../components/PanchangClientView'
+import type { ChartSummary } from '../hooks/useChartList'
 
 // Mock next/navigation
 const mockPush = vi.fn()
 const mockSearchParams = new URLSearchParams()
+let mockCharts: ChartSummary[] = []
+const mockPanchangDay = vi.hoisted(() => vi.fn(() => ({
+  data: null,
+  isLoading: false,
+  isError: false,
+  refetch: vi.fn(),
+})))
+
+vi.mock('../hooks/usePanchangDay', () => ({ usePanchangDay: mockPanchangDay }))
+vi.mock('../components/ActionBar', () => ({ ActionBar: () => null }))
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
   useSearchParams: () => mockSearchParams,
 }))
 
-// Mock useChartList — return empty loaded state so personalise select is enabled
 vi.mock('../hooks/useChartList', () => ({
-  useChartList: () => ({ charts: [], isLoading: false, error: null }),
+  useChartList: () => ({ charts: mockCharts, isLoading: false, error: null }),
 }))
 
 // Mock date-fns format to make today deterministic
@@ -42,11 +52,14 @@ describe('PanchangHeader', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockCharts = []
+    localStorage.clear()
     // Reset mocked search params
     mockSearchParams.delete('d')
     mockSearchParams.delete('loc')
     mockSearchParams.delete('lat')
     mockSearchParams.delete('lon')
+    mockSearchParams.delete('chart_id')
   })
 
   it('renders the date navigation controls', () => {
@@ -99,12 +112,75 @@ describe('PanchangHeader', () => {
     expect(screen.getByRole('button', { name: 'Apply' })).toBeInTheDocument()
   })
 
+  it.each([
+    ['no URL date', null, '2026-05-20'],
+    ['an invalid URL date', 'not-a-date', '2026-05-20'],
+    ['a valid URL date', '2026-05-22', '2026-05-22'],
+  ])('keeps the displayed and requested chart date in sync for %s', (_label, urlDate, expected) => {
+    if (urlDate) mockSearchParams.set('d', urlDate)
+    mockSearchParams.set('chart_id', 'other-chart')
+    render(<PanchangClientView initialData={null} initialDate={defaultProps.initialDate} fixedChartId="allowed-chart" />)
+    expect(screen.getByLabelText('Select date')).toHaveValue(expected)
+    expect(mockPanchangDay).toHaveBeenLastCalledWith(expect.objectContaining({
+      date: expected,
+      chartId: 'allowed-chart',
+      tzOffsetMinutes: 330,
+    }))
+  })
+
+  it('keeps navigation on the authorized chart and drops any chart override', () => {
+    mockSearchParams.set('d', '2026-05-20')
+    mockSearchParams.set('chart_id', 'other-chart')
+    render(<PanchangHeader {...defaultProps} fixedChartId="allowed-chart" />)
+    expect(screen.queryByLabelText('Personalise view')).not.toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Location'), { target: { value: 'new_delhi' } })
+    expect(mockPush).toHaveBeenCalledWith('/clients/allowed-chart/panchang?d=2026-05-20&loc=new_delhi')
+  })
+
   it('Personalise select is present with Generic Panchang default and enabled when charts loaded', () => {
     render(<PanchangHeader {...defaultProps} />)
     const sel = screen.getByLabelText('Personalise view')
     expect(sel).toBeInTheDocument()
     expect(sel).not.toBeDisabled()
     expect(sel).toHaveValue('generic')
+  })
+
+  it('uses the granted stored selection and falls back to generic if the grant is removed', () => {
+    mockCharts = [{ id: 'granted-chart', name: 'Granted chart', birth_date: '1990-01-01' }]
+    localStorage.setItem('panchang.personalise.chart_id', 'granted-chart')
+    const view = <PanchangClientView initialData={null} initialDate={defaultProps.initialDate} />
+    const { rerender } = render(view)
+
+    expect(screen.getByLabelText('Personalise view')).toHaveValue('granted-chart')
+    expect(mockPanchangDay).toHaveBeenLastCalledWith(expect.objectContaining({ chartId: 'granted-chart' }))
+
+    mockSearchParams.set('chart_id', 'denied-chart')
+    rerender(<PanchangClientView initialData={null} initialDate={defaultProps.initialDate} />)
+
+    expect(screen.getByLabelText('Personalise view')).toHaveValue('generic')
+    expect(mockPanchangDay).toHaveBeenLastCalledWith(expect.objectContaining({ chartId: null }))
+    expect(mockPanchangDay).not.toHaveBeenCalledWith(expect.objectContaining({ chartId: 'denied-chart' }))
+
+    mockSearchParams.delete('chart_id')
+    mockCharts = []
+    rerender(<PanchangClientView initialData={null} initialDate={defaultProps.initialDate} />)
+
+    expect(screen.getByLabelText('Personalise view')).toHaveValue('generic')
+    expect(mockPanchangDay).toHaveBeenLastCalledWith(expect.objectContaining({ chartId: null }))
+  })
+
+  it('clears a stored chart even when the current URL has no chart parameter', () => {
+    mockCharts = [{ id: 'granted-chart', name: 'Granted chart', birth_date: '1990-01-01' }]
+    localStorage.setItem('panchang.personalise.chart_id', 'granted-chart')
+    render(<PanchangClientView initialData={null} initialDate={defaultProps.initialDate} />)
+    const picker = screen.getByLabelText('Personalise view')
+    expect(picker).toHaveValue('granted-chart')
+
+    fireEvent.change(picker, { target: { value: 'generic' } })
+
+    expect(localStorage.getItem('panchang.personalise.chart_id')).toBeNull()
+    expect(picker).toHaveValue('generic')
+    expect(mockPanchangDay).toHaveBeenLastCalledWith(expect.objectContaining({ chartId: null }))
   })
 })
 

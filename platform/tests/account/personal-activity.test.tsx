@@ -57,7 +57,9 @@ it("uses identical personal filters for summary, daily graph and connection hier
                 transport_unpriced: 1,
                 legacy_records: 0,
               }
-            : { groups: [] },
+            : u.includes("groupBy=day")
+              ? { groups: [{ name: "2026-10-01", transport_attempts: 2, transport_success: 1, cli_executions: 0, p50_success_ms: 1250 }] }
+              : { groups: [] },
         ),
       );
     }),
@@ -75,9 +77,10 @@ it("uses identical personal filters for summary, daily graph and connection hier
     expect(q.searchParams.get("model")).toBe("anthropic/claude");
     expect(q.searchParams.has("userId")).toBe(false);
   }
-  expect(screen.getByText("API calls")).toBeTruthy();
-  expect(screen.getByText("CLI executions")).toBeTruthy();
+  expect(screen.getByText("API calls", { selector: "p" })).toBeTruthy();
+  expect(screen.getByText("CLI executions", { selector: "p" })).toBeTruthy();
   expect(screen.getByText("Provider-reported cost")).toBeTruthy();
+  expect(screen.getByRole("region", { name: "Daily activity chart" })).toHaveAttribute("tabindex", "0");
   expect(screen.getAllByText("Not reported").length).toBeGreaterThan(0);
 });
 it("does not issue a request for an invalid saved period", async () => {

@@ -1,0 +1,54 @@
+.commandCenter {
+  max-width: 80rem;
+  min-width: 0;
+  margin-inline: auto;
+  padding: clamp(12px, 3vw, 24px);
+  background: var(--folio-canvas);
+  color: var(--folio-ink);
+  font-family: var(--folio-font-body);
+  overflow-wrap: anywhere;
+}
+
+.commandCenter :is(h1, h2) {
+  color: var(--folio-ink);
+  font-family: var(--folio-font-heading);
+}
+
+.commandCenter :global(.text-muted-foreground) { color: var(--folio-muted); }
+.commandCenter li { border-color: var(--folio-divider); background: var(--folio-panel); }
+
+.chartControls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: .875rem;
+}
+
+.chartControls :is(select, button) {
+  min-height: var(--folio-target);
+  max-width: 100%;
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+
+.chartControls select {
+  border: 1px solid var(--folio-boundary);
+  background: var(--folio-panel);
+  color: var(--folio-ink);
+}
+
+.chartControls button {
+  background: var(--folio-action);
+  color: var(--folio-on-action);
+  font-weight: 600;
+}
+
+.chartControls :is(select, button):focus-visible,
+.registry:focus-visible {
+  outline: 2px solid var(--folio-focus);
+  outline-offset: 2px;
+}
+
+.registry { overflow-x: auto; }

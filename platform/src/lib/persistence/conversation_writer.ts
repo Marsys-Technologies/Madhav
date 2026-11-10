@@ -133,29 +133,44 @@ export async function writeConversationMessages(
 /** Restore conversation: load all non-archived messages as UIMessage array. */
 export async function loadConversationMessagesV2(
   conversationId: string,
+  { includeCanonicalText = false }: { includeCanonicalText?: boolean } = {},
 ): Promise<UIMessage[]> {
+  // Share and export use reader-visible prose only from the current store.
+  // Keeping the blocks together lets share redaction handle multi-block sections.
+  const canonicalText = includeCanonicalText ? `,
+       (SELECT string_agg(p.body->>'text', E'\\n' ORDER BY p.seq)
+          FROM message_parts p
+         WHERE p.message_id = m.id AND p.kind = 'text'
+           AND jsonb_typeof(p.body->'text') = 'string') AS canonical_text` : ''
   const { rows } = await query<{
     id: string
     role: string
     parts_json: unknown
     metadata_json: unknown
     created_at: string
+    canonical_text?: string | null
   }>(
-    `SELECT id, role, parts_json, metadata_json, created_at
-     FROM conversation_messages
+    `SELECT id, role, parts_json, metadata_json, created_at${canonicalText}
+     FROM conversation_messages m
      WHERE conversation_id = $1
-     ORDER BY created_at ASC`,
+     ORDER BY created_at ASC, CASE role WHEN 'user' THEN 0 ELSE 1 END, id`,
     [conversationId],
   )
 
-  return rows.map((row) => ({
-    id: row.id,
-    role: row.role as UIMessage['role'],
-    parts: Array.isArray(row.parts_json)
+  return rows.map((row) => {
+    const legacyParts = Array.isArray(row.parts_json)
       ? (row.parts_json as UIMessage['parts'])
-      : [],
-    metadata: row.metadata_json as Record<string, unknown>,
-  }))
+      : []
+    const parts: UIMessage['parts'] = row.canonical_text
+      ? [...legacyParts.filter((part) => part?.type !== 'text'), { type: 'text', text: row.canonical_text }]
+      : legacyParts
+    return {
+      id: row.id,
+      role: row.role as UIMessage['role'],
+      parts,
+      metadata: row.metadata_json as Record<string, unknown>,
+    }
+  })
 }
 
 /** Archive (soft-delete) a conversation: set archived_at, do NOT delete the row. */

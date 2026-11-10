@@ -25,12 +25,33 @@ vi.mock('@/lib/embeddings/embedConversationMessage', () => ({
   embedConversationMessage: vi.fn(async () => undefined),
 }))
 
-import { writeConversationMessages } from '@/lib/persistence/conversation_writer'
+import { loadConversationMessagesV2, writeConversationMessages } from '@/lib/persistence/conversation_writer'
 import type { UIMessage } from 'ai'
 
 const CONV = '11111111-1111-4111-8111-111111111111'
 const ID_A = 'aaaaaaaa-0000-4000-8000-000000000001'
 const ID_B = 'bbbbbbbb-0000-4000-8000-000000000002'
+
+it('reads canonical prose and legacy questions together for a saved transcript', async () => {
+  const legacyQuestion = [{ type: 'text', text: 'Legacy question' }]
+  const legacyReasoning = { type: 'reasoning', text: 'Previously shareable reasoning' }
+  queryMock.mockImplementationOnce(async (sql: string) => ({
+    rows: [
+      { id: ID_A, role: 'user', parts_json: legacyQuestion, canonical_text: null },
+      {
+        id: ID_B,
+        role: 'assistant',
+        parts_json: [legacyReasoning],
+        canonical_text: sql.includes('message_parts') ? 'Current answer' : null,
+      },
+    ],
+  }))
+  const messages = await loadConversationMessagesV2(CONV, { includeCanonicalText: true })
+  expect(messages.map(({ parts }) => parts)).toEqual([
+    legacyQuestion,
+    [legacyReasoning, { type: 'text', text: 'Current answer' }],
+  ])
+})
 
 function msg(id: string, role: 'user' | 'assistant', text: string): UIMessage {
   return { id, role, parts: [{ type: 'text', text }] } as unknown as UIMessage

@@ -13,7 +13,7 @@ export function ConditionalChartSwitcherBar({ currentChartId, charts }: Props) {
   // Cockpit build has no switcher bar — hero is the topmost element
   if (pathname?.includes('/nirmana')) return null
   return (
-    <div className="border-b border-[rgba(212,175,55,0.14)] px-4 py-2 flex items-center justify-between">
+    <div className="border-b border-[var(--folio-divider)] bg-[var(--folio-canvas)] px-4 py-2">
       <ChartSwitcher currentChartId={currentChartId} charts={charts} />
     </div>
   )

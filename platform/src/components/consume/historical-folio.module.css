@@ -1,0 +1,30 @@
+@media screen {
+  .header {
+    --jw-ink: #242920;
+    --jw-ink-dim: #52584a;
+    --jw-gold-dim: #52584a;
+    color: var(--jw-ink);
+    background: #f5efe2;
+    padding: clamp(16px, 4vw, 24px);
+    border-radius: 12px;
+    overflow-wrap: anywhere;
+  }
+
+  .header .snapshot {
+    background: #fcf8ee;
+    border-color: #a5a18e;
+  }
+
+  .header .returnLink,
+  .header .returnLink:hover {
+    color: #2e563e;
+    text-decoration: underline;
+    text-underline-offset: 0.18em;
+  }
+
+  .header .returnLink:focus-visible {
+    outline: 3px solid #2e563e;
+    outline-offset: 4px;
+    box-shadow: none;
+  }
+}

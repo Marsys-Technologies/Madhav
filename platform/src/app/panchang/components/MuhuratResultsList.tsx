@@ -22,7 +22,7 @@ import { CalendarDays, MessageCircle } from 'lucide-react'
 import { StarRating } from '@/components/ui/star-rating'
 import type { MuhuratWindow } from '../hooks/useMuhuratFinder'
 import { buildMuhuratWindowIcs, downloadIcs } from '@/lib/panchang/ics_client'
-import { serialiseContext } from './AskMadhavLink'
+import { panchangAskHref } from './AskMadhavLink'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -32,6 +32,7 @@ interface MuhuratResultsListProps {
   error: string | null
   /** The selected event key — used in Ask-Madhav prompt generation */
   event: string
+  chartId?: string | null
   /** Panchang data for the displayed day to enrich Ask-Madhav prompt */
   tzOffsetMinutes?: number
   /**
@@ -116,9 +117,6 @@ function badgeStyle(key: string, score: number): React.CSSProperties {
   }
 }
 
-// Native client ID for Ask-Madhav deep link (mirrors ActionBar.tsx)
-const NATIVE_CLIENT_ID = '362f9f17-95a5-490b-a5a7-027d3e0efda0'
-
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 /** Loading skeleton for a single result row */
@@ -144,12 +142,14 @@ function MuhuratRow({
   window: w,
   rank,
   event,
+  chartId,
   tzOffsetMinutes,
   panchangContext,
 }: {
   window: MuhuratWindow
   rank: number
   event: string
+  chartId?: string | null
   tzOffsetMinutes: number
   panchangContext?: object | null
 }) {
@@ -161,6 +161,11 @@ function MuhuratRow({
 
   // Build the Ask-Madhav prompt — deep link into chat with pre-loaded Panchang context (4C-8)
   function handleAskMadhav() {
+    if (!chartId) {
+      router.push('/dashboard')
+      return
+    }
+
     // Identify top breakdown factors for the prompt
     const topFactors = Object.entries(w.breakdown)
       .filter(([, v]) => v > 0)
@@ -175,12 +180,7 @@ function MuhuratRow({
       (topFactors ? `Top factors: ${topFactors}. ` : '') +
       `What does this mean for planning this event?`
 
-    const params = new URLSearchParams()
-    params.set('prompt', visiblePrompt)
-    if (panchangContext) {
-      params.set('context', serialiseContext(panchangContext))
-    }
-    router.push(`/clients/${NATIVE_CLIENT_ID}/consume?${params.toString()}`)
+    router.push(panchangAskHref({ chartId, prompt: visiblePrompt, context: panchangContext }))
   }
 
   // Export this window as an ICS file (browser-safe, client-side build)
@@ -269,8 +269,8 @@ function MuhuratRow({
         {/* Ask Madhav — functional */}
         <button
           onClick={handleAskMadhav}
-          aria-label={`Ask Madhav about ${dateLabel} for ${event.replace(/_/g, ' ')}`}
-          title="Opens chat with pre-loaded muhurat context"
+          aria-label={chartId ? `Ask Madhav about ${dateLabel} for ${event.replace(/_/g, ' ')}` : 'Choose a chart'}
+          title={chartId ? 'Opens chat with pre-loaded muhurat context' : 'Open the chart roster'}
           className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-[rgba(212,175,55,0.12)]"
           style={{
             color: 'var(--brand-gold)',
@@ -279,7 +279,7 @@ function MuhuratRow({
           }}
         >
           <MessageCircle className="h-3 w-3 shrink-0" aria-hidden="true" />
-          <span>Ask Madhav about this date</span>
+          <span>{chartId ? 'Ask Madhav about this date' : 'Choose a chart'}</span>
         </button>
       </div>
     </div>
@@ -293,6 +293,7 @@ export function MuhuratResultsList({
   isLoading,
   error,
   event,
+  chartId,
   tzOffsetMinutes = 330,
   panchangContext,
 }: MuhuratResultsListProps) {
@@ -355,6 +356,7 @@ export function MuhuratResultsList({
           window={w}
           rank={i + 1}
           event={event}
+          chartId={chartId}
           tzOffsetMinutes={tzOffsetMinutes}
           panchangContext={panchangContext}
         />

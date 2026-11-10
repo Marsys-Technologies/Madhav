@@ -62,7 +62,7 @@ export function RefreshIconButton({ chartId, scope, scopeTarget, size = 22, onRe
         border: 'none',
         borderRadius: '4px',
         cursor: loading ? 'wait' : 'pointer',
-        color: 'var(--on-dark-faint)',
+        color: 'var(--on-dark-mut)',
         padding: 0,
         transition: 'color 0.15s, background 0.15s',
       }}
@@ -71,7 +71,7 @@ export function RefreshIconButton({ chartId, scope, scopeTarget, size = 22, onRe
         ;(e.currentTarget as HTMLButtonElement).style.background = 'rgba(168,124,42,0.10)'
       }}
       onMouseLeave={e => {
-        ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--on-dark-faint)'
+        ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--on-dark-mut)'
         ;(e.currentTarget as HTMLButtonElement).style.background = 'transparent'
       }}
     >

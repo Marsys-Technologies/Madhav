@@ -93,6 +93,16 @@ describe.each(MODES)('unauthenticated page redirect, SESSION_GATE_MODE = %s', (_
     expect(res.headers.get('location')).toBe(`${ORIGIN}/login?next=%2Fclients%2Fabc-123%2Fedit`)
   })
 
+  it('preserves a safe destination when an account setup visit has lost its session', async () => {
+    const res = await proxy(req('/setup-account?next=%2Fclients%2Fabc-123%2Fedit'))
+    expect(res.headers.get('location')).toBe(`${ORIGIN}/login?setup=1&next=%2Fclients%2Fabc-123%2Fedit`)
+  })
+
+  it('drops ambiguous account setup destinations', async () => {
+    const res = await proxy(req('/setup-account?next=%2Fclients%2Fabc-123%2Fedit&next=%2Fshare%2FAbC123xyz0'))
+    expect(res.headers.get('location')).toBe(`${ORIGIN}/login`)
+  })
+
   it.each(['/dashboard', '/cockpit', '/clients', '/clients/', '/share', '/share/', '/panchang', '/setup-account'])(
     'non-allowlisted or bare-directory path %s -> plain /login (exactly as before)',
     async (path) => {
@@ -171,6 +181,19 @@ describe('a valid session is not redirected at all', () => {
     verifyMock.mockResolvedValue({ sub: 'uid-next-test', exp: Math.floor(Date.now() / 1000) + 3600 })
     const res = await proxy(req('/share/AbC123xyz0', shapeValidCookie()))
     expect(res.headers.get('location')).toBeNull()
+  })
+
+  it('forwards the requested chart pathname for the server-side session guard', async () => {
+    setMode('shadow')
+    verifyMock.mockResolvedValue({ sub: 'uid-next-test', exp: Math.floor(Date.now() / 1000) + 3600 })
+    const request = req('/clients/abc-123/consult/reading-456?tab=history', shapeValidCookie())
+    request.headers.set('x-madhav-chart-return-path', '/clients/wrong-chart/edit')
+
+    const res = await proxy(request)
+
+    expect(res.headers.get('location')).toBeNull()
+    expect(res.headers.get('x-middleware-request-x-madhav-chart-return-path'))
+      .toBe('/clients/abc-123/consult/reading-456')
   })
 })
 

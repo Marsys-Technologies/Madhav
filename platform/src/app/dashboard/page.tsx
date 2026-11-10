@@ -10,6 +10,7 @@ import type { ChartWithMeta, RosterStats } from '@/lib/roster/types'
 import { PageTitle } from '@/components/journey1/Titles'
 import { emptyChartReadiness, getChartReadinessMap } from '@/lib/charts/readiness'
 import { ChartCreatedToast } from '@/components/brahma/ChartCreatedToast'
+import styles from './folio.module.css'
 
 /**
  * Dashboard — role-gated roster (Unit 3.consult_nav, Commit 1).
@@ -37,6 +38,7 @@ export default async function DashboardPage() {
   // Resolve role — legacy 'client' is treated as 'guest' until migration 082 fully applies.
   const role: 'super_admin' | 'guest' =
     profile?.role === 'super_admin' ? 'super_admin' : 'guest'
+  const canCreateChart = role === 'super_admin'
 
   // Fetch the roster:
   //   super_admin → every chart in the system.
@@ -90,15 +92,15 @@ export default async function DashboardPage() {
   }
 
   return (
-    <div className="relative min-h-full overflow-hidden" data-testid="dashboard-root" data-role={role}>
+    <div className={`relative min-h-full overflow-hidden ${styles.folio}`} data-testid="dashboard-root" data-role={role}>
       {/* Chart-created toast: shown when ?chart_created=[id] is present in URL */}
       <Suspense>
         <ChartCreatedToast />
       </Suspense>
       <div className="j1-container">
-        <div className="flex items-center justify-between mb-6">
+        <div className={styles.heading}>
           <PageTitle name="charts"/>
-          {role === 'super_admin' && (
+          {canCreateChart && (
             <Link href="/clients/new" aria-label="Nava Jātaka (new chart)" className="j1-btn j1-btn-secondary" data-testid="new-client-link">
               <span className="text-base leading-none">+</span>
               <PageTitle name="new" as="span" compact/>
@@ -106,7 +108,7 @@ export default async function DashboardPage() {
           )}
         </div>
         <Suspense>
-          <ClientRoster charts={chartsWithMeta} stats={stats} />
+          <ClientRoster charts={chartsWithMeta} stats={stats} canCreateChart={canCreateChart} />
         </Suspense>
       </div>
     </div>

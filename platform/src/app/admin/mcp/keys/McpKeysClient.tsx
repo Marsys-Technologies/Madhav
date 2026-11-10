@@ -11,11 +11,13 @@
  * Pattern mirrors AdminClient.tsx (useQuery + mutation via fetch).
  */
 
-import { useState } from 'react'
+import { useId, useRef, useState, type RefObject } from 'react'
 import { PageTitle } from '@/components/journey1/Titles'
 import { useObservatoryScope } from '@/components/observatory/ObservatoryScope'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { McpApiKeyRow, McpKeyCreatedResponse } from '@/lib/mcp/types'
+import styles from './keys.module.css'
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, init)
@@ -31,7 +33,7 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
 function KeyRow({ k, onRevoke }: { k: McpApiKeyRow; onRevoke: (id: string) => void }) {
   const revoked = !!k.revoked_at
   return (
-    <tr className={revoked ? 'opacity-40' : ''}>
+    <tr className={revoked ? styles.revoked : undefined}>
       <td className="px-3 py-2 font-mono text-xs text-muted-foreground">{k.key_id}</td>
       <td className="px-3 py-2 text-sm">{k.label ?? '—'}</td>
       <td className="px-3 py-2 text-sm">{k.user_uid.slice(0, 12)}…</td>
@@ -43,11 +45,11 @@ function KeyRow({ k, onRevoke }: { k: McpApiKeyRow; onRevoke: (id: string) => vo
       </td>
       <td className="px-3 py-2">
         {revoked ? (
-          <span className="text-xs text-red-500">Revoked</span>
+          <span className={`${styles.error} text-xs`}>Revoked</span>
         ) : (
           <button
             onClick={() => onRevoke(k.key_id)}
-            className="rounded bg-red-900/30 px-2 py-1 text-xs text-red-400 hover:bg-red-900/60 transition"
+            className={`${styles.dangerAction} text-xs`}
           >
             Revoke
           </button>
@@ -66,37 +68,54 @@ interface CreateResult {
   user_uid: string
 }
 
-function CreatedKeyModal({ result, onClose }: { result: CreateResult; onClose: () => void }) {
-  const [copied, setCopied] = useState(false)
+function CreatedKeyModal({ result, onClose, returnFocus }: {
+  result: CreateResult
+  onClose: () => void
+  returnFocus: RefObject<HTMLButtonElement | null>
+}) {
+  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'manual'>('idle')
+  const keyField = useRef<HTMLTextAreaElement>(null)
 
-  function copy() {
-    navigator.clipboard.writeText(result.full_key).then(() => {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    })
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(result.full_key)
+      setCopyState('copied')
+    } catch {
+      setCopyState('manual')
+      keyField.current?.focus()
+      keyField.current?.select()
+    }
   }
 
   return (
-    <div role="dialog" aria-modal="true" aria-label="Created MCP key" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-lg rounded-lg border border-border bg-background p-6 shadow-xl">
-        <h2 className="mb-2 font-serif text-xl font-medium text-brand-gold-cream">
-          Key created — copy it now
-        </h2>
-        <p className="mb-4 text-sm text-red-400">
-          This is the only time the full key will be shown. It cannot be retrieved again.
-        </p>
-        <div className="mb-4 flex items-center gap-2 rounded bg-muted px-3 py-2">
-          <code className="flex-1 break-all font-mono text-xs text-foreground">
-            {result.full_key}
-          </code>
+    <Dialog open disablePointerDismissal>
+      <DialogContent showCloseButton={false} initialFocus={keyField} finalFocus={returnFocus} className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Key created — copy it now</DialogTitle>
+          <DialogDescription>This is the only time the full key will be shown. It cannot be retrieved again.</DialogDescription>
+        </DialogHeader>
+        <div className="flex flex-wrap items-center gap-2">
+          <textarea
+            ref={keyField}
+            aria-label="MCP API key"
+            value={result.full_key}
+            rows={3}
+            readOnly
+            spellCheck={false}
+            onFocus={event => event.currentTarget.select()}
+            className="min-w-0 flex-1 rounded border border-border bg-muted p-2 font-mono text-xs text-foreground"
+          />
           <button
+            type="button"
             onClick={copy}
-            className="shrink-0 rounded bg-accent px-2 py-1 text-xs text-accent-foreground hover:opacity-80 transition"
+            className="min-h-11 shrink-0 rounded bg-accent px-3 text-sm text-accent-foreground hover:opacity-80"
           >
-            {copied ? 'Copied!' : 'Copy'}
+            Copy
           </button>
         </div>
-        <dl className="mb-4 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground">
+        {copyState === 'copied' && <p role="status">Key copied.</p>}
+        {copyState === 'manual' && <p role="alert">Clipboard access was unavailable. Copy the key manually from the selected field.</p>}
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground">
           <dt>Key ID</dt>
           <dd className="font-mono">{result.key_id}</dd>
           <dt>Label</dt>
@@ -105,13 +124,14 @@ function CreatedKeyModal({ result, onClose }: { result: CreateResult; onClose: (
           <dd className="truncate">{result.user_uid}</dd>
         </dl>
         <button
+          type="button"
           onClick={onClose}
-          className="w-full rounded bg-muted px-4 py-2 text-sm hover:opacity-80 transition"
+          className="min-h-11 w-full rounded bg-muted px-4 py-2 text-sm hover:opacity-80"
         >
           Done (I&apos;ve saved the key)
         </button>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -124,6 +144,8 @@ export function McpKeysClient() {
   const [createLabel, setCreateLabel] = useState('')
   const [createUserUid, setCreateUserUid] = useState('')
   const [createdKey, setCreatedKey] = useState<CreateResult | null>(null)
+  const createButton = useRef<HTMLButtonElement>(null)
+  const labelId = useId()
 
   const keysQuery = useQuery({
     queryKey: ['admin', userId, 'mcp-keys'],
@@ -172,9 +194,9 @@ export function McpKeysClient() {
   const revokedKeys = keys.filter(k => !!k.revoked_at)
 
   return (
-    <div className="space-y-6">
+    <div className={`${styles.keys} space-y-6`}>
       {createdKey && (
-        <CreatedKeyModal result={createdKey} onClose={() => {setCreatedKey(null);createMutation.reset()}} />
+        <CreatedKeyModal result={createdKey} returnFocus={createButton} onClose={() => {setCreatedKey(null);createMutation.reset()}} />
       )}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -185,8 +207,10 @@ export function McpKeysClient() {
           </p>
         </div>
         <button
+          ref={createButton}
+          type="button"
           onClick={() => setShowCreate(v => !v)}
-          className="rounded bg-accent px-4 py-2 text-sm text-accent-foreground hover:opacity-80 transition"
+          className={styles.primary}
         >
           {showCreate ? 'Cancel' : 'Create new key'}
         </button>
@@ -195,13 +219,14 @@ export function McpKeysClient() {
       {showCreate && (
         <form
           onSubmit={handleCreate}
-          className="rounded-lg border border-border bg-muted/30 p-4 space-y-3"
+          className={`${styles.createForm} space-y-3`}
         >
           <h2 className="text-sm font-medium">New API key</h2>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs text-muted-foreground">Label (optional)</label>
+              <label htmlFor={labelId} className="mb-1 block text-xs text-muted-foreground">Label (optional)</label>
               <input
+                id={labelId}
                 value={createLabel}
                 onChange={e => setCreateLabel(e.target.value)}
                 placeholder="e.g. claude-chat-laptop"
@@ -212,17 +237,17 @@ export function McpKeysClient() {
             <div className="sm:col-span-2">
               <label className="mb-1 block text-xs text-muted-foreground">
                 Active account
+                <select value={createUserUid} onChange={e => setCreateUserUid(e.target.value)} className="mt-1 w-full rounded border px-3 py-1.5 text-sm"><option value="">Your account</option>{users.filter(user=>user.id!==userId && user.status==='active').map(user=><option key={user.id} value={user.id}>{user.name}</option>)}</select>
               </label>
-              <select aria-label="Active account" value={createUserUid} onChange={e => setCreateUserUid(e.target.value)} className="w-full rounded border border-border bg-background px-3 py-1.5 text-sm"><option value="">Your account</option>{users.filter(user=>user.id!==userId && user.status==='active').map(user=><option key={user.id} value={user.id}>{user.name}</option>)}</select>
             </div>
           </div>
           {createMutation.isError && (
-            <p className="text-xs text-red-400">{String(createMutation.error)}</p>
+            <p role="alert" className={`${styles.error} text-xs`}>{String(createMutation.error)}</p>
           )}
           <button
             type="submit"
             disabled={createMutation.isPending}
-            className="rounded bg-accent px-4 py-2 text-sm text-accent-foreground hover:opacity-80 disabled:opacity-50 transition"
+            className={styles.primary}
           >
             {createMutation.isPending ? 'Creating…' : 'Create key'}
           </button>
@@ -230,13 +255,18 @@ export function McpKeysClient() {
       )}
 
       {keysQuery.isError && (
-        <p className="text-sm text-red-400">Could not load keys: {String(keysQuery.error)}</p>
+        <div role="alert" className="flex flex-wrap items-center gap-3 text-sm">
+          <p className={styles.error}>Could not load keys.</p>
+          <button type="button" className={styles.primary} disabled={keysQuery.isFetching} onClick={() => void keysQuery.refetch()}>
+            {keysQuery.isFetching ? 'Retrying…' : 'Try again'}
+          </button>
+        </div>
       )}
 
-      <div className="overflow-x-auto rounded-lg border border-border">
+      <div className={styles.results} role="region" aria-label="MCP key list" tabIndex={0}>
         <table className="w-full text-left">
           <thead>
-            <tr className="border-b border-border bg-muted/50">
+            <tr className={styles.tableHeading}>
               <th className="px-3 py-2 text-xs font-medium text-muted-foreground">Key ID</th>
               <th className="px-3 py-2 text-xs font-medium text-muted-foreground">Label</th>
               <th className="px-3 py-2 text-xs font-medium text-muted-foreground">User</th>
@@ -249,7 +279,7 @@ export function McpKeysClient() {
             {keysQuery.isLoading && (
               <tr>
                 <td colSpan={6} className="px-3 py-4 text-center text-sm text-muted-foreground">
-                  Loading…
+                  <span role="status">Loading keys…</span>
                 </td>
               </tr>
             )}
@@ -271,7 +301,7 @@ export function McpKeysClient() {
       </div>
 
       {revokeMutation.isError && (
-        <p className="text-xs text-red-400">Revoke failed: {String(revokeMutation.error)}</p>
+        <p role="alert" className={`${styles.error} text-xs`}>Revoke failed: {String(revokeMutation.error)}</p>
       )}
     </div>
   )

@@ -2,8 +2,8 @@
  * GET /api/panchang/charts
  *
  * Returns charts accessible to the authenticated user.
- * - Astrologer (super_admin role): all charts
- * - Client: only their own chart(s) (client_id = their uid)
+ * - Super admin: all charts
+ * - Guest: charts they own or have a view grant for
  *
  * Used by useChartList hook to populate the Personalise dropdown.
  *
@@ -11,58 +11,31 @@
  */
 
 import { NextResponse } from 'next/server'
-import { getServerUser } from '@/lib/firebase/server'
+import { getServerUserWithProfile } from '@/lib/auth/access-control'
 import { query } from '@/lib/db/client'
 import { res } from '@/lib/errors'
 
 export async function GET() {
-  const user = await getServerUser()
-  if (!user) return res.unauthenticated()
-
   try {
-    // Determine role
-    const profileResult = await query<{ role: string }>(
-      'SELECT role FROM profiles WHERE id=$1',
-      [user.uid],
-    )
-    const role = profileResult.rows[0]?.role ?? 'guest'
+    const ctx = await getServerUserWithProfile()
+    if (!ctx) return res.unauthenticated()
+    if (ctx.profile.status !== 'active') return res.forbidden()
 
-    let charts: Array<{
-      id: string
-      name: string
-      birth_date: string
-      birth_place: string
-      client_id: string
-    }>
+    const result = ctx.profile.role === 'super_admin'
+      ? await query('SELECT id, name, birth_date FROM charts ORDER BY created_at DESC')
+      : await query(
+          `SELECT c.id, c.name, c.birth_date
+           FROM charts c
+           WHERE c.owner_id = $1
+              OR EXISTS (
+                SELECT 1 FROM chart_grants g
+                WHERE g.chart_id = c.id AND g.principal_id = $1 AND g.permission = 'view'
+              )
+           ORDER BY c.created_at DESC`,
+          [ctx.user.uid],
+        )
 
-    if (role === 'super_admin' || role === 'astrologer') {
-      // Astrologer / admin: see all charts
-      const result = await query<{
-        id: string
-        name: string
-        birth_date: string
-        birth_place: string
-        client_id: string
-      }>(
-        'SELECT id, name, birth_date, birth_place, client_id FROM charts ORDER BY created_at DESC',
-      )
-      charts = result.rows
-    } else {
-      // Client: only own chart(s) — client_id = Firebase uid
-      const result = await query<{
-        id: string
-        name: string
-        birth_date: string
-        birth_place: string
-        client_id: string
-      }>(
-        'SELECT id, name, birth_date, birth_place, client_id FROM charts WHERE client_id=$1 ORDER BY created_at DESC',
-        [user.uid],
-      )
-      charts = result.rows
-    }
-
-    return NextResponse.json({ charts })
+    return NextResponse.json({ charts: result.rows })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'DB error'
     return res.internal(message)

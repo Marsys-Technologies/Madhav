@@ -98,7 +98,7 @@ import { configService } from '@/lib/config/index'
 import { checkRpm } from '@/lib/mcp/rate_limiter_core'
 import { apiError } from '@/lib/errors'
 import { RATE_LIMIT_ERROR_CODE } from '@/lib/limits/spend_ceiling'
-import { safeNextPath } from '@/lib/auth/safe_next'
+import { CHART_RETURN_PATH_HEADER, safeNextPath } from '@/lib/auth/safe_next'
 import {
   evaluateSessionGate,
   observeForwardedForEntryCount,
@@ -235,6 +235,7 @@ function checkDoorRateLimit(request: NextRequest, verifiedSub?: string): NextRes
  * page redirects to a plain `/login`, exactly as before. The pathname alone is
  * used, never the query string or hash (safeNextPath refuses both anyway), and
  * the value is only ever the validator's own return value, never raw input.
+ * Account setup can also carry an already selected destination through re-login.
  * The same redirect is used in all `SESSION_GATE_MODE`s.
  */
 function unauthorized(request: NextRequest, pathname: string, infraFailClosed = false): NextResponse {
@@ -245,6 +246,15 @@ function unauthorized(request: NextRequest, pathname: string, infraFailClosed = 
     return new NextResponse('Unauthorized', { status: 401 })
   }
   const loginUrl = new URL('/login', request.url)
+  if (pathname === '/setup-account') {
+    const destinations = request.nextUrl.searchParams.getAll('next')
+    const setupNext = destinations.length === 1 ? safeNextPath(destinations[0]) : null
+    if (setupNext) {
+      loginUrl.searchParams.set('setup', '1')
+      loginUrl.searchParams.set('next', setupNext)
+    }
+    return NextResponse.redirect(loginUrl)
+  }
   const next = safeNextPath(pathname)
   if (next) loginUrl.searchParams.set('next', next)
   return NextResponse.redirect(loginUrl)
@@ -298,6 +308,15 @@ export async function proxy(request: NextRequest) {
   const rateLimited = checkDoorRateLimit(request, verifiedSub)
   if (rateLimited) return rateLimited
 
+  if (pathname.startsWith('/clients/')) {
+    // The server may still refuse the session. Give the chart layout the
+    // validated pathname and overwrite any value supplied by the caller.
+    const headers = new Headers(request.headers)
+    const next = safeNextPath(pathname)
+    if (next) headers.set(CHART_RETURN_PATH_HEADER, next)
+    else headers.delete(CHART_RETURN_PATH_HEADER)
+    return NextResponse.next({ request: { headers } })
+  }
   return NextResponse.next({ request })
 }
 

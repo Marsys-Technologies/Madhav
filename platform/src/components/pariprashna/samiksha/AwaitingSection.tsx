@@ -6,7 +6,9 @@ import type { TurnDeepLinkTarget } from '@/lib/pariprashna/samiksha/deepLink'
 import { buildTurnDeepLink } from '@/lib/pariprashna/samiksha/deepLink'
 import { parseNumrange, windowLabel, parseDaterange } from './format'
 import { ProbabilitySlider } from './ProbabilitySlider'
-import type { ConfirmAction, DismissAction, EditAction } from './types'
+import type { ReviewActions } from './types'
+
+type CandidateActions = Pick<ReviewActions, 'confirm' | 'dismiss' | 'edit'>
 
 /**
  * "Awaiting confirmation" (§14.4) — each `detected` candidate in its original message context,
@@ -18,15 +20,11 @@ import type { ConfirmAction, DismissAction, EditAction } from './types'
 function CandidateRow({
   row,
   anchor,
-  onConfirm,
-  onDismiss,
-  onEdit,
+  actions,
 }: {
   row: LedgerRow
   anchor: TurnDeepLinkTarget | undefined
-  onConfirm: ConfirmAction
-  onDismiss: DismissAction
-  onEdit: EditAction
+  actions: CandidateActions | null
 }) {
   const stated = parseNumrange(row.confidence)
   const [prob, setProb] = useState<number>(stated ? (stated.low + stated.high) / 2 : 0.6)
@@ -45,7 +43,7 @@ function CandidateRow({
         marginBottom: '12px',
       }}
     >
-      {editing ? (
+      {actions && editing ? (
         <label style={{ display: 'block' }}>
           <span className="sr-only">Edit claim text</span>
           <textarea
@@ -96,46 +94,48 @@ function CandidateRow({
         ) : null}
       </div>
 
-      {!stated && (
+      {actions && !stated && (
         <div style={{ marginBottom: '10px' }}>
           <ProbabilitySlider value={prob} onChange={setProb} idPrefix={`prob-${row.id}`} />
         </div>
       )}
 
-      <div className="flex items-center gap-2" style={{ flexWrap: 'wrap' }}>
-        <button
-          type="button"
-          onClick={() =>
-            onConfirm({ rowId: row.id, probability: stated ? (stated.low + stated.high) / 2 : prob })
-          }
-          style={btnPrimary}
-        >
-          Log to Samīkṣā
-        </button>
-        {editing ? (
+      {actions && (
+        <div className="flex items-center gap-2" style={{ flexWrap: 'wrap' }}>
           <button
             type="button"
-            onClick={() => {
-              onEdit({ rowId: row.id, claimText: draft })
-              setEditing(false)
-            }}
+            onClick={() =>
+              actions.confirm({ rowId: row.id, probability: stated ? (stated.low + stated.high) / 2 : prob })
+            }
+            style={btnPrimary}
+          >
+            Log to Samīkṣā
+          </button>
+          {editing ? (
+            <button
+              type="button"
+              onClick={() => {
+                actions.edit({ rowId: row.id, claimText: draft })
+                setEditing(false)
+              }}
+              style={btnGhost}
+            >
+              Save edit
+            </button>
+          ) : (
+            <button type="button" onClick={() => setEditing(true)} style={btnGhost}>
+              Edit
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => actions.dismiss({ rowId: row.id, reason: 'dismissed from review tab' })}
             style={btnGhost}
           >
-            Save edit
+            Dismiss
           </button>
-        ) : (
-          <button type="button" onClick={() => setEditing(true)} style={btnGhost}>
-            Edit
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={() => onDismiss({ rowId: row.id, reason: 'dismissed from review tab' })}
-          style={btnGhost}
-        >
-          Dismiss
-        </button>
-      </div>
+        </div>
+      )}
     </li>
   )
 }
@@ -143,15 +143,11 @@ function CandidateRow({
 export function AwaitingSection({
   rows,
   turnAnchors,
-  onConfirm,
-  onDismiss,
-  onEdit,
+  actions,
 }: {
   rows: LedgerRow[]
   turnAnchors: Record<string, TurnDeepLinkTarget>
-  onConfirm: ConfirmAction
-  onDismiss: DismissAction
-  onEdit: EditAction
+  actions: CandidateActions | null
 }) {
   return (
     <section aria-labelledby="samiksa-awaiting-h">
@@ -167,9 +163,7 @@ export function AwaitingSection({
               key={row.id}
               row={row}
               anchor={row.message_part_id ? turnAnchors[row.message_part_id] : undefined}
-              onConfirm={onConfirm}
-              onDismiss={onDismiss}
-              onEdit={onEdit}
+              actions={actions}
             />
           ))}
         </ul>

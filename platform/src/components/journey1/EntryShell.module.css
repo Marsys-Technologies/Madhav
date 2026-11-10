@@ -1,0 +1,129 @@
+.folio:global(.j1-entry) {
+  --j1-text: var(--folio-ink);
+  background: var(--folio-canvas);
+  color: var(--j1-text);
+  color-scheme: light;
+  font-family: var(--folio-font-body);
+}
+
+.folio :global(.j1-cosmos) {
+  display: none;
+}
+
+.folio :global(.j1-entry-column) {
+  padding-block-start: clamp(24px, 5vw, 64px);
+  gap: 20px;
+}
+
+.folio :global(.j1-entry-card) {
+  background: var(--folio-panel);
+  border: 1px solid var(--folio-divider);
+  padding: clamp(16px, 5vw, 28px);
+}
+
+.folio :global(.j1-entry-brand) > svg {
+  background: var(--j1-text);
+  border-radius: 12px;
+  max-inline-size: 100%;
+  padding: 8px 16px;
+}
+
+.folio :global(.j1-title) > span,
+.heading {
+  font-family: var(--folio-font-heading);
+  color: var(--j1-text);
+}
+
+.heading {
+  font-size: 1.5rem;
+  line-height: 1.2;
+  margin-block: 0 4px;
+}
+
+.folio :global(.j1-title) > small,
+.folio :global(.j1-descriptor),
+.folio :global(.j1-note),
+.folio :global(.j1-field) > span,
+.folio :global(.j1-field) > :global(.j1-password-label),
+.folio footer {
+  color: var(--folio-muted);
+}
+
+.folio :global(.j1-tabs),
+.folio :global(.j1-field) :is(input, textarea),
+.folio :global(.j1-icon) {
+  background: var(--folio-panel);
+  border: 1px solid var(--folio-boundary);
+  color: var(--j1-text);
+}
+
+.folio :global(.j1-field) :is(input, textarea) {
+  font-size: 1rem;
+}
+
+.folio :global(.j1-status) {
+  background: var(--folio-selected);
+  border-color: var(--folio-action);
+  color: var(--folio-ink);
+}
+
+.folio :global(.j1-entry-card) a:not(:global(.j1-btn)) {
+  color: var(--folio-action);
+  text-decoration: underline;
+}
+
+.folio :global(.j1-tabs) button {
+  min-height: 44px;
+  color: var(--folio-muted);
+}
+
+.folio :global(.j1-tabs) button[aria-pressed="true"] {
+  background: var(--folio-selected);
+  box-shadow: inset 0 -3px var(--folio-action);
+  color: var(--j1-text);
+  font-weight: 600;
+}
+
+.folio :global(.j1-password) button {
+  width: 44px;
+  height: 44px;
+  top: 1px;
+  color: var(--folio-muted);
+}
+
+.folio :global(.j1-btn) {
+  background: var(--folio-action);
+  border-color: var(--folio-action);
+  color: var(--folio-on-action);
+}
+
+.folio :global(.j1-error) {
+  background: var(--folio-panel);
+  border-color: var(--folio-error);
+  color: var(--folio-error);
+}
+
+.folio :is(button, a, input, textarea):focus-visible {
+  outline: 3px solid var(--folio-action);
+  outline-offset: 4px;
+}
+
+.help {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  justify-content: space-between;
+}
+
+.folio .help a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--folio-action);
+  text-decoration: underline;
+}
+
+
+.folio:global(.j1-entry) a:global(.j1-btn):hover {
+  color: var(--folio-on-action);
+}

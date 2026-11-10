@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 export function PasswordField({
   label,
@@ -14,12 +14,14 @@ export function PasswordField({
   autoComplete?: "current-password" | "new-password";
   disabled?: boolean;
 }) {
+  const inputId = useId();
   const [show, setShow] = useState(false);
   return (
-    <label className="j1-field">
-      <span>{label}</span>
+    <div className="j1-field">
+      <label className="j1-password-label" htmlFor={inputId}>{label}</label>
       <div className="j1-password">
         <input
+          id={inputId}
           required
           type={show ? "text" : "password"}
           value={value}
@@ -37,6 +39,6 @@ export function PasswordField({
           {show ? <EyeOff size={18} /> : <Eye size={18} />}
         </button>
       </div>
-    </label>
+    </div>
   );
 }

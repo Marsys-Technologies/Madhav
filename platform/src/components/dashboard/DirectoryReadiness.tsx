@@ -11,20 +11,20 @@ import type { ChartReadiness, ChartReadinessState } from '@/lib/charts/readiness
 
 const FILL: Record<ChartReadinessState, string> = {
   'not-built': 'transparent',
-  building: 'linear-gradient(90deg,#a26d0e,#f4d160)',
-  'partially-built': 'linear-gradient(90deg,#a26d0e,#f4d160)',
-  ready: 'linear-gradient(90deg,#a26d0e,#f4d160)',
-  failed: 'rgb(220,38,38)',
-  'needs-rebuild': 'rgb(220,38,38)',
+  building: 'var(--folio-action)',
+  'partially-built': 'var(--folio-action)',
+  ready: 'var(--folio-action)',
+  failed: 'var(--folio-error)',
+  'needs-rebuild': 'var(--folio-error)',
 }
 
 const LABEL_CLASS: Record<ChartReadinessState, string> = {
-  'not-built': 'text-[rgba(212,175,55,0.4)]',
-  building: 'text-amber-300',
-  'partially-built': 'text-[rgba(212,175,55,0.62)]',
-  ready: 'text-[#fce29a]',
-  failed: 'text-red-300',
-  'needs-rebuild': 'text-red-300',
+  'not-built': 'text-[var(--folio-muted)]',
+  building: 'text-[var(--folio-attention)]',
+  'partially-built': 'text-[var(--folio-muted)]',
+  ready: 'text-[var(--folio-action)]',
+  failed: 'text-[var(--folio-error)]',
+  'needs-rebuild': 'text-[var(--folio-error)]',
 }
 
 export function DirectoryReadiness({
@@ -47,7 +47,7 @@ export function DirectoryReadiness({
         aria-valuemax={100}
         aria-valuenow={readiness.percent}
         aria-valuetext={detail}
-        className="relative h-1.5 w-full overflow-hidden rounded-full border border-[rgba(212,175,55,0.18)] bg-[rgba(212,175,55,0.10)] forced-colors:border-[CanvasText]"
+        className="relative h-1.5 w-full overflow-hidden rounded-full border border-[var(--folio-divider)] bg-[var(--folio-selected)] forced-colors:border-[CanvasText]"
       >
         <div
           className={cn(

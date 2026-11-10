@@ -1,18 +1,13 @@
-import { query } from '@/lib/db/client'
+import { Suspense } from 'react'
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { query } from '@/lib/db/client'
 import { resolveChartPageAccess } from '@/lib/auth/chart-page-guard'
+import { todayISTKey } from '@/lib/build/derive'
+import { ChartNav } from '@/components/journey1/ChartNav'
+import { PanchangClientView } from '@/app/panchang/components/PanchangClientView'
+import styles from '../folio.module.css'
 
-/**
- * Per-chart Panchang surface (Unit 3.consult_nav, Commit 2).
- *
- * "Personalized" means: the panchang view loads with the chart's birth location
- * as the default reference frame. Today's tithi/vara/nakshatra are still global
- * (panchang is panchang), but the chart context is surfaced so navigation back
- * to Consult preserves the chart_id.
- *
- * Available to permission ∈ {'all', 'view'} — Profile/Consult/Panchang is the
- * granted-guest's read-only triad per Unit 2c.
- */
 export default async function ChartPanchangPage({
   params,
 }: {
@@ -23,44 +18,29 @@ export default async function ChartPanchangPage({
   if (!access) redirect('/login')
   if (access.permission === 'deny') redirect('/dashboard')
 
-  const chartResult = await query<{ name: string; birth_place: string | null }>(
-    'SELECT name, birth_place FROM charts WHERE id=$1',
-    [id]
-  )
-  const chart = chartResult.rows[0] ?? null
+  const { rows: [chart] } = await query<{ name: string | null }>('SELECT name FROM charts WHERE id=$1', [id])
   if (!chart) redirect('/dashboard')
 
   return (
-    <div
-      className="mx-auto max-w-5xl px-6 py-8"
-      data-testid="chart-panchang-root"
-      data-permission={access.permission}
-      data-chart-id={id}
-    >
-      <h1 className="text-2xl font-serif text-[var(--brand-gold-cream)] mb-2">
-        Panchang
-      </h1>
-      <p className="text-xs opacity-60 text-[var(--brand-gold)]">
-        Personalized for {chart.name ?? 'this chart'}
-        {chart.birth_place ? ` — anchored at ${chart.birth_place}` : ''}
-      </p>
-
-      <div className="mt-6 space-y-3">
-        <a
-          href={`/panchang`}
-          className="inline-block rounded-md border border-[rgba(212,175,55,0.28)] px-4 py-2 text-sm text-[var(--brand-gold)] hover:bg-[rgba(212,175,55,0.08)]"
-          data-testid="open-global-panchang"
-        >
-          Open daily Panchang
-        </a>
-        <a
-          href={`/clients/${id}/consult`}
-          className="ml-3 inline-block rounded-md border border-[rgba(212,175,55,0.28)] px-4 py-2 text-sm text-[var(--brand-gold)] hover:bg-[rgba(212,175,55,0.08)]"
-          data-testid="back-to-consult"
-        >
-          Ask Madhav about today
-        </a>
-      </div>
+    <div data-testid="chart-panchang-root" data-permission={access.permission} data-chart-id={id}>
+      <ChartNav chartId={id} canBuild={access.canBuild} active="almanac" />
+      <header className={styles.almanacHeader}>
+        <h1>Personal Almanac</h1>
+        <p>Chart context: <strong>{chart.name ?? 'this chart'}</strong></p>
+        <p>Daily timing for the selected location, in India Standard Time (UTC+05:30).</p>
+        <div className={styles.almanacLinks}>
+          <Link href={`/clients/${id}/pariprashna`}>Open Consultation</Link>
+          <Link href="/panchang">General Almanac</Link>
+        </div>
+      </header>
+      <Suspense fallback={<p role="status">Loading almanac…</p>}>
+        <PanchangClientView
+          key={id}
+          initialData={null}
+          initialDate={todayISTKey()}
+          fixedChartId={id}
+        />
+      </Suspense>
     </div>
   )
 }

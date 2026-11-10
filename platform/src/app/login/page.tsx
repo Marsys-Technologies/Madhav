@@ -8,6 +8,7 @@ import { auth } from "@/lib/firebase/client";
 import { safeNextPath } from "@/lib/auth/safe_next";
 import { EntryShell } from "@/components/journey1/EntryShell";
 import { PasswordField } from "@/components/journey1/PasswordField";
+import styles from "@/components/journey1/EntryShell.module.css";
 
 type Tab = "username" | "email";
 
@@ -99,7 +100,7 @@ export default function LoginPage() {
       const safeNext = safeNextPath(params.get("next"));
       router.push(
         session.username_setup_required || requestedSetup
-          ? "/setup-account"
+          ? (safeNext ? `/setup-account?next=${encodeURIComponent(safeNext)}` : "/setup-account")
           : (safeNext ?? "/dashboard"),
       );
       router.refresh();
@@ -118,9 +119,9 @@ export default function LoginPage() {
 
   return (
     <EntryShell name="login">
-      <form onSubmit={handleSubmit} className="j1-form" aria-busy={submitting}>
+      <form onSubmit={handleSubmit} className="j1-form j1-sign-in-form" aria-busy={submitting}>
         <div>
-          <h2 className="j1-note" style={{ fontSize: 24, color: "#ecc56a" }}>
+          <h2 className={styles.heading}>
             Welcome back
           </h2>
           <p className="j1-note">The instrument is ready.</p>
@@ -148,6 +149,9 @@ export default function LoginPage() {
             required
             type={tab === "email" ? "email" : "text"}
             autoComplete={tab === "email" ? "email" : "username"}
+            autoCorrect="off"
+            autoCapitalize="none"
+            spellCheck={false}
             maxLength={254}
             value={identifier}
             onChange={(e) => setIdentifier(e.target.value)}
@@ -168,14 +172,7 @@ export default function LoginPage() {
         <button type="submit" className="j1-btn" disabled={submitting}>
           {submitting ? "Signing in…" : "Sign in"}
         </button>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            gap: 16,
-            flexWrap: "wrap",
-          }}
-        >
+        <div className={styles.help}>
           <Link href="/login/recovery">Forgotten password</Link>
           <Link href="/login/request-access">Request access</Link>
         </div>

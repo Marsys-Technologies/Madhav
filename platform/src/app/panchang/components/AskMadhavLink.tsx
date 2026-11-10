@@ -6,7 +6,7 @@
  * Renders a small ghost-style icon button with a 💬 (MessageCircle) icon.
  * On click:
  *   1. Encodes prompt + optional panchang_context as URL params.
- *   2. Opens /clients/[chart_id]/consume?prompt=<encoded>&context=<encoded_json>
+ *   2. Opens the selected chart or offers the roster when no chart is selected.
  *      in the same tab (router.push) — matching the project's existing pattern.
  *
  * Context-budget guard (AC.4C8.6):
@@ -16,13 +16,16 @@
  * Phase: 4C-8 (Item 1)
  */
 
+import { createContext, useContext } from 'react'
 import { useRouter } from 'next/navigation'
 import { MessageCircle } from 'lucide-react'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-/** Default chart ID — the native's primary chart. Can be overridden per call-site. */
-export const DEFAULT_CHART_ID = 'abhisek_mohanty_primary'
+export const PanchangChartContext = createContext<{
+  fixedChartId?: string
+  selectedChartId?: string | null
+}>({})
 
 /** Maximum raw-JSON bytes for context injection. Above this we trim. */
 const MAX_CONTEXT_BYTES = 10_240 // 10 KB
@@ -64,6 +67,26 @@ export function serialiseContext(ctx: object): string {
   return JSON.stringify(trimmed)
 }
 
+export function panchangAskHref({
+  chartId, fixedChartId, prompt, context,
+}: {
+  chartId?: string | null
+  fixedChartId?: string
+  prompt: string
+  context?: object | null
+}) {
+  if (fixedChartId) return `/clients/${encodeURIComponent(fixedChartId)}/pariprashna`
+  if (!chartId) return '/dashboard'
+
+  const params = new URLSearchParams({ prompt })
+  if (context) {
+    const sharedContext = { ...context } as Record<string, unknown>
+    delete sharedContext.native_context
+    params.set('context', serialiseContext(sharedContext))
+  }
+  return `/clients/${encodeURIComponent(chartId)}/consume?${params.toString()}`
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 interface AskMadhavLinkProps {
@@ -76,7 +99,6 @@ interface AskMadhavLinkProps {
   panchang_context?: object
   /**
    * Override the chart ID used in the deep-link URL.
-   * Defaults to DEFAULT_CHART_ID.
    */
   chart_id?: string
   /**
@@ -91,32 +113,28 @@ interface AskMadhavLinkProps {
 export function AskMadhavLink({
   prompt,
   panchang_context,
-  chart_id = DEFAULT_CHART_ID,
+  chart_id,
   className = '',
   ariaLabel,
 }: AskMadhavLinkProps) {
   const router = useRouter()
+  const { fixedChartId, selectedChartId } = useContext(PanchangChartContext)
+  const chartId = chart_id ?? selectedChartId
 
   function handleClick() {
-    const params = new URLSearchParams()
-    params.set('prompt', prompt)
-
-    if (panchang_context) {
-      params.set('context', serialiseContext(panchang_context))
-    }
-
-    router.push(`/clients/${chart_id}/consume?${params.toString()}`)
+    router.push(panchangAskHref({ chartId, fixedChartId, prompt, context: panchang_context }))
   }
 
   const tooltipText = `Ask Madhav: "${prompt.length > 60 ? prompt.slice(0, 57) + '…' : prompt}"`
-  const label = ariaLabel ?? tooltipText
+  const label = fixedChartId ? 'Open consultation for this chart'
+    : chartId ? (ariaLabel ?? tooltipText) : 'Choose a chart to ask Madhav'
 
   return (
     <button
       type="button"
       onClick={handleClick}
       aria-label={label}
-      title={tooltipText}
+      title={fixedChartId || !chartId ? label : tooltipText}
       className={[
         // Ghost style — low visual weight, doesn't compete with primary content
         'inline-flex items-center justify-center',

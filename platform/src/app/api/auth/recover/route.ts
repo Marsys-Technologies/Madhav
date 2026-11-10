@@ -2,12 +2,12 @@ import { createHash } from "node:crypto";
 import { query } from "@/lib/db/client";
 import { checkRpm } from "@/lib/mcp/rate_limiter_core";
 import { getTrustedClientIp, ipRateLimitKey } from "@/lib/security/client_ip";
+import { isAllowedRequestOrigin } from "@/lib/auth/request-origin";
 
 // Resolve on the server: recovery never returns an account's email or existence.
 // Firebase's sendOobCode delivers the email; generatePasswordResetLink alone does not.
 export async function POST(request: Request) {
-  const origin = request.headers.get("origin");
-  if (origin && origin !== new URL(request.url).origin)
+  if (!isAllowedRequestOrigin(request))
     return Response.json({ error: "forbidden" }, { status: 403 });
   // SS N-373: key on the TRUSTED hop of X-Forwarded-For (the one our own
   // infrastructure appended), never the client-controlled leftmost entry.
@@ -50,8 +50,12 @@ export async function POST(request: Request) {
     // No message can be delivered to the reserved .invalid domain.
     const email =
       rows[0]?.email ?? "account-recovery-unmatched@example.invalid";
+    const emulator = process.env.FIREBASE_AUTH_EMULATOR_HOST;
+    const identityToolkit = emulator
+      ? `http://${emulator}/identitytoolkit.googleapis.com`
+      : "https://identitytoolkit.googleapis.com";
     const response = await fetch(
-      `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${encodeURIComponent(key)}`,
+      `${identityToolkit}/v1/accounts:sendOobCode?key=${encodeURIComponent(key)}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },

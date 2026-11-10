@@ -11,10 +11,10 @@
  * [BUILD-ORCH-INF12-S1]
  */
 
-import { Suspense } from 'react'
 import { query } from '@/lib/db/client'
 import { getServerUserWithProfile } from '@/lib/auth/access-control'
 import { redirect } from 'next/navigation'
+import styles from './tracker.module.css'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Build Tracker — MARSYS-JIS Admin' }
@@ -45,7 +45,7 @@ interface AyanamshaMatrixRow {
 
 // ── Data fetchers ─────────────────────────────────────────────────────────────
 
-async function fetchActiveBuilds(): Promise<BuildRow[]> {
+async function fetchActiveBuilds(): Promise<BuildRow[] | null> {
   try {
     const { rows } = await query<BuildRow>(
       `SELECT
@@ -71,11 +71,11 @@ async function fetchActiveBuilds(): Promise<BuildRow[]> {
     )
     return rows
   } catch {
-    return []
+    return null
   }
 }
 
-async function fetchRecentBuilds(): Promise<BuildRow[]> {
+async function fetchRecentBuilds(): Promise<BuildRow[] | null> {
   try {
     const { rows } = await query<BuildRow>(
       `SELECT
@@ -102,13 +102,13 @@ async function fetchRecentBuilds(): Promise<BuildRow[]> {
     )
     return rows
   } catch {
-    return []
+    return null
   }
 }
 
-async function fetchAyanamshaMatrix(): Promise<AyanamshaMatrixRow[]> {
+async function fetchAyanamshaMatrix(): Promise<AyanamshaMatrixRow[] | null> {
   // Ayanamsha-per-build tracking removed with decommissioning of `builds` table.
-  return []
+  return null
 }
 
 // ── Components ────────────────────────────────────────────────────────────────
@@ -145,19 +145,19 @@ function ProgressBar({ complete, total }: { complete: number; total: number }) {
   )
 }
 
-function BuildsTable({ builds, title }: { builds: BuildRow[]; title: string }) {
-  if (builds.length === 0) {
+function BuildsTable({ builds, title }: { builds: BuildRow[] | null; title: string }) {
+  if (!builds?.length) {
     return (
-      <div>
-        <h2 className="text-sm font-semibold text-gray-700 mb-2">{title}</h2>
-        <p className="text-xs text-gray-400">No builds.</p>
-      </div>
+      <section aria-label={title}>
+        <h2>{title}</h2>
+        {builds ? <p>No builds.</p> : <p role="alert">Build records could not be read. Reload to try again.</p>}
+      </section>
     )
   }
   return (
     <div>
-      <h2 className="text-sm font-semibold text-gray-700 mb-2">{title}</h2>
-      <div className="overflow-x-auto">
+      <h2>{title}</h2>
+      <div className={styles.results} role="region" aria-label={`${title} records`} tabIndex={0}>
         <table className="w-full text-xs border-collapse">
           <thead>
             <tr className="bg-gray-50 text-gray-500 text-left">
@@ -192,7 +192,7 @@ function BuildsTable({ builds, title }: { builds: BuildRow[]; title: string }) {
                   <td className="px-3 py-2 border border-gray-200">
                     <ProgressBar complete={b.steps_complete} total={b.steps_total} />
                   </td>
-                  <td className="px-3 py-2 border border-gray-200 font-mono text-gray-400">
+                  <td className="px-3 py-2 border border-gray-200 font-mono">
                     {b.engine_version ?? '—'}
                   </td>
                   <td className="px-3 py-2 border border-gray-200 text-gray-500">
@@ -208,9 +208,10 @@ function BuildsTable({ builds, title }: { builds: BuildRow[]; title: string }) {
   )
 }
 
-function AyanamshaMatrix({ rows }: { rows: AyanamshaMatrixRow[] }) {
+function AyanamshaMatrix({ rows }: { rows: AyanamshaMatrixRow[] | null }) {
+  if (!rows) return <p>Per-ayanamsha build history is unavailable in this tracker.</p>
   if (rows.length === 0) {
-    return <p className="text-xs text-gray-400">No build matrix data.</p>
+    return <p>No build matrix data.</p>
   }
 
   const AYANAMSHAS = ['lahiri', 'true_chitra', 'kp', 'raman', 'surya_siddhanta']
@@ -290,22 +291,14 @@ export default async function TrackerPage() {
   ])
 
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-8">
+    <div className={styles.tracker}>
       <div>
-        <h1 className="text-lg font-bold text-gray-900">Build Orchestrator Tracker</h1>
-        <p className="text-xs text-gray-500 mt-1">
-          Live view of multi-ayanamsha build pipeline status. Auto-refresh: reload page for latest.
-        </p>
+        <h1>Build Orchestrator Tracker</h1>
+        <p>Build run records. Reload to check for changes.</p>
       </div>
 
-      <Suspense fallback={<p className="text-xs text-gray-400">Loading active builds…</p>}>
-        <BuildsTable builds={activeBuilds} title={`Active Builds (${activeBuilds.length})`} />
-      </Suspense>
-
-      <Suspense fallback={<p className="text-xs text-gray-400">Loading recent builds…</p>}>
-        <BuildsTable builds={recentBuilds} title="Recent Builds (last 24h)" />
-      </Suspense>
-
+      <BuildsTable builds={activeBuilds} title={activeBuilds ? `Active Builds (${activeBuilds.length})` : 'Active Builds'} />
+      <BuildsTable builds={recentBuilds} title="Recent Builds (last 24h)" />
       <AyanamshaMatrix rows={matrixRows} />
     </div>
   )

@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
+import styles from "./EntryShell.module.css";
 import { Signature } from "./Signature";
 import { PageTitle, TitleToggle, type PageName } from "./Titles";
 const NAKSHATRAS = [
@@ -48,7 +49,7 @@ export function EntryShell({
   children: ReactNode;
 }) {
   return (
-    <main className="j1 j1-entry">
+    <main className={`j1 j1-entry ${styles.folio}`}>
       <div className="j1-cosmos" aria-hidden="true">
         {Array.from({ length: 26 }, (_, i) => (
           <i

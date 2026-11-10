@@ -12,7 +12,6 @@ import {
   parseFilterFromParams,
   filterToParams,
   distinctPlaces,
-  DEFAULT_FILTER,
 } from '@/lib/roster/filter'
 import type { ChartWithMeta, FilterState, RosterStats } from '@/lib/roster/types'
 
@@ -38,9 +37,10 @@ const getServerViewSnapshot = (): ViewMode => 'grid'
 interface Props {
   charts: ChartWithMeta[]
   stats: RosterStats
+  canCreateChart: boolean
 }
 
-export function ClientRoster({ charts, stats }: Props) {
+export function ClientRoster({ charts, stats, canCreateChart }: Props) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -80,7 +80,7 @@ export function ClientRoster({ charts, stats }: Props) {
 
   // True empty state — no charts at all
   if (charts.length === 0) {
-    return <RosterEmptyWizard />
+    return <RosterEmptyWizard canCreateChart={canCreateChart} />
   }
 
   return (
@@ -109,7 +109,7 @@ export function ClientRoster({ charts, stats }: Props) {
             <ClientCard key={chart.id} chart={chart} />
           ))}
           {filtered.length === 0 && (
-            <p className="col-span-full py-12 text-center text-sm text-muted-foreground">
+            <p role="status" className="col-span-full py-12 text-center text-sm text-[var(--folio-muted)]">
               No charts match the current filters.
             </p>
           )}

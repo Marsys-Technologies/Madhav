@@ -1,0 +1,114 @@
+.folio {
+  --folio-paper: #f5efe2;
+  --folio-panel: #fcf8ee;
+  --folio-ink: #242920;
+  --folio-muted: #52584a;
+  --folio-action: #2e563e;
+  --folio-control: #716d5e;
+}
+
+.folio a.rosterReturn,
+.folio a.rosterReturn:hover {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding-inline: 12px;
+  background: var(--folio-paper);
+  color: var(--folio-action);
+  border-radius: 6px;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+.folio :global(.j1-chart-info) {
+  gap: 16px;
+  padding: clamp(16px, 3vw, 24px);
+  border-radius: 12px;
+  background: var(--folio-panel);
+  color: var(--folio-ink);
+  overflow-wrap: anywhere;
+}
+
+.folio :global(.j1-chart-info) > :global(.j1-title) > span,
+.folio :global(.j1-chart-info) > h2 {
+  font-family: Georgia, serif;
+  color: var(--folio-ink);
+}
+
+.folio :global(.j1-chart-info) > h2 {
+  font-size: clamp(1.5rem, 4vw, 2rem);
+}
+
+.folio :global(.j1-chart-info) > :global(.j1-title) > small,
+.folio :global(.j1-chart-info) > :global(.j1-note) {
+  color: var(--folio-muted);
+}
+
+.folio a.consultAction,
+.folio a.consultAction:global(.j1-btn):hover {
+  background: var(--folio-action);
+  border-color: var(--folio-action);
+  color: #fffaf0;
+}
+
+.folio .consultAction :global(.j1-title) > :is(span, small) {
+  color: inherit;
+}
+
+.folio :global(.j1-chart-info) button:global(.jw-control) {
+  background: var(--folio-paper);
+  border-color: var(--folio-control);
+  color: var(--folio-action);
+}
+
+.folio .rosterReturn:focus-visible {
+  outline: 3px solid var(--folio-action);
+  outline-offset: -4px;
+}
+
+.folio a.consultAction:focus-visible,
+.folio :global(.j1-chart-info) button:global(.jw-control):focus-visible {
+  outline: 3px solid var(--folio-action);
+  outline-offset: 4px;
+}
+
+.almanacHeader {
+  margin: 0 auto 16px;
+  max-inline-size: 56rem;
+  padding: clamp(16px, 4vw, 24px);
+  border-radius: 12px;
+  background: var(--folio-panel, #fcf8ee);
+  color: var(--folio-ink, #242920);
+  font-family: var(--folio-font-body, system-ui, sans-serif);
+  overflow-wrap: anywhere;
+}
+
+.almanacHeader h1 {
+  margin-block-end: 8px;
+  font: 600 clamp(1.5rem, 4vw, 2rem) / 1.2 var(--folio-font-heading, Georgia, serif);
+}
+
+.almanacHeader p {
+  color: var(--folio-muted, #52584a);
+}
+
+.almanacLinks {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 16px;
+  margin-block-start: 8px;
+}
+
+.almanacLinks a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 44px;
+  color: var(--folio-action, #2e563e);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+.almanacLinks a:focus-visible {
+  outline: 3px solid var(--folio-focus, #2e563e);
+  outline-offset: 4px;
+}

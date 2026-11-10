@@ -2,6 +2,7 @@ import Link from "next/link";
 import { PageTitle, type PageName } from "@/components/journey1/Titles";
 import { AccountNav } from "./AccountNav";
 import { CockpitNav } from "./CockpitNav";
+import { getFlag } from "@/lib/config";
 export function AccountHeading({
   name,
   cockpit = false,
@@ -18,7 +19,7 @@ export function AccountHeading({
         {cockpit ? "My Account · AI Cockpit" : "Personal"}
       </p>
       <PageTitle name={name} />
-      {cockpit ? <CockpitNav /> : <AccountNav />}
+      {cockpit ? <CockpitNav consoleEnabled={getFlag("AI_CONSOLE_BYOK")} /> : <AccountNav />}
     </>
   );
 }

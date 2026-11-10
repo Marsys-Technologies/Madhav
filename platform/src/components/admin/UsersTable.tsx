@@ -19,12 +19,12 @@ import { SetPasswordDialog } from './SetPasswordDialog'
 import {
   adminCard,
   adminGhostBtn,
-  adminPrimaryBtn,
   adminTableRow,
   adminTableTd,
   adminTableTh,
 } from './styles'
 import type { AdminUser } from './types'
+import folio from './folio-context.module.css'
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, {
@@ -90,6 +90,8 @@ export function UsersTable({
         return
       }
       setResetLink(body?.reset_link ?? null)
+    } catch {
+      toast.error('Could not retrieve a reset link. Try again.')
     } finally {
       setWorking(false)
     }
@@ -131,6 +133,8 @@ export function UsersTable({
         setConfirmAction(null)
         onMutated()
       }
+    } catch {
+      toast.error('Could not confirm the account update. Refresh the user list before trying again.')
     } finally {
       setWorking(false)
     }
@@ -138,30 +142,30 @@ export function UsersTable({
 
   return (
     <section className={adminCard + ' overflow-hidden'}>
-      <header className="flex items-center justify-between gap-3 border-b border-[rgba(var(--brand-gold-rgb),0.15)] px-6 py-4">
-        <h2 className="font-serif text-lg text-brand-gold-cream">Users</h2>
-        <div className="flex items-center gap-3">
+      <header className={folio.directoryHeader}>
+        <h2>Users</h2>
+        <div className={folio.directoryControls}>
           <input
             type="search"
+            aria-label="Search users"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search…"
-            className="rounded-md border border-[rgba(var(--brand-gold-rgb),0.18)] bg-brand-ink px-3 py-1.5 text-sm text-brand-gold-cream placeholder:text-muted-foreground focus:border-brand-gold focus:outline-none"
+            placeholder="Name, username or email"
           />
-          <button onClick={() => setNewUserOpen(true)} className={adminPrimaryBtn}>
-            + New user
+          <button type="button" onClick={() => setNewUserOpen(true)}>
+            New user
           </button>
         </div>
       </header>
 
       {filtered.length === 0 ? (
-        <p className="px-6 py-8 text-center text-sm text-muted-foreground">
+        <p role="status" className="px-6 py-8 text-center text-sm text-muted-foreground">
           {search.trim()
             ? `No users match "${search.trim()}".`
             : 'No users yet — create the first one above.'}
         </p>
       ) : (
-        <div className="overflow-x-auto">
+        <div className={folio.directoryResults} role="region" aria-label="User directory results" tabIndex={0}>
           <table className="w-full">
             <thead>
               <tr>
@@ -171,17 +175,18 @@ export function UsersTable({
                 <th className={adminTableTh}>Role</th>
                 <th className={adminTableTh}>Status</th>
                 <th className={adminTableTh}>Created</th>
-                <th className={adminTableTh}></th>
+                <th className={adminTableTh}><span className="sr-only">Actions</span></th>
               </tr>
             </thead>
             <tbody>
               {filtered.map((u) => {
                 const isMe = u.id === currentUserId
+                const identity = u.name ?? u.username ?? u.email ?? u.id
                 return (
                   <tr key={u.id} className={adminTableRow}>
                     <td className={adminTableTd + ' font-medium'}>
                       {u.username ?? <span className="text-muted-foreground">—</span>}
-                      <Link className="ml-2 text-xs text-brand-gold" href={`/admin/users/${encodeURIComponent(u.id)}`}>Details</Link>
+                      <Link className="ml-2 text-xs text-brand-gold" href={`/admin/users/${encodeURIComponent(u.id)}`} aria-label={`Details for ${identity}`}>Details</Link>
                       {isMe && (
                         <span className="ml-2 text-[10px] uppercase tracking-[0.14em] text-brand-gold">
                           you
@@ -202,7 +207,7 @@ export function UsersTable({
                     <td className={adminTableTd + ' text-right'}>
                       {isMe ? null : (
                         <DropdownMenu>
-                          <DropdownMenuTrigger className="rounded border border-[rgba(var(--brand-gold-rgb),0.22)] px-3 py-1 text-xs text-brand-gold hover:border-brand-gold hover:text-brand-gold-cream">
+                          <DropdownMenuTrigger aria-label={`Actions for ${identity}`} className="rounded border border-[rgba(var(--brand-gold-rgb),0.22)] px-3 py-1 text-xs text-brand-gold hover:border-brand-gold hover:text-brand-gold-cream">
                             Actions
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="bg-brand-ink text-brand-gold-cream">
@@ -332,6 +337,7 @@ export function UsersTable({
             Password-reset link
           </div>
           <textarea
+            aria-label="Password-reset link"
             readOnly
             value={resetLink}
             rows={3}

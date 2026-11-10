@@ -40,20 +40,20 @@ export function RosterTableView({ charts }: RosterTableViewProps) {
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-[rgba(212,175,55,0.15)]">
+    <div data-roster-table role="region" aria-label="Charts table" tabIndex={0} className="overflow-x-auto rounded-lg border border-[var(--folio-divider)] bg-[var(--folio-panel)] text-[var(--folio-ink)] focus-visible:outline-2 focus-visible:outline-[var(--folio-focus)]">
       <table className="w-full text-xs">
-        <thead className="bg-[rgba(8,6,3,0.6)]">
+        <thead className="bg-[var(--folio-selected)]">
           <tr>
             <th
               scope="col"
               className="bt-label bt-label-upper px-3 py-2 text-left whitespace-nowrap"
-              style={{ color: 'rgba(212,175,55,0.45)' }}
+              style={{ color: 'var(--folio-muted)' }}
               aria-sort={sortKey === 'name' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
             >
               <button
                 onClick={() => toggle('name')}
                 aria-label={`Sort by name${sortKey === 'name' ? `, currently ${sortDir}ending` : ''}`}
-                className="cursor-pointer select-none hover:text-[#d4af37] transition-colors"
+                className="cursor-pointer select-none hover:underline focus-visible:outline-2 focus-visible:outline-[var(--folio-focus)]"
               >
                 Name{sortIndicator('name')}
               </button>
@@ -61,20 +61,20 @@ export function RosterTableView({ charts }: RosterTableViewProps) {
             <th
               scope="col"
               className="bt-label bt-label-upper px-3 py-2 text-left"
-              style={{ color: 'rgba(212,175,55,0.45)' }}
+              style={{ color: 'var(--folio-muted)' }}
             >
               Birth details
             </th>
             <th
               scope="col"
               className="bt-label bt-label-upper px-3 py-2 text-left whitespace-nowrap"
-              style={{ color: 'rgba(212,175,55,0.45)' }}
+              style={{ color: 'var(--folio-muted)' }}
               aria-sort={sortKey === 'buildPct' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
             >
               <button
                 onClick={() => toggle('buildPct')}
                 aria-label={`Sort by build percentage${sortKey === 'buildPct' ? `, currently ${sortDir}ending` : ''}`}
-                className="cursor-pointer select-none hover:text-[#d4af37] transition-colors"
+                className="cursor-pointer select-none hover:underline focus-visible:outline-2 focus-visible:outline-[var(--folio-focus)]"
               >
                 Build{sortIndicator('buildPct')}
               </button>
@@ -82,46 +82,46 @@ export function RosterTableView({ charts }: RosterTableViewProps) {
             <th
               scope="col"
               className="bt-label bt-label-upper px-3 py-2 text-left whitespace-nowrap"
-              style={{ color: 'rgba(212,175,55,0.45)' }}
+              style={{ color: 'var(--folio-muted)' }}
               aria-sort={sortKey === 'activity' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
             >
               <button
                 onClick={() => toggle('activity')}
                 aria-label={`Sort by last activity${sortKey === 'activity' ? `, currently ${sortDir}ending` : ''}`}
-                className="cursor-pointer select-none hover:text-[#d4af37] transition-colors"
+                className="cursor-pointer select-none hover:underline focus-visible:outline-2 focus-visible:outline-[var(--folio-focus)]"
               >
                 Last activity{sortIndicator('activity')}
               </button>
             </th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-[rgba(212,175,55,0.1)]">
+        <tbody className="divide-y divide-[var(--folio-divider)]">
           {sorted.map((c) => (
-            <tr key={c.id} className="hover:bg-[rgba(212,175,55,0.04)] transition-colors">
+            <tr key={c.id} className="hover:bg-[var(--folio-selected)]">
               <td className="px-3 py-2">
                 <Link
                   href={`/clients/${c.id}`}
-                  className="bt-heading inline-flex min-h-11 items-center rounded-sm text-[#fce29a] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d4af37]"
+                  className="bt-heading inline-flex min-h-11 items-center break-words rounded-sm text-[var(--folio-action)] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--folio-focus)]"
                 >
                   {c.name}
                 </Link>
               </td>
               <td className="px-3 py-2">
-                <p className="bt-label text-[rgba(212,175,55,0.6)]">{formatDate(c.birth_date)}</p>
-                <p className="bt-label text-[rgba(212,175,55,0.38)]">{c.birth_place}</p>
+                <p className="bt-label text-[var(--folio-muted)]">{formatDate(c.birth_date)}</p>
+                <p className="bt-label text-[var(--folio-muted)]">{c.birth_place}</p>
               </td>
               <td className="whitespace-nowrap px-3 py-2">
-                <span className="tabular-nums font-[var(--font-mono)] text-[#d4af37]">{c.readiness.percent}%</span>
-                <span className="bt-label ml-2 text-[rgba(212,175,55,0.55)]">{c.readiness.label}</span>
+                <span className="tabular-nums font-[var(--font-mono)] text-[var(--folio-action)]">{c.readiness.percent}%</span>
+                <span className="bt-label ml-2 text-[var(--folio-muted)]">{c.readiness.label}</span>
               </td>
-              <td className="whitespace-nowrap px-3 py-2 bt-label text-[rgba(212,175,55,0.42)]">
+              <td className="whitespace-nowrap px-3 py-2 bt-label text-[var(--folio-muted)]">
                 {formatDate(c.lastLayerActivity)}
               </td>
             </tr>
           ))}
           {sorted.length === 0 && (
             <tr>
-              <td colSpan={4} className="px-3 py-6 text-center text-[rgba(212,175,55,0.38)]">
+              <td colSpan={4} className="px-3 py-6 text-center text-[var(--folio-muted)]">
                 No charts match the current filters.
               </td>
             </tr>

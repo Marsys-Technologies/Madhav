@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import styles from './historical-folio.module.css'
 import type { ChartInputSnapshot } from '@/lib/charts/types'
 import type { HistoricalTranscriptMessage } from '@/lib/conversations/historicalReading'
 
@@ -75,23 +76,29 @@ function SnapshotDetails({ snapshot }: { snapshot: ChartInputSnapshot | null }) 
 export function HistoricalConversationView({
   conversation,
   messages,
+  targetAnswerId,
 }: {
   conversation: HistoricalConversation
   messages: HistoricalTranscriptMessage[]
+  targetAnswerId?: string
 }) {
   return (
-    <main className="jw-root min-h-full px-4 py-8 sm:px-6">
+    <main
+      aria-label="Historical reading"
+      tabIndex={0}
+      className="jw-root h-full min-w-0 overflow-y-auto px-4 py-8 [overflow-wrap:anywhere] sm:px-6"
+    >
       <div className="mx-auto flex max-w-3xl flex-col gap-6">
-        <header className="flex flex-col gap-3">
+        <header className={`flex flex-col gap-3 ${styles.header}`}>
           <Link
             href={`/clients/${conversation.chart_id}`}
-            className="jw-touch inline-flex min-h-11 w-fit items-center text-xs uppercase tracking-[0.2em] text-[var(--jw-gold-dim)] hover:text-[var(--jw-gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--jw-gold)]"
+            className={`jw-touch inline-flex min-h-11 w-fit items-center text-xs uppercase tracking-[0.2em] text-[var(--jw-gold-dim)] hover:text-[var(--jw-gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--jw-gold)] ${styles.returnLink}`}
           >
             ← Jātaka workspace
           </Link>
           <p className="jw-eyebrow">Historical · read-only</p>
           <h1 className="jw-display text-3xl">{conversation.title ?? 'Earlier reading'}</h1>
-          <div role="note" className="jw-panel px-5 py-4 text-[var(--jw-ink-dim)]">
+          <div role="note" className={`jw-panel px-5 py-4 text-[var(--jw-ink-dim)] ${styles.snapshot}`}>
             <p className="text-sm text-[var(--jw-ink)]">
               This reading was made before the chart details were corrected. It is kept as history and cannot be
               continued; it reflects these earlier details:
@@ -104,6 +111,8 @@ export function HistoricalConversationView({
           {messages.map((message) => (
             <li
               key={message.id}
+              id={message.id === targetAnswerId ? `pp-answer-${message.id}` : undefined}
+              tabIndex={message.id === targetAnswerId ? -1 : undefined}
               className={
                 message.role === 'user'
                   ? 'jw-panel self-end px-4 py-3 text-sm text-[var(--jw-ink)] sm:max-w-[80%]'

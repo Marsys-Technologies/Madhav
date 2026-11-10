@@ -54,6 +54,31 @@ afterEach(() => {
   window.history.pushState({}, '', '/')
 })
 
+it('keeps username autofill while disabling keyboard corrections', () => {
+  render(<LoginPage />)
+  const username = screen.getByRole('textbox', { name: 'Username' })
+
+  expect(username).toHaveAttribute('autocomplete', 'username')
+  expect(username).toHaveAttribute('autocorrect', 'off')
+  expect(username).toHaveAttribute('autocapitalize', 'none')
+  expect(username).toHaveAttribute('spellcheck', 'false')
+
+  fireEvent.click(screen.getByRole('button', { name: 'Email' }))
+  expect(screen.getByRole('textbox', { name: 'Email' })).toHaveAttribute('autocomplete', 'email')
+})
+
+it('keeps the password input and its visibility control separately named', () => {
+  const { container } = render(<LoginPage />)
+  const password = container.querySelector<HTMLInputElement>('input[type="password"]')
+  const show = screen.getByRole('button', { name: 'Show password' })
+
+  expect(password).toHaveAccessibleName('Password')
+  expect(password?.labels?.[0]).not.toContainElement(show)
+  fireEvent.click(show)
+  expect(screen.getByRole('textbox', { name: 'Password' })).toBe(password)
+  expect(screen.getByRole('button', { name: 'Hide password' })).toHaveAttribute('aria-pressed', 'true')
+})
+
 describe('login redirect after sign-in honours only a safe next', () => {
   it('a good next (/share/<slug>) is navigated to', async () => {
     setLocationSearch(`?next=${encodeURIComponent('/share/AbC123xyz0')}`)
@@ -97,8 +122,14 @@ describe('login redirect after sign-in honours only a safe next', () => {
     expect(pushMock).toHaveBeenCalledWith('/dashboard')
   })
 
-  it('username setup still takes precedence over next', async () => {
+  it('routes through required username setup with the safe destination', async () => {
     setLocationSearch(`?next=${encodeURIComponent('/share/AbC123xyz0')}`)
+    await signIn({ username_setup_required: true })
+    expect(pushMock).toHaveBeenCalledWith('/setup-account?next=%2Fshare%2FAbC123xyz0')
+  })
+
+  it('drops an invalid destination when routing to username setup', async () => {
+    setLocationSearch('?next=%2F%2Fexample.com')
     await signIn({ username_setup_required: true })
     expect(pushMock).toHaveBeenCalledWith('/setup-account')
   })

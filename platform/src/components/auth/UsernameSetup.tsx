@@ -6,9 +6,11 @@ import { validateUsername } from "@/lib/auth/username";
 export function UsernameSetup({
   initialUsername,
   email,
+  returnPath,
 }: {
   initialUsername: string | null;
   email: string;
+  returnPath: string | null;
 }) {
   const [value, setValue] = useState(initialUsername ?? ""),
     [availability, setAvailability] = useState<
@@ -61,7 +63,7 @@ export function UsernameSetup({
         setError(body.error ?? "Could not save username.");
         return;
       }
-      router.push("/dashboard");
+      router.push(returnPath ?? "/dashboard");
       router.refresh();
     } catch {
       setError("Network error. Please try again.");

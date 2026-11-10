@@ -26,7 +26,7 @@ export default async function CockpitPage({
     [id],
   )
   const chart = chartRows[0]
-  if (!chart) redirect(`/clients`)
+  if (!chart) redirect('/dashboard')
 
   // Latest build — `builds` was retired; graceful null if table absent
   let latestBuild: { build_id: string; status: string; created_at: string; ayanamshas: string[] } | null = null

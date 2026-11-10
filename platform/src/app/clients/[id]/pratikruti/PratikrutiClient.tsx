@@ -5,7 +5,7 @@
  * Design system: existing Tailwind tokens only (brand-gold, card, border-border, etc.)
  */
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -62,13 +62,13 @@ function AskCard({
 }: {
   item: OpenWindow
   chartId: string
-  onDone: (predictionId: string) => void
+  onDone?: (predictionId: string) => void
 }) {
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(false)
 
   async function tap(outcome: AdjOutcome) {
-    if (busy || done) return
+    if (!onDone || busy || done) return
     setBusy(true)
     try {
       await postLearning(chartId, { action: 'adjudicate', prediction_id: item.prediction_id, outcome })
@@ -94,25 +94,27 @@ function AskCard({
           closed {item.window_end}
         </span>
       </div>
-      <div className="flex flex-wrap gap-2">
-        {([
-          ['happened', 'Happened ✓'],
-          ['partial', 'Partially'],
-          ['didnt', "Didn't happen"],
-          ['cant_say', "Can't say"],
-        ] as [AdjOutcome, string][]).map(([outcome, label]) => (
-          <button
-            key={outcome}
-            disabled={busy}
-            onClick={() => tap(outcome)}
-            className="rounded-md border border-border bg-muted px-3 py-1 text-xs font-medium
-                       text-foreground hover:bg-accent hover:text-accent-foreground
-                       disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      {onDone && (
+        <div className="flex flex-wrap gap-2">
+          {([
+            ['happened', 'Happened ✓'],
+            ['partial', 'Partially'],
+            ['didnt', "Didn't happen"],
+            ['cant_say', "Can't say"],
+          ] as [AdjOutcome, string][]).map(([outcome, label]) => (
+            <button
+              key={outcome}
+              disabled={busy}
+              onClick={() => tap(outcome)}
+              className="rounded-md border border-border bg-muted px-3 py-1 text-xs font-medium
+                         text-foreground hover:bg-accent hover:text-accent-foreground
+                         disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -263,13 +265,13 @@ function FollowUpCard({
 }: {
   item: PendingFollowup
   chartId: string
-  onDone: (predictionId: string) => void
+  onDone?: (predictionId: string) => void
 }) {
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(false)
 
   async function tap(outcome: AdjOutcome) {
-    if (busy || done) return
+    if (!onDone || busy || done) return
     setBusy(true)
     try {
       await postLearning(chartId, {
@@ -294,24 +296,26 @@ function FollowUpCard({
         </span>
         <p className="mt-0.5 text-sm text-foreground">{item.follow_up_prompt}</p>
       </div>
-      <div className="flex flex-wrap gap-2">
-        {([
-          ['happened', 'Happened ✓'],
-          ['partial', 'Partially'],
-          ['didnt', "Didn't happen"],
-          ['cant_say', "Can't say"],
-        ] as [AdjOutcome, string][]).map(([outcome, label]) => (
-          <button
-            key={outcome}
-            disabled={busy}
-            onClick={() => tap(outcome)}
-            className="rounded-md border border-border bg-background px-3 py-1 text-xs font-medium
-                       text-foreground hover:bg-accent disabled:opacity-50 transition-colors"
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      {onDone && (
+        <div className="flex flex-wrap gap-2">
+          {([
+            ['happened', 'Happened ✓'],
+            ['partial', 'Partially'],
+            ['didnt', "Didn't happen"],
+            ['cant_say', "Can't say"],
+          ] as [AdjOutcome, string][]).map(([outcome, label]) => (
+            <button
+              key={outcome}
+              disabled={busy}
+              onClick={() => tap(outcome)}
+              className="rounded-md border border-border bg-background px-3 py-1 text-xs font-medium
+                         text-foreground hover:bg-accent disabled:opacity-50 transition-colors"
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -325,13 +329,13 @@ function CoSignCard({
 }: {
   item: PendingSnapshot
   chartId: string
-  onDone: (snapshotId: string) => void
+  onDone?: (snapshotId: string) => void
 }) {
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(false)
 
   async function act(cosignAction: CoSignAction) {
-    if (busy || done) return
+    if (!onDone || busy || done) return
     setBusy(true)
     try {
       await postLearning(chartId, { action: 'cosign', snapshot_id: item.snapshot_id, cosign_action: cosignAction })
@@ -353,27 +357,29 @@ function CoSignCard({
           Proposed snapshot · {item.formula_version} · {item.created_at.slice(0, 10)}
         </span>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          {Array.isArray(cells) ? cells.length : 0} signal families · Key-2 pending your sign-off
+          {Array.isArray(cells) ? cells.length : 0} signal families · Key-2 pending sign-off
         </p>
       </div>
-      <div className="flex gap-2">
-        <button
-          disabled={busy}
-          onClick={() => act('approved')}
-          className="rounded-md bg-primary px-4 py-1.5 text-xs font-medium text-primary-foreground
-                     hover:bg-primary/90 disabled:opacity-50 transition-colors"
-        >
-          Approve
-        </button>
-        <button
-          disabled={busy}
-          onClick={() => act('revoked' as CoSignAction)}
-          className="rounded-md border border-destructive px-4 py-1.5 text-xs font-medium
-                     text-destructive hover:bg-destructive/10 disabled:opacity-50 transition-colors"
-        >
-          Revoke
-        </button>
-      </div>
+      {onDone && (
+        <div className="flex flex-wrap gap-2">
+          <button
+            disabled={busy}
+            onClick={() => act('approved')}
+            className="rounded-md bg-primary px-4 py-1.5 text-xs font-medium text-primary-foreground
+                       hover:bg-primary/90 disabled:opacity-50 transition-colors"
+          >
+            Approve
+          </button>
+          <button
+            disabled={busy}
+            onClick={() => act('revoked' as CoSignAction)}
+            className="rounded-md border border-destructive px-4 py-1.5 text-xs font-medium
+                       text-destructive hover:bg-destructive/10 disabled:opacity-50 transition-colors"
+          >
+            Revoke
+          </button>
+        </div>
+      )}
     </div>
   )
 }
@@ -441,20 +447,41 @@ function ResonanceFeedback({ chartId }: { chartId: string }) {
 
 // ── Root client component ─────────────────────────────────────────────────────
 
-export function PratikrutiClient({ chartId }: { chartId: string }) {
+async function readLearning(chartId: string, signal?: AbortSignal): Promise<LearningData | null> {
+  try {
+    const res = await fetch(`/api/clients/${chartId}/learning`, { signal })
+    return res.ok ? await res.json() : null
+  } catch {
+    return null
+  }
+}
+
+export function PratikrutiClient({ chartId, canWrite }: { chartId: string; canWrite: boolean }) {
   const [data, setData] = useState<LearningData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [retrying, setRetrying] = useState(false)
+  const activity = useRef<HTMLElement>(null)
 
-  const reload = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/clients/${chartId}/learning`)
-      if (res.ok) setData(await res.json())
-    } finally {
+  useEffect(() => {
+    const controller = new AbortController()
+    void readLearning(chartId, controller.signal).then(result => {
+      if (controller.signal.aborted) return
+      setData(result)
       setLoading(false)
-    }
+    })
+    return () => controller.abort()
   }, [chartId])
 
-  useEffect(() => { void reload() }, [reload])
+  async function retry() {
+    if (retrying) return
+    setRetrying(true)
+    const result = await readLearning(chartId)
+    if (result) {
+      setData(result)
+      activity.current?.focus()
+    }
+    setRetrying(false)
+  }
 
   const removeWindow = useCallback((predictionId: string) => {
     setData(d => d ? { ...d, open_windows: d.open_windows.filter(w => w.prediction_id !== predictionId) } : d)
@@ -468,25 +495,56 @@ export function PratikrutiClient({ chartId }: { chartId: string }) {
     setData(d => d ? { ...d, pending_cosign: d.pending_cosign.filter(s => s.snapshot_id !== snapshotId) } : d)
   }, [])
 
-  if (loading) {
-    return (
-      <div className="rounded-lg border border-dashed border-border p-10 text-center">
-        <p className="text-sm text-muted-foreground">Loading…</p>
-      </div>
-    )
-  }
+  return (
+    <section ref={activity} tabIndex={-1} aria-label="Learning activity" className="space-y-8">
+      {loading ? (
+        <p role="status" className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+          Loading learning activity…
+        </p>
+      ) : !data ? (
+        <div className="space-y-3 rounded-lg border border-border p-6">
+          <p role="alert" className="text-sm text-foreground">Learning activity could not be loaded.</p>
+          <button
+            type="button"
+            aria-disabled={retrying}
+            onClick={() => { void retry() }}
+            className="min-h-11 rounded-md border border-border px-3 text-sm font-medium"
+          >
+            {retrying ? 'Trying again…' : 'Retry'}
+          </button>
+        </div>
+      ) : (
+        <LearningRecords
+          data={data}
+          chartId={chartId}
+          canWrite={canWrite}
+          removeWindow={removeWindow}
+          removeFollowup={removeFollowup}
+          removeSnapshot={removeSnapshot}
+        />
+      )}
+    </section>
+  )
+}
 
-  const openWindows = data?.open_windows ?? []
-  const followUps = data?.pending_followups ?? []
-  const snapshots = data?.pending_cosign ?? []
+function LearningRecords({
+  data, chartId, canWrite, removeWindow, removeFollowup, removeSnapshot,
+}: {
+  data: LearningData
+  chartId: string
+  canWrite: boolean
+  removeWindow: (id: string) => void
+  removeFollowup: (id: string) => void
+  removeSnapshot: (id: string) => void
+}) {
+  const { open_windows: openWindows, pending_followups: followUps, pending_cosign: snapshots } = data
 
   return (
-    <div className="space-y-8">
-
+    <>
       {/* Step 1: Ask-Cards */}
       <section className="space-y-3">
         <h2 className="text-sm font-medium text-foreground">
-          Step 1 — Adjudicate Predictions
+          {canWrite ? 'Step 1 — Adjudicate Predictions' : 'Closed predictions'}
           {openWindows.length > 0 && (
             <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">
               {openWindows.length}
@@ -497,28 +555,30 @@ export function PratikrutiClient({ chartId }: { chartId: string }) {
           <p className="text-xs text-muted-foreground">No UNRESOLVED closed windows — all caught up.</p>
         ) : (
           openWindows.map(w => (
-            <AskCard key={w.prediction_id} item={w} chartId={chartId} onDone={removeWindow} />
+            <AskCard key={w.prediction_id} item={w} chartId={chartId} onDone={canWrite ? removeWindow : undefined} />
           ))
         )}
       </section>
 
       {/* Step 2: LEL Intake */}
-      <section className="space-y-3">
-        <h2 className="text-sm font-medium text-foreground">Step 2 — Add Life Event</h2>
-        <LelIntakeForm chartId={chartId} />
-      </section>
+      {canWrite && (
+        <section className="space-y-3">
+          <h2 className="text-sm font-medium text-foreground">Step 2 — Add Life Event</h2>
+          <LelIntakeForm chartId={chartId} />
+        </section>
+      )}
 
       {/* Step 3: Prashna Follow-ups */}
       {followUps.length > 0 && (
         <section className="space-y-3">
           <h2 className="text-sm font-medium text-foreground">
-            Step 3 — Prashna Follow-ups
+            {canWrite ? 'Step 3 — Prashna Follow-ups' : 'Prashna follow-ups'}
             <span className="ml-2 rounded-full bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 text-xs text-amber-700 dark:text-amber-400">
               {followUps.length} due
             </span>
           </h2>
           {followUps.map(f => (
-            <FollowUpCard key={f.prediction_id} item={f} chartId={chartId} onDone={removeFollowup} />
+            <FollowUpCard key={f.prediction_id} item={f} chartId={chartId} onDone={canWrite ? removeFollowup : undefined} />
           ))}
         </section>
       )}
@@ -527,23 +587,25 @@ export function PratikrutiClient({ chartId }: { chartId: string }) {
       {snapshots.length > 0 && (
         <section className="space-y-3">
           <h2 className="text-sm font-medium text-foreground">
-            Step 4 — Co-Sign Snapshots
+            {canWrite ? 'Step 4 — Co-Sign Snapshots' : 'Proposed calibration snapshots'}
             <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">
               {snapshots.length}
             </span>
           </h2>
           {snapshots.map(s => (
-            <CoSignCard key={s.snapshot_id} item={s} chartId={chartId} onDone={removeSnapshot} />
+            <CoSignCard key={s.snapshot_id} item={s} chartId={chartId} onDone={canWrite ? removeSnapshot : undefined} />
           ))}
         </section>
       )}
 
       {/* Step 5: Resonance Capture (QUARANTINED) */}
-      <section className="space-y-3">
-        <h2 className="text-sm font-medium text-foreground">Step 5 — Resonance</h2>
-        <ResonanceFeedback chartId={chartId} />
-      </section>
+      {canWrite && (
+        <section className="space-y-3">
+          <h2 className="text-sm font-medium text-foreground">Step 5 — Resonance</h2>
+          <ResonanceFeedback chartId={chartId} />
+        </section>
+      )}
 
-    </div>
+    </>
   )
 }

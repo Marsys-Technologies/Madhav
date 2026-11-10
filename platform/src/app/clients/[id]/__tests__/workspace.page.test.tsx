@@ -193,7 +193,8 @@ describe('clients/[id] workspace — composition', () => {
     expect(doc.body.textContent).not.toMatch(/recent conversations/i)
     expect(doc.querySelector(`a[href="/clients/${TEST_CHART_ID}/samiksha"]`)).not.toBeNull()
     expect(doc.querySelector(`a[href="/clients/${TEST_CHART_ID}/timeline"]`)).not.toBeNull()
-    expect(doc.querySelector(`a[href="/clients/${TEST_CHART_ID}/reports"]`)).not.toBeNull()
+    // Reports is still in discovery. Its bookmark is supported separately.
+    expect(doc.querySelector(`a[href="/clients/${TEST_CHART_ID}/reports"]`)).toBeNull()
   })
 
   it.each([

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -33,6 +33,7 @@ function ApproveForm({
   const [submitting, setSubmitting] = useState(false);
   const [approved, setApproved] = useState(false);
   const [resetLink, setResetLink] = useState<string | null>(null);
+  const roleId = useId();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -76,6 +77,7 @@ function ApproveForm({
               is not emailed automatically.
             </p>
             <textarea
+              aria-label="Account setup link"
               readOnly
               value={resetLink}
               rows={3}
@@ -107,8 +109,9 @@ function ApproveForm({
         signing in with email.
       </p>
       <div>
-        <label className={adminLabel}>Role</label>
+        <label htmlFor={roleId} className={adminLabel}>Role</label>
         <select
+          id={roleId}
           value={role}
           onChange={(e) => setRole(e.target.value as "guest" | "super_admin")}
           className={adminInput + " mt-1.5"}

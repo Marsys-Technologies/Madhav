@@ -98,15 +98,8 @@ const INTENTIONAL_EXCLUSIONS = new Map<string, string>([
     "LEL (Life Event Log) UI category picker for logging discrete biographical events — " +
     "includes non-domain terms ('loss', 'all') the domain vocabulary has no equivalent for. " +
     "A related-but-distinct taxonomy from domain-tagging of chart signals (LEL event " +
-    "categories vs. domain classification). Same exclusion applies to LogEventDialog.tsx and " +
-    "PratikrutiClient.tsx below — all three are LEL intake/display pickers, independently " +
-    "drifted from EACH OTHER (9/11/9 members) as their own, separate adoption-debt problem " +
-    "flagged to the backlog, not fixed in this lane (LEL category unification is a different " +
-    "vocabulary than domain classification).",
-  ],
-  [
-    'LogEventDialog.tsx::CATEGORIES',
-    "LEL UI category picker — see TimelineView.tsx::CATEGORIES exclusion above (same reasoning).",
+    "categories vs. domain classification). The same exclusion applies to the local " +
+    "PratikrutiClient.tsx list below. LogEventDialog now imports the shared event classes.",
   ],
   [
     'PratikrutiClient.tsx::EVENT_CLASSES',

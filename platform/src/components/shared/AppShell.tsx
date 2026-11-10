@@ -17,7 +17,7 @@ export function AppShell({ children, user, profile, breadcrumb = [] }: AppShellP
     <div className="flex h-[100dvh] bg-background text-foreground">
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded focus:bg-background focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-foreground focus:outline-none focus:ring-2 focus:ring-[var(--brand-gold)]"
+        className="folio-shell-skip sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded focus:bg-[var(--folio-panel)] focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-[var(--folio-ink)]"
       >
         Skip to main content
       </a>
@@ -25,12 +25,12 @@ export function AppShell({ children, user, profile, breadcrumb = [] }: AppShellP
       <div className="relative hidden w-14 shrink-0 md:block">
         <AppShellRail user={user} profile={profile} />
       </div>
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <AppShellBreadcrumb
           segments={breadcrumb}
           mobileNav={<MobileNavSheet user={user} profile={profile} />}
         />
-        <main id="main-content" className="page-ascend flex-1 overflow-auto">{children}</main>
+        <main id="main-content" tabIndex={-1} className="page-ascend min-w-0 flex-1 overflow-auto motion-reduce:animate-none">{children}</main>
       </div>
     </div>
   )

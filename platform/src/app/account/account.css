@@ -1,29 +1,41 @@
+.j1-content:has(> .j5-account) {
+  background: var(--folio-canvas);
+}
+
 .j5-account {
   max-width: 1120px;
   margin: 0 auto;
-  padding: 8px 0 48px;
-  font-size: 16px;
-  line-height: 1.5;
+  min-width: 0;
+  padding: var(--space-3) clamp(var(--space-4), 3vw, var(--space-8)) var(--space-12);
+  background: var(--folio-canvas);
+  color: var(--folio-ink);
+  font: 1rem/1.55 var(--folio-font-body);
 }
 .j5-back {
   display: inline-flex;
   min-height: 44px;
   align-items: center;
-  color: #c4baa0;
-  margin-bottom: 12px;
+  color: var(--folio-action);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  margin-bottom: var(--space-3);
+}
+.j5-account .j5-back:hover {
+  color: var(--folio-action);
+  text-decoration-thickness: 2px;
 }
 .j5-eyebrow {
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  font-size: 12px;
-  color: #ac8a48;
+  font-size: 0.875rem;
+  color: var(--folio-attention);
   margin: 8px 0;
 }
 .j5-tabs {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-  border-bottom: 1px solid #382b18;
+  border-bottom: 1px solid var(--folio-divider);
   margin: 24px 0;
 }
 .j5-tabs a {
@@ -31,25 +43,34 @@
   align-items: center;
   min-height: 44px;
   padding: 8px 12px;
-  color: #c4baa0;
+  color: var(--folio-action);
   border-bottom: 2px solid transparent;
 }
 .j5-tabs a[aria-current="page"] {
-  color: #ecc56a;
-  border-color: #a87c2a;
+  background: var(--folio-selected);
+  border-color: var(--folio-action);
+  color: var(--folio-action);
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+.j5-account .j5-tabs a:hover {
+  background: var(--folio-selected);
+  color: var(--folio-action);
 }
 .j5-panel {
-  background: #14110b;
-  border: 1px solid #382b18;
-  border-radius: 14px;
-  padding: 24px;
+  background: var(--folio-panel);
+  border: 1px solid var(--folio-divider);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
   min-width: 0;
+  overflow-wrap: anywhere;
 }
 .j5-panel h2 {
-  font-family: var(--font-cormorant), Georgia, serif;
-  font-size: 28px;
+  font-family: var(--folio-font-heading);
+  font-size: clamp(1.35rem, 2.5vw, 1.75rem);
   line-height: 1.2;
-  color: #ecc56a;
+  color: var(--folio-ink);
   margin: 0 0 8px;
 }
 .j5-grid {
@@ -60,10 +81,16 @@
 }
 .j5-destination {
   display: block;
-  transition: border-color 0.15s;
+  color: var(--folio-ink);
+  transition: border-color var(--transition-fast);
 }
-.j5-destination:hover {
-  border-color: #a87c2a;
+.j5-account a.j5-destination:hover {
+  border-color: var(--folio-boundary);
+  color: var(--folio-ink);
+}
+.j5-destination:hover h2 {
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
 }
 .j5-identity {
   display: flex;
@@ -73,27 +100,23 @@
 }
 .j5-identity > div {
   flex: 1;
-  min-width: 180px;
+  min-width: min(11rem, 100%);
   overflow-wrap: anywhere;
 }
 .j5-avatar {
+  flex: 0 0 48px;
   width: 48px;
   height: 48px;
-  border: 1px solid #604720;
+  border: 1px solid var(--folio-boundary);
   border-radius: 50%;
   display: grid;
   place-items: center;
-  color: #ecc56a;
-  font-family: var(--font-cormorant), Georgia, serif;
+  color: var(--folio-action);
+  font-family: var(--folio-font-heading);
   font-size: 24px;
 }
 .j5-narrow {
   max-width: 760px;
-}
-.j5-actions {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
 }
 .j5-save-error {
   position: fixed;
@@ -101,40 +124,95 @@
   left: 80px;
   right: 16px;
   z-index: 70;
-  border: 1px solid #604720;
-  border-radius: 10px;
-  background: #20190d;
-  color: #e1c88b;
+  border: 1px solid var(--folio-error);
+  border-radius: var(--radius-md);
+  background: var(--folio-panel);
+  color: var(--folio-error);
   padding: 12px 16px;
   font-size: 16px;
 }
 .j5-save-error button {
-  border: 1px solid #a87c2a;
+  border: 1px solid var(--folio-boundary);
   border-radius: 8px;
   padding: 8px 14px;
   min-height: 44px;
   margin-left: 12px;
 }
-.j5-account input,
-.j5-account select,
-.j5-account textarea {
+.j5-account .j1-title:not(:where(.pp-root *, .zone-ink *)) > span {
+  color: var(--folio-ink);
+  font: 600 clamp(1.5rem, 3vw, 2rem)/1.2 var(--folio-font-heading);
+  font-variant: normal;
+  overflow-wrap: anywhere;
+}
+.j5-account .j1-title:not(:where(.pp-root *, .zone-ink *)) > small,
+.j5-account .j1-note:not(:where(.pp-root *, .zone-ink *)) {
+  color: var(--folio-muted);
+}
+.j5-account :is(.j5-panel, .j5-persona-form) .j1-field > :is(span, .j1-password-label) {
+  color: var(--folio-muted);
+  font-size: 0.875rem;
+  letter-spacing: normal;
+}
+.j5-account :is(.j5-panel, .j5-persona-form) :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+  min-width: 0;
+  max-width: 100%;
+  min-height: var(--folio-target);
+  border: 1px solid var(--folio-boundary);
+  background: var(--folio-panel);
+  color: var(--folio-ink);
+  color-scheme: light;
   font: inherit;
 }
-.j5-account :is(a, button, input, select, textarea):focus-visible {
-  outline: 2px solid #ecc56a;
-  outline-offset: 3px;
+.j5-account :is(.j5-panel, .j5-persona-form) :is(input, textarea)::placeholder {
+  color: var(--folio-muted);
 }
-.j5-account button {
-  min-height: 44px;
+.j5-account :is(.j5-panel, .j5-persona-form) .j1-password button {
+  color: var(--folio-action);
 }
-.j5-account select {
-  min-height: 44px;
-  background: #0a0806;
-  border: 1px solid #604720;
-  border-radius: 8px;
-  padding: 8px;
-  color: #e8dfc9;
-  max-width: 100%;
+.j5-account .j1-btn:not(:where(.pp-root *, .zone-ink *)) {
+  min-height: var(--folio-target);
+  border-color: var(--folio-action);
+  background: var(--folio-action);
+  color: var(--folio-on-action);
+}
+.j5-account :is(a, button).j1-btn:not(:where(.pp-root *, .zone-ink *)):hover {
+  color: var(--folio-on-action);
+  text-decoration: underline;
+}
+.j5-account :is(a, button).j1-btn.j1-btn-secondary:not(:where(.pp-root *, .zone-ink *)) {
+  border-color: var(--folio-boundary);
+  background: var(--folio-panel);
+  color: var(--folio-action);
+}
+.j5-account :is(.j1-error, .j5-panel[role="alert"]):not(:where(.pp-root *, .zone-ink *)) {
+  border-color: var(--folio-error);
+  background: var(--folio-panel);
+  color: var(--folio-error);
+}
+.j5-account .j5-panel a:not(:where(.j1-btn, .pp-root *, .zone-ink *)) {
+  color: var(--folio-action);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+.j5-account .j5-panel a:not(:where(.j1-btn, .pp-root *, .zone-ink *)):hover {
+  color: var(--folio-action);
+  text-decoration-thickness: 2px;
+}
+.j5-account :is(
+  .j5-back,
+  .j5-tabs a,
+  .j5-destination,
+  .j1-btn,
+  .j5-save-error button,
+  .j5-panel :is(a, button, input, select, textarea, summary),
+  .j5-persona-form :is(input, textarea)
+):not(:where(.pp-root *, .zone-ink *)):focus-visible {
+  outline: 3px solid var(--folio-focus);
+  outline-offset: 4px;
+}
+.j5-account :is(.j5-panel, .j5-persona-form) select {
+  border-radius: var(--radius-md);
+  padding: var(--space-2);
 }
 @media (max-width: 1000px) {
   .j5-grid {
@@ -146,7 +224,7 @@
     grid-template-columns: 1fr;
   }
   .j5-panel {
-    padding: 18px;
+    padding: var(--space-4);
   }
   .j5-tabs {
     gap: 0;
@@ -173,8 +251,8 @@
   flex-wrap: wrap;
   gap: 8px 22px;
   padding-left: 20px;
-  color: #c4baa0;
-  font-size: 14px;
+  color: var(--folio-muted);
+  font-size: 0.875rem;
 }
 .j5-setting {
   display: flex;
@@ -185,16 +263,16 @@
   flex-wrap: wrap;
 }
 .j5-setting select {
-  min-width: 160px;
+  width: min(100%, 12rem);
 }
 .j5-setting input[type="checkbox"] {
   width: 22px;
   height: 22px;
-  accent-color: #a87c2a;
+  accent-color: var(--folio-action);
 }
 .j5-card-summary {
-  font-size: 14px;
-  color: #ac8a48;
+  font-size: 0.875rem;
+  color: var(--folio-muted);
   overflow-wrap: anywhere;
   margin-top: 16px;
 }
@@ -206,32 +284,24 @@
   flex-wrap: wrap;
 }
 .j5-persona-card h3 {
-  color: #ecc56a;
-  font-family: var(--font-cormorant), Georgia, serif;
-  font-size: 24px;
-  font-weight: 500;
+  color: var(--folio-action);
+  font-family: var(--folio-font-heading);
+  font-size: 1.25rem;
+  font-weight: 600;
 }
 .j5-persona-card p {
-  color: #c4baa0;
+  color: var(--folio-muted);
   font-size: 16px;
 }
 .j5-persona-card button {
-  color: #ecc56a;
-  border: 1px solid #604720;
+  color: var(--folio-action);
+  border: 1px solid var(--folio-boundary);
   background: transparent;
   border-radius: 8px;
   font: inherit;
 }
-.j5-persona-form textarea,
-.j5-persona-form input {
-  background: #080705;
-  color: #f3eee2;
-  border-color: #604720;
-  min-height: 44px;
-  font: inherit;
-}
 .j5-persona-form label {
-  color: #c4baa0;
+  color: var(--folio-muted);
   font: inherit;
 }
 .j5-persona-form textarea {
@@ -250,9 +320,10 @@
   gap: 16px;
 }
 .j5-metric {
-  font-family: var(--font-cormorant), Georgia, serif;
-  font-size: 32px;
-  color: #ecc56a;
+  font-family: var(--folio-font-heading);
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-variant-numeric: tabular-nums;
+  color: var(--folio-ink);
   margin: 10px 0;
 }
 .j5-filter-fields {
@@ -268,14 +339,8 @@
 .j5-filter input,
 .j5-filter select {
   width: 100%;
-  min-width: 0;
-  min-height: 44px;
-  padding: 8px 10px;
-  border: 1px solid #4a381c;
-  border-radius: 6px;
-  background: #0a0806;
-  color: #e8dfc9;
-  font: inherit;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
 }
 .j5-actions {
   display: flex;
@@ -285,7 +350,18 @@
 }
 .j5-chart-scroll,
 .j5-table-scroll {
+  max-width: 100%;
   overflow-x: auto;
+}
+/* This chart's existing gold, green and cream marks need a dark plotting area. */
+.j5-chart-scroll {
+  background: var(--obsidian-bg);
+  color-scheme: dark;
+}
+.j5-chart-scroll:focus-visible,
+.j5-table-scroll:focus-visible {
+  outline: 3px solid var(--folio-focus);
+  outline-offset: 4px;
 }
 .j5-chart-scroll svg {
   width: 100%;
@@ -301,33 +377,32 @@
 .j5-table-scroll th,
 .j5-table-scroll td {
   padding: 10px;
-  border-bottom: 1px solid #382b18;
+  border-bottom: 1px solid var(--folio-divider);
+  font-variant-numeric: tabular-nums;
 }
 .j5-connection {
-  border-top: 1px solid #382b18;
+  border-top: 1px solid var(--folio-divider);
   margin-top: 14px;
   padding-top: 12px;
   overflow-wrap: anywhere;
 }
-.j5-account summary {
+.j5-activity summary {
   min-height: 44px;
   cursor: pointer;
   padding: 10px 0;
-  color: #d2a23c;
+  color: var(--folio-action);
 }
 .j5-connection > div {
   padding: 12px;
-  border-left: 1px solid #a87c2a;
+  border-left: 1px solid var(--folio-boundary);
   margin: 12px 0;
 }
-.j5-activity button {
-  min-height: 44px;
+.j5-activity button,
+.j5-persona-card button {
+  min-height: var(--folio-target);
 }
-.j5-account input:focus-visible,
-.j5-account select:focus-visible,
-.j5-account summary:focus-visible {
-  outline: 2px solid #ecc56a;
-  outline-offset: 3px;
+@media (prefers-reduced-motion: reduce) {
+  .j5-destination { transition: none; }
 }
 @media (max-width: 900px) {
   .j5-metrics {

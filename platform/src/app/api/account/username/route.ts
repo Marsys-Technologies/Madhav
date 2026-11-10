@@ -2,6 +2,7 @@ import { getServerUserWithProfile } from "@/lib/auth/access-control";
 import { validateUsername } from "@/lib/auth/username";
 import { query } from "@/lib/db/client";
 import { writeAuditLog } from "@/lib/admin/audit";
+import { isAllowedRequestOrigin } from "@/lib/auth/request-origin";
 
 export async function GET(request: Request) {
   const ctx = await getServerUserWithProfile();
@@ -26,8 +27,7 @@ export async function GET(request: Request) {
   }
 }
 export async function PATCH(request: Request) {
-  const origin = request.headers.get("origin");
-  if (origin && origin !== new URL(request.url).origin)
+  if (!isAllowedRequestOrigin(request))
     return Response.json({ error: "forbidden" }, { status: 403 });
   const ctx = await getServerUserWithProfile();
   if (!ctx || ctx.profile.status !== "active")

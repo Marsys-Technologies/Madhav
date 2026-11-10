@@ -19,7 +19,7 @@ const activityFilters = [
   "connectionId",
   "aggregation",
 ];
-export function CockpitNav() {
+export function CockpitNav({ consoleEnabled }: { consoleEnabled: boolean }) {
   const path = usePathname(),
     search = useSearchParams();
   const scope = new URLSearchParams();
@@ -29,7 +29,7 @@ export function CockpitNav() {
   }
   return (
     <nav aria-label="AI Cockpit sections" className="j5-tabs">
-      {items.map(([label, suffix]) => {
+      {items.filter(([, suffix]) => consoleEnabled || suffix !== "/console").map(([label, suffix]) => {
         const href = root + suffix;
         const query =
           ["/observatory", "/consumption"].includes(suffix) && scope.size

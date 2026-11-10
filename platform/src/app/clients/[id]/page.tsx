@@ -20,6 +20,7 @@ import { VargaChart } from "@/components/journey1/VargaChart";
 import { ActivationTimeline } from "@/components/journey1/ActivationTimeline";
 import { ChartNav } from "@/components/journey1/ChartNav";
 import "@/components/profile/jataka-workspace.css";
+import styles from "./folio.module.css";
 
 export default async function ClientPage({
   params,
@@ -53,8 +54,8 @@ export default async function ClientPage({
   const readiness = readinessMap.get(id) ?? emptyChartReadiness();
   const isSuperAdmin = access.role === "super_admin";
   return (
-    <div className="j1 j1-container" data-permission={access.permission}>
-      <Link href="/dashboard" className="j1-note">
+    <div className={`j1 j1-container ${styles.folio}`} data-permission={access.permission}>
+      <Link href="/dashboard" className={styles.rosterReturn}>
         ← Birth charts
       </Link>
       <section className="j1-chart-hero" aria-label="Chart identity">
@@ -78,7 +79,7 @@ export default async function ClientPage({
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
             <Link
               href={`/clients/${id}/pariprashna`}
-              className="j1-btn"
+              className={`j1-btn ${styles.consultAction}`}
               data-testid="consult-room-card"
             >
               <PageTitle name="consultation" as="span" compact />

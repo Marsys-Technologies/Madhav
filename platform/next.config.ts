@@ -25,6 +25,8 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
+      { source: '/audit', destination: '/admin/administration-log', permanent: false },
+      { source: '/performance', destination: '/admin/foundation', permanent: false },
       {
         source: '/clients/:id/build',
         destination: '/clients/:id/nirmana',

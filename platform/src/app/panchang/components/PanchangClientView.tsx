@@ -14,7 +14,7 @@
 import { useCallback, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { parseISO, isAfter, addYears } from 'date-fns'
-import { PanchangHeader, resolveDate, resolveLocation, resolveChartId } from './PanchangHeader'
+import { PanchangHeader, resolveDate, resolveLocation, PRESET_LOCATIONS } from './PanchangHeader'
 import { PrimaryStrip } from './PrimaryStrip'
 import { TimingsPanel } from './TimingsPanel'
 import { PlanetaryGrid } from './PlanetaryGrid'
@@ -23,28 +23,31 @@ import { SpecialYogasList } from './SpecialYogasList'
 import { ChoghadiyaPanel } from './ChoghadiyaPanel'
 import { HoraPanel } from './HoraPanel'
 import { ActionBar } from './ActionBar'
+import { PanchangChartContext } from './AskMadhavLink'
 
 interface PanchangClientViewProps {
   /** Server-rendered initial data — used as TanStack Query initialData to skip first fetch */
   initialData: PanchangDay | null
   initialDate: string
-  initialLat: number
-  initialLon: number
+  initialLat?: number
+  initialLon?: number
+  fixedChartId?: string
 }
 
 export function PanchangClientView({
   initialData,
   initialDate,
-  initialLat,
-  initialLon,
+  initialLat = PRESET_LOCATIONS[0].lat,
+  initialLon = PRESET_LOCATIONS[0].lon,
+  fixedChartId,
 }: PanchangClientViewProps) {
   const searchParams = useSearchParams()
-  const date = resolveDate(searchParams) || initialDate
+  const date = resolveDate(searchParams, fixedChartId ? initialDate : undefined)
   const location = resolveLocation(searchParams)
 
-  // chartId state — initialised from URL (handles server-rendered deep links),
-  // then updated by PanchangHeader.onChartIdChange when user changes selection.
-  const [chartId, setChartId] = useState<string | null>(() => resolveChartId(searchParams))
+  // General Almanac waits for the header to resolve an entitled selection.
+  const [chartId, setChartId] = useState<string | null>(null)
+  const selectedChartId = fixedChartId ?? chartId
 
   // Ephemeris range: Swiss Ephemeris supports ~5400 BCE – 5400 CE.
   // For practical purposes, flag dates beyond +100 years as "beyond range".
@@ -61,20 +64,21 @@ export function PanchangClientView({
     lat: location.lat,
     lon: location.lon,
     tzOffsetMinutes: 330,
-    chartId,
-    initialData: initialData ?? undefined,
+    chartId: selectedChartId,
+    initialData: selectedChartId ? undefined : initialData ?? undefined,
     // Skip fetching if we know the request can't succeed
     enabled: !isBeyondEphemeris,
   })
 
   const handleRetry = useCallback(() => { void refetch() }, [refetch])
 
-  return (
+  const view = (
     <div className="flex min-h-full flex-col">
       <PanchangHeader
         initialDate={initialDate}
         initialLocation={{ id: 'bhubaneswar', label: 'Bhubaneswar', lat: initialLat, lon: initialLon }}
         onChartIdChange={setChartId}
+        fixedChartId={fixedChartId}
       />
 
       {/* Edge: date beyond ephemeris range */}
@@ -127,17 +131,20 @@ export function PanchangClientView({
 
       {isLoading && !data && (
         <div className="mx-auto max-w-4xl px-4 py-6">
-          <div className="rounded-xl border border-[rgba(212,175,55,0.14)] bg-[rgba(28,28,26,0.50)] overflow-hidden">
+          <p role="status" className="mb-3 rounded-md bg-[var(--folio-panel)] px-3 py-2 text-sm text-[var(--folio-muted)]">
+            Loading almanac…
+          </p>
+          <div aria-hidden="true" className="rounded-xl border border-[rgba(212,175,55,0.14)] bg-[rgba(28,28,26,0.50)] overflow-hidden">
             {Array.from({ length: 6 }).map((_, i) => (
               <div
                 key={i}
                 className="flex items-center justify-between px-5 py-4 border-b border-[rgba(212,175,55,0.08)] last:border-0"
               >
-                <div className="flex items-center gap-3">
-                  <div className="h-4 w-20 rounded bg-[rgba(212,175,55,0.10)] animate-pulse" />
-                  <div className="h-5 w-32 rounded bg-[rgba(212,175,55,0.14)] animate-pulse" />
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="h-4 w-20 max-w-full rounded bg-[rgba(212,175,55,0.10)] motion-safe:animate-pulse" />
+                  <div className="h-5 w-32 max-w-full rounded bg-[rgba(212,175,55,0.14)] motion-safe:animate-pulse" />
                 </div>
-                <div className="h-4 w-16 rounded bg-[rgba(212,175,55,0.08)] animate-pulse" />
+                <div className="h-4 w-16 max-w-full rounded bg-[rgba(212,175,55,0.08)] motion-safe:animate-pulse" />
               </div>
             ))}
           </div>
@@ -196,8 +203,10 @@ export function PanchangClientView({
       {/* Action Bar — sticky bottom on mobile, inline on desktop (§4.2) */}
       {/* 4C-8: panchangContext passed for Ask-Madhav deep link injection */}
       <div className="mt-auto">
-        <ActionBar date={date} panchangContext={data ?? undefined} />
+        <ActionBar date={date} panchangContext={data ?? undefined} fixedChartId={fixedChartId} selectedChartId={chartId} />
       </div>
     </div>
   )
+
+  return <PanchangChartContext.Provider value={{ fixedChartId, selectedChartId: chartId }}>{view}</PanchangChartContext.Provider>
 }

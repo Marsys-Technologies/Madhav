@@ -31,6 +31,7 @@
  */
 
 export const SAFE_NEXT_MAX_LENGTH = 512
+export const CHART_RETURN_PATH_HEADER = 'x-madhav-chart-return-path'
 
 const ALLOWED_PREFIXES = ['/share/', '/clients/'] as const
 

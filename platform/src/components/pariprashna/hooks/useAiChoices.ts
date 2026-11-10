@@ -87,8 +87,6 @@ export function useAiChoices(conversationId: string | null, enabled: boolean): U
   const [refreshVersion, setRefreshVersion] = useState(0)
   const aggregateRef = useRef<AiChoicesAggregateDto | null>(null)
   const clisRef = useRef<AiChoicesCliDto | null>(null)
-  const initialConversationIdRef = useRef(conversationId)
-  const acknowledgedConversationIdRef = useRef<string | null>(null)
   const operationEpochRef = useRef(0)
 
   const applyView = useCallback((nextView: SelectionView, aggregate: AiChoicesAggregateDto, clis: AiChoicesCliDto) => {
@@ -128,18 +126,11 @@ export function useAiChoices(conversationId: string | null, enabled: boolean): U
         clisRef.current = clis
         setLegacy(false)
 
-        let nextView: SelectionView
-        if (!conversationId) {
-          nextView = localView(selectionRef.current, aggregate, clis)
-        } else if (initialConversationIdRef.current === null
-          && acknowledgedConversationIdRef.current !== conversationId) {
-          setMutationPending(true)
-          nextView = await persist(conversationId, selectionRef.current)
-          acknowledgedConversationIdRef.current = conversationId
-          if (!cancelled) setMutationPending(false)
-        } else {
-          nextView = await getJson<SelectionView>(`/api/conversations/${encodeURIComponent(conversationId)}/ai-selection`, { signal: controller.signal })
-        }
+        // First-turn submission saves its selection on the server. Loading an
+        // ID here can also mean History was opened, so always read the saved choice.
+        const nextView = conversationId
+          ? await getJson<SelectionView>(`/api/conversations/${encodeURIComponent(conversationId)}/ai-selection`, { signal: controller.signal })
+          : localView(selectionRef.current, aggregate, clis)
         if (!cancelled && operationEpochRef.current === operationEpoch) {
           applyView(nextView, aggregate, clis)
           setLoadedConversationId(conversationId)
@@ -161,7 +152,7 @@ export function useAiChoices(conversationId: string | null, enabled: boolean): U
       }
     })()
     return () => { cancelled = true; controller.abort() }
-  }, [enabled, conversationId, refreshVersion, applyView, persist])
+  }, [enabled, conversationId, refreshVersion, applyView])
 
   useEffect(() => {
     if (!enabled || legacy) return

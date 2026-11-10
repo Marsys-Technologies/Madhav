@@ -115,8 +115,9 @@ export async function resolveTurnAnchors(
      SELECT mp.id AS message_part_id, o.conversation_id, o.turn_ordinal::text AS turn_ordinal
        FROM message_parts mp
        JOIN ordered o ON o.message_id = mp.message_id
-      WHERE mp.id = ANY($1)`,
-    [partIds],
+       JOIN conversations c ON c.id = o.conversation_id
+      WHERE mp.id = ANY($1) AND c.chart_id = $2`,
+    [partIds, chartId],
   )
 
   const out: Record<string, TurnDeepLinkTarget> = {}
@@ -125,6 +126,7 @@ export async function resolveTurnAnchors(
       chartId,
       conversationId: r.conversation_id,
       turnOrdinal: Number(r.turn_ordinal),
+      sourcePartId: r.message_part_id,
     }
   }
   return out

@@ -6,6 +6,7 @@ import { loadConversationMessagesV2 } from '@/lib/persistence/conversation_write
 import { requireActiveUserPage } from '@/lib/auth/active-user-page-guard'
 import { buildShareViewMessages } from '@/lib/share/shareView'
 import { SharedConversation } from './SharedConversation'
+import styles from './folio.module.css'
 
 export const dynamic = 'force-dynamic'
 
@@ -70,7 +71,7 @@ export default async function SharedConversationPage({
   )
   const chart = chartResult.rows[0] ?? null
 
-  const messages = await loadConversationMessagesV2(share.conversation_id)
+  const messages = await loadConversationMessagesV2(share.conversation_id, { includeCanonicalText: true })
 
   // X-S8 / SS N-379: the STORED hide options of the share row are ALWAYS applied,
   // whatever R10_SELECTIVE_SHARE says. The flag only controls whether the options
@@ -93,7 +94,7 @@ export default async function SharedConversationPage({
       {/* X-S9: @media print — inline style ensures ≥12pt body text in print context */}
       <style>{`@media print { body { font-size: 12pt; } }`}</style>
 
-      <header className="mb-6 border-b border-border pb-4 print:border-b-0 print:mb-4">
+      <header className={`mb-6 border-b border-border pb-4 print:border-b-0 print:mb-4 ${styles.header}`}>
         {/* "Shared conversation" label is UI chrome — hidden in print */}
         <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground print:hidden">
           Shared conversation
@@ -105,12 +106,12 @@ export default async function SharedConversationPage({
           <p className="mt-1 text-sm text-muted-foreground print:text-gray-600">{chart.name}</p>
         )}
       </header>
-      <main className="flex-1 print:text-black">
+      <main className={`flex-1 print:text-black ${styles.transcript}`}>
         <SharedConversation messages={visibleMessages} />
       </main>
       {/* Footer is navigation chrome — hidden in print */}
       <footer className="mt-8 border-t border-border pt-4 text-center text-xs text-muted-foreground print:hidden">
-        <Link href="/" className="hover:text-foreground">
+        <Link href="/" className={`hover:text-foreground ${styles.homeLink}`}>
           MARSYS-JIS
         </Link>
       </footer>

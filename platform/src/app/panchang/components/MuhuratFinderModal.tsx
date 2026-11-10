@@ -83,7 +83,11 @@ export function MuhuratFinderModal({
   const [customLat, setCustomLat] = useState(String(lat))
   const [customLon, setCustomLon] = useState(String(lon))
   const [personalise, setPersonalise] = useState(Boolean(chartId))
-  const [hasSubmitted, setHasSubmitted] = useState(false)
+  const [submitted, setSubmitted] = useState<{
+    event: string
+    chartId?: string | null
+    panchangContext?: object | null
+  } | null>(null)
 
   const { windows, isLoading, error, search } = useMuhuratFinder()
 
@@ -103,7 +107,7 @@ export function MuhuratFinderModal({
     async (e: React.FormEvent) => {
       e.preventDefault()
       if (!canSubmit) return
-      setHasSubmitted(true)
+      setSubmitted({ event, chartId, panchangContext })
       await search({
         event,
         date_from: dateFrom,
@@ -115,7 +119,7 @@ export function MuhuratFinderModal({
         top_n: 10,
       })
     },
-    [canSubmit, search, event, dateFrom, dateTo, latNum, lonNum, tzOffsetMinutes, personalise, chartId]
+    [canSubmit, search, event, dateFrom, dateTo, latNum, lonNum, tzOffsetMinutes, personalise, chartId, panchangContext]
   )
 
   // Trap focus: close on backdrop click
@@ -123,7 +127,7 @@ export function MuhuratFinderModal({
     if (e.target === e.currentTarget) onClose()
   }
 
-  const eventLabel = MVP_EVENTS.find((ev) => ev.key === event)?.label ?? event
+  const resultLabel = MVP_EVENTS.find((ev) => ev.key === submitted?.event)?.label ?? submitted?.event
 
   return (
     <div
@@ -341,18 +345,19 @@ export function MuhuratFinderModal({
         </form>
 
         {/* Results panel — shown after first submit */}
-        {hasSubmitted && (
+        {submitted && submitted.chartId === chartId && (
           <div className="border-t border-[rgba(212,175,55,0.10)] px-5 pb-6 pt-4 max-h-[60vh] overflow-y-auto">
             <p className="mb-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Results for {eventLabel}
+              Results for {resultLabel}
             </p>
             <MuhuratResultsList
               windows={windows}
               isLoading={isLoading}
               error={error}
-              event={event}
+              event={submitted.event}
+              chartId={submitted.chartId}
               tzOffsetMinutes={tzOffsetMinutes}
-              panchangContext={panchangContext}
+              panchangContext={submitted.panchangContext}
             />
           </div>
         )}
