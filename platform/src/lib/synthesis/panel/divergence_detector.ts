@@ -21,7 +21,7 @@ export interface DivergenceInstance {
 }
 
 export interface DivergenceClassification {
-  has_divergence: boolean
+  has_divergence: boolean | null
   instances: DivergenceInstance[]
   member_alignment_summary: Record<string, MemberAlignment>
 }
@@ -58,6 +58,10 @@ export function classifyDivergence(
   adjudication: AdjudicationResult,
 ): DivergenceClassification {
   const { has_divergence, summary_text, divergence_count } = adjudication.divergence_summary
+
+  if (has_divergence === null || divergence_count === null) {
+    return { has_divergence: null, instances: [], member_alignment_summary: adjudication.member_alignment }
+  }
 
   if (!has_divergence || divergence_count === 0) {
     return {
