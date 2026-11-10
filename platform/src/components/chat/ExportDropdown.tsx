@@ -23,8 +23,8 @@ export function ExportDropdown({ conversationId }: Props) {
     window.location.href = `${base}?format=md`
   }
 
-  function downloadPdf() {
-    window.location.href = `${base}?format=pdf`
+  function openPrintView() {
+    window.open(`${base}?format=print`, '_blank', 'noopener,noreferrer')
   }
 
   async function copyJson() {
@@ -58,9 +58,9 @@ export function ExportDropdown({ conversationId }: Props) {
           <FileText className="h-3.5 w-3.5" aria-hidden />
           Download Markdown
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={downloadPdf}>
+        <DropdownMenuItem onClick={openPrintView}>
           <FileType2 className="h-3.5 w-3.5" aria-hidden />
-          Download PDF
+          Print or save as PDF
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => { void copyJson() }}>

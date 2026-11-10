@@ -38,9 +38,10 @@ const getServerViewSnapshot = (): ViewMode => 'grid'
 interface Props {
   charts: ChartWithMeta[]
   stats: RosterStats
+  canCreateChart: boolean
 }
 
-export function ClientRoster({ charts, stats }: Props) {
+export function ClientRoster({ charts, stats, canCreateChart }: Props) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -80,7 +81,7 @@ export function ClientRoster({ charts, stats }: Props) {
 
   // True empty state — no charts at all
   if (charts.length === 0) {
-    return <RosterEmptyWizard />
+    return <RosterEmptyWizard canCreateChart={canCreateChart} />
   }
 
   return (

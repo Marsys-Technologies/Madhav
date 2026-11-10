@@ -20,6 +20,7 @@ export function ShareButton({ conversationId }: Props) {
   const [copied, setCopied] = useState(false)
   const [open, setOpen] = useState(false)
   const [confirmRevoke, setConfirmRevoke] = useState(false)
+  const [revokeError, setRevokeError] = useState(false)
   // X-S8: selective share checkboxes — default true = "show" (hide_* = false)
   const [showReasoning, setShowReasoning] = useState(true)
   const [showMethodology, setShowMethodology] = useState(true)
@@ -81,12 +82,16 @@ export function ShareButton({ conversationId }: Props) {
 
   async function revoke() {
     if (!conversationId) return
-    setConfirmRevoke(false)
+    setRevokeError(false)
     setLoading(true)
     try {
-      await fetch(`/api/conversations/${conversationId}/share`, { method: 'DELETE' })
-      setSlug(null)
+      const response = await fetch(`/api/conversations/${conversationId}/share`, { method: 'DELETE' })
+      if (response.ok) setSlug(null)
+      else setRevokeError(true)
+    } catch {
+      setRevokeError(true)
     } finally {
+      setConfirmRevoke(false)
       setLoading(false)
     }
   }
@@ -111,6 +116,11 @@ export function ShareButton({ conversationId }: Props) {
               The link expires after {SHARE_DEFAULT_TTL_DAYS} days.
             </p>
           </div>
+          {revokeError && slug && (
+            <p role="alert" className="text-xs text-destructive">
+              Could not revoke the link. Check its status or try again.
+            </p>
+          )}
           {slug && shareUrl ? (
             <>
               <div className="flex items-center gap-1 rounded-md border border-border bg-muted/30 px-2 py-1.5">

@@ -1,4 +1,5 @@
 import { getServerUser } from '@/lib/firebase/server'
+import { resolveChartPageAccess } from '@/lib/auth/chart-page-guard'
 import { query } from '@/lib/db/client'
 import { redirect, notFound } from 'next/navigation'
 import { ConsumeChat } from '@/components/consume/ConsumeChat'
@@ -37,22 +38,25 @@ export default async function ConsultConversationPage({
 
   if (!chart) redirect('/dashboard')
   const isSuperAdmin = profile?.role === 'super_admin'
-  if (!isSuperAdmin && chart.client_id !== user.uid) redirect('/dashboard')
 
   const conversation = await getConversation({
     id: conversationId,
     userId: user.uid,
     isSuperAdmin,
   })
-  if (!conversation || conversation.chart_id !== id) notFound()
-
-  // Jātaka chart workspace: a conversation archived by a chart-details correction
-  // is historical, read-only material — render its transcript without a composer,
-  // so no client-side regression can reopen it for new turns.
-  if (isCorrectionArchived(conversation)) {
+  // History links use current chart access plus the conversation ownership checked
+  // above. Render correction archives without a composer.
+  if (conversation?.chart_id === id && isCorrectionArchived(conversation)) {
+    if (!isSuperAdmin) {
+      const access = await resolveChartPageAccess(id)
+      if (access?.user.uid !== user.uid || access.permission === 'deny') redirect('/dashboard')
+    }
     const historicalMessages = await loadHistoricalConversationMessages(conversationId)
     return <HistoricalConversationView conversation={conversation} messages={historicalMessages} />
   }
+
+  if (!isSuperAdmin && chart.client_id !== user.uid) redirect('/dashboard')
+  if (!conversation || conversation.chart_id !== id) notFound()
 
   // LCA-2 / WP-1.1: the legacy `reports` relation was RETIRED (DDL only in
   // platform/migrations/_archive; ABSENT from deployed Cloud SQL). The prior

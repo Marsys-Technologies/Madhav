@@ -37,6 +37,7 @@ export default async function DashboardPage() {
   // Resolve role — legacy 'client' is treated as 'guest' until migration 082 fully applies.
   const role: 'super_admin' | 'guest' =
     profile?.role === 'super_admin' ? 'super_admin' : 'guest'
+  const canCreateChart = role === 'super_admin'
 
   // Fetch the roster:
   //   super_admin → every chart in the system.
@@ -98,7 +99,7 @@ export default async function DashboardPage() {
       <div className="j1-container">
         <div className="flex items-center justify-between mb-6">
           <PageTitle name="charts"/>
-          {role === 'super_admin' && (
+          {canCreateChart && (
             <Link href="/clients/new" aria-label="Nava Jātaka (new chart)" className="j1-btn j1-btn-secondary" data-testid="new-client-link">
               <span className="text-base leading-none">+</span>
               <PageTitle name="new" as="span" compact/>
@@ -106,7 +107,7 @@ export default async function DashboardPage() {
           )}
         </div>
         <Suspense>
-          <ClientRoster charts={chartsWithMeta} stats={stats} />
+          <ClientRoster charts={chartsWithMeta} stats={stats} canCreateChart={canCreateChart} />
         </Suspense>
       </div>
     </div>

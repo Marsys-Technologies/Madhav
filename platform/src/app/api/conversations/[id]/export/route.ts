@@ -7,7 +7,7 @@ import { loadConversationMessagesV2 } from '@/lib/persistence/conversation_write
 import { res } from '@/lib/errors'
 import type { UIMessage } from 'ai'
 
-const VALID_FORMATS = ['md', 'json', 'pdf'] as const
+const VALID_FORMATS = ['md', 'json', 'pdf', 'print'] as const
 type ExportFormat = (typeof VALID_FORMATS)[number]
 
 async function resolveAccess(userId: string): Promise<boolean> {
@@ -52,6 +52,38 @@ function toJson(id: string, messages: UIMessage[]): string {
   return JSON.stringify(output, null, 2)
 }
 
+function escapeHtml(text: string): string {
+  return text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+}
+
+function printView(title: string, messages: UIMessage[]): Response {
+  const turns = messages.flatMap((message) => {
+    const text = extractText(message)
+    if (!text) return []
+    const speaker = message.role === 'user' ? 'Question' : message.role === 'assistant' ? 'Answer' : 'Message'
+    return [`<section><h2>${speaker}</h2><p>${escapeHtml(text)}</p></section>`]
+  }).join('')
+  const heading = escapeHtml(title)
+  return new Response(`<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${heading} — Madhav</title>
+<style>
+  body { font: 1rem/1.55 system-ui, sans-serif; color: #202020; background: #fff; max-width: 70ch; margin: auto; padding: 1.25rem; }
+  h2 { font-size: 1rem; break-after: avoid; }
+  section p { white-space: pre-wrap; overflow-wrap: anywhere; }
+  @media print { body { max-width: none; padding: 0; } .print-help { display: none; } }
+</style>
+<main><h1>${heading}</h1><p class="print-help">Use your browser’s Print command to print this reading or save it as a PDF.</p>${turns}</main></html>`, {
+    headers: {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'private, no-store',
+      'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'",
+      'Referrer-Policy': 'no-referrer',
+      'X-Robots-Tag': 'noindex, nofollow',
+    },
+  })
+}
+
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params
   const user = await getServerUser()
@@ -61,7 +93,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
   const format = url.searchParams.get('format') as ExportFormat | null
 
   if (!format || !VALID_FORMATS.includes(format)) {
-    return Response.json({ error: 'format must be one of: pdf, md, json' }, { status: 400 })
+    return Response.json({ error: 'format must be one of: pdf, md, json, print' }, { status: 400 })
   }
 
   try {
@@ -71,6 +103,8 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     if (!conv) return res.notFound('conversation')
 
     const messages = await loadConversationMessagesV2(id, { includeCanonicalText: true })
+
+    if (format === 'print') return printView(conv.title || 'Conversation', messages)
 
     if (format === 'md') {
       const body = toMarkdown(id, messages)

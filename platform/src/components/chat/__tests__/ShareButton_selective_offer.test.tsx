@@ -4,13 +4,14 @@
  * reports selective_share_enabled !== false, and posts no hide fields otherwise.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, render } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import React from 'react'
 import { ShareButton } from '../ShareButton'
 
 afterEach(() => {
   cleanup()
   vi.restoreAllMocks()
+  vi.unstubAllGlobals()
 })
 
 async function open(getBody: Record<string, unknown>) {
@@ -18,8 +19,7 @@ async function open(getBody: Record<string, unknown>) {
     if (init?.method === 'POST') return { ok: true, json: async () => ({ slug: 'AbC123xyz0' }) }
     return { ok: true, json: async () => getBody }
   })
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  global.fetch = fetchMock as any
+  vi.stubGlobal('fetch', fetchMock)
   render(<ShareButton conversationId="conv-1" />)
   await act(async () => {
     ;(document.querySelector('[aria-label="Share conversation"]') as HTMLElement).click()
@@ -55,4 +55,19 @@ describe('selective-share options are offered only while the flag is on', () => 
     await open({ share: null })
     expect(document.querySelector('[data-testid="v2-share-show-reasoning"]')).not.toBeNull()
   })
+})
+
+it('keeps the existing link after failed revocation and clears it after a successful retry', async () => {
+  const slug = 'AbC123xyz0'
+  const fetchMock = await open({ share: { slug } })
+  fetchMock.mockResolvedValueOnce({ ok: false, json: async () => ({}) })
+  fireEvent.click(screen.getByRole('button', { name: 'Revoke link' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Revoke', exact: true }))
+  expect(await screen.findByRole('alert')).toHaveTextContent('Could not revoke the link')
+  expect(screen.getByText(new RegExp(`/share/${slug}$`))).toBeInTheDocument()
+
+  fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({}) })
+  fireEvent.click(screen.getByRole('button', { name: 'Revoke link' }))
+  await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Revoke', exact: true })))
+  expect(screen.queryByText(new RegExp(`/share/${slug}$`))).toBeNull()
 })
