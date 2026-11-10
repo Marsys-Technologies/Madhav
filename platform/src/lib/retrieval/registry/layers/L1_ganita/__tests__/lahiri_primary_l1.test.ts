@@ -34,7 +34,7 @@ describe('get_yoga_dosha kala-sarpa verdict with all five ayanamshas present', (
     ['surya_siddhanta_classical', false], ['true_chitra', false],
   ].map(([a, fires]) => ({ ayanamsha_id: a, fact_value_jsonb: { varga: 'D1', fires } }))
   const labels = ks.map((r) => ({
-    ayanamsha_id: r.ayanamsha_id, fact_category: 'dosha_label', fact_subject: 'kala_sarpa',
+    ayanamsha_id: r.ayanamsha_id, fact_category: 'dosha_label', fact_subject: 'kala_sarpa', fact_key: 'dosha_name',
     fact_value_jsonb: { fires: (r.fact_value_jsonb as { fires: boolean }).fires, catalog_only: false },
   }))
 

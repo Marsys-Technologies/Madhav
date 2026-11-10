@@ -160,7 +160,7 @@ export const getYogaDoshaCapability: CapabilityDescriptor = {
                   fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
            FROM chart_facts
            WHERE ${whereClause}
-           ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_key
+           ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_key, fact_id
            LIMIT $${baseParams.length + 1} OFFSET $${baseParams.length + 2}`,
           [...baseParams, limit, offset],
         ),
@@ -242,7 +242,10 @@ export const getYogaDoshaCapability: CapabilityDescriptor = {
       let kalaSarpaReconciliation: Record<string, unknown> | undefined
       if (kalaSarpaPerVarga) {
         const doshaLabelRow = (result.rows ?? []).find(
-          r => r['fact_category'] === 'dosha_label' && r['fact_subject'] === 'kala_sarpa' && r['ayanamsha_id'] === verdictAyanamsha,
+          r => r['fact_category'] === 'dosha_label'
+            && r['fact_key'] === 'dosha_name'
+            && r['fact_subject'] === 'kala_sarpa'
+            && r['ayanamsha_id'] === verdictAyanamsha,
         )
         const doshaLabelFires = doshaLabelRow
           ? ((doshaLabelRow['fact_value_jsonb'] as { fires?: boolean | null } | null)?.fires ?? null)
