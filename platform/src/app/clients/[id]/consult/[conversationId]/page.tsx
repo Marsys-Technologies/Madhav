@@ -14,16 +14,38 @@ import { isCorrectionArchived } from '@/lib/conversations/readOnly'
 import { loadHistoricalConversationMessages } from '@/lib/conversations/historicalReading'
 import { HistoricalConversationView } from '@/components/consume/HistoricalConversationView'
 import '@/components/profile/jataka-workspace.css'
+import Link from 'next/link'
+import { readReviewSource } from '@/lib/conversations/reviewSource'
 
 export default async function ConsultConversationPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string; conversationId: string }>
+  searchParams?: Promise<{ sourcePart?: string | string[] }>
 }) {
   const { id, conversationId } = await params
 
   const user = await getServerUser()
   if (!user) redirect('/login')
+
+  const sourcePart = (await searchParams)?.sourcePart
+  if (sourcePart !== undefined) {
+    const source = await readReviewSource(id, conversationId, sourcePart, user.uid)
+    if (!source) notFound()
+    if (source.historical) {
+      return <HistoricalConversationView conversation={source.conversation} messages={source.messages} targetAnswerId={source.answer.id} />
+    }
+    return (
+      <main className="jw-root mx-auto max-w-3xl space-y-4 px-6 py-8">
+        <Link href={`/clients/${id}`} className="underline">Back to chart</Link>
+        <h1 className="jw-display text-3xl">Source reading</h1>
+        <article id={`pp-answer-${source.answer.id}`} tabIndex={-1} className="whitespace-pre-wrap">
+          {source.answer.text}
+        </article>
+      </main>
+    )
+  }
 
   const [profileResult, chartResult] = await Promise.all([
     query<{ role: string }>('SELECT role FROM profiles WHERE id=$1', [user.uid]),

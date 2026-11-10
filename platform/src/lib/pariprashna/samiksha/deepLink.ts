@@ -30,6 +30,8 @@ export interface TurnDeepLinkTarget {
   conversationId: string
   /** 1-based ordinal of the turn within its thread (assistant turns, chronological). */
   turnOrdinal: number
+  sourcePartId?: string
+  answerId?: string
 }
 
 /**
@@ -39,6 +41,9 @@ export interface TurnDeepLinkTarget {
  */
 export function buildTurnDeepLink(target: TurnDeepLinkTarget): string {
   const { chartId, conversationId, turnOrdinal } = target
+  if (target.sourcePartId && target.answerId) {
+    return `/clients/${encodeURIComponent(chartId)}/consult/${encodeURIComponent(conversationId)}?sourcePart=${encodeURIComponent(target.sourcePartId)}#pp-answer-${encodeURIComponent(target.answerId)}`
+  }
   const thread = encodeURIComponent(conversationId)
   return `/clients/${encodeURIComponent(chartId)}/pariprashna?thread=${thread}#turn-${turnOrdinal}`
 }

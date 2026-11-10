@@ -76,9 +76,11 @@ function SnapshotDetails({ snapshot }: { snapshot: ChartInputSnapshot | null }) 
 export function HistoricalConversationView({
   conversation,
   messages,
+  targetAnswerId,
 }: {
   conversation: HistoricalConversation
   messages: HistoricalTranscriptMessage[]
+  targetAnswerId?: string
 }) {
   return (
     <main className="jw-root min-h-full px-4 py-8 sm:px-6">
@@ -105,6 +107,8 @@ export function HistoricalConversationView({
           {messages.map((message) => (
             <li
               key={message.id}
+              id={message.id === targetAnswerId ? `pp-answer-${message.id}` : undefined}
+              tabIndex={message.id === targetAnswerId ? -1 : undefined}
               className={
                 message.role === 'user'
                   ? 'jw-panel self-end px-4 py-3 text-sm text-[var(--jw-ink)] sm:max-w-[80%]'
