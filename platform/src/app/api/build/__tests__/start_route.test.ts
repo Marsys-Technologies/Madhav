@@ -36,13 +36,6 @@ vi.mock('@/lib/auth/authorizeChartAccess', async () => {
 
 import { POST } from '../start/route'
 
-function makeReq(body: unknown): Request {
-  return new Request('http://localhost/api/build/start', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(body),
-  })
-}
 
 beforeEach(() => {
   mockQuery.mockReset()

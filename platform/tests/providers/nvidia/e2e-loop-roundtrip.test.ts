@@ -155,7 +155,7 @@ describe('R11F-B-S5: NVIDIA NIM round-trip (Case A) — tools forwarded + loop t
     const adapter = new NVIDIAAdapter()
     const toolExecutor = vi.fn().mockResolvedValue('Signal MSR.007: Jupiter 9H')
 
-    for await (const _e of runAgenticLoop(adapter, BASE_REQUEST, toolExecutor, NVIDIA_LOOP_CONFIG)) {
+    for await (const {} of runAgenticLoop(adapter, BASE_REQUEST, toolExecutor, NVIDIA_LOOP_CONFIG)) {
       // drain
     }
 
@@ -173,7 +173,7 @@ describe('R11F-B-S5: NVIDIA NIM round-trip (Case A) — tools forwarded + loop t
     const adapter = new NVIDIAAdapter()
     const toolExecutor = vi.fn().mockResolvedValue('Signal MSR.007: Jupiter 9H dharma')
 
-    for await (const _e of runAgenticLoop(adapter, BASE_REQUEST, toolExecutor, NVIDIA_LOOP_CONFIG)) {
+    for await (const {} of runAgenticLoop(adapter, BASE_REQUEST, toolExecutor, NVIDIA_LOOP_CONFIG)) {
       // drain
     }
 
@@ -210,7 +210,7 @@ describe('R11F-B-S5: NVIDIA NIM round-trip (Case A) — tools forwarded + loop t
     const adapter = new NVIDIAAdapter()
     const toolExecutor = vi.fn().mockResolvedValue('result')
 
-    for await (const _e of runAgenticLoop(adapter, BASE_REQUEST, toolExecutor, NVIDIA_LOOP_CONFIG)) {
+    for await (const {} of runAgenticLoop(adapter, BASE_REQUEST, toolExecutor, NVIDIA_LOOP_CONFIG)) {
       // drain
     }
 
@@ -234,7 +234,7 @@ describe('R11F-B-S5: iteration cap — AgenticLoopCapExceeded after MAX_ITERATIO
     const toolExecutor = vi.fn().mockResolvedValue('result')
 
     async function drainLoop() {
-      for await (const _e of runAgenticLoop(adapter, BASE_REQUEST, toolExecutor, NVIDIA_LOOP_CONFIG)) {
+      for await (const {} of runAgenticLoop(adapter, BASE_REQUEST, toolExecutor, NVIDIA_LOOP_CONFIG)) {
         // drain
       }
     }
@@ -247,7 +247,7 @@ describe('R11F-B-S5: iteration cap — AgenticLoopCapExceeded after MAX_ITERATIO
     const toolExecutor = vi.fn().mockResolvedValue('result')
 
     try {
-      for await (const _e of runAgenticLoop(adapter, BASE_REQUEST, toolExecutor, NVIDIA_LOOP_CONFIG)) {
+      for await (const {} of runAgenticLoop(adapter, BASE_REQUEST, toolExecutor, NVIDIA_LOOP_CONFIG)) {
         // drain
       }
     } catch (err) {
@@ -262,7 +262,7 @@ describe('R11F-B-S5: iteration cap — AgenticLoopCapExceeded after MAX_ITERATIO
     const toolExecutor = vi.fn().mockResolvedValue('result')
 
     try {
-      for await (const _e of runAgenticLoop(adapter, BASE_REQUEST, toolExecutor, NVIDIA_LOOP_CONFIG)) {
+      for await (const {} of runAgenticLoop(adapter, BASE_REQUEST, toolExecutor, NVIDIA_LOOP_CONFIG)) {
         // drain
       }
     } catch (err) {
@@ -289,7 +289,7 @@ describe('R11F-B-S5: B.11 floor — system prompt preserved across loop iteratio
     const adapter = new NVIDIAAdapter()
     const toolExecutor = vi.fn().mockResolvedValue('MSR.007 data')
 
-    for await (const _e of runAgenticLoop(adapter, BASE_REQUEST, toolExecutor, NVIDIA_LOOP_CONFIG)) {
+    for await (const {} of runAgenticLoop(adapter, BASE_REQUEST, toolExecutor, NVIDIA_LOOP_CONFIG)) {
       // drain
     }
 
@@ -312,7 +312,7 @@ describe('R11F-B-S5: B.11 floor — system prompt preserved across loop iteratio
     const adapter = new NVIDIAAdapter()
     const toolExecutor = vi.fn().mockResolvedValue('MSR.007 data')
 
-    for await (const _e of runAgenticLoop(adapter, BASE_REQUEST, toolExecutor, NVIDIA_LOOP_CONFIG)) {
+    for await (const {} of runAgenticLoop(adapter, BASE_REQUEST, toolExecutor, NVIDIA_LOOP_CONFIG)) {
       // drain
     }
 

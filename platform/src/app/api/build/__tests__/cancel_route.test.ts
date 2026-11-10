@@ -37,9 +37,6 @@ function makeReq(): Request {
   })
 }
 
-function makeParams(buildId: string): { params: Promise<{ buildId: string }> } {
-  return { params: Promise.resolve({ buildId }) }
-}
 
 /** Sets up the standard auth mocks for a given user + role. */
 function setupAuth(uid: string, role: 'guest' | 'super_admin' = 'guest') {

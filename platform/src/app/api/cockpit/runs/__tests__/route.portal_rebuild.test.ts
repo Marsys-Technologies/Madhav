@@ -72,9 +72,6 @@ function makeReq(body: object): NextRequest {
   })
 }
 
-function makeGetReq(chartId: string): NextRequest {
-  return new NextRequest(`http://localhost/api/cockpit/runs?chart_id=${chartId}`)
-}
 
 /**
  * SQL-shape-dispatching mock rather than ordered mockResolvedValueOnce, so the

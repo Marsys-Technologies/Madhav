@@ -547,18 +547,6 @@ async function seedFixtures(): Promise<void> {
   })
 }
 
-async function tableExists(name: string): Promise<boolean> {
-  const res = await pool.query<{ present: boolean }>(`SELECT to_regclass($1) IS NOT NULL AS present`, [`public.${name}`])
-  return res.rows[0]!.present
-}
-async function functionExists(sig: string): Promise<boolean> {
-  const res = await pool.query<{ present: boolean }>(`SELECT to_regprocedure($1) IS NOT NULL AS present`, [`public.${sig}`])
-  return res.rows[0]!.present
-}
-async function ledgerFiles(): Promise<string[]> {
-  const res = await pool.query<{ filename: string }>(`SELECT filename FROM _migrations_applied ORDER BY filename`)
-  return res.rows.map(r => r.filename)
-}
 async function withTempDir<T>(files: readonly string[], fn: (dir: string) => Promise<T>): Promise<T> {
   const dir = mkdtempSync(join(tmpdir(), 'gochara-a51-migrations-'))
   try {
@@ -567,10 +555,6 @@ async function withTempDir<T>(files: readonly string[], fn: (dir: string) => Pro
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }
-}
-async function sealCount(generation: string): Promise<number> {
-  const r = await pool.query<{ n: number }>(`SELECT COUNT(*)::int AS n FROM ka_gochara_generation_seal WHERE chart_id = $1 AND generation = $2`, [CHART, generation])
-  return r.rows[0]!.n
 }
 
 

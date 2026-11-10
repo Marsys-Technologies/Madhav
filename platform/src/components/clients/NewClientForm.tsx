@@ -82,11 +82,6 @@ function todayIso(): string {
   return new Date().toISOString().split('T')[0]
 }
 
-function offsetFromTimezoneId(tzId: string): string {
-  const found = TIMEZONES.find((t) => t.value === tzId)
-  return found ? String(found.offset) : ''
-}
-
 function timezoneFromOffset(
   offsetMinutes: number | null,
 ): { timezone_id: string; tz_offset: string } {

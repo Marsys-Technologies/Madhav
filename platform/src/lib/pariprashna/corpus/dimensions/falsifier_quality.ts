@@ -22,7 +22,7 @@ import type { DimensionResult, TurnObservation } from '../types'
 export const FALSIFIER_QUALITY_DIMENSION = 'falsifier_quality' as const
 
 // The param is kept (unused) so this matches the DimensionScorer signature every other dimension implements.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+
 export function scoreFalsifierQuality(_obs: TurnObservation): DimensionResult {
   return {
     dimension: FALSIFIER_QUALITY_DIMENSION,

@@ -167,7 +167,7 @@ describe('B-S1 TC1: Round-trip — tools forwarded and loop completes', () => {
   });
 
   it('AC.B2G.4: toolExecutor is called exactly once (one tool call in iteration 1)', async () => {
-    for await (const _ of runAgenticLoop(
+    for await (const {} of runAgenticLoop(
       adapter,
       {
         messages: [{ role: 'user', content: B11_FLOOR_CONTEXT }],
@@ -230,7 +230,7 @@ describe('B-S1 TC2: Iteration cap — AgenticLoopCapExceeded at MAX_ITERATIONS',
     const executor = vi.fn(async () => '{"result": "tool output"}');
 
     await expect(async () => {
-      for await (const _ of runAgenticLoop(
+      for await (const {} of runAgenticLoop(
         adapter,
         {
           messages: [{ role: 'user', content: 'Loop forever' }],
@@ -248,7 +248,7 @@ describe('B-S1 TC2: Iteration cap — AgenticLoopCapExceeded at MAX_ITERATIONS',
   it('AC.B2G.7: error message references MAX_ITERATIONS', async () => {
     const executor = vi.fn(async () => '{"result": "x"}');
     try {
-      for await (const _ of runAgenticLoop(
+      for await (const {} of runAgenticLoop(
         adapter,
         { messages: [{ role: 'user', content: 'Loop' }], model: 'gemini-2.5-pro', tools: TEST_TOOLS },
         executor,
@@ -266,7 +266,7 @@ describe('B-S1 TC2: Iteration cap — AgenticLoopCapExceeded at MAX_ITERATIONS',
   it('AC.B2G.8: streamText called exactly MAX_ITERATIONS times before cap triggers', async () => {
     const executor = vi.fn(async () => '{"result": "x"}');
     try {
-      for await (const _ of runAgenticLoop(
+      for await (const {} of runAgenticLoop(
         adapter,
         { messages: [{ role: 'user', content: 'Loop' }], model: 'gemini-2.5-pro', tools: TEST_TOOLS },
         executor,
@@ -309,7 +309,7 @@ describe('B-S1 TC3: B.11 floor — context preserved in subsequent requests', ()
     const b11System = `${B11_FLOOR_CONTEXT}\n\nUser: Analyse the chart.`;
     const executor = vi.fn(async () => '{"facts": ["Mars in 10H"]}');
 
-    for await (const _ of runAgenticLoop(
+    for await (const {} of runAgenticLoop(
       adapter,
       {
         messages: [{ role: 'user', content: b11System }],
@@ -337,7 +337,7 @@ describe('B-S1 TC3: B.11 floor — context preserved in subsequent requests', ()
   it('AC.B2G.10: second call messages include tool-result turn appended by the loop', async () => {
     const executor = vi.fn(async () => '{"result": "Mars in 10H confirmed"}');
 
-    for await (const _ of runAgenticLoop(
+    for await (const {} of runAgenticLoop(
       adapter,
       {
         messages: [{ role: 'user', content: B11_FLOOR_CONTEXT }],

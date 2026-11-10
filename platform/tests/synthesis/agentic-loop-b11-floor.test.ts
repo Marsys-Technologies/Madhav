@@ -131,7 +131,7 @@ describe('B.11 FLOOR CONTRACT — agentic loop preserves injected context', () =
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    for await (const _ of runAgenticLoop(mockAdapter as any, initialRequest as any, async () => '', ANTHROPIC_LOOP_CONFIG)) {
+    for await (const {} of runAgenticLoop(mockAdapter as any, initialRequest as any, async () => '', ANTHROPIC_LOOP_CONFIG)) {
       // consume
     }
 
@@ -164,7 +164,7 @@ describe('B.11 FLOOR CONTRACT — cap enforcement is independent of floor contex
     let threw = false
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      for await (const _ of runAgenticLoop(mockAdapter as any, request as any, async () => '{}', ANTHROPIC_LOOP_CONFIG)) {
+      for await (const {} of runAgenticLoop(mockAdapter as any, request as any, async () => '{}', ANTHROPIC_LOOP_CONFIG)) {
         // consume
       }
     } catch (err) {

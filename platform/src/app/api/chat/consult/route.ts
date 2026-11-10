@@ -6,7 +6,6 @@ import {
 } from 'ai'
 import type { UIMessage } from 'ai'
 import { clarificationPart, judgmentFlagsPart } from '@/lib/streams/data_parts'
-import { detectPredictionCandidates } from '@/lib/ppl/prediction_detector'
 import { extractCitations } from '@/lib/citations/citation_data_part'
 
 /** Fetch signal headline + summary from bodha_msr_signals for a list of signal IDs.
@@ -32,17 +31,14 @@ async function fetchMsrSnippets(signalIds: string[]): Promise<Map<string, string
 import { NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
-import { consumeSystemPrompt, type ConsumeStyle } from '@/lib/claude/system-prompts'
+import type { ConsumeStyle } from '@/lib/claude/system-prompts'
 import {
   getConversation,
   insertConversationWithId,
 } from '@/lib/conversations'
 import { archivedReadOnlyResponse, isCorrectionArchived } from '@/lib/conversations/readOnly'
 import { checkReadingReadiness } from '@/lib/charts/readingGate'
-import { writeConversationMessages } from '@/lib/persistence/conversation_writer'
 import { createPendingStreamWriter } from '@/lib/persistence/pending_streams_writer'
-import { generateConversationTitle } from '@/lib/conversations/title'
-import { assembleProvenance, type ToolBundleLike } from '@/lib/consume/provenance_assembler'
 import type { ContextUsageEvent, ContextUsageMode } from '@/types/sse_events'
 import {
   DEFAULT_MODEL_ID,
@@ -54,15 +50,6 @@ import {
 } from '@/lib/models/registry'
 import { getEffectiveModel } from '@/lib/models/runtime_config'
 import { configService } from '@/lib/config/index'
-// R11 v2 — Multi-Provider Parity: capability dispatcher (A-S7)
-// Gated by MARSYS_FLAG_R11V2_USE_ADAPTERS (server-side, default false).
-// When true, chat calls route through the dispatcher to the per-provider adapter.
-// When false (default for R11.A), legacy single-shot pipeline is used unchanged.
-import { getAdapter } from '@/lib/providers/dispatcher'
-import { buildAdapterMessages, buildAdapterChatRequest } from '@/lib/providers/adapter-dispatch-helpers'
-import { runAgenticLoop, LOOP_CONFIG_BY_PROVIDER } from '@/lib/synthesis/agentic_loop'
-import { executeMCPTool } from '@/lib/synthesis/mcp_tool_executor'
-import { buildCacheCreatePayload, GEMINI_CACHE_MIN_TOKENS } from '@/lib/providers/google/cached_content'
 import { callPipelinePlanner as runPlanner } from '@/lib/pipeline/pipeline_planner'
 import type { PipelinePlan } from '@/lib/pipeline/types'
 import { arbitrateBudgets } from '@/lib/pipeline/budget_arbiter'
@@ -78,7 +65,6 @@ import { hydrateBundle } from '@/lib/bundle/bundle_hydrator'
 // D7 Step 4: getTool() replaced with registry-backed getToolByName(); tool_catalogue RETIRED
 // DO NOT restore lib/retrieve imports — see RETRIEVAL_D7_CALLER_MAP_v1_0.md §2.1
 import { getToolByName } from '@/lib/retrieval/registry/tool_name_bridge'
-import { buildChatToolsFromNames } from '@/lib/retrieval/registry/schema_utils'
 import { createToolCache, executeWithCache } from '@/lib/cache/index'
 import { getSharedQosDispatchQueue } from '@/lib/retrieval/qos/dispatch_queue'
 import { loadManifest } from '@/lib/bundle/manifest_reader'
@@ -89,7 +75,6 @@ import type { ValidationResult } from '@/lib/validators/types'
 import { validateCitationsForStream } from '@/lib/synthesis/streaming_citation_validator'
 import { compressHistory } from '@/lib/synthesis/history_compression'
 // PipelineError import removed — citation gate no longer throws post-stream (see citation_error trace event)
-import { createAuditConsumer } from '@/lib/audit/consumer'
 import { traceEmitter } from '@/lib/trace/emitter'
 import type { TraceStep, TraceChunkItem, TraceDataSummary, TracePayload, TraceQueryPlan, TraceToolCallSpec } from '@/lib/trace/types'
 // D7 migration: ToolBundle/ToolBundleResult types sourced from lib/retrieve/types
@@ -99,9 +84,6 @@ import { res, errorResponse } from '@/lib/errors'
 import {
   writeQueryPlanLog,
 } from '@/lib/db/monitoring-write'
-import { persistObservation, computeCost } from '@/lib/llm/observability'
-import { computeCostUsd, getModelPricingSync } from '@/lib/llm/pricing'
-import { getStorageClient } from '@/lib/storage'
 import { fakeGcsRetrieve } from '@/lib/multimodal/fake_gcs_store'
 import { extractPdf } from '@/lib/multimodal/pdf_extractor'
 import { getProjectForConversation } from '@/lib/projects'

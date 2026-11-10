@@ -436,45 +436,7 @@ async function insertRecord(c: Q, o: RecordOpts = {}): Promise<string> {
   return id
 }
 
-async function insertWindow(c: Q, o: {
-  id?: string; generation?: string; eventClass?: string; pathId?: string; ruleVersion?: string;
-  intervalSql?: string; peakSql?: string; scoreSql?: string; evidenceForSql?: string;
-  evidenceAgainstSql?: string; valence?: string; covKind?: string; covKey?: string; factsOverride?: string;
-  nullStatesSql?: string; severitySql?: string;
-} = {}): Promise<string> {
-  const id = o.id ?? uuid()
-  const generation = o.generation ?? GEN_F
-  const eventClass = o.eventClass ?? 'marriage'
-  const covKind = o.covKind ?? 'event_class'
-  const covKey = o.covKey ?? eventClass
-  const facts = o.factsOverride ?? await factsFor(c, generation, covKind, covKey)
-  await c.query(
-    `INSERT INTO ka_gochara_eval_window
-       (window_id, chart_id, generation, event_class, path_id, rule_version, interval,
-        peak_instant, score, evidence_for, evidence_against, outcome_valence_for_native,
-        severity, coverage_partition_kind, coverage_partition_key, coverage_facts, null_states_used)
-     VALUES ($1, $2, $3, $4, $5, $6,
-             ${o.intervalSql ?? `tstzrange('2025-03-01T00:00Z','2025-04-01T00:00Z')`},
-             ${o.peakSql ?? `'2025-03-10T00:00Z'`}, ${o.scoreSql ?? '0.8'},
-             ${o.evidenceForSql ?? '0.8'}, ${o.evidenceAgainstSql ?? 'NULL'}, $7,
-             ${o.severitySql ?? 'NULL'}, $8, $9, $10::jsonb, ${o.nullStatesSql ?? `'{}'`})`,
-    [id, CHART, generation, eventClass, o.pathId ?? 'P1', o.ruleVersion ?? 'v1',
-      o.valence ?? 'favourable', covKind, covKey, facts],
-  )
-  return id
-}
 
-async function addMembership(c: Q, windowId: string, recordId: string, o: {
-  generation?: string; eventClass?: string; pathId?: string; ruleVersion?: string;
-} = {}): Promise<void> {
-  await c.query(
-    `INSERT INTO ka_gochara_eval_window_record
-       (window_id, record_id, chart_id, generation, event_class, path_id, rule_version)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-    [windowId, recordId, CHART, o.generation ?? GEN_F, o.eventClass ?? 'marriage',
-      o.pathId ?? 'P1', o.ruleVersion ?? 'v1'],
-  )
-}
 
 /** The governed publication protocol: chart lock FIRST, then the manifest flip, then the seal. */
 async function publishAndSeal(c: Q, generation: string): Promise<void> {
@@ -551,18 +513,6 @@ async function seedFixtures(): Promise<void> {
   })
 }
 
-async function tableExists(name: string): Promise<boolean> {
-  const res = await pool.query<{ present: boolean }>(`SELECT to_regclass($1) IS NOT NULL AS present`, [`public.${name}`])
-  return res.rows[0]!.present
-}
-async function functionExists(sig: string): Promise<boolean> {
-  const res = await pool.query<{ present: boolean }>(`SELECT to_regprocedure($1) IS NOT NULL AS present`, [`public.${sig}`])
-  return res.rows[0]!.present
-}
-async function ledgerFiles(): Promise<string[]> {
-  const res = await pool.query<{ filename: string }>(`SELECT filename FROM _migrations_applied ORDER BY filename`)
-  return res.rows.map(r => r.filename)
-}
 async function withTempDir<T>(files: readonly string[], fn: (dir: string) => Promise<T>): Promise<T> {
   const dir = mkdtempSync(join(tmpdir(), 'gochara-a51-migrations-'))
   try {
@@ -571,10 +521,6 @@ async function withTempDir<T>(files: readonly string[], fn: (dir: string) => Pro
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }
-}
-async function sealCount(generation: string): Promise<number> {
-  const r = await pool.query<{ n: number }>(`SELECT COUNT(*)::int AS n FROM ka_gochara_generation_seal WHERE chart_id = $1 AND generation = $2`, [CHART, generation])
-  return r.rows[0]!.n
 }
 
 

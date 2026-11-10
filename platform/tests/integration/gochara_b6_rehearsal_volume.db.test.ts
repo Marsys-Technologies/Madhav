@@ -127,13 +127,6 @@ const P5B: Ob = ['saturn', 'residence', 'av_qualifier', 'house_span:8', 'lagna',
 
 interface PinRef { path: string; ver?: string; disp: 'included' | 'computed_empty' | 'excluded'; reason?: string; ruling?: string; basis?: string; ids: string[] }
 const sortC = (xs: string[]): string[] => [...xs].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))
-function tsInventoryDigest(conv: string, input: string, pins: PinRef[], obs: string[]): string {
-  const lines = [`convention=${conv}`, `horizon=[${LO},${HI})`, `input=${input}`]
-  for (const p of [...pins].sort((a, b) => (`${a.path}|${a.ver ?? '1.0'}` < `${b.path}|${b.ver ?? '1.0'}` ? -1 : 1)))
-    lines.push(`pin=${p.path}|${p.ver ?? '1.0'}|${p.disp}|${p.reason ?? ''}|${p.ruling ?? ''}|${p.basis ?? ''}|${sortC(p.ids).join(',')}`)
-  for (const o of sortC(obs)) lines.push(`ob=${o}`)
-  return sha(lines.join('\n'))
-}
 // ledger_digest preimage (v1.1): `input=<input_digest>` first, so an EMPTY ledger is input-bound too
 const tsLedgerDigest = (rows: Array<[string, string, string, string]>, input: string): string =>
   sha(['input=' + input, ...sortC(rows.map(([id, lo, hi, st]) => `${id}|${lo}|${hi}|${st}|${input}`))].join('\n'))
@@ -380,35 +373,6 @@ async function publishAndSeal(gen: string, opts: { role?: string; tz?: string } 
  *  every obligation covered over the horizon; finalised; partition written; verified by a hash of the
  *  stored rows. `between` runs inside the build transaction before finalisation. */
 interface Built { gen: string; snap: Snap; ids: { p1: string[]; p5a: string[] }; dig: { inv: string; led: string } }
-async function goodBuild(gen: string, o: {
-  vec?: unknown; skipP5aObligations?: boolean; p5a?: 'included' | 'computed_empty' | 'none'
-  noVerify?: boolean; verifyDigest?: string; noPartition?: boolean; partitionRelations?: string[]
-  tz?: string; role?: string
-  between?: (c: PoolClient, b: { snap: Snap; ids: { p1: string[]; p5a: string[] } }) => Promise<void>
-} = {}): Promise<Built> {
-  return tx(async c => {
-    await chartCtx(c)
-    await publication(c, gen, o.vec)
-    const snap = await snapshotLive(c, gen, o.vec ?? VEC)
-    await header(c, gen, snap.digest)
-    const p1 = [obId('p1', '1.0', P1A), obId('p1', '1.0', P1B)]
-    const p5a = [obId('p5a', '1.0', P5A), obId('p5a', '1.0', P5B)]
-    const mode = o.p5a ?? 'included'
-    await pin(c, gen, { path: 'p1', disp: 'included', ids: p1 })
-    if (mode === 'included') await pin(c, gen, { path: 'p5a', disp: 'included', ids: p5a })
-    if (mode === 'computed_empty') await pin(c, gen, { path: 'p5a', disp: 'computed_empty', basis: B_EMPTY, ids: [] })
-    await pinRest(c, gen, [['p1', '1.0'], ...(mode === 'none' ? [] : [['p5a', '1.0'] as [string, string]])])
-    await ob(c, gen, 'p1', P1A); await ob(c, gen, 'p1', P1B)
-    if (mode === 'included' && !o.skipP5aObligations) { await ob(c, gen, 'p5a', P5A); await ob(c, gen, 'p5a', P5B) }
-    const covered = [...p1, ...(mode === 'included' && !o.skipP5aObligations ? p5a : [])]
-    for (const id of covered) await iv(c, gen, id, LO, HI, snap.digest)
-    if (o.between) await o.between(c, { snap, ids: { p1, p5a } })
-    const dig = await finalize(c, gen)
-    if (!o.noPartition) await partition(c, gen, { relations: o.partitionRelations })
-    if (!o.noVerify) await verify(c, gen, o.verifyDigest ?? dig.inv)
-    return { gen, snap, ids: { p1, p5a }, dig }
-  }, { tz: o.tz, role: o.role })
-}
 const refused = async (p: Promise<unknown>, re: RegExp): Promise<void> => { await expect(p).rejects.toThrow(re) }
 
 // ── the 26-class volume build ────────────────────────────────────────────────────────────────────────────────

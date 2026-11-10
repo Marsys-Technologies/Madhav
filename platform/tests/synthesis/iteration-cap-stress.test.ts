@@ -78,7 +78,7 @@ describe('TC1: loop halts at MAX_ITERATIONS when adapter always returns tool_use
     let caughtError: unknown = null
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      for await (const _ of runAgenticLoop(mockAdapter as any, request as any, async () => '{"result":"ok"}', ANTHROPIC_LOOP_CONFIG)) {
+      for await (const {} of runAgenticLoop(mockAdapter as any, request as any, async () => '{"result":"ok"}', ANTHROPIC_LOOP_CONFIG)) {
         // consume all events
       }
     } catch (err) {
@@ -101,7 +101,7 @@ describe('TC1: loop halts at MAX_ITERATIONS when adapter always returns tool_use
     let caughtError: unknown = null
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      for await (const _ of runAgenticLoop(mockAdapter as any, request as any, async () => '{}', ANTHROPIC_LOOP_CONFIG)) {
+      for await (const {} of runAgenticLoop(mockAdapter as any, request as any, async () => '{}', ANTHROPIC_LOOP_CONFIG)) {
         // consume
       }
     } catch (err) {
@@ -131,7 +131,7 @@ describe('TC1: loop halts at MAX_ITERATIONS when adapter always returns tool_use
     let threw = false
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      for await (const _ of runAgenticLoop(mockAdapter as any, request as any, async () => '{}', OPENAI_LOOP_CONFIG)) {
+      for await (const {} of runAgenticLoop(mockAdapter as any, request as any, async () => '{}', OPENAI_LOOP_CONFIG)) {
         // consume
       }
     } catch (err) {
@@ -159,7 +159,7 @@ describe('TC2: telemetry is emitted for each iteration before the cap throws', (
 
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      for await (const _ of runAgenticLoop(mockAdapter as any, request as any, async () => '{}', ANTHROPIC_LOOP_CONFIG)) {
+      for await (const {} of runAgenticLoop(mockAdapter as any, request as any, async () => '{}', ANTHROPIC_LOOP_CONFIG)) {
         // consume
       }
     } catch {
@@ -190,7 +190,7 @@ describe('TC2: telemetry is emitted for each iteration before the cap throws', (
 
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      for await (const _ of runAgenticLoop(mockAdapter as any, request as any, async () => '{}', ANTHROPIC_LOOP_CONFIG)) {
+      for await (const {} of runAgenticLoop(mockAdapter as any, request as any, async () => '{}', ANTHROPIC_LOOP_CONFIG)) {
         // consume
       }
     } catch {
@@ -223,7 +223,7 @@ describe('TC2: telemetry is emitted for each iteration before the cap throws', (
 
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      for await (const _ of runAgenticLoop(mockAdapter as any, request as any, async () => '{}', ANTHROPIC_LOOP_CONFIG)) {
+      for await (const {} of runAgenticLoop(mockAdapter as any, request as any, async () => '{}', ANTHROPIC_LOOP_CONFIG)) {
         // consume
       }
     } catch {

@@ -29,11 +29,11 @@
 
   // ---- connection -------------------------------------------------------------------------
   function connect() {
-    try { es?.close(); } catch (_) {}
+    try { es?.close(); } catch {}
     es = new EventSource("/events");
-    es.addEventListener("snapshot", (e) => { try { accept(JSON.parse(e.data), "live"); } catch (_) {} });
+    es.addEventListener("snapshot", (e) => { try { accept(JSON.parse(e.data), "live"); } catch {} });
     es.addEventListener("alive", (e) => {
-      try { const a = JSON.parse(e.data); lastAlive = Date.now(); tickAge = a.tick_age_s || 0; mode = "live"; } catch (_) {}
+      try { const a = JSON.parse(e.data); lastAlive = Date.now(); tickAge = a.tick_age_s || 0; mode = "live"; } catch {}
       paintLive();
     });
     es.onerror = () => { mode = "reconnecting"; startPolling(); paintLive(); };
@@ -45,7 +45,7 @@
       try {
         const r = await fetch("/api/state", { cache: "no-store" });
         if (r.ok) accept(await r.json(), "polling"); else mode = "down";
-      } catch (_) { mode = "down"; }
+      } catch { mode = "down"; }
       paintLive();
     }, POLL_EVERY_MS);
   }
@@ -234,7 +234,7 @@
   setInterval(() => { if (snap) { renderStreams(); renderWhere(); } }, 15000);
   try {
     navigator.serviceWorker?.getRegistrations().then((rs) => rs.forEach((r) => r.unregister())).catch(() => {});
-  } catch (_) {}
+  } catch {}
   fetch("/api/state", { cache: "no-store" }).then((r) => r.json()).then((s) => accept(s, "polling")).catch(() => {});
   connect();
 })();

@@ -14,7 +14,7 @@ import 'server-only'
 // Literal-string import so webpack can resolve @google-cloud/run as an
 // external package (listed in serverExternalPackages in next.config.ts).
 // The _name parameter is kept for call-site compatibility.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+
 async function loadGcpModule(_name: string): Promise<unknown> {
   return import('@google-cloud/run')
 }
