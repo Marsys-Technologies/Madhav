@@ -23,6 +23,6 @@ describe('BuildHeader navigation', () => {
     const navigation = screen.getByRole('navigation')
     expect(within(navigation).queryByRole('link', { name: 'AI Console' })).not.toBeInTheDocument()
     const observatory = within(navigation).getByRole('link', { name: 'Observatory' })
-    expect(observatory).toHaveAttribute('href', '/observatory')
+    expect(observatory).toHaveAttribute('href', '/admin/activity?scope=mine')
   })
 })

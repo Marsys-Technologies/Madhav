@@ -59,5 +59,12 @@ it.each([
     expect(Object.fromEntries(operator.params)).toEqual({ from, to })
   }
   expect(usageSummary).toHaveBeenCalledWith(expect.objectContaining({ from, to, view: 'summary' }), { ownerId: null })
-  expect(screen.getByRole('link', { name: /Open Observatory/ })).toHaveAttribute('href', '/observatory')
+  const entry = screen.getByRole('link', { name: /Open Observatory/ })
+  expect(entry).toHaveTextContent('Starts with My activity')
+  const destination = new URL(entry.getAttribute('href')!, 'https://example.test')
+  expect(destination.pathname).toBe('/admin/activity')
+  expect(operatorActivityFilters(destination.searchParams, 'admin-1')).toMatchObject({
+    scope: 'mine',
+    target: 'admin-1',
+  })
 })
