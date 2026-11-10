@@ -39,6 +39,17 @@ it('sends a local reset through the configured auth emulator', async () => {
   )
 })
 
+it('accepts the configured public origin when the gateway serves an internal port', async () => {
+  vi.stubEnv('APP_URL', 'http://localhost:3100')
+  const request = (origin: string) => new Request('http://localhost:3000/api/auth/recover', {
+    method: 'POST',
+    headers: { origin },
+    body: JSON.stringify({ identifier: 'someone' }),
+  })
+  expect((await POST(request('http://localhost:3100'))).status).toBe(200)
+  expect((await POST(request('https://example.invalid'))).status).toBe(403)
+})
+
 describe('POST /api/auth/recover rate limit', () => {
   it('rotating the spoofed leftmost X-Forwarded-For entry does not evade the 10/min limit', async () => {
     const statuses: number[] = []
