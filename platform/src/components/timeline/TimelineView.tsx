@@ -35,6 +35,11 @@ export function TimelineView({ events, chartId, canLogEvent }: TimelineViewProps
     .filter(e => categoryFilter === 'all' || e.category === categoryFilter)
     .filter(e => yearFilter === 'all' || e.date.startsWith(yearFilter))
     .sort((a, b) => b.date.localeCompare(a.date))
+  const resultsLabel = events.length === 0
+    ? 'No life events recorded for this chart.'
+    : filteredEvents.length === 0
+      ? 'No events match the current filters.'
+      : `Showing ${filteredEvents.length} of ${events.length} life events.`
 
   function finishLogging() {
     setCategoryFilter('all')
@@ -44,66 +49,72 @@ export function TimelineView({ events, chartId, canLogEvent }: TimelineViewProps
   }
 
   return (
-    <div className="flex h-full flex-col">
-      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border/40 px-6 py-4">
+    <div className="flex min-w-0 flex-col">
+      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border/40 px-4 py-4 sm:px-6">
         <div>
           <h1 className="text-lg font-semibold">Life Events</h1>
           <p className="text-sm text-muted-foreground">Recorded events for this chart{!canLogEvent && ' · Read-only'}</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <Link href={`/clients/${chartId}`} className="text-sm text-primary underline">
+          <Link href={`/clients/${chartId}`} className="inline-flex min-h-11 items-center text-sm text-primary underline">
             Back to chart
           </Link>
-          <Link href={`/clients/${chartId}/samiksha`} className="text-sm text-primary underline">
+          <Link href={`/clients/${chartId}/samiksha`} className="inline-flex min-h-11 items-center text-sm text-primary underline">
             Prediction Review
           </Link>
           {canLogEvent && <LogEventDialog chartId={chartId} onSuccess={finishLogging} />}
         </div>
       </header>
-      {saved && <p role="status" className="px-6 pt-3 text-sm">Event saved.</p>}
-      {/* Filter chips */}
-      <div className="flex flex-wrap gap-2 overflow-x-auto px-6 py-3">
-        <div className="flex gap-1">
-          {categories.map(c => (
-            <button
-              key={c}
-              type="button"
-              aria-pressed={categoryFilter === c}
-              onClick={() => setCategoryFilter(c)}
-              className={cn(
-                'rounded-full border px-2.5 py-0.5 text-xs transition-colors',
-                categoryFilter === c
-                  ? 'border-amber-400/60 bg-amber-400/15 text-amber-300'
-                  : 'border-border/40 text-muted-foreground hover:border-border hover:text-foreground'
-              )}
-            >
-              {c}
-            </button>
-          ))}
-        </div>
+      <div className="space-y-3 px-4 py-3 sm:px-6">
+        <fieldset className="min-w-0">
+          <legend className="mb-2 text-sm font-medium">Filter events by category</legend>
+          <div className="flex flex-wrap gap-2">
+            {categories.map(c => (
+              <button
+                key={c}
+                type="button"
+                aria-pressed={categoryFilter === c}
+                onClick={() => {
+                  setSaved(false)
+                  setCategoryFilter(c)
+                }}
+                className={cn(
+                  'min-h-11 max-w-full rounded-full border px-3 py-1 text-sm transition-colors [overflow-wrap:anywhere] focus-visible:outline-2 focus-visible:outline-offset-2',
+                  categoryFilter === c
+                    ? 'border-amber-400/60 bg-amber-400/15 text-amber-300'
+                    : 'border-border/40 text-muted-foreground hover:border-border hover:text-foreground'
+                )}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+        </fieldset>
         <select
-          className="rounded-full border border-border/40 bg-transparent px-2.5 py-0.5 text-xs text-muted-foreground"
+          className="min-h-11 max-w-full rounded-md border border-input bg-background px-3 text-sm text-foreground"
           aria-label="Filter events by year"
           value={yearFilter}
-          onChange={e => setYearFilter(e.target.value)}
+          onChange={e => {
+            setSaved(false)
+            setYearFilter(e.target.value)
+          }}
         >
           <option value="all">All years</option>
           {years.map(y => <option key={y} value={y}>{y}</option>)}
         </select>
       </div>
 
-      {/* Event list */}
-      <div className="flex-1 overflow-y-auto px-6 py-2">
-        {filteredEvents.length === 0 ? (
-          <p className="py-12 text-center text-sm text-muted-foreground">
-            {events.length === 0 ? 'No life events recorded for this chart.' : 'No events match the current filters.'}
-          </p>
-        ) : (
-          <div>
+      <div className="px-4 py-2 sm:px-6">
+        <div role="status" className="mb-3 text-sm text-muted-foreground">
+          {saved && <p>Event saved.</p>}
+          <p>{resultsLabel}</p>
+        </div>
+        {filteredEvents.length > 0 && (
+          <ol className="list-none">
             {filteredEvents.map(event => (
               <EventCard key={event.id} event={event} />
             ))}
-          </div>
+          </ol>
         )}
       </div>
     </div>

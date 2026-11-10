@@ -1,0 +1,38 @@
+.tracker {
+  display: grid;
+  gap: 24px;
+  max-width: 72rem;
+  min-width: 0;
+  margin-inline: auto;
+  padding: clamp(12px, 3vw, 24px);
+  border: 1px solid var(--folio-divider);
+  border-radius: 12px;
+  background: var(--folio-canvas);
+  color: var(--folio-ink);
+  font-family: var(--folio-font-body);
+}
+
+.tracker h1 {
+  margin-block-end: 8px;
+  font: 600 clamp(1.5rem, 4vw, 2rem)/1.2 var(--folio-font-heading);
+}
+
+.tracker h2 {
+  margin-block-end: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.tracker p { color: var(--folio-muted); }
+.tracker [role='alert'] { color: var(--folio-error); }
+
+.results {
+  max-width: 100%;
+  overflow-x: auto;
+  background: var(--folio-panel);
+}
+
+.results:focus-visible {
+  outline: 2px solid var(--folio-focus);
+  outline-offset: -2px;
+}

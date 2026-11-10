@@ -145,7 +145,7 @@ export function AiChoicePicker({
           if (event.key === 'Escape' && open) closeAndRestore()
         }}
       >
-        <span style={{ fontSize: 9, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--pp-gold-tertiary)' }}>AI</span>
+        <span style={{ fontSize: 9, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--pp-ink-dim)' }}>AI</span>
         <span style={{ color: 'var(--pp-ink)' }}>{valueLabel}</span>
         <span aria-hidden style={{ color: 'var(--pp-gold-tertiary)', fontSize: 9 }}>▾</span>
       </button>

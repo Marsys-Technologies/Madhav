@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useId, useMemo } from 'react'
 import type { AssetRow } from '@/app/api/cockpit/registry/route'
 
 export type AtlasAsset = AssetRow & { clear_tables: string[] | null }
@@ -433,6 +433,7 @@ export function AtlasView({
   defaultChartId: string
 }) {
   const [chartId, setChartId] = useState(defaultChartId)
+  const chartSelectorId = useId()
   const [clients, setClients] = useState<ClientOption[]>([])
   const [clientsLoading, setClientsLoading] = useState(true)
   const [stats, setStats] = useState<Map<string, AssetStat>>(new Map())
@@ -518,12 +519,13 @@ export function AtlasView({
     <div>
       {/* Chart selector */}
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <label className="bt-label text-muted-foreground shrink-0">Chart</label>
+        <label htmlFor={chartSelectorId} className="bt-label text-muted-foreground shrink-0">Chart</label>
         <select
+          id={chartSelectorId}
           value={chartId}
           onChange={(e) => setChartId(e.target.value)}
           disabled={clientsLoading}
-          className="bt-body text-sm rounded-md border border-border bg-card px-3 py-1.5 outline-none focus:border-foreground disabled:opacity-50 min-w-[200px]"
+          className="bt-body min-h-11 min-w-0 w-56 max-w-full text-sm rounded-md border border-border bg-card px-3 py-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground disabled:opacity-50"
         >
           {clientsLoading ? (
             <option value={chartId}>Loading…</option>

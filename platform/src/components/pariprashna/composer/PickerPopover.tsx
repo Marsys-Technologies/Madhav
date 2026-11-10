@@ -132,10 +132,10 @@ export function PickerPopover<T extends string>({
         aria-expanded={open}
       >
         {eyebrow && (
-          <span style={{ fontSize: 9, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--pp-gold-tertiary)' }}>{eyebrow}</span>
+          <span style={{ fontSize: 9, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--pp-ink-dim)' }}>{eyebrow}</span>
         )}
         <span style={{ color: 'var(--pp-ink)' }}>{valueLabel}</span>
-        {tierNote && <span className="font-mono" style={{ fontSize: 9, color: 'var(--pp-gold-tertiary)' }}>{tierNote}</span>}
+        {tierNote && <span className="font-mono" style={{ fontSize: 9, color: 'var(--pp-ink-dim)' }}>{tierNote}</span>}
         <span style={{ color: 'var(--pp-gold-tertiary)', fontSize: 9 }}>▾</span>
       </button>
       {open && isMobile && (

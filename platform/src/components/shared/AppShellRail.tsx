@@ -73,7 +73,9 @@ const NAV_ICONS: Record<string, LucideIcon | React.ComponentType<{ className?: s
 export function AppShellRail({ user, profile }: AppShellRailProps) {
   const pathname = usePathname()
   const router = useRouter()
-  const [expanded, setExpanded] = useState(false)
+  const [hovered, setHovered] = useState(false)
+  const [focusWithin, setFocusWithin] = useState(false)
+  const expanded = hovered || focusWithin
   const [informationOpen, setInformationOpen] = useState(
     pathname.startsWith('/information')
   )
@@ -116,28 +118,21 @@ export function AppShellRail({ user, profile }: AppShellRailProps) {
   return (
     <motion.nav
       aria-label="Primary navigation"
-      onMouseEnter={() => setExpanded(true)}
-      onMouseLeave={() => setExpanded(false)}
-      onFocus={() => setExpanded(true)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onFocus={() => setFocusWithin(true)}
       onBlur={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget as Node)) setExpanded(false)
+        if (!e.currentTarget.contains(e.relatedTarget)) setFocusWithin(false)
       }}
       animate={{ width: expanded ? 176 : 56 }}
       transition={springTransition}
-      className="absolute inset-y-0 left-0 z-50 hidden flex-col items-start py-3 md:flex overflow-hidden"
-      style={{
-        background: 'linear-gradient(180deg, rgba(6,6,8,0.30), rgba(2,2,4,0.20))',
-        backdropFilter: 'blur(10px) saturate(125%)',
-        WebkitBackdropFilter: 'blur(10px) saturate(125%)',
-        borderRight: '1px solid rgba(212,175,55,0.14)',
-        boxShadow: 'inset 0 1px 0 rgba(255,240,200,0.06), 8px 0 28px rgba(0,0,0,0.4)',
-      }}
+      className="folio-nav-surface folio-nav-rail absolute inset-y-0 left-0 z-50 hidden flex-col items-start overflow-x-hidden overflow-y-auto border-r py-3 md:flex"
     >
       {/* Logo — links to Jātakas */}
       <Link
         href="/dashboard"
         aria-label="MARSYS-JIS — go to Jātakas"
-        className="mb-4 flex w-full items-center gap-2.5 px-3"
+        className="folio-nav-control mb-4 flex w-full shrink-0 items-center gap-2.5 px-2.5"
       >
         <Logo size="sm" className="shrink-0" priority />
         <AnimatePresence>
@@ -148,8 +143,7 @@ export function AppShellRail({ user, profile }: AppShellRailProps) {
               animate={{ opacity: 1, x: 0 }}
               exit={reducedMotion ? {} : { opacity: 0, x: -6 }}
               transition={labelTransition}
-              className="truncate font-serif text-[13px] font-medium leading-none"
-              style={{ color: 'var(--brand-gold-cream)' }}
+              className="truncate folio-nav-wordmark text-sm font-semibold leading-none"
             >
               MARSYS-JIS
             </motion.span>
@@ -169,26 +163,11 @@ export function AppShellRail({ user, profile }: AppShellRailProps) {
               transition={{ type: 'spring', stiffness: 400, damping: 30 }}
               className="relative w-full"
             >
-              {isActive && (
-                <motion.div
-                  layoutId="rail-active"
-                  transition={reducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 380, damping: 32 }}
-                  className="absolute inset-0 rounded-lg"
-                  style={{
-                    background: 'rgba(212,175,55,0.14)',
-                    boxShadow: 'inset 0 0 0 1px rgba(212,175,55,0.28), inset 0 0 24px rgba(212,175,55,0.08)',
-                  }}
-                />
-              )}
               <Link
                 href={href}
                 aria-label={label}
-                className={cn(
-                  'relative flex h-10 w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors',
-                  isActive
-                    ? 'text-[var(--brand-gold)]'
-                    : 'text-[rgba(212,175,55,0.50)] hover:bg-[rgba(212,175,55,0.07)] hover:text-[var(--brand-gold)]'
-                )}
+                aria-current={isActive ? (pathname === href ? 'page' : 'location') : undefined}
+                className="folio-nav-control relative flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium"
               >
                 <Icon className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} />
                 <AnimatePresence>
@@ -212,31 +191,18 @@ export function AppShellRail({ user, profile }: AppShellRailProps) {
       </div>
 
       {/* Bottom navigation — Information stays immediately above the user menu. */}
-      <div className="w-full space-y-1 px-2">
+      <div className="w-full shrink-0 space-y-1 px-2">
         {informationItems.length > 0 && (
           <div className="w-full">
             <div className="relative w-full">
-              {informationActive && (
-                <div
-                  className="absolute inset-0 rounded-lg"
-                  style={{
-                    background: 'rgba(212,175,55,0.14)',
-                    boxShadow: 'inset 0 0 0 1px rgba(212,175,55,0.28), inset 0 0 24px rgba(212,175,55,0.08)',
-                  }}
-                />
-              )}
               <button
                 type="button"
                 aria-label="Information"
                 aria-expanded={expanded && informationOpen}
-                aria-controls="app-shell-information-menu"
+                aria-controls={expanded && informationOpen ? 'app-shell-information-menu' : undefined}
+                data-current={informationActive}
                 onClick={() => setInformationOpen((open) => !open)}
-                className={cn(
-                  'relative flex h-10 w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors',
-                  informationActive
-                    ? 'text-[var(--brand-gold)]'
-                    : 'text-[rgba(212,175,55,0.50)] hover:bg-[rgba(212,175,55,0.07)] hover:text-[var(--brand-gold)]'
-                )}
+                className="folio-nav-control relative flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium"
               >
                 <Info className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} />
                 <AnimatePresence>
@@ -282,12 +248,8 @@ export function AppShellRail({ user, profile }: AppShellRailProps) {
                         key={href}
                         href={href}
                         aria-label={label}
-                        className={cn(
-                          'flex h-9 w-full items-center gap-2 rounded-lg px-3 text-xs font-medium transition-colors',
-                          isActive
-                            ? 'bg-[rgba(212,175,55,0.10)] text-[var(--brand-gold)]'
-                            : 'text-[rgba(212,175,55,0.48)] hover:bg-[rgba(212,175,55,0.07)] hover:text-[var(--brand-gold)]'
-                        )}
+                        aria-current={isActive ? (pathname === href ? 'page' : 'location') : undefined}
+                        className="folio-nav-control flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium"
                       >
                         <Map className="h-4 w-4 shrink-0" strokeWidth={1.75} />
                         <span className="truncate">{label}</span>
@@ -304,9 +266,9 @@ export function AppShellRail({ user, profile }: AppShellRailProps) {
         <DropdownMenu>
           <DropdownMenuTrigger
             aria-label="User menu"
-            className="flex h-10 w-full items-center gap-3 rounded-md border border-[rgba(212,175,55,0.20)] bg-[rgba(212,175,55,0.06)] px-2 text-xs font-medium text-[rgba(212,175,55,0.70)] transition-colors hover:border-[rgba(212,175,55,0.35)] hover:bg-[rgba(212,175,55,0.12)] hover:text-[var(--brand-gold)]"
+            className="folio-nav-control flex w-full items-center gap-3 rounded-md px-1 text-sm font-medium"
           >
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full ring-1 ring-[rgba(212,175,55,0.35)] text-center text-[11px] font-semibold leading-7">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full ring-1 ring-[var(--folio-boundary)] text-center text-[11px] font-semibold leading-7">
               {userInitial}
             </span>
             <AnimatePresence>
@@ -319,22 +281,22 @@ export function AppShellRail({ user, profile }: AppShellRailProps) {
                   transition={labelTransition}
                   className="flex min-w-0 flex-col items-start"
                 >
-                  <span className="truncate text-[11px] font-medium leading-tight">
+                  <span className="truncate text-sm font-medium leading-tight">
                     {user.name?.split(' ')[0] ?? user.email?.split('@')[0]}
                   </span>
-                  <span className="truncate text-[10px] leading-tight" style={{ color: 'rgba(212,175,55,0.45)' }}>
+                  <span className="folio-nav-identity truncate text-sm leading-tight">
                     {roleLabel[profile.role] ?? profile.role}
                   </span>
                 </motion.span>
               )}
             </AnimatePresence>
           </DropdownMenuTrigger>
-          <DropdownMenuContent side="right" align="end">
-            <div className="px-2 py-1.5 text-xs text-muted-foreground">
+          <DropdownMenuContent side="right" align="end" className="folio-nav-surface max-w-[min(24rem,85vw)]">
+            <div className="folio-nav-identity px-2 py-1.5 text-sm">
               {user.email ?? user.name}
             </div>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleSignOut}>Sign out</DropdownMenuItem>
+            <DropdownMenuItem className="folio-nav-control" onClick={handleSignOut}>Sign out</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

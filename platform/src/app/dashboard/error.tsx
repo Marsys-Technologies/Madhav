@@ -20,13 +20,12 @@ export default function DashboardError({
     <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
       <h2 className="text-xl font-semibold">Something went wrong on our end</h2>
       <p className="max-w-sm text-sm text-muted-foreground">
-        The roster could not be loaded. Try again in a moment, or sign out and back in if the
-        problem persists.
+        The roster could not be loaded. Try again in a moment. You can also return to sign-in.
       </p>
       <div className="flex gap-2">
         <Button onClick={reset}>Try again</Button>
         <Link href="/login" className={buttonVariants({ variant: 'outline' })}>
-          Sign out
+          Back to sign-in
         </Link>
       </div>
     </div>

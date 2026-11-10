@@ -237,7 +237,7 @@ export function Composer({ streaming, disabled = false, onSubmit, onStop, depthR
           aria-live="polite"
           aria-atomic="true"
           aria-label="AI choice status"
-          style={{ minHeight: 16, padding: '5px 2px 0', color: 'var(--pp-gold-tertiary)', fontSize: 11 }}
+          style={{ minHeight: 16, padding: '5px 2px 0', color: 'var(--pp-ink-dim)', fontSize: 11 }}
         >
           {aiChoices.statusMessage}
         </div>

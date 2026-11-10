@@ -1,3 +1,189 @@
-.j6-administration{min-width:0}.j6-nav{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:24px}.j6-nav a{border:1px solid rgba(var(--brand-gold-rgb),.2);border-radius:6px;padding:9px 12px;font-size:12px}.j6-nav a[aria-current=page]{color:var(--brand-gold);border-color:rgba(var(--brand-gold-rgb),.6)}.j6-blocks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.j6-blocks a{display:block}.j6-evidence{display:grid;gap:16px}.j6-evidence dl{display:grid;grid-template-columns:minmax(100px,1fr) minmax(0,2fr);gap:6px 16px;font-size:13px}.j6-evidence dd{overflow-wrap:anywhere}.j6-evidence dt{color:var(--muted-foreground)}.j6-records{display:grid;gap:12px}.j6-record{border-top:1px solid rgba(var(--brand-gold-rgb),.16);padding-top:12px}.j6-scope{display:flex;flex-wrap:wrap;gap:16px;align-items:end;margin:20px 0}.j6-scope label{display:grid;gap:6px;font-size:13px}.j6-scope select,.j6-scope input{max-width:100%;background:var(--background);color:var(--foreground);border:1px solid rgba(var(--brand-gold-rgb),.3);border-radius:6px;padding:8px}.j6-links{display:flex;flex-wrap:wrap;gap:16px;margin:16px 0}.j6-administration .overflow-x-auto{max-width:100%}@media(max-width:600px){.j6-blocks{grid-template-columns:1fr}.j6-nav a{flex-grow:1}.j6-evidence dl{grid-template-columns:1fr}.j6-evidence dd{margin-bottom:8px}.j6-scope{display:grid}.j6-scope select{width:100%}}
+.j6-administration {
+  min-width: 0;
+}
 
-.j6-search{display:grid;gap:6px;font-size:13px;margin:16px 0}.j6-search input{min-width:0;width:100%;border:1px solid rgba(var(--brand-gold-rgb),.3);padding:8px;border-radius:6px}
+.j6-administration .j1-title:not(:where(.pp-root *, .zone-ink *)) > span,
+.j6-administration .j5-panel h2 {
+  font-family: var(--folio-font-body);
+  font-weight: 650;
+}
+
+.j6-nav,
+.j6-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.j6-nav {
+  margin-block-end: var(--space-6);
+}
+
+.j6-links {
+  margin-block: var(--space-4);
+}
+
+.j6-nav a,
+.j6-links :is(a, button),
+.j6-evidence :is(.j1-button, .j5-panel button:not([class])) {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--folio-target);
+  max-width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--folio-boundary);
+  border-radius: var(--radius-md);
+  background: var(--folio-panel);
+  color: var(--folio-action);
+  font: 600 0.875rem/1.35 var(--folio-font-body);
+  overflow-wrap: anywhere;
+}
+
+.j6-administration :is(.j6-nav, .j6-links) :is(a, button):hover,
+.j6-evidence :is(.j1-button, .j5-panel button:not([class])):hover {
+  background: var(--folio-selected);
+  color: var(--folio-action);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+.j6-nav a[aria-current="page"],
+.j6-links a[aria-current="page"] {
+  border-color: var(--folio-action);
+  background: var(--folio-selected);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+.j6-administration :is(
+  .j6-nav a,
+  .j6-links a,
+  .j6-links button,
+  .j6-scope input,
+  .j6-scope select,
+  .j6-search input,
+  .j6-evidence .j1-button,
+  .j6-evidence > [role="alert"] button,
+  .j6-blocks a
+):focus-visible {
+  outline: 3px solid var(--folio-focus);
+  outline-offset: 4px;
+}
+
+.j6-blocks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.j6-blocks a {
+  display: block;
+  color: var(--folio-ink);
+}
+
+.j6-administration .j6-blocks a:hover {
+  border-color: var(--folio-boundary);
+  color: var(--folio-ink);
+}
+
+.j6-blocks a:hover h2 {
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+.j6-evidence,
+.j6-records {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-4);
+}
+
+.j6-evidence [role="alert"]:not(:where(.pp-root *, .zone-ink *)) {
+  color: var(--folio-error);
+}
+
+.j6-records {
+  gap: var(--space-3);
+}
+
+.j6-evidence dl {
+  display: grid;
+  grid-template-columns: minmax(100px, 1fr) minmax(0, 2fr);
+  gap: var(--space-2) var(--space-4);
+  font-size: 0.875rem;
+}
+
+.j6-evidence :is(dt, dd) {
+  overflow-wrap: anywhere;
+}
+
+.j6-evidence dt {
+  color: var(--folio-muted);
+}
+
+.j6-record {
+  border-block-start: 1px solid var(--folio-divider);
+  padding-block-start: var(--space-3);
+}
+
+.j6-scope {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-4);
+  margin-block: var(--space-4);
+}
+
+.j6-scope label,
+.j6-search {
+  display: grid;
+  min-width: 0;
+  max-width: 100%;
+  gap: var(--space-2);
+  color: var(--folio-muted);
+  font-size: 0.875rem;
+}
+
+.j6-search {
+  margin-block: var(--space-4);
+}
+
+.j6-administration :is(.j6-scope select, .j6-scope input, .j6-search input) {
+  min-width: 0;
+  max-width: 100%;
+  min-height: var(--folio-target);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--folio-boundary);
+  border-radius: var(--radius-md);
+  background: var(--folio-panel);
+  color: var(--folio-ink);
+  color-scheme: light;
+  font: inherit;
+}
+
+.j6-search input {
+  width: 100%;
+}
+
+.j6-administration .overflow-x-auto {
+  max-width: 100%;
+}
+
+@media (max-width: 600px) {
+  .j6-blocks,
+  .j6-evidence dl {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .j6-evidence dd {
+    margin-block-end: var(--space-2);
+  }
+
+  .j6-scope {
+    display: grid;
+  }
+
+  .j6-scope :is(select, input) {
+    width: 100%;
+  }
+}

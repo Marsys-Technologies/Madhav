@@ -19,7 +19,7 @@ import {
 } from 'lucide-react'
 import { auth } from '@/lib/firebase/client'
 import { Sigil } from '@/components/brand/Sigil'
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import {
   normalizeRole,
   isNavItemActive,
@@ -63,6 +63,7 @@ const NAV_ICONS: Record<string, LucideIcon | React.ComponentType<{ className?: s
 export function MobileNavSheet({ user, profile }: MobileNavSheetProps) {
   const pathname = usePathname()
   const router = useRouter()
+  const [open, setOpen] = useState(false)
   const [informationOpen, setInformationOpen] = useState(
     pathname.startsWith('/information')
   )
@@ -85,31 +86,27 @@ export function MobileNavSheet({ user, profile }: MobileNavSheetProps) {
   const userInitial = (user.name?.[0] ?? user.email?.[0] ?? 'U').toUpperCase()
 
   return (
-    <Sheet>
+    <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger
         aria-label="Open navigation menu"
-        className="flex h-10 w-10 items-center justify-center rounded text-muted-foreground hover:text-foreground md:hidden"
+        className="folio-nav-control flex w-11 shrink-0 items-center justify-center rounded md:hidden"
       >
         <MenuIcon className="size-5" aria-hidden="true" />
       </SheetTrigger>
       <SheetContent
         side="left"
-        className="w-64 p-0"
-        style={{
-          background: 'linear-gradient(180deg, rgba(6,6,8,0.72), rgba(2,2,4,0.60))',
-          backdropFilter: 'blur(10px) saturate(125%)',
-          WebkitBackdropFilter: 'blur(10px) saturate(125%)',
-          borderRight: '1px solid rgba(212,175,55,0.14)',
-        }}
+        className="folio-nav-surface w-[min(17rem,100vw)] overflow-y-auto p-0 motion-reduce:transition-none"
       >
+        <SheetTitle className="sr-only">Navigation</SheetTitle>
         <nav
           aria-label="Primary navigation"
-          className="flex h-full flex-col items-start gap-1 px-3 py-4"
+          className="flex min-h-full flex-col items-start gap-1 px-3 py-3"
         >
           <Link
             href="/dashboard"
             aria-label="MARSYS-JIS — go to Jātakas"
-            className="mb-4 ml-1 text-[var(--brand-gold)] transition-[filter] hover:drop-shadow-[0_0_6px_var(--brand-gold)]"
+            onClick={() => setOpen(false)}
+            className="folio-nav-control mb-2 inline-flex items-center rounded px-2"
           >
             <Sigil size={28} />
           </Link>
@@ -120,34 +117,27 @@ export function MobileNavSheet({ user, profile }: MobileNavSheetProps) {
               <Link
                 key={key}
                 href={href}
-                className={cn(
-                  'flex h-10 w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors',
-                  isActive
-                    ? 'bg-[rgba(212,175,55,0.14)] text-[var(--brand-gold)] shadow-[inset_0_0_0_1px_rgba(212,175,55,0.28),inset_0_0_24px_rgba(212,175,55,0.08)]'
-                    : 'text-[rgba(212,175,55,0.50)] hover:bg-[rgba(212,175,55,0.07)] hover:text-[var(--brand-gold)]'
-                )}
+                aria-current={isActive ? (pathname === href ? 'page' : 'location') : undefined}
+                onClick={() => setOpen(false)}
+                className="folio-nav-control flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium"
               >
                 <Icon className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} />
-                <span className="truncate">{label}</span>
+                <span className="[overflow-wrap:anywhere]">{label}</span>
               </Link>
             )
           })}
 
-          <div className="mt-auto w-full">
+          <div className="mt-auto w-full pt-2">
             {informationItems.length > 0 && (
-              <div className="mb-2 w-full border-b border-[rgba(212,175,55,0.12)] pb-2">
+              <div className="mb-2 w-full border-b border-[var(--folio-divider)] pb-2">
                 <button
                   type="button"
                   aria-label="Information"
                   aria-expanded={informationOpen}
-                  aria-controls="mobile-information-menu"
+                  aria-controls={informationOpen ? 'mobile-information-menu' : undefined}
                   onClick={() => setInformationOpen((open) => !open)}
-                  className={cn(
-                    'flex h-10 w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors',
-                    informationActive
-                      ? 'bg-[rgba(212,175,55,0.14)] text-[var(--brand-gold)] shadow-[inset_0_0_0_1px_rgba(212,175,55,0.28),inset_0_0_24px_rgba(212,175,55,0.08)]'
-                      : 'text-[rgba(212,175,55,0.50)] hover:bg-[rgba(212,175,55,0.07)] hover:text-[var(--brand-gold)]'
-                  )}
+                  data-current={informationActive}
+                  className="folio-nav-control flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium"
                 >
                   <Info className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} />
                   <span className="flex-1 text-left">Information</span>
@@ -174,12 +164,9 @@ export function MobileNavSheet({ user, profile }: MobileNavSheetProps) {
                           key={href}
                           href={href}
                           aria-label={label}
-                          className={cn(
-                            'flex h-9 w-full items-center gap-2 rounded-lg px-3 text-xs font-medium transition-colors',
-                            isActive
-                              ? 'bg-[rgba(212,175,55,0.10)] text-[var(--brand-gold)]'
-                              : 'text-[rgba(212,175,55,0.48)] hover:bg-[rgba(212,175,55,0.07)] hover:text-[var(--brand-gold)]'
-                          )}
+                          aria-current={isActive ? (pathname === href ? 'page' : 'location') : undefined}
+                          onClick={() => setOpen(false)}
+                          className="folio-nav-control flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium"
                         >
                           <Map className="h-4 w-4 shrink-0" strokeWidth={1.75} />
                           <span>{label}</span>
@@ -191,16 +178,17 @@ export function MobileNavSheet({ user, profile }: MobileNavSheetProps) {
               </div>
             )}
 
-            <div className="flex w-full items-center gap-3 px-3 py-2">
-              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-[rgba(212,175,55,0.35)] bg-[rgba(212,175,55,0.06)] text-xs font-medium text-[var(--brand-gold)]">
+            <div className="flex w-full flex-wrap items-center gap-2 px-2 py-2">
+              <span aria-hidden="true" className="grid size-8 shrink-0 place-items-center rounded-full border border-[var(--folio-boundary)] bg-[var(--folio-selected)] text-sm font-semibold">
                 {userInitial}
               </span>
-              <span className="flex-1 truncate text-xs text-[rgba(212,175,55,0.55)]">
+              <span className="folio-nav-identity flex-1 text-sm">
                 {user.email ?? user.name}
               </span>
               <button
+                type="button"
                 onClick={handleSignOut}
-                className="text-xs text-[rgba(212,175,55,0.45)] hover:text-[var(--brand-gold)]"
+                className="folio-nav-control rounded px-2 text-sm"
               >
                 Sign out
               </button>

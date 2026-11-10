@@ -112,7 +112,7 @@ export function ResolveSection({
       </p>
 
       {actions && (
-        <p style={{ fontSize: '11px', color: 'var(--pp-gold-tertiary, #7A5A1F)', margin: '0 0 12px' }}>
+        <p style={{ fontSize: '11px', color: 'var(--pp-ink-dim, #B7AE9C)', margin: '0 0 12px' }}>
           Keyboard: focus a prediction, then H happened · D didn&apos;t · P partially · U can&apos;t-tell (auto-advances).
           ↑/↓ to move. Then Resolve marked.
         </p>
@@ -217,7 +217,7 @@ export function ResolveSection({
               >
                 Resolve marked ({markedCount})
               </button>
-              <span style={{ fontSize: '11px', color: 'var(--pp-gold-tertiary, #7A5A1F)' }}>Cmd/Ctrl+Enter</span>
+              <span style={{ fontSize: '11px', color: 'var(--pp-ink-dim, #B7AE9C)' }}>Cmd/Ctrl+Enter</span>
             </div>
           )}
         </>

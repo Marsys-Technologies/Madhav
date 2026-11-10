@@ -50,7 +50,7 @@ export default async function TimelinePage({
   const canLogEvent = access.role === 'super_admin' && !((await requireSuperAdmin()) instanceof NextResponse)
 
   return (
-    <ZoneRoot zone="vellum" className="flex h-full flex-col">
+    <ZoneRoot zone="vellum" className="flex min-h-full flex-col">
       <ChartNav chartId={id} canBuild={access.canBuild} active="events" />
       <TimelineView key={id} events={events} chartId={id} canLogEvent={canLogEvent} />
     </ZoneRoot>

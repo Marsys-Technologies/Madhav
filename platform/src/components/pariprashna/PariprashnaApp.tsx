@@ -607,13 +607,14 @@ export function PariprashnaSurface({
                     type="button"
                     className="pp-tag-answer"
                     disabled={!canTag || tagBusy}
+                    aria-label="Tag conversation"
                     aria-pressed={currentTagged}
                     onClick={() => void setTag(!currentTagged)}
                   >
                     {currentTagged ? (
-                      <BookmarkCheck size={16} />
+                      <BookmarkCheck size={16} aria-hidden="true" />
                     ) : (
-                      <Bookmark size={16} />
+                      <Bookmark size={16} aria-hidden="true" />
                     )}
                     <span>Tag conversation</span>
                   </button>

@@ -416,7 +416,7 @@ function ActivityChart({ days }: { days: Day[] }) {
         <p>No activity to chart.</p>
       ) : (
         <>
-          <div className="j5-chart-scroll">
+          <div className="j5-chart-scroll focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--gold-lighter)]" role="region" aria-label="Daily activity chart" tabIndex={0}>
             <svg
               viewBox="0 0 720 250"
               role="img"
@@ -500,7 +500,7 @@ function ActivityChart({ days }: { days: Day[] }) {
           </div>
           <details>
             <summary>View daily values</summary>
-            <div className="j5-table-scroll">
+            <div className="j5-table-scroll focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--gold-lighter)]" role="region" aria-label="Daily activity values" tabIndex={0}>
               <table>
                 <thead>
                   <tr>

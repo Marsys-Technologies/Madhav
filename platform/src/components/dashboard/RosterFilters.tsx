@@ -13,6 +13,8 @@ interface RosterFiltersProps {
   onViewChange: (view: ViewMode) => void
 }
 
+const filterControl = 'min-h-11 min-w-0 max-w-full rounded-md border border-[var(--folio-boundary)] bg-[var(--folio-panel)] px-3 text-base text-[var(--folio-ink)] placeholder:text-[var(--folio-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--folio-focus)]'
+
 export function RosterFilters({
   filters,
   view,
@@ -31,17 +33,19 @@ export function RosterFilters({
     <div className="flex flex-wrap items-center gap-2">
       {/* Search */}
       <input
+        aria-label="Search charts"
         value={filters.q}
         onChange={(e) => onFilterChange({ q: e.target.value })}
         placeholder="Search name or place…"
-        className="h-8 w-full max-w-xs bg-[rgba(8,6,3,0.7)] border border-[rgba(212,175,55,0.2)] text-[#fce29a] placeholder:text-[#6a5830] rounded-md px-3 text-sm focus:border-[#d4af37] focus:outline-none focus:ring-2 focus:ring-[#d4af37]/20"
+        className={`${filterControl} w-full sm:max-w-xs`}
       />
 
       {/* Birth place */}
       <select
+        aria-label="Filter by birth place"
         value={filters.place}
         onChange={(e) => onFilterChange({ place: e.target.value })}
-        className="h-8 bg-[rgba(8,6,3,0.7)] border border-[rgba(212,175,55,0.2)] text-[#fce29a] placeholder:text-[#6a5830] rounded-md px-3 text-sm focus:border-[#d4af37] focus:outline-none focus:ring-2 focus:ring-[#d4af37]/20"
+        className={filterControl}
       >
         <option value="">All places</option>
         {places.map((p) => (
@@ -53,15 +57,16 @@ export function RosterFilters({
 
       {/* Dasha — disabled until Phase 14C */}
       <select
+        aria-label="Filter by current dasha"
         disabled
         title="Dasha data available after Phase 14C"
-        className="h-8 bg-[rgba(8,6,3,0.7)] border border-[rgba(212,175,55,0.2)] text-[#fce29a] placeholder:text-[#6a5830] rounded-md px-3 text-sm focus:border-[#d4af37] focus:outline-none focus:ring-2 focus:ring-[#d4af37]/20 opacity-40 cursor-not-allowed"
+        className={`${filterControl} opacity-60 cursor-not-allowed`}
       >
         <option>Current dasha</option>
       </select>
 
       {/* Build % max slider */}
-      <label className="flex items-center gap-2 text-[rgba(212,175,55,0.45)] text-sm">
+      <label className="flex min-h-11 items-center gap-2 text-[var(--folio-muted)] text-sm">
         <span className="whitespace-nowrap">Build ≤ {filters.buildMax}%</span>
         <input
           type="range"
@@ -70,15 +75,16 @@ export function RosterFilters({
           step={10}
           value={filters.buildMax}
           onChange={handleBuildRangeChange}
-          className="w-20 accent-[#d4af37]"
+          className="w-20 accent-[var(--folio-action)] focus-visible:outline-2 focus-visible:outline-[var(--folio-focus)]"
         />
       </label>
 
       {/* Last activity */}
       <select
+        aria-label="Filter by last activity"
         value={filters.since}
         onChange={(e) => onFilterChange({ since: e.target.value })}
-        className="h-8 bg-[rgba(8,6,3,0.7)] border border-[rgba(212,175,55,0.2)] text-[#fce29a] placeholder:text-[#6a5830] rounded-md px-3 text-sm focus:border-[#d4af37] focus:outline-none focus:ring-2 focus:ring-[#d4af37]/20"
+        className={filterControl}
       >
         <option value="">Any activity</option>
         <option value={sinceDate(7)}>Last 7 days</option>
@@ -93,17 +99,17 @@ export function RosterFilters({
       <div
         role="group"
         aria-label="View mode"
-        className="flex h-8 items-center rounded-[8px] border border-[rgba(212,175,55,0.2)] bg-[rgba(8,6,3,0.6)] p-[3px] text-sm"
+        className="flex items-center rounded-lg border border-[var(--folio-boundary)] bg-[var(--folio-panel)] p-1 text-sm"
       >
         {(['grid', 'table'] as ViewMode[]).map((v) => (
           <button
             key={v}
             onClick={() => onViewChange(v)}
             aria-pressed={view === v}
-            className={`inline-flex h-[calc(100%-1px)] items-center justify-center px-3 transition-colors ${
+            className={`inline-flex min-h-11 items-center justify-center rounded-md px-3 font-medium capitalize focus-visible:outline-2 focus-visible:outline-[var(--folio-focus)] ${
               view === v
-                ? 'rounded-[5px] bg-gradient-to-b from-[#3a2c10] to-[#241a07] font-medium uppercase tracking-[0.06em] text-[#fce29a] shadow-[inset_0_0_0_1px_rgba(212,175,55,0.25)]'
-                : 'rounded-[5px] font-medium uppercase tracking-[0.06em] text-[rgba(212,175,55,0.35)] hover:text-[#fce29a]'
+                ? 'bg-[var(--folio-selected)] text-[var(--folio-ink)] underline decoration-[var(--folio-action)] underline-offset-4'
+                : 'text-[var(--folio-muted)] hover:text-[var(--folio-action)]'
             }`}
           >
             {v}

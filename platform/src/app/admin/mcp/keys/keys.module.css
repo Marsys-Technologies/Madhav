@@ -1,0 +1,53 @@
+.keys {
+  min-width: 0;
+  padding: clamp(12px, 3vw, 24px);
+  border: 1px solid var(--folio-divider);
+  border-radius: 12px;
+  background: var(--folio-canvas);
+  color: var(--folio-ink);
+  font-family: var(--folio-font-body);
+}
+
+.keys :global(.j1-title) > span { color: var(--folio-ink); font-family: var(--folio-font-heading); }
+.keys :global(.j1-title) > small,
+.keys :global(.text-muted-foreground) { color: var(--folio-muted); }
+
+.createForm,
+.results {
+  border: 1px solid var(--folio-divider);
+  border-radius: 8px;
+  background: var(--folio-panel);
+}
+
+.createForm { padding: 16px; }
+.createForm :is(input, select) {
+  min-height: var(--folio-target);
+  border-color: var(--folio-boundary);
+  background: var(--folio-panel);
+  color: var(--folio-ink);
+}
+.createForm input::placeholder { color: var(--folio-muted); }
+.results { max-width: 100%; overflow-x: auto; }
+.tableHeading { border-bottom: 1px solid var(--folio-divider); background: var(--folio-selected); }
+.revoked { background: var(--folio-selected); }
+.error { color: var(--folio-error); }
+
+.primary,
+.dangerAction {
+  min-height: var(--folio-target);
+  border-radius: 6px;
+  padding-inline: 12px;
+  font-weight: 600;
+}
+
+.primary { background: var(--folio-action); color: var(--folio-on-action); font-size: .875rem; }
+.primary:disabled { opacity: .65; }
+.dangerAction { border: 1px solid var(--folio-error); color: var(--folio-error); }
+
+.keys :is(button, input, select):focus-visible,
+.results:focus-visible {
+  outline: 2px solid var(--folio-focus);
+  outline-offset: 2px;
+}
+
+.results:focus-visible { outline-offset: -2px; }

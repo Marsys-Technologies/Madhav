@@ -6,6 +6,7 @@ import { resolveChartPageAccess } from '@/lib/auth/chart-page-guard'
 import { todayISTKey } from '@/lib/build/derive'
 import { ChartNav } from '@/components/journey1/ChartNav'
 import { PanchangClientView } from '@/app/panchang/components/PanchangClientView'
+import styles from '../folio.module.css'
 
 export default async function ChartPanchangPage({
   params,
@@ -23,15 +24,13 @@ export default async function ChartPanchangPage({
   return (
     <div data-testid="chart-panchang-root" data-permission={access.permission} data-chart-id={id}>
       <ChartNav chartId={id} canBuild={access.canBuild} active="almanac" />
-      <header className="mx-auto max-w-4xl px-4 py-4">
-        <h1 className="text-xl font-serif font-semibold">Personal Almanac</h1>
-        <p className="text-sm text-muted-foreground">
-          Daily timing for the selected location, in India Standard Time (UTC+05:30).
-          Chart context: {chart.name ?? 'this chart'}.
-        </p>
-        <div className="mt-2 flex flex-wrap gap-4 text-sm">
-          <Link href={`/clients/${id}/pariprashna`} className="underline">Open Consultation</Link>
-          <Link href="/panchang" className="underline">General Almanac</Link>
+      <header className={styles.almanacHeader}>
+        <h1>Personal Almanac</h1>
+        <p>Chart context: <strong>{chart.name ?? 'this chart'}</strong></p>
+        <p>Daily timing for the selected location, in India Standard Time (UTC+05:30).</p>
+        <div className={styles.almanacLinks}>
+          <Link href={`/clients/${id}/pariprashna`}>Open Consultation</Link>
+          <Link href="/panchang">General Almanac</Link>
         </div>
       </header>
       <Suspense fallback={<p role="status">Loading almanac…</p>}>

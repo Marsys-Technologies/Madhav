@@ -14,6 +14,7 @@ import { redirect } from 'next/navigation'
 import { getServerUserWithProfile } from '@/lib/auth/access-control'
 import { readAllGatesGlobal } from '@/lib/config/configService'
 import { AYANAMSHA_REGISTRY, type GateClass } from '@/lib/gates/gate_registry'
+import styles from './command-center.module.css'
 
 export const dynamic = 'force-dynamic'
 
@@ -51,10 +52,10 @@ export default async function CommandCenterPage({
   }
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-6" data-testid="command-center-page">
+    <div className={styles.commandCenter} data-testid="command-center-page">
       <header className="mb-6 flex flex-wrap items-baseline justify-between gap-3">
         <h1 className="bt-display">Command Center</h1>
-        <form method="get" className="flex items-center gap-2">
+        <form method="get" className={styles.chartControls}>
           <label htmlFor="chart-select" className="bt-body text-muted-foreground">
             Chart
           </label>
@@ -63,7 +64,6 @@ export default async function CommandCenterPage({
             name="chart"
             defaultValue={selectedChart}
             data-testid="chart-select"
-            className="rounded border border-border bg-background px-2 py-1 text-sm"
           >
             {STUB_CHART_IDS.map((c) => (
               <option key={c} value={c}>
@@ -71,7 +71,7 @@ export default async function CommandCenterPage({
               </option>
             ))}
           </select>
-          <button type="submit" className="text-sm underline">
+          <button type="submit">
             Apply
           </button>
         </form>
@@ -87,12 +87,12 @@ export default async function CommandCenterPage({
               {items.map(({ spec, value, overridden }) => (
                 <li
                   key={spec.key}
-                  className="flex items-start justify-between gap-4 rounded border border-border p-3"
+                  className="flex flex-wrap items-start justify-between gap-3 rounded border p-3 sm:flex-nowrap"
                   data-testid={`gate-row-${spec.key}`}
                   data-gate-key={spec.key}
                 >
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <code className="text-sm font-mono">{spec.key}</code>
                       {spec.danger && (
                         <span className="rounded bg-red-100 px-1.5 py-0.5 text-xs text-red-700 dark:bg-red-900/40 dark:text-red-300">
@@ -112,7 +112,7 @@ export default async function CommandCenterPage({
                     </div>
                     <p className="bt-body text-muted-foreground">{spec.description}</p>
                   </div>
-                  <div className="shrink-0 text-right">
+                  <div className="min-w-0 sm:text-right">
                     <div className="bt-body">
                       <span className="text-muted-foreground">value:</span>{' '}
                       <code className="font-mono">{JSON.stringify(value)}</code>
@@ -136,6 +136,7 @@ export default async function CommandCenterPage({
           are a labelled cross-check, never mixed into the primary reading. The
           canonical role cannot be disabled (guard enforced at write time).
         </p>
+        <div className={styles.registry} role="region" aria-label="Ayanamsha roles" tabIndex={0}>
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-border text-left">
@@ -154,7 +155,8 @@ export default async function CommandCenterPage({
             ))}
           </tbody>
         </table>
+        </div>
       </section>
-    </main>
+    </div>
   )
 }

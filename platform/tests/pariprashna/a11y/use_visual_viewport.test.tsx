@@ -89,5 +89,11 @@ describe('PariprashnaApp shell consumes the hook (not a static 100vh)', () => {
       fake.fire('resize')
     })
     expect(shell.style.height).toBe('292px')
+    const tag = shell.querySelector('.pp-conversation-heading .pp-tag-answer')
+    const visibleLabel = tag?.querySelector('span')
+    expect(visibleLabel).toBeInstanceOf(HTMLElement)
+    // Simulate the narrow-layout CSS in jsdom, which does not apply viewport media queries.
+    if (visibleLabel) visibleLabel.style.display = 'none'
+    expect(tag).toHaveAccessibleName('Tag conversation')
   })
 })

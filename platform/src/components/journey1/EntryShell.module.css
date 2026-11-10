@@ -1,14 +1,9 @@
 .folio:global(.j1-entry) {
-  --j1-text: #242920;
-  --folio-muted: #52584a;
-  --folio-action: #2e563e;
-  --folio-panel: #fcf8ee;
-  --folio-selected: #e6eadb;
-  --folio-border: #716d5e;
-  background: #f5efe2;
+  --j1-text: var(--folio-ink);
+  background: var(--folio-canvas);
   color: var(--j1-text);
   color-scheme: light;
-  font-family: system-ui, sans-serif;
+  font-family: var(--folio-font-body);
 }
 
 .folio :global(.j1-cosmos) {
@@ -22,7 +17,7 @@
 
 .folio :global(.j1-entry-card) {
   background: var(--folio-panel);
-  border: 1px solid #a5a18e;
+  border: 1px solid var(--folio-divider);
   padding: clamp(16px, 5vw, 28px);
 }
 
@@ -35,7 +30,7 @@
 
 .folio :global(.j1-title) > span,
 .heading {
-  font-family: Georgia, serif;
+  font-family: var(--folio-font-heading);
   color: var(--j1-text);
 }
 
@@ -55,11 +50,26 @@
 }
 
 .folio :global(.j1-tabs),
-.folio :global(.j1-field) input,
+.folio :global(.j1-field) :is(input, textarea),
 .folio :global(.j1-icon) {
   background: var(--folio-panel);
-  border: 1px solid var(--folio-border);
+  border: 1px solid var(--folio-boundary);
   color: var(--j1-text);
+}
+
+.folio :global(.j1-field) :is(input, textarea) {
+  font-size: 1rem;
+}
+
+.folio :global(.j1-status) {
+  background: var(--folio-selected);
+  border-color: var(--folio-action);
+  color: var(--folio-ink);
+}
+
+.folio :global(.j1-entry-card) a:not(:global(.j1-btn)) {
+  color: var(--folio-action);
+  text-decoration: underline;
 }
 
 .folio :global(.j1-tabs) button {
@@ -84,16 +94,16 @@
 .folio :global(.j1-btn) {
   background: var(--folio-action);
   border-color: var(--folio-action);
-  color: #fffaf0;
+  color: var(--folio-on-action);
 }
 
 .folio :global(.j1-error) {
   background: var(--folio-panel);
-  border-color: #802e28;
-  color: #802e28;
+  border-color: var(--folio-error);
+  color: var(--folio-error);
 }
 
-.folio :is(button, a, input):focus-visible {
+.folio :is(button, a, input, textarea):focus-visible {
   outline: 3px solid var(--folio-action);
   outline-offset: 4px;
 }

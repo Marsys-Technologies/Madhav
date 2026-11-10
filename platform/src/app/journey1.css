@@ -464,13 +464,13 @@
   inset-block: 0;
   width: 64px;
   z-index: 50;
-  background: #060504;
-  border-right: 1px solid #302718;
+  border-inline-end: 1px solid var(--folio-divider);
   display: flex;
   flex-direction: column;
   gap: 12px;
   padding: 16px 10px;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   transition: width 0.15s;
 }
 .j1-rail[data-open="true"] {
@@ -483,17 +483,25 @@
   min-height: 48px;
   padding: 6px 10px;
   border-radius: 6px;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 .j1-rail a > svg {
   flex-shrink: 0;
 }
-.j1-rail a[aria-current="page"] {
-  background: #15110a;
-  color: #ecc56a;
-}
 .j1-rail .j1-title {
   visibility: hidden;
+}
+.j1-rail .j1-title > span {
+  font: 600 1rem/1.2 var(--folio-font-body);
+  color: var(--folio-action);
+}
+.j1-rail .j1-title > small {
+  font: 0.875rem/1.3 var(--folio-font-body);
+  color: var(--folio-muted);
+}
+.j1-rail a:is([aria-current="page"], [aria-current="location"]) .j1-title > span {
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
 }
 .j1-rail[data-open="true"] .j1-title {
   visibility: visible;
@@ -511,13 +519,33 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid #302718;
-  background: #040302;
+  gap: var(--space-2);
+  border-bottom: 1px solid var(--folio-divider);
 }
+.j1-topbar-brand,
 .j1-topbar-actions {
   display: flex;
+  min-width: 0;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-2);
+}
+.j1-shell-wordmark {
+  display: inline-flex;
+  align-items: center;
+  padding-inline: var(--space-1);
+  font: 500 1.75rem/1 var(--folio-font-heading);
+}
+.j1 .folio-nav-surface .j1-icon {
+  background: var(--folio-panel);
+  border-color: var(--folio-boundary);
+  color: var(--folio-action);
+}
+.j1 .folio-nav-surface :is(a, button):hover {
+  background: var(--folio-selected);
+  color: var(--folio-action);
+}
+.j1 .folio-nav-surface .folio-nav-identity {
+  color: var(--folio-muted);
 }
 .j1-content {
   flex: 1;
@@ -726,7 +754,7 @@
   }
   .j1-rail[data-mobile="true"] {
     display: flex;
-    width: 240px;
+    width: min(240px, 90vw);
   }
   .j1-mobile-menu {
     display: inline-flex;
@@ -736,7 +764,7 @@
   }
   .j1-topbar {
     height: 64px;
-    padding: 10px 16px;
+    padding: var(--space-2) var(--space-3);
   }
   .j1-topbar .j1-note {
     display: none;

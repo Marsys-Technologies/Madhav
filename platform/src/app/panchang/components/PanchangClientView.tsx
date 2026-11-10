@@ -131,17 +131,18 @@ export function PanchangClientView({
 
       {isLoading && !data && (
         <div className="mx-auto max-w-4xl px-4 py-6">
-          <div className="rounded-xl border border-[rgba(212,175,55,0.14)] bg-[rgba(28,28,26,0.50)] overflow-hidden">
+          <p role="status" className="mb-3 text-sm text-muted-foreground">Loading almanac…</p>
+          <div aria-hidden="true" className="rounded-xl border border-[rgba(212,175,55,0.14)] bg-[rgba(28,28,26,0.50)] overflow-hidden">
             {Array.from({ length: 6 }).map((_, i) => (
               <div
                 key={i}
                 className="flex items-center justify-between px-5 py-4 border-b border-[rgba(212,175,55,0.08)] last:border-0"
               >
-                <div className="flex items-center gap-3">
-                  <div className="h-4 w-20 rounded bg-[rgba(212,175,55,0.10)] animate-pulse" />
-                  <div className="h-5 w-32 rounded bg-[rgba(212,175,55,0.14)] animate-pulse" />
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="h-4 w-20 max-w-full rounded bg-[rgba(212,175,55,0.10)] motion-safe:animate-pulse" />
+                  <div className="h-5 w-32 max-w-full rounded bg-[rgba(212,175,55,0.14)] motion-safe:animate-pulse" />
                 </div>
-                <div className="h-4 w-16 rounded bg-[rgba(212,175,55,0.08)] animate-pulse" />
+                <div className="h-4 w-16 max-w-full rounded bg-[rgba(212,175,55,0.08)] motion-safe:animate-pulse" />
               </div>
             ))}
           </div>

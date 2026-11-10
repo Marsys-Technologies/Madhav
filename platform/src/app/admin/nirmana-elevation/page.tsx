@@ -9,5 +9,9 @@ export const metadata: Metadata = {
 
 /** The admin layout applies the authenticated super_admin gate. */
 export default function NirmanaElevationPage() {
-  return <NirmanaElevationTracker />
+  return (
+    <div className="min-w-0 rounded-xl border border-brand-border bg-brand-bg px-4 text-brand-text-1">
+      <NirmanaElevationTracker />
+    </div>
+  )
 }

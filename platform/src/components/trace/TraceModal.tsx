@@ -49,7 +49,7 @@ function extractStepData(env: TraceEnvelope, stepId: string): unknown {
 
 export function TraceModal({ queryId }: TraceModalProps) {
   const [envelope, setEnvelope] = useState<TraceEnvelope | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState(false)
   const [selectedStepId, setSelectedStepId] = useState<string>('synthesis')
   const [showSearch, setShowSearch] = useState(false)
   const [searchValue, setSearchValue] = useState('')
@@ -58,9 +58,11 @@ export function TraceModal({ queryId }: TraceModalProps) {
   const trace: TraceDocument | null = envelope?.legacy ?? null
 
   useEffect(() => {
+    let current = true
     fetchTraceEnvelope(queryId)
-      .then(env => { setEnvelope(env); setSelectedStepId('synthesis') })
-      .catch(e => setError(String(e)))
+      .then(env => { if (current) setEnvelope(env) })
+      .catch(() => { if (current) setError(true) })
+    return () => { current = false }
   }, [queryId])
 
   const anomalies = useMemo(
@@ -127,21 +129,19 @@ export function TraceModal({ queryId }: TraceModalProps) {
 
   if (error) {
     return (
-      <div className="w-[92vw] h-[92vh] rounded-xl border border-[rgba(212,175,55,0.4)] bg-[oklch(0.10_0.012_70)] flex items-center justify-center">
-        <p className="text-red-400 text-sm" data-testid="trace-error">Failed to load trace: {error}</p>
-      </div>
+      <p role="alert" className="rounded-lg bg-[var(--folio-panel)] p-4 text-[var(--folio-error)]" data-testid="trace-error">
+        Trace could not be loaded. Reload to try again or return to query sessions.
+      </p>
     )
   }
 
-  if (!trace || !envelope) return null
+  if (!trace || !envelope) return <p role="status">Loading trace…</p>
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="Query Trace"
+    <section
+      aria-label="Query trace details"
       data-testid="trace-modal"
-      className="w-[92vw] h-[92vh] rounded-xl border border-[rgba(212,175,55,0.4)] bg-[oklch(0.10_0.012_70)] flex flex-col overflow-hidden"
+      className="relative min-w-0 rounded-xl border border-[rgba(212,175,55,0.4)] bg-[oklch(0.10_0.012_70)] text-zinc-100"
     >
       {/* Shortcut help overlay */}
       {showHelp && <ShortcutHelpOverlay onClose={() => setShowHelp(false)} />}
@@ -150,9 +150,9 @@ export function TraceModal({ queryId }: TraceModalProps) {
       <QueryHeaderStrip trace={trace} />
 
       {/* Row 2: Three-zone work area */}
-      <div className="flex-1 min-h-0 grid" style={{ gridTemplateColumns: '380px 1fr 320px' }}>
+      <div className="grid min-w-0 grid-cols-1 divide-y divide-zinc-800 xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)] xl:divide-x xl:divide-y-0">
         {/* Left: Lifecycle graph */}
-        <div className="border-r border-[rgba(212,175,55,0.1)] overflow-y-auto flex flex-col">
+        <div className="flex min-w-0 flex-col xl:max-h-[70dvh] xl:overflow-y-auto">
           {showSearch && (
             <SearchFilter
               value={searchValue}
@@ -160,7 +160,7 @@ export function TraceModal({ queryId }: TraceModalProps) {
               onClose={() => { setShowSearch(false); setSearchValue('') }}
             />
           )}
-          <div className="flex-1 overflow-y-auto">
+          <div className="min-w-0 flex-1 overflow-auto">
             <LifecycleGraph
               steps={envelope.steps}
               assembled={envelope.assembled}
@@ -172,12 +172,12 @@ export function TraceModal({ queryId }: TraceModalProps) {
         </div>
 
         {/* Center: Step detail */}
-        <div className="overflow-y-auto">
+        <div className="min-w-0 overflow-auto xl:max-h-[70dvh]">
           <StepDetail assembled={envelope.assembled} selectedStepId={selectedStepId} />
         </div>
 
         {/* Right: Health rail */}
-        <div className="border-l border-[rgba(212,175,55,0.1)] overflow-y-auto">
+        <div className="min-w-0 overflow-auto xl:max-h-[70dvh]">
           <HealthRail
             trace={trace}
             anomalies={anomalies}
@@ -187,7 +187,9 @@ export function TraceModal({ queryId }: TraceModalProps) {
       </div>
 
       {/* Row 3: Timing + cost ribbon */}
-      <TimingRibbon trace={trace} selectedStepId={selectedStepId} onSelectStep={setSelectedStepId} />
-    </div>
+      <div className="overflow-x-auto" role="region" aria-label="Trace timing and cost" tabIndex={0}>
+        <TimingRibbon trace={trace} selectedStepId={selectedStepId} onSelectStep={setSelectedStepId} />
+      </div>
+    </section>
   )
 }

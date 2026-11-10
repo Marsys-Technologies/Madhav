@@ -15,7 +15,6 @@ import {
   X,
   LogOut,
 } from "lucide-react";
-import { Signature } from "./Signature";
 import { PageTitle, TitleToggle, PAGE_NAMES, type PageName } from "./Titles";
 import { AccountPreferencesProvider, useAccountPreferences } from '@/components/account/AccountPreferencesProvider';
 const PIN_KEY = "madhav.pref.global-nav-pinned";
@@ -57,6 +56,7 @@ function JourneyShellBody({
   const account = useAccountPreferences();
   const pinned = account?.preferences.navPinned ?? localPin;
   const [hover, setHover] = useState(false),
+    [focusWithin, setFocusWithin] = useState(false),
     [mobile, setMobile] = useState(false);
   const isJourney1 =
     !chartId ||
@@ -95,7 +95,7 @@ function JourneyShellBody({
     };
   }, [mobile]);
   if (!isJourney1 && fallback) return fallback;
-  const open = pinned || hover || mobile;
+  const open = pinned || hover || focusWithin || mobile;
   const items: { name: PageName; href: string; icon: typeof LayoutGrid }[] = [
     { name: "charts", href: "/dashboard", icon: LayoutGrid },
   ];
@@ -118,7 +118,7 @@ function JourneyShellBody({
     >
       <a
         href="#journey-main"
-        className="sr-only focus:not-sr-only focus:absolute focus:z-[60] focus:bg-black focus:p-3"
+        className="folio-shell-skip sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded focus:bg-[var(--folio-panel)] focus:p-3 focus:text-[var(--folio-ink)]"
       >
         Skip to main content
       </a>
@@ -132,33 +132,35 @@ function JourneyShellBody({
       <div className="j1-rail-space" data-pinned={pinned}>
         <nav
           ref={railRef}
-          className="j1-rail"
+          id="journey-navigation"
+          className="j1-rail folio-nav-surface folio-nav-rail"
           aria-label="Primary navigation"
           data-open={open}
           data-mobile={mobile}
           onMouseEnter={() => setHover(true)}
           onMouseLeave={() => setHover(false)}
-          onFocus={() => setHover(true)}
+          onFocus={() => setFocusWithin(true)}
           onBlur={(e) => {
-            if (!e.currentTarget.contains(e.relatedTarget as Node))
-              setHover(false);
+            if (!e.currentTarget.contains(e.relatedTarget))
+              setFocusWithin(false);
           }}
           onKeyDown={(e) => {
             if (e.key === "Escape") {
               setMobile(false);
               setHover(false);
+              setFocusWithin(false);
             }
           }}
         >
           <button
-            className="j1-icon j1-mobile-dismiss"
+            className="j1-icon j1-mobile-dismiss folio-nav-control"
             aria-label="Close navigation"
             onClick={() => setMobile(false)}
           >
             <X size={20} />
           </button>
           <button
-            className="j1-icon"
+            className="j1-icon folio-nav-control"
             aria-label={
               pinned ? "Release navigation pin" : "Pin navigation open"
             }
@@ -177,9 +179,10 @@ function JourneyShellBody({
             <Link
               key={name}
               href={href}
+              className="folio-nav-control"
               aria-label={PAGE_NAMES[name][1]}
               title={PAGE_NAMES[name][1]}
-              aria-current={path === href ? "page" : undefined}
+              aria-current={path === href ? "page" : name === "charts" && chartId ? "location" : undefined}
               onClick={() => setMobile(false)}
             >
               <Icon size={22} />
@@ -188,7 +191,7 @@ function JourneyShellBody({
           ))}
           <button
             type="button"
-            className="j1-icon"
+            className="j1-icon folio-nav-control"
             aria-label="Sign out"
             style={{ marginTop: "auto" }}
             onClick={async () => {
@@ -207,26 +210,27 @@ function JourneyShellBody({
           </button>
         </nav>
       </div>
-      <div className="j1-shell-body">
-        <header className="j1-topbar">
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      <div className="j1-shell-body" inert={mobile}>
+        <header className="j1-topbar folio-nav-surface">
+          <div className="j1-topbar-brand">
             <button
-              className="j1-icon j1-mobile-menu"
+              className="j1-icon j1-mobile-menu folio-nav-control"
               aria-label="Open navigation"
               aria-expanded={mobile}
+              aria-controls="journey-navigation"
               onClick={() => setMobile(true)}
             >
               <Menu size={20} />
             </button>
-            <Link href="/dashboard" aria-label="Madhav — Birth Charts">
-              <Signature />
+            <Link href="/dashboard" aria-label="Madhav — Birth Charts" className="j1-shell-wordmark folio-nav-control">
+              Madhav
             </Link>
           </div>
           <div className="j1-topbar-actions">
-            <span className="j1-note">{user.name ?? user.email}</span>
+            <span className="j1-note folio-nav-identity">{user.name ?? user.email}</span>
             <TitleToggle />
             <Link
-              className="j1-icon"
+              className="j1-icon folio-nav-control"
               href="/account"
               aria-label="My Account"
             >
@@ -234,7 +238,7 @@ function JourneyShellBody({
             </Link>
           </div>
         </header>
-        <main className="j1-content" id="journey-main">
+        <main className="j1-content" id="journey-main" tabIndex={-1}>
           {children}
         </main>
       </div>

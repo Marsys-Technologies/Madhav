@@ -21,11 +21,11 @@ export function ClientCard({ chart }: Props) {
     <Link
       href={`/clients/${chart.id}`}
       aria-label={`Open ${chart.name} Jātaka — ${chart.readiness.label}`}
-      className="brand-card group flex min-h-11 rounded-xl p-4 transition-[border-color,transform] duration-200 hover:-translate-y-px hover:border-[rgba(212,175,55,0.38)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d4af37] focus-visible:ring-offset-2 focus-visible:ring-offset-black motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+      className="group flex min-h-11 rounded-xl border border-[var(--folio-divider)] bg-[var(--folio-panel)] p-4 hover:border-[var(--folio-action)] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--folio-focus)] focus-visible:ring-offset-[var(--folio-canvas)]"
     >
       <div className="min-w-0 flex-1">
-        <h2 className="bt-heading truncate text-[#fce29a]">{chart.name}</h2>
-        <p className="bt-label mt-1 truncate text-[rgba(212,175,55,0.48)]">
+        <h2 className="break-words font-[family-name:var(--folio-font-heading)] text-lg font-semibold text-[var(--folio-ink)]">{chart.name}</h2>
+        <p className="mt-1 break-words text-sm text-[var(--folio-muted)]">
           {formatDate(chart.birth_date)} · {chart.birth_place}
         </p>
         <DirectoryReadiness readiness={chart.readiness} chartName={chart.name} />

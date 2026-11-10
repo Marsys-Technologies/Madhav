@@ -83,7 +83,11 @@ export function HistoricalConversationView({
   targetAnswerId?: string
 }) {
   return (
-    <main className="jw-root min-h-full px-4 py-8 sm:px-6">
+    <main
+      aria-label="Historical reading"
+      tabIndex={0}
+      className="jw-root h-full min-w-0 overflow-y-auto px-4 py-8 [overflow-wrap:anywhere] sm:px-6"
+    >
       <div className="mx-auto flex max-w-3xl flex-col gap-6">
         <header className={`flex flex-col gap-3 ${styles.header}`}>
           <Link

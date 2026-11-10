@@ -8,7 +8,7 @@ import { auth } from "@/lib/firebase/client";
 import { safeNextPath } from "@/lib/auth/safe_next";
 import { EntryShell } from "@/components/journey1/EntryShell";
 import { PasswordField } from "@/components/journey1/PasswordField";
-import styles from "./folio.module.css";
+import styles from "@/components/journey1/EntryShell.module.css";
 
 type Tab = "username" | "email";
 
@@ -118,7 +118,7 @@ export default function LoginPage() {
   }
 
   return (
-    <EntryShell name="login" className={styles.folio}>
+    <EntryShell name="login">
       <form onSubmit={handleSubmit} className="j1-form j1-sign-in-form" aria-busy={submitting}>
         <div>
           <h2 className={styles.heading}>

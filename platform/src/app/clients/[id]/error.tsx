@@ -6,10 +6,10 @@ import Link from 'next/link'
 
 export default function ClientError({
   error,
-  reset,
+  unstable_retry,
 }: {
   error: Error & { digest?: string }
-  reset: () => void
+  unstable_retry: () => void
 }) {
   useEffect(() => {
     console.error(error)
@@ -17,15 +17,15 @@ export default function ClientError({
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
-      <h2 className="text-xl font-semibold">Something went wrong</h2>
+      <h1 className="text-xl font-semibold">Chart workspace unavailable</h1>
       <p className="text-sm text-muted-foreground max-w-sm">
-        {error.message || 'Failed to load this client workspace.'}
+        The chart workspace could not be loaded.
       </p>
-      <div className="flex gap-2">
-        <Link href="/dashboard" className={buttonVariants({ variant: 'outline' })}>
-          ← Dashboard
+      <div className="flex flex-wrap justify-center gap-2">
+        <Link href="/dashboard" className={buttonVariants({ variant: 'outline', className: 'min-h-11' })}>
+          Back to Birth Charts
         </Link>
-        <Button onClick={reset}>Try again</Button>
+        <Button onClick={unstable_retry} className="min-h-11">Try again</Button>
       </div>
     </div>
   )

@@ -17,6 +17,7 @@ vi.mock("next/link", () => ({
   ),
 }));
 import { JourneyShell } from "@/components/journey1/JourneyShell";
+import { AppShellBreadcrumb } from "@/components/shared/AppShellBreadcrumb";
 const props = {
   user: { uid: "fictional" },
   role: "super_admin",
@@ -38,6 +39,8 @@ describe("Journey 1 shared navigation", () => {
     expect(nav).toHaveAttribute("data-open", "false");
     fireEvent.focus(within(nav).getByRole("link", { name: "Birth Charts" }));
     expect(nav).toHaveAttribute("data-open", "true");
+    fireEvent.mouseLeave(nav);
+    expect(nav).toHaveAttribute("data-open", "true");
     fireEvent.click(
       screen.getByRole("button", { name: "Pin navigation open" }),
     );
@@ -54,6 +57,7 @@ describe("Journey 1 shared navigation", () => {
   it("keeps icon links accessible without the retired global destinations", () => {
     render(<JourneyShell {...props}>Chart overview</JourneyShell>);
     const nav = screen.getByRole("navigation", { name: "Primary navigation" });
+    expect(within(nav).getByRole("link", { name: "Birth Charts" })).toHaveAttribute("aria-current", "location");
     expect(within(nav).getByRole("link", { name: "Atlas" })).toHaveAttribute(
       "href",
       "/information/atlas",
@@ -63,6 +67,20 @@ describe("Journey 1 shared navigation", () => {
         name: /audit|performance|cockpit|almanac/i,
       }),
     ).toBeNull();
+  });
+  it("makes the background inert while mobile navigation is open and restores focus on Escape", async () => {
+    await act(async () => render(<JourneyShell {...props}>Chart overview</JourneyShell>));
+    const opener = screen.getByRole("button", { name: "Open navigation" });
+    opener.focus();
+    fireEvent.click(opener);
+
+    const nav = screen.getByRole("navigation", { name: "Primary navigation" });
+    expect(opener.closest(".j1-shell-body")).toHaveAttribute("inert");
+    expect(within(nav).getByRole("button", { name: "Close navigation" })).toHaveFocus();
+
+    fireEvent.keyDown(nav, { key: "Escape" });
+    expect(opener.closest(".j1-shell-body")).not.toHaveAttribute("inert");
+    expect(opener).toHaveFocus();
   });
   it("keeps Consultation and Prediction Review in the chart workspace", async () => {
     state.path = "/clients/chart-test/pariprashna";
@@ -92,5 +110,25 @@ describe("Journey 1 shared navigation", () => {
     view.rerender(<JourneyShell {...props}>Chart details</JourneyShell>);
     expect(screen.getByRole("main")).toHaveTextContent("Chart details");
     expect(screen.getByRole("navigation", { name: "Primary navigation" })).toBeInTheDocument();
+  });
+});
+
+describe("AppShell breadcrumbs", () => {
+  it("gives the breadcrumb and mobile navigation separate semantics", () => {
+    render(<AppShellBreadcrumb
+      mobileNav={<button>Open navigation menu</button>}
+      segments={[{ label: "Birth Charts", href: "/dashboard" }, { label: "Sample chart", current: true }]}
+    />);
+
+    const breadcrumb = screen.getByRole("navigation", { name: "Breadcrumb" });
+    expect(within(breadcrumb).getByRole("link", { name: "Birth Charts" })).toHaveAttribute("href", "/dashboard");
+    expect(within(breadcrumb).getByText("Sample chart")).toHaveAttribute("aria-current", "page");
+    expect(breadcrumb).not.toContainElement(screen.getByRole("button", { name: "Open navigation menu" }));
+  });
+
+  it("keeps the mobile menu reachable without a breadcrumb", () => {
+    render(<AppShellBreadcrumb mobileNav={<button>Open navigation menu</button>} segments={[]} />);
+    expect(screen.getByRole("button", { name: "Open navigation menu" })).toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "Breadcrumb" })).not.toBeInTheDocument();
   });
 });

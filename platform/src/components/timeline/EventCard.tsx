@@ -31,15 +31,15 @@ export function EventCard({ event }: EventCardProps) {
     .replace(/XX$/, '')
 
   return (
-    <div className="group relative flex gap-4">
+    <li className="group relative flex gap-3">
       {/* Timeline spine */}
-      <div className="flex flex-col items-center">
+      <div aria-hidden="true" className="flex shrink-0 flex-col items-center">
         <div className="mt-1 h-3 w-3 rounded-full border-2 border-amber-400/70 bg-background ring-4 ring-background" />
         <div className="w-px flex-1 bg-border/40 group-last:hidden" />
       </div>
 
       {/* Card body */}
-      <div className="mb-6 flex-1 rounded-lg border border-border/50 bg-card/60 p-4 shadow-sm">
+      <div className="mb-6 min-w-0 flex-1 rounded-lg border border-border/50 bg-card/60 p-4 shadow-sm [overflow-wrap:anywhere]">
         <div className="mb-2 flex flex-wrap items-center gap-2">
           <time className="text-xs font-mono text-muted-foreground">{dateDisplay}</time>
           <span
@@ -51,7 +51,7 @@ export function EventCard({ event }: EventCardProps) {
             {event.category}
           </span>
           {event.id && (
-            <span className="ml-auto text-xs text-muted-foreground/60">{event.id}</span>
+            <span className="ml-auto text-xs text-muted-foreground">{event.id}</span>
           )}
         </div>
 
@@ -69,6 +69,6 @@ export function EventCard({ event }: EventCardProps) {
           </div>
         )}
       </div>
-    </div>
+    </li>
   )
 }

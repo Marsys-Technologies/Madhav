@@ -4,10 +4,10 @@ import { usePathname, useSearchParams } from 'next/navigation'
 import { useObservatoryScope } from '@/components/observatory/ObservatoryScope'
 import { operatorActivityFilters } from '@/lib/admin/activity-filters'
 export const ADMIN_BLOCKS = [
-  { label: 'People and access', href: '/admin?tab=pending', description: 'Requests, users, chart access, AI grants, administration log and client keys.' },
-  { label: 'Activity and AI accounting', href: '/admin/activity', description: 'Portal and selected-user activity, consumption and reconciliation.' },
-  { label: 'System diagnostics', href: '/admin/foundation', description: 'Foundation, tool health, query traces and the operator command center.' },
-  { label: 'Assets, programme and learning', href: '/admin/assets', description: 'Canonical asset definitions, programme records and read-only learning evidence.' },
+  { id: 'people', label: 'People and access', href: '/admin?tab=pending', description: 'Requests, users, chart access, AI grants, administration log and client keys.' },
+  { id: 'activity', label: 'Activity and AI accounting', href: '/admin/activity', description: 'Portal and selected-user activity, consumption and reconciliation.' },
+  { id: 'diagnostics', label: 'System diagnostics', href: '/admin/foundation', description: 'Foundation, tool health, query traces and the operator command center.' },
+  { id: 'assets', label: 'Assets, programme and learning', href: '/admin/assets', description: 'Canonical asset definitions, programme records and read-only learning evidence.' },
 ] as const
 export function AdminNavigation() {
   const path = usePathname(), search = useSearchParams()
@@ -25,9 +25,26 @@ export function AdminNavigation() {
     diagnostics:[{label:'System Foundation',href:'/admin/foundation'},{label:'MCP Health',href:'/admin/mcp/health'},{label:'Operator Cockpit',href:'/cockpit'},{label:'Command Center',href:'/cockpit/command-center'}],
     assets:[{label:'Asset Register',href:'/admin/assets'},{label:'Programme Record',href:'/admin/programme'},{label:'Learning Review',href:'/admin/learning'}],
   }
-  return <><nav className="j6-nav" aria-label="Administration blocks">
-    <Link href="/admin" aria-current={block === 'overview' ? 'page' : undefined}>Overview</Link>
-    {ADMIN_BLOCKS.map(block => <Link key={block.href} href={block.href === '/admin/activity' ? block.href+activityQuery : block.href}>{block.label}</Link>)}
-    <Link href="/account">My Account</Link>
-  </nav>{sections[block] && <nav className="j6-links" aria-label="Block sections">{sections[block].map(section => <Link key={section.href} href={section.href}>{section.label}</Link>)}</nav>}</>
+  return <>
+    <nav className="j6-nav" aria-label="Administration blocks">
+      <Link href="/admin" aria-current={block === 'overview' ? 'page' : undefined}>Overview</Link>
+      {ADMIN_BLOCKS.map(item => (
+        <Link key={item.href} href={item.id === 'activity' ? item.href + activityQuery : item.href}
+          aria-current={item.id === block ? 'location' : undefined}>
+          {item.label}
+        </Link>
+      ))}
+      <Link href="/account">My Account</Link>
+    </nav>
+    {sections[block] && (
+      <nav className="j6-links" aria-label="Block sections">
+        {sections[block].map(section => {
+          const [pathname, query] = section.href.split('?')
+          const current = path === pathname && (pathname !== '/admin'
+            || new URLSearchParams(query).get('tab') === search.get('tab'))
+          return <Link key={section.href} href={section.href} aria-current={current ? 'page' : undefined}>{section.label}</Link>
+        })}
+      </nav>
+    )}
+  </>
 }

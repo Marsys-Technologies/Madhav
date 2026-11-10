@@ -6,8 +6,8 @@ import { describeDefault } from "@/components/ai-console/default-summary";
 import { usePersonas } from "@/hooks/usePersonas";
 import { useObservatoryScope } from "@/components/observatory/ObservatoryScope";
 import { CLASSICAL_PERSONA } from "@/lib/account/classical-persona";
-export function CockpitIndex() {
-  const ai = useAiAccountState(),
+export function CockpitIndex({ consoleEnabled }: { consoleEnabled: boolean }) {
+  const ai = useAiAccountState(consoleEnabled),
     personas = usePersonas(),
     scope = useObservatoryScope();
   const usage = useQuery({
@@ -77,7 +77,7 @@ export function CockpitIndex() {
         you, at account level.
       </p>
       <div className="j5-grid">
-        {cards.map(([sa, title, description, summary, suffix]) => (
+        {cards.filter(([, , , , suffix]) => consoleEnabled || suffix !== "console").map(([sa, title, description, summary, suffix]) => (
           <Link
             className="j5-panel j5-destination"
             key={suffix}

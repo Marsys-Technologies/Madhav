@@ -12,7 +12,6 @@ import {
   parseFilterFromParams,
   filterToParams,
   distinctPlaces,
-  DEFAULT_FILTER,
 } from '@/lib/roster/filter'
 import type { ChartWithMeta, FilterState, RosterStats } from '@/lib/roster/types'
 
@@ -110,7 +109,7 @@ export function ClientRoster({ charts, stats, canCreateChart }: Props) {
             <ClientCard key={chart.id} chart={chart} />
           ))}
           {filtered.length === 0 && (
-            <p className="col-span-full py-12 text-center text-sm text-muted-foreground">
+            <p role="status" className="col-span-full py-12 text-center text-sm text-[var(--folio-muted)]">
               No charts match the current filters.
             </p>
           )}

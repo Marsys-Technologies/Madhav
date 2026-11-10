@@ -10,6 +10,7 @@
  */
 
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { resolveChartPageAccess } from '@/lib/auth/chart-page-guard'
 import { PratikrutiClient } from './PratikrutiClient'
 
@@ -22,6 +23,7 @@ export default async function PratikrutiPage({
   const access = await resolveChartPageAccess(id)
   if (!access) redirect('/login')
   if (access.permission === 'deny') redirect('/dashboard')
+  const canWrite = access.permission === 'all'
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 space-y-8">
@@ -30,10 +32,15 @@ export default async function PratikrutiPage({
           Pratikruti — Learning Loops
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Adjudicate predictions, add life events, and co-sign calibration snapshots.
+          {canWrite
+            ? 'Adjudicate predictions, add life events, and co-sign calibration snapshots.'
+            : 'Read-only access. Review the learning activity recorded for this chart.'}
         </p>
+        <Link href={`/clients/${id}`} className="mt-2 inline-flex min-h-11 items-center text-sm text-primary underline">
+          Back to chart
+        </Link>
       </div>
-      <PratikrutiClient chartId={id} />
+      <PratikrutiClient key={id} chartId={id} canWrite={canWrite} />
     </div>
   )
 }

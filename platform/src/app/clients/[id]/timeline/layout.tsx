@@ -1,7 +1,6 @@
 import { Suspense } from 'react'
 import { query } from '@/lib/db/client'
 import { redirect } from 'next/navigation'
-import { AppShell } from '@/components/shared/AppShell'
 import { resolveChartPageAccess } from '@/lib/auth/chart-page-guard'
 
 // V3-E-019: this route used to carry its own `chart.client_id !== user.uid`
@@ -29,17 +28,5 @@ export default async function TimelineLayout({
   const chart = chartResult.rows[0] ?? null
   if (!chart) redirect('/dashboard')
 
-  return (
-    <AppShell
-      user={access.user}
-      profile={{ role: access.role === 'super_admin' ? 'super_admin' : 'guest', status: 'active' }}
-      breadcrumb={[
-        { label: 'Roster', href: '/dashboard' },
-        { label: chart.name ?? id, href: `/clients/${id}` },
-        { label: 'Timeline', href: `/clients/${id}/timeline`, current: true },
-      ]}
-    >
-      <Suspense>{children}</Suspense>
-    </AppShell>
-  )
+  return <Suspense>{children}</Suspense>
 }

@@ -6,6 +6,7 @@ import { ApproveDialog } from './ApproveDialog'
 import { ConfirmDialog } from './ConfirmDialog'
 import { adminCard, adminGhostBtn, adminPrimaryBtn, adminTableTd, adminTableTh, adminTableRow } from './styles'
 import type { AdminAccessRequest } from './types'
+import folio from './folio-context.module.css'
 
 function RequestStatusBadge({ status }: { status: AdminAccessRequest['status'] }) {
   const palette: Record<AdminAccessRequest['status'], string> = {
@@ -59,6 +60,8 @@ export function PendingRequestsTable({
         setRejecting(null)
         onMutated()
       }
+    } catch {
+      toast.error('Could not confirm the rejection. Refresh access requests before trying again.')
     } finally {
       setWorking(false)
     }
@@ -78,7 +81,7 @@ export function PendingRequestsTable({
           No access requests yet.
         </p>
       ) : (
-        <div className="overflow-x-auto">
+        <div className={folio.directoryResults} role="region" aria-label="Access request results" tabIndex={0}>
           <table className="w-full">
             <thead>
               <tr>
