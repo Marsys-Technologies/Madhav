@@ -1,16 +1,6 @@
 {
   "description": "Exact YAML revisions with existing style findings. Every file still receives structural lint.",
   "entries": {
-    "00_ARCHITECTURE/CONDUCTOR/session_queue_R11G.yaml": {
-      "sha256": "034f11500324e7a5de6d31d4ac9a45e3166b36c4d03abcb5e36e0cd01e82b6e1",
-      "diagnostics": 3,
-      "reason": "Open style debt in literal campaign brief text. Freeze the exact current revision while its consumers are reviewed."
-    },
-    "00_ARCHITECTURE/CONDUCTOR/tooling-remediation/session_queue.yaml": {
-      "sha256": "e804a13a3b0ef808109a15524e9519a5f4d433dfefcc9fcdcc27934dd31fa089",
-      "diagnostics": 11,
-      "reason": "Open style debt in literal campaign brief text. Freeze the exact current revision while its consumers are reviewed."
-    },
     "00_ARCHITECTURE/CONDUCTOR/ws3/bphs_pilot_rules.yaml": {
       "sha256": "5568fabfe1c3343f5712edb94a7a7429d481cb088c12df702153b15fbafe96ee",
       "diagnostics": 11,
