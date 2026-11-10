@@ -10,14 +10,12 @@
       "field": "synthesis_gate",
       "line": null,
       "pattern": null,
-      "max_occurrences": 3,
+      "max_occurrences": 1,
       "sample_lines": [
-        161,
-        181,
-        196
+        197
       ],
-      "sample_snippet": "synthesis_gate: 'BLOCKED',",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "sample_snippet": "synthesis_gate: 'OPEN',",
+      "justification": "Reviewed documentation example. READING_CONTRACT_EXAMPLE uses a fixed OPEN input to show the full six-stage contract. The runtime output derives the gate from the dossier page and fails closed for any other value. composition_doctrine.test.ts covers both paths."
     },
     {
       "file": "platform-mcp/src/tools/bo_2-8.ts",
