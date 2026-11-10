@@ -125,7 +125,6 @@ function setupMocks(opts: {
 
     // 3. Engine version lookup
     if (/FROM engine_versions/.test(sql)) {
-      engineCallCount++
       if (currentEngineVersion === null) {
         return Promise.resolve({ rows: [] })
       }
