@@ -30,7 +30,7 @@ paths:
         - name: compare_to_previous
           in: query
           required: false
-          schema: { type: boolean, default: false }
+          schema: {type: boolean, default: false}
           description: When true, response carries `_delta` fields for every numeric KPI.
         - $ref: '#/components/parameters/ProviderFilter'
         - $ref: '#/components/parameters/ModelFilter'
@@ -40,11 +40,11 @@ paths:
           description: Summary metrics (with optional deltas).
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/SummaryResponse' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: {$ref: '#/components/schemas/SummaryResponse'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '500': {$ref: '#/components/responses/InternalError'}
   /timeseries:
     get:
       tags: [observatory]
@@ -55,11 +55,11 @@ paths:
         - name: granularity
           in: query
           required: true
-          schema: { type: string, enum: [hour, day, week] }
+          schema: {type: string, enum: [hour, day, week]}
         - name: dimension
           in: query
           required: true
-          schema: { type: string, enum: [provider, model, pipeline_stage] }
+          schema: {type: string, enum: [provider, model, pipeline_stage]}
         - $ref: '#/components/parameters/ProviderFilter'
         - $ref: '#/components/parameters/ModelFilter'
         - $ref: '#/components/parameters/PipelineStageFilter'
@@ -68,11 +68,11 @@ paths:
           description: Time-series buckets.
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/TimeseriesResponse' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: {$ref: '#/components/schemas/TimeseriesResponse'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '500': {$ref: '#/components/responses/InternalError'}
   /breakdowns:
     get:
       tags: [observatory]
@@ -94,11 +94,11 @@ paths:
           description: Breakdown rows.
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/BreakdownsResponse' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: {$ref: '#/components/schemas/BreakdownsResponse'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '500': {$ref: '#/components/responses/InternalError'}
   /events:
     get:
       tags: [observatory]
@@ -118,55 +118,55 @@ paths:
         - name: conversation_id
           in: query
           required: false
-          schema: { type: string }
+          schema: {type: string}
         - name: user_id
           in: query
           required: false
-          schema: { type: string }
+          schema: {type: string}
         - name: status
           in: query
           required: false
-          schema: { type: string, enum: [success, error, timeout] }
+          schema: {type: string, enum: [success, error, timeout]}
         - name: min_cost
           in: query
           required: false
-          schema: { type: number, format: double, minimum: 0 }
+          schema: {type: number, format: double, minimum: 0}
         - name: max_cost
           in: query
           required: false
-          schema: { type: number, format: double, minimum: 0 }
+          schema: {type: number, format: double, minimum: 0}
         - name: min_latency
           in: query
           required: false
-          schema: { type: integer, minimum: 0 }
+          schema: {type: integer, minimum: 0}
         - name: max_latency
           in: query
           required: false
-          schema: { type: integer, minimum: 0 }
+          schema: {type: integer, minimum: 0}
         - name: search
           in: query
           required: false
-          schema: { type: string }
+          schema: {type: string}
           description: ILIKE substring against (prompt_text, response_text).
         - name: limit
           in: query
           required: false
-          schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+          schema: {type: integer, minimum: 1, maximum: 200, default: 50}
         - name: cursor
           in: query
           required: false
-          schema: { type: string }
+          schema: {type: string}
           description: Opaque cursor from a prior `next_cursor`.
       responses:
         '200':
           description: One page of events plus pagination metadata.
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/EventsResponse' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: {$ref: '#/components/schemas/EventsResponse'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '500': {$ref: '#/components/responses/InternalError'}
   /event/{id}:
     get:
       tags: [observatory]
@@ -175,18 +175,18 @@ paths:
         - name: id
           in: path
           required: true
-          schema: { type: string, format: uuid }
+          schema: {type: string, format: uuid}
       responses:
         '200':
           description: Full event row (includes prompt_text, response_text, parameters).
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/EventDetailResponse' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: {$ref: '#/components/schemas/EventDetailResponse'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '500': {$ref: '#/components/responses/InternalError'}
   /reconciliation:
     post:
       tags: [observatory]
@@ -223,16 +223,16 @@ paths:
           description: ProviderReconcileResult.
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ProviderReconcileResult' }
+              schema: {$ref: '#/components/schemas/ProviderReconcileResult'}
         '400':
           description: |
             Bad input, unimplemented provider, or manual-upload provider. Body
             shapes: `{error:'manual_upload_required',provider,instructions}`,
             `{error:'not_implemented',provider,message}`, or the standard
             BadRequest error envelope.
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '500': { $ref: '#/components/responses/InternalError' }
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '500': {$ref: '#/components/responses/InternalError'}
   /reconciliation/upload:
     post:
       tags: [observatory]
@@ -284,16 +284,16 @@ paths:
           description: ProviderReconcileResult.
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ProviderReconcileResult' }
+              schema: {$ref: '#/components/schemas/ProviderReconcileResult'}
         '400':
           description: |
             Bad input. Body shapes:
               `{error:'parse_error',message,columns_found,columns_expected}`,
               `{error:'unsupported_provider',provider}`,
               `{error:'invalid_input',message}`.
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '500': { $ref: '#/components/responses/InternalError' }
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '500': {$ref: '#/components/responses/InternalError'}
   /reconciliation/history:
     get:
       tags: [observatory]
@@ -314,21 +314,21 @@ paths:
         - name: limit
           in: query
           required: false
-          schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+          schema: {type: integer, minimum: 1, maximum: 200, default: 50}
         - name: offset
           in: query
           required: false
-          schema: { type: integer, minimum: 0, default: 0 }
+          schema: {type: integer, minimum: 0, default: 0}
       responses:
         '200':
           description: Paginated reconciliation rows.
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ReconciliationHistoryResponse' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: {$ref: '#/components/schemas/ReconciliationHistoryResponse'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '500': {$ref: '#/components/responses/InternalError'}
 
   # ── Budget rules (O.3; USTAD_S3_1) ──────────────────────────────────────
   /budget-rules:
@@ -339,7 +339,7 @@ paths:
         - name: active
           in: query
           required: false
-          schema: { type: string, enum: [true, false, all], default: all }
+          schema: {type: string, enum: [true, false, all], default: all}
           description: Filter by `active` column. Default `all` returns both active and inactive rules.
       responses:
         '200':
@@ -352,11 +352,11 @@ paths:
                 properties:
                   rules:
                     type: array
-                    items: { $ref: '#/components/schemas/BudgetRule' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '500': { $ref: '#/components/responses/InternalError' }
+                    items: {$ref: '#/components/schemas/BudgetRule'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '500': {$ref: '#/components/responses/InternalError'}
     post:
       tags: [observatory]
       summary: Create a budget rule
@@ -364,17 +364,17 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/BudgetRuleInput' }
+            schema: {$ref: '#/components/schemas/BudgetRuleInput'}
       responses:
         '201':
           description: Rule created.
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/BudgetRule' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: {$ref: '#/components/schemas/BudgetRule'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '500': {$ref: '#/components/responses/InternalError'}
   /budget-rules/{id}:
     get:
       tags: [observatory]
@@ -383,17 +383,17 @@ paths:
         - name: id
           in: path
           required: true
-          schema: { type: string, format: uuid }
+          schema: {type: string, format: uuid}
       responses:
         '200':
           description: Single rule.
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/BudgetRule' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: {$ref: '#/components/schemas/BudgetRule'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '500': {$ref: '#/components/responses/InternalError'}
     patch:
       tags: [observatory]
       summary: Partial update of a budget rule
@@ -401,7 +401,7 @@ paths:
         - name: id
           in: path
           required: true
-          schema: { type: string, format: uuid }
+          schema: {type: string, format: uuid}
       requestBody:
         required: true
         content:
@@ -409,24 +409,24 @@ paths:
             schema:
               type: object
               properties:
-                name:              { type: string }
-                scope_value:       { type: string, nullable: true }
-                amount_usd:        { type: number, exclusiveMinimum: 0 }
+                name: {type: string}
+                scope_value: {type: string, nullable: true}
+                amount_usd: {type: number, exclusiveMinimum: 0}
                 alert_thresholds:
                   type: array
-                  items: { $ref: '#/components/schemas/BudgetAlertThreshold' }
-                active:            { type: boolean }
+                  items: {$ref: '#/components/schemas/BudgetAlertThreshold'}
+                active: {type: boolean}
       responses:
         '200':
           description: Updated rule.
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/BudgetRule' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: {$ref: '#/components/schemas/BudgetRule'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '500': {$ref: '#/components/responses/InternalError'}
     delete:
       tags: [observatory]
       summary: Soft-delete a budget rule (active=false)
@@ -437,14 +437,14 @@ paths:
         - name: id
           in: path
           required: true
-          schema: { type: string, format: uuid }
+          schema: {type: string, format: uuid}
       responses:
         '204':
           description: Soft-deleted; no body.
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '500': { $ref: '#/components/responses/InternalError' }
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '500': {$ref: '#/components/responses/InternalError'}
   /budget-rules/evaluate:
     get:
       tags: [observatory]
@@ -457,7 +457,7 @@ paths:
         - name: rule_id
           in: query
           required: false
-          schema: { type: string, format: uuid }
+          schema: {type: string, format: uuid}
       responses:
         '200':
           description: Evaluation results.
@@ -469,11 +469,11 @@ paths:
                 properties:
                   results:
                     type: array
-                    items: { $ref: '#/components/schemas/BudgetEvaluationResult' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '500': { $ref: '#/components/responses/InternalError' }
+                    items: {$ref: '#/components/schemas/BudgetEvaluationResult'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '500': {$ref: '#/components/responses/InternalError'}
 
 components:
   parameters:
@@ -481,13 +481,13 @@ components:
       name: from
       in: query
       required: true
-      schema: { type: string, format: date-time }
+      schema: {type: string, format: date-time}
       description: ISO 8601 timestamp; range is half-open `[from, to)`.
     To:
       name: to
       in: query
       required: true
-      schema: { type: string, format: date-time }
+      schema: {type: string, format: date-time}
       description: ISO 8601 timestamp; must be strictly after `from`.
     ProviderFilter:
       name: provider
@@ -496,7 +496,7 @@ components:
       explode: true
       schema:
         type: array
-        items: { type: string, enum: [anthropic, openai, gemini, deepseek, nim] }
+        items: {type: string, enum: [anthropic, openai, gemini, deepseek, nim]}
     ModelFilter:
       name: model
       in: query
@@ -504,7 +504,7 @@ components:
       explode: true
       schema:
         type: array
-        items: { type: string }
+        items: {type: string}
     PipelineStageFilter:
       name: pipeline_stage
       in: query
@@ -521,27 +521,27 @@ components:
       description: Validation failed.
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/ApiError' }
+          schema: {$ref: '#/components/schemas/ApiError'}
     Unauthorized:
       description: No authenticated user.
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/ApiError' }
+          schema: {$ref: '#/components/schemas/ApiError'}
     Forbidden:
       description: Caller is not super-admin or feature flag is off.
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/ApiError' }
+          schema: {$ref: '#/components/schemas/ApiError'}
     NotFound:
       description: No row matches the given id.
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/ApiError' }
+          schema: {$ref: '#/components/schemas/ApiError'}
     InternalError:
       description: Unexpected server error.
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/ApiError' }
+          schema: {$ref: '#/components/schemas/ApiError'}
 
   schemas:
     ApiError:
@@ -552,10 +552,10 @@ components:
           type: object
           required: [code, message]
           properties:
-            code: { type: string }
-            message: { type: string }
-            detail: { type: string }
-            retry: { type: boolean }
+            code: {type: string}
+            message: {type: string}
+            detail: {type: string}
+            retry: {type: boolean}
 
     SummaryResponse:
       type: object
@@ -571,33 +571,33 @@ components:
         - reconciliation_variance_pct
         - reconciliation_through_date
       properties:
-        total_cost_usd: { type: number }
-        total_requests: { type: integer }
-        total_input_tokens: { type: integer }
-        total_output_tokens: { type: integer }
-        total_cache_tokens: { type: integer }
-        avg_cost_per_request: { type: number }
-        p50_latency_ms: { type: number }
-        p95_latency_ms: { type: number }
-        reconciliation_variance_pct: { type: number, nullable: true }
-        reconciliation_through_date: { type: string, nullable: true }
-        total_cost_usd_delta: { type: number }
-        total_requests_delta: { type: integer }
-        total_input_tokens_delta: { type: integer }
-        total_output_tokens_delta: { type: integer }
-        total_cache_tokens_delta: { type: integer }
-        avg_cost_per_request_delta: { type: number }
-        p50_latency_ms_delta: { type: number }
-        p95_latency_ms_delta: { type: number }
+        total_cost_usd: {type: number}
+        total_requests: {type: integer}
+        total_input_tokens: {type: integer}
+        total_output_tokens: {type: integer}
+        total_cache_tokens: {type: integer}
+        avg_cost_per_request: {type: number}
+        p50_latency_ms: {type: number}
+        p95_latency_ms: {type: number}
+        reconciliation_variance_pct: {type: number, nullable: true}
+        reconciliation_through_date: {type: string, nullable: true}
+        total_cost_usd_delta: {type: number}
+        total_requests_delta: {type: integer}
+        total_input_tokens_delta: {type: integer}
+        total_output_tokens_delta: {type: integer}
+        total_cache_tokens_delta: {type: integer}
+        avg_cost_per_request_delta: {type: number}
+        p50_latency_ms_delta: {type: number}
+        p95_latency_ms_delta: {type: number}
 
     TimeseriesBucket:
       type: object
       required: [time, series]
       properties:
-        time: { type: string, format: date-time }
+        time: {type: string, format: date-time}
         series:
           type: object
-          additionalProperties: { type: number }
+          additionalProperties: {type: number}
 
     TimeseriesResponse:
       type: object
@@ -605,7 +605,7 @@ components:
       properties:
         buckets:
           type: array
-          items: { $ref: '#/components/schemas/TimeseriesBucket' }
+          items: {$ref: '#/components/schemas/TimeseriesBucket'}
 
     BreakdownRow:
       type: object
@@ -618,13 +618,13 @@ components:
         - cache_tokens
         - avg_latency_ms
       properties:
-        dim_value: { type: string }
-        cost_usd: { type: number }
-        request_count: { type: integer }
-        input_tokens: { type: integer }
-        output_tokens: { type: integer }
-        cache_tokens: { type: integer }
-        avg_latency_ms: { type: number }
+        dim_value: {type: string}
+        cost_usd: {type: number}
+        request_count: {type: integer}
+        input_tokens: {type: integer}
+        output_tokens: {type: integer}
+        cache_tokens: {type: integer}
+        avg_latency_ms: {type: number}
 
     BreakdownsResponse:
       type: object
@@ -632,7 +632,7 @@ components:
       properties:
         rows:
           type: array
-          items: { $ref: '#/components/schemas/BreakdownRow' }
+          items: {$ref: '#/components/schemas/BreakdownRow'}
 
     ObservatoryEventListRow:
       type: object
@@ -647,24 +647,24 @@ components:
         - status
         - started_at
       properties:
-        event_id: { type: string, format: uuid }
-        conversation_id: { type: string, nullable: true }
-        conversation_name: { type: string, nullable: true }
-        prompt_id: { type: string }
-        user_id: { type: string }
-        provider: { type: string }
-        model: { type: string }
-        pipeline_stage: { type: string }
-        input_tokens: { type: integer, nullable: true }
-        output_tokens: { type: integer, nullable: true }
-        cache_read_tokens: { type: integer, nullable: true }
-        cache_write_tokens: { type: integer, nullable: true }
-        computed_cost_usd: { type: number, nullable: true }
-        latency_ms: { type: integer, nullable: true }
-        status: { type: string }
-        error_code: { type: string, nullable: true }
-        started_at: { type: string, format: date-time }
-        finished_at: { type: string, nullable: true, format: date-time }
+        event_id: {type: string, format: uuid}
+        conversation_id: {type: string, nullable: true}
+        conversation_name: {type: string, nullable: true}
+        prompt_id: {type: string}
+        user_id: {type: string}
+        provider: {type: string}
+        model: {type: string}
+        pipeline_stage: {type: string}
+        input_tokens: {type: integer, nullable: true}
+        output_tokens: {type: integer, nullable: true}
+        cache_read_tokens: {type: integer, nullable: true}
+        cache_write_tokens: {type: integer, nullable: true}
+        computed_cost_usd: {type: number, nullable: true}
+        latency_ms: {type: integer, nullable: true}
+        status: {type: string}
+        error_code: {type: string, nullable: true}
+        started_at: {type: string, format: date-time}
+        finished_at: {type: string, nullable: true, format: date-time}
 
     EventsResponse:
       type: object
@@ -672,9 +672,9 @@ components:
       properties:
         events:
           type: array
-          items: { $ref: '#/components/schemas/ObservatoryEventListRow' }
-        next_cursor: { type: string, nullable: true }
-        total_count: { type: integer }
+          items: {$ref: '#/components/schemas/ObservatoryEventListRow'}
+        next_cursor: {type: string, nullable: true}
+        total_count: {type: integer}
 
     EventDetailResponse:
       type: object
@@ -691,35 +691,35 @@ components:
         - started_at
         - created_at
       properties:
-        event_id: { type: string, format: uuid }
-        conversation_id: { type: string, nullable: true }
-        conversation_name: { type: string, nullable: true }
-        prompt_id: { type: string }
-        parent_prompt_id: { type: string, nullable: true }
-        user_id: { type: string }
-        provider: { type: string }
-        model: { type: string }
-        pipeline_stage: { type: string }
-        prompt_text: { type: string, nullable: true }
-        response_text: { type: string, nullable: true }
-        system_prompt: { type: string, nullable: true }
-        parameters: { nullable: true }
-        input_tokens: { type: integer, nullable: true }
-        output_tokens: { type: integer, nullable: true }
-        cache_read_tokens: { type: integer, nullable: true }
-        cache_write_tokens: { type: integer, nullable: true }
-        reasoning_tokens: { type: integer, nullable: true }
-        computed_cost_usd: { type: number, nullable: true }
-        pricing_version_id: { type: string, format: uuid, nullable: true }
-        latency_ms: { type: integer, nullable: true }
-        status: { type: string }
-        error_code: { type: string, nullable: true }
-        provider_request_id: { type: string, nullable: true }
-        started_at: { type: string, format: date-time }
-        finished_at: { type: string, nullable: true, format: date-time }
-        feature_flag_state: { nullable: true }
-        client_ip_hash: { type: string, nullable: true }
-        created_at: { type: string, format: date-time }
+        event_id: {type: string, format: uuid}
+        conversation_id: {type: string, nullable: true}
+        conversation_name: {type: string, nullable: true}
+        prompt_id: {type: string}
+        parent_prompt_id: {type: string, nullable: true}
+        user_id: {type: string}
+        provider: {type: string}
+        model: {type: string}
+        pipeline_stage: {type: string}
+        prompt_text: {type: string, nullable: true}
+        response_text: {type: string, nullable: true}
+        system_prompt: {type: string, nullable: true}
+        parameters: {nullable: true}
+        input_tokens: {type: integer, nullable: true}
+        output_tokens: {type: integer, nullable: true}
+        cache_read_tokens: {type: integer, nullable: true}
+        cache_write_tokens: {type: integer, nullable: true}
+        reasoning_tokens: {type: integer, nullable: true}
+        computed_cost_usd: {type: number, nullable: true}
+        pricing_version_id: {type: string, format: uuid, nullable: true}
+        latency_ms: {type: integer, nullable: true}
+        status: {type: string}
+        error_code: {type: string, nullable: true}
+        provider_request_id: {type: string, nullable: true}
+        started_at: {type: string, format: date-time}
+        finished_at: {type: string, nullable: true, format: date-time}
+        feature_flag_state: {nullable: true}
+        client_ip_hash: {type: string, nullable: true}
+        created_at: {type: string, format: date-time}
 
     ProviderReconcileResult:
       type: object
@@ -737,53 +737,53 @@ components:
         provider:
           type: string
           enum: [anthropic, openai, gemini, deepseek, nim]
-        period_start: { type: string, format: date }
-        period_end:   { type: string, format: date }
-        authoritative_cost_usd: { type: number }
-        computed_cost_usd:      { type: number }
-        variance_usd:           { type: number }
-        variance_pct:           { type: number }
+        period_start: {type: string, format: date}
+        period_end: {type: string, format: date}
+        authoritative_cost_usd: {type: number}
+        computed_cost_usd: {type: number}
+        variance_usd: {type: number}
+        variance_pct: {type: number}
         status:
           type: string
           enum:
             [matched, variance_within_tolerance, variance_alert,
              missing_authoritative, error]
-        event_count:    { type: integer, minimum: 0 }
-        raw_report_id:  { type: string }
-        notes:          { type: string }
+        event_count: {type: integer, minimum: 0}
+        raw_report_id: {type: string}
+        notes: {type: string}
     ReconciliationHistoryRow:
       type: object
       required:
         [reconciliation_id, provider, period_start, period_end, status,
          computed_cost_usd, created_at]
       properties:
-        reconciliation_id: { type: string, format: uuid }
+        reconciliation_id: {type: string, format: uuid}
         provider:
           type: string
           enum: [anthropic, openai, gemini, deepseek, nim]
-        period_start: { type: string, format: date }
-        period_end:   { type: string, format: date }
-        status:       { type: string }
-        variance_pct: { type: number, nullable: true }
-        computed_cost_usd:      { type: number }
-        authoritative_cost_usd: { type: number, nullable: true }
-        created_at:   { type: string, format: date-time }
+        period_start: {type: string, format: date}
+        period_end: {type: string, format: date}
+        status: {type: string}
+        variance_pct: {type: number, nullable: true}
+        computed_cost_usd: {type: number}
+        authoritative_cost_usd: {type: number, nullable: true}
+        created_at: {type: string, format: date-time}
     ReconciliationHistoryResponse:
       type: object
       required: [rows, total]
       properties:
         rows:
           type: array
-          items: { $ref: "#/components/schemas/ReconciliationHistoryRow" }
-        total: { type: integer, minimum: 0 }
+          items: {$ref: "#/components/schemas/ReconciliationHistoryRow"}
+        total: {type: integer, minimum: 0}
 
     # ── Budget rules (O.3; USTAD_S3_1) ────────────────────────────────────
     BudgetAlertThreshold:
       type: object
       required: [pct, channel]
       properties:
-        pct:     { type: number, minimum: 0, maximum: 100 }
-        channel: { type: string, description: 'Routing channel: log|email|webhook|...' }
+        pct: {type: number, minimum: 0, maximum: 100}
+        channel: {type: string, description: 'Routing channel: log|email|webhook|...'}
     BudgetRule:
       type: object
       description: |
@@ -794,63 +794,63 @@ components:
         [budget_rule_id, name, scope, period, amount_usd, alert_thresholds,
          active, created_at, updated_at]
       properties:
-        budget_rule_id:    { type: string, format: uuid }
-        name:              { type: string }
+        budget_rule_id: {type: string, format: uuid}
+        name: {type: string}
         scope:
           type: string
           enum: [total, provider, model, pipeline_stage]
-        scope_value:       { type: string, nullable: true }
+        scope_value: {type: string, nullable: true}
         period:
           type: string
           enum: [daily, weekly, monthly]
-        amount_usd:        { type: number }
+        amount_usd: {type: number}
         alert_thresholds:
           type: array
-          items: { $ref: '#/components/schemas/BudgetAlertThreshold' }
-        created_by_user_id: { type: string, nullable: true }
-        active:            { type: boolean }
-        created_at:        { type: string, format: date-time }
-        updated_at:        { type: string, format: date-time }
+          items: {$ref: '#/components/schemas/BudgetAlertThreshold'}
+        created_by_user_id: {type: string, nullable: true}
+        active: {type: boolean}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
     BudgetRuleInput:
       type: object
       required: [name, scope, period, amount_usd, alert_thresholds]
       properties:
-        name:              { type: string, minLength: 1 }
+        name: {type: string, minLength: 1}
         scope:
           type: string
           enum: [total, provider, model, pipeline_stage]
-        scope_value:       { type: string, nullable: true }
+        scope_value: {type: string, nullable: true}
         period:
           type: string
           enum: [daily, weekly, monthly]
-        amount_usd:        { type: number, exclusiveMinimum: 0 }
+        amount_usd: {type: number, exclusiveMinimum: 0}
         alert_thresholds:
           type: array
-          items: { $ref: '#/components/schemas/BudgetAlertThreshold' }
-        active:            { type: boolean, default: true }
+          items: {$ref: '#/components/schemas/BudgetAlertThreshold'}
+        active: {type: boolean, default: true}
     BudgetEvaluationResult:
       type: object
       required:
         [rule_id, name, scope, period, period_start, period_end, amount_usd,
          current_spend_usd, pct_used, status, alerts_triggered]
       properties:
-        rule_id:           { type: string, format: uuid }
-        name:              { type: string }
+        rule_id: {type: string, format: uuid}
+        name: {type: string}
         scope:
           type: string
           enum: [total, provider, model, pipeline_stage]
-        scope_value:       { type: string, nullable: true }
+        scope_value: {type: string, nullable: true}
         period:
           type: string
           enum: [daily, weekly, monthly]
-        period_start:      { type: string, format: date }
-        period_end:        { type: string, format: date }
-        amount_usd:        { type: number }
-        current_spend_usd: { type: number }
-        pct_used:          { type: number }
+        period_start: {type: string, format: date}
+        period_end: {type: string, format: date}
+        amount_usd: {type: number}
+        current_spend_usd: {type: number}
+        pct_used: {type: number}
         status:
           type: string
           enum: [ok, warning, alert, exceeded]
         alerts_triggered:
           type: array
-          items: { $ref: '#/components/schemas/BudgetAlertThreshold' }
+          items: {$ref: '#/components/schemas/BudgetAlertThreshold'}

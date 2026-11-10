@@ -1,3 +1,4 @@
+import { parse } from 'yaml'
 // @vitest-environment node
 
 import { readFileSync } from 'node:fs'
@@ -58,11 +59,11 @@ describe('Observatory nullable MCP conversation serialization', () => {
   })
 
   it('declares conversation_id nullable in both public OpenAPI event schemas', () => {
-    const yaml = readFileSync(resolve(__dirname, '../../openapi.yaml'), 'utf8')
-    const list = yaml.slice(yaml.indexOf('    ObservatoryEventListRow:'), yaml.indexOf('    EventsResponse:'))
-    const detail = yaml.slice(yaml.indexOf('    EventDetailResponse:'), yaml.indexOf('    ProviderReconcileResult:'))
-    for (const schema of [list, detail]) {
-      expect(schema).toContain('conversation_id: { type: string, nullable: true }')
+    const document = parse(readFileSync(resolve(__dirname, '../../openapi.yaml'), 'utf8')) as {
+      components: { schemas: Record<string, { properties: Record<string, unknown> }> }
+    }
+    for (const name of ['ObservatoryEventListRow', 'EventDetailResponse']) {
+      expect(document.components.schemas[name].properties.conversation_id).toMatchObject({ type: 'string', nullable: true })
     }
   })
 })

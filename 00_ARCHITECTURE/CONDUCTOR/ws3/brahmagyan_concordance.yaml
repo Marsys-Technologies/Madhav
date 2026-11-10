@@ -841,7 +841,8 @@ topics:
           Jupiter must be strong in navamsa as well; Hamsa yoga with exalted Jupiter
           (Cancer) in kendra is considered the most powerful form.
       - school: kp
-        note: KP: yoga is background; sub-lord connectivity determines fructification.
+        note: >-
+          KP: yoga is background; sub-lord connectivity determines fructification.
     conflicts: []
     silent: [tajaka]
     rule_refs: [BPHS.36.5.1, KP.4.ch12.yoga.5]
@@ -855,7 +856,8 @@ topics:
       Results: wealthy, charming, artistic, pleasurable life, vehicle happiness.
     qualifications:
       - school: kp
-        note: KP: yoga is background; sub-lord connectivity determines fructification.
+        note: >-
+          KP: yoga is background; sub-lord connectivity determines fructification.
     conflicts: []
     silent: [tajaka]
     rule_refs: [BPHS.36.4.1, KP.4.ch12.yoga.4]
@@ -875,7 +877,8 @@ topics:
           workforces; the austerity implied can also manifest as lack of emotional
           warmth; spiritual practice is common.
       - school: kp
-        note: KP: yoga is background; sub-lord connectivity determines fructification.
+        note: >-
+          KP: yoga is background; sub-lord connectivity determines fructification.
     conflicts: []
     silent: [tajaka]
     rule_refs: [BPHS.36.3.1, KP.4.ch12.yoga.3]
@@ -1477,7 +1480,8 @@ topics:
           Retrograde Mars: sub shifts to last sub of preceding nakshatra.
           No dignity enhancement; house significations may change. Debilitation
           remains debilitation in KP — no mitigation from retrogression.
-        resolution: CONFLICT (C7). Apply independently. For debilitated retrograde
+        resolution: >-
+          CONFLICT (C7). Apply independently. For debilitated retrograde
           Mars: Parashari sees partial mitigation; KP sees no mitigation.
           This produces different predictions for the same placement.
     silent: [jaimini, tajaka]
@@ -1646,7 +1650,8 @@ topics:
           definition), or combined with a difficult Vimshottari dasha period, the
           cumulative effect is severe.
       - school: kp
-        note: KP: Sub-lord connectivity governs specifics; Ashtama Shani is a
+        note: >-
+          KP: Sub-lord connectivity governs specifics; Ashtama Shani is a
           contextual timing indicator.
     conflicts: []
     silent: [jaimini, tajaka]
@@ -2865,7 +2870,8 @@ topics:
           gives highly educated, cultured, and creative individuals. Strongest when
           all three are in good dignity.
       - school: kp
-        note: KP: yoga is background; sub-lord connectivity determines manifestation.
+        note: >-
+          KP: yoga is background; sub-lord connectivity determines manifestation.
     conflicts: []
     silent: [tajaka]
     rule_refs: [BPHS.37.4.1, KP.4.ch12.yoga.9]
@@ -3905,7 +3911,8 @@ topics:
       about the native's progeny.
     qualifications:
       - school: kp
-        note: KP: D7 is a secondary reference; primary children assessment via
+        note: >-
+          KP: D7 is a secondary reference; primary children assessment via
           5th cusp sub-lord in the Rashi chart (Placidus).
     conflicts: []
     silent: [tajaka]

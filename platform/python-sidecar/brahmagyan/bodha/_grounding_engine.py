@@ -143,7 +143,7 @@ def load_all_rules() -> list[dict[str, Any]]:
 
     for f in rule_files:
         if "bphs_pilot_rules" in f:
-            # YAML parse error in this file — use regex extraction
+            # Preserve the pilot corpus projection across its five YAML documents.
             all_rules.extend(_load_pilot_rules_regex(f))
             continue
         try:
@@ -163,7 +163,7 @@ def load_all_rules() -> list[dict[str, Any]]:
 
 
 def _load_pilot_rules_regex(filepath: str) -> list[dict[str, Any]]:
-    """Load bphs_pilot_rules.yaml via regex (has YAML parse error)."""
+    """Read the legacy field projection from the pilot corpus."""
     with open(filepath) as f:
         content = f.read()
 

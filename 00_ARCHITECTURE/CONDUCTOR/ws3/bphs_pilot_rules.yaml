@@ -2327,6 +2327,7 @@ rules:
     verified: true
     stub: false
     stub_reason: null
+---
 # BPHS Rule Extraction — Batch 02 (Rules 101–200)
 # Session: bphs-pilot | Extraction date: 2026-06-05
 # Coverage: Bhava significations + planets in bhavas (BPHS Ch. 11–22)
@@ -4537,7 +4538,7 @@ rules:
         "A house with its lord in a kendra or trikona, AND occupied by a benefic, AND
         aspected by its natural karaka is triply strengthened. Such a house delivers its
         maximum positive potential consistently throughout life."
-    condition: A bhava is simultaneously supported by all three factors: strong lord placement, benefic occupancy, AND karaka's positive aspect.
+    condition: "A bhava is simultaneously supported by all three factors: strong lord placement, benefic occupancy, AND karaka's positive aspect."
     assertion: >
       Triple bhava strength (lord in good position + benefic occupant + strong karaka aspect)
       produces the maximum positive manifestation of that house's significations throughout
@@ -4560,7 +4561,7 @@ rules:
         "A house that has its lord in a dusthana (6th, 8th, or 12th), AND is occupied by
         a malefic, AND has its karaka afflicted is triply weakened. Such a house delivers
         difficult or absent results related to its significations."
-    condition: A bhava is simultaneously afflicted by all three negative factors: dusthana lord placement, malefic occupancy, AND afflicted karaka.
+    condition: "A bhava is simultaneously afflicted by all three negative factors: dusthana lord placement, malefic occupancy, AND afflicted karaka."
     assertion: >
       Triple bhava weakness (lord in dusthana + malefic occupant + afflicted karaka) produces
       consistent difficulty with that house's significations; the native must work against
@@ -4673,6 +4674,7 @@ rules:
     verified: true
     stub: false
     stub_reason: null
+---
 # BPHS Rule Extraction — Batch 03 (Rules 201–300)
 # Session: bphs-pilot | Extraction date: 2026-06-05
 # Coverage: Yogas — Pancha Mahapurusha, Raja, Dhana, Arishta, Neecha Bhanga (BPHS Ch. 35–39, 75–76)
@@ -7134,6 +7136,7 @@ rules:
     verified: true
     stub: false
     stub_reason: null
+---
 # BPHS Rule Extraction — Batch 04 (Rules 301–400)
 # Session: bphs-pilot | Extraction date: 2026-06-05
 # Coverage: Dashas + Ashtakavarga (BPHS Ch. 46–53, 66–69)
@@ -9576,6 +9579,7 @@ rules:
     verified: true
     stub: false
     stub_reason: null
+---
 # BPHS Rule Extraction — Batch 05 (Rules 401–500)
 # Session: bphs-pilot | Extraction date: 2026-06-05
 # Coverage: Nakshatras + Aspects + Remedies (BPHS Ch. 5, 26, 81–85)
@@ -10810,7 +10814,7 @@ rules:
         are born in the same Nadi (Adi, Madhya, or Antya), Nadi Dosha is present. The dosha
         is said to cause health issues, childlessness, or separation. It carries the maximum
         8 points in Ashtakuta when matching (same Nadi)."
-    condition: Both marriage partners are born in the same Nadi (nakshatra nadi: Adi, Madhya, or Antya).
+    condition: "Both marriage partners are born in the same Nadi (nakshatra nadi: Adi, Madhya, or Antya)."
     assertion: >
       Nadi Dosha is the most weighted Ashtakuta factor (8 points); when both partners share
       the same Nadi, they receive 0 out of 8 points, creating a significant compatibility
