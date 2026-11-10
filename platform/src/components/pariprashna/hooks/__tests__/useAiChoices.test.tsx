@@ -148,15 +148,16 @@ describe('useAiChoices', () => {
     expect(result.current.canSubmit).toBe(false)
   })
 
-  it('keeps pre-conversation intent local, then acknowledges it through PUT after a real server ID exists', async () => {
+  it('keeps draft intent local and reads the saved choice when opening History', async () => {
     const explicit = { kind: 'explicit', choice: { kind: 'custom_configuration', configurationId: CONFIG_ID } } as const
+    const saved = { kind: 'explicit', choice: { kind: 'provider_model', connectionId: CONNECTION_ID, modelId: 'gpt-safe' } } as const
     const calls: Array<[string, RequestInit | undefined]> = []
     vi.stubGlobal('fetch', vi.fn((url: RequestInfo | URL, init?: RequestInit) => {
       calls.push([String(url), init])
       if (String(url) === '/api/ai-console') return response(aggregate)
       if (String(url) === '/api/ai-console/clis') return response(clis)
-      if (String(url).endsWith('/ai-selection') && init?.method === 'PUT') return response({
-        selection: explicit, availability: 'ready', label: 'Research quartet', resolvedLabel: null, remediation: null,
+      if (String(url).endsWith('/ai-selection') && !init?.method) return response({
+        selection: saved, availability: 'ready', label: 'Personal OpenAI · GPT Safe', resolvedLabel: null, remediation: null,
       })
       throw new Error(`unexpected ${url}`)
     }))
@@ -168,11 +169,13 @@ describe('useAiChoices', () => {
 
     rerender({ id: CONVERSATION_ID })
     expect(result.current.canSubmit).toBe(false)
-    await waitFor(() => expect(calls.some(([url, init]) => url.endsWith('/ai-selection') && init?.method === 'PUT')).toBe(true))
-    const put = calls.find(([url, init]) => url.endsWith('/ai-selection') && init?.method === 'PUT')!
-    expect(JSON.parse(String(put[1]?.body))).toEqual(explicit)
-    await waitFor(() => expect(result.current.mutationPending).toBe(false))
-    expect(result.current.selection).toEqual(explicit)
+    await waitFor(() => expect(result.current.selection).toEqual(saved))
+    act(() => result.current.refresh())
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    const selectionCalls = calls.filter(([url]) => url.endsWith('/ai-selection'))
+    expect(selectionCalls).toHaveLength(2)
+    expect(selectionCalls.every(([, init]) => !init?.method)).toBe(true)
+    expect(result.current.mutationPending).toBe(false)
   })
 
   it('retains the last server-confirmed selection when a later PUT fails', async () => {
