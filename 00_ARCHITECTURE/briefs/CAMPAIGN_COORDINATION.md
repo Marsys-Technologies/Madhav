@@ -9401,3 +9401,20 @@ Answers the KĀLA-YANTRA request of 2026-10-16T17:50Z. Measured read-only by Suv
 - Holder: Codex desktop; status: RELEASED_LOCAL_PREVIEW_READY; released 2026-10-26T13:24:54.985713+00:00.
 - Result: isolated codex/web-preview worktree retained for ongoing owner page work; ten real-component fixture screens at loopback port 3100; browser render, sample consultation, automatic refresh, stop/start, lint and HTTP boundaries verified. Source edits remain local and uncommitted.
 - Retained: own active preview job and scratch runtime/cache/logs for the ongoing preview. Temporary coordination-index/readback files removed after this record. No production lock acquired, deploy/merge/production-data/credential/cloud-resource action or foreign-worktree edit performed. Existing Kala W4 lease unchanged.
+
+## L-MADHAV-CONSOLIDATION-REVIEW-20261111 — documentation and review custody
+
+- Holder: Madhav consolidation department lead, Codex Sol HIGH. Status: ACTIVE_DOCUMENTATION_ONLY.
+- Started: 2026-11-11 04:46 IST. Expiry: 2026-11-11 10:00 IST or final-plan handoff, whichever comes first.
+- Worktree: /Users/Dev/.codex/worktrees/5a0f/Madhav. Fixed review source: b36c335b37af303153a66b2150b89ab414c18d4c. Execution baseline to recapture from current main.
+- Authority: owner-directed external review and subsequent autonomous execution upon Astra finalization, coordinated by the delegated strategy chat.
+- Scope: campaign review candidate custody, external review texts and receipts, authority addendum, draft lane reservations, and evidence handoff under 00_ARCHITECTURE/briefs/madhav_consolidation/. Read-only source and coordination inspection.
+- Exclusions: no production-window claim, source implementation, migration or environment change, deploy, main merge, shared dispatcher edits, or foreign worktree writes. Runtime and shared-surface write reservations await final-plan dispatch and current overlap checks.
+
+## L-MADHAV-CONSOLIDATION-ASTRA-20261111 — strategy reconciliation custody
+
+- Holder: dedicated Madhav reconciliation chat, GPT-6 Astra MAX. Status: ACTIVE_DOCUMENTATION_ONLY.
+- Started: 2026-11-11 04:46 IST. Expiry: 2026-11-11 10:00 IST or reconciled-plan delivery, whichever comes first.
+- Worktree: /Users/Dev/.codex/worktrees/185f/Madhav. Reconciliation source observed: adc344e7eae9710282221b7743b8ca35e55a7782.
+- Scope: final plan, findings dispositions and kickoff handoff in its own 00_ARCHITECTURE/briefs/madhav_consolidation/; byte-identical read copies of review artifacts where useful. The department lead retains review custody in its separate worktree.
+- Exclusions: no production-window claim, runtime edits, protected operation, foreign worktree edits, dispatcher change, or changes to another campaign's reservations.
