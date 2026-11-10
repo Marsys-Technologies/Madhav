@@ -1,9 +1,9 @@
 import { Suspense } from 'react'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { format } from 'date-fns'
 import { query } from '@/lib/db/client'
 import { resolveChartPageAccess } from '@/lib/auth/chart-page-guard'
+import { todayISTKey } from '@/lib/build/derive'
 import { ChartNav } from '@/components/journey1/ChartNav'
 import { PanchangClientView } from '@/app/panchang/components/PanchangClientView'
 
@@ -38,7 +38,7 @@ export default async function ChartPanchangPage({
         <PanchangClientView
           key={id}
           initialData={null}
-          initialDate={format(new Date(), 'yyyy-MM-dd')}
+          initialDate={todayISTKey()}
           fixedChartId={id}
         />
       </Suspense>

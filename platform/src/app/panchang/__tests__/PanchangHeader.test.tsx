@@ -10,10 +10,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { PanchangHeader, PRESET_LOCATIONS, resolveDate, resolveLocation } from '../components/PanchangHeader'
+import { PanchangClientView } from '../components/PanchangClientView'
 
 // Mock next/navigation
 const mockPush = vi.fn()
 const mockSearchParams = new URLSearchParams()
+const mockPanchangDay = vi.hoisted(() => vi.fn(() => ({
+  data: null,
+  isLoading: false,
+  isError: false,
+  refetch: vi.fn(),
+})))
+
+vi.mock('../hooks/usePanchangDay', () => ({ usePanchangDay: mockPanchangDay }))
+vi.mock('../components/ActionBar', () => ({ ActionBar: () => null }))
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
@@ -98,6 +108,22 @@ describe('PanchangHeader', () => {
     expect(screen.getByLabelText('Latitude')).toBeInTheDocument()
     expect(screen.getByLabelText('Longitude')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Apply' })).toBeInTheDocument()
+  })
+
+  it.each([
+    ['no URL date', null, '2026-05-20'],
+    ['an invalid URL date', 'not-a-date', '2026-05-20'],
+    ['a valid URL date', '2026-05-22', '2026-05-22'],
+  ])('keeps the displayed and requested chart date in sync for %s', (_label, urlDate, expected) => {
+    if (urlDate) mockSearchParams.set('d', urlDate)
+    mockSearchParams.set('chart_id', 'other-chart')
+    render(<PanchangClientView initialData={null} initialDate={defaultProps.initialDate} fixedChartId="allowed-chart" />)
+    expect(screen.getByLabelText('Select date')).toHaveValue(expected)
+    expect(mockPanchangDay).toHaveBeenLastCalledWith(expect.objectContaining({
+      date: expected,
+      chartId: 'allowed-chart',
+      tzOffsetMinutes: 330,
+    }))
   })
 
   it('keeps navigation on the authorized chart and drops any chart override', () => {

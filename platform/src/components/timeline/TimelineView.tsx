@@ -50,7 +50,10 @@ export function TimelineView({ events, chartId, canLogEvent }: TimelineViewProps
           <h1 className="text-lg font-semibold">Life Events</h1>
           <p className="text-sm text-muted-foreground">Recorded events for this chart{!canLogEvent && ' · Read-only'}</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <Link href={`/clients/${chartId}`} className="text-sm text-primary underline">
+            Back to chart
+          </Link>
           <Link href={`/clients/${chartId}/samiksha`} className="text-sm text-primary underline">
             Prediction Review
           </Link>

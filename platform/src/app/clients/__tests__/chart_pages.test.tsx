@@ -58,8 +58,8 @@ vi.mock('@/components/consume/ConsumeChat', () => ({
   ),
 }))
 vi.mock('@/app/panchang/components/PanchangClientView', () => ({
-  PanchangClientView: ({ fixedChartId }: { fixedChartId: string }) => (
-    <div data-testid="embedded-panchang" data-chart-id={fixedChartId} />
+  PanchangClientView: ({ fixedChartId, initialDate }: { fixedChartId: string; initialDate: string }) => (
+    <div data-testid="embedded-panchang" data-chart-id={fixedChartId} data-initial-date={initialDate} />
   ),
 }))
 vi.mock('@/components/profile/ChartHero', () => ({ ChartHero: () => null }))
@@ -247,6 +247,24 @@ describe('clients/[id]/panchang — personalized panchang', () => {
     const { default: PanchangPage } = await import('../[id]/panchang/page')
     await expect(PanchangPage({ params: Promise.resolve({ id: TEST_CHART_ID }) })).rejects.toThrow('NEXT_REDIRECT')
     expect(mockRedirect).toHaveBeenCalledWith('/dashboard')
+  })
+
+  it.each([
+    ['2026-11-10T18:29:59Z', '2026-11-10'],
+    ['2026-11-10T18:30:00Z', '2026-11-11'],
+  ])('defaults to the IST date at %s', async (instant, date) => {
+    setAccess('view', 'guest')
+    mockQuery.mockResolvedValueOnce({ rows: [{ name: 'Chart' }] })
+    const { default: PanchangPage } = await import('../[id]/panchang/page')
+    vi.useFakeTimers({ toFake: ['Date'] })
+    try {
+      vi.setSystemTime(new Date(instant))
+      const jsx = await PanchangPage({ params: Promise.resolve({ id: TEST_CHART_ID }) })
+      const { getByTestId } = render(jsx)
+      expect(getByTestId('embedded-panchang')).toHaveAttribute('data-initial-date', date)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('AC.1 — view-only grantee CAN view personalized panchang', async () => {

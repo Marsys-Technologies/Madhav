@@ -54,13 +54,13 @@ export function resolveLocation(searchParams: URLSearchParams): SelectedLocation
 }
 
 /** Derive selected date from URL params, defaulting to today */
-export function resolveDate(searchParams: URLSearchParams): string {
+export function resolveDate(searchParams: URLSearchParams, defaultDate?: string): string {
   const d = searchParams.get('d')
   if (d) {
     const parsed = parseISO(d)
     if (isValid(parsed)) return d
   }
-  return format(new Date(), 'yyyy-MM-dd')
+  return defaultDate ?? format(new Date(), 'yyyy-MM-dd')
 }
 
 const PERSONALISE_LS_KEY = 'panchang.personalise.chart_id'
@@ -85,7 +85,7 @@ export function PanchangHeader({ initialDate, initialLocation, onChartIdChange, 
   const searchParams = useSearchParams()
 
   // Client-side resolved values (after hydration, URL is the source of truth)
-  const currentDate = resolveDate(searchParams) || initialDate
+  const currentDate = resolveDate(searchParams, fixedChartId ? initialDate : undefined)
   const currentLocation = resolveLocation(searchParams) || initialLocation
 
   const [showCustomInputs, setShowCustomInputs] = useState(currentLocation.id === 'custom')

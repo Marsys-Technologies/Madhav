@@ -18,14 +18,12 @@ import { useState, useRef, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Search, CalendarDays, MessageCircle, X, Link, Settings } from 'lucide-react'
 import { MuhuratFinderModal } from './MuhuratFinderModal'
-import { resolveLocation, resolveChartId } from './PanchangHeader'
-
-// Native's chart client ID — used for Ask-Madhav deep link.
-// Phase 4C-8 will enhance this with full context-block deep-linking.
-const NATIVE_CLIENT_ID = '362f9f17-95a5-490b-a5a7-027d3e0efda0'
+import { resolveLocation } from './PanchangHeader'
+import { panchangAskHref } from './AskMadhavLink'
 
 interface ActionBarProps {
   fixedChartId?: string
+  selectedChartId: string | null
   /** ISO date string for the currently displayed Panchang day (YYYY-MM-DD) */
   date: string
   /**
@@ -285,7 +283,7 @@ function CalendarExportDropdown({
   )
 }
 
-export function ActionBar({ date, panchangContext, fixedChartId }: ActionBarProps) {
+export function ActionBar({ date, panchangContext, fixedChartId, selectedChartId }: ActionBarProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [muhuratOpen, setMuhuratOpen] = useState(false)
@@ -293,38 +291,12 @@ export function ActionBar({ date, panchangContext, fixedChartId }: ActionBarProp
   const [toast, setToast] = useState<string | null>(null)
   const exportBtnRef = useRef<HTMLDivElement>(null)
 
-  // Resolve current location + chart from URL (mirrors PanchangClientView / PanchangHeader)
   const location = resolveLocation(searchParams)
-  const chartId = fixedChartId ?? resolveChartId(searchParams)
+  const chartId = fixedChartId ?? selectedChartId
 
   function handleAskMadhav() {
-    if (fixedChartId) {
-      router.push(`/clients/${fixedChartId}/pariprashna`)
-      return
-    }
-    // 4C-8: inject full Panchang context when available
-    const visiblePrompt = `Tell me about today's Panchang (${date}) and what it means for me.`
-    const params = new URLSearchParams()
-    params.set('prompt', visiblePrompt)
-    if (panchangContext) {
-      // Import serialiseContext inline to keep the import minimal
-      const serialised = (() => {
-        try {
-          const MAX = 10_240
-          const full = JSON.stringify(panchangContext)
-          if (new TextEncoder().encode(full).length <= MAX) return full
-          const ctx = panchangContext as Record<string, unknown>
-          return JSON.stringify({
-            _truncated: true,
-            _note: 'Context exceeded 10 KB. Call query_panchanga for full detail.',
-            date: ctx['date'],
-            angas: ctx['angas'],
-          })
-        } catch { return null }
-      })()
-      if (serialised) params.set('context', serialised)
-    }
-    router.push(`/clients/${NATIVE_CLIENT_ID}/consume?${params.toString()}`)
+    const prompt = `Tell me about today's Panchang (${date}) and what it means for me.`
+    router.push(panchangAskHref({ chartId, fixedChartId, prompt, context: panchangContext }))
   }
 
   return (
@@ -332,12 +304,13 @@ export function ActionBar({ date, panchangContext, fixedChartId }: ActionBarProp
       {/* Muhurat Finder modal — live (4C-6-S3); panchangContext injected in 4C-8 */}
       {muhuratOpen && (
         <MuhuratFinderModal
+          key={chartId}
           onClose={() => setMuhuratOpen(false)}
           lat={location.lat}
           lon={location.lon}
           tzOffsetMinutes={330}
           chartId={chartId}
-          panchangContext={panchangContext}
+          panchangContext={fixedChartId ? undefined : panchangContext}
         />
       )}
 
@@ -418,8 +391,8 @@ export function ActionBar({ date, panchangContext, fixedChartId }: ActionBarProp
           {/* Ask Madhav — functional; routes to /clients/:id/consume with pre-loaded prompt */}
           <button
             onClick={handleAskMadhav}
-            aria-label="Ask Madhav about this day"
-            title="Opens chat with pre-loaded Panchang prompt"
+            aria-label={chartId ? "Ask Madhav about this day" : "Choose a chart to ask Madhav"}
+            title={chartId ? "Open consultation for this chart" : "Open the chart roster"}
             className="
               flex flex-1 items-center justify-center gap-2
               rounded-xl border border-[rgba(212,175,55,0.35)] bg-[rgba(212,175,55,0.10)]
@@ -430,7 +403,7 @@ export function ActionBar({ date, panchangContext, fixedChartId }: ActionBarProp
             style={{ color: 'var(--brand-gold)' }}
           >
             <MessageCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
-            <span>Ask Madhav about this day</span>
+            <span>{chartId ? "Ask Madhav about this day" : "Choose a chart"}</span>
           </button>
         </div>
       </div>

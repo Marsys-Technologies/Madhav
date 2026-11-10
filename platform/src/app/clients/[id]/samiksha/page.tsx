@@ -78,7 +78,7 @@ export default async function SamiksaPage({ params }: { params: Promise<{ id: st
   return (
     <>
       <ChartNav chartId={id} canBuild={access.canBuild} active="review" />
-      <SamiksaReview vm={vm} actions={actions} />
+      <SamiksaReview vm={vm} actions={access.permission === 'all' ? actions : null} />
     </>
   )
 }

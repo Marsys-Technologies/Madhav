@@ -368,13 +368,20 @@ describe('MuhuratResultsList', () => {
       expect(screen.getByLabelText(/export.*muhurat to calendar/i)).toBeInTheDocument()
     })
 
-    it('Ask Madhav button navigates with prompt containing event and rank', () => {
+    it('opens the chart roster when no chart is selected', () => {
+      render(<MuhuratResultsList windows={[WINDOW_HIGH]} isLoading={false} error={null} event="vivah" />)
+      fireEvent.click(screen.getByRole('button', { name: 'Choose a chart' }))
+      expect(mockPush).toHaveBeenCalledWith('/dashboard')
+    })
+
+    it('Ask Madhav uses the selected chart and preserves the event and rank in the prompt', () => {
       render(
         <MuhuratResultsList
           windows={[WINDOW_HIGH]}
           isLoading={false}
           error={null}
           event="vivah"
+          chartId="fixture-chart"
           tzOffsetMinutes={330}
         />
       )
@@ -382,7 +389,7 @@ describe('MuhuratResultsList', () => {
       fireEvent.click(askBtn)
       expect(mockPush).toHaveBeenCalledOnce()
       const url = mockPush.mock.calls[0][0] as string
-      expect(url).toContain('/clients/362f9f17-95a5-490b-a5a7-027d3e0efda0/consume')
+      expect(url).toContain('/clients/fixture-chart/consume')
       expect(url).toContain('prompt=')
       expect(decodeURIComponent(url)).toContain('#1')
       expect(decodeURIComponent(url)).toContain('vivah')

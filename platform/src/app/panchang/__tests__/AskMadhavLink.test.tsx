@@ -14,7 +14,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
-import { AskMadhavLink, PanchangChartContext, serialiseContext, DEFAULT_CHART_ID } from '../components/AskMadhavLink'
+import { AskMadhavLink, PanchangChartContext, panchangAskHref, serialiseContext } from '../components/AskMadhavLink'
 
 // ── Mock next/navigation ──────────────────────────────────────────────────────
 
@@ -87,8 +87,24 @@ describe('serialiseContext', () => {
 
 // ── Tests: AskMadhavLink component ───────────────────────────────────────────
 
+it('omits native context from selected-chart prefill while preserving Almanac data', () => {
+  const url = new URL(panchangAskHref({
+    chartId: 'sample-chart',
+    prompt: 'Example',
+    context: { date: '2026-11-10', native_context: { private: true } },
+  }), 'http://localhost')
+  expect(url.pathname).toBe('/clients/sample-chart/consume')
+  expect(JSON.parse(url.searchParams.get('context')!)).toEqual({ date: '2026-11-10' })
+})
+
 describe('AskMadhavLink', () => {
   beforeEach(() => mockPush.mockClear())
+
+  it('routes to the roster when no chart is selected', () => {
+    render(<AskMadhavLink prompt="Example" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Choose a chart to ask Madhav' }))
+    expect(mockPush).toHaveBeenCalledWith('/dashboard')
+  })
 
   it('renders a button with MessageCircle icon', () => {
     render(<AskMadhavLink prompt="What does Chaturthi mean for me today?" />)
@@ -98,7 +114,7 @@ describe('AskMadhavLink', () => {
 
   it('shows truncated tooltip in aria-label and title', () => {
     const prompt = 'What does Chaturthi mean for me today?'
-    render(<AskMadhavLink prompt={prompt} />)
+    render(<AskMadhavLink prompt={prompt} chart_id="sample-chart" />)
     const btn = screen.getByRole('button')
     expect(btn.getAttribute('title')).toContain(prompt)
     expect(btn.getAttribute('aria-label')).toContain(prompt)
@@ -106,7 +122,7 @@ describe('AskMadhavLink', () => {
 
   it('truncates tooltip for long prompts (>60 chars)', () => {
     const longPrompt = 'A'.repeat(80)
-    render(<AskMadhavLink prompt={longPrompt} />)
+    render(<AskMadhavLink prompt={longPrompt} chart_id="sample-chart" />)
     const btn = screen.getByRole('button')
     const tooltip = btn.getAttribute('title') ?? ''
     expect(tooltip).toContain('…')
@@ -115,11 +131,13 @@ describe('AskMadhavLink', () => {
 
   it('click pushes to correct URL with encoded prompt (no context)', () => {
     const prompt = 'What does Chaturthi mean for me today?'
-    render(<AskMadhavLink prompt={prompt} />)
+    render(<PanchangChartContext.Provider value={{ selectedChartId: 'sample-chart' }}>
+      <AskMadhavLink prompt={prompt} />
+    </PanchangChartContext.Provider>)
     fireEvent.click(screen.getByRole('button'))
     expect(mockPush).toHaveBeenCalledOnce()
     const url = mockPush.mock.calls[0][0] as string
-    expect(url).toContain(`/clients/${DEFAULT_CHART_ID}/consume`)
+    expect(url).toContain('/clients/sample-chart/consume')
     expect(url).toContain(`prompt=`)
     // URLSearchParams encodes spaces as '+'; decode both '+' and '%20'
     const rawPrompt = new URLSearchParams(url.split('?')[1]).get('prompt') ?? ''
@@ -130,7 +148,7 @@ describe('AskMadhavLink', () => {
   it('click injects context when provided (AC.4C8.1)', () => {
     const prompt = 'What does Chaturthi mean for me today?'
     const ctx = { date: '2026-05-20', angas: { tithi: { name: 'Chaturthi' } } }
-    render(<AskMadhavLink prompt={prompt} panchang_context={ctx} />)
+    render(<AskMadhavLink prompt={prompt} chart_id="sample-chart" panchang_context={ctx} />)
     fireEvent.click(screen.getByRole('button'))
     const url = mockPush.mock.calls[0][0] as string
     expect(url).toContain('context=')
@@ -149,7 +167,7 @@ describe('AskMadhavLink', () => {
   it('large context is truncated before URL encoding (AC.4C8.6)', () => {
     const prompt = 'Test big context'
     const bigCtx = buildFakePanchang(15)
-    render(<AskMadhavLink prompt={prompt} panchang_context={bigCtx} />)
+    render(<AskMadhavLink prompt={prompt} chart_id="sample-chart" panchang_context={bigCtx} />)
     fireEvent.click(screen.getByRole('button'))
     const url = mockPush.mock.calls[0][0] as string
     const rawContext = new URLSearchParams(url.split('?')[1]).get('context') ?? ''
@@ -165,7 +183,7 @@ describe('AskMadhavLink', () => {
 it('opens the current chart consultation without putting personal almanac data in the URL', () => {
   mockPush.mockClear()
   render(
-    <PanchangChartContext.Provider value="allowed-chart">
+    <PanchangChartContext.Provider value={{ fixedChartId: "allowed-chart", selectedChartId: "other-chart" }}>
       <AskMadhavLink prompt="Explain this timing" panchang_context={{ private: true }} />
     </PanchangChartContext.Provider>,
   )

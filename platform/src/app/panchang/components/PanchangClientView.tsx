@@ -42,7 +42,7 @@ export function PanchangClientView({
   fixedChartId,
 }: PanchangClientViewProps) {
   const searchParams = useSearchParams()
-  const date = resolveDate(searchParams) || initialDate
+  const date = resolveDate(searchParams, fixedChartId ? initialDate : undefined)
   const location = resolveLocation(searchParams)
 
   // chartId state — initialised from URL (handles server-rendered deep links),
@@ -200,10 +200,10 @@ export function PanchangClientView({
       {/* Action Bar — sticky bottom on mobile, inline on desktop (§4.2) */}
       {/* 4C-8: panchangContext passed for Ask-Madhav deep link injection */}
       <div className="mt-auto">
-        <ActionBar date={date} panchangContext={data ?? undefined} fixedChartId={fixedChartId} />
+        <ActionBar date={date} panchangContext={data ?? undefined} fixedChartId={fixedChartId} selectedChartId={chartId} />
       </div>
     </div>
   )
 
-  return <PanchangChartContext.Provider value={fixedChartId ?? null}>{view}</PanchangChartContext.Provider>
+  return <PanchangChartContext.Provider value={{ fixedChartId, selectedChartId: chartId }}>{view}</PanchangChartContext.Provider>
 }
