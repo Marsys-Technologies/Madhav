@@ -9,7 +9,7 @@
 
 import { listCapabilities } from '../../registry'
 import type { CapabilityContext } from '../../registry/types'
-import { buildPrefetchPlan, executePrefetch, type PrefetchResult } from '../bulk_context/prefetcher'
+import { buildPrefetchPlan, executePrefetch } from '../bulk_context/prefetcher'
 import { buildBundle, formatBundleForPrompt } from '../bulk_context/bundler'
 import { classifyIntent } from '../bulk_context/intent_classifier'
 

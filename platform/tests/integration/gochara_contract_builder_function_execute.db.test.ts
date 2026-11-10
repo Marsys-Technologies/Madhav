@@ -51,7 +51,7 @@
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { Pool } from 'pg'
-import { acquireClusterRoleLock, ensureRole } from './builder_role_fixture'
+import { acquireClusterRoleLock } from './builder_role_fixture'
 import fs from 'fs'
 import path from 'path'
 

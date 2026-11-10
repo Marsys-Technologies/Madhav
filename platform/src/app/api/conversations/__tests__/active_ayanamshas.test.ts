@@ -61,7 +61,6 @@ function mockQuerySequence(
   buildAyanamshas: string[] | null = null,
 ) {
   const mockQuery = vi.mocked(query)
-  let callIndex = 0
 
   mockQuery.mockImplementation(async (sql: string) => {
     callIndex++

@@ -165,7 +165,7 @@ export function endSpan(
       ? { 'logging.googleapis.com/trace': `projects/${project}/traces/${record.traceId}` }
       : {}
   // Keep this on console.log so structured logging picks it up.
-  // eslint-disable-next-line no-console
+
   console.log(
     JSON.stringify({
       severity: status === 'ok' ? 'INFO' : 'ERROR',

@@ -30,7 +30,6 @@ import { route, type RouteInput } from '../router/router'
 import { listCapabilities } from '../registry'
 import {
   checkAllCapabilities,
-  formatViolations,
 } from '../registry/chart_agnostic_gate'
 import { DEPRECATION_WATCHLIST } from '../maro/profiles'
 import type { ModelFamily } from '../maro/types'

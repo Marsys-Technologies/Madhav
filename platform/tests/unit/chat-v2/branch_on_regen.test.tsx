@@ -21,7 +21,7 @@
  *   DB truncated via /api/chat/consume/regenerate → messageRuntime.reload()
  *   → BranchPickerPrimitive shows "1 / 2" → click ‹ → original response visible.
  */
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { render, act, fireEvent } from '@testing-library/react'
 import React, { useState } from 'react'
 import { readFileSync } from 'fs'

@@ -1,15 +1,11 @@
 import { meteringRequest, setMeteringAttribution } from '@/lib/metering/context'
 import {
-  stepCountIs,
   convertToModelMessages,
-  createIdGenerator,
-  smoothStream,
   createUIMessageStream,
   createUIMessageStreamResponse,
 } from 'ai'
-import type { ModelMessage, UIMessage } from 'ai'
-import { stagePart, toolPart, costPart, observabilityPart, citationGatePart, citationPart, persistencePart, predictionCandidatePart, correctionPart, outOfDomainPart, titlePart, clarificationPart, judgmentFlagsPart } from '@/lib/streams/data_parts'
-import { parseMarkers } from '@/lib/consume/marker_parser'
+import type { UIMessage } from 'ai'
+import { clarificationPart, judgmentFlagsPart } from '@/lib/streams/data_parts'
 import { detectPredictionCandidates } from '@/lib/ppl/prediction_detector'
 import { extractCitations } from '@/lib/citations/citation_data_part'
 
@@ -40,7 +36,6 @@ import { consumeSystemPrompt, type ConsumeStyle } from '@/lib/claude/system-prom
 import {
   getConversation,
   insertConversationWithId,
-  updateConversationTitle,
 } from '@/lib/conversations'
 import { archivedReadOnlyResponse, isCorrectionArchived } from '@/lib/conversations/readOnly'
 import { checkReadingReadiness } from '@/lib/charts/readingGate'
@@ -48,15 +43,13 @@ import { writeConversationMessages } from '@/lib/persistence/conversation_writer
 import { createPendingStreamWriter } from '@/lib/persistence/pending_streams_writer'
 import { generateConversationTitle } from '@/lib/conversations/title'
 import { assembleProvenance, type ToolBundleLike } from '@/lib/consume/provenance_assembler'
-import type { ContextUsageEvent, ContextUsageMode, ProvenanceEvent } from '@/types/sse_events'
+import type { ContextUsageEvent, ContextUsageMode } from '@/types/sse_events'
 import {
   DEFAULT_MODEL_ID,
   DEFAULT_STACK_ID,
-  TITLE_MODEL_ID,
   STACK_ROUTING,
   getModelMeta,
   isValidModelId,
-  supports,
   type ModelStack,
 } from '@/lib/models/registry'
 import { getEffectiveModel } from '@/lib/models/runtime_config'
@@ -65,9 +58,7 @@ import { configService } from '@/lib/config/index'
 // Gated by MARSYS_FLAG_R11V2_USE_ADAPTERS (server-side, default false).
 // When true, chat calls route through the dispatcher to the per-provider adapter.
 // When false (default for R11.A), legacy single-shot pipeline is used unchanged.
-import type { StackId } from '@/lib/providers/dispatcher'
 import { getAdapter } from '@/lib/providers/dispatcher'
-import type { ChatRequest } from '@/lib/providers/types'
 import { buildAdapterMessages, buildAdapterChatRequest } from '@/lib/providers/adapter-dispatch-helpers'
 import { runAgenticLoop, LOOP_CONFIG_BY_PROVIDER } from '@/lib/synthesis/agentic_loop'
 import { executeMCPTool } from '@/lib/synthesis/mcp_tool_executor'
@@ -106,16 +97,11 @@ import type { TraceStep, TraceChunkItem, TraceDataSummary, TracePayload, TraceQu
 import type { ToolBundle, ToolBundleResult } from '@/lib/retrieval/shared_types'
 import { res, errorResponse } from '@/lib/errors'
 import {
-  writeLlmCallLog,
   writeQueryPlanLog,
-  writeToolExecutionLog,
-  writeContextAssemblyLog,
-  resolveProvider,
 } from '@/lib/db/monitoring-write'
 import { persistObservation, computeCost } from '@/lib/llm/observability'
 import { computeCostUsd, getModelPricingSync } from '@/lib/llm/pricing'
 import { getStorageClient } from '@/lib/storage'
-import type { ProviderName, TokenUsage } from '@/lib/llm/observability/types'
 import { fakeGcsRetrieve } from '@/lib/multimodal/fake_gcs_store'
 import { extractPdf } from '@/lib/multimodal/pdf_extractor'
 import { getProjectForConversation } from '@/lib/projects'

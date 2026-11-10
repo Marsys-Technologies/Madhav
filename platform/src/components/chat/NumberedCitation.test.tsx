@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect, vi, beforeAll } from 'vitest'
-import { render, fireEvent, waitFor } from '@testing-library/react'
+import { render, fireEvent } from '@testing-library/react'
 import { NumberedCitation } from './NumberedCitation'
 
 // Suppress JSDOM window.open not implemented warning

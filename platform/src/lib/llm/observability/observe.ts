@@ -63,7 +63,7 @@ async function safeComputeCost(
       db,
     )
   } catch (err) {
-    // eslint-disable-next-line no-console
+
     console.error('[observability] computeCost failed:', err)
     return null
   }
@@ -93,7 +93,7 @@ export async function observe<T>(
       const cost = await safeComputeCost(request, observed, db)
       observation = await persistObservation(request, observed, cost, db)
     } catch (err) {
-      // eslint-disable-next-line no-console
+
       console.error('[observability] observe() persistence path failed:', err)
     }
 
@@ -113,7 +113,7 @@ export async function observe<T>(
       const cost = await safeComputeCost(request, observed, db)
       await persistObservation(request, observed, cost, db)
     } catch (err) {
-      // eslint-disable-next-line no-console
+
       console.error('[observability] observe() error-path persistence failed:', err)
     }
 
@@ -168,7 +168,7 @@ export async function* observeStream<T>(
       const cost = await safeComputeCost(request, observed, db)
       await persistObservation(request, observed, cost, db)
     } catch (err) {
-      // eslint-disable-next-line no-console
+
       console.error('[observability] observeStream persistence failed:', err)
     }
   }

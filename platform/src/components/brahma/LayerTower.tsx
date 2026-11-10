@@ -114,20 +114,21 @@ function PipRail({
         const pipCls = PIP_CLASSES[a.status] ?? PIP_CLASSES['not-built']
         const isSelected = selectedAsset === a.asset_key
         return (
-          <button
-            key={a.asset_key}
-            role="listitem"
-            title={`${a.asset_key}: ${a.status}`}
-            aria-label={`${a.asset_key} ${a.status}`}
-            aria-pressed={isSelected}
-            onClick={() => onPipClick?.(a.asset_key)}
-            className={[
-              'h-3 w-3 rounded-full transition-all duration-300',
-              pipCls,
-              isSelected ? 'ring-2 ring-offset-1 ring-blue-500 scale-125' : '',
-              onPipClick ? 'cursor-pointer hover:scale-110' : 'cursor-default',
-            ].join(' ')}
-          />
+          <div key={a.asset_key} role="listitem" className="flex">
+            <button
+              type="button"
+              title={`${a.asset_key}: ${a.status}`}
+              aria-label={`${a.asset_key} ${a.status}`}
+              aria-pressed={isSelected}
+              onClick={() => onPipClick?.(a.asset_key)}
+              className={[
+                'h-3 w-3 rounded-full transition-all duration-300',
+                pipCls,
+                isSelected ? 'ring-2 ring-offset-1 ring-blue-500 scale-125' : '',
+                onPipClick ? 'cursor-pointer hover:scale-110' : 'cursor-default',
+              ].join(' ')}
+            />
+          </div>
         )
       })}
     </div>

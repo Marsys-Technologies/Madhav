@@ -6,7 +6,7 @@
  *   appears in place of conversation list; HeaderSkeleton appears in header.
  *   When data loads, both skeletons disappear and real content is shown.
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { render, act, fireEvent } from '@testing-library/react'
 import React, { useState } from 'react'
 import { SidebarSkeleton } from '@/components/chat/SidebarSkeleton'

@@ -85,6 +85,24 @@ function fillValidForm() {
 
 describe('NewClientForm', () => {
 
+  it('selects gender from the linked listbox using the keyboard', () => {
+    render(<NewClientForm />)
+    const combobox = screen.getByRole('combobox', { name: /gender/i })
+    combobox.focus()
+
+    fireEvent.keyDown(combobox, { key: 'ArrowDown' })
+    const listbox = screen.getByRole('listbox', { name: /gender options/i })
+    expect(combobox.getAttribute('aria-controls')).toBe(listbox.id)
+    fireEvent.keyDown(combobox, { key: 'ArrowDown' })
+    const option = screen.getByRole('option', { name: /prefer not to say/i })
+    expect(combobox.getAttribute('aria-activedescendant')).toBe(option.id)
+    fireEvent.keyDown(combobox, { key: 'Enter' })
+
+    expect(combobox.textContent).toContain('Prefer not to say')
+    expect(combobox.getAttribute('aria-expanded')).toBe('false')
+    expect(document.activeElement).toBe(combobox)
+  })
+
   // ── Test 1: form title, ayanamsha section, and footer buttons present ──────
   it('renders title, ayanamsha section, and three footer buttons', () => {
     render(<NewClientForm />)

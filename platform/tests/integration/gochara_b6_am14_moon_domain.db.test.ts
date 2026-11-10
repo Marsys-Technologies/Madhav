@@ -88,7 +88,6 @@ const LEGACY_OTHER = 'legacy:c1'           // bridged to CONV_OTHER (an INCOMPAT
 const LEGACY_NOBRIDGE = 'legacy:c2'        // registered, NEVER bridged
 const AV_DECL = 'av-build:l1:482012f1:v1'
 const LO = '2025-01-01T00:00:00Z'
-const MID = '2025-02-01T00:00:00Z'
 const HI = '2025-03-01T00:00:00Z'
 const HORIZON_SQL = `tstzrange('${LO}','${HI}','[)')`
 const VEC = { bg_transit_rules: 'd1', bg_transit_av_gates: 'd2' }

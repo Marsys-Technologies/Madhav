@@ -5,7 +5,7 @@
  * Click-path: streaming → user scrolls up → auto-scroll stops → "N new" button
  *   appears → click → scrolls to bottom and resets unread count.
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, act, fireEvent } from '@testing-library/react'
 import React, { useState } from 'react'
 import { ScrollToBottomButton } from '@/components/chat/ScrollToBottomButton'

@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from 'react'
 import { cn } from '@/lib/utils'
-import type { TraceStep, TraceDataSummary } from '@/lib/trace/types'
+import type { TraceDataSummary } from '@/lib/trace/types'
 
 const FLAG_ON = process.env.NEXT_PUBLIC_MARSYS_FLAG_R9_TOOL_FLOW === 'true'
 

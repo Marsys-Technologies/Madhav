@@ -1,5 +1,5 @@
 import { describe, it } from 'vitest'
-import type { MsrSignal, Message, Chart } from '../types'
+import type { MsrSignal, Message } from '../types'
 
 describe('DB types - compile check', () => {
   it('MsrSignal has required fields', () => {

@@ -16,7 +16,7 @@
  *   EVAL_STACK — model stack to use (default: nim)
  */
 
-import { GOLDEN_QUERIES, MIN_CITATIONS_BY_CATEGORY, type GoldenQuery, type QueryCategory } from './golden_queries'
+import { GOLDEN_QUERIES, type GoldenQuery, type QueryCategory } from './golden_queries'
 import {
   writeEvalRun,
   writeEvalPerformanceRow,

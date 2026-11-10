@@ -12,7 +12,7 @@
  *   - prop: citationCount (passed from the V2AssistantText renderer)
  */
 
-import { useContext, useEffect, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { useMessage } from '@assistant-ui/react'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

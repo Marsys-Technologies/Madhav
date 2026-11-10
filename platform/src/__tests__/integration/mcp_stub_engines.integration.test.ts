@@ -25,7 +25,7 @@ vi.mock('@/lib/db/monitoring-write', () => ({
   writeToolExecutionLog: vi.fn().mockResolvedValue(undefined),
 }))
 
-import { getToolByName, TOOL_NAME_TO_URI } from '@/lib/retrieval/registry/tool_name_bridge'
+import { TOOL_NAME_TO_URI } from '@/lib/retrieval/registry/tool_name_bridge'
 
 // ── Registry smoke (always runs) ─────────────────────────────────────────────
 

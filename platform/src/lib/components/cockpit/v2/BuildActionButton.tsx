@@ -109,6 +109,7 @@ export function BuildActionButton({
 
       {showModal && (
         <PlanModal
+          key={JSON.stringify([chartId, scope, scopeTarget, action])}
           chartId={chartId}
           scope={scope}
           scopeTarget={scopeTarget}

@@ -27,11 +27,6 @@ interface DataSourceExpectedRow {
   updated_at: string
 }
 
-interface ToolCaveatRow {
-  tool_name: string
-  caveat_text: string
-  severity: string
-}
 
 export async function GET(req: NextRequest): Promise<Response> {
   if (!validateServiceToken(req)) {

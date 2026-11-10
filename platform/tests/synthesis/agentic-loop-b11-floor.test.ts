@@ -24,14 +24,9 @@ import { join } from 'path'
 
 import {
   LOOP_CONFIG_BY_PROVIDER,
-  createLoopState,
   runAgenticLoop,
   MAX_ITERATIONS,
   ANTHROPIC_LOOP_CONFIG,
-  GOOGLE_LOOP_CONFIG,
-  OPENAI_LOOP_CONFIG,
-  DEEPSEEK_LOOP_CONFIG,
-  NVIDIA_LOOP_CONFIG,
 } from '../../src/lib/synthesis/agentic_loop'
 
 // ─── AC.a structural assertion ───────────────────────────────────────────────

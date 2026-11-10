@@ -35,7 +35,6 @@ import { POST as EXECUTE } from '../execute/route'
 
 const CHART = '482012f1-710e-4a25-994a-93821f5871aa'
 const OWNER_UID = 'owner-uid'
-const ADMIN_UID = 'admin-uid'
 
 const REGISTRY = [
   {

@@ -12,7 +12,7 @@
  * MCPT v3.1.0-S5
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 
 // The tool-disable check lives in the route handler; we test the logic via
 // a thin wrapper that reproduces the check in isolation (pure-logic test).

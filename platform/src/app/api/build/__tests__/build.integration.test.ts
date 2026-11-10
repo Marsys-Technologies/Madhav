@@ -724,13 +724,6 @@ describe.skipIf(!DB_AVAILABLE)('Build API Routes — Integration (DB-backed)', (
   // ═══════════════════════════════════════════════════════════════════════════
 
   describe('Route 6 — GET /api/conversations/[id]/active-ayanamshas', () => {
-    const CANONICAL_AYANAMSHAS = [
-      'lahiri',
-      'raman',
-      'krishnamurti',
-      'yukteshwar',
-      'true_chitra',
-    ]
 
     it('[IT-R6-01] returns 5 canonical ayanamshas when column absent (J-01 degradation)', async () => {
       const convId = await seedConversation({ userId: OWNER_UID })

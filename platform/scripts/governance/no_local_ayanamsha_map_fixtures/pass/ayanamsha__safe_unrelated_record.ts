@@ -7,9 +7,6 @@ const DOMAIN_ALIAS: Record<string, string> = {
   spouse: 'relationship',
 }
 
-const GRAHA_DISPLAY: Record<string, string> = {
-  SUN: 'Sun', MOON: 'Moon', MARS: 'Mars',
-}
 
 export function resolveDomain(d: string): string {
   return DOMAIN_ALIAS[d] ?? d

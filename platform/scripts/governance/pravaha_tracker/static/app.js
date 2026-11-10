@@ -29,7 +29,7 @@
 
   // ---- connection -------------------------------------------------------------------------
   function connect() {
-    try { es && es.close(); } catch (_) {}
+    try { es?.close(); } catch (_) {}
     es = new EventSource("/events");
     es.addEventListener("snapshot", (e) => { try { accept(JSON.parse(e.data), "live"); } catch (_) {} });
     es.addEventListener("alive", (e) => {

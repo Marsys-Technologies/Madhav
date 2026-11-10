@@ -53,7 +53,7 @@ function main(): void {
   }
 
   fs.writeFileSync(MANIFEST_PATH, JSON.stringify(manifest, null, 2) + '\n', 'utf8')
-  // eslint-disable-next-line no-console
+
   console.log(`backfill_manifest: touched ${touched} entries across ${TOOL_CONTRACTS.length} contracts.`)
 }
 

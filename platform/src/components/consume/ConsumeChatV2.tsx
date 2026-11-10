@@ -853,8 +853,9 @@ function useAttachmentManager() {
 
   // Revoke object URLs on unmount
   useEffect(() => {
+    const urls = previewUrls.current
     return () => {
-      for (const url of previewUrls.current) URL.revokeObjectURL(url)
+      for (const url of urls) URL.revokeObjectURL(url)
     }
   }, [])
 
@@ -1845,7 +1846,7 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
       .catch(() => {
         try { sessionStorage.removeItem(key) } catch { /* ok */ }
       })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [chartId]) // Mount only — chartId is stable within a page load
 
   // Restore conversation messages on conversation switch.

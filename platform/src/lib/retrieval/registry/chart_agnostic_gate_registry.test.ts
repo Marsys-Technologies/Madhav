@@ -13,7 +13,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { checkCapability, checkAllCapabilities, NATIVE_CHART_ID } from './chart_agnostic_gate'
+import { checkAllCapabilities, NATIVE_CHART_ID } from './chart_agnostic_gate'
 import type { CapabilityDescriptor } from './types'
 
 // Import retrofitted capabilities directly

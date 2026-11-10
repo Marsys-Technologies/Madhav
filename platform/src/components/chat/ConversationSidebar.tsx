@@ -8,7 +8,6 @@ import {
   PenSquare,
   Trash2,
   Plus,
-  PanelLeft,
   ArrowLeft,
   Search,
   X,

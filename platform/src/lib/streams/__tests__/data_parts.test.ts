@@ -23,7 +23,6 @@ import {
   judgmentFlagsPart,
   TIME_TO_FIRST_VERDICT_SLO_MS,
   type StagePart,
-  type ToolPart,
 } from '../data_parts'
 
 // ── StagePart ─────────────────────────────────────────────────────────────

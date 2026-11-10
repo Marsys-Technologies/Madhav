@@ -45,7 +45,6 @@ import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import {
   chunkVerse,
-  estimateTokens,
   type RawVerse,
   type ClassicalChunk,
 } from './lib/classical_text_chunker.js';

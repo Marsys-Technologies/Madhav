@@ -16,7 +16,6 @@
 // budgets are out of v1 scope and would require a migration bump.
 
 import type {
-  LlmBudgetAlertThreshold,
   LlmBudgetPeriod,
   LlmBudgetRuleRow,
   LlmBudgetScope,

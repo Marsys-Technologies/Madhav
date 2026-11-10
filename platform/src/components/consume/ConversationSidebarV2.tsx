@@ -13,7 +13,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { isToday, isYesterday, parseISO } from 'date-fns'
-import { Archive, CheckSquare, FolderPlus, ListChecks, MoreHorizontal, PenSquare, Pin, PinOff, Search, Square, Sparkles, Trash2, X } from 'lucide-react'
+import { Archive, CheckSquare, FolderPlus, ListChecks, MoreHorizontal, PenSquare, Pin, PinOff, Search, Square, Trash2, X } from 'lucide-react'
 import { Logo } from '@/components/brand/Logo'
 import {
   DropdownMenu,

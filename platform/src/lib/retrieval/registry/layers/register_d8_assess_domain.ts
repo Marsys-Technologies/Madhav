@@ -172,13 +172,9 @@ const ASSESS_MAX_CONTRADICTIONS = 100
 // discipline as the existing F-021R caps: bound the array, report total_count/truncated,
 // and name the drill instrument for the remainder — never drop the fact of truncation.
 const ASSESS_DEFAULT_MAX_CDLM_CELLS = 20
-const ASSESS_MAX_CDLM_CELLS = 100
 const ASSESS_DEFAULT_MAX_DISCOVERIES = 10
-const ASSESS_MAX_DISCOVERIES = 50
 const ASSESS_DEFAULT_MAX_ACTIVATIONS = 10
-const ASSESS_MAX_ACTIVATIONS = 50
 const ASSESS_DEFAULT_MAX_PREDICATES = 10
-const ASSESS_MAX_PREDICATES = 50
 
 // Honest empty-reason for the temporal stage (never faked). The temporal stage empties because
 // of a KNOWN L3 kala_activation writer defect (R-45/R-40 shared root: ~99% of rows have NULL

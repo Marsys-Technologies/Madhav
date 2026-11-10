@@ -20,7 +20,7 @@ vi.mock('@/lib/firebase/server', () => ({ getServerUser: mockGetServerUser }))
 vi.mock('@/lib/build/jobInvoker', () => ({ invokeRunJob: mockInvokeRunJob }))
 vi.mock('@/lib/cloud_run/jobs', () => ({ getJobImageTag: mockGetJobImageTag }))
 
-import { POST, GET } from '../route'
+import { POST } from '../route'
 import writerDigestInventory from '@/generated/nirmana-writer-digests.json'
 
 const VICTIM_CHART = '482012f1-710e-4a25-994a-93821f5871aa'
@@ -36,7 +36,6 @@ const DIGESTS = writerDigestInventory.writers as Record<string, string>
  * that some earlier unrelated validation happened to reject the request.
  */
 const A1 = 'ka_kshetra'
-const A2 = 'ka_avadhi'
 
 const G1 = 'mi_kula' // real global writer (mimamsa, scope=global)
 const PC = 'mi_abhilekha' // real per-chart writer in the same layer

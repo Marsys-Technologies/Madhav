@@ -127,7 +127,7 @@ export async function persistObservation(
     const result = await db.query<PersistedObservation>(INSERT_SQL, params)
     return result.rows[0] ?? null
   } catch (err) {
-    // eslint-disable-next-line no-console
+
     console.error('[observability] persistObservation failed:', err)
     return null
   }

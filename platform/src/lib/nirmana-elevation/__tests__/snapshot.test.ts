@@ -1278,7 +1278,6 @@ describe('projectNirmanaElevationSnapshot', () => {
   })
 
   it('accepts formal non-build dispositions and producer-covered evidence without a rebuild of the logical asset', () => {
-    const assetIds = ['lel_events', 'bg_transit_rules', 'bg_transit_engine']
     const assetRegistry = [
       registryAsset({
         asset_id: 'lel_events', english_name: 'Life Events', layer: 'mimamsa', sort_order: 0,

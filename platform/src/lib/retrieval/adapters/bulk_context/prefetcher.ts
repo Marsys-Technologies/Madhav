@@ -4,7 +4,7 @@
  * For tagged intent, pre-fetch resources by priority.
  */
 
-import { listCapabilities, getCapability } from '@/lib/retrieval/registry'
+import { getCapability } from '@/lib/retrieval/registry'
 import type { CapabilityUri, CapabilityContext } from '@/lib/retrieval/registry/types'
 import type { IntentTag } from './intent_classifier'
 

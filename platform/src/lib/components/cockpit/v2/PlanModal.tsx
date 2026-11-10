@@ -67,13 +67,14 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
     return () => { document.removeEventListener('keydown', handleKey); if (previous?.isConnected) previous.focus() }
   }, [mounted])
 
-  // Fetch plan on first render
   useEffect(() => {
+    const controller = new AbortController()
     ;(async () => {
       try {
         const r = await fetch('/api/cockpit/plan', {
           method: 'POST',
           credentials: 'include',
+          signal: controller.signal,
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ chart_id: chartId, scope, scope_target: scopeTarget, action }),
         })
@@ -88,14 +89,17 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
               : 'Build blocked by upstream dependencies'
           )
         }
-        setPlanData({ ...rawData, plan: rawData.plan_waves?.flat() ?? rawData.plan ?? [] })
+        if (!controller.signal.aborted) {
+          setPlanData({ ...rawData, plan: rawData.plan_waves?.flat() ?? rawData.plan ?? [] })
+        }
       } catch (e) {
-        setError((e as Error).message)
+        if (!controller.signal.aborted) setError((e as Error).message)
       } finally {
-        setLoading(null)
+        if (!controller.signal.aborted) setLoading(null)
       }
     })()
-  }, [])
+    return () => controller.abort()
+  }, [chartId, scope, scopeTarget, action])
 
   const runPlan = async (opts: { forceL0?: boolean } = {}) => {
     if (!planData) return

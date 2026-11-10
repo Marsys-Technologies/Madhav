@@ -268,7 +268,7 @@ async function safeComputeCost(
     )
   } catch (err) {
     if (err instanceof PricingNotFoundError) return null
-    // eslint-disable-next-line no-console
+
     console.error('[anthropic_observed] computeCost failed:', err)
     return null
   }
@@ -417,7 +417,7 @@ async function persistTimeoutRow(
     const cost = await safeComputeCost(baseRequest, observed, db)
     await persistObservation(baseRequest, observed, cost, db)
   } catch (err) {
-    // eslint-disable-next-line no-console
+
     console.error('[anthropic_observed] timeout persistence failed:', err)
   }
 }

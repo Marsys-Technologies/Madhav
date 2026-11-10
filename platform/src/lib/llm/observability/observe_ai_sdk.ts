@@ -106,7 +106,7 @@ export function recordAiSdkCall(input: RecordAiSdkCallInput): void {
         obsDb,
       )
     } catch (err) {
-      // eslint-disable-next-line no-console
+
       console.error('[observability] recordAiSdkCall failed:', err)
     }
   })()

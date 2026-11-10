@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import type { SadeSatiCycle, SadeSatiCycleInsert, SadeSatiPhase } from '@/lib/types/sade_sati_cycles'
+import type { SadeSatiCycleInsert, SadeSatiPhase } from '@/lib/types/sade_sati_cycles'
 import { SADE_SATI_PHASE_MAP } from '@/lib/types/sade_sati_cycles'
 
 describe('COV-S10 — sade_sati_cycles: type contracts and phase classification', () => {

@@ -14,15 +14,13 @@
 
 vi.mock('server-only', () => ({}))
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import {
   runAgenticLoop,
   MAX_ITERATIONS,
   AgenticLoopCapExceeded,
   ANTHROPIC_LOOP_CONFIG,
   OPENAI_LOOP_CONFIG,
-  createLoopState,
-  checkIterationCap,
 } from '../../src/lib/synthesis/agentic_loop'
 
 // ---------------------------------------------------------------------------

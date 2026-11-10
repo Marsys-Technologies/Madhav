@@ -37,7 +37,7 @@ describeIf('WP-1.3(f) live-DB — filter narrows payload (byte + row delta)', ()
 
     const uBytes = bytes(unfiltered.content)
     const fBytes = bytes(filtered.content)
-    // eslint-disable-next-line no-console
+
     console.log(`[byte-delta] unfiltered=${uBytes}B filtered(graha_position)=${fBytes}B`)
     expect(fBytes).toBeLessThan(uBytes / 5) // materially smaller
 
@@ -62,7 +62,7 @@ describeIf('WP-1.3(f) live-DB — disclosed pagination with the real total', () 
   it('unfiltered pivoted discloses total≈5566 and more_available=true at limit=1000', async () => {
     const h = await handler()
     const res = await h({ chart_id: NATIVE, ayanamsha_id: 'lahiri_chitrapaksha', shape: 'pivoted', limit: 1000, offset: 0 })
-    // eslint-disable-next-line no-console
+
     console.log(`[pagination] total=${res.content['total']} returned=${res.content['returned_count']} more=${res.content['more_available']}`)
     expect(Number(res.content['total'])).toBeGreaterThan(5000)
     expect(Number(res.content['returned_count'])).toBeLessThanOrEqual(1000)

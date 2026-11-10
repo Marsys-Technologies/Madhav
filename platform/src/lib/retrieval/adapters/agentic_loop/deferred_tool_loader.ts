@@ -6,7 +6,7 @@
  */
 
 import { listCapabilities, getCapability } from '@/lib/retrieval/registry'
-import type { CapabilityDescriptor, CapabilityUri } from '@/lib/retrieval/registry/types'
+import type { CapabilityUri } from '@/lib/retrieval/registry/types'
 
 export interface ToolCatalogEntry {
   uri: CapabilityUri

@@ -32,7 +32,6 @@ import {
   GEMINI_PROFILE,
   OPENAI_PROFILE,
   DEEPSEEK_PROFILE,
-  UNIVERSAL_PROFILE,
   PROFILE_VERSION,
 } from './index'
 import type { RetrievalRequest } from './types'

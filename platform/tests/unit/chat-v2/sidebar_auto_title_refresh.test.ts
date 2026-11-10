@@ -17,8 +17,8 @@ const dataPartsSrc = fs.readFileSync(
   'utf8',
 )
 
-const routeSrc = fs.readFileSync(
-  path.resolve(import.meta.dirname, '../../../src/app/api/chat/consult/route.ts'),
+const pipelineSrc = fs.readFileSync(
+  path.resolve(import.meta.dirname, '../../../src/lib/pipelines/shared/onfinish_writethrough.ts'),
   'utf8',
 )
 
@@ -53,23 +53,8 @@ describe('E.1 — sidebar refresh on auto-title', () => {
     })
   })
 
-  describe('route.ts emission', () => {
-    it('imports titlePart from data_parts', () => {
-      expect(routeSrc).toContain('titlePart')
-    })
-
-    it.skip('[CI-AUDIT-2026-05-30 unimplemented in route.ts] emits data-title on first turn', () => {
-      expect(routeSrc).toContain("type: 'data-title'")
-      expect(routeSrc).toContain('titlePart({ conversation_id: finalConversationId })')
-    })
-
-    it.skip('[CI-AUDIT-2026-05-30 unimplemented in route.ts] emission is gated on isFirstTurn', () => {
-      const block = routeSrc.slice(
-        routeSrc.indexOf("type: 'data-title'") - 300,
-        routeSrc.indexOf("type: 'data-title'") + 100,
-      )
-      expect(block).toContain('isFirstTurn')
-    })
+  it('emits a title update with the conversation ID before first-turn title generation', () => {
+    expect(pipelineSrc).toMatch(/if \(opts\.isFirstTurn[^]*?type: 'data-title',\s*data: titlePart\(\{ conversation_id: opts\.conversationId \}\)/)
   })
 
   describe('ConversationSidebarV2 reloadTrigger', () => {

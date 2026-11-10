@@ -3,7 +3,7 @@
  *
  * Source-level assertions that:
  *   - data_parts.ts has CorrectionPartSchema + OutOfDomainPartSchema
- *   - route.ts imports parseMarkers + correctionPart/outOfDomainPart and emits them
+ *   - the shared finish pipeline parses markers and emits correction/out-of-domain parts
  *   - ConsumeChatV2.tsx imports the components and subscribes to the data parts
  */
 
@@ -16,8 +16,8 @@ const dataPartsSrc = fs.readFileSync(
   'utf8',
 )
 
-const routeSrc = fs.readFileSync(
-  path.resolve(import.meta.dirname, '../../../src/app/api/chat/consult/route.ts'),
+const pipelineSrc = fs.readFileSync(
+  path.resolve(import.meta.dirname, '../../../src/lib/pipelines/shared/onfinish_writethrough.ts'),
   'utf8',
 )
 
@@ -50,28 +50,12 @@ describe('D.3 — CorrectionNotice + OutOfDomainBanner emission', () => {
     })
   })
 
-  describe('route.ts emission', () => {
-    it('imports parseMarkers from marker_parser', () => {
-      expect(routeSrc).toContain('parseMarkers')
-      expect(routeSrc).toContain("marker_parser")
-    })
-
-    it('imports correctionPart and outOfDomainPart from data_parts', () => {
-      expect(routeSrc).toContain('correctionPart')
-      expect(routeSrc).toContain('outOfDomainPart')
-    })
-
-    it.skip('[CI-AUDIT-2026-05-30 unimplemented in route.ts] emits data-correction part', () => {
-      expect(routeSrc).toContain("type: 'data-correction'")
-    })
-
-    it.skip('[CI-AUDIT-2026-05-30 unimplemented in route.ts] emits data-out-of-domain part', () => {
-      expect(routeSrc).toContain("type: 'data-out-of-domain'")
-    })
-
-    it.skip('[CI-AUDIT-2026-05-30 unimplemented in route.ts] calls parseMarkers on lastAssistantText', () => {
-      expect(routeSrc).toContain('parseMarkers(lastAssistantText)')
-    })
+  it('parses assistant markers and emits corrections and out-of-domain notices on finish', () => {
+    expect(pipelineSrc).toContain('parseMarkers(opts.assistantText)')
+    expect(pipelineSrc).toContain("type: 'data-correction'")
+    expect(pipelineSrc).toContain('data: correctionPart({')
+    expect(pipelineSrc).toContain("type: 'data-out-of-domain'")
+    expect(pipelineSrc).toContain('data: outOfDomainPart({ reason: outOfDomain.reason })')
   })
 
   describe('ConsumeChatV2.tsx wiring', () => {

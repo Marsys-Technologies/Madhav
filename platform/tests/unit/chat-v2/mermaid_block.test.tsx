@@ -10,7 +10,7 @@
  *   MUST be in deploy.yml --build-arg (verified via acceptance grep).
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, act, waitFor } from '@testing-library/react'
+import { render, waitFor } from '@testing-library/react'
 import React from 'react'
 
 // Mock next/dynamic to return the inner component synchronously in tests.

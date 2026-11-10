@@ -5,7 +5,7 @@
  * Tests: smoke render, empty state, confirm action.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { ConflictPanel } from '@/components/performance/ConflictPanel';
 

@@ -12,7 +12,7 @@
  *   - No NEXT_PUBLIC prefix (server-side gate)
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import {
   TARGET_CPS,
   MAX_WORD_BUFFER_MS,

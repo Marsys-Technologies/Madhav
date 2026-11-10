@@ -67,7 +67,6 @@ import { NextResponse } from 'next/server'
 import {
   getOrCreateSession,
   updateActiveChart,
-  listUserSessions,
   getOrRefreshProvenanceStamp,
 } from '@/lib/mcp/sessions'
 import { validateServiceToken } from '@/lib/mcp/service_token'

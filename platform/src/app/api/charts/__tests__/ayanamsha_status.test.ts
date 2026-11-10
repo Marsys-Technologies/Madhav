@@ -108,7 +108,6 @@ function setupMocks(opts: {
 
   mockGetServerUser.mockResolvedValue({ uid })
 
-  let engineCallCount = 0
   let ayanamshaCallIndex = 0
 
   mockQuery.mockImplementation((sql: string, _params: unknown[]) => {

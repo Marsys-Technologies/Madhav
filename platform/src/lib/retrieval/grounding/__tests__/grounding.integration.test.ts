@@ -40,9 +40,7 @@ const NATIVE_CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
 // across rebuilds that may change signal_ids.
 
 let groundableSignalIds: string[] = []
-let groundableAyanamsha: string = 'lahiri_chitrapaksha'
 let orphanSignalIds: string[] = []
-let orphanAyanamsha: string = 'lahiri_chitrapaksha'
 let firstResolvableFactId: string | null = null
 let firstGroundableSignalId: string | null = null
 
