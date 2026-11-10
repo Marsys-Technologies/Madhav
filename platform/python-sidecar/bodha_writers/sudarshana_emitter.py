@@ -37,7 +37,7 @@ from bodha_writers.formulas import (
     SalienceInputsV2,
 )
 from brahmagyan.graha_vocabulary import to_title
-from brahmagyan.verification_vocab import DOCUMENTED_APPROXIMATION
+from brahmagyan.verification_tiers import DOCUMENTED_APPROXIMATION
 
 ENGINE_VERSION = "bo_sudarshana_v1.0"
 

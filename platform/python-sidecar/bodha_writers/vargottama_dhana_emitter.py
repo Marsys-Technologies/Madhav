@@ -42,7 +42,7 @@ from bodha_writers.formulas import salience_formula_v2, SalienceInputsV2, VERSIO
 from bodha_writers.sudarshana_emitter import GRAHAS, SIGNS, sign_index
 from brahmagyan import valence_doctrine as _vd
 from brahmagyan.graha_vocabulary import to_title
-from brahmagyan.verification_vocab import DOCUMENTED_APPROXIMATION
+from brahmagyan.verification_tiers import DOCUMENTED_APPROXIMATION
 
 ENGINE_VERSION = "bo_vargottama_dhana_v1.0"
 

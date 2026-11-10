@@ -30,7 +30,7 @@ import json
 from typing import Any
 
 from bodha_writers.formulas import salience_formula_v2, SalienceInputsV2, VERSION_SALIENCE_FORMULA_V2
-from brahmagyan.verification_vocab import DOCUMENTED_APPROXIMATION
+from brahmagyan.verification_tiers import DOCUMENTED_APPROXIMATION
 
 ENGINE_VERSION = "bo_special_lagna_v1.0"
 

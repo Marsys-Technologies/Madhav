@@ -59,7 +59,7 @@ from bodha_writers.formulas import (
     DIGNITY_SCORE as _FML_DIGNITY_SCORE,
     HOUSE_WEIGHT as _FML_HOUSE_WEIGHT,
 )
-from brahmagyan.verification_vocab import DOCUMENTED_APPROXIMATION
+from brahmagyan.verification_tiers import DOCUMENTED_APPROXIMATION
 
 logger = logging.getLogger(__name__)
 

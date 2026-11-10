@@ -68,17 +68,6 @@ class VocabEntry(NamedTuple):
     deprecated_alias_of: str | None = None
 
 
-#: The status to write when no detector ran. `single` rather than NULL because
-#: `chart_facts.verification_pass_status` and most `bodha_*` equivalents are NOT NULL.
-UNVERIFIED_DEFAULT: Final[str] = "single"
-
-# Preserve the existing wire spelling in writers whose rows still use the legacy alias.
-LEGACY_SINGLE_PASS: Final[str] = "single_pass"
-DOCUMENTED_APPROXIMATION: Final[str] = "documented_approximation"
-COMPUTED_EXTENSION: Final[str] = "computed_extension"
-FLOORED: Final[str] = "floored"
-
-
 #: The settled vocabulary. Ordered most-to-least epistemically load-bearing.
 VERIFICATION_PASS_STATUS_VOCAB: Final[tuple[VocabEntry, ...]] = (
     VocabEntry(
@@ -111,32 +100,32 @@ VERIFICATION_PASS_STATUS_VOCAB: Final[tuple[VocabEntry, ...]] = (
         "the divergence is auditable (B.10: never silently drop data).",
     ),
     VocabEntry(
-        UNVERIFIED_DEFAULT,
+        "single",
         False,
         "Single-pass computation. No second derivation ran, so nothing could have "
         "contradicted the value. This is the expressible form of 'no verification "
         "ran' on the many NOT NULL columns that cannot hold a literal NULL.",
     ),
     VocabEntry(
-        LEGACY_SINGLE_PASS,
+        "single_pass",
         False,
         "Spelling variant of 'single' used by some chart_facts writers.",
         deprecated_alias_of="single",
     ),
     VocabEntry(
-        DOCUMENTED_APPROXIMATION,
+        "documented_approximation",
         False,
         "A documented approximation rather than an exact derivation; the "
         "approximation is named in the row's citation.",
     ),
     VocabEntry(
-        COMPUTED_EXTENSION,
+        "computed_extension",
         False,
         "Derived by extension from some other value. The base may be verified; this "
         "extension is not independently checked.",
     ),
     VocabEntry(
-        FLOORED,
+        "floored",
         False,
         "Honest floor — the canonical source was unreachable so the writer emitted a "
         "null/zero rather than fabricate "
@@ -185,6 +174,10 @@ VERIFIED_STATUSES: Final[frozenset[str]] = frozenset(
 
 #: Banned outright. See the module docstring — these name no pass.
 PROHIBITED_STATUSES: Final[frozenset[str]] = frozenset({"pass", "PASS"})
+
+#: The status to write when no detector ran. `single` rather than NULL because
+#: `chart_facts.verification_pass_status` and most `bodha_*` equivalents are NOT NULL.
+UNVERIFIED_DEFAULT: Final[str] = "single"
 
 #: The narrower CHECK-constraint vocabulary enforced by the live database on
 #: `chart_dashas` and `chart_divisionals` ONLY (migrations 206 / 210; verified against

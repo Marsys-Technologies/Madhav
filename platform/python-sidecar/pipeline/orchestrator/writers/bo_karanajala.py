@@ -44,7 +44,7 @@ from pipeline.orchestrator.writers.bo_bimba import (
     yoga_node_subject as _yoga_node_subject,
     _YOGA_NODE_CLASSES,
 )
-from brahmagyan.verification_vocab import DOCUMENTED_APPROXIMATION, LEGACY_SINGLE_PASS
+from brahmagyan.verification_tiers import DOCUMENTED_APPROXIMATION, SINGLE_PASS as LEGACY_SINGLE_PASS
 # DP-SD-015: L2 may reference exact L1 clock identities but must not invoke a
 # later-layer resolver or persist resolved activation windows. Legacy schema
 # columns remain readable and are written as NULL for new L2 generations.

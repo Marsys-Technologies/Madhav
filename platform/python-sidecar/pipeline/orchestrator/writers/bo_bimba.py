@@ -25,7 +25,7 @@ from . import WriterBase, ContextSpec, WriterResult, register
 from bodha_writers.data_plane_contracts import l2_producer
 from brahmagyan.graha_vocabulary import to_title
 from brahmagyan.domain_vocabulary import CANONICAL_DOMAINS, CANONICAL_DOMAINS_SORTED
-from brahmagyan.verification_vocab import LEGACY_SINGLE_PASS
+from brahmagyan.verification_tiers import SINGLE_PASS as LEGACY_SINGLE_PASS
 
 logger = logging.getLogger(__name__)
 

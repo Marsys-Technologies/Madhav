@@ -58,7 +58,7 @@ _GRAHA_DISPLAY: dict[str, str] = {
 # The names are the L0 lexicon's (`bg_nakshatra` name_en), derived: the L1 facts this emitter reads carry the
 # same spelling (Mrigasira / Moola / Dhanishtha for nos. 5 / 19 / 23). Never re-spelled in this file.
 from brahmagyan.nakshatra_vocabulary import CANONICAL_NAKSHATRA_NAMES, canonical_nakshatra  # noqa: E402  (late import)
-from brahmagyan.verification_vocab import DOCUMENTED_APPROXIMATION
+from brahmagyan.verification_tiers import DOCUMENTED_APPROXIMATION
 NAKSHATRA_ORDER: list[str] = list(CANONICAL_NAKSHATRA_NAMES)
 # The configuration_jsonb `nakshatra` this emitter stores is the L1 fact's own text; the integrity check of
 # bo_nakshatra_semantic (migration 669, widened by migration 1364 to accept both spellings) bounds it to this vocabulary.

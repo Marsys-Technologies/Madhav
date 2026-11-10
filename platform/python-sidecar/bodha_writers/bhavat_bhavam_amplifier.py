@@ -36,7 +36,7 @@ from typing import Any
 
 from bodha_writers.bhavat_bhavam_registry import derived_houses
 from bodha_writers.data_plane_contracts import stable_semantic_uuid
-from brahmagyan.verification_vocab import DOCUMENTED_APPROXIMATION
+from brahmagyan.verification_tiers import DOCUMENTED_APPROXIMATION
 
 VERSION_BHAVAT_BHAVAM_AMPLIFIER = "v1.0"
 

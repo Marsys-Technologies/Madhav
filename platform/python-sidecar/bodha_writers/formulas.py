@@ -29,7 +29,8 @@ import math
 from dataclasses import dataclass, field
 from typing import Any
 
-from brahmagyan.verification_vocab import DOCUMENTED_APPROXIMATION, ALL_STATUSES, canonical as _vocab_canonical
+from brahmagyan.verification_tiers import DOCUMENTED_APPROXIMATION
+from brahmagyan.verification_vocab import ALL_STATUSES, canonical as _vocab_canonical
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Version constants — writers stamp these on each row

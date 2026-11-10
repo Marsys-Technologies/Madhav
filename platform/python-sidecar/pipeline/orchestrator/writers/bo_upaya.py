@@ -43,7 +43,7 @@ from ga_writers._karaka_roles import (
     fetch_kn_rao_karaka_rows,
     kn_rao_graha_by_rank,
 )
-from brahmagyan.verification_vocab import DOCUMENTED_APPROXIMATION, UNVERIFIED_DEFAULT
+from brahmagyan.verification_tiers import DOCUMENTED_APPROXIMATION, UNVERIFIED_DEFAULT
 
 logger = logging.getLogger(__name__)
 
