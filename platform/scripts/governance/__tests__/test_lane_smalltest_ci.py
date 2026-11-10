@@ -59,7 +59,7 @@ def test_lane_ci_junit_gate_rejects_skipped_and_empty_runs(tmp_path, body, expec
     jobs = yaml.safe_load((ROOT / '.github/workflows/ci.yml').read_text())['jobs']
     step = next(s for s in jobs['governance-tool-tests-shard']['steps']
                 if f'pytest {SUITE} --' in s.get('run', ''))
-    check = next(shlex.split(line) for line in step['run'].splitlines() if 'ET.parse(' in line)
+    check = next(shlex.split(line) for line in step['run'].replace('\\\n', '').splitlines() if 'ET.parse(' in line)
     (tmp_path / 'lane-smalltest.xml').write_text('<testsuites><testsuite>' + body + '</testsuite></testsuites>')
     result = subprocess.run([sys.executable, *check[1:]], cwd=tmp_path, capture_output=True, text=True)
     assert result.returncode == expected, result.stderr
@@ -84,7 +84,7 @@ name = pathlib.Path(sys.argv[0]).name
 args = sys.argv[1:]
 with open(os.environ['LANE_TEST_CALLS'], 'a') as log:
     log.write(json.dumps([name, args]) + '\\n')
-if name == 'ls':
+if name == 'find':
     print(pathlib.Path(sys.argv[0]).parent)
 elif name == 'initdb':
     pathlib.Path(args[args.index('-D') + 1]).mkdir()
@@ -96,7 +96,7 @@ elif name == 'python' and 'pytest' in args:
     pathlib.Path('lane-smalltest.xml').write_text('<testsuites><testsuite><testcase /></testsuite></testsuites>')
     sys.exit(int(os.environ['LANE_TEST_CHILD_EXIT']))
 '''.replace('PYTHON', sys.executable, 1)
-    for name in ('sudo', 'ls', 'initdb', 'pg_ctl', 'python'):
+    for name in ('sudo', 'find', 'initdb', 'pg_ctl', 'python'):
         path = fake_bin / name
         path.write_text(fake)
         path.chmod(0o755)
