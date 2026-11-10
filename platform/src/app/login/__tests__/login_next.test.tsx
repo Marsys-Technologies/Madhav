@@ -97,8 +97,14 @@ describe('login redirect after sign-in honours only a safe next', () => {
     expect(pushMock).toHaveBeenCalledWith('/dashboard')
   })
 
-  it('username setup still takes precedence over next', async () => {
+  it('routes through required username setup with the safe destination', async () => {
     setLocationSearch(`?next=${encodeURIComponent('/share/AbC123xyz0')}`)
+    await signIn({ username_setup_required: true })
+    expect(pushMock).toHaveBeenCalledWith('/setup-account?next=%2Fshare%2FAbC123xyz0')
+  })
+
+  it('drops an invalid destination when routing to username setup', async () => {
+    setLocationSearch('?next=%2F%2Fexample.com')
     await signIn({ username_setup_required: true })
     expect(pushMock).toHaveBeenCalledWith('/setup-account')
   })

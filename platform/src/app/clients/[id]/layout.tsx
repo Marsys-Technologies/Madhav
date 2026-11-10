@@ -1,10 +1,12 @@
 import type { Metadata } from 'next'
+import { headers } from 'next/headers'
 import { query } from '@/lib/db/client'
 import { redirect } from 'next/navigation'
 import { JourneyShell } from '@/components/journey1/JourneyShell'
 import { AppShell } from '@/components/shared/AppShell'
 import { ZoneRoot } from '@/components/shared/ZoneRoot'
 import { resolveChartPageAccess } from '@/lib/auth/chart-page-guard'
+import { CHART_RETURN_PATH_HEADER, safeNextPath } from '@/lib/auth/safe_next'
 import { ConditionalChartSwitcherBar } from '@/components/nav/ConditionalChartSwitcherBar'
 
 // V3-E-018: generateMetadata has no guaranteed request-scoped session by
@@ -39,7 +41,13 @@ export default async function ClientLayout({
 }) {
   const { id } = await params
   const access = await resolveChartPageAccess(id)
-  if (!access) redirect('/login')
+  if (!access) {
+    const next = safeNextPath((await headers()).get(CHART_RETURN_PATH_HEADER))
+    const chartPath = `/clients/${id}`
+    redirect(next && (next === chartPath || next.startsWith(`${chartPath}/`))
+      ? `/login?next=${encodeURIComponent(next)}`
+      : '/login')
+  }
 
   // 2c-driven authz: 'deny' on a non-granted chart → redirect (effective 403
   // from the user's perspective; the chart simply does not exist for them).

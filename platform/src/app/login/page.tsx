@@ -99,7 +99,7 @@ export default function LoginPage() {
       const safeNext = safeNextPath(params.get("next"));
       router.push(
         session.username_setup_required || requestedSetup
-          ? "/setup-account"
+          ? (safeNext ? `/setup-account?next=${encodeURIComponent(safeNext)}` : "/setup-account")
           : (safeNext ?? "/dashboard"),
       );
       router.refresh();

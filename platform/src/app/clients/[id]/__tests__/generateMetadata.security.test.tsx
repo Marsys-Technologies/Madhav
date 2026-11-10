@@ -23,13 +23,18 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('server-only', () => ({}))
 
-const { mockQuery, mockResolveAccess } = vi.hoisted(() => ({
+const { mockQuery, mockResolveAccess, mockHeaders } = vi.hoisted(() => ({
   mockQuery: vi.fn(),
   mockResolveAccess: vi.fn(),
+  mockHeaders: vi.fn(),
 }))
 
 vi.mock('@/lib/db/client', () => ({ query: mockQuery }))
 vi.mock('@/lib/auth/chart-page-guard', () => ({ resolveChartPageAccess: mockResolveAccess }))
+vi.mock('next/headers', () => ({ headers: mockHeaders }))
+vi.mock('next/navigation', () => ({
+  redirect: (path: string) => { throw new Error(`REDIRECT:${path}`) },
+}))
 
 // The layout module also imports the shell component tree, which reaches the
 // Firebase *client* SDK at import time and throws without browser env keys.
@@ -47,10 +52,43 @@ const REAL_CHART_NAME = 'Abhisek Mohanty'
 beforeEach(() => {
   mockQuery.mockReset()
   mockResolveAccess.mockReset()
+  mockHeaders.mockResolvedValue(new Headers())
   // The `charts` row genuinely holds the PII in every case below — a raw,
   // unguarded query (the pre-fix defect) WOULD return the real name. The fix
   // must keep that value out of the title for unauthorized callers.
   mockQuery.mockResolvedValue({ rows: [{ name: REAL_CHART_NAME }] })
+})
+
+describe('chart layout sign-in return', () => {
+  it('preserves the exact chart subpage when server verification refuses the session', async () => {
+    mockResolveAccess.mockResolvedValue(null)
+    mockHeaders.mockResolvedValue(new Headers({
+      'x-madhav-chart-return-path': `/clients/${TEST_CHART_ID}/consult/reading-123`,
+    }))
+
+    const { default: Layout } = await import('../layout')
+    await expect(Layout({ params: Promise.resolve({ id: TEST_CHART_ID }), children: null }))
+      .rejects.toThrow(`REDIRECT:/login?next=%2Fclients%2F${TEST_CHART_ID}%2Fconsult%2Freading-123`)
+    expect(mockQuery).not.toHaveBeenCalled()
+  })
+
+  it('uses plain sign-in when the forwarded path belongs to another chart', async () => {
+    mockResolveAccess.mockResolvedValue(null)
+    mockHeaders.mockResolvedValue(new Headers({ 'x-madhav-chart-return-path': '/clients/another-chart/edit' }))
+
+    const { default: Layout } = await import('../layout')
+    await expect(Layout({ params: Promise.resolve({ id: TEST_CHART_ID }), children: null }))
+      .rejects.toThrow(/^REDIRECT:\/login$/)
+  })
+
+  it('sends a signed-in user without chart access to the dashboard', async () => {
+    mockResolveAccess.mockResolvedValue({ user: { uid: 'guest-1' }, role: 'guest', permission: 'deny' })
+
+    const { default: Layout } = await import('../layout')
+    await expect(Layout({ params: Promise.resolve({ id: TEST_CHART_ID }), children: null }))
+      .rejects.toThrow(/^REDIRECT:\/dashboard$/)
+    expect(mockQuery).not.toHaveBeenCalled()
+  })
 })
 
 describe('clients/[id]/layout generateMetadata — V3-E-018 PII disclosure guard', () => {
