@@ -175,7 +175,7 @@ function App() {
             ) : name === "aiConsole" ? (
               <AIConsole embedded />
             ) : name === "aiCockpit" ? (
-              <CockpitIndex />
+              <CockpitIndex consoleEnabled />
             ) : (
               <PersonalActivity
                 view={name === "myObservatory" ? "observatory" : "consumption"}
