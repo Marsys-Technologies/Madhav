@@ -14,7 +14,7 @@
 import { useCallback, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { parseISO, isAfter, addYears } from 'date-fns'
-import { PanchangHeader, resolveDate, resolveLocation, resolveChartId, PRESET_LOCATIONS } from './PanchangHeader'
+import { PanchangHeader, resolveDate, resolveLocation, PRESET_LOCATIONS } from './PanchangHeader'
 import { PrimaryStrip } from './PrimaryStrip'
 import { TimingsPanel } from './TimingsPanel'
 import { PlanetaryGrid } from './PlanetaryGrid'
@@ -45,9 +45,9 @@ export function PanchangClientView({
   const date = resolveDate(searchParams, fixedChartId ? initialDate : undefined)
   const location = resolveLocation(searchParams)
 
-  // chartId state — initialised from URL (handles server-rendered deep links),
-  // then updated by PanchangHeader.onChartIdChange when user changes selection.
-  const [chartId, setChartId] = useState<string | null>(() => resolveChartId(searchParams))
+  // General Almanac waits for the header to resolve an entitled selection.
+  const [chartId, setChartId] = useState<string | null>(null)
+  const selectedChartId = fixedChartId ?? chartId
 
   // Ephemeris range: Swiss Ephemeris supports ~5400 BCE – 5400 CE.
   // For practical purposes, flag dates beyond +100 years as "beyond range".
@@ -64,8 +64,8 @@ export function PanchangClientView({
     lat: location.lat,
     lon: location.lon,
     tzOffsetMinutes: 330,
-    chartId: fixedChartId ?? chartId,
-    initialData: initialData ?? undefined,
+    chartId: selectedChartId,
+    initialData: selectedChartId ? undefined : initialData ?? undefined,
     // Skip fetching if we know the request can't succeed
     enabled: !isBeyondEphemeris,
   })

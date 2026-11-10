@@ -4,8 +4,7 @@
  * useChartList — loads charts accessible to the current user.
  *
  * Calls GET /api/panchang/charts which reads from the `charts` table
- * filtered by the Firebase-authenticated user's profile (RLS enforced
- * server-side: astrologer sees all; client sees own chart only).
+ * filtered by the active user's chart read permissions.
  *
  * Returns { charts, isLoading, error }.
  *
@@ -18,8 +17,6 @@ export interface ChartSummary {
   id: string
   name: string
   birth_date: string   // YYYY-MM-DD
-  birth_place: string
-  client_id: string
 }
 
 interface UseChartListResult {

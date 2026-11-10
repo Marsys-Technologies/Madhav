@@ -95,16 +95,13 @@ export function PanchangHeader({ initialDate, initialLocation, onChartIdChange, 
   // Chart list for personalise dropdown
   const { charts, isLoading: chartsLoading } = useChartList(!fixedChartId)
 
-  // Resolve initial chart_id from URL, then localStorage
-  const currentChartId = useMemo(() => {
-    if (fixedChartId) return fixedChartId
-    const fromUrl = resolveChartId(searchParams)
-    if (fromUrl) return fromUrl
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem(PERSONALISE_LS_KEY) ?? null
-    }
-    return null
-  }, [searchParams, fixedChartId])
+  const [storedChartId, setStoredChartId] = useState<string | null>(() =>
+    fixedChartId || typeof window === 'undefined' ? null : localStorage.getItem(PERSONALISE_LS_KEY),
+  )
+  const requestedChartId = resolveChartId(searchParams) ?? storedChartId
+  const currentChartId = fixedChartId ?? (
+    charts.some((chart) => chart.id === requestedChartId) ? requestedChartId : null
+  )
 
   // Notify parent when chart changes (so usePanchangDay cache key updates)
   useEffect(() => {
@@ -171,10 +168,12 @@ export function PanchangHeader({ initialDate, initialLocation, onChartIdChange, 
     if (val === 'generic') {
       // Clear personalisation
       localStorage.removeItem(PERSONALISE_LS_KEY)
+      setStoredChartId(null)
       navigate({ chart_id: null })
     } else {
       // Persist to localStorage + URL
       localStorage.setItem(PERSONALISE_LS_KEY, val)
+      setStoredChartId(val)
       navigate({ chart_id: val })
     }
   }
