@@ -31,7 +31,6 @@ export interface TurnDeepLinkTarget {
   /** 1-based ordinal of the turn within its thread (assistant turns, chronological). */
   turnOrdinal: number
   sourcePartId?: string
-  answerId?: string
 }
 
 /**
@@ -39,10 +38,14 @@ export interface TurnDeepLinkTarget {
  * → same string, no I/O, no side effect. The result is always a relative app URL safe to place
  * in an `<a href>`.
  */
+export function buildReviewSourcePath(chartId: string, conversationId: string, partId: string): string {
+  return `/clients/${encodeURIComponent(chartId)}/consult/${encodeURIComponent(conversationId)}/source/${encodeURIComponent(partId)}`
+}
+
 export function buildTurnDeepLink(target: TurnDeepLinkTarget): string {
   const { chartId, conversationId, turnOrdinal } = target
-  if (target.sourcePartId && target.answerId) {
-    return `/clients/${encodeURIComponent(chartId)}/consult/${encodeURIComponent(conversationId)}?sourcePart=${encodeURIComponent(target.sourcePartId)}#pp-answer-${encodeURIComponent(target.answerId)}`
+  if (target.sourcePartId) {
+    return buildReviewSourcePath(chartId, conversationId, target.sourcePartId)
   }
   const thread = encodeURIComponent(conversationId)
   return `/clients/${encodeURIComponent(chartId)}/pariprashna?thread=${thread}#turn-${turnOrdinal}`

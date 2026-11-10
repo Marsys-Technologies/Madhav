@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildTurnDeepLink } from '@/lib/pariprashna/samiksha/deepLink'
 import { readReviewSource } from '../reviewSource'
+import { safeNextPath } from '@/lib/auth/safe_next'
 
 const mocks = vi.hoisted(() => ({
   owned: vi.fn(), query: vi.fn(), consultation: vi.fn(), transcript: vi.fn(), archived: vi.fn(),
@@ -35,9 +36,13 @@ describe('Prediction Review source reader', () => {
   })
 
   it('maps the checked source part to the persisted assistant answer under the existing Consult URL', async () => {
-    expect(buildTurnDeepLink({
-      chartId: chart, conversationId: reading, turnOrdinal: 1, sourcePartId: part, answerId: answer,
-    })).toBe(`/clients/${chart}/consult/${reading}?sourcePart=${part}#pp-answer-${answer}`)
+    const bookmark = buildTurnDeepLink({
+      chartId: chart, conversationId: reading, turnOrdinal: 1, sourcePartId: part,
+    })
+    expect(bookmark).toBe(`/clients/${chart}/consult/${reading}/source/${part}`)
+    expect(safeNextPath(bookmark)).toBe(bookmark)
+    expect(safeNextPath(`${bookmark}?sourcePart=${part}`)).toBeNull()
+    expect(safeNextPath(`${bookmark}#pp-answer-${answer}`)).toBeNull()
     expect(await request()).toMatchObject({ answer: transcript, historical: false })
     expect(mocks.owned).toHaveBeenCalledWith(reading, 'fixture-owner')
     expect(mocks.query).toHaveBeenCalledWith(expect.stringContaining("m.role = 'assistant'"),
