@@ -52,7 +52,6 @@ const ORACULAR_MARKERS = [
   /\bguaranteed?\b/gi, /\bwill definitely\b/gi, /\bwithout (a )?doubt\b/gi,
 ]
 
-const EXTERNAL_COMPUTATION_MARKER = /\[EXTERNAL_COMPUTATION_REQUIRED/gi
 
 const FABRICATION_PATTERNS = [
   // Naked degree assertions (e.g., "Saturn is at 15°32'") without L1 citation
@@ -78,12 +77,7 @@ function scoreLayerCoverage(text: string, expectedLayers: string[]): number {
   return hits / expectedLayers.length
 }
 
-function scoreB10Compliance(text: string, query: string): number {
-  // If the query asks for computed values and the answer uses [EXTERNAL_COMPUTATION_REQUIRED], score 1.0
-  const hasExtComputeMarker = EXTERNAL_COMPUTATION_MARKER.test(text)
-  // Reset lastIndex after test
-  EXTERNAL_COMPUTATION_MARKER.lastIndex = 0
-
+function scoreB10Compliance(text: string, _query: string): number {
   // Check for naked numerical fabrications (degree assertions without L1 markers)
   let fabricationCount = 0
   for (const pat of FABRICATION_PATTERNS) {
@@ -99,7 +93,7 @@ function scoreB10Compliance(text: string, query: string): number {
   return 1.0
 }
 
-function scoreB11Signal(text: string, category: QueryCategory, expectedLayers: string[]): number {
+function scoreB11Signal(text: string, category: QueryCategory, _expectedLayers: string[]): number {
   const normalizedText = text.toLowerCase()
 
   // Count cross-layer references (references to 2+ different L2.5 artifacts in same paragraph)

@@ -10,7 +10,6 @@
 export type StructuralViolation = { path: string; reason: string }
 
 const COMPLETE_STATUS_VALUES = new Set(['complete', 'confirmed', 'served', 'done', 'pass', 'passed', 'full', '✓', 'ok'])
-const ARRAY_KEY_HINT = /^(rows|items|results|signals|entries|records|categories|data|list|matches|hits|values)$/i
 const STATUS_KEY_HINT = /^(status|state|receipt_state|completeness|verification_status)$/i
 const COUNT_KEY_HINT = /(_count|^count$|^total)/i
 

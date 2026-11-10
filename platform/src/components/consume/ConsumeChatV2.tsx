@@ -1475,7 +1475,7 @@ function V2StreamResumeTracker({ chartId, conversationId }: { chartId: string; c
 // ─── C.3: Bottom-bar selectors ───────────────────────────────────────────────
 
 function V2BottomBar() {
-  const { stack, style, lelEnabled, activeTier, audienceTier, activePersonaId, setStack, setStyle, setLelEnabled, setActiveTierOverride, setActivePersonaId } =
+  const { stack, style, lelEnabled, activePersonaId, setStack, setStyle, setLelEnabled, setActivePersonaId } =
     useContext(V2PrefsCtx)
 
   return (
@@ -1720,7 +1720,7 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
   // pinnedOpen: true when the user explicitly clicked the toggle to open — hover-out won't auto-close.
   // Resets to false when the user clicks toggle again (to close) or when sidebar auto-opens via hover.
-  const [sidebarPinned, setSidebarPinned] = useState(false)
+  const [, setSidebarPinned] = useState(false)
   const collapseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const expandTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [sidebarReloadTick, setSidebarReloadTick] = useState(0)

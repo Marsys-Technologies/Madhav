@@ -1,7 +1,6 @@
 import { meterSharedModel, meteringRequest, setMeteringAttribution } from '@/lib/metering/context'
 import { streamText, stepCountIs, createIdGenerator, convertToModelMessages } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
-import { NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
 import { buildTools } from '@/lib/claude/build-tools'

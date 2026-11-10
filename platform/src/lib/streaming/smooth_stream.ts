@@ -27,7 +27,6 @@ import 'server-only'
  */
 
 import { smoothStream } from 'ai'
-import { getFlag } from '@/lib/config/index'
 
 /** Maximum wait before forcing a flush regardless of word boundary (ms). */
 export const MAX_WORD_BUFFER_MS = 80

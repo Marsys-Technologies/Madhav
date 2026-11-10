@@ -25,7 +25,6 @@ import { TRACKER_DDL, TRACKER_IDENTITY_DDL, runMigrations } from '../../scripts/
 import { resolveDisposableA51Config } from './gochara_a5_1_disposable_url'
 
 const TEST_DB_URL = process.env.GOCHARA_A51_TEST_DATABASE_URL
-const REQUIRE_DB = process.env.GOCHARA_REQUIRE_DB === '1'
 const RUN_REHEARSAL = process.env.GOCHARA_REHEARSAL === '1'      // opt-in: this harness is a measurement, not a CI gate
 
 const MIGRATIONS_DIR = path.resolve(process.cwd(), 'migrations')
@@ -49,18 +48,6 @@ const WINDOW_FILES = [...CONTRACT_FILES, M1204, M1206, M1232, M1233, M1216] as c
 const BUILDER = 'data_plane_builder'
 const SEALER = 'gochara_sealer'
 // What migration 1206 §7 grants the builder EXECUTE on (12 own helpers + 5 contract functions its guards call).
-const BUILDER_OWN_FUNCTIONS = [
-  'ka_gochara_sha256_hex(text)', 'ka_gochara_uuidv8(text)', 'ka_gochara_canonical_json(jsonb)',
-  'ka_gochara_utc_ts(timestamptz)', 'ka_gochara_uuid_set_ok(uuid[])',
-  'ka_gochara_search_input_digest(text, jsonb, text, text, text[])', 'ka_gochara_search_l1_facts_digest(uuid, text[])',
-  'ka_gochara_search_dasha_digest(uuid, uuid[])', 'ka_gochara_search_av_entry(text)',
-  'ka_gochara_search_inventory_preimage(uuid, text, text)', 'ka_gochara_search_inventory_digest(uuid, text, text)',
-  'ka_gochara_search_ledger_digest(uuid, text, text)',
-] as const
-const BUILDER_CONTRACT_FUNCTIONS = [
-  'ka_gochara_lock_chart(uuid)', 'ka_gochara_lock_global_shared()', 'ka_gochara_generation_is_sealed(uuid, text)',
-  'ka_gochara_generation_governed(text)', 'ka_gochara_horizon_finite_ok(tstzrange)',
-] as const
 // The seal principal's functions (names; unique in the schema).
 const SEALER_FUNCTIONS = [
   'ka_gochara_lock_chart', 'ka_gochara_seal_generation', 'ka_gochara_generation_governed', 'ka_gochara_coverage_drift',
@@ -91,7 +78,6 @@ const HORIZON_SQL = `tstzrange('${LO}','${HI}','[)')`
 const VEC = { bg_transit_rules: 'd1', bg_transit_av_gates: 'd2' }
 const VEC_SCOPE = { ...VEC, stored_scope: 'stored_non_moon' }   // AM-14: the scope bound to the manifest
 const B_P6 = 'spec:GOCHARA_DESIGN_SPECS@1.4#§2.2/P6'
-const B_EMPTY = 'oracle:O-RP-8'
 const B_NA = 'spec:GOCHARA_DESIGN_SPECS@1.4#§2.2/na'
 const CLS = 'marriage'
 
@@ -120,22 +106,14 @@ const inputDigest = (c: { conv: string; vec: unknown; l1: string; dasha: string;
 type Ob = readonly [agent: string, relation: string, role: string, target: string, frame: string, person: string]
 const obBytes = (path_: string, ver: string, o: Ob, cls = CLS): string => [cls, path_, ver, ...o].join('|')
 const obId = (path_: string, ver: string, o: Ob): string => uuidv8(obBytes(path_, ver, o))
-const P1A: Ob = ['jupiter', 'residence', 'lord', 'lord_of:7', 'dasha_lord', 'self']
-const P1B: Ob = ['jupiter', 'residence', 'occupant', 'occupant_of:7', 'dasha_lord', 'self']
-const P5A: Ob = ['saturn', 'residence', 'av_qualifier', 'house_span:7', 'lagna', 'self']
-const P5B: Ob = ['saturn', 'residence', 'av_qualifier', 'house_span:8', 'lagna', 'self']
 
 interface PinRef { path: string; ver?: string; disp: 'included' | 'computed_empty' | 'excluded'; reason?: string; ruling?: string; basis?: string; ids: string[] }
 const sortC = (xs: string[]): string[] => [...xs].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))
 // ledger_digest preimage (v1.1): `input=<input_digest>` first, so an EMPTY ledger is input-bound too
-const tsLedgerDigest = (rows: Array<[string, string, string, string]>, input: string): string =>
-  sha(['input=' + input, ...sortC(rows.map(([id, lo, hi, st]) => `${id}|${lo}|${hi}|${st}|${input}`))].join('\n'))
 
 // ── harness ────────────────────────────────────────────────────────────────────
 let pool: Pool
 type Q = Pick<PoolClient, 'query'>
-let genSeq = 0
-const nextGen = (): string => `5.${++genSeq + 20}`
 
 function mig(name: string): string { return readFileSync(join(MIGRATIONS_DIR, name), 'utf8') }
 async function tx<T>(fn: (c: PoolClient) => Promise<T>, opts: { tz?: string; role?: string } = {}): Promise<T> {
@@ -372,8 +350,6 @@ async function publishAndSeal(gen: string, opts: { role?: string; tz?: string } 
 /** A GOOD two-path build: p1@1.0 (A,B) + p5a@1.0 (A,B) included; every other registry version excluded;
  *  every obligation covered over the horizon; finalised; partition written; verified by a hash of the
  *  stored rows. `between` runs inside the build transaction before finalisation. */
-interface Built { gen: string; snap: Snap; ids: { p1: string[]; p5a: string[] }; dig: { inv: string; led: string } }
-const refused = async (p: Promise<unknown>, re: RegExp): Promise<void> => { await expect(p).rejects.toThrow(re) }
 
 // ── the 26-class volume build ────────────────────────────────────────────────────────────────────────────────
 const ALL_CLASSES = ['achievement_recognition', 'bereavement', 'business_launch', 'career_advancement', 'career_change', 'career_entry',

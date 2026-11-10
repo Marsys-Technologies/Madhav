@@ -219,7 +219,6 @@ describe('C-S2: rate simulation — bursty input throttling', () => {
 
   it('no delay injected when provider delivers at exactly TARGET_CPS', () => {
     const state = createRateTargetState()
-    const targetCps = TARGET_CPS
 
     // Deliver exactly TARGET_CPS=40 chars per second: 4 chars every 100ms
     let nowMs = 100

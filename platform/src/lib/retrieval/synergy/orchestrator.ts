@@ -67,7 +67,7 @@ function deduplicateSignals(refs: SignalRef[]): SignalRef[] {
 async function runUcdStep(
   chartId: string,
   ayanamshaId: string,
-  ctx: SynergyContext
+  _ctx: SynergyContext
 ): Promise<UcdDigest> {
   const cap = getCapability('marsys://tool/L2/query_ucd')
   if (!cap) {
@@ -183,7 +183,7 @@ async function runDomainReadingsStep(
   chartId: string,
   ayanamshaId: string,
   convergenceDomains: Array<{ domain: string; convergence_score: number }>,
-  ctx: SynergyContext
+  _ctx: SynergyContext
 ): Promise<DomainReadingResult[]> {
   // Top 3 domains to drill (cap to avoid context explosion)
   const topDomains = convergenceDomains
@@ -258,7 +258,7 @@ async function runSignalRankStep(
   ayanamshaId: string,
   seedSignalIds: string[],
   lelEnabled: boolean,
-  ctx: SynergyContext
+  _ctx: SynergyContext
 ): Promise<SignalRankResult> {
   const cap = getCapability('marsys://tool/L2/query_signals')
 
@@ -360,7 +360,7 @@ async function runSignalRankStep(
 async function runGraphStep(
   chartId: string,
   seedSignalIds: string[],
-  ctx: SynergyContext
+  _ctx: SynergyContext
 ): Promise<GraphTraversalResult> {
   const RELATIONSHIP_BASIS_NOTE =
     'relationship_basis is 100% NULL in current bodha_cgm_edges data. ' +
@@ -427,7 +427,7 @@ async function runGraphStep(
 
 async function runContradictionStep(
   chartId: string,
-  ctx: SynergyContext
+  _ctx: SynergyContext
 ): Promise<ContradictionResult> {
   const cap = getCapability('marsys://tool/L2/query_contradictions')
   if (!cap) {
@@ -473,7 +473,7 @@ async function runTemporalStep(
   chartId: string,
   ayanamshaId: string,
   queryClass: SynergyQueryClass,
-  ctx: SynergyContext
+  _ctx: SynergyContext
 ): Promise<TemporalEnrichmentResult | undefined> {
   if (queryClass !== 'predictive' && queryClass !== 'holistic') return undefined
 

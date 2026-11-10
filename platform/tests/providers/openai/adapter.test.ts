@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { OpenAIAdapter } from '../../../src/lib/providers/openai/adapter';
 import { OPENAI_MANIFEST } from '../../../src/lib/providers/openai/manifest';
-import { CapabilityUnsupportedError } from '../../../src/lib/providers/adapter';
 
 describe('OPENAI_MANIFEST', () => {
   it('validates cleanly at import', () => {

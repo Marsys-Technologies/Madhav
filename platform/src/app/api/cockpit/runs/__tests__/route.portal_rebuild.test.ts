@@ -21,13 +21,10 @@ vi.mock('@/lib/build/jobInvoker', () => ({ invokeRunJob: mockInvokeRunJob }))
 vi.mock('@/lib/cloud_run/jobs', () => ({ getJobImageTag: mockGetJobImageTag }))
 
 import { POST } from '../route'
-import writerDigestInventory from '@/generated/nirmana-writer-digests.json'
 
 const VICTIM_CHART = '482012f1-710e-4a25-994a-93821f5871aa'
 const OWNER_UID = 'victim-uid'
 const ADMIN_UID = 'admin-uid'
-
-const DIGESTS = writerDigestInventory.writers as Record<string, string>
 
 /**
  * Two real Kāla writers that carry a real sidecar digest, so the unpatched route

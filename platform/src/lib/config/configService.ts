@@ -188,8 +188,8 @@ export async function setGate(
     )
   }
 
-  // Read old value for the change log (cache-bypass to capture exact prior state).
-  const oldValue = await getGate(key, { chartId: opts.chartId, bypassCache: true })
+  // Check the current value before writing, bypassing the cache.
+  await getGate(key, { chartId: opts.chartId, bypassCache: true })
 
   // Upsert into runtime_config.
   await query(
@@ -235,7 +235,7 @@ export async function resetGate(
     )
   }
 
-  const oldValue = await getGate(key, { chartId: opts.chartId, bypassCache: true })
+  await getGate(key, { chartId: opts.chartId, bypassCache: true })
 
   await query(
     `DELETE FROM runtime_config

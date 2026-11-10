@@ -96,7 +96,7 @@ function BuildMetaCard({ build }: { build: BuildMeta | null }) {
 export function CockpitShell({ chartId, chartName, birthDate, birthTime, birthPlace, latestBuild }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('graph')
   const [currentBuild, setCurrentBuild] = useState<BuildMeta | null>(latestBuild)
-  const [assets, setAssets] = useState<AssetRow[]>([])
+  const [assets] = useState<AssetRow[]>([])
 
   const handleBuildStart = useCallback((buildId?: string) => {
     if (buildId) {

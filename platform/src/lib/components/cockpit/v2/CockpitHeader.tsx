@@ -103,7 +103,6 @@ export function CockpitHeader({
   }, [])
 
   const globalRunId = activeRun?.id ?? null
-  const globalRunPaused = activeRun?.state === 'paused'
 
   const dormantCount = assets.filter(a => a.state === 'dormant' || a.state === 'not_migrated').length
   const staleCount = assets.filter(a => a.state === 'stale').length

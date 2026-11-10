@@ -90,7 +90,6 @@ function groupByDate(conversations: ConversationRow[]) {
 
 export function ConversationSidebar({
   chartId,
-  chartName,
   conversations,
   currentConversationId,
   onRenamed,

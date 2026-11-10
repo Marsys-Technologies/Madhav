@@ -166,7 +166,7 @@ describe('Stop-and-edit while streaming — parent-context (Y-S5)', () => {
   })
 
   it('chip is targeted to the specific message ID', () => {
-    const { getByTestId, queryByTestId } = render(
+    const { getByTestId } = render(
       <ThreadShell>
         <TruncatedChip messageId="msg-target" />
         <TruncatedChip messageId="msg-other" />

@@ -46,13 +46,6 @@ import { POST } from '../route'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function makeReq(body: unknown): Request {
-  return new Request('http://localhost/api/build/start', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(body),
-  })
-}
 
 /** Sets up the happy-path mock sequence for a given user + chart_id. */
 function setupOwnerMocks(uid: string, chartId: string) {
@@ -106,11 +99,6 @@ describe('POST /api/build/start — input validation', () => {
   })
 
   it('returns 400 on invalid JSON body', async () => {
-    const req = new Request('http://localhost/api/build/start', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: 'not-json{{{',
-    })
     const res = await POST()
     expect(res.status).toBe(400)
     const body = (await res.json()) as { error: string }

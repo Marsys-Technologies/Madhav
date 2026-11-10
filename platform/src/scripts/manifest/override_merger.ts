@@ -95,7 +95,7 @@ function findOverride(
 
   // 2. path_pattern substring match (for files whose frontmatter canonical_id
   //    differs from the short override key)
-  for (const [_key, override] of Object.entries(overrides)) {
+  for (const override of Object.values(overrides)) {
     if (override.path_pattern && entry.path.includes(override.path_pattern)) {
       return override
     }

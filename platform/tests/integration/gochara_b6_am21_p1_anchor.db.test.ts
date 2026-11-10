@@ -27,7 +27,6 @@ import { resolveDisposableA51Config } from './gochara_a5_1_disposable_url'
 const TEST_DB_URL = process.env.GOCHARA_A51_TEST_DATABASE_URL
 
 const MIGRATIONS_DIR = path.resolve(process.cwd(), 'migrations')
-const PREFLIGHT_DIR = path.resolve(process.cwd(), '../platform/python-sidecar/scripts/kala_gochara_cutover')
 const M1233 = '1233_gochara_p1_period_anchor.sql'
 const MIGRATION_FILES = [
   '1153_gochara_sky_event_substrate.sql',
@@ -35,13 +34,6 @@ const MIGRATION_FILES = [
   '1155_gochara_relationship_record.sql',
   '1156_gochara_eval_window.sql',
   '1157_gochara_av_polarity_declaration.sql',
-] as const
-const PREFLIGHT_FILES = [
-  'preflight_1153_sky_event_substrate.sql',
-  'preflight_1154_rule_path_registry.sql',
-  'preflight_1155_relationship_record.sql',
-  'preflight_1156_eval_window.sql',
-  'preflight_1157_av_polarity_declaration.sql',
 ] as const
 const PARENT_FILES = [
   '1081_nirmana_l3_gochara_ledger_coverage_publication.sql',
@@ -87,7 +79,6 @@ const CID_R = '10000000-0000-4000-8000-000000000016'         // (OBJ_MARS, 6) 5.
 const CID_P = '10000000-0000-4000-8000-000000000017'         // (OBJ_MARS, 7) 5.3
 const CID_T2 = '10000000-0000-4000-8000-000000000018'        // (OBJ_MARS, 8) truncated, 5.5
 const CID_MOON = '10000000-0000-4000-8000-000000000019'      // (OBJ_MOON, 1)
-const EVENT_1 = '10000000-0000-4000-8000-000000000021'
 const COV_KIND = 'body_target'
 const COV_KEY = 'mars:karaka'
 const HORIZON = "tstzrange('2025-01-01T00:00Z','2026-01-01T00:00Z','[)')"
@@ -100,14 +91,7 @@ const uuid = (): string => `20000000-0000-4000-8000-${String(++seq).padStart(12,
 function mig(name: string): string {
   return readFileSync(join(MIGRATIONS_DIR, name), 'utf8')
 }
-function preflight(name: string): string {
-  return readFileSync(join(PREFLIGHT_DIR, name), 'utf8')
-}
-const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 /** 'pending' if `p` has not settled within `ms` (either way), else 'settled'. */
-async function settledWithin(p: Promise<unknown>, ms = 500): Promise<'settled' | 'pending'> {
-  return Promise.race([p.then(() => 'settled' as const, () => 'settled' as const), sleep(ms).then(() => 'pending' as const)])
-}
 
 let pool: Pool
 type Q = Pick<PoolClient, 'query'>

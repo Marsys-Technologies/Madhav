@@ -31,11 +31,6 @@ import { POST } from '../route'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function makeReq(): Request {
-  return new Request('http://localhost/api/build/cancel/test-build-id', {
-    method: 'POST',
-  })
-}
 
 
 /** Sets up the standard auth mocks for a given user + role. */

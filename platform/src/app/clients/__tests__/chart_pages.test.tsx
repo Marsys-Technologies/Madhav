@@ -15,7 +15,7 @@ import { render, fireEvent } from '@testing-library/react'
 
 vi.mock('server-only', () => ({}))
 
-const { mockQuery, mockResolveAccess, mockRedirect, mockGetServerUser, mockListConversations, mockFetchBuildState, mockConfigService, mockListReports } = vi.hoisted(() => ({
+const { mockQuery, mockResolveAccess, mockRedirect, mockGetServerUser, mockListConversations, mockFetchBuildState, mockConfigService } = vi.hoisted(() => ({
   mockQuery: vi.fn(),
   mockResolveAccess: vi.fn(),
   mockRedirect: vi.fn((_url: string) => {

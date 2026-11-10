@@ -39,7 +39,7 @@ console.log(`Key: ${apiKey.slice(0, 12)}…`)
 console.log(`Time: ${new Date().toISOString()}`)
 console.log('Timeout: 30s per model\n')
 
-async function test(modelId, note) {
+async function test(modelId) {
   const ac = new AbortController()
   const timer = setTimeout(() => ac.abort(), 30_000)
   const start = Date.now()

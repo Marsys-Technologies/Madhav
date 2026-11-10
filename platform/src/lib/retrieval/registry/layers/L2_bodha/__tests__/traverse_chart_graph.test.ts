@@ -288,7 +288,7 @@ describe('traverse_chart_graph — handler contract', () => {
 
     const calls = vi.mocked(mockQuery).mock.calls
     // Every query call must have chart_id as first param
-    for (const [_sql, params] of calls) {
+    for (const [, params] of calls) {
       const p = params as unknown[]
       // The first param is always chart_id — must be A or B, never native
       expect([CHART_A, CHART_B]).toContain(p[0])

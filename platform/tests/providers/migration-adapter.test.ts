@@ -29,7 +29,7 @@ describe('MigrationAdapter.bridge', () => {
   const adapter = new MigrationAdapter();
 
   it('delegates to providerChat generator and passes events through', async () => {
-    async function* providerGen(req: ChatRequest): AsyncIterable<ChatEvent> {
+    async function* providerGen(_req: ChatRequest): AsyncIterable<ChatEvent> {
       yield { type: 'text_delta', text: 'hello' };
       yield { type: 'message_stop', stopReason: 'end_turn' };
     }

@@ -148,7 +148,6 @@ export function LayerPanel({
     (activeRun.scope === 'asset_set' && activeAssets.some(asset => assetSetIncludes(activeRun.scope_target, asset.asset_id)))
   )
   const layerRunId = layerRunActive ? activeRun!.id : null
-  const layerRunPaused = layerRunActive && activeRun!.state === 'paused'
   // Only the layer that owns the currently-building asset surfaces a Stop control. Without this
   // a global run lights up Stop on every (idle) layer, which is misleading — every Stop just
   // halts the whole run. The build advances one asset at a time, so scope to current_asset_id.

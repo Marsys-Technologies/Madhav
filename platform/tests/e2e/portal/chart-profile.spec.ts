@@ -5,7 +5,7 @@ import { test, expect } from '@playwright/test'
 const CHART_ID = process.env.SMOKE_CHART_ID ?? 'test-chart-id'
 
 test.describe('Chart Profile — /clients/[id]', () => {
-  test.beforeEach(async ({ page, context }) => {
+  test.beforeEach(async ({ context }) => {
     const sessionCookie = process.env.SMOKE_SESSION_COOKIE
     if (sessionCookie) {
       await context.addCookies([

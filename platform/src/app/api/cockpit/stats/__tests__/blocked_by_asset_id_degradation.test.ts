@@ -42,7 +42,7 @@ function makeReq(): NextRequest {
 /** Builds a mockQuery implementation. `columnPresent` controls whether the
  * information_schema probe reports blocked_by_asset_id as existing. */
 function setupMocks(opts: { columnPresent: boolean; blockedAssetError?: string | null; throughputState?: string }) {
-  const { columnPresent, blockedAssetError = null, throughputState = 'error' } = opts
+  const { columnPresent, throughputState = 'error' } = opts
   const probeCalls: string[] = []
   const dispositionQueryCalls: string[] = []
 

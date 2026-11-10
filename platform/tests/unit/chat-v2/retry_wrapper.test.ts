@@ -71,7 +71,7 @@ describe('streamWithRetry — flag=true core behavior (Y-S9)', () => {
   it('is_retry=false + 5xx → retry fires with next stack', async () => {
     const error5xx = new RetryableError(503, 'Service Unavailable 503')
     let callCount = 0
-    const streamFn = vi.fn((req: QueryRequest) => {
+    const streamFn = vi.fn((_req: QueryRequest) => {
       callCount++
       if (callCount === 1) throw error5xx
       return fakeResult

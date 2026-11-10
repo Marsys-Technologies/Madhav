@@ -397,7 +397,6 @@ async function runSingleQuery(
  */
 function checkDeprecations(): string[] {
   const today = new Date()
-  const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000
   const warnings: string[] = []
 
   for (const watch of DEPRECATION_WATCHLIST) {

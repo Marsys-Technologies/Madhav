@@ -17,6 +17,16 @@ const eslintConfig = defineConfig([
       }],
     },
   },
+  {
+    // These snippets are read as inputs by the corresponding governance scanner.
+    // Their declarations are intentionally never invoked by the TypeScript runtime.
+    files: [
+      "scripts/governance/dualoutput_toolname_fixtures/**/*.ts",
+      "scripts/governance/fact_category_pin_fixtures/**/*.ts",
+      "scripts/governance/no_raw_token_narrative_fixtures/**/*.ts",
+    ],
+    rules: { "@typescript-eslint/no-unused-vars": "off" },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:

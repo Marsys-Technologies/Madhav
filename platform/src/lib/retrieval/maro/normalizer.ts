@@ -118,7 +118,7 @@ export function applyNvidiaOverrides(profile: FamilyNormalization): FamilyNormal
  */
 export function normalizeToolArgs(
   args: Record<string, unknown> | string | undefined,
-  profile: FamilyNormalization,
+  _profile: FamilyNormalization,
 ): Record<string, unknown> {
   if (!args) return {}
 

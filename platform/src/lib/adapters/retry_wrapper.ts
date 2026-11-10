@@ -17,7 +17,6 @@ import type { ModelStack } from '@/lib/models/registry'
 import type { QueryRequest } from './types'
 import type { RawAdapterResult } from './raw'
 import { streamAdapterRaw } from './raw'
-import { getFlag } from '@/lib/config/index'
 import { writeTraceStep } from '@/lib/trace/writer'
 
 export const RETRY_TIMEOUT_MS = 30_000

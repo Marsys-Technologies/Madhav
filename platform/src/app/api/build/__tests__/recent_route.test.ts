@@ -35,9 +35,6 @@ import { GET } from '../recent/route'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function makeReq(): Request {
-  return new Request('http://localhost/api/build/recent', { method: 'GET' })
-}
 
 /** Build row factory — simulates what the DB query returns. */
 function makeBuildRow(overrides: Partial<{

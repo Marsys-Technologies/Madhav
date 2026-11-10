@@ -200,24 +200,6 @@ async function seedBuildSteps(
 /**
  * Seed an engine_versions row. Returns the version_id.
  */
-async function seedEngineVersion(opts: {
-  versionStr?: string
-  engineName?: string
-  gitSha?: string
-}): Promise<string> {
-  const {
-    versionStr = '1.0.0',
-    engineName = 'marsys-core',
-    gitSha = null,
-  } = opts
-  const versionId = randomUUID()
-  await query(
-    `INSERT INTO engine_versions (version_id, engine_name, version_str, git_sha)
-     VALUES ($1, $2, $3, $4)`,
-    [versionId, engineName, versionStr, gitSha],
-  )
-  return versionId
-}
 
 /**
  * Seed a conversation row associated with an optional chart.

@@ -11,7 +11,7 @@
  *   finish (finishReason='tool-calls') → message_stop with stopReason='tool_use'
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
 // Mock 'ai' before importing the adapter
 vi.mock('ai', () => ({
@@ -98,12 +98,6 @@ async function collectToolCallEvents() {
 // ---------------------------------------------------------------------------
 
 describe('F-S2: AnthropicAdapter.chat() — tool_use event emission', () => {
-  let adapter: AnthropicAdapter;
-
-  beforeEach(() => {
-    adapter = new AnthropicAdapter();
-  });
-
   it('emits tool_use_start with correct id and name', async () => {
     const events = await collectToolCallEvents();
     const startEvent = events.find((e) => e.type === 'tool_use_start');

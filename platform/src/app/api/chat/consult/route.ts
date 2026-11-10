@@ -6,7 +6,6 @@ import {
 } from 'ai'
 import type { UIMessage } from 'ai'
 import { clarificationPart, judgmentFlagsPart } from '@/lib/streams/data_parts'
-import { extractCitations } from '@/lib/citations/citation_data_part'
 
 /** Fetch signal headline + summary from bodha_msr_signals for a list of signal IDs.
  *  Returns a map signal_id → snippet string. Missing IDs get empty string. */
@@ -39,7 +38,6 @@ import {
 import { archivedReadOnlyResponse, isCorrectionArchived } from '@/lib/conversations/readOnly'
 import { checkReadingReadiness } from '@/lib/charts/readingGate'
 import { createPendingStreamWriter } from '@/lib/persistence/pending_streams_writer'
-import type { ContextUsageEvent, ContextUsageMode } from '@/types/sse_events'
 import {
   DEFAULT_MODEL_ID,
   DEFAULT_STACK_ID,
@@ -71,8 +69,6 @@ import { loadManifest } from '@/lib/bundle/manifest_reader'
 import { assertPinnedCapabilityKnowledgeCurrent, loadChartCapabilityOverlay } from '@/lib/retrieval/registry/knowledge'
 import { adoptInquiryPlanItems, compileInquiryContract, managedPlanToAiInquiryProposal } from '@/lib/vidhi/inquiry'
 import { runAll, summarize } from '@/lib/validators/index'
-import type { ValidationResult } from '@/lib/validators/types'
-import { validateCitationsForStream } from '@/lib/synthesis/streaming_citation_validator'
 import { compressHistory } from '@/lib/synthesis/history_compression'
 // PipelineError import removed — citation gate no longer throws post-stream (see citation_error trace event)
 import { traceEmitter } from '@/lib/trace/emitter'
@@ -86,8 +82,6 @@ import {
 } from '@/lib/db/monitoring-write'
 import { fakeGcsRetrieve } from '@/lib/multimodal/fake_gcs_store'
 import { extractPdf } from '@/lib/multimodal/pdf_extractor'
-import { getProjectForConversation } from '@/lib/projects'
-import { getPersonaForSynthesis } from '@/lib/personas'
 
 // Unit 3.gateway_pipeline_isolation built the QueryPipeline selector + shared
 // stages substrate; unit 4.refactor_pipeline_shim (this commit) moved the
@@ -289,7 +283,7 @@ async function executeMeteredRequest(request: Request) {
       ? (body.stack as ModelStack)
       : (providerOverrideValid
           ? (providerOverride as ModelStack) : DEFAULT_STACK_ID)
-  const [stackSynthPrimary, stackSynthFallback] = byokEnabled
+  const [stackSynthPrimary] = byokEnabled
     ? ['', '']
     : await Promise.all([
         getEffectiveModel(selectedStack as ModelStack, 'synthesis', 'primary', request),
@@ -348,7 +342,6 @@ async function executeMeteredRequest(request: Request) {
   }
 
   if (!chartResult.rows[0]) return res.notFound('chart')
-  const chart = chartResult.rows[0]
   const role = profileResult.rows[0]?.role
   if (byokEnabled && profileResult.rows[0]?.status !== 'active') {
     return Response.json(new AiConsoleError('AI_PERMISSION_DENIED').toJSON(), { status: 403 })
@@ -1145,18 +1138,16 @@ async function executeMeteredRequest(request: Request) {
   }
 
   const audienceTier = isSuperAdmin ? 'super_admin' as const : 'client' as const
-  const panelOptIn = body.panel_opt_in === true
 
   // No LLM context assembler. plan.synthesis_guidance from the planner
   // serves the framing role; per-tool token budgets from arbitrateBudgets
   // serve the size role.
-  const synthesisToolResults: ToolBundle[] = validToolResults
 
   // UQE-9: pre-allocate context_assembly seq (single_model_strategy emits
   // a deterministic context_assembly trace step before synthesis_done), then
   // the synthesis seq shared by start (here) and done (in onFinish inside
   // the orchestrator).
-  const contextAssemblySeq = nextSeq()
+  nextSeq()
   const synthesisSeq = nextSeq()
   const synthesisStart = Date.now()
   emit({
@@ -1178,7 +1169,6 @@ async function executeMeteredRequest(request: Request) {
   // BUG-2: mutable holder populated by onValidatorResults callback (fires from
   // single_model_strategy onFinish, BEFORE onAuditEvent fires). The audit
   // consumer closes over the same array reference, so validators_run is non-empty.
-  const validatorResultsHolder: ValidationResult[] = []
 
   // ── Gate III: smart context selection ─────────────────────────────────────
   // Trim conversation_history according to planner.prior_turn_relevance.used.
@@ -1211,57 +1201,6 @@ async function executeMeteredRequest(request: Request) {
         .slice(-historyMessageCap)
         .slice(0, -1), // drop current user message (appended via `query`)
     )
-  }
-
-  const contextUsageMeta: ContextUsageEvent = ptr
-    ? {
-        type: 'context_usage',
-        prior_turns_used: ptr.used,
-        mode: ptr.mode as ContextUsageMode,
-        reason: ptr.reason,
-      }
-    : {
-        type: 'context_usage',
-        prior_turns_used: Math.min(2, Math.floor(trimmedConversationHistory.length / 2)),
-        mode: 'narrative_context',
-        reason: 'Default 2-turn window — planner did not specify.',
-      }
-
-  // R9-S3: Look up persona for synthesis injection (flag-gated).
-  let personaId: string | undefined
-  let personaSystemPrompt: string | undefined
-  if (true && body.persona_id) {
-    try {
-      const persona = await getPersonaForSynthesis(body.persona_id, user.uid)
-      if (persona && persona.system_prompt.trim().length > 0) {
-        personaId = persona.id
-        personaSystemPrompt = persona.system_prompt
-      }
-    } catch {
-      // Non-fatal: persona lookup failure does not block synthesis
-    }
-  }
-
-  // R9-S1: Look up project context for prompt injection (flag-gated).
-  let projectId: string | undefined
-  let projectSystemPromptAddition: string | undefined
-  if (true && finalConversationId) {
-    try {
-      const project = await getProjectForConversation(finalConversationId)
-      if (project) {
-        projectId = project.id
-        if (project.system_prompt_addition && project.system_prompt_addition.trim().length > 0) {
-          projectSystemPromptAddition = project.system_prompt_addition
-        }
-        if (project.chart_id) {
-          // chart_id retrieval deferred to R9-S2+
-          // Trace: project_chart_retrieval deferred
-          void project.chart_id // referenced to avoid lint unused-var
-        }
-      }
-    } catch {
-      // Non-fatal: project lookup failure does not block synthesis
-    }
   }
 
   // [PHASE-D-06] Data-readiness context injection.

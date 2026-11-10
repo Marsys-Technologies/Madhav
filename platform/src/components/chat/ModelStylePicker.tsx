@@ -80,7 +80,6 @@ export function ModelStylePicker({ stack, style, onStackChange, onStyleChange, d
   // R9-S3: Persona list — only fetch when personas are enabled (NEXT_PUBLIC flag)
   const showPersonas = process.env.NEXT_PUBLIC_MARSYS_FLAG_R9_PERSONAS !== 'false'
   const { personas } = usePersonas()
-  const activePersona = personas.find(p => p.id === activePersonaId) ?? null
 
   return (
     <DropdownMenu>

@@ -62,7 +62,6 @@ export function extractToolBlocks(src: string): ToolBlock[] {
   let m: RegExpExecArray | null
   while ((m = toolCallRe.exec(src)) !== null) {
     const toolName = m[1]
-    const callStart = m.index + m[0].lastIndexOf('(', m[0].indexOf(toolName)) // '(' of server.tool(
     const openParen = src.indexOf('(', m.index)
     const callEnd = findMatchingClose(src, openParen, '(', ')')
     if (callEnd >= src.length) continue

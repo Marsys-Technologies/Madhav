@@ -20,7 +20,6 @@ const TARA_NAMES = [
 
 const AUSPICIOUS_TARAS = new Set(['Sampat', 'Kshema', 'Sadhaka', 'Mitra', 'Ati Mitra'])
 const INAUSPICIOUS_TARAS = new Set(['Vipat', 'Pratyari', 'Vadha'])
-const MIXED_TARAS = new Set(['Janma'])
 
 // ── Classical spot checks ─────────────────────────────────────────────────────
 
