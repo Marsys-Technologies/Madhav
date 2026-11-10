@@ -104,16 +104,6 @@ interface SliceBundle {
   generated_from?: Record<string, string>
 }
 
-// ── One coverage unit, flattened from a block for paging ──────────────────────
-
-interface CoverageUnit {
-  serving_tool: string
-  serving_args: Record<string, unknown>
-  state: StateKey
-  concept_count: number
-  is_chain_or_pattern: boolean
-}
-
 const bundleCache = new Map<string, SliceBundle | null>()
 
 function chart8Of(chart_id: string): string {
@@ -127,30 +117,6 @@ function loadBundle(domain: string, chart_id: string): SliceBundle | null {
   const bundle = (raw as unknown as SliceBundle | undefined) ?? null
   bundleCache.set(key, bundle)
   return bundle
-}
-
-/**
- * Reconstruct one coverage unit (block bi, value index vi) with its resolved
- * serving_args (chart_id folded back in — the bundle stores it factored out).
- */
-function unitAt(block: SliceBlock, vi: number, chart_id: string): CoverageUnit {
-  const args: Record<string, unknown> = { chart_id }
-  if (block.ak === '@') {
-    // multi-arg packed as "k=v;k2=v2"
-    for (const pair of block.v[vi]!.split(';')) {
-      const eq = pair.indexOf('=')
-      if (eq > 0) args[pair.slice(0, eq)] = pair.slice(eq + 1)
-    }
-  } else if (block.ak !== '') {
-    args[block.ak] = block.v[vi]
-  }
-  return {
-    serving_tool: block.t,
-    serving_args: args,
-    state: CODE_TO_STATE[block.s] ?? 'served',
-    concept_count: block.n[vi]!,
-    is_chain_or_pattern: (block.ci ?? []).includes(vi),
-  }
 }
 
 /** Empty per-state tally. */
@@ -210,7 +176,6 @@ function packPage(
   const cap = budgetKb * 1024 - ENVELOPE_RESERVE_BYTES
   const chunks: PagedBlockChunk[] = []
   const tally = emptyTally()
-  let pageBytes = 0
   let pageConcepts = 0
   let chainUnits = 0
   let atomicOverflow = false
@@ -264,7 +229,6 @@ function packPage(
         atomicOverflow = true
       }
       // Commit.
-      pageBytes = prospective
       tally[state] += block.n[vi]!
       pageConcepts += block.n[vi]!
       if (isChain) chainUnits += 1

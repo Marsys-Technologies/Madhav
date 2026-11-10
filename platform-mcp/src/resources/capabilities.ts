@@ -345,7 +345,7 @@ export function registerCapabilities(server: McpServer): void {
   server.resource(
     'capabilities',
     new ResourceTemplate('marsys://capabilities', { list: undefined }),
-    async (_uri) => {
+    async () => {
       // S4: fetch live perf data; fall back to static placeholder on error
       const timestamp = new Date().toISOString()
       let text: string

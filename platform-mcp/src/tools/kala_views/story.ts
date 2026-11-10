@@ -211,8 +211,7 @@ export const KalaStoryInputShape = {
   budget_kb: z.number().min(1).max(200).optional().describe('Response size ceiling in KB. Default 40.'),
 }
 
-const KalaStoryZod = z.object(KalaStoryInputShape)
-export type KalaStoryInput = z.infer<typeof KalaStoryZod>
+export type KalaStoryInput = z.infer<z.ZodObject<typeof KalaStoryInputShape>>
 
 // ── Raw parva row shape (kala_jivana_parva, via marsys://tool/L3/query_life_arc) ──────
 

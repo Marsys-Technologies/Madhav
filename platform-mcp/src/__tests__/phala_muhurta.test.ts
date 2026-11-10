@@ -26,7 +26,7 @@ function createMockServer() {
   const registered: Array<{ name: string; description: string }> = []
   return {
     _registered: registered,
-    tool: (name: string, description: string, ..._rest: unknown[]) => {
+    tool: (name: string, description: string) => {
       registered.push({ name, description })
     },
   }

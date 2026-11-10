@@ -36,7 +36,7 @@ export function registerHouseRules(server: McpServer): void {
   server.resource(
     'house-rules',
     new ResourceTemplate('marsys://house-rules', { list: undefined }),
-    async (_uri) => ({
+    async () => ({
       contents: [
         {
           uri: 'marsys://house-rules',

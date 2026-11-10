@@ -15,7 +15,7 @@
  * disturbs unrelated fields already on the response (assess_wealth's other working fields
  * must not regress).
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { attachLeverageIndex } from '../tools/registry_bridge.js'
 import type { Principal } from '../types.js'
 

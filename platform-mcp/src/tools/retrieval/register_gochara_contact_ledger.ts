@@ -152,7 +152,6 @@ export interface ContactLedgerResult {
 // (reading_checklist.ts): the writer vocab (gochara_kernel/episodes.py,
 // gochara_v3/interval_solver.py) uses 'qualified'; the packet fixtures use
 // 'confirmed'. Both count; 'unqualified'/'unavailable'/'unexplored' never do.
-const CONFIRMED_COMPLETENESS_STATES = new Set(['confirmed', 'qualified'])
 
 // Transport budget for the confirmed floor. The floor is trim-proof: a
 // confirmed set larger than this is served as not_computed + floor_overflow,

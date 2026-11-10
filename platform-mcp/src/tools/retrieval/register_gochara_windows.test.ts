@@ -30,7 +30,6 @@ import {
   computeGocharaElectionAvoidance,
   computeGocharaCoverage,
   type GocharaWindowRow,
-  type GocharaCoverage,
   buildNestedHierarchy,
   type HierarchyNode,
   type ServedWindow,

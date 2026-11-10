@@ -75,9 +75,7 @@ describe('kala_priority_get — W2.7 salience_vector_five_axis wiring', () => {
   })
 
   it('FAILING BEFORE FIX: response carries salience_vector_five_axis with 5 named axes when kala_field_salience has rows', async () => {
-    let fetchCallCount = 0
     global.fetch = vi.fn(async (url: unknown, opts: unknown) => {
-      fetchCallCount++
       const urlStr = String(url)
       // DB query route: return salience rows
       if (urlStr.includes('/api/mcp/db/query')) {
@@ -130,7 +128,6 @@ describe('kala_priority_get — W2.7 salience_vector_five_axis wiring', () => {
     // We validate this via the fetchSalienceVector export (added by the fix).
     const { fetchSalienceVector } = await import('./priority.js').catch(() => ({ fetchSalienceVector: undefined }))
     expect(fetchSalienceVector, 'W2.7 fix must export fetchSalienceVector — this test should fail before the fix').toBeDefined()
-    fetchCallCount // suppress unused warning
   })
 
   it('fetchSalienceVector returns the five-axis data from kala_field_salience rows', async () => {

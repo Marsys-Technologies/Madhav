@@ -518,8 +518,8 @@ describe('G12 — registration is complete and duplicate-free', () => {
 
     const toolNames: string[] = []
     const mockServer = {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      tool: vi.fn((name: string, ..._rest: any[]) => { toolNames.push(name) }),
+
+      tool: vi.fn((name: string) => { toolNames.push(name) }),
     }
     const principal = makePrincipal()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -606,8 +606,8 @@ describe('V6 — Invariants: tool names snake_case, no hyphens', () => {
     const { registerRegistryBridgeTools } = await import('../tools/registry_bridge.js')
     const toolNames: string[] = []
     const srv = {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      tool: vi.fn((name: string, ..._rest: any[]) => { toolNames.push(name) }),
+
+      tool: vi.fn((name: string) => { toolNames.push(name) }),
     }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     registerRegistryBridgeTools(srv as any)
@@ -629,8 +629,8 @@ describe('V6 — Invariants: tool names snake_case, no hyphens', () => {
     const { registerChartSelectionTools } = await import('../tools/chart_selection.js')
     const toolNames: string[] = []
     const srv = {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      tool: vi.fn((name: string, ..._rest: any[]) => { toolNames.push(name) }),
+
+      tool: vi.fn((name: string) => { toolNames.push(name) }),
     }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     registerChartSelectionTools(srv as any, makePrincipal())

@@ -177,7 +177,7 @@ export function registerAssetRegistryAllTool(server: McpServer): void {
     'Includes asset_id, layer, names, target_floor, scope, is_active. ' +
     'Use to understand available data assets before planning retrieval.',
     AssetRegistryAllInput.shape,
-    async (_params) => {
+    async () => {
       try {
         const result = budgetMcpContent(await callRegistryCapability('marsys://resource/asset-registry/all', {}), 'asset_registry_all')
         return {
@@ -205,7 +205,7 @@ export function registerAssetRegistryL0Tool(server: McpServer): void {
     '(shastra texts, sutravali rules, ontology, remedies, ephemeris, etc.). ' +
     'Includes current row counts and target_floor for each asset.',
     AssetRegistryL0Input.shape,
-    async (_params) => {
+    async () => {
       try {
         const result = budgetMcpContent(await callRegistryCapability('marsys://resource/asset-registry/L0', {}), 'asset_registry_l0')
         return {

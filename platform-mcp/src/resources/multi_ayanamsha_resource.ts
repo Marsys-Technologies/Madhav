@@ -97,7 +97,7 @@ export function registerMultiAyanamshaResource(server: McpServer): void {
   server.resource(
     'multi-ayanamsha',
     new ResourceTemplate('marsys://multi-ayanamsha/{chart_id}', { list: undefined }),
-    async (uri, _variables) => {
+    async (uri) => {
       const chartId = (uri.pathname ?? '').replace(/^\//, '')
       const entries = await fetchAyanamshaStatus(chartId)
 

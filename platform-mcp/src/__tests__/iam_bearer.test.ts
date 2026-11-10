@@ -11,10 +11,12 @@
  * item 3: "platform-mcp/src/client.ts adds IAM bearer (audited via grep + unit test)."
  */
 
+import type { Principal } from '../types.js'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const TEST_TOKEN = 'test-id-token-deadbeef'
 const TEST_INTERNAL = 'test-internal-token'
+const principal: Principal = { user_uid: 'u1', key_id: 'k1', role: 'guest' }
 const TEST_PLATFORM_URL = 'http://platform.test'
 
 describe('platform-mcp client — IAM bearer + internal token discipline', () => {
@@ -45,7 +47,7 @@ describe('platform-mcp client — IAM bearer + internal token discipline', () =>
     await callPlatformPrimitive(
       'chart_facts_query',
       { native_key: 'native' },
-      { user_uid: 'u1', key_id: 'k1' } as any
+      principal
     )
 
     expect(fetchSpy).toHaveBeenCalledTimes(1)
@@ -69,7 +71,7 @@ describe('platform-mcp client — IAM bearer + internal token discipline', () =>
 
     const { callPlatformTrace } = await import('../client.js')
 
-    await callPlatformTrace('abc', { user_uid: 'u1', key_id: 'k1' } as any)
+    await callPlatformTrace('abc', principal)
 
     expect(fetchSpy).toHaveBeenCalledTimes(1)
     const init = fetchSpy.mock.calls[0]![1] as RequestInit
@@ -89,7 +91,7 @@ describe('platform-mcp client — IAM bearer + internal token discipline', () =>
 
     const { callPlatformRecent } = await import('../client.js')
 
-    await callPlatformRecent({ limit: 5 }, { user_uid: 'u1', key_id: 'k1' } as any)
+    await callPlatformRecent({ limit: 5 }, principal)
 
     const init = fetchSpy.mock.calls[0]![1] as RequestInit
     const headers = init.headers as Record<string, string>

@@ -171,7 +171,7 @@ export function registerSchoolConventions(server: McpServer): void {
   server.resource(
     'school-conventions',
     new ResourceTemplate('marsys://school-conventions', { list: undefined }),
-    async (_uri) => ({
+    async () => ({
       contents: [
         {
           uri: 'marsys://school-conventions',

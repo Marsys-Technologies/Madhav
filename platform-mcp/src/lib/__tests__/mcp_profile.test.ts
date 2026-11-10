@@ -96,7 +96,7 @@ function makeFakeServer(): ToolRegisteringServer & { registered: string[] } {
   const registered: string[] = []
   const server = {
     registered,
-    tool: (name: string, ..._rest: unknown[]) => {
+    tool: (name: string) => {
       registered.push(name)
       return { registeredAs: name }
     },

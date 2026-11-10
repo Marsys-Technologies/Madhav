@@ -23,7 +23,7 @@ it.each(['now', 'ahead', 'priority', 'elect', 'story', 'ritual', 'explain'])
     const content = { view, chart_id, manifest_id: 'k9-manifest', generation: 'k9-generation', empty_reason: null,
       manifest: { manifest_id: 'k9-manifest', generation: 'k9-generation' },
       rows: [{ data: { assertion: { payload: { effective_state: 'information_unavailable', release: { instant: null } } } } }] }
-    const fetcher = vi.fn(async (_url: string, _init: RequestInit) => ({ ok: true, json: async () => ({ ok: true, content: { is_error: false, content } }) }))
+    const fetcher = vi.fn<(_url: string, _init: RequestInit) => Promise<{ ok: boolean; json: () => Promise<unknown> }>>(async () => ({ ok: true, json: async () => ({ ok: true, content: { is_error: false, content } }) }))
     vi.stubGlobal('fetch', fetcher)
     const result = await installed().get(`kala_${view}_get`)!({ chart_id, published_request: selectors })
     expect(result.isError).not.toBe(true)

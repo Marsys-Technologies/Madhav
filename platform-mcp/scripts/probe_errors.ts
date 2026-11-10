@@ -29,8 +29,9 @@ async function main() {
   await client.connect(transport)
 
   for (const [tool, args] of Object.entries(FAILING)) {
-    const r = await client.callTool({ name: tool, arguments: args }) as any
-    const text = r.content?.[0]?.text ?? ''
+    const r = await client.callTool({ name: tool, arguments: args })
+    const first = Array.isArray(r.content) ? r.content[0] : undefined
+    const text = first?.type === 'text' && typeof first.text === 'string' ? first.text : ''
     console.log(`\n=== ${tool} ===`)
     console.log(text.slice(0, 600))
   }

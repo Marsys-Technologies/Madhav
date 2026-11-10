@@ -61,8 +61,7 @@ function makeWindow(overrides: Partial<AutofileWindowInput> = {}): AutofileWindo
 
 /** Mock fetch that returns: DB query = no existing row, write call = success. */
 function mockFetchBothSuccess(predictionId = 'pred-g14b-001') {
-  return vi.fn(async (url: string, init?: RequestInit) => {
-    const body = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>
+  return vi.fn(async (url: string) => {
     // The DB existence check hits /api/mcp/db/query with a SELECT 1.
     if (String(url).includes('/api/mcp/db/query')) {
       return {
@@ -317,7 +316,7 @@ describe('autofileAheadWindows — idempotency: already_filed path', () => {
 
   it('proceeds to file (conservatively) when the existence check fetch itself fails', async () => {
     let callCount = 0
-    const fetchSpy = vi.fn(async (url: string, init?: RequestInit) => {
+    const fetchSpy = vi.fn(async (url: string) => {
       callCount++
       if (String(url).includes('/api/mcp/db/query')) {
         throw new Error('DB query unreachable')
@@ -621,11 +620,6 @@ describe('AUTOFILE_WITHHOLD_EVENT_CLASSES — must match intervention_filing.ts 
 //           source_citation is v2, field_window_id present in filed entry
 //   C5.3 — flag ON + no match: authority_basis unchanged (honest no-op), no fabrication
 //   C5.4 — flag OFF: platformQuery is never called with kala_field_windows
-
-import {
-  buildSourceCitationV2,
-  AHEAD_AUTOFILE_FORMULA_VERSION_V2,
-} from './ahead_autofile.js'
 
 describe('SM_GAMMA_C5_ENABLED — C5.1: flag OFF → v1 citation, no kala_field_windows query', () => {
   it('when SM_GAMMA_C5_ENABLED is unset, source_citation uses v1 prefix', async () => {

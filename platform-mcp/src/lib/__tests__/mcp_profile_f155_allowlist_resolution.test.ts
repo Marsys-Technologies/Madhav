@@ -89,8 +89,8 @@ const PRINCIPAL: Principal = { user_uid: 'f155-test-user', key_id: 'f155-test-ke
 function makeCapturingServer(): { server: McpServer; names: Set<string> } {
   const names = new Set<string>()
   const server = {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    tool: (name: string, ..._rest: any[]) => {
+
+    tool: (name: string) => {
       names.add(name)
     },
   } as unknown as McpServer

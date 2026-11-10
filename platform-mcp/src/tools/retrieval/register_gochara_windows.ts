@@ -514,12 +514,6 @@ export function deriveResolutionDisclosure(
   }
 }
 
-function withResolutionDisclosure<T extends GocharaWindowRow>(
-  rows: T[]
-): Array<T & { resolution_disclosure: ResolutionDisclosure }> {
-  return rows.map((row) => ({ ...row, resolution_disclosure: deriveResolutionDisclosure(row) }))
-}
-
 /**
  * §N.6-style page-level summary: how many served rows are CONTEXT-only
  * (is_timing_window===false) vs genuine timing windows. Mirrors the
@@ -2038,7 +2032,7 @@ const ForecastInputSchema = z.object({
 // ── C2: nested era⊃month⊃day hierarchy (SAMPŪRTI-γ C2) ──────────────────────
 
 /** Enriched window type: GocharaWindowRow with resolution_disclosure attached
- * (produced by the `withResolutionDisclosure` helper above). */
+ * (computed from the row resolution). */
 export type ServedWindow = GocharaWindowRow & { resolution_disclosure: unknown }
 
 /** A node in the era⊃month⊃day hierarchy tree. */

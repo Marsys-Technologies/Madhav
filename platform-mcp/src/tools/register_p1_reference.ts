@@ -589,7 +589,11 @@ export function registerP1ReferenceTools(server: McpServer, principal: Principal
               principal,
             )).rows[0]?.['total_matching'] ?? 0)
           if (total > 0) {
-            const rows = structured.rows.map(({ total_matching: _total, ...row }) => row)
+            const rows = structured.rows.map((source) => {
+        const row = { ...source }
+        delete row.total_matching
+        return row
+      })
             const moreAvailable = pageOffset + rows.length < total
             return dualOutput(envelope({
               source: 'reference_nakshatra',

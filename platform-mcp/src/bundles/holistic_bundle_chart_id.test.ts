@@ -37,7 +37,8 @@ describe('buildParams — CR-39/CR-14 chart_id threading (platform-mcp copy)', (
   })
 
   it.each(PER_CHART_TOOLS)('omits chart_id for per-chart sub-tool %s when bundleParams.chart_id is absent (no fabrication)', (name) => {
-    const { chart_id: _chart_id, ...withoutChartId } = baseParams
+    const withoutChartId = { ...baseParams }
+    delete withoutChartId.chart_id
     const params = buildParams(name, withoutChartId)
     expect(params['chart_id']).toBeUndefined()
   })

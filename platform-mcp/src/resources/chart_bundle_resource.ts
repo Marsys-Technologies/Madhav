@@ -125,7 +125,7 @@ export function registerChartBundleResource(server: McpServer): void {
   server.resource(
     'chart-bundle',
     new ResourceTemplate('marsys://chart-bundle/{chart_id}', { list: undefined }),
-    async (uri, _variables) => {
+    async (uri) => {
       const chartId = (uri.pathname ?? '').replace(/^\//, '')
       const bundle = await fetchBundle(chartId)
 
