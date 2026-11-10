@@ -440,6 +440,18 @@
   flex-shrink: 0;
   margin: 0;
 }
+.pp-consultation[data-compact-viewport="true"] .j1-chart-tabs {
+  display: flex;
+  overflow-x: auto;
+  padding-block: var(--space-2);
+  scrollbar-width: thin;
+}
+.pp-consultation[data-compact-viewport="true"] .j1-chart-tabs a {
+  flex: 0 0 auto;
+}
+.pp-consultation[data-compact-viewport="true"] .j1-chart-tabs a:focus-visible {
+  outline-offset: -3px;
+}
 .pp-page-header {
   display: flex;
   align-items: center;
