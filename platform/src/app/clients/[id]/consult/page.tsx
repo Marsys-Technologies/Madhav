@@ -1,3 +1,4 @@
+import { FEATURE_FLAGS } from '@/lib/config/feature_flags'
 import { query } from '@/lib/db/client'
 import { redirect } from 'next/navigation'
 import { ConsumeChat } from '@/components/consume/ConsumeChat'
@@ -129,8 +130,8 @@ export default async function ConsultPage({
 
   const chartMeta = [chart.birth_date, chart.birth_place].filter(Boolean).join(' · ')
 
-  const panelModeEnabled = configService.getFlag('PANEL_MODE_ENABLED')
-  const costVisibilityEnabled = configService.getFlag('COST_VISIBILITY_FOR_USERS')
+  const panelModeEnabled = configService.getFlag(FEATURE_FLAGS.panelMode)
+  const costVisibilityEnabled = configService.getFlag(FEATURE_FLAGS.costVisibilityForUsers)
   const slashEnabled = true
   const exportEnabled = true
   const tokensEnabled = true

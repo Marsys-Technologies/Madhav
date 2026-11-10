@@ -12,7 +12,7 @@
  *   1. DATABASE_URL env var pointing at a live/proxied Postgres with write access
  *      to classical_text_chunks (e.g. `source platform/.env.local`).
  *   2. ADC auth for Vertex AI embeddings: `gcloud auth application-default login`.
- *   3. GCP_PROJECT / VERTEX_AI_LOCATION env vars (defaults below match the repo's
+ *   3. GOOGLE_CLOUD_PROJECT / VERTEX_AI_LOCATION env vars (defaults below match the repo's
  *      other embedding scripts).
  *
  * Usage (from platform/):
@@ -31,6 +31,7 @@
  * `topics` are READ-ONLY and never written by this script.
  */
 
+import { readGoogleCloudEnv } from '../../src/lib/config/google_cloud_env'
 import { Pool, type PoolClient } from 'pg'
 import { GoogleAuth } from 'google-auth-library'
 import { createHash } from 'crypto'
@@ -39,7 +40,7 @@ import { resolve } from 'path'
 
 // ── Config (mirrors backfill_conversation_embeddings.ts) ───────────────────────
 
-const GCP_PROJECT     = process.env.GCP_PROJECT ?? 'madhav-astrology'
+const projectId     = readGoogleCloudEnv('GOOGLE_CLOUD_PROJECT') ?? 'madhav-astrology'
 const VERTEX_LOCATION = process.env.VERTEX_AI_LOCATION ?? 'asia-south1'
 const VERTEX_MODEL    = 'text-multilingual-embedding-002'
 const EMBED_DIM       = 768
@@ -93,7 +94,7 @@ const auth = new GoogleAuth({ scopes: ['https://www.googleapis.com/auth/cloud-pl
 
 async function embedText(text: string): Promise<number[]> {
   const endpoint =
-    `https://${VERTEX_LOCATION}-aiplatform.googleapis.com/v1/projects/${GCP_PROJECT}` +
+    `https://${VERTEX_LOCATION}-aiplatform.googleapis.com/v1/projects/${projectId}` +
     `/locations/${VERTEX_LOCATION}/publishers/google/models/${VERTEX_MODEL}:predict`
 
   const client = await auth.getClient()

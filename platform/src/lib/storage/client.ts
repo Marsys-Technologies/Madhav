@@ -1,9 +1,10 @@
+import { readGoogleCloudEnv } from '@/lib/config/google_cloud_env'
 import 'server-only'
 import { Storage, Bucket } from '@google-cloud/storage'
 
 let _storage: Storage | null = null
 function gcs() {
-  if (!_storage) _storage = new Storage({ projectId: process.env.GCP_PROJECT })
+  if (!_storage) _storage = new Storage({ projectId: readGoogleCloudEnv('GOOGLE_CLOUD_PROJECT') })
   return _storage
 }
 

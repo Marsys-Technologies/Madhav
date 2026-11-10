@@ -120,9 +120,9 @@ describe('observability/trace — W3C traceparent', () => {
       logSpy.mockRestore()
     })
 
-    it('emits a structured-log line including the cloud-trace field when GCP_PROJECT set', () => {
-      const prev = process.env['GCP_PROJECT']
-      process.env['GCP_PROJECT'] = 'test-proj'
+    it('emits a structured-log line including the cloud-trace field when GOOGLE_CLOUD_PROJECT set', () => {
+      const prev = process.env['GOOGLE_CLOUD_PROJECT']
+      process.env['GOOGLE_CLOUD_PROJECT'] = 'test-proj'
       try {
         const r = startSpan('test.end', null)
         const rec = endSpan(r.span, 'ok')
@@ -136,8 +136,8 @@ describe('observability/trace — W3C traceparent', () => {
           `projects/test-proj/traces/${rec.traceId}`,
         )
       } finally {
-        if (prev === undefined) delete process.env['GCP_PROJECT']
-        else process.env['GCP_PROJECT'] = prev
+        if (prev === undefined) delete process.env['GOOGLE_CLOUD_PROJECT']
+        else process.env['GOOGLE_CLOUD_PROJECT'] = prev
       }
     })
 

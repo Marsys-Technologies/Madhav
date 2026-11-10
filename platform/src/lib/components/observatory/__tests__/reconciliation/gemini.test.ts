@@ -59,15 +59,15 @@ function makeBqClient(rows: BigQueryRow[]): BigQueryLike {
 }
 
 function setBqEnv(): void {
-  process.env.GCP_BILLING_PROJECT_ID = 'test-project'
-  process.env.GCP_BILLING_DATASET_ID = 'billing_export'
-  process.env.GCP_BILLING_TABLE_ID = 'gcp_billing_export_v1_TEST'
+  process.env.GOOGLE_CLOUD_BILLING_PROJECT_ID = 'test-project'
+  process.env.GOOGLE_CLOUD_BILLING_DATASET_ID = 'billing_export'
+  process.env.GOOGLE_CLOUD_BILLING_TABLE_ID = 'gcp_billing_export_v1_TEST'
 }
 
 function clearBqEnv(): void {
-  delete process.env.GCP_BILLING_PROJECT_ID
-  delete process.env.GCP_BILLING_DATASET_ID
-  delete process.env.GCP_BILLING_TABLE_ID
+  delete process.env.GOOGLE_CLOUD_BILLING_PROJECT_ID
+  delete process.env.GOOGLE_CLOUD_BILLING_DATASET_ID
+  delete process.env.GOOGLE_CLOUD_BILLING_TABLE_ID
 }
 
 function mockReconciliationDb(reportId: string, computedTotal: number, eventCount: number): void {
@@ -277,10 +277,10 @@ describe('GeminiReconciler.reconcile()', () => {
   })
 
   // -------------------------------------------------------------------------
-  // 7. Missing GCP_BILLING_PROJECT_ID → status='error'.
+  // 7. Missing GOOGLE_CLOUD_BILLING_PROJECT_ID → status='error'.
   // -------------------------------------------------------------------------
 
-  it('missing GCP_BILLING_PROJECT_ID → status=error with explicit env-var name in notes', async () => {
+  it('missing GOOGLE_CLOUD_BILLING_PROJECT_ID → status=error with explicit env-var name in notes', async () => {
     clearBqEnv()
     queryMock.mockImplementation(async () => ({ rows: [] }))
 
@@ -298,7 +298,7 @@ describe('GeminiReconciler.reconcile()', () => {
     )
 
     expect(result.status).toBe('error')
-    expect(result.notes).toContain('GCP_BILLING_PROJECT_ID not configured')
+    expect(result.notes).toContain('GOOGLE_CLOUD_BILLING_PROJECT_ID not configured')
     expect(bqFactory).not.toHaveBeenCalled()
   })
 })

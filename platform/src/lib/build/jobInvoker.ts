@@ -9,6 +9,7 @@
  * an injected transport.
  */
 
+import { readGoogleCloudEnv } from '@/lib/config/google_cloud_env'
 import 'server-only'
 
 // Literal-string import so webpack can resolve @google-cloud/run as an
@@ -63,9 +64,11 @@ export function readJobInvokerEnv(env: NodeJS.ProcessEnv = process.env): JobInvo
     if (!v && !fallback) missing.push(k)
     return v ?? fallback ?? ''
   }
+  const project = readGoogleCloudEnv('GOOGLE_CLOUD_PROJECT', env)
+  if (!project) missing.push('GOOGLE_CLOUD_PROJECT')
   const out: JobInvokerEnv = {
-    gcpProject: get('GCP_PROJECT'),
-    jobLocation: get('BUILD_JOB_LOCATION', env.GCP_REGION ?? 'asia-south1'),
+    gcpProject: project ?? '',
+    jobLocation: get('BUILD_JOB_LOCATION', readGoogleCloudEnv('GOOGLE_CLOUD_REGION', env) ?? 'asia-south1'),
     jobId: get('BUILD_JOB_NAME', 'brahma-build-pipeline-job'),
   }
   if (missing.length > 0) {

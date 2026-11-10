@@ -7,7 +7,7 @@
 //
 // Phase O — O.3 Budgets. Authored by USTAD_S3_2_ALERT_DISPATCHER.
 //
-// Auth: same OBSERVATORY_ENABLED + requireSuperAdmin() gate as the rest of
+// Auth: same MARSYS_FLAG_OBSERVATORY_ENABLED + requireSuperAdmin() gate as the rest of
 // the observatory admin API. Cloud Scheduler should authenticate as a
 // super-admin service account; there is no scheduler-specific bypass.
 

@@ -30,6 +30,7 @@
  *   SMOKE_SERVER_URL=http://localhost:3000   (default)
  */
 
+import { readGoogleCloudEnv } from '../../src/lib/config/google_cloud_env'
 import { readFileSync, existsSync } from 'fs'
 import { join } from 'path'
 
@@ -318,8 +319,8 @@ function guardEnv(): string[] {
 
   if (!process.env.ANTHROPIC_API_KEY) errors.push('ANTHROPIC_API_KEY is not set.')
   if (!process.env.OPENAI_API_KEY) errors.push('OPENAI_API_KEY is not set.')
-  if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY && !process.env.GCP_PROJECT) {
-    errors.push('GOOGLE_GENERATIVE_AI_API_KEY (or GCP_PROJECT for ADC) is not set.')
+  if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY && !readGoogleCloudEnv('GOOGLE_CLOUD_PROJECT')) {
+    errors.push('GOOGLE_GENERATIVE_AI_API_KEY (or GOOGLE_CLOUD_PROJECT for ADC) is not set.')
   }
   if (!process.env.DATABASE_URL) errors.push('DATABASE_URL is not set. Start Cloud SQL Auth Proxy.')
 

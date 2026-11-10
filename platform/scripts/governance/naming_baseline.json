@@ -2,422 +2,98 @@
   "baseline_keys": [
     "google_env_prefix|.github/workflows/deploy.yml|GCP_PROJECT",
     "google_env_prefix|.github/workflows/deploy.yml|GCP_REGION",
-    "google_env_prefix|platform/scripts/backfill_conversation_embeddings.ts|GCP_PROJECT",
-    "google_env_prefix|platform/scripts/bootstrap/bootstrap_classical_texts_bphs.ts|GCP_PROJECT",
-    "google_env_prefix|platform/scripts/bootstrap/bootstrap_classical_texts_jaimini.ts|GCP_PROJECT",
-    "google_env_prefix|platform/scripts/corpus/apply_muhurta_chintamani_translations.ts|GCP_PROJECT",
-    "google_env_prefix|platform/scripts/cutover/stage1_smoke.ts|GCP_PROJECT",
     "google_env_prefix|platform/scripts/pipeline_smoke_audit.py|GCP_PROJECT",
-    "google_env_prefix|platform/src/lib/build/__tests__/jobInvoker.test.ts|GCP_PROJECT",
-    "google_env_prefix|platform/src/lib/build/__tests__/recalibrationEnqueue.test.ts|GCP_PROJECT",
-    "google_env_prefix|platform/src/lib/build/__tests__/terminalizeFailedRun.test.ts|GCP_PROJECT",
-    "google_env_prefix|platform/src/lib/build/jobInvoker.ts|GCP_PROJECT",
-    "google_env_prefix|platform/src/lib/build/jobInvoker.ts|GCP_REGION",
-    "google_env_prefix|platform/src/lib/cloud_run/jobs.ts|GCP_PROJECT",
-    "google_env_prefix|platform/src/lib/components/observatory/__tests__/reconciliation/gemini.test.ts|GCP_BILLING_DATASET_ID",
-    "google_env_prefix|platform/src/lib/components/observatory/__tests__/reconciliation/gemini.test.ts|GCP_BILLING_PROJECT_ID",
-    "google_env_prefix|platform/src/lib/components/observatory/__tests__/reconciliation/gemini.test.ts|GCP_BILLING_TABLE_ID",
-    "google_env_prefix|platform/src/lib/components/observatory/__tests__/reconciliation/reconciliation.test.ts|GCP_BILLING_DATASET_ID",
-    "google_env_prefix|platform/src/lib/components/observatory/__tests__/reconciliation/reconciliation.test.ts|GCP_BILLING_PROJECT_ID",
-    "google_env_prefix|platform/src/lib/components/observatory/__tests__/reconciliation/reconciliation.test.ts|GCP_BILLING_TABLE_ID",
-    "google_env_prefix|platform/src/lib/embeddings/__tests__/embedText.test.ts|GCP_PROJECT",
-    "google_env_prefix|platform/src/lib/embeddings/embedText.ts|GCP_PROJECT",
-    "google_env_prefix|platform/src/lib/multimodal/pdf_extractor.ts|GOOGLE_APPLICATION_CREDENTIALS_JSON",
-    "google_env_prefix|platform/src/lib/observability/__tests__/trace.test.ts|GCP_PROJECT",
-    "google_env_prefix|platform/src/lib/observability/trace.ts|GCP_PROJECT",
-    "google_env_prefix|platform/src/lib/observatory/reconciliation/gemini.ts|GCP_BILLING_DATASET_ID",
-    "google_env_prefix|platform/src/lib/observatory/reconciliation/gemini.ts|GCP_BILLING_PROJECT_ID",
-    "google_env_prefix|platform/src/lib/observatory/reconciliation/gemini.ts|GCP_BILLING_TABLE_ID",
-    "google_env_prefix|platform/src/lib/storage/client.ts|GCP_PROJECT",
-    "google_env_prefix|platform/src/lib/storage/gcs.ts|GCP_PROJECT",
-    "marsys_flags|platform/src/app/api/admin/observatory/budget-rules/evaluate/run/route.ts|OBSERVATORY_ENABLED",
-    "marsys_flags|platform/src/app/api/admin/observatory/export/route.ts|OBSERVATORY_ENABLED",
-    "marsys_flags|platform/src/app/api/admin/observatory/reconciliation/history/route.ts|OBSERVATORY_ENABLED",
-    "marsys_flags|platform/src/app/api/admin/observatory/reconciliation/route.ts|OBSERVATORY_ENABLED",
-    "marsys_flags|platform/src/app/api/chat/consult/route.ts|HISTORY_COMPRESSION_ENABLED",
-    "marsys_flags|platform/src/app/api/chat/consult/route.ts|VALIDATOR_FAILURE_HALT",
-    "marsys_flags|platform/src/app/clients/[id]/consult/[conversationId]/page.tsx|COST_VISIBILITY_FOR_USERS",
-    "marsys_flags|platform/src/app/clients/[id]/consult/[conversationId]/page.tsx|PANEL_MODE_ENABLED",
-    "marsys_flags|platform/src/app/clients/[id]/consult/page.tsx|COST_VISIBILITY_FOR_USERS",
-    "marsys_flags|platform/src/app/clients/[id]/consult/page.tsx|PANEL_MODE_ENABLED",
-    "marsys_flags|platform/src/lib/components/observatory/AuthGate.tsx|OBSERVATORY_ENABLED",
-    "marsys_flags|platform/src/lib/models/registry.ts|NVIDIA_PLANNER_ENABLED",
-    "marsys_flags|platform/src/lib/pariprashna/pipeline/validation_stage.ts|CITATION_GATE_OVERRIDE",
-    "marsys_flags|platform/src/lib/pipelines/shared/run_adapter_dispatch.ts|CITATION_GATE_OVERRIDE",
-    "marsys_flags|platform/src/lib/providers/nvidia/adapter.ts|NVIDIA_PLANNER_ENABLED",
-    "marsys_flags|platform/src/lib/synthesis/history_compression.ts|HISTORY_COMPRESSION_ENABLED"
+    "google_env_prefix|platform/src/lib/config/google_cloud_env.ts|GCP_BILLING_DATASET_ID",
+    "google_env_prefix|platform/src/lib/config/google_cloud_env.ts|GCP_BILLING_PROJECT_ID",
+    "google_env_prefix|platform/src/lib/config/google_cloud_env.ts|GCP_BILLING_TABLE_ID",
+    "google_env_prefix|platform/src/lib/config/google_cloud_env.ts|GCP_PROJECT",
+    "google_env_prefix|platform/src/lib/config/google_cloud_env.ts|GCP_REGION",
+    "google_env_prefix|platform/src/lib/multimodal/pdf_extractor.ts|GOOGLE_APPLICATION_CREDENTIALS_JSON"
   ],
   "generated_by": "naming_lint.py --first-run",
   "schema_version": "1.0",
   "violation_count": 54,
   "violations": [
     {
+      "rule_id": "google_env_prefix",
+      "severity": "error",
       "file": ".github/workflows/deploy.yml",
-      "line": 84,
-      "match": "GCP_REGION",
+      "line": 99,
       "message": "forbidden Google env prefix 'GCP_REGION' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
-      "rule_id": "google_env_prefix",
-      "severity": "error"
+      "match": "GCP_REGION",
+      "justification": "Workflow-local region input deliberately insulated from the credential action environment. Preflight steps explicitly bridge it into GOOGLE_CLOUD_REGION."
     },
     {
+      "rule_id": "google_env_prefix",
+      "severity": "error",
       "file": ".github/workflows/deploy.yml",
-      "line": 1398,
-      "match": "GCP_PROJECT",
+      "line": 1627,
       "message": "forbidden Google env prefix 'GCP_PROJECT' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
-      "rule_id": "google_env_prefix",
-      "severity": "error"
+      "match": "GCP_PROJECT",
+      "justification": "Existing web and pipeline runtime binding kept for deployed revisions and sidecar consumers. The TypeScript alias reader supports canonical configuration without a coordinated Cloud Run mutation."
     },
     {
-      "file": "platform/scripts/backfill_conversation_embeddings.ts",
-      "line": 13,
-      "match": "GCP_PROJECT",
-      "message": "forbidden Google env prefix 'GCP_PROJECT' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
       "rule_id": "google_env_prefix",
-      "severity": "error"
-    },
-    {
-      "file": "platform/scripts/bootstrap/bootstrap_classical_texts_bphs.ts",
-      "line": 35,
-      "match": "GCP_PROJECT",
-      "message": "forbidden Google env prefix 'GCP_PROJECT' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
-      "rule_id": "google_env_prefix",
-      "severity": "error"
-    },
-    {
-      "file": "platform/scripts/bootstrap/bootstrap_classical_texts_jaimini.ts",
-      "line": 37,
-      "match": "GCP_PROJECT",
-      "message": "forbidden Google env prefix 'GCP_PROJECT' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
-      "rule_id": "google_env_prefix",
-      "severity": "error"
-    },
-    {
-      "file": "platform/scripts/corpus/apply_muhurta_chintamani_translations.ts",
-      "line": 15,
-      "match": "GCP_PROJECT",
-      "message": "forbidden Google env prefix 'GCP_PROJECT' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
-      "rule_id": "google_env_prefix",
-      "severity": "error"
-    },
-    {
-      "file": "platform/scripts/cutover/stage1_smoke.ts",
-      "line": 320,
-      "match": "GCP_PROJECT",
-      "message": "forbidden Google env prefix 'GCP_PROJECT' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
-      "rule_id": "google_env_prefix",
-      "severity": "error"
-    },
-    {
+      "severity": "error",
       "file": "platform/scripts/pipeline_smoke_audit.py",
-      "line": 452,
-      "match": "GCP_PROJECT",
+      "line": 455,
       "message": "forbidden Google env prefix 'GCP_PROJECT' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
-      "rule_id": "google_env_prefix",
-      "severity": "error"
-    },
-    {
-      "file": "platform/src/lib/build/__tests__/jobInvoker.test.ts",
-      "line": 23,
       "match": "GCP_PROJECT",
-      "message": "forbidden Google env prefix 'GCP_PROJECT' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
-      "rule_id": "google_env_prefix",
-      "severity": "error"
+      "justification": "Standalone Python smoke audit still honors the operator-supplied deployment project key used by its ADC and Vertex readbacks."
     },
     {
-      "file": "platform/src/lib/build/__tests__/recalibrationEnqueue.test.ts",
-      "line": 138,
-      "match": "GCP_PROJECT",
-      "message": "forbidden Google env prefix 'GCP_PROJECT' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
       "rule_id": "google_env_prefix",
-      "severity": "error"
-    },
-    {
-      "file": "platform/src/lib/build/__tests__/terminalizeFailedRun.test.ts",
-      "line": 27,
-      "match": "GCP_PROJECT",
-      "message": "forbidden Google env prefix 'GCP_PROJECT' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
-      "rule_id": "google_env_prefix",
-      "severity": "error"
-    },
-    {
-      "file": "platform/src/lib/build/jobInvoker.ts",
-      "line": 67,
-      "match": "GCP_PROJECT",
-      "message": "forbidden Google env prefix 'GCP_PROJECT' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
-      "rule_id": "google_env_prefix",
-      "severity": "error"
-    },
-    {
-      "file": "platform/src/lib/build/jobInvoker.ts",
-      "line": 68,
-      "match": "GCP_REGION",
-      "message": "forbidden Google env prefix 'GCP_REGION' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
-      "rule_id": "google_env_prefix",
-      "severity": "error"
-    },
-    {
-      "file": "platform/src/lib/cloud_run/jobs.ts",
+      "severity": "error",
+      "file": "platform/src/lib/config/google_cloud_env.ts",
       "line": 4,
-      "match": "GCP_PROJECT",
       "message": "forbidden Google env prefix 'GCP_PROJECT' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
-      "rule_id": "google_env_prefix",
-      "severity": "error"
+      "match": "GCP_PROJECT",
+      "justification": "Compatibility alias for an existing deployed or operator-supplied environment key. Legacy precedence is covered by google_cloud_env.test.ts."
     },
     {
-      "file": "platform/src/lib/components/observatory/__tests__/reconciliation/gemini.test.ts",
-      "line": 62,
-      "match": "GCP_BILLING_PROJECT_ID",
+      "rule_id": "google_env_prefix",
+      "severity": "error",
+      "file": "platform/src/lib/config/google_cloud_env.ts",
+      "line": 5,
+      "message": "forbidden Google env prefix 'GCP_REGION' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
+      "match": "GCP_REGION",
+      "justification": "Compatibility alias for an existing deployed or operator-supplied environment key. Legacy precedence is covered by google_cloud_env.test.ts."
+    },
+    {
+      "rule_id": "google_env_prefix",
+      "severity": "error",
+      "file": "platform/src/lib/config/google_cloud_env.ts",
+      "line": 6,
       "message": "forbidden Google env prefix 'GCP_BILLING_PROJECT_ID' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
-      "rule_id": "google_env_prefix",
-      "severity": "error"
-    },
-    {
-      "file": "platform/src/lib/components/observatory/__tests__/reconciliation/gemini.test.ts",
-      "line": 63,
-      "match": "GCP_BILLING_DATASET_ID",
-      "message": "forbidden Google env prefix 'GCP_BILLING_DATASET_ID' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
-      "rule_id": "google_env_prefix",
-      "severity": "error"
-    },
-    {
-      "file": "platform/src/lib/components/observatory/__tests__/reconciliation/gemini.test.ts",
-      "line": 64,
-      "match": "GCP_BILLING_TABLE_ID",
-      "message": "forbidden Google env prefix 'GCP_BILLING_TABLE_ID' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
-      "rule_id": "google_env_prefix",
-      "severity": "error"
-    },
-    {
-      "file": "platform/src/lib/components/observatory/__tests__/reconciliation/reconciliation.test.ts",
-      "line": 251,
       "match": "GCP_BILLING_PROJECT_ID",
-      "message": "forbidden Google env prefix 'GCP_BILLING_PROJECT_ID' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
-      "rule_id": "google_env_prefix",
-      "severity": "error"
+      "justification": "Compatibility alias for an existing deployed or operator-supplied environment key. Legacy precedence is covered by google_cloud_env.test.ts."
     },
     {
-      "file": "platform/src/lib/components/observatory/__tests__/reconciliation/reconciliation.test.ts",
-      "line": 256,
-      "match": "GCP_BILLING_DATASET_ID",
+      "rule_id": "google_env_prefix",
+      "severity": "error",
+      "file": "platform/src/lib/config/google_cloud_env.ts",
+      "line": 7,
       "message": "forbidden Google env prefix 'GCP_BILLING_DATASET_ID' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
-      "rule_id": "google_env_prefix",
-      "severity": "error"
+      "match": "GCP_BILLING_DATASET_ID",
+      "justification": "Compatibility alias for an existing deployed or operator-supplied environment key. Legacy precedence is covered by google_cloud_env.test.ts."
     },
     {
-      "file": "platform/src/lib/components/observatory/__tests__/reconciliation/reconciliation.test.ts",
-      "line": 257,
-      "match": "GCP_BILLING_TABLE_ID",
+      "rule_id": "google_env_prefix",
+      "severity": "error",
+      "file": "platform/src/lib/config/google_cloud_env.ts",
+      "line": 8,
       "message": "forbidden Google env prefix 'GCP_BILLING_TABLE_ID' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
-      "rule_id": "google_env_prefix",
-      "severity": "error"
+      "match": "GCP_BILLING_TABLE_ID",
+      "justification": "Compatibility alias for an existing deployed or operator-supplied environment key. Legacy precedence is covered by google_cloud_env.test.ts."
     },
     {
-      "file": "platform/src/lib/embeddings/__tests__/embedText.test.ts",
-      "line": 56,
-      "match": "GCP_PROJECT",
-      "message": "forbidden Google env prefix 'GCP_PROJECT' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
       "rule_id": "google_env_prefix",
-      "severity": "error"
-    },
-    {
-      "file": "platform/src/lib/embeddings/embedText.ts",
-      "line": 30,
-      "match": "GCP_PROJECT",
-      "message": "forbidden Google env prefix 'GCP_PROJECT' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
-      "rule_id": "google_env_prefix",
-      "severity": "error"
-    },
-    {
+      "severity": "error",
       "file": "platform/src/lib/multimodal/pdf_extractor.ts",
       "line": 29,
-      "match": "GOOGLE_APPLICATION_CREDENTIALS_JSON",
       "message": "non-canonical Google env var 'GOOGLE_APPLICATION_CREDENTIALS_JSON' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
-      "rule_id": "google_env_prefix",
-      "severity": "error"
-    },
-    {
-      "file": "platform/src/lib/observability/__tests__/trace.test.ts",
-      "line": 123,
-      "match": "GCP_PROJECT",
-      "message": "forbidden Google env prefix 'GCP_PROJECT' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
-      "rule_id": "google_env_prefix",
-      "severity": "error"
-    },
-    {
-      "file": "platform/src/lib/observability/trace.ts",
-      "line": 162,
-      "match": "GCP_PROJECT",
-      "message": "forbidden Google env prefix 'GCP_PROJECT' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
-      "rule_id": "google_env_prefix",
-      "severity": "error"
-    },
-    {
-      "file": "platform/src/lib/observatory/reconciliation/gemini.ts",
-      "line": 15,
-      "match": "GCP_BILLING_PROJECT_ID",
-      "message": "forbidden Google env prefix 'GCP_BILLING_PROJECT_ID' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
-      "rule_id": "google_env_prefix",
-      "severity": "error"
-    },
-    {
-      "file": "platform/src/lib/observatory/reconciliation/gemini.ts",
-      "line": 16,
-      "match": "GCP_BILLING_DATASET_ID",
-      "message": "forbidden Google env prefix 'GCP_BILLING_DATASET_ID' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
-      "rule_id": "google_env_prefix",
-      "severity": "error"
-    },
-    {
-      "file": "platform/src/lib/observatory/reconciliation/gemini.ts",
-      "line": 17,
-      "match": "GCP_BILLING_TABLE_ID",
-      "message": "forbidden Google env prefix 'GCP_BILLING_TABLE_ID' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
-      "rule_id": "google_env_prefix",
-      "severity": "error"
-    },
-    {
-      "file": "platform/src/lib/storage/client.ts",
-      "line": 6,
-      "match": "GCP_PROJECT",
-      "message": "forbidden Google env prefix 'GCP_PROJECT' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
-      "rule_id": "google_env_prefix",
-      "severity": "error"
-    },
-    {
-      "file": "platform/src/lib/storage/gcs.ts",
-      "line": 8,
-      "match": "GCP_PROJECT",
-      "message": "forbidden Google env prefix 'GCP_PROJECT' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
-      "rule_id": "google_env_prefix",
-      "severity": "error"
-    },
-    {
-      "file": "platform/src/app/api/admin/observatory/budget-rules/evaluate/run/route.ts",
-      "line": 10,
-      "match": "OBSERVATORY_ENABLED",
-      "message": "feature-flag-shaped identifier 'OBSERVATORY_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_OBSERVATORY_ENABLED')",
-      "rule_id": "marsys_flags",
-      "severity": "error"
-    },
-    {
-      "file": "platform/src/app/api/admin/observatory/export/route.ts",
-      "line": 5,
-      "match": "OBSERVATORY_ENABLED",
-      "message": "feature-flag-shaped identifier 'OBSERVATORY_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_OBSERVATORY_ENABLED')",
-      "rule_id": "marsys_flags",
-      "severity": "error"
-    },
-    {
-      "file": "platform/src/app/api/admin/observatory/reconciliation/history/route.ts",
-      "line": 3,
-      "match": "OBSERVATORY_ENABLED",
-      "message": "feature-flag-shaped identifier 'OBSERVATORY_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_OBSERVATORY_ENABLED')",
-      "rule_id": "marsys_flags",
-      "severity": "error"
-    },
-    {
-      "file": "platform/src/app/api/admin/observatory/reconciliation/route.ts",
-      "line": 4,
-      "match": "OBSERVATORY_ENABLED",
-      "message": "feature-flag-shaped identifier 'OBSERVATORY_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_OBSERVATORY_ENABLED')",
-      "rule_id": "marsys_flags",
-      "severity": "error"
-    },
-    {
-      "file": "platform/src/app/api/chat/consult/route.ts",
-      "line": 923,
-      "match": "VALIDATOR_FAILURE_HALT",
-      "message": "feature-flag-shaped identifier 'VALIDATOR_FAILURE_HALT' lacks the MARSYS_FLAG_ prefix",
-      "rule_id": "marsys_flags",
-      "severity": "error"
-    },
-    {
-      "file": "platform/src/app/api/chat/consult/route.ts",
-      "line": 976,
-      "match": "HISTORY_COMPRESSION_ENABLED",
-      "message": "feature-flag-shaped identifier 'HISTORY_COMPRESSION_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_HISTORY_COMPRESSION_ENABLED')",
-      "rule_id": "marsys_flags",
-      "severity": "error"
-    },
-    {
-      "file": "platform/src/lib/pariprashna/pipeline/validation_stage.ts",
-      "line": 46,
-      "match": "CITATION_GATE_OVERRIDE",
-      "message": "feature-flag-shaped identifier 'CITATION_GATE_OVERRIDE' lacks the MARSYS_FLAG_ prefix",
-      "rule_id": "marsys_flags",
-      "severity": "error"
-    },
-    {
-      "file": "platform/src/app/clients/[id]/consult/[conversationId]/page.tsx",
-      "line": 61,
-      "match": "PANEL_MODE_ENABLED",
-      "message": "feature-flag-shaped identifier 'PANEL_MODE_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_PANEL_MODE_ENABLED')",
-      "rule_id": "marsys_flags",
-      "severity": "error"
-    },
-    {
-      "file": "platform/src/app/clients/[id]/consult/[conversationId]/page.tsx",
-      "line": 62,
-      "match": "COST_VISIBILITY_FOR_USERS",
-      "message": "feature-flag-shaped identifier 'COST_VISIBILITY_FOR_USERS' lacks the MARSYS_FLAG_ prefix",
-      "rule_id": "marsys_flags",
-      "severity": "error"
-    },
-    {
-      "file": "platform/src/app/clients/[id]/consult/page.tsx",
-      "line": 132,
-      "match": "PANEL_MODE_ENABLED",
-      "message": "feature-flag-shaped identifier 'PANEL_MODE_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_PANEL_MODE_ENABLED')",
-      "rule_id": "marsys_flags",
-      "severity": "error"
-    },
-    {
-      "file": "platform/src/app/clients/[id]/consult/page.tsx",
-      "line": 133,
-      "match": "COST_VISIBILITY_FOR_USERS",
-      "message": "feature-flag-shaped identifier 'COST_VISIBILITY_FOR_USERS' lacks the MARSYS_FLAG_ prefix",
-      "rule_id": "marsys_flags",
-      "severity": "error"
-    },
-    {
-      "file": "platform/src/lib/components/observatory/AuthGate.tsx",
-      "line": 6,
-      "match": "OBSERVATORY_ENABLED",
-      "message": "feature-flag-shaped identifier 'OBSERVATORY_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_OBSERVATORY_ENABLED')",
-      "rule_id": "marsys_flags",
-      "severity": "error"
-    },
-    {
-      "file": "platform/src/lib/models/registry.ts",
-      "line": 932,
-      "match": "NVIDIA_PLANNER_ENABLED",
-      "message": "feature-flag-shaped identifier 'NVIDIA_PLANNER_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_NVIDIA_PLANNER_ENABLED')",
-      "rule_id": "marsys_flags",
-      "severity": "error"
-    },
-    {
-      "file": "platform/src/lib/pipelines/shared/run_adapter_dispatch.ts",
-      "line": 609,
-      "match": "CITATION_GATE_OVERRIDE",
-      "message": "feature-flag-shaped identifier 'CITATION_GATE_OVERRIDE' lacks the MARSYS_FLAG_ prefix",
-      "rule_id": "marsys_flags",
-      "severity": "error"
-    },
-    {
-      "file": "platform/src/lib/providers/nvidia/adapter.ts",
-      "line": 8,
-      "match": "NVIDIA_PLANNER_ENABLED",
-      "message": "feature-flag-shaped identifier 'NVIDIA_PLANNER_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_NVIDIA_PLANNER_ENABLED')",
-      "rule_id": "marsys_flags",
-      "severity": "error"
-    },
-    {
-      "file": "platform/src/lib/synthesis/history_compression.ts",
-      "line": 98,
-      "match": "HISTORY_COMPRESSION_ENABLED",
-      "message": "feature-flag-shaped identifier 'HISTORY_COMPRESSION_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_HISTORY_COMPRESSION_ENABLED')",
-      "rule_id": "marsys_flags",
-      "severity": "error"
+      "match": "GOOGLE_APPLICATION_CREDENTIALS_JSON",
+      "justification": "Compatibility check for the existing inline JSON credential option. Retains its original credential scope and fallback behavior."
     }
   ]
 }

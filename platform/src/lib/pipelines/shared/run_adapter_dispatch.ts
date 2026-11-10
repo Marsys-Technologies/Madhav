@@ -24,6 +24,7 @@
  * platform/src/app/api/chat green; pipeline tests green).
  */
 
+import { FEATURE_FLAGS } from '@/lib/config/feature_flags'
 import {
   createIdGenerator,
   createUIMessageStream,
@@ -732,7 +733,7 @@ export async function runAdapterDispatch(ctx: RunAdapterDispatchCtx): Promise<Re
           bundle,
           tool_results: validToolResults,
         })
-        const adapterOverrideOn = configService.getFlag('CITATION_GATE_OVERRIDE')
+        const adapterOverrideOn = configService.getFlag(FEATURE_FLAGS.citationGateOverride)
         const adapterCitationValidation = validateCitationsForStream(
           adapterAccumulatedText,
           adapterAssembledContextJson,

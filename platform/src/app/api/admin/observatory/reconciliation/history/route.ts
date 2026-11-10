@@ -1,6 +1,6 @@
 // GET /api/admin/observatory/reconciliation/history
 //
-// Paginated list of past reconciliation runs. Gated by `OBSERVATORY_ENABLED`
+// Paginated list of past reconciliation runs. Gated by `MARSYS_FLAG_OBSERVATORY_ENABLED`
 // flag + `requireSuperAdmin()`.
 //
 // Query params:

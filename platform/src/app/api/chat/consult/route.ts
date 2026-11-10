@@ -1,3 +1,4 @@
+import { FEATURE_FLAGS } from '@/lib/config/feature_flags'
 import { meteringRequest, setMeteringAttribution } from '@/lib/metering/context'
 import {
   convertToModelMessages,
@@ -1130,7 +1131,7 @@ async function executeMeteredRequest(request: Request) {
 
   const bundleValidations = await runAll(bundle, 'bundle', { query_plan: queryPlan, bundle, manifest_fingerprint: manifest.fingerprint })
   const bundleSummary = summarize(bundleValidations)
-  if (bundleSummary.overall === 'fail' && configService.getFlag('VALIDATOR_FAILURE_HALT')) {
+  if (bundleSummary.overall === 'fail' && configService.getFlag(FEATURE_FLAGS.validatorFailureHalt)) {
     return NextResponse.json(
       { error: 'bundle_validation_failed', failures: bundleSummary.failures },
       { status: 422 }
@@ -1180,11 +1181,11 @@ async function executeMeteredRequest(request: Request) {
   // then dropped below.
   const historyMessageCap = ptrUsedPairs * 2 + 1
 
-  // β8: when HISTORY_COMPRESSION_ENABLED, take the full prior history and let
+  // β8: when MARSYS_FLAG_HISTORY_COMPRESSION_ENABLED, take the full prior history and let
   // compressHistory decide whether to summarize based on the token budget.
   // Flag OFF: use the existing planner-guided hard cap (unchanged behavior).
   let trimmedConversationHistory: import('ai').ModelMessage[]
-  if (configService.getFlag('HISTORY_COMPRESSION_ENABLED')) {
+  if (configService.getFlag(FEATURE_FLAGS.historyCompression)) {
     const allPriorMessages = await convertToModelMessages(
       messages
         .filter(m => m.role === 'user' || m.role === 'assistant')

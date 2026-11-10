@@ -1,3 +1,4 @@
+import { FEATURE_FLAGS } from '@/lib/config/feature_flags'
 import { getServerUser } from '@/lib/firebase/server'
 import { resolveChartPageAccess } from '@/lib/auth/chart-page-guard'
 import { query } from '@/lib/db/client'
@@ -82,8 +83,8 @@ export default async function ConsultConversationPage({
 
   const chartMeta = [chart.birth_date, chart.birth_place].filter(Boolean).join(' · ')
 
-  const panelModeEnabled = configService.getFlag('PANEL_MODE_ENABLED')
-  const costVisibilityEnabled = configService.getFlag('COST_VISIBILITY_FOR_USERS')
+  const panelModeEnabled = configService.getFlag(FEATURE_FLAGS.panelMode)
+  const costVisibilityEnabled = configService.getFlag(FEATURE_FLAGS.costVisibilityForUsers)
   const audienceTier: AudienceTier = isSuperAdmin ? 'super_admin' : 'client'
 
   return (

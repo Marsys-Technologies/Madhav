@@ -135,11 +135,11 @@ describe('enqueueLelRecalibration', () => {
   // the pre-fix two-separate-UPDATEs shape (no `error=` write would appear).
   it('propagates the dispatch failure message to BOTH build_runs and build_run_assets, and still throws', async () => {
     seedHappyPath()
-    mockInvokeRunJob.mockRejectedValueOnce(new Error('invokeRunJob failed: missing GCP_PROJECT env var'))
+    mockInvokeRunJob.mockRejectedValueOnce(new Error('invokeRunJob failed: missing GOOGLE_CLOUD_PROJECT env var'))
     q.mockResolvedValueOnce({ rows: [], rowCount: 0 }) // terminalizeFailedRun's combined UPDATE
 
     await expect(enqueueLelRecalibration({ chartId: CHART, triggeredBy: 'uid-1' }))
-      .rejects.toThrow('invokeRunJob failed: missing GCP_PROJECT env var')
+      .rejects.toThrow('invokeRunJob failed: missing GOOGLE_CLOUD_PROJECT env var')
 
     const terminalizeCall = q.mock.calls.find(
       c => typeof c[0] === 'string' && c[0].includes('UPDATE build_runs') && c[0].includes('UPDATE build_run_assets')
@@ -148,7 +148,7 @@ describe('enqueueLelRecalibration', () => {
     const [sql, params] = terminalizeCall!
     expect(sql).toMatch(/last_error\s*=\s*\$1/)
     expect(sql).toMatch(/error\s*=\s*\$1/)
-    expect(params[0]).toBe('invokeRunJob failed: missing GCP_PROJECT env var')
+    expect(params[0]).toBe('invokeRunJob failed: missing GOOGLE_CLOUD_PROJECT env var')
     expect(params[1]).toBe('run-recal-1')
   })
 })

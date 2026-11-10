@@ -600,3 +600,14 @@ export const CGM_GRAPH_WALK_MAX_DEPTH_DEFAULT = 3
 export const VECTOR_SEARCH_TOP_K_DEFAULT = 20
 
 export const FLAG_ENV_PREFIX = 'MARSYS_FLAG_'
+
+// Typed call-site keys preserve the existing configuration and environment names.
+export const FEATURE_FLAGS = {
+  observatory: 'OBSERVATORY_ENABLED',
+  validatorFailureHalt: 'VALIDATOR_FAILURE_HALT',
+  historyCompression: 'HISTORY_COMPRESSION_ENABLED',
+  panelMode: 'PANEL_MODE_ENABLED',
+  costVisibilityForUsers: 'COST_VISIBILITY_FOR_USERS',
+  citationGateOverride: 'CITATION_GATE_OVERRIDE',
+  nvidiaPlanner: 'NVIDIA_PLANNER_ENABLED',
+} as const satisfies Record<string, FeatureFlag>

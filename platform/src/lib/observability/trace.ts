@@ -17,6 +17,7 @@
  * Stream B / unit 4.observability (Wave 4 platform-modernization).
  */
 
+import { readGoogleCloudEnv } from '@/lib/config/google_cloud_env'
 import 'server-only'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -159,7 +160,7 @@ export function endSpan(
     ...(error ? { error } : {}),
   }
   // Cloud Logging picks up `logging.googleapis.com/trace` and links to Trace.
-  const project = process.env['GCP_PROJECT'] ?? ''
+  const project = readGoogleCloudEnv('GOOGLE_CLOUD_PROJECT') ?? ''
   const cloudTraceField =
     project && record.traceId
       ? { 'logging.googleapis.com/trace': `projects/${project}/traces/${record.traceId}` }

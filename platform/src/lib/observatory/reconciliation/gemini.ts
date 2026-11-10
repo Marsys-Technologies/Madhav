@@ -12,9 +12,9 @@
 // BigQuery client picks up the same credentials without additional config.
 //
 // Required env vars:
-//   GCP_BILLING_PROJECT_ID   — project that owns the BQ dataset
-//   GCP_BILLING_DATASET_ID   — dataset name (e.g. "billing_export")
-//   GCP_BILLING_TABLE_ID     — table name (e.g. "gcp_billing_export_v1_XXXXXX")
+//   GOOGLE_CLOUD_BILLING_PROJECT_ID   — project that owns the BQ dataset
+//   GOOGLE_CLOUD_BILLING_DATASET_ID   — dataset name (e.g. "billing_export")
+//   GOOGLE_CLOUD_BILLING_TABLE_ID     — table name (e.g. "gcp_billing_export_v1_XXXXXX")
 // Any missing → fetchAuthoritativeCost throws (BaseReconciler turns into
 // a status='error' result with the message in `notes`).
 //
@@ -34,6 +34,7 @@
 // `bqFactory`; tests pass an in-memory fake. Production callers omit the
 // factory and the reconciler lazy-imports @google-cloud/bigquery.
 
+import { readGoogleCloudEnv } from '@/lib/config/google_cloud_env'
 import 'server-only'
 import { BaseReconciler, type FetchAuthoritativeCostResult } from './base'
 import {
@@ -124,12 +125,12 @@ export class GeminiReconciler extends BaseReconciler {
   protected async fetchAuthoritativeCost(
     input: ProviderReconcileInput,
   ): Promise<FetchAuthoritativeCostResult> {
-    const projectId = process.env.GCP_BILLING_PROJECT_ID
-    const datasetId = process.env.GCP_BILLING_DATASET_ID
-    const tableId = process.env.GCP_BILLING_TABLE_ID
-    if (!projectId) throw new Error('GCP_BILLING_PROJECT_ID not configured')
-    if (!datasetId) throw new Error('GCP_BILLING_DATASET_ID not configured')
-    if (!tableId) throw new Error('GCP_BILLING_TABLE_ID not configured')
+    const projectId = readGoogleCloudEnv('GOOGLE_CLOUD_BILLING_PROJECT_ID')
+    const datasetId = readGoogleCloudEnv('GOOGLE_CLOUD_BILLING_DATASET_ID')
+    const tableId = readGoogleCloudEnv('GOOGLE_CLOUD_BILLING_TABLE_ID')
+    if (!projectId) throw new Error('GOOGLE_CLOUD_BILLING_PROJECT_ID not configured')
+    if (!datasetId) throw new Error('GOOGLE_CLOUD_BILLING_DATASET_ID not configured')
+    if (!tableId) throw new Error('GOOGLE_CLOUD_BILLING_TABLE_ID not configured')
 
     const client = await this.resolveClient(projectId)
 

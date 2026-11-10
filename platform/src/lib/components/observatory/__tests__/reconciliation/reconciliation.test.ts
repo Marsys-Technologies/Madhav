@@ -248,13 +248,13 @@ describe('POST /api/admin/observatory/reconciliation', () => {
 
   it('S2.4 ships Gemini — route returns a real reconciliation result, not 400 not_implemented', async () => {
     // Env vars unset in this test → GeminiReconciler.fetchAuthoritativeCost
-    // throws "GCP_BILLING_PROJECT_ID not configured", which BaseReconciler
+    // throws "GOOGLE_CLOUD_BILLING_PROJECT_ID not configured", which BaseReconciler
     // catches and turns into a status='error' result. The point of this
     // test is to confirm the route no longer routes Gemini to the
     // not_implemented stub branch — it executes the real reconciler.
-    delete process.env.GCP_BILLING_PROJECT_ID
-    delete process.env.GCP_BILLING_DATASET_ID
-    delete process.env.GCP_BILLING_TABLE_ID
+    delete process.env.GOOGLE_CLOUD_BILLING_PROJECT_ID
+    delete process.env.GOOGLE_CLOUD_BILLING_DATASET_ID
+    delete process.env.GOOGLE_CLOUD_BILLING_TABLE_ID
     queryMock.mockImplementation(async () => ({ rows: [] }))
     const { POST } = await loadRoute()
     const request = new Request('http://x/api/admin/observatory/reconciliation', {
@@ -271,7 +271,7 @@ describe('POST /api/admin/observatory/reconciliation', () => {
     expect(body.error).toBeUndefined()
     expect(body.provider).toBe('gemini')
     expect(body.status).toBe('error')
-    expect(body.notes).toContain('GCP_BILLING_PROJECT_ID not configured')
+    expect(body.notes).toContain('GOOGLE_CLOUD_BILLING_PROJECT_ID not configured')
   })
 
   it('returns 400 for invalid date format', async () => {
