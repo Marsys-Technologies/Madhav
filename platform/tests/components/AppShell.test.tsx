@@ -184,7 +184,7 @@ describe('AppShell', () => {
     )
     expect(getByRole('link', { name: 'Jātakas' })).toBeTruthy()
     expect(getByRole('link', { name: 'Cockpit' })).toBeTruthy()
-    expect(getByRole('link', { name: 'Audit' })).toBeTruthy()
+    expect(getByRole('link', { name: 'Operations' })).toHaveAttribute('href', '/admin')
   })
 
   it('shows nav labels when sidebar is hovered', () => {
@@ -208,13 +208,13 @@ describe('AppShell', () => {
     expect(queryByText('Jātakas')).toBeNull()
   })
 
-  it('shows full Performance label when expanded', () => {
+  it('shows Operations in the expanded rail', () => {
     const { getByRole, getByText } = render(
       <AppShell user={BASE_USER} profile={BASE_PROFILE} />
     )
     const nav = getByRole('navigation', { name: 'Primary navigation' })
     fireEvent.mouseEnter(nav)
-    expect(getByText('Performance')).toBeTruthy()
+    expect(getByText('Operations')).toBeTruthy()
   })
 
   it('shows username in avatar row when expanded', () => {
