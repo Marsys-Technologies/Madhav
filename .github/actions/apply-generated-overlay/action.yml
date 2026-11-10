@@ -31,7 +31,12 @@ runs:
               break;
             }
           }
-          if (!accepted) throw new Error('seal_overlay_artifact_absent: no non-expired ci-generated artifact from a successful ci.yml run for ' + sha + ' (a green CI run on this commit is required before the seal; the committed generated files are stale by design)');
+          if (!accepted) {
+            throw new Error(
+              'seal_overlay_artifact_absent: no non-expired ci-generated artifact from a successful ci.yml run for ' +
+              sha + ' (a green CI run on this commit is required before the seal; the committed generated files are stale by design)'
+            );
+          }
           core.setOutput('run_id', accepted.id);
     - uses: actions/download-artifact@v4
       with:

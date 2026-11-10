@@ -1600,7 +1600,14 @@ jobs:
             --network-tags=amjis-web-cli-egress
             --vpc-egress=private-ranges-only
             --remove-secrets=WATCHDOG_SECRET
-            --remove-env-vars="^|^WATCHDOG_LEGACY_FALLBACK_ENABLED|# ── 4.observability (Wave 4) ──────────────────────────────────────────|# Vertex AI region pin for batched embeddings (lib/embeddings/embedText.ts).|# Region must match the prod Cloud Run region (asia-south1) to keep|# Vertex calls in-region for both latency + egress cost.|# NOTE: NEXT_PUBLIC_FIREBASE_* intentionally absent from runtime env_vars.|# These are NEXT_PUBLIC_ flags baked into the bundle at build time (see|# build-args above). Cloud Run env_vars are never read by Next.js at|# runtime — setting them here has zero effect and misleadingly implies|# that rotating them without a full rebuild would take effect.|# Campaign definitions|labels|and non-server receipts use this|# distinct Cloud-SQL principal.  Its absent secret fails those|# writes closed; neither the migrator nor legacy-owner credential|# is ever present in the serving revision.|# Server-reconstructed evidence (probe_accepted|integrity_verified|# asset_frozen|stage_transition_accepted|foundation_lane_accepted)|# uses this distinct Cloud-SQL principal instead. Its absent secret|# fails those writes closed the same way -- this was missing from|# the serving revision from when the ingress writer role and its|# secret were first provisioned (2026-08-27) until this line."
+            --remove-env-vars="^|^WATCHDOG_LEGACY_FALLBACK_ENABLED|# ── 4.observability (Wave 4) ──────────────────────────────────────────|# Vertex AI region pin for batched embeddings
+            (lib/embeddings/embedText.ts).|# Region must match the prod Cloud Run region (asia-south1) to keep|# Vertex calls in-region for both latency + egress cost.|# NOTE: NEXT_PUBLIC_FIREBASE_*
+            intentionally absent from runtime env_vars.|# These are NEXT_PUBLIC_ flags baked into the bundle at build time (see|# build-args above). Cloud Run env_vars are never read by Next.js at|#
+            runtime — setting them here has zero effect and misleadingly implies|# that rotating them without a full rebuild would take effect.|# Campaign definitions|labels|and non-server receipts
+            use this|# distinct Cloud-SQL principal.  Its absent secret fails those|# writes closed; neither the migrator nor legacy-owner credential|# is ever present in the serving revision.|#
+            Server-reconstructed evidence (probe_accepted|integrity_verified|# asset_frozen|stage_transition_accepted|foundation_lane_accepted)|# uses this distinct Cloud-SQL principal instead. Its
+            absent secret|# fails those writes closed the same way -- this was missing from|# the serving revision from when the ingress writer role and its|# secret were first provisioned
+            (2026-08-27) until this line."
           # Pūrṇa inquiry state uses a separate LOGIN member of role_web_serve;
           # its secret is provisioned before merge and never falls back to DB_USER.
           # The signing ring is likewise dedicated and mounted only in web.
@@ -2266,7 +2273,8 @@ jobs:
         id: canary_key
         run: |
           KEY=$(gcloud secrets versions access latest --secret="mcp-canary-key" --project=madhav-astrology 2>/tmp/canary_key_err) || {
-            echo "::warning::Could not read mcp-canary-key from Secret Manager — verify its existing secret-specific deploy-identity binding and enabled version. Smoke will FAIL LOUD on the auth probes (by design; see mcp_end_to_end_smoke.sh)."
+            echo "::warning::Could not read mcp-canary-key from Secret Manager — \
+          verify its existing secret-specific deploy-identity binding and enabled version. Smoke will FAIL LOUD on the auth probes (by design; see mcp_end_to_end_smoke.sh)."
             cat /tmp/canary_key_err || true
             KEY=""
           }

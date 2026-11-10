@@ -209,7 +209,8 @@ jobs:
           echo "==================================================================="
 
           if printf '%s\n' "$CHANGED" | grep -qE \
-            '^(platform/scripts/audit/tap/|platform/python-sidecar/|platform-mcp/src/|platform/src/lib/retrieval/|\.github/workflows/tap-ci\.yml$|platform/supabase/migrations/|platform/migrations/|\.github/workflows/)'; then
+            '^(platform/scripts/audit/tap/|platform/python-sidecar/|platform-mcp/src/|platform/src/lib/retrieval/|\.github/workflows/tap-ci\.yml$|platform/supabase/migrations/|'\
+          'platform/migrations/|\.github/workflows/)'; then
             echo "Relevant path(s) changed — running the real grep set."
             echo "relevant=true" >> "$GITHUB_OUTPUT"
           else

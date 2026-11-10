@@ -668,7 +668,9 @@ jobs:
           psql -h localhost -U postgres -d samiksha_test -v ON_ERROR_STOP=1 \
             -f supabase/migrations/470_pariprashna_samiksha_prediction_ledger.sql
           psql -h localhost -U postgres -d samiksha_test -v ON_ERROR_STOP=1 \
-            -c "CREATE TABLE build_runs (id uuid PRIMARY KEY DEFAULT gen_random_uuid()); CREATE TABLE brahma_prospective_ledger (chart_id uuid NOT NULL); CREATE TABLE mimamsa_calibration_snapshot (chart_id uuid NOT NULL);"
+            -c "CREATE TABLE build_runs (id uuid PRIMARY KEY DEFAULT gen_random_uuid()); \
+          CREATE TABLE brahma_prospective_ledger (chart_id uuid NOT NULL); \
+          CREATE TABLE mimamsa_calibration_snapshot (chart_id uuid NOT NULL);"
           psql -h localhost -U postgres -d samiksha_test -v ON_ERROR_STOP=1 \
             -f supabase/migrations/1123_jataka_context_staleness_deferred_surfaces.sql
           psql -h localhost -U postgres -d samiksha_test -v ON_ERROR_STOP=1 \
@@ -710,7 +712,8 @@ jobs:
           GOCHARA_REQUIRE_DB: '1'
         run: |
           python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest db-integration-tests-8-0 -- --reporter=verbose --no-file-parallelism
-          if [ "${{ matrix.shard }}" = "4" ] && [ "${{ ((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) }}" = "true" ]; then
+          if [ "${{ matrix.shard }}" = "4" ] && \
+            [ "${{ ((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) }}" = "true" ]; then
             python3 scripts/gochara/mutation_check_1206.py
           fi
 
@@ -745,7 +748,8 @@ jobs:
           export SE_EPHE_PATH="$se1_dir"
           export GOCHARA_SE1_REQUIRE=1
           cd python-sidecar
-          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest db-integration-tests-9-12 -- -q --tb=short -rs -p no:cacheprovider --deselect tests/l3/gochara/test_a25_v41_candidate_writer.py::test_cli_published_refusal_exit6_baseline_vs_refactored
+          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest db-integration-tests-9-12 -- -q --tb=short -rs -p no:cacheprovider \
+            --deselect tests/l3/gochara/test_a25_v41_candidate_writer.py::test_cli_published_refusal_exit6_baseline_vs_refactored
           cd ..
           mutation_scratch="$(mktemp -d "$RUNNER_TEMP/ky-j4cb-XXXXXX")"
           python scripts/gochara/mutation_check_verifier_side.py --scratch "$mutation_scratch"
@@ -2449,7 +2453,10 @@ jobs:
           export SE_EPHE_PATH="$se1_dir"
           export GOCHARA_SE1_REQUIRE=1
           cd python-sidecar
-          export GOCHARA_A25_DISPOSABLE_CLUSTER_ID="$(python -c 'import os; from tests.l3.gochara._disposable_db_guard import guarded_admin_connect; c=guarded_admin_connect(os.environ["GOCHARA_A25_ADMIN_DSN"], autocommit=True); print(c.execute("SELECT system_identifier FROM pg_control_system()").fetchone()[0]); c.close()')"
+          export GOCHARA_A25_DISPOSABLE_CLUSTER_ID="$(python -c 'import os; '\
+          'from tests.l3.gochara._disposable_db_guard import guarded_admin_connect; '\
+          'c=guarded_admin_connect(os.environ["GOCHARA_A25_ADMIN_DSN"], autocommit=True); '\
+          'print(c.execute("SELECT system_identifier FROM pg_control_system()").fetchone()[0]); c.close()')"
           python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest gochara-a55-final-rules-p06 -- -q --tb=short -rs -p no:cacheprovider
           mutation_scratch="$(mktemp -d "$RUNNER_TEMP/ky-p06-XXXXXX")"
           python ../scripts/gochara/mutation_check_verifier_side.py --scratch "$mutation_scratch"
@@ -3320,8 +3327,12 @@ jobs:
           trap cleanup_lane_pg EXIT
           "$LANE_PG_BIN/initdb" -D "$LANE_PG_ROOT/data" -A trust -U postgres --no-locale --encoding=UTF8
           "$LANE_PG_BIN/pg_ctl" -D "$LANE_PG_ROOT/data" -l "$LANE_PG_ROOT/postgres.log" -o "-h 127.0.0.1 -p 55433 -k $LANE_PG_ROOT" -w start
-          python -B "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest governance-tool-tests-lane -- -q -rs -p no:cacheprovider --basetemp="$LANE_PG_ROOT/pytest" --junitxml=lane-smalltest.xml
-          python3 -c 'import xml.etree.ElementTree as ET; root = ET.parse("lane-smalltest.xml").getroot(); cases = root.findall(".//testcase"); skipped = root.findall(".//testcase/skipped"); raise SystemExit("required lane oracles need executed cases and zero skips" if not cases or skipped else 0)'
+          python -B "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest governance-tool-tests-lane -- -q -rs -p no:cacheprovider \
+            --basetemp="$LANE_PG_ROOT/pytest" --junitxml=lane-smalltest.xml
+          python3 -c 'import xml.etree.ElementTree as ET; '\
+          'root = ET.parse("lane-smalltest.xml").getroot(); '\
+          'cases = root.findall(".//testcase"); skipped = root.findall(".//testcase/skipped"); '\
+          'raise SystemExit("required lane oracles need executed cases and zero skips" if not cases or skipped else 0)'
 
   governance-readback-tests:
     # P05-B02 / J4B + P07 / A6: readback (including populated real-DB negatives), current-source rehearsal and publication oracles feed the required governance aggregate.
@@ -3380,7 +3391,9 @@ jobs:
           PGHOST: ''
         run: |
           python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest governance-readback-tests-3-0 -- -q --no-header -rs --junitxml=gochara-readbacks.xml
-          python -c 'import xml.etree.ElementTree as ET; root = ET.parse("gochara-readbacks.xml").getroot(); skipped = root.findall(".//testcase/skipped"); raise SystemExit("required Gochara readback oracles skipped" if skipped else 0)'
+          python -c 'import xml.etree.ElementTree as ET; '\
+          'root = ET.parse("gochara-readbacks.xml").getroot(); skipped = root.findall(".//testcase/skipped"); '\
+          'raise SystemExit("required Gochara readback oracles skipped" if skipped else 0)'
 
       # J4D: keep the ported reader oracles in the required governance aggregate.
       - uses: actions/setup-node@v4
@@ -3398,7 +3411,10 @@ jobs:
         working-directory: platform-mcp
         run: |
           python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest governance-readback-tests-j4d -- --reporter=default --reporter=junit --outputFile=gochara-j4d.xml
-          python3 -c 'import xml.etree.ElementTree as ET; root = ET.parse("gochara-j4d.xml").getroot(); cases = root.findall(".//testcase"); skipped = root.findall(".//testcase/skipped"); raise SystemExit("J4D needs 50 executed reader cases and zero skips" if len(cases) != 50 or skipped else 0)'
+          python3 -c 'import xml.etree.ElementTree as ET; '\
+          'root = ET.parse("gochara-j4d.xml").getroot(); '\
+          'cases = root.findall(".//testcase"); skipped = root.findall(".//testcase/skipped"); '\
+          'raise SystemExit("J4D needs 50 executed reader cases and zero skips" if len(cases) != 50 or skipped else 0)'
       - name: Install MCP dependencies
         working-directory: platform-mcp
         run: npm ci
@@ -3409,7 +3425,10 @@ jobs:
         working-directory: platform-mcp
         run: |
           python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest governance-readback-tests-mcp -- --reporter=default --reporter=junit --outputFile=gochara-mcp.xml
-          python3 -c 'import xml.etree.ElementTree as ET; root = ET.parse("gochara-mcp.xml").getroot(); cases = root.findall(".//testcase"); skipped = root.findall(".//testcase/skipped"); raise SystemExit("required Gochara MCP oracles need 50 executed cases and zero skips" if len(cases) != 50 or skipped else 0)'
+          python3 -c 'import xml.etree.ElementTree as ET; '\
+          'root = ET.parse("gochara-mcp.xml").getroot(); '\
+          'cases = root.findall(".//testcase"); skipped = root.findall(".//testcase/skipped"); '\
+          'raise SystemExit("required Gochara MCP oracles need 50 executed cases and zero skips" if len(cases) != 50 or skipped else 0)'
       - name: P07 — migration 1235 protected evidence function (REQUIRED, skips fail)
         if: >-
           ${{ ((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request' ||
@@ -3421,7 +3440,10 @@ jobs:
         run: |
           python3 -m pip install -r requirements-ci.txt --quiet
           python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest governance-readback-tests-migration -- -q -rs -p no:cacheprovider --junitxml=migration-1235.xml
-          python3 -c 'import xml.etree.ElementTree as ET; root = ET.parse("migration-1235.xml").getroot(); cases = root.findall(".//testcase"); skipped = root.findall(".//testcase/skipped"); raise SystemExit("required migration 1235 needs five executed cases and zero skips" if len(cases) != 5 or skipped else 0)'
+          python3 -c 'import xml.etree.ElementTree as ET; '\
+          'root = ET.parse("migration-1235.xml").getroot(); '\
+          'cases = root.findall(".//testcase"); skipped = root.findall(".//testcase/skipped"); '\
+          'raise SystemExit("required migration 1235 needs five executed cases and zero skips" if len(cases) != 5 or skipped else 0)'
 
   governance-tool-tests:
     # The ORIGINAL job name, kept as ONE check: green only when every shard and the ported readbacks above are green (a cancelled or failed shard is not green; a
@@ -3674,6 +3696,13 @@ jobs:
         run: |
           git ls-files -z '*.yaml' '*.yml' |
             xargs -0 yamllint -d '{rules: {key-duplicates: enable}}' --strict
+
+      - name: Maintained YAML formatting
+        # The generated pnpm lockfile and historical evidence remain covered by the structural check.
+        run: |
+          git ls-files -z '*.yaml' '*.yml' ':(exclude)00_ARCHITECTURE/**' ':(exclude)01_FACTS_LAYER/**' \
+            ':(exclude)verification_artifacts/**' ':(exclude)platform/pnpm-lock.yaml' |
+            xargs -0 yamllint --strict
 
       - name: Observatory OpenAPI formatting
         run: yamllint --strict platform/src/app/api/admin/observatory/openapi.yaml
