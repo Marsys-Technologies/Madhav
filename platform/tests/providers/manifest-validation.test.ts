@@ -7,7 +7,7 @@
 import { describe, it, expect } from 'vitest';
 import { validateManifest } from '../../src/lib/providers/manifest-validator';
 import { ANTHROPIC_MANIFEST } from '../../src/lib/providers/anthropic/manifest';
-import { GOOGLE_MANIFEST } from '../../src/lib/providers/google/manifest';
+import { googleProviderManifest } from '../../src/lib/providers/google/manifest';
 import { OPENAI_MANIFEST } from '../../src/lib/providers/openai/manifest';
 import { DEEPSEEK_MANIFEST } from '../../src/lib/providers/deepseek/manifest';
 import { NVIDIA_MANIFEST } from '../../src/lib/providers/nvidia/manifest';
@@ -22,8 +22,8 @@ describe('manifest-validation: validateManifest() passes on all 5', () => {
     expect(() => validateManifest(ANTHROPIC_MANIFEST)).not.toThrow();
   });
 
-  it('GOOGLE_MANIFEST validates cleanly', () => {
-    expect(() => validateManifest(GOOGLE_MANIFEST)).not.toThrow();
+  it('googleProviderManifest validates cleanly', () => {
+    expect(() => validateManifest(googleProviderManifest)).not.toThrow();
   });
 
   it('OPENAI_MANIFEST validates cleanly', () => {
@@ -82,19 +82,19 @@ describe('manifest-validation: CAPABILITY_MATRIX spot-checks', () => {
 
   // Google
   it('GOOGLE: maxContextTokens = 2_000_000', () => {
-    expect(GOOGLE_MANIFEST.maxContextTokens).toBe(2_000_000);
+    expect(googleProviderManifest.maxContextTokens).toBe(2_000_000);
   });
   it('GOOGLE: extendedThinking = native_budget', () => {
-    expect(GOOGLE_MANIFEST.extendedThinking).toBe('native_budget');
+    expect(googleProviderManifest.extendedThinking).toBe('native_budget');
   });
   it('GOOGLE: webSearch = grounding', () => {
-    expect(GOOGLE_MANIFEST.webSearch).toBe('grounding');
+    expect(googleProviderManifest.webSearch).toBe('grounding');
   });
   it('GOOGLE: inputAudio = true', () => {
-    expect(GOOGLE_MANIFEST.inputAudio).toBe(true);
+    expect(googleProviderManifest.inputAudio).toBe(true);
   });
   it('GOOGLE: inputVideo = true', () => {
-    expect(GOOGLE_MANIFEST.inputVideo).toBe(true);
+    expect(googleProviderManifest.inputVideo).toBe(true);
   });
 
   // OpenAI

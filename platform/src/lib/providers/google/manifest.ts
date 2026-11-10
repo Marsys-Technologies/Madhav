@@ -6,7 +6,7 @@
 import type { ProviderCapabilities } from '../capabilities';
 import { validateManifest } from '../manifest-validator';
 
-export const GOOGLE_MANIFEST: ProviderCapabilities = validateManifest({
+export const googleProviderManifest: ProviderCapabilities = validateManifest({
   // Cluster A — Foundation
   extendedThinking: 'native_budget',    // Gemini 2.5 Pro: thinkingBudget integer parameter
   promptCaching: 'cached_content_api',  // Separate cachedContent API call; TTL configurable

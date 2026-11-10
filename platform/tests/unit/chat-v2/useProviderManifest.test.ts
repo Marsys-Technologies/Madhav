@@ -7,7 +7,7 @@ import { describe, it, expect } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { useProviderManifest } from '../../../src/lib/chat-v2/useProviderManifest';
 import { ANTHROPIC_MANIFEST } from '../../../src/lib/providers/anthropic/manifest';
-import { GOOGLE_MANIFEST } from '../../../src/lib/providers/google/manifest';
+import { googleProviderManifest } from '../../../src/lib/providers/google/manifest';
 import { OPENAI_MANIFEST } from '../../../src/lib/providers/openai/manifest';
 import { DEEPSEEK_MANIFEST } from '../../../src/lib/providers/deepseek/manifest';
 import { NVIDIA_MANIFEST } from '../../../src/lib/providers/nvidia/manifest';
@@ -18,9 +18,9 @@ describe('useProviderManifest', () => {
     expect(result.current).toBe(ANTHROPIC_MANIFEST);
   });
 
-  it('returns GOOGLE_MANIFEST for google', () => {
+  it('returns googleProviderManifest for google', () => {
     const { result } = renderHook(() => useProviderManifest('google'));
-    expect(result.current).toBe(GOOGLE_MANIFEST);
+    expect(result.current).toBe(googleProviderManifest);
   });
 
   it('returns OPENAI_MANIFEST for openai', () => {

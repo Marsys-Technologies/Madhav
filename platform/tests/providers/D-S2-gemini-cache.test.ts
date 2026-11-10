@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { GOOGLE_MANIFEST } from '../../src/lib/providers/google/manifest'
+import { googleProviderManifest } from '../../src/lib/providers/google/manifest'
 import { GoogleAdapter } from '../../src/lib/providers/google/adapter'
 import type { CacheRequest } from '../../src/lib/providers/types'
 import {
@@ -27,7 +27,7 @@ import {
 
 describe('D-S2: Google manifest — cached_content_api', () => {
   it('manifest declares cached_content_api', () => {
-    expect(GOOGLE_MANIFEST.promptCaching).toBe('cached_content_api')
+    expect(googleProviderManifest.promptCaching).toBe('cached_content_api')
   })
 })
 

@@ -31,7 +31,7 @@ const emitCapabilityPath = (_opts: unknown): void => { void _opts }
 import { AnthropicAdapter } from './anthropic/adapter';
 import { ANTHROPIC_MANIFEST } from './anthropic/manifest';
 import { GoogleAdapter } from './google/adapter';
-import { GOOGLE_MANIFEST } from './google/manifest';
+import { googleProviderManifest } from './google/manifest';
 import { OpenAIAdapter } from './openai/adapter';
 import { OPENAI_MANIFEST } from './openai/manifest';
 import { DeepSeekAdapter } from './deepseek/adapter';
@@ -71,7 +71,7 @@ interface AdapterEntry {
 
 const ADAPTER_REGISTRY: Readonly<Record<StackId, AdapterEntry>> = {
   anthropic: { adapter: new AnthropicAdapter(), manifest: ANTHROPIC_MANIFEST },
-  google: { adapter: new GoogleAdapter(), manifest: GOOGLE_MANIFEST },
+  google: { adapter: new GoogleAdapter(), manifest: googleProviderManifest },
   openai: { adapter: new OpenAIAdapter(), manifest: OPENAI_MANIFEST },
   deepseek: { adapter: new DeepSeekAdapter(), manifest: DEEPSEEK_MANIFEST },
   nvidia: { adapter: new NVIDIAAdapter(), manifest: NVIDIA_MANIFEST },

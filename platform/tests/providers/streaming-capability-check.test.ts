@@ -13,7 +13,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { ANTHROPIC_MANIFEST } from '../../src/lib/providers/anthropic/manifest';
-import { GOOGLE_MANIFEST } from '../../src/lib/providers/google/manifest';
+import { googleProviderManifest } from '../../src/lib/providers/google/manifest';
 import { OPENAI_MANIFEST } from '../../src/lib/providers/openai/manifest';
 import { DEEPSEEK_MANIFEST } from '../../src/lib/providers/deepseek/manifest';
 import { NVIDIA_MANIFEST } from '../../src/lib/providers/nvidia/manifest';
@@ -28,8 +28,8 @@ describe('C-S0: smoothStreaming — all 5 providers', () => {
     expect(ANTHROPIC_MANIFEST.smoothStreaming).toBe(true);
   });
 
-  it('GOOGLE_MANIFEST.smoothStreaming is true', () => {
-    expect(GOOGLE_MANIFEST.smoothStreaming).toBe(true);
+  it('googleProviderManifest.smoothStreaming is true', () => {
+    expect(googleProviderManifest.smoothStreaming).toBe(true);
   });
 
   it('OPENAI_MANIFEST.smoothStreaming is true', () => {
@@ -62,7 +62,7 @@ describe('C-S0: extendedThinking — per-provider variants', () => {
   });
 
   it('Google uses native_budget (Gemini 2.5 thinkingBudget integer)', () => {
-    expect(GOOGLE_MANIFEST.extendedThinking).toBe('native_budget');
+    expect(googleProviderManifest.extendedThinking).toBe('native_budget');
   });
 
   it('OpenAI uses polyfill_cot (chain-of-thought system prompt nudge)', () => {
@@ -96,8 +96,8 @@ describe('C-S0: interleavedThinkingTool — only native-thinking providers', () 
     expect(ANTHROPIC_MANIFEST.interleavedThinkingTool).toBe(true);
   });
 
-  it('GOOGLE_MANIFEST.interleavedThinkingTool is true', () => {
-    expect(GOOGLE_MANIFEST.interleavedThinkingTool).toBe(true);
+  it('googleProviderManifest.interleavedThinkingTool is true', () => {
+    expect(googleProviderManifest.interleavedThinkingTool).toBe(true);
   });
 
   it('OPENAI_MANIFEST.interleavedThinkingTool is false (polyfill_cot, no native)', () => {
@@ -135,7 +135,7 @@ describe('C-S0: adaptiveToolLoop — stop-reason signals', () => {
   });
 
   it('Google uses finish_reason_function_calls', () => {
-    expect(GOOGLE_MANIFEST.adaptiveToolLoop).toBe('finish_reason_function_calls');
+    expect(googleProviderManifest.adaptiveToolLoop).toBe('finish_reason_function_calls');
   });
 
   it('OpenAI uses finish_reason_tool_calls (OpenAI-compat)', () => {

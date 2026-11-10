@@ -2,7 +2,6 @@
   "baseline_keys": [
     "google_env_prefix|.github/workflows/deploy.yml|GCP_PROJECT",
     "google_env_prefix|.github/workflows/deploy.yml|GCP_REGION",
-    "google_env_prefix|.github/workflows/iac-apply.yml|GCP_REGION",
     "google_env_prefix|platform/scripts/backfill_conversation_embeddings.ts|GCP_PROJECT",
     "google_env_prefix|platform/scripts/bootstrap/bootstrap_classical_texts_bphs.ts|GCP_PROJECT",
     "google_env_prefix|platform/scripts/bootstrap/bootstrap_classical_texts_jaimini.ts|GCP_PROJECT",
@@ -29,31 +28,24 @@
     "google_env_prefix|platform/src/lib/observatory/reconciliation/gemini.ts|GCP_BILLING_DATASET_ID",
     "google_env_prefix|platform/src/lib/observatory/reconciliation/gemini.ts|GCP_BILLING_PROJECT_ID",
     "google_env_prefix|platform/src/lib/observatory/reconciliation/gemini.ts|GCP_BILLING_TABLE_ID",
-    "google_env_prefix|platform/src/lib/providers/dispatcher.ts|GOOGLE_MANIFEST",
-    "google_env_prefix|platform/src/lib/providers/google/adapter.ts|GOOGLE_LOOP_CONFIG",
-    "google_env_prefix|platform/src/lib/providers/google/adapter.ts|GOOGLE_MANIFEST",
-    "google_env_prefix|platform/src/lib/providers/google/index.ts|GOOGLE_MANIFEST",
-    "google_env_prefix|platform/src/lib/providers/google/manifest.ts|GOOGLE_MANIFEST",
     "google_env_prefix|platform/src/lib/storage/client.ts|GCP_PROJECT",
     "google_env_prefix|platform/src/lib/storage/gcs.ts|GCP_PROJECT",
-    "google_env_prefix|platform/src/lib/synthesis/agentic_loop.ts|GOOGLE_LOOP_CONFIG",
     "marsys_flags|platform/src/app/api/admin/observatory/budget-rules/evaluate/run/route.ts|OBSERVATORY_ENABLED",
     "marsys_flags|platform/src/app/api/admin/observatory/export/route.ts|OBSERVATORY_ENABLED",
     "marsys_flags|platform/src/app/api/admin/observatory/reconciliation/history/route.ts|OBSERVATORY_ENABLED",
     "marsys_flags|platform/src/app/api/admin/observatory/reconciliation/route.ts|OBSERVATORY_ENABLED",
     "marsys_flags|platform/src/app/api/chat/consult/route.ts|HISTORY_COMPRESSION_ENABLED",
     "marsys_flags|platform/src/app/api/chat/consult/route.ts|VALIDATOR_FAILURE_HALT",
-    "marsys_flags|platform/src/lib/pariprashna/pipeline/validation_stage.ts|CITATION_GATE_OVERRIDE",
     "marsys_flags|platform/src/app/clients/[id]/consult/[conversationId]/page.tsx|COST_VISIBILITY_FOR_USERS",
     "marsys_flags|platform/src/app/clients/[id]/consult/[conversationId]/page.tsx|PANEL_MODE_ENABLED",
     "marsys_flags|platform/src/app/clients/[id]/consult/page.tsx|COST_VISIBILITY_FOR_USERS",
     "marsys_flags|platform/src/app/clients/[id]/consult/page.tsx|PANEL_MODE_ENABLED",
     "marsys_flags|platform/src/lib/components/observatory/AuthGate.tsx|OBSERVATORY_ENABLED",
     "marsys_flags|platform/src/lib/models/registry.ts|NVIDIA_PLANNER_ENABLED",
+    "marsys_flags|platform/src/lib/pariprashna/pipeline/validation_stage.ts|CITATION_GATE_OVERRIDE",
     "marsys_flags|platform/src/lib/pipelines/shared/run_adapter_dispatch.ts|CITATION_GATE_OVERRIDE",
     "marsys_flags|platform/src/lib/providers/nvidia/adapter.ts|NVIDIA_PLANNER_ENABLED",
-    "marsys_flags|platform/src/lib/synthesis/history_compression.ts|HISTORY_COMPRESSION_ENABLED",
-    "marsys_flags|platform/src/lib/synthesis/types.ts|PANEL_MODE_ENABLED"
+    "marsys_flags|platform/src/lib/synthesis/history_compression.ts|HISTORY_COMPRESSION_ENABLED"
   ],
   "generated_by": "naming_lint.py --first-run",
   "schema_version": "1.0",
@@ -72,14 +64,6 @@
       "line": 1398,
       "match": "GCP_PROJECT",
       "message": "forbidden Google env prefix 'GCP_PROJECT' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
-      "rule_id": "google_env_prefix",
-      "severity": "error"
-    },
-    {
-      "file": ".github/workflows/iac-apply.yml",
-      "line": 39,
-      "match": "GCP_REGION",
-      "message": "forbidden Google env prefix 'GCP_REGION' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
       "rule_id": "google_env_prefix",
       "severity": "error"
     },
@@ -292,46 +276,6 @@
       "severity": "error"
     },
     {
-      "file": "platform/src/lib/providers/dispatcher.ts",
-      "line": 34,
-      "match": "GOOGLE_MANIFEST",
-      "message": "non-canonical Google env var 'GOOGLE_MANIFEST' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
-      "rule_id": "google_env_prefix",
-      "severity": "error"
-    },
-    {
-      "file": "platform/src/lib/providers/google/adapter.ts",
-      "line": 44,
-      "match": "GOOGLE_MANIFEST",
-      "message": "non-canonical Google env var 'GOOGLE_MANIFEST' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
-      "rule_id": "google_env_prefix",
-      "severity": "error"
-    },
-    {
-      "file": "platform/src/lib/providers/google/adapter.ts",
-      "line": 296,
-      "match": "GOOGLE_LOOP_CONFIG",
-      "message": "non-canonical Google env var 'GOOGLE_LOOP_CONFIG' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
-      "rule_id": "google_env_prefix",
-      "severity": "error"
-    },
-    {
-      "file": "platform/src/lib/providers/google/index.ts",
-      "line": 2,
-      "match": "GOOGLE_MANIFEST",
-      "message": "non-canonical Google env var 'GOOGLE_MANIFEST' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
-      "rule_id": "google_env_prefix",
-      "severity": "error"
-    },
-    {
-      "file": "platform/src/lib/providers/google/manifest.ts",
-      "line": 9,
-      "match": "GOOGLE_MANIFEST",
-      "message": "non-canonical Google env var 'GOOGLE_MANIFEST' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
-      "rule_id": "google_env_prefix",
-      "severity": "error"
-    },
-    {
       "file": "platform/src/lib/storage/client.ts",
       "line": 6,
       "match": "GCP_PROJECT",
@@ -344,14 +288,6 @@
       "line": 8,
       "match": "GCP_PROJECT",
       "message": "forbidden Google env prefix 'GCP_PROJECT' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
-      "rule_id": "google_env_prefix",
-      "severity": "error"
-    },
-    {
-      "file": "platform/src/lib/synthesis/agentic_loop.ts",
-      "line": 75,
-      "match": "GOOGLE_LOOP_CONFIG",
-      "message": "non-canonical Google env var 'GOOGLE_LOOP_CONFIG' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
       "rule_id": "google_env_prefix",
       "severity": "error"
     },
@@ -480,14 +416,6 @@
       "line": 98,
       "match": "HISTORY_COMPRESSION_ENABLED",
       "message": "feature-flag-shaped identifier 'HISTORY_COMPRESSION_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_HISTORY_COMPRESSION_ENABLED')",
-      "rule_id": "marsys_flags",
-      "severity": "error"
-    },
-    {
-      "file": "platform/src/lib/synthesis/types.ts",
-      "line": 67,
-      "match": "PANEL_MODE_ENABLED",
-      "message": "feature-flag-shaped identifier 'PANEL_MODE_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_PANEL_MODE_ENABLED')",
       "rule_id": "marsys_flags",
       "severity": "error"
     }

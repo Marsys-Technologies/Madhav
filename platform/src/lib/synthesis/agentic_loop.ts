@@ -72,7 +72,7 @@ export const ANTHROPIC_LOOP_CONFIG: AgenticLoopConfig = {
   hasReasoningMiddleware: false,
 }
 
-export const GOOGLE_LOOP_CONFIG: AgenticLoopConfig = {
+export const googleLoopConfig: AgenticLoopConfig = {
   providerId: 'google',
   terminationSignal: 'finish_reason_function_calls',
   supportsInterleavedTextTool: true,
@@ -103,7 +103,7 @@ export const NVIDIA_LOOP_CONFIG: AgenticLoopConfig = {
 /** Map from providerId to loop config. */
 export const LOOP_CONFIG_BY_PROVIDER: Record<string, AgenticLoopConfig> = {
   anthropic: ANTHROPIC_LOOP_CONFIG,
-  google: GOOGLE_LOOP_CONFIG,
+  google: googleLoopConfig,
   openai: OPENAI_LOOP_CONFIG,
   deepseek: DEEPSEEK_LOOP_CONFIG,
   nvidia: NVIDIA_LOOP_CONFIG,

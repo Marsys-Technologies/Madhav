@@ -15,7 +15,7 @@ import {
   checkIterationCap,
   createLoopState,
   ANTHROPIC_LOOP_CONFIG,
-  GOOGLE_LOOP_CONFIG,
+  googleLoopConfig,
   OPENAI_LOOP_CONFIG,
 } from '../../src/lib/synthesis/agentic_loop'
 
@@ -82,7 +82,7 @@ describe('E-S8: checkIterationCap — throw on overflow', () => {
 describe('E-S8: per-provider cap override', () => {
   it('respects custom maxIterations in config', () => {
     const state = createLoopState({
-      ...GOOGLE_LOOP_CONFIG,
+      ...googleLoopConfig,
       maxIterations: 4, // lower cap for testing
     })
     state.iterations = 3

@@ -28,7 +28,7 @@ import { streamText } from 'ai';
 import { GoogleAdapter } from '../../../src/lib/providers/google/adapter';
 import {
   runAgenticLoop,
-  GOOGLE_LOOP_CONFIG,
+  googleLoopConfig,
   AgenticLoopCapExceeded,
   MAX_ITERATIONS,
 } from '../../../src/lib/synthesis/agentic_loop';
@@ -110,7 +110,7 @@ describe('B-S1 TC1: Round-trip — tools forwarded and loop completes', () => {
         tools: TEST_TOOLS,
       },
       toolExecutor,
-      GOOGLE_LOOP_CONFIG,
+      googleLoopConfig,
     )) {
       events.push(event);
     }
@@ -135,7 +135,7 @@ describe('B-S1 TC1: Round-trip — tools forwarded and loop completes', () => {
         tools: TEST_TOOLS,
       },
       toolExecutor,
-      GOOGLE_LOOP_CONFIG,
+      googleLoopConfig,
     )) {
       events.push(event);
     }
@@ -156,7 +156,7 @@ describe('B-S1 TC1: Round-trip — tools forwarded and loop completes', () => {
         tools: TEST_TOOLS,
       },
       toolExecutor,
-      GOOGLE_LOOP_CONFIG,
+      googleLoopConfig,
     )) {
       events.push(event as { type: string; text?: string });
     }
@@ -175,7 +175,7 @@ describe('B-S1 TC1: Round-trip — tools forwarded and loop completes', () => {
         tools: TEST_TOOLS,
       },
       toolExecutor,
-      GOOGLE_LOOP_CONFIG,
+      googleLoopConfig,
     )) {
       // drain
     }
@@ -196,7 +196,7 @@ describe('B-S1 TC1: Round-trip — tools forwarded and loop completes', () => {
         tools: TEST_TOOLS,
       },
       toolExecutor,
-      GOOGLE_LOOP_CONFIG,
+      googleLoopConfig,
     )) {
       if ((event as { type: string }).type === 'message_stop') {
         stopEvents.push(event as { type: string; stopReason: string });
@@ -238,7 +238,7 @@ describe('B-S1 TC2: Iteration cap — AgenticLoopCapExceeded at MAX_ITERATIONS',
           tools: TEST_TOOLS,
         },
         executor,
-        GOOGLE_LOOP_CONFIG,
+        googleLoopConfig,
       )) {
         // drain — loop should throw before finishing
       }
@@ -252,7 +252,7 @@ describe('B-S1 TC2: Iteration cap — AgenticLoopCapExceeded at MAX_ITERATIONS',
         adapter,
         { messages: [{ role: 'user', content: 'Loop' }], model: 'gemini-2.5-pro', tools: TEST_TOOLS },
         executor,
-        GOOGLE_LOOP_CONFIG,
+        googleLoopConfig,
       )) {
         // drain
       }
@@ -270,7 +270,7 @@ describe('B-S1 TC2: Iteration cap — AgenticLoopCapExceeded at MAX_ITERATIONS',
         adapter,
         { messages: [{ role: 'user', content: 'Loop' }], model: 'gemini-2.5-pro', tools: TEST_TOOLS },
         executor,
-        GOOGLE_LOOP_CONFIG,
+        googleLoopConfig,
       )) {
         // drain
       }
@@ -317,7 +317,7 @@ describe('B-S1 TC3: B.11 floor — context preserved in subsequent requests', ()
         tools: TEST_TOOLS,
       },
       executor,
-      GOOGLE_LOOP_CONFIG,
+      googleLoopConfig,
     )) {
       // drain
     }
@@ -345,7 +345,7 @@ describe('B-S1 TC3: B.11 floor — context preserved in subsequent requests', ()
         tools: TEST_TOOLS,
       },
       executor,
-      GOOGLE_LOOP_CONFIG,
+      googleLoopConfig,
     )) {
       // drain
     }

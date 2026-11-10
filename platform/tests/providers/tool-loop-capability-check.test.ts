@@ -14,7 +14,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { ANTHROPIC_MANIFEST } from '../../src/lib/providers/anthropic/manifest'
-import { GOOGLE_MANIFEST } from '../../src/lib/providers/google/manifest'
+import { googleProviderManifest } from '../../src/lib/providers/google/manifest'
 import { OPENAI_MANIFEST } from '../../src/lib/providers/openai/manifest'
 import { DEEPSEEK_MANIFEST } from '../../src/lib/providers/deepseek/manifest'
 import { NVIDIA_MANIFEST } from '../../src/lib/providers/nvidia/manifest'
@@ -30,7 +30,7 @@ describe('E-S0: adaptiveToolLoop — per-provider manifest values', () => {
   })
 
   it('Google uses finish_reason_function_calls', () => {
-    expect(GOOGLE_MANIFEST.adaptiveToolLoop).toBe('finish_reason_function_calls')
+    expect(googleProviderManifest.adaptiveToolLoop).toBe('finish_reason_function_calls')
   })
 
   it('OpenAI uses finish_reason_tool_calls', () => {
