@@ -1232,7 +1232,7 @@ function V2Composer({ slashEnabled = false, tokensEnabled = false }: { slashEnab
                 >
                   <Camera className="h-4 w-4" aria-hidden="true" />
                 </button>
-                <span className="hidden md:inline pl-1 text-[10px] uppercase tracking-[0.18em] text-zinc-600">
+                <span className="hidden md:inline pl-1 text-[10px] uppercase tracking-[0.18em] text-[var(--on-dark-mut)]">
                   ↵ Send · ⇧↵ New line
                 </span>
               </div>
@@ -1650,8 +1650,8 @@ function NoBuildGate({ cockpitHref }: { cockpitHref: string }) {
         </svg>
       </div>
       <div className="max-w-md">
-        <h2 className="text-lg font-semibold text-gray-900">Build required before consulting</h2>
-        <p className="mt-2 text-sm text-gray-600">
+        <h2 className="text-lg font-semibold text-[var(--on-dark)]">Build required before consulting</h2>
+        <p className="mt-2 text-sm text-[var(--on-dark-mut)]">
           This chart has not been built yet. The Gaṇita layer (L1 — Chart Facts) must complete
           before Madhav can provide grounded astrological analysis.
         </p>

@@ -62,3 +62,21 @@
   outline: 3px solid var(--folio-action);
   outline-offset: 4px;
 }
+
+
+.folio .heading > a:global(.j1-btn):hover,
+.folio [data-roster-empty] a:global(.j1-btn):hover {
+  color: var(--folio-on-action);
+}
+
+.folio [data-roster-filters] :is(input, select) {
+  color: var(--folio-ink);
+}
+
+.folio [data-roster-filters] :is(input, select, button):focus-visible {
+  outline-color: var(--folio-focus);
+}
+
+.folio [data-roster-table] a:hover {
+  color: var(--folio-action);
+}

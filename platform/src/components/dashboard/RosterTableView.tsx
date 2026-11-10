@@ -40,7 +40,7 @@ export function RosterTableView({ charts }: RosterTableViewProps) {
   }
 
   return (
-    <div role="region" aria-label="Charts table" tabIndex={0} className="overflow-x-auto rounded-lg border border-[var(--folio-divider)] bg-[var(--folio-panel)] text-[var(--folio-ink)] focus-visible:outline-2 focus-visible:outline-[var(--folio-focus)]">
+    <div data-roster-table role="region" aria-label="Charts table" tabIndex={0} className="overflow-x-auto rounded-lg border border-[var(--folio-divider)] bg-[var(--folio-panel)] text-[var(--folio-ink)] focus-visible:outline-2 focus-visible:outline-[var(--folio-focus)]">
       <table className="w-full text-xs">
         <thead className="bg-[var(--folio-selected)]">
           <tr>

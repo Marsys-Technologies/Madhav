@@ -122,3 +122,8 @@
   color: var(--folio-action);
   text-decoration: underline;
 }
+
+
+.folio:global(.j1-entry) a:global(.j1-btn):hover {
+  color: var(--folio-on-action);
+}

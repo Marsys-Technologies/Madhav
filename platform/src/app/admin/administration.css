@@ -47,7 +47,7 @@
   text-underline-offset: 0.18em;
 }
 
-.j6-nav a[aria-current="page"],
+.j6-nav a:is([aria-current="page"], [aria-current="location"]),
 .j6-links a[aria-current="page"] {
   border-color: var(--folio-action);
   background: var(--folio-selected);
@@ -185,5 +185,18 @@
 
   .j6-scope :is(select, input) {
     width: 100%;
+  }
+}
+
+
+@media (max-width: 600px) {
+  .j6-nav {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-block-end: var(--space-4);
+  }
+
+  .j6-nav a {
+    min-width: 0;
   }
 }

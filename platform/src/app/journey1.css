@@ -624,31 +624,46 @@
   color: #ecc56a;
 }
 .j1-chart-tabs {
-  display: flex;
-  overflow: auto;
-  gap: 8px;
-  padding: 20px 0;
-  margin: 16px 0;
-  border-block: 1px solid #302718;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
+  gap: var(--space-2);
+  padding-block: var(--space-3);
+  margin-block: var(--space-3);
+  border-block: 1px solid var(--folio-divider);
 }
 .j1-chart-tabs a {
-  flex-shrink: 0;
-  min-height: 52px;
-  padding: 8px 16px;
-  border-radius: 6px;
+  min-width: 0;
+  min-height: var(--folio-target);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--folio-divider);
+  border-radius: var(--radius-md);
+  background: var(--folio-panel);
 }
-.j1-chart-tabs a[aria-current="page"] {
-  background: #1c160c;
-  border: 1px solid #8a5e12;
+.j1-chart-tabs a .j1-title > span,
+.j1-chart-tabs a .j1-title > small {
+  font-family: var(--folio-font-body);
+  overflow-wrap: anywhere;
+}
+.j1-chart-tabs a .j1-title > span {
+  color: var(--folio-ink);
+  font-size: 0.9375rem;
+  line-height: 1.3;
+}
+.j1-chart-tabs a .j1-title > small {
+  color: var(--folio-muted);
+  font-size: 0.8125rem;
+}
+.j1-chart-tabs a:is([aria-current="page"], :hover) {
+  background: var(--folio-selected);
+  border-color: var(--folio-action);
 }
 .j1-chart-tabs a[aria-current="page"] .j1-title > span {
   text-decoration: underline;
   text-underline-offset: 0.18em;
 }
 .j1-chart-tabs a:focus-visible {
-  /* Keep the outline inside the link when the scroll strip clips its edges. */
-  outline: 2px solid var(--j1-gold, currentColor);
-  outline-offset: -3px;
+  outline: 2px solid var(--folio-focus);
+  outline-offset: 2px;
 }
 .j1-summary-grid {
   display: grid;

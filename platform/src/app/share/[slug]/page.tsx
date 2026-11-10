@@ -106,7 +106,7 @@ export default async function SharedConversationPage({
           <p className="mt-1 text-sm text-muted-foreground print:text-gray-600">{chart.name}</p>
         )}
       </header>
-      <main className="flex-1 print:text-black">
+      <main className={`flex-1 print:text-black ${styles.transcript}`}>
         <SharedConversation messages={visibleMessages} />
       </main>
       {/* Footer is navigation chrome — hidden in print */}

@@ -37,7 +37,7 @@ export function NodeDetailModal({ node, onClose }: Props) {
           <h3 className="font-serif text-base text-[#d4a648]">{node.label || node.id}</h3>
           <button
             onClick={onClose}
-            className="text-[#5a5550] hover:text-[#c8bfb0] text-lg leading-none"
+            className="text-[var(--text-secondary)] hover:text-[#c8bfb0] text-lg leading-none"
           >
             ×
           </button>

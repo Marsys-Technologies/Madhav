@@ -1,7 +1,9 @@
 'use client'
 
-import { adminCard, adminLabel, adminTableTd, adminTableTh, adminTableRow } from './styles'
 import type { AuditLogEntry } from '@/app/api/admin/audit-log/route'
+
+const tableHeading = 'px-4 py-3 text-left text-xs font-semibold text-[var(--folio-muted)]'
+const tableCell = 'px-4 py-3 text-sm text-[var(--folio-ink)]'
 
 const ACTION_LABELS: Record<string, string> = {
   create_user:    'Created user',
@@ -17,10 +19,10 @@ function ActionBadge({ action }: { action: string }) {
   const isDestructive = action === 'delete_user' || action === 'disable_user'
   const isPromote     = action === 'role_change' || action === 'create_user'
   const color = isDestructive
-    ? 'text-red-400 bg-red-950/30 border-red-900/40'
+    ? 'text-[var(--folio-error)] border-[var(--folio-error)]'
     : isPromote
-      ? 'text-brand-gold bg-brand-gold/10 border-brand-gold/20'
-      : 'text-muted-foreground bg-white/5 border-white/10'
+      ? 'text-[var(--folio-action)] bg-[var(--folio-selected)] border-[var(--folio-boundary)]'
+      : 'text-[var(--folio-muted)] border-[var(--folio-divider)]'
   return (
     <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-medium ${color}`}>
       {ACTION_LABELS[action] ?? action}
@@ -41,43 +43,43 @@ function formatRelative(iso: string): string {
 export function AuditLogPanel({ entries }: { entries: AuditLogEntry[] }) {
   if (entries.length === 0) {
     return (
-      <div className={`${adminCard} px-6 py-8 text-center`}>
-        <p className="text-sm text-muted-foreground">No admin activity recorded yet.</p>
+      <div className="j5-panel text-center">
+        <p className="text-sm text-[var(--folio-muted)]">No admin activity recorded yet.</p>
       </div>
     )
   }
 
   return (
-    <div className={adminCard}>
-      <div className="overflow-x-auto">
+    <div className="j5-panel">
+      <div className="overflow-x-auto focus-visible:outline-2 focus-visible:outline-[var(--folio-focus)]" role="region" aria-label="Administration records" tabIndex={0}>
         <table className="w-full min-w-[600px]">
           <thead>
             <tr>
-              <th className={adminTableTh}>When</th>
-              <th className={adminTableTh}>Actor</th>
-              <th className={adminTableTh}>Action</th>
-              <th className={adminTableTh}>Source</th>
-              <th className={adminTableTh}>Target</th>
-              <th className={adminTableTh}>Detail</th>
+              <th className={tableHeading}>When</th>
+              <th className={tableHeading}>Actor</th>
+              <th className={tableHeading}>Action</th>
+              <th className={tableHeading}>Source</th>
+              <th className={tableHeading}>Target</th>
+              <th className={tableHeading}>Detail</th>
             </tr>
           </thead>
           <tbody>
             {entries.map((e) => (
-              <tr key={e.id} className={adminTableRow}>
-                <td className={`${adminTableTd} whitespace-nowrap`} title={e.created_at}>
+              <tr key={e.id} className="border-t border-[var(--folio-divider)]">
+                <td className={`${tableCell} whitespace-nowrap`} title={e.created_at}>
                   {formatRelative(e.created_at)}
                 </td>
-                <td className={adminTableTd}>
+                <td className={tableCell}>
                   <span className="text-sm">{e.actor_name ?? e.actor_email ?? e.actor_id ?? '—'}</span>
                 </td>
-                <td className={adminTableTd}>
+                <td className={tableCell}>
                   <ActionBadge action={e.action} />
                 </td>
-                <td className={adminTableTd}>{e.source === 'ai_configuration' ? 'AI configuration' : 'Administration'}</td>
-                <td className={adminTableTd}>
+                <td className={tableCell}>{e.source === 'ai_configuration' ? 'AI configuration' : 'Administration'}</td>
+                <td className={tableCell}>
                   {e.target_name ?? e.target_email ?? (e.detail?.deleted_user_id != null ? String(e.detail.deleted_user_id) : '—')}
                 </td>
-                <td className={`${adminTableTd} max-w-[220px] truncate text-xs text-muted-foreground`}>
+                <td className="max-w-[220px] truncate px-4 py-3 text-xs text-[var(--folio-muted)]">
                   {e.detail ? JSON.stringify(e.detail) : ''}
                 </td>
               </tr>
@@ -85,7 +87,7 @@ export function AuditLogPanel({ entries }: { entries: AuditLogEntry[] }) {
           </tbody>
         </table>
       </div>
-      <p className={`${adminLabel} border-t border-[rgba(var(--brand-gold-rgb),0.12)] px-4 py-2`}>
+      <p className="border-t border-[var(--folio-divider)] px-4 py-2 text-xs text-[var(--folio-muted)]">
         Showing last {entries.length} action{entries.length !== 1 ? 's' : ''}
       </p>
     </div>

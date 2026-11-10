@@ -16,6 +16,21 @@
     color: #52584a;
   }
 
+  .transcript {
+    --foreground: var(--text-primary);
+    --muted-foreground: var(--on-dark-mut);
+    --muted: var(--obsidian-panel);
+    --border: var(--obsidian-border-lite);
+    background: var(--obsidian-bg);
+    border-radius: 12px;
+    color: var(--text-primary);
+    overflow-wrap: anywhere;
+  }
+
+  .transcript :global(.markdown-content) {
+    color: var(--text-primary);
+  }
+
   .homeLink {
     display: inline-flex;
     align-items: center;

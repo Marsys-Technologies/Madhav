@@ -30,7 +30,7 @@ export function RosterFilters({
   )
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div data-roster-filters className="flex flex-wrap items-center gap-2">
       {/* Search */}
       <input
         aria-label="Search charts"
@@ -45,7 +45,7 @@ export function RosterFilters({
         aria-label="Filter by birth place"
         value={filters.place}
         onChange={(e) => onFilterChange({ place: e.target.value })}
-        className={filterControl}
+        className={`${filterControl} sm:max-w-64`}
       >
         <option value="">All places</option>
         {places.map((p) => (

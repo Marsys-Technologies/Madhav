@@ -93,7 +93,7 @@ export function LiveBuildGraph({ buildId, chartId }: Props) {
   if (!buildId) {
     return (
       <div
-        className="flex items-center justify-center rounded-xl border border-[#1a1820] text-[#5a5550] text-sm"
+        className="flex items-center justify-center rounded-xl border border-[#1a1820] text-[var(--text-secondary)] text-sm"
         style={{ height: 500, background: '#08070a' }}
       >
         No active build. Start a build to see the live graph.

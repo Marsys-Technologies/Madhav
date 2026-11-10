@@ -9,7 +9,6 @@ import { AuditLogPanel } from './AuditLogPanel'
 import { ChartsTab } from './ChartsTab'
 import { AiAccessTab } from './AiAccessTab'
 import { ADMIN_BLOCKS } from './AdminNavigation'
-import { adminGhostBtn } from './styles'
 import folio from './folio-context.module.css'
 import { PageTitle, type PageName } from '@/components/journey1/Titles'
 import type { AdminAccessRequest, AdminUser } from './types'
@@ -92,10 +91,10 @@ export function AdminClient({ currentUserId }: { currentUserId: string }) {
           <div className="j5-panel space-y-3">
             {requestsQuery.isFetching
               ? <p role="status">Retrying access requests…</p>
-              : <p role="alert" className="text-sm text-red-400">Could not load access requests.</p>}
+              : <p role="alert" className="text-sm text-[var(--folio-error)]">Could not load access requests.</p>}
             <button
               type="button"
-              className={adminGhostBtn + ' aria-disabled:opacity-50'}
+              className="min-h-11 rounded-md border border-[var(--folio-boundary)] px-3 text-[var(--folio-action)] hover:bg-[var(--folio-selected)] focus-visible:outline-2 focus-visible:outline-[var(--folio-focus)] aria-disabled:opacity-50"
               aria-disabled={requestsQuery.isFetching}
               onClick={() => {
                 if (!requestsQuery.isFetching) void requestsQuery.refetch({ cancelRefetch: false })

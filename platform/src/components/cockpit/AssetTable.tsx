@@ -43,12 +43,12 @@ function layerDot(assetId: string) {
 
 function StatusPill({ status }: { status: string }) {
   const map: Record<string, string> = {
-    pending:  'bg-[#1a1820] text-[#5a5550]',
-    queued:   'bg-[#1a1820] text-[#5a5550]',
+    pending:  'bg-[#1a1820] text-[var(--text-secondary)]',
+    queued:   'bg-[#1a1820] text-[var(--text-secondary)]',
     running:  'bg-[#d4a648]/10 text-[#d4a648]',
     success:  'bg-[#4a8c5c]/10 text-[#4a8c5c]',
     failed:   'bg-[#9c3a2a]/10 text-[#9c3a2a]',
-    skipped:  'bg-[#5a5550]/10 text-[#5a5550]',
+    skipped:  'bg-[#5a5550]/10 text-[var(--text-secondary)]',
   }
   return (
     <span className={`rounded px-2 py-0.5 text-xs font-medium ${map[status] ?? 'bg-[#1a1820] text-[#8a8070]'}`}>
@@ -72,7 +72,7 @@ export function AssetTable({ buildId, chartId, assets }: Props) {
 
   if (assets.length === 0) {
     return (
-      <div className="text-[#5a5550] text-sm py-8 text-center">
+      <div className="text-[var(--text-secondary)] text-sm py-8 text-center">
         No asset data yet — start a build to populate this table.
       </div>
     )
@@ -83,7 +83,7 @@ export function AssetTable({ buildId, chartId, assets }: Props) {
       <div className="overflow-x-auto rounded-xl border border-[#1a1820]">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-[#1a1820] text-[#5a5550] text-xs uppercase tracking-wider">
+            <tr className="border-b border-[#1a1820] text-[var(--text-secondary)] text-xs uppercase tracking-wider">
               <th className="px-4 py-3 text-left w-6" />
               <th className="px-4 py-3 text-left">Asset</th>
               <th className="px-4 py-3 text-left">Status</th>
@@ -108,7 +108,7 @@ export function AssetTable({ buildId, chartId, assets }: Props) {
                 <td className="px-4 py-3 text-right font-mono text-[#8a8070]">
                   {row.rowCount.toLocaleString()}
                 </td>
-                <td className="px-4 py-3 text-right text-[#5a5550] text-xs">
+                <td className="px-4 py-3 text-right text-[var(--text-secondary)] text-xs">
                   {row.lastUpdated ? new Date(row.lastUpdated).toLocaleTimeString() : '—'}
                 </td>
                 <td className="px-4 py-3">
@@ -132,7 +132,7 @@ export function AssetTable({ buildId, chartId, assets }: Props) {
                     {(row.status === 'pending' || row.status === 'queued') && (
                       <button
                         onClick={() => postAction('/api/build/asset/skip', { build_id: buildId, asset_id: row.assetId })}
-                        className="text-xs text-[#5a5550] hover:text-[#8a8070] transition-colors"
+                        className="text-xs text-[var(--text-secondary)] hover:text-[#8a8070] transition-colors"
                       >
                         Skip
                       </button>

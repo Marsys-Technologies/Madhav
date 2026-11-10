@@ -131,7 +131,9 @@ export function PanchangClientView({
 
       {isLoading && !data && (
         <div className="mx-auto max-w-4xl px-4 py-6">
-          <p role="status" className="mb-3 text-sm text-muted-foreground">Loading almanac…</p>
+          <p role="status" className="mb-3 rounded-md bg-[var(--folio-panel)] px-3 py-2 text-sm text-[var(--folio-muted)]">
+            Loading almanac…
+          </p>
           <div aria-hidden="true" className="rounded-xl border border-[rgba(212,175,55,0.14)] bg-[rgba(28,28,26,0.50)] overflow-hidden">
             {Array.from({ length: 6 }).map((_, i) => (
               <div

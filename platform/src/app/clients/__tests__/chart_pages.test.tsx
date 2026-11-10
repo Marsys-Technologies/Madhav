@@ -37,6 +37,7 @@ vi.mock('@/lib/db/client', () => ({ query: mockQuery }))
 vi.mock('@/lib/auth/chart-page-guard', () => ({ resolveChartPageAccess: mockResolveAccess }))
 vi.mock('next/navigation', () => ({
   redirect: mockRedirect,
+  permanentRedirect: mockRedirect,
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
   usePathname: () => '/clients/test-chart',
   useSearchParams: () => new URLSearchParams(),
@@ -285,6 +286,23 @@ describe('clients/[id]/panchang — personalized panchang', () => {
 // ── Chart switcher — pure helper + interaction ──────────────────────────────
 
 describe('ChartSwitcher — switching logic (AC.2)', () => {
+  it('moves between options by keyboard and restores trigger focus on Escape', async () => {
+    const { ChartSwitcher } = await import('@/components/nav/ChartSwitcher')
+    const { getByRole, queryByRole } = render(
+      <ChartSwitcher currentChartId="a" charts={[{ id: 'a', name: 'Alpha' }, { id: 'b', name: 'Beta' }]} />,
+    )
+    const trigger = getByRole('button', { name: 'Switch chart: Alpha' })
+    fireEvent.click(trigger)
+    const alpha = getByRole('option', { name: 'Alpha' })
+    expect(alpha).toHaveFocus()
+    fireEvent.keyDown(alpha, { key: 'ArrowDown' })
+    const beta = getByRole('option', { name: 'Beta' })
+    expect(beta).toHaveFocus()
+    fireEvent.keyDown(beta, { key: 'Escape' })
+    expect(queryByRole('listbox')).toBeNull()
+    expect(trigger).toHaveFocus()
+  })
+
   it('computeSwitchHref — root chart page', async () => {
     const { computeSwitchHref } = await import('@/components/nav/ChartSwitcher')
     expect(computeSwitchHref('/clients/old', 'new')).toBe('/clients/new')
@@ -363,4 +381,13 @@ describe('ChartSwitcher — switching logic (AC.2)', () => {
     )
     expect(container.textContent?.toLowerCase()).not.toMatch(/tier|depth/)
   })
+})
+
+it('preserves repeated query values in the legacy reading bookmark', async () => {
+  const { default: alias } = await import('@/app/clients/[id]/consume/[conversationId]/page')
+  await expect(alias({
+    params: Promise.resolve({ id: 'chart', conversationId: 'reading' }),
+    searchParams: Promise.resolve({ audit: ['one', 'two'], ignored: undefined }),
+  })).rejects.toThrow('NEXT_REDIRECT')
+  expect(mockRedirect).toHaveBeenLastCalledWith('/clients/chart/consult/reading?audit=one&audit=two')
 })
