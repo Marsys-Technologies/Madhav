@@ -62,7 +62,7 @@ export interface LelProvenanceEnvelope {
   confidence: number       // 0.89
   source_citation: string  // 'LIFE_EVENT_LOG_v1_2.md (native-disclosed)'
   no_leakage_note: string
-  b3_compliant: boolean
+  b3_compliant: boolean | null
   queried_at: string       // ISO datetime
 }
 
@@ -247,7 +247,7 @@ export function registerMimamsaLelIntakeTool(server: McpServer, principal: Princ
                 asset: 'MI-5-1',
                 lel_version: 'LIFE_EVENT_LOG_v1_2.md v1.7',
                 no_leakage_note: 'life_events is calibration corpus only — must not feed prediction generation',
-                b3_compliant: true,
+                b3_compliant: null,
                 queried_at: new Date().toISOString(),
               },
             }, null, 2),
@@ -277,7 +277,7 @@ export function registerMimamsaLelIntakeTool(server: McpServer, principal: Princ
                 asset: 'MI-5-1',
                 lel_version: 'LIFE_EVENT_LOG_v1_2.md v1.7',
                 no_leakage_note: 'life_events is calibration corpus only — must not feed prediction generation',
-                b3_compliant: true,
+                b3_compliant: null,
                 queried_at: new Date().toISOString(),
               },
             }, null, 2),
@@ -304,7 +304,11 @@ export function registerMimamsaLelIntakeTool(server: McpServer, principal: Princ
             lel_version: 'LIFE_EVENT_LOG_v1_2.md v1.7',
             total_events: payload.total_count,
             no_leakage_note: 'life_events is calibration corpus only — must not feed prediction generation',
-            b3_compliant: true,
+            // This tool's B.3 claim covers source citation presence on returned events.
+            b3_compliant: payload.events.length === 0
+              ? null
+              : payload.events.every(event =>
+                typeof event?.source_citation === 'string' && event.source_citation.trim().length > 0),
             queried_at: new Date().toISOString(),
           },
         },

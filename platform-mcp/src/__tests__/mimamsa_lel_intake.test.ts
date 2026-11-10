@@ -178,6 +178,17 @@ describe('lel_query — native chart (57 rows): the deployed defect', () => {
     expect(parsed.provenance_envelope.asset).toBe('MI-5-1')
     expect(parsed.provenance_envelope.b3_compliant).toBe(true)
   })
+
+  it('reports noncompliance when a returned event has a blank citation', async () => {
+    const reg = register()
+    mockPrimitiveSuccess(NATIVE_CHART, [makeEvent(), makeEvent({ source_citation: ' ' })], 2)
+
+    const res = await invokeTool(reg, { chart_id: NATIVE_CHART })
+    const parsed = JSON.parse(res.content[0].text)
+
+    expect(parsed.ok).toBe(true)
+    expect(parsed.provenance_envelope.b3_compliant).toBe(false)
+  })
 })
 
 describe('lel_query — genuine zero (Abhinandan): honest-empty is allowed', () => {
@@ -192,6 +203,7 @@ describe('lel_query — genuine zero (Abhinandan): honest-empty is allowed', () 
     expect(parsed.ok).toBe(true)
     expect(parsed.events).toEqual([])
     expect(parsed.total_count).toBe(0)
+    expect(parsed.provenance_envelope.b3_compliant).toBeNull()
   })
 })
 
@@ -259,5 +271,6 @@ describe('lel_query — guards + error path', () => {
     expect(parsed.ok).toBe(false)
     expect(parsed.provenance_envelope.asset).toBe('MI-5-1')
     expect(parsed.provenance_envelope.no_leakage_note).toContain('calibration')
+    expect(parsed.provenance_envelope.b3_compliant).toBeNull()
   })
 })
