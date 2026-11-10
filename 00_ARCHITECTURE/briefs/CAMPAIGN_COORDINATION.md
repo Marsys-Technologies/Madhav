@@ -9418,3 +9418,16 @@ Answers the KĀLA-YANTRA request of 2026-10-16T17:50Z. Measured read-only by Suv
 - Worktree: /Users/Dev/.codex/worktrees/185f/Madhav. Reconciliation source observed: adc344e7eae9710282221b7743b8ca35e55a7782.
 - Scope: final plan, findings dispositions and kickoff handoff in its own 00_ARCHITECTURE/briefs/madhav_consolidation/; byte-identical read copies of review artifacts where useful. The department lead retains review custody in its separate worktree.
 - Exclusions: no production-window claim, runtime edits, protected operation, foreign worktree edits, dispatcher change, or changes to another campaign's reservations.
+
+## Madhav consolidation review and Astra handoff — documentation reservations released
+
+- At 2026-11-11 05:08 IST the sealed finalization packet was received and verified against its 17 hashes. Release L-MADHAV-CONSOLIDATION-REVIEW-20261111 and L-MADHAV-CONSOLIDATION-ASTRA-20261111 at handoff. Their documented scope never included runtime or production operations.
+
+## L-MADHAV-CONSOLIDATION-BASELINE-20261111 — baseline execution custody
+
+- Holder: Madhav consolidation department lead, Codex GPT-6.1 Sol HIGH. Status: ACTIVE_BASELINE_EVIDENCE_ONLY.
+- Started: 2026-11-11 05:08 IST. Expiry: 2026-11-11 10:00 IST or superseding scoped custody. Checkpoint and renew if needed.
+- Worktree: /Users/Dev/.codex/worktrees/5a0f/Madhav. Source pin: adc344e7eae9710282221b7743b8ca35e55a7782. Final plan SHA-256: 44c04a56877c500a488f3c3fe783c4218540211e91af20f1b10f59bfb0db684b.
+- Authority: owner-authorized continuous execution after dedicated Astra finalization; strategy surrogate ruling SR-001 retains truthful legacy Codex profile-validator failure.
+- Scope: sealed packet integration and campaign kickoff/reservation records; concurrent Product, Architecture/data, Instruction and CI/release baseline evidence under the campaign folder; pinned source inspection and authorized read-only metadata. Runtime write reservations require exact downstream scope and relevant proof.
+- Exclusions: no shared dispatcher or foreign-worktree changes, protected operation, production lease, deployment, migration, access change, secrets/private chart rows or held-out answers, or new paid item.
