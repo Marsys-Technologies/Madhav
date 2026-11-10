@@ -7,7 +7,7 @@ import {
   assertNoLiteralCredentials, canonicalResource, parseDeclaredExceptions, isThisProject,
   assertEffectiveIsolation, assertSealerSecretIsolation, assertVerifierInheritedControl, assertVerifierIsolation, assertVerifierServiceAccountPolicyExact, BUILDER_SECRET, BUILDER_SERVICE_ACCOUNT, grantsServiceAccountControl, VERIFIER_JOB,
   SEALER_SECRET, VERIFIER_SECRET, VERIFIER_SERVICE_ACCOUNT, type VerifierState,
-  GATED_SECRET_NAME, LAYER_VERIFIER_SECRET, assertLayerVerifierSecretIsolation,
+  GATED_SECRET_NAME, LAYER_VERIFIER_SECRET, assertLayerVerifierSecretIsolation, protectedResourceExclusion,
 } from '../../scripts/data-plane-secret-isolation-preflight'
 
 type EffectivePolicies = Parameters<typeof assertVerifierInheritedControl>[0]
@@ -27,6 +27,46 @@ const good = (): VerifierState => ({
 })
 const check = (state: VerifierState, project: Parameters<typeof assertVerifierIsolation>[0] = projectPolicy, phase: 'staged' | 'deployable' | undefined = 'deployable') =>
   assertVerifierIsolation(project, state, {}, DEPLOYER, phase)
+
+describe('tag-scoped kill-switch agents', () => {
+  const projectNumber = '938361928218'
+  const resource = `projects/${projectNumber}`
+  const tag = { tagKey: 'tagKeys/123', tagValue: 'tagValues/456',
+    namespacedTagValue: `${projectNumber}/madhav-protected-data-plane/true` }
+  const exclusion = protectedResourceExclusion(projectNumber, [[tag], [tag], [tag]])
+  const role = 'roles/eventarc.serviceAgent'
+  const agent = `serviceAccount:service-${projectNumber}@gcp-sa-eventarc.iam.gserviceaccount.com`
+  const binding = { role, members: [agent], condition: { expression: exclusion } }
+  const permissions = { [role]: ['iam.serviceAccounts.actAs', 'iam.serviceAccounts.getOpenIdToken'] }
+  const effective = [{ resource, policy: { bindings: [binding] } }]
+
+  it('accepts only the canonical project grant with the proven exclusion', () => {
+    expect(() => assertVerifierInheritedControl(effective, permissions, '', projectNumber, '', exclusion)).not.toThrow()
+    for (const unscoped of [
+      { ...binding, condition: undefined },
+      { ...binding, condition: { expression: `(${exclusion}) || true` } },
+      { ...binding, members: [agent, 'user:other@example.com'] },
+    ]) {
+      expect(() => assertVerifierInheritedControl([{ resource, policy: { bindings: [unscoped] } }],
+        permissions, '', projectNumber, '', exclusion)).toThrow(/Inherited or aggregate capability/)
+    }
+    expect(() => assertVerifierInheritedControl(effective, permissions, '', projectNumber)).toThrow(/Inherited or aggregate capability/)
+  })
+
+  it('fails closed when a protected tag is missing, inherited or differs', () => {
+    for (const entries of [[], [{ ...tag, inherited: true }], [{ ...tag, tagValue: 'tagValues/987' }]]) {
+      expect(() => protectedResourceExclusion(projectNumber, [[tag], [tag], entries])).toThrow(/direct protection tag/)
+    }
+  })
+
+  it('refuses role changes that could modify project IAM or detach the protection tag', () => {
+    for (const extra of ['resourcemanager.projects.setIamPolicy', 'iam.serviceAccounts.deleteTagBinding', 'run.jobs.deleteTagBinding']) {
+      const broadened = { [role]: [...permissions[role], extra] }
+      expect(() => assertVerifierInheritedControl(effective, broadened, '', projectNumber, '', exclusion))
+        .toThrow(/Inherited or aggregate capability/)
+    }
+  })
+})
 
 describe('assertVerifierIsolation', () => {
   it('passes the exact pair, and passes while the resources do not exist yet', () => {
@@ -460,6 +500,20 @@ describe('R16-1: one project canonicaliser and one annotation parser through the
         { role: 'roles/run.serviceAgent', members: [SA_AGENT] },
       ] } }])).not.toThrow()
     }
+  })
+  it('requires the proved kill-switch exclusion for the builder as well as the verifier', () => {
+    process.env.DATA_PLANE_DEPLOY_PRINCIPAL = DEPLOYER
+    const role = 'roles/cloudfunctions.standardServiceAgent'
+    const member = `serviceAccount:service-${NUMBER}@gcf-admin-robot.iam.gserviceaccount.com`
+    const exclusion = "!resource.matchTagId('tagKeys/123', 'tagValues/456')"
+    const effective = [{ resource: `projects/${NUMBER}`, policy: { bindings: [
+      { role, members: [member], condition: { expression: exclusion } },
+    ] } }]
+    const permissions = { ...resolved, [role]: ['iam.serviceAccounts.actAs', 'iam.serviceAccounts.signBlob'] }
+    expect(() => assertEffectiveIsolation(effective, builderPolicy, [buildJob], permissions, OWNER, NUMBER,
+      'strict', exclusion)).not.toThrow()
+    expect(() => assertEffectiveIsolation(effective, builderPolicy, [buildJob], permissions, OWNER, NUMBER))
+      .toThrow(/builder service-account impersonation grant remains/)
   })
   it('an exception declared by project NUMBER is honoured by the verifier-control check; the shared builder-impersonation gate still applies to it (an exception must pass ALL gates)', () => {
     const folderOwner = [{ resource: 'folders/1', policy: { bindings: [{ role: 'roles/owner', members: ['user:other@example.com'] }] } }]
