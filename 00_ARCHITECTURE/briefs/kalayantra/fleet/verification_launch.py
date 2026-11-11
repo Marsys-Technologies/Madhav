@@ -253,10 +253,17 @@ def cloud_launcher(runner=readback.default_runner, job_args=EXECUTE_ARGS, failur
 
 
 def _entry_text(entry: dict):
+    """An entry's stdout text. Cloud Run hands a stdout line that is one JSON object (under the 256 KiB split size) to Cloud Logging as a STRUCTURED entry, so
+    a shard's report arrives as `jsonPayload` itself, not as text (SR-W4-REPORT-JSONPAYLOAD; hldj8). Such a payload is taken as the report line only when it
+    has the report's own shape (a `classes` object and `generation`), re-serialised exactly as the job prints it (pipeline/orchestrator/verification_job.py:
+    json.dumps(report, default=str, sort_keys=True)). The line is then a re-serialisation of what Cloud Logging kept, not the job's bytes; `report_sha256` is
+    over it. Any other structured entry keeps the old reading (its `message`, or nothing)."""
     text = entry.get("textPayload")
     if not isinstance(text, str):
         payload = entry.get("jsonPayload")
         text = payload.get("message") if isinstance(payload, dict) else None
+        if text is None and isinstance(payload, dict) and isinstance(payload.get("classes"), dict) and "generation" in payload:
+            text = json.dumps(payload, default=str, sort_keys=True)
     return text if isinstance(text, str) else None
 
 
@@ -274,10 +281,14 @@ def _split_part(entry: dict):
     return uid, index, total
 
 
-def report_from_entries(entries: list) -> tuple[str, dict]:
-    """The job's ONE report line (verbatim) and its parsed form. A report is a stdout line that is a JSON object carrying `classes` (an object) and `generation`
+REPORT_SOURCE_TEXT = "stdout text"
+REPORT_SOURCE_JSONPAYLOAD = "re-serialised from jsonPayload"      # SR-W4-RESULT-CHECK-FIX (b): the disclosure that the line is not the job's own bytes
+
+
+def report_from_entries(entries: list) -> tuple[str, dict, str]:
+    """The job's ONE report line (verbatim, or re-serialised from a structured entry: the third item says which) and its parsed form. A report is a stdout line that is a JSON object carrying `classes` (an object) and `generation`
     - the same shape the pack's dryrun_gate selects. Split entries are joined in index order and only when every part is present. Exactly one report or a refusal."""
-    texts, parts, seen = [], {}, set()
+    texts, parts, seen, structured = [], {}, set(), set()
     for entry in entries:
         if not isinstance(entry, dict):
             raise Refused("report log: an entry is not a JSON object")
@@ -290,6 +301,8 @@ def report_from_entries(entries: list) -> tuple[str, dict]:
         part = _split_part(entry)
         if text is None:
             continue
+        if not isinstance(entry.get("textPayload"), str) and not isinstance((entry.get("jsonPayload") or {}).get("message"), str):
+            structured.add(text)
         if part is None:
             texts.append(text)
         else:
@@ -314,14 +327,14 @@ def report_from_entries(entries: list) -> tuple[str, dict]:
             except ValueError:
                 continue
             if isinstance(value, dict) and isinstance(value.get("classes"), dict) and "generation" in value:
-                found.append((line, value))
+                found.append((line, value, REPORT_SOURCE_JSONPAYLOAD if text in structured else REPORT_SOURCE_TEXT))
     if len(found) != 1:
         raise Refused(f"report log: {len(found)} verification reports in the newest {len(entries)} stdout entries, not exactly one"
                       + (f" ({incomplete} split report(s) incomplete)" if incomplete else ""))
     return found[0]
 
 
-def read_report(name: str, runner, sleep) -> tuple[str, dict]:
+def read_report(name: str, runner, sleep) -> tuple[str, dict, str]:
     """The execution's report, read back from its stdout log. Cloud Logging lags a finished execution by seconds, so an absent report is re-read a bounded number of times."""
     last = None
     for attempt in range(LOG_ATTEMPTS):
@@ -380,11 +393,11 @@ def report_only_run(definition: dict, request: dict, runner, fetch, launcher, sl
     doc = (shard or {}).get("doc") or shards.load()[0]
     run_record["capacity"] = shards.shard_capacity(run_record["execution_wall_s"], len(shard["classes"]) if shard else doc["classes_total"], doc)
     try:
-        line, report = read_report(execution, runner, sleep)
+        line, report, source = read_report(execution, runner, sleep)
     except REFUSALS as exc:
         run_record["report_problem"] = str(exc)
     else:
-        run_record.update(report_line=line, report_status=report.get("status") if isinstance(report.get("status"), str) else None,
+        run_record.update(report_line=line, report_source=source, report_status=report.get("status") if isinstance(report.get("status"), str) else None,
                           report_sha256=hashlib.sha256(line.encode()).hexdigest())
         run_record["report_only"] = report.get("report_only") is True and report.get("status") == "REPORT_ONLY"
     # ok = the job ran to completion in report-only mode, as defined, and said so; whether its classes and gate are clean is the pack's dryrun_gate to judge
