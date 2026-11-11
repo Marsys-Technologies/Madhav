@@ -114,6 +114,24 @@ def check_pipeline_tag(tag: str, expected: tuple[str, str]) -> None:
     require(manifest_identity(tag) == expected, "Pipeline commit tag does not match the probed image")
 
 
+def pipeline_reference(commit: str, image: str) -> str:
+    repository = f"{REGISTRY}/{PIPELINE}"
+    prefix = f"{repository}@"
+    require(COMMIT.fullmatch(commit) is not None, "invalid Pipeline source")
+    require(image.startswith(prefix), "wrong verified Pipeline repository")
+    return f"{repository}:{commit}@{digest(image.removeprefix(prefix))}"
+
+
+def verified_pipeline_reference() -> str:
+    image = os.environ.get("CGM_VERIFIED_IMAGE", "")
+    reference = pipeline_reference(source_commit(), image)
+    require(
+        os.environ.get("CGM_VERIFIED_PIPELINE_REF") == reference,
+        "missing or rebound verified Pipeline reference",
+    )
+    return reference
+
+
 def source_hashes(commit: str) -> list[str]:
     return [
         hashlib.sha256(command("git", "show", f"{commit}:{SOURCE_ROOT}/{name.replace('.', '/')}.py")).hexdigest()
@@ -172,26 +190,19 @@ def verify_build() -> None:
     with Path(os.environ["GITHUB_ENV"]).open("a", encoding="utf-8") as env_file:
         env_file.write(f"CGM_VERIFIED_IMAGE={image}\n")
         if component == PIPELINE:
-            env_file.write(f"CGM_VERIFIED_PIPELINE_TOP={top}\n")
+            env_file.write(f"CGM_VERIFIED_PIPELINE_REF={pipeline_reference(head, image)}\n")
     print(f"CGM {component} source={head} image={image} registration verified")
 
 
 def post_repoint() -> None:
-    repository = f"{REGISTRY}/{PIPELINE}"
-    tag = f"{repository}:{source_commit()}"
-    platform_ref = os.environ["CGM_VERIFIED_IMAGE"]
-    prefix = f"{repository}@"
-    require(platform_ref.startswith(prefix), "missing verified Pipeline repository")
-    platform = digest(platform_ref.removeprefix(prefix))
-    top = digest(os.environ.get("CGM_VERIFIED_PIPELINE_TOP"))
+    reference = verified_pipeline_reference()
     configured = command(
         "gcloud", "run", "jobs", "describe", "brahma-build-pipeline-job",
         "--region", os.environ["GCP_REGION"],
         "--format=value(spec.template.spec.template.spec.containers[0].image)",
-    ).decode().strip()
-    require(configured == tag, "configured Pipeline image is not the verified source tag")
-    check_pipeline_tag(tag, (top, platform))
-    print(f"CGM Pipeline configuration verified source={source_commit()} image={platform_ref}")
+    ).decode().removesuffix("\n")
+    require(configured == reference, "configured Pipeline image is not the verified combined reference")
+    print(f"CGM Pipeline configuration verified image={reference}")
 
 
 def verify_registration(root: Path, expected: list[str]) -> None:
@@ -236,6 +247,8 @@ def main() -> None:
     mode, *args = sys.argv[1:]
     if mode == "verify-build" and not args:
         verify_build()
+    elif mode == "verify-repoint" and not args:
+        verified_pipeline_reference()
     elif mode == "post-repoint" and not args:
         post_repoint()
     elif mode == "inside":

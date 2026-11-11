@@ -16,6 +16,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[4]
 NODE = shutil.which('node') or 'node'
 WORKFLOW = ROOT / '.github/workflows/deploy.yml'
+PIPELINE_REPO = "asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline"
 
 
 def workflow():
@@ -398,7 +399,7 @@ git() {
         cwd=repo,
         env={**os.environ, 'GITHUB_OUTPUT': str(output),
              'FIXTURE_DEPLOYED_SHA': base, 'FIXTURE_FAIL_DIFF': '1' if fail_diff else '0',
-             'FIXTURE_PIPELINE_IMAGE': pipeline_image or f'fixture/image:{base}'},
+             'FIXTURE_PIPELINE_IMAGE': pipeline_image or f'{PIPELINE_REPO}:{base}'},
         capture_output=True, text=True, timeout=10,
     ), output
 
@@ -548,7 +549,8 @@ def test_cgm_workflow_build_and_production_handoffs():
     repoint = next(s["run"] for s in pipeline if s.get("name") == "Re-point Cloud Run Job at the new image")
     lines = repoint.splitlines()
     start = next(i for i, line in enumerate(lines) if line.startswith("gcloud run jobs update "))
-    assert lines[start + 2].strip().endswith("brahma-pipeline:${{ env.DEPLOY_SHA }} \\")
+    assert lines[start - 1] == f"python3 {CGM_PROBE.relative_to(ROOT)} verify-repoint"
+    assert lines[start + 2].strip() == '--image="${CGM_VERIFIED_PIPELINE_REF:?missing verified Pipeline image}" \\'
     assert lines[start + 9].strip() == "--quiet"
     assert lines[start + 10] == f"python3 {CGM_PROBE.relative_to(ROOT)} post-repoint"
     assert WORKFLOW.read_text().splitlines()[2542].strip().split()[0] == "--task-timeout=86400"
@@ -637,41 +639,95 @@ def test_cgm_exact_build_gate(tmp_path, monkeypatch, cgm_probe, pushed, componen
     expected = f"CGM_VERIFIED_IMAGE={repo}@{child}\n"
     if component == cgm_probe.PIPELINE:
         assert calls[-1][-1] == f"{repo}:{commit}"
-        expected += f"CGM_VERIFIED_PIPELINE_TOP={top}\n"
+        expected += f"CGM_VERIFIED_PIPELINE_REF={repo}:{commit}@{child}\n"
     assert carrier.read_text() == expected
 
 
-@pytest.mark.parametrize("failure", [None, "config-tag", "tag-digest", "missing-carrier"])
+@pytest.mark.parametrize("failure", [
+    None, "wrong-repository", "wrong-source", "malformed-digest", "missing-image", "rebound-carrier",
+    "tag-only", "digest-only", "configured-repository", "configured-source", "configured-platform", "normalized",
+])
 def test_cgm_pipeline_post_repoint(monkeypatch, cgm_probe, failure):
-    repo = f"{cgm_probe.REGISTRY}/{cgm_probe.PIPELINE}"
+    repo = PIPELINE_REPO
     commit = "a" * 40
-    top, child = map(fake_digest, "bc")
-    tag = f"{repo}:{commit}"
-    monkeypatch.setenv("DEPLOY_SHA", commit)
+    child, wrong = map(fake_digest, "bc")
+    image = f"{repo}@{child}"
+    reference = f"{repo}:{commit}@{child}"
+    monkeypatch.setenv("DEPLOY_SHA", commit if failure != "wrong-source" else "not-a-commit")
     monkeypatch.setenv("GCP_REGION", "example-region")
-    monkeypatch.setenv("CGM_VERIFIED_PIPELINE_TOP", top)
-    monkeypatch.setenv("CGM_VERIFIED_IMAGE", f"{repo}@{child}")
-    if failure == "missing-carrier":
-        monkeypatch.delenv("CGM_VERIFIED_PIPELINE_TOP")
+    monkeypatch.setenv("CGM_VERIFIED_IMAGE", {
+        "wrong-repository": f"{repo}-other@{child}",
+        "malformed-digest": f"{repo}@sha256:ab",
+    }.get(failure, image))
+    monkeypatch.setenv("CGM_VERIFIED_PIPELINE_REF", (
+        f"{repo}:{commit}@{wrong}" if failure == "rebound-carrier" else reference
+    ))
+    if failure == "missing-image":
+        monkeypatch.delenv("CGM_VERIFIED_IMAGE")
+    configured = {
+        "tag-only": f"{repo}:{commit}",
+        "digest-only": image,
+        "configured-repository": f"{repo}-other:{commit}@{child}",
+        "configured-source": f"{repo}:{'f' * 40}@{child}",
+        "configured-platform": f"{repo}:{commit}@{wrong}",
+        "normalized": f"{reference} ",
+    }
     calls = []
 
     def stub(*argv):
         calls.append(argv)
         assert argv[:5] == ("gcloud", "run", "jobs", "describe", "brahma-build-pipeline-job")
-        return (f"{repo}@{child}" if failure == "config-tag" else tag).encode()
-
-    def identity(ref):
-        assert ref == tag
-        return (fake_digest("e") if failure == "tag-digest" else top, child)
+        return (configured.get(failure, reference) + "\n").encode()
 
     monkeypatch.setattr(cgm_probe, "command", stub)
-    monkeypatch.setattr(cgm_probe, "manifest_identity", identity)
     if failure:
         with pytest.raises(cgm_probe.ProbeFailure):
             cgm_probe.post_repoint()
     else:
         cgm_probe.post_repoint()
-        assert len(calls) == 1
+    assert len(calls) == int(failure is None or failure in configured)
+
+
+@pytest.mark.parametrize("mode", ["exact", "rebound", "tag-only"])
+def test_cgm_pipeline_repoint_shell_fails_closed(tmp_path, mode):
+    commit = "a" * 40
+    child = fake_digest("b")
+    reference = f"{PIPELINE_REPO}:{commit}@{child}"
+    trace = tmp_path / "trace"
+    gcloud = tmp_path / "gcloud"
+    gcloud.write_text(
+        '#!/usr/bin/env python3\n'
+        'import json, os, sys\n'
+        'with open(os.environ["CGM_TEST_TRACE"], "a") as f:\n'
+        '    f.write(json.dumps(sys.argv[1:]) + "\\n")\n'
+        'if sys.argv[3] == "describe":\n'
+        '    print(os.environ["CGM_TEST_CONFIGURED"])\n'
+    )
+    gcloud.chmod(0o755)
+    repoint = next(
+        step["run"] for step in workflow()["jobs"]["deploy-pipeline-job"]["steps"]
+        if step.get("name") == "Re-point Cloud Run Job at the new image"
+    )
+    result = subprocess.run(
+        ["bash", "-eo", "pipefail", "-c", repoint.replace("${{ env.GCP_REGION }}", "example-region")],
+        cwd=ROOT,
+        env={**os.environ, "PATH": f"{tmp_path}{os.pathsep}{os.environ['PATH']}",
+             "DEPLOY_SHA": commit, "GCP_REGION": "example-region",
+             "CGM_VERIFIED_IMAGE": f"{PIPELINE_REPO}@{child}",
+             "CGM_VERIFIED_PIPELINE_REF": reference if mode != "rebound" else f"{PIPELINE_REPO}:{commit}@{fake_digest('c')}",
+             "CGM_TEST_TRACE": str(trace),
+             "CGM_TEST_CONFIGURED": reference if mode != "tag-only" else f"{PIPELINE_REPO}:{commit}"},
+        capture_output=True, text=True, timeout=10,
+    )
+    assert result.returncode == (0 if mode == "exact" else 1)
+    if mode == "rebound":
+        assert not trace.exists()
+        return
+    update, describe = [json.loads(line) for line in trace.read_text().splitlines()]
+    assert update[:4] == ["run", "jobs", "update", "brahma-build-pipeline-job"]
+    assert update[5] == f"--image={reference}"
+    assert "--task-timeout=86400" in update
+    assert describe[:4] == ["run", "jobs", "describe", "brahma-build-pipeline-job"]
 
 
 @pytest.mark.parametrize("mutation", [None, "wrong-class", "missing-key", "alias", "hash", "origin", "wrong-base"])
@@ -769,15 +825,25 @@ def test_cgm_manifest_identity(monkeypatch, cgm_probe, mode):
             cgm_probe.manifest_identity("fixture/image")
 
 
-@pytest.mark.parametrize("digest_only", [False, True])
-def test_cgm_preserves_pipeline_commit_tag_selection(tmp_path, digest_only):
+@pytest.mark.parametrize(("image", "unresolved"), [
+    ("{repo}:{base}", False),
+    ("{repo}:{base}@{digest}", False),
+    ("{repo}@{digest}", True),
+    ("{repo}-other:{base}@{digest}", True),
+    ("{repo}:latest", True),
+    ("{repo}:{base}@sha256:abc", True),
+    ("{repo}:{base}@{digest}!", True),
+    ("{repo}:{base}@{digest}@{digest}", True),
+    ("{repo}:{base}@SHA256:abc", True),
+])
+def test_cgm_preserves_pipeline_commit_tag_selection(tmp_path, image, unresolved):
     repo = tmp_path / "repo"
     base = deploy_diff_repo(repo, "add", "docs/notes.md")
-    pipeline_image = f"fixture/image@{fake_digest('d')}" if digest_only else f"fixture/image:{base}"
+    pipeline_image = image.format(repo=PIPELINE_REPO, base=base, digest=fake_digest("d"))
     result, output = run_deploy_diff(tmp_path, repo, base, pipeline_image=pipeline_image)
     assert result.returncode == 0, result.stderr
     decisions = dict(line.split("=", 1) for line in output.read_text().splitlines())
-    assert decisions["pipeline"] == str(digest_only).lower()
+    assert decisions["pipeline"] == str(unresolved).lower()
     assert all(decisions[name] == "false" for name in ("web", "sidecar", "mcp"))
 
 
