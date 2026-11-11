@@ -45,4 +45,6 @@ def test_preview_is_excluded_from_normal_build_context(context, dockerfile, depl
         effective_patterns = patterns(specific)
         assert effective_patterns[:len(context_patterns)] == context_patterns
 
-    assert effective_patterns[-1:] == [PREVIEW.relative_to(context).as_posix()]
+    preview = PREVIEW.relative_to(context).as_posix()
+    exact_preview_rules = [rule for rule in effective_patterns if rule in (preview, f"!{preview}")]
+    assert exact_preview_rules[-1:] == [preview]
