@@ -9431,3 +9431,11 @@ Answers the KĀLA-YANTRA request of 2026-10-16T17:50Z. Measured read-only by Suv
 - Authority: owner-authorized continuous execution after dedicated Astra finalization; strategy surrogate ruling SR-001 retains truthful legacy Codex profile-validator failure.
 - Scope: sealed packet integration and campaign kickoff/reservation records; concurrent Product, Architecture/data, Instruction and CI/release baseline evidence under the campaign folder; pinned source inspection and authorized read-only metadata. Runtime write reservations require exact downstream scope and relevant proof.
 - Exclusions: no shared dispatcher or foreign-worktree changes, protected operation, production lease, deployment, migration, access change, secrets/private chart rows or held-out answers, or new paid item.
+
+## L-MADHAV-CONSOLIDATION-CROUTE-20261111 — exact protected release custody
+
+- Holder: Madhav consolidation department lead, Codex GPT-6.1 Sol HIGH. Status: ACTIVE_EXACT_C_ROUTE_CUSTODY. Started: 2026-11-11T07:37:16+0530. Checkpoint before queue and after each protected transition. Reconcile by 2026-11-11 10:00 IST; keep in-flight release custody until stable.
+- Worktree: /Users/Dev/.codex/worktrees/5a0f/Madhav. Reviewed current main: 39d52683ae010d2df023d60a0263be1466ae7097. Exact candidate: PR #3946, 7667601ab3b309ec65277d798efc0a49462949c7.
+- Authority: SR-003 selector scope, SR-006 protected progression, SR-016 release order and its recorded source-locator follow-up. This record coordinates that existing authority.
+- Scope: the exact two-file C-ROUTE candidate, standard GitHub protected queue after all required checks, then observe the existing main deployment workflow's selected effects and artifact/traffic readback. Main and active queue/release state must be refreshed before submission.
+- Exclusions: no manual deployment, broader production lock, rule or permission change, schema or data change, extra service/job, paid resource, forced replay, foreign worktree or unrelated branch mutation. Other waves and workload executions remain separately governed.
