@@ -142,6 +142,53 @@ describe('Kāla Now workload-bound Panchanga transport', () => {
     expect(call?.headers.get('x-mcp-key-id')).toBe(OWNER.key_id)
   })
 
+  it('does not acquire workload identity for a chartless call', async () => {
+    const calls = transport(() => wrapped(payload(null)))
+    const result = await callPlatformPanchangaNow(DATE, OWNER)
+    expect(result).toMatchObject({ ok: true, overlayRequested: false })
+    expect(createIdTokenClient).not.toHaveBeenCalled()
+    expect(calls).toHaveLength(1)
+    expect(calls[0]?.headers.get('authorization')).toBeNull()
+  })
+
+  it('keeps one calendar request inside the overall budget when identity stalls', async () => {
+    vi.useFakeTimers()
+    let finishIdentity: ((token: string) => void) | undefined
+    fetchIdToken.mockImplementation(() => new Promise<string>((resolve) => { finishIdentity = resolve }))
+    const timeout = vi.spyOn(AbortSignal, 'timeout')
+    const calls = transport(() => wrapped(payload(null)))
+    const result = callPlatformPanchangaNow(DATE, OWNER, { chartId: A, ayanamshaId: LAHIRI })
+    try {
+      await vi.advanceTimersByTimeAsync(0)
+      expect(timeout).toHaveBeenCalledWith(20_000)
+      await vi.advanceTimersByTimeAsync(2_000)
+      expect(calls).toHaveLength(1)
+      expect(calls[0]?.signal).toBe(timeout.mock.results[0]?.value)
+      expect(calls[0]?.body.args).toEqual({ mode: 'single', date: DATE })
+      expect(calls[0]?.headers.get('authorization')).toBeNull()
+      expect(await result).toMatchObject({ ok: true, overlayRequested: false })
+    } finally {
+      finishIdentity?.(TOKEN)
+      await result
+      vi.useRealTimers()
+    }
+    expect(calls).toHaveLength(1)
+  })
+
+  it('binds the principal and chart before awaiting workload identity', async () => {
+    const calls = transport(() => wrapped(payload(null)))
+    const actor = { ...OWNER }
+    const selected = { chartId: A, ayanamshaId: LAHIRI }
+    const result = callPlatformPanchangaNow(DATE, actor, selected)
+    actor.user_uid = VIEWER.user_uid
+    actor.key_id = VIEWER.key_id
+    selected.chartId = B
+    await result
+    expect(calls[0]?.headers.get('x-mcp-user')).toBe(OWNER.user_uid)
+    expect(calls[0]?.headers.get('x-mcp-key-id')).toBe(OWNER.key_id)
+    expect(calls[0]?.body.args?.chart_id).toBe(A)
+  })
+
   it.each(['unavailable', 'fixture-internal', 'fixture-static'])('uses a single chartless request for identity %s', async (identity) => {
     if (identity === 'unavailable') fetchIdToken.mockRejectedValue(new Error('fixture credential unavailable'))
     else fetchIdToken.mockResolvedValue(identity)

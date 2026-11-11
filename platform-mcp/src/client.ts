@@ -206,17 +206,32 @@ export async function platformServiceGet(
 
 // ── Kāla Now Panchanga (one chartless or workload-authenticated request) ────────
 
+const PANCHANGA_REQUEST_BUDGET_MS = 20_000
+const PANCHANGA_WORKLOAD_BUDGET_MS = 2_000
+
 async function fetchPanchangaWorkloadAuthorization(): Promise<string | undefined> {
+  let timer: ReturnType<typeof setTimeout> | undefined
   try {
-    const client = await getIdTokenClient()
-    // The pinned IdTokenClient returns a plain header record with Authorization.
-    const authorization = (await client.getRequestHeaders(PLATFORM_URL))['Authorization']
-    const token = authorization?.match(/^Bearer (\S+)$/)?.[1]
-    if (token && token !== MCP_INTERNAL_TOKEN && token !== process.env['SERVICE_TOKEN']) return authorization
+    const lookup = getIdTokenClient().then(async (client) => {
+      // The pinned IdTokenClient returns a plain header record with Authorization.
+      const authorization = (await client.getRequestHeaders(PLATFORM_URL))['Authorization']
+      const token = authorization?.match(/^Bearer (\S+)$/)?.[1]
+      if (token && token !== MCP_INTERNAL_TOKEN && token !== process.env['SERVICE_TOKEN']) return authorization
+      return undefined
+    })
+    // Reserve most of the request budget for calendar transport if identity is slow.
+    return await Promise.race([
+      lookup,
+      new Promise<undefined>((resolve) => {
+        timer = setTimeout(() => resolve(undefined), PANCHANGA_WORKLOAD_BUDGET_MS)
+      }),
+    ])
   } catch {
     // The calendar can still be requested through the existing chartless route.
+    return undefined
+  } finally {
+    clearTimeout(timer)
   }
-  return undefined
 }
 
 export async function callPlatformPanchangaNow(
@@ -224,18 +239,22 @@ export async function callPlatformPanchangaNow(
   principal: Principal,
   overlay?: { chartId: string; ayanamshaId: string },
 ): Promise<{ content: Record<string, unknown> | null; ok: boolean; overlayRequested: boolean; wrapped: boolean }> {
-  const authorization = await fetchPanchangaWorkloadAuthorization()
-  const authorizedOverlay = authorization ? overlay : undefined
+  const { user_uid: userUid, key_id: keyId } = principal
+  const requestedOverlay = overlay && { chartId: overlay.chartId, ayanamshaId: overlay.ayanamshaId }
+  const signal = AbortSignal.timeout(PANCHANGA_REQUEST_BUDGET_MS)
+  const authorization = requestedOverlay ? await fetchPanchangaWorkloadAuthorization() : undefined
+  const authorizedOverlay = authorization ? requestedOverlay : undefined
   const overlayRequested = authorizedOverlay !== undefined
   const unavailable = { content: null, ok: false, overlayRequested, wrapped: false }
+  if (signal.aborted) return unavailable
   try {
     const response = await fetch(`${PLATFORM_URL}/api/retrieval/capability`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-MCP-Internal-Token': MCP_INTERNAL_TOKEN,
-        'X-MCP-User': principal.user_uid,
-        'X-MCP-Key-Id': principal.key_id,
+        'X-MCP-User': userUid,
+        'X-MCP-Key-Id': keyId,
         ...(authorization ? { Authorization: authorization } : {}),
       },
       body: JSON.stringify({
@@ -246,7 +265,7 @@ export async function callPlatformPanchangaNow(
         },
       }),
       redirect: 'error',
-      signal: AbortSignal.timeout(20_000),
+      signal,
     })
     if (!response.ok) return unavailable
     const data = await response.json() as { ok?: unknown; content?: unknown } | null
