@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { query } from "@/lib/db/client";
 import { resolveChartPageAccess } from "@/lib/auth/chart-page-guard";
+import { readFolioChartIdentity } from "@/lib/charts/folioIdentity";
 import {
   emptyChartReadiness,
   getChartReadinessMap,
@@ -31,19 +31,7 @@ export default async function ClientPage({
   const access = await resolveChartPageAccess(id);
   if (!access) redirect("/login");
   if (access.permission === "deny") redirect("/dashboard");
-  const { rows } = await query<{
-    id: string;
-    name: string;
-    birth_date: string;
-    birth_time: string;
-    birth_place: string;
-    timezone_id: string | null;
-    ayanamsa: string | null;
-  }>(
-    `SELECT id,name,birth_date::text,birth_time::text,birth_place,timezone_id,ayanamsa FROM charts WHERE id=$1`,
-    [id],
-  );
-  const chart = rows[0];
+  const chart = await readFolioChartIdentity(id);
   if (!chart) redirect("/dashboard");
   const frame = journey1Frame(chart.ayanamsa);
   const [readinessMap, summary, extra] = await Promise.all([
