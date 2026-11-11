@@ -66,7 +66,7 @@ export const callPanchangaServiceCapability: CapabilityDescriptor = {
     'Compute panchanga (tithi/vara/nakshatra/yoga/karana + sunrise/sunset) for an',
     'arbitrary date and location (panchang.py compute service, Swiss-Ephemeris-backed,',
     'engine-direct — not a table lookup). mode=single (default): one date, returns full',
-    'panchang. A separately authenticated chart request can add optional context. mode=range: date_from..',
+    'panchang + optional native_context if chart_id is provided. mode=range: date_from..',
     'date_to (max 31 days inclusive), returns one entry per day. Defaults to Bhubaneswar/',
     'IST coordinates when lat/lon/tz_offset_minutes are omitted. Distinct from the natal-',
     'only chart_panchanga (query_panchanga) — this is date-parameterized, any date.',
@@ -80,7 +80,7 @@ export const callPanchangaServiceCapability: CapabilityDescriptor = {
     lat:               { type: 'number', description: `Latitude, -90..90. Default ${DEFAULT_LAT} (Bhubaneswar).` },
     lon:               { type: 'number', description: `Longitude, -180..180. Default ${DEFAULT_LON} (Bhubaneswar).` },
     tz_offset_minutes: { type: 'number', description: `Timezone offset in minutes, -720..840. Default ${DEFAULT_TZ_OFFSET_MINUTES} (IST).` },
-    chart_id:          { type: 'string', description: 'mode=single only: optional chart UUID for an authenticated overlay request. The global handler returns calendar data.' },
+    chart_id:          { type: 'string', description: 'mode=single only: optional chart UUID to hydrate a native_context overlay (birth nakshatra + Moon sign).' },
   },
 
   required_inputs: [],
