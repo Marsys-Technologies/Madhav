@@ -14,7 +14,7 @@
 import { useCallback, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { parseISO, isAfter, addYears } from 'date-fns'
-import { PanchangHeader, resolveDate, resolveLocation, PRESET_LOCATIONS } from './PanchangHeader'
+import { PanchangHeader, resolveChartId, resolveDate, resolveLocation, PRESET_LOCATIONS } from './PanchangHeader'
 import { PrimaryStrip } from './PrimaryStrip'
 import { TimingsPanel } from './TimingsPanel'
 import { PlanetaryGrid } from './PlanetaryGrid'
@@ -46,7 +46,12 @@ export function PanchangClientView({
   const location = resolveLocation(searchParams)
 
   // General Almanac waits for the header to resolve an entitled selection.
-  const [chartId, setChartId] = useState<string | null>(null)
+  const requestedChartId = resolveChartId(searchParams)
+  const [selection, setSelection] = useState<{ requestedChartId: string | null; chartId: string | null }>()
+  const onChartIdChange = useCallback((chartId: string | null) => {
+    setSelection({ requestedChartId, chartId })
+  }, [requestedChartId])
+  const chartId = selection?.requestedChartId === requestedChartId ? selection.chartId : null
   const selectedChartId = fixedChartId ?? chartId
 
   // Ephemeris range: Swiss Ephemeris supports ~5400 BCE – 5400 CE.
@@ -59,13 +64,13 @@ export function PanchangClientView({
   // Polar latitude: abs(lat) >= 66.5° — sun may not rise/set.
   const isPolarLat = Math.abs(location.lat) >= 66.5
 
-  const { data, isLoading, isError, error, refetch } = usePanchangDay({
+  const { data, nativeContext, isLoading, isError, error, refetch } = usePanchangDay({
     date,
     lat: location.lat,
     lon: location.lon,
     tzOffsetMinutes: 330,
     chartId: selectedChartId,
-    initialData: selectedChartId ? undefined : initialData ?? undefined,
+    initialData,
     // Skip fetching if we know the request can't succeed
     enabled: !isBeyondEphemeris,
   })
@@ -77,7 +82,7 @@ export function PanchangClientView({
       <PanchangHeader
         initialDate={initialDate}
         initialLocation={{ id: 'bhubaneswar', label: 'Bhubaneswar', lat: initialLat, lon: initialLon }}
-        onChartIdChange={setChartId}
+        onChartIdChange={onChartIdChange}
         fixedChartId={fixedChartId}
       />
 
@@ -157,7 +162,7 @@ export function PanchangClientView({
             angas={data.angas}
             tzOffsetMinutes={330}
             date={date}
-            nativeContext={data.native_context}
+            nativeContext={nativeContext}
             panchangContext={data}
           />
 
@@ -170,7 +175,7 @@ export function PanchangClientView({
               />
               <PlanetaryGrid
                 planets={data.planets as Record<string, never> | null}
-                nativeContext={data.native_context}
+                nativeContext={nativeContext}
                 panchangContext={data}
               />
             </div>
@@ -181,7 +186,7 @@ export function PanchangClientView({
             <SpecialYogasList
               specialYogas={data.special_yogas}
               tzOffsetMinutes={330}
-              nativeContext={data.native_context}
+              nativeContext={nativeContext}
               panchangContext={data}
             />
           </div>
