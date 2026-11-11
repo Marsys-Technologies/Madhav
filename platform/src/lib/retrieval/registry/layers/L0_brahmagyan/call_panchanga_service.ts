@@ -36,8 +36,9 @@
  * prematurely close this block comment — asterisk-then-slash — a known campaign trap;
  * kept split across two words for that reason.)
  *
- * The global handler serves the calendar for any date/location. A caller with
- * separately verified chart authority may attach optional context outside this handler.
+ * The global handler serves the calendar for any date/location.
+ * A caller with separately verified chart authority may attach optional context
+ * outside this handler.
  */
 import type { CapabilityDescriptor } from '../../types'
 
@@ -47,14 +48,6 @@ import type { CapabilityDescriptor } from '../../types'
 const DEFAULT_LAT = 20.27
 const DEFAULT_LON = 85.84
 const DEFAULT_TZ_OFFSET_MINUTES = 330 // IST
-
-function withoutLegacyOverlay(value: unknown): unknown {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return value
-  const details = { ...value } as Record<string, unknown>
-  delete details.native_context
-  delete details.native_context_error
-  return details
-}
 
 export const callPanchangaServiceCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L0/call_panchanga_service',
@@ -179,4 +172,12 @@ export const callPanchangaServiceCapability: CapabilityDescriptor = {
       return { content: { error: String(err) }, is_error: true }
     }
   },
+}
+
+function withoutLegacyOverlay(value: unknown): unknown {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return value
+  const details = { ...value } as Record<string, unknown>
+  delete details.native_context
+  delete details.native_context_error
+  return details
 }
