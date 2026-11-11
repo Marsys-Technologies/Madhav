@@ -374,7 +374,7 @@ NARR_CITES = {
                           (_WR + "bo_laksana.py", 4037, "_CONTRADICTS_SQL"), (_WR + "bo_laksana.py", 4096, "class BoLaksanaRerankWriter"),
                           (_WR + "bo_laksana.py", 4151, "payload = _rerank_payload("), (_WR + "bo_laksana.py", 4154, "SET graph_node_strength_contribution_jsonb"),
                           (_WR + "bo_laksana.py", 4218, "SET valence = %s, valence_source = %s"), (_WR + "bo_laksana.py", 4229, "notes=("),
-                          (_L + "L2_bodha/query_signals.ts", 546, "bodha_msr_signals")],
+                          (_L + "L2_bodha/query_signals.ts", 571, "bodha_msr_signals")],
     "ph_phaladesa": [(_WR + "ph_phaladesa.py", 94, "def _build_deterministic_narration"), (_WR + "ph_phaladesa.py", 103, "domain rests on {rec.anchor_count}"),
                      (_WR + "ph_phaladesa.py", 107, "No predictive anchors were derived"), (_WR + "ph_phaladesa.py", 110, "assessed magnitude of effect"),
                      (_WR + "ph_phaladesa.py", 113, "win = f"), (_WR + "ph_phaladesa.py", 115, "peaking around {rec.peak_date}"),
@@ -1293,7 +1293,7 @@ CITATION_DECISIONS = json.loads(r"""
   ],
   "served": [
    "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts",
-   122,
+   142,
    "'verification_pass_status', "
   ],
   "fields": [
@@ -1332,7 +1332,7 @@ CITATION_DECISIONS = json.loads(r"""
   ],
   "served": [
    "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts",
-   122,
+   142,
    "'verification_pass_status', "
   ],
   "fields": [
@@ -1377,7 +1377,7 @@ CITATION_DECISIONS = json.loads(r"""
   ],
   "served": [
    "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts",
-   122,
+   142,
    "'verification_pass_status', "
   ],
   "fields": [
