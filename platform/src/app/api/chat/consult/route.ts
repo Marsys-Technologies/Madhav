@@ -193,6 +193,14 @@ interface RequestBody {
   persona_id?: string
 }
 
+function attachmentDenialResponse(malformedAttachments: boolean) {
+  const response = malformedAttachments
+    ? errorResponse('ATTACHMENT_UNAVAILABLE', 'Invalid attachments. Remove them and send text.', 400, { retry: false })
+    : errorResponse('ATTACHMENT_UNAVAILABLE', 'Attachments are currently unavailable in Consult. You can send text.', 503, { retry: false })
+  response.headers.set('Cache-Control', 'private, no-store')
+  return response
+}
+
 export async function POST(request: Request) {
   return meteringRequest(() => executeMeteredRequest(request))
 }
@@ -362,11 +370,7 @@ async function executeMeteredRequest(request: Request) {
   }
 
   if (malformedAttachments || hasAttachments) {
-    const response = malformedAttachments
-      ? errorResponse('ATTACHMENT_UNAVAILABLE', 'Invalid attachments. Remove them and send text.', 400, { retry: false })
-      : errorResponse('ATTACHMENT_UNAVAILABLE', 'Attachments are currently unavailable in Consult. You can send text.', 503, { retry: false })
-    response.headers.set('Cache-Control', 'private, no-store')
-    return response
+    return attachmentDenialResponse(malformedAttachments)
   }
 
   if (!conversationId) {
