@@ -418,12 +418,19 @@ jobs:
             # Prints the commit production reports for one component; empty on any failure.
             case "$1" in
               web|sidecar|mcp)
-                local rev
-                rev=$(gcloud run services describe "amjis-$1" --region "$GCP_REGION" \
-                  --format='value(status.latestReadyRevisionName)' 2>/dev/null) || return 0
+                local service rev sha
+                service=$(gcloud run services describe "amjis-$1" --region "$GCP_REGION" \
+                  --format=json 2>/dev/null) || return 0
+                # A smoke candidate can be Ready while the previous revision
+                # still serves traffic. Split or unknown traffic cannot earn a skip.
+                rev=$(jq -r '
+                  [(.status.traffic // [])[] | select((.percent // 0) > 0)]
+                  | if length == 1 and .[0].percent == 100 then .[0].revisionName // empty else empty end
+                ' <<<"$service" 2>/dev/null) || return 0
                 [ -n "$rev" ] || return 0
-                gcloud run revisions describe "$rev" --region "$GCP_REGION" \
-                  --format="value(metadata.labels['commit-sha'])" 2>/dev/null || true
+                sha=$(gcloud run revisions describe "$rev" --region "$GCP_REGION" \
+                  --format="value(metadata.labels['commit-sha'])" 2>/dev/null) || return 0
+                printf '%s' "$sha"
                 ;;
               pipeline)
                 local img

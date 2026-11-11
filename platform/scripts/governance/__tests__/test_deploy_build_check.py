@@ -272,15 +272,40 @@ def deploy_diff_repo(path, operation, changed_path, destination=None):
     return base
 
 
-def run_deploy_diff(tmp_path, repo, base, *, fail_diff=False):
+def run_deploy_diff(tmp_path, repo, base, *, fail_diff=False, traffic=None, fail_revision=False):
     """Execute the production selection step; Cloud Run and failure are local fixtures."""
     step = next(s for s in workflow()['jobs']['changes']['steps'] if s.get('id') == 'diff')
     output = tmp_path / 'deploy-output'
+    if traffic is None:
+        traffic = [{'revisionName': 'fixture-active', 'percent': 100}]
+    service = tmp_path / 'fixture-service'
+    service.write_text(json.dumps({
+        'status': {'latestReadyRevisionName': 'fixture-candidate', 'traffic': traffic},
+    }))
+    if fail_revision:
+        (tmp_path / 'fixture-failed-revision').touch()
     harness = '''
 gcloud() {
     case "$1 $2 $3" in
-        "run services describe") printf '%s\\n' fixture-revision ;;
-        "run revisions describe") printf '%s\\n' "$FIXTURE_DEPLOYED_SHA" ;;
+        "run services describe")
+            case "$*" in
+                *--format=json*) cat ../fixture-service ;;
+                *) printf '%s\\n' fixture-candidate ;;
+            esac
+            ;;
+        "run revisions describe")
+            case "$4" in
+                fixture-active)
+                    if [ -f ../fixture-failed-revision ]; then
+                        command git rev-parse HEAD
+                        return 98
+                    fi
+                    printf '%s\\n' "$FIXTURE_DEPLOYED_SHA"
+                    ;;
+                fixture-candidate) command git rev-parse HEAD ;;
+                *) return 97 ;;
+            esac
+            ;;
         "run jobs describe") printf 'fixture/image:%s\\n' "$FIXTURE_DEPLOYED_SHA" ;;
         *) return 97 ;;
     esac
@@ -350,3 +375,42 @@ def test_production_deploy_diff_fails_when_existing_commit_cannot_be_diffed(tmp_
     assert result.returncode != 0
     assert 'cannot diff deployed commit' in result.stderr
     assert not output.exists()
+
+
+def test_production_deploy_diff_uses_active_traffic_over_newest_ready_revision(tmp_path):
+    repo = tmp_path / 'repo'
+    base = deploy_diff_repo(repo, 'add', 'platform-mcp/src/index.ts')
+    traffic = [
+        {'revisionName': 'fixture-active', 'percent': 100},
+        {'revisionName': 'fixture-candidate', 'tag': 'smoke'},
+    ]
+    result, output = run_deploy_diff(tmp_path, repo, base, traffic=traffic)
+    assert result.returncode == 0, result.stderr
+    decisions = dict(line.split('=', 1) for line in output.read_text().splitlines())
+    assert decisions == {'web': 'false', 'sidecar': 'false', 'mcp': 'true', 'pipeline': 'false'}
+
+
+@pytest.mark.parametrize('traffic', [
+    [],
+    [{'percent': 100}],
+    [
+        {'revisionName': 'fixture-active', 'percent': 90},
+        {'revisionName': 'fixture-candidate', 'percent': 10},
+    ],
+])
+def test_production_deploy_diff_does_not_skip_with_ambiguous_active_traffic(tmp_path, traffic):
+    repo = tmp_path / 'repo'
+    base = deploy_diff_repo(repo, 'add', 'docs/guide.md')
+    result, output = run_deploy_diff(tmp_path, repo, base, traffic=traffic)
+    assert result.returncode == 0, result.stderr
+    decisions = dict(line.split('=', 1) for line in output.read_text().splitlines())
+    assert decisions == {'web': 'true', 'sidecar': 'true', 'mcp': 'true', 'pipeline': 'false'}
+
+
+def test_production_deploy_diff_disregards_partial_revision_lookup_output(tmp_path):
+    repo = tmp_path / 'repo'
+    base = deploy_diff_repo(repo, 'add', 'docs/guide.md')
+    result, output = run_deploy_diff(tmp_path, repo, base, fail_revision=True)
+    assert result.returncode == 0, result.stderr
+    decisions = dict(line.split('=', 1) for line in output.read_text().splitlines())
+    assert decisions == {'web': 'true', 'sidecar': 'true', 'mcp': 'true', 'pipeline': 'false'}
