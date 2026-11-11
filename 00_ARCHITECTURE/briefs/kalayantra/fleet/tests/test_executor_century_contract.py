@@ -18,6 +18,7 @@ import datetime as dt
 import hashlib
 import importlib.util
 import json
+import subprocess
 from types import SimpleNamespace
 
 import pytest
@@ -124,6 +125,55 @@ def test_e4_other_kinds_are_not_gated(world, kind):
 WRITER_REL = cc.WRITER
 
 
+def legacy_workflow():
+    return """env:
+  GCP_REGION: region-x
+  DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+jobs:
+  another-job:
+    steps:
+      - run: |
+          gcloud run jobs update other-job --task-timeout=300
+  deploy-pipeline-job:
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+      - name: Build and push pipeline job image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./platform/python-sidecar/Dockerfile.pipeline
+          push: true
+          tags: |
+            reg.example/p/brahma-pipeline:${{ env.DEPLOY_SHA }}
+            reg.example/p/brahma-pipeline:latest
+          cache-from: type=gha,scope=brahma-pipeline
+          cache-to: type=gha,mode=max,scope=brahma-pipeline
+      - name: Re-point Cloud Run Job at the new image
+        run: |
+          gcloud run jobs update brahma-build-pipeline-job \\
+            --region=${{ env.GCP_REGION }} \\
+            --image=reg.example/p/brahma-pipeline:${{ env.DEPLOY_SHA }} \\
+            --task-timeout=9000 \\
+            --quiet
+      - name: Verify ga_writers is importable in the pushed image
+        run: |
+          docker run --rm --entrypoint python \\
+            reg.example/p/brahma-pipeline:${{ env.DEPLOY_SHA }} \\
+            -c "import ga_writers; print('ga_writers OK:', ga_writers.__file__)"
+      - name: Verify the gochara century runner exists in the pushed image
+        run: |
+          docker run --rm --entrypoint /bin/sh \\
+            reg.example/p/brahma-pipeline:${{ env.DEPLOY_SHA }} \\
+            -n /app/platform/python-sidecar/scripts/kala_gochara_cutover/century_run_4_1.sh
+          docker run --rm --entrypoint python \\
+            reg.example/p/brahma-pipeline:${{ env.DEPLOY_SHA }} \\
+            -c "import sys; sys.path.insert(0, '/app/platform/python-sidecar/scripts/kala_gochara_cutover'); import common; print('cutover common OK:', common.__file__)"
+"""
+
+
 def tree(tmp_path, *, start="datetime(2001, 2, 3, tzinfo=timezone.utc)", unmarked="POLICY_RAISE", final_key="gochara_v5_final_rules", birth="born 1990-03-04"):
     root = tmp_path / "repo"
     files = {
@@ -135,10 +185,8 @@ def tree(tmp_path, *, start="datetime(2001, 2, 3, tzinfo=timezone.utc)", unmarke
         cc.REGISTRY: "ROW_MEMBERSHIP: dict[str, str | None] = {\n    \"marriage\": \"m\",\n    \"birth_anchor\": None,\n    \"career_entry\": \"c\",\n    \"bereavement\": \"b\",\n}\n",
         cc.CERTIFY: "POLICY_RAISE = \"raise\"\nPOLICY_SINK_ALL = \"sink_all\"\n",
         cc.CAP_MIGRATION: "-- header SET writer_timeout_seconds = 1 in prose\nBEGIN;\n  UPDATE asset_registry\n     SET writer_timeout_seconds = 5000\n   WHERE asset_id = 'x';\n",
-        cc.DEPLOY: ("      - run: |\n          gcloud run jobs update other-job \\\n            --task-timeout=300 \\\n            --quiet\n"
-                    "          gcloud run jobs update brahma-build-pipeline-job \\\n            --region=r \\\n            --image=reg.example/p/brahma-pipeline:${{ env.DEPLOY_SHA }} \\\n"
-                    "            --task-timeout=9000 \\\n            --memory=16Gi \\\n            --quiet\n"),
-        cc.DISPATCH: "LAUNCH_JOB = \"job-x\"\nLAUNCH_PROJECT = \"proj-x\"\nLAUNCH_REGION = \"region-x\"\n",
+        cc.DEPLOY: legacy_workflow(),
+        cc.DISPATCH: 'LAUNCH_JOB = "brahma-build-pipeline-job"\nLAUNCH_PROJECT = "proj-x"\nLAUNCH_REGION = "region-x"\n',
         "platform/migrations/0001_t.sql": ("CREATE TABLE IF NOT EXISTS public.syn_a (\n  id UUID PRIMARY KEY,\n  -- natural key (chart_id, generation, event_class),\n  chart_id UUID NOT NULL,\n"
                                           "  generation TEXT NOT NULL,\n  event_class TEXT NOT NULL,\n  CONSTRAINT syn_a_ck CHECK (generation <> '')\n);\n"
                                           "CREATE TABLE public.syn_b (chart_id UUID, generation TEXT);\nCREATE TABLE public.syn_cov (chart_id UUID, generation TEXT, partition_kind TEXT, partition_key TEXT);\n"
@@ -205,7 +253,8 @@ def test_t1_cap_and_timeout_come_from_their_own_sources(tmp_path):
     root = tree(tmp_path)
     assert cc.cap(root)["writer_timeout_seconds"] == 5000                                      # the SET statement, not the figure quoted in the header prose
     t = cc.task_timeout(root)
-    assert t["cloud_run_task_timeout_seconds"] == 9000 and t["source"].endswith(":8")        # the pipeline job's step, not the other job's 300
+    timeout_line = next(i for i, line in enumerate(legacy_workflow().splitlines(), 1) if "--task-timeout=9000" in line)
+    assert t == {"cloud_run_task_timeout_seconds": 9000, "source": f"{cc.DEPLOY}:{timeout_line}"}
     assert cc.image(root, False)["repository"] == "reg.example/p/brahma-pipeline"
 
 
@@ -245,3 +294,302 @@ def test_l1_a_contract_that_drifted_from_its_sources_is_reported():
     moved = copy.deepcopy(committed)
     moved["policy"]["final_rules"] = "true"                                                    # a typed value that is not a boolean never passes the pack-less check
     assert cc.compare(moved, derived, with_digest=False, with_pack=False) != []
+
+
+@pytest.fixture
+def verified_pipeline(tmp_path):
+    # Only the existing source wiring, never execution or a registry response.
+    paths = (cc.DEPLOY, cc.DISPATCH, f"{cc._VERIFIED_ACTION}/action.yml", cc._PROBE)
+    for relative in paths:
+        destination = tmp_path / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes((REPO / relative).read_bytes())
+    return tmp_path
+
+
+def _replace_at(path, old, new, *, after=None, before=None):
+    source = path.read_text()
+    prefix, active = "", source
+    if after is not None:
+        at = source.index(after) + len(after)
+        prefix, active = source[:at], source[at:]
+    suffix = ""
+    if before is not None:
+        end = active.index(before)
+        active, suffix = active[:end], active[end:]
+    assert active.count(old) == 1
+    path.write_text(prefix + active.replace(old, new) + suffix)
+
+
+def test_verified_pipeline_uses_the_same_repository_and_physical_timeout(verified_pipeline):
+    committed = json.loads((REPO / PATH).read_text())
+    image = cc.image(verified_pipeline, False)
+    assert image["repository"] == committed["image"]["repository"]
+    assert cc.task_timeout(verified_pipeline) == {
+        "cloud_run_task_timeout_seconds": 86400, "source": f"{cc.DEPLOY}:2543",
+    }
+
+
+@pytest.mark.parametrize(("old", "new"), [
+    ("  deploy-pipeline-job:\n", "  decoy-job:\n"),
+    ("  deploy-pipeline-job:\n", "  deploy-pipeline-job:\n  deploy-pipeline-job:\n"),
+    ("  deploy-pipeline-job:\n", '  "deploy-pipeline-job": {}\n  deploy-pipeline-job:\n'),
+    ("  deploy-pipeline-job:\n", "  deploy-pipeline-job:\n    env:\n      DEPLOY_SHA: rebound\n"),
+    ("      - name: Build and push pipeline job image\n", "      - name: Other builder\n"),
+    ("      - name: Build and push pipeline job image\n", "      - name: Build and push pipeline job image\n" * 2),
+    ("      - name: Re-point Cloud Run Job at the new image\n", "      - name: Unbound repoint\n"),
+    ("      - name: Re-point Cloud Run Job at the new image\n", "      - name: Re-point Cloud Run Job at the new image\n" * 2),
+    ("      - name: Re-point Cloud Run Job at the new image\n",
+     "      - name: Extra builder\n        uses: docker/build-push-action@v6\n"
+     "      - name: Re-point Cloud Run Job at the new image\n"),
+    ("      - name: Re-point Cloud Run Job at the new image\n",
+     "      - name: Rebind carrier\n        run: fixture-command\n"
+     "      - name: Re-point Cloud Run Job at the new image\n"),
+    ("    steps:\n", "    steps: []\n    steps:\n"),
+    ("          ref: ${{ env.DEPLOY_SHA }}\n", "          ref: stale\n"),
+    ("      - name: Set up Docker Buildx\n",
+     "      - uses: actions/checkout@v4\n      - name: Set up Docker Buildx\n"),
+    ("      - name: Set up Docker Buildx\n",
+     "      - id: decoy\n        name: Build and push pipeline job image\n"
+     "      - name: Set up Docker Buildx\n"),
+    ("      - name: Set up Docker Buildx\n",
+     "      - uses: docker/build-push-action@v6\n      - name: Set up Docker Buildx\n"),
+    ("          context: .\n", "          context: ./platform\n"),
+    ("          file: ./platform/python-sidecar/Dockerfile.pipeline\n", "          file: ./other/Dockerfile\n"),
+    ("          push: true\n", "          push: false\n"),
+    ("brahma-pipeline:${{ env.DEPLOY_SHA }}\n", "wrong-pipeline:${{ env.DEPLOY_SHA }}\n"),
+    ("brahma-pipeline:${{ env.DEPLOY_SHA }}\n", "brahma-pipeline:${{ github.sha }}\n"),
+    (f"          {cc._PROBE_RUN} verify-repoint\n", ""),
+    (f"          {cc._PROBE_RUN} verify-repoint\n",
+     f"          {cc._PROBE_RUN} post-repoint\n"),
+    (f'          GOOGLE_CLOUD_REGION="{cc._REGION}" {cc._PROBE_RUN} post-repoint\n', ""),
+    (f'          GOOGLE_CLOUD_REGION="{cc._REGION}" {cc._PROBE_RUN} post-repoint\n',
+     f'          GOOGLE_CLOUD_REGION="{cc._REGION}" {cc._PROBE_RUN} verify-repoint\n'),
+    (cc._VERIFIED_REF, "${{ env.DEPLOY_SHA }}"),
+    (cc._VERIFIED_REF, "reg.example/p/brahma-pipeline@sha256:broken"),
+    (cc._VERIFIED_REF, ' "$CGM_VERIFIED_IMAGE"'),
+    ("--task-timeout=86400", "--task-timeout=0"),
+    ("--task-timeout=86400", "--flags-file=fixture.yaml"),
+    ("--task-timeout=86400", "--task-timeout=86400 --task-timeout=1"),
+    ("          gcloud run jobs update brahma-build-pipeline-job",
+     "          printf '%s' gcloud run jobs update brahma-build-pipeline-job"),
+    ("--image=", "--image "),
+])
+def test_unbound_or_ambiguous_pipeline_wiring_fails(verified_pipeline, old, new):
+    path = verified_pipeline / cc.DEPLOY
+    after = None if old.startswith("  deploy-pipeline-job:") else "  deploy-pipeline-job:\n"
+    _replace_at(path, old, new, after=after, before="  deployment-outcome:\n")
+    with pytest.raises(cc.ContractError):
+        cc.image(verified_pipeline, False)
+
+
+@pytest.mark.parametrize(("relative", "old", "new", "message"), [
+    (f"{cc._VERIFIED_ACTION}/action.yml", "steps.build.outputs.digest", "steps.decoy.outputs.digest", "Buildx output"),
+    (f"{cc._VERIFIED_ACTION}/action.yml", "runs:\n", "runs: {}\nruns:\n", "duplicate top-level"),
+    (f"{cc._VERIFIED_ACTION}/action.yml", "  load:\n", "  'load': {}\n  load:\n", "exact inputs"),
+    (f"{cc._VERIFIED_ACTION}/action.yml", "default: 'false'\n  tags:", "default: 'true'\n  tags:", "push-only"),
+    (cc._PROBE, 'sha256:[0-9a-f]{64}', 'sha256:[0-9a-f]+', "source and platform"),
+    (cc._PROBE, 'require(head == source_commit(),', 'require(True,', "carrier construction"),
+    (cc._PROBE, 'require(configured == reference,', 'require(configured.startswith(reference),', "readback"),
+])
+def test_mutated_action_or_probe_cannot_supply_the_verified_carrier(verified_pipeline, relative, old, new, message):
+    _replace_at(verified_pipeline / relative, old, new)
+    with pytest.raises(cc.ContractError, match=message):
+        cc.image(verified_pipeline, False)
+
+
+def test_unrelated_comments_and_probe_formatting_do_not_change_the_proof(verified_pipeline):
+    for relative in (cc._PROBE, f"{cc._VERIFIED_ACTION}/action.yml"):
+        path = verified_pipeline / relative
+        path.write_text("# comment-only fixture change\n" + path.read_text() + "\n")
+    assert cc.image(verified_pipeline, False)["repository"].endswith("/brahma-pipeline")
+
+
+@pytest.mark.parametrize("replacement", [
+    "            --task-timeout=86401",
+    "            # fixture moved the locator\n            --task-timeout=86400",
+])
+def test_strict_v1_comparison_retains_timeout_value_line_and_cap(verified_pipeline, replacement):
+    committed = json.loads((REPO / PATH).read_text())
+    derived = copy.deepcopy(committed)
+    path = verified_pipeline / cc.DEPLOY
+    _replace_at(path, "            --task-timeout=86400", replacement)
+    derived["timeout"] = cc.task_timeout(verified_pipeline)
+    assert cc.compare(committed, derived, with_digest=True, with_pack=True) == ["timeout"]
+    derived["cap"]["writer_timeout_seconds"] += 1
+    assert cc.compare(committed, derived, with_digest=True, with_pack=True) == ["cap", "timeout"]
+
+
+def test_wrong_job_cannot_supply_a_decoy_image_repoint(verified_pipeline):
+    path = verified_pipeline / cc.DEPLOY
+    path.write_text(path.read_text() + """
+  decoy-job:
+    steps:
+      - run: |
+          gcloud run jobs update brahma-build-pipeline-job --image=reg.example/brahma-pipeline:stale
+""")
+    with pytest.raises(cc.ContractError, match="outside the Pipeline job"):
+        cc.image(verified_pipeline, False)
+
+
+def test_rebound_global_deploy_source_is_refused(verified_pipeline):
+    _replace_at(verified_pipeline / cc.DEPLOY, cc._SOURCE_ENV, "DEPLOY_SHA: ${{ github.sha }}")
+    with pytest.raises(cc.ContractError, match="DEPLOY_SHA source"):
+        cc.image(verified_pipeline, False)
+
+
+@pytest.mark.parametrize("command", [
+    "gcloud  run jobs update brahma-build-pipeline-job",
+    "gcloud run \\\n  jobs update brahma-build-pipeline-job",
+    "gcloud\trun jobs update 'brahma-build-pipeline-job'",
+])
+def test_later_pipeline_image_override_is_refused_despite_shell_spacing(verified_pipeline, command):
+    command += " --image=synthetic.example/project/brahma-pipeline:other --task-timeout=96000"
+    observed = subprocess.run(
+        ["/bin/bash", "-c", 'gcloud() { printf "%s\\n" "$@"; }\n' + command],
+        env={}, check=True, capture_output=True, text=True,
+    )
+    assert observed.stdout.splitlines() == [
+        "run", "jobs", "update", "brahma-build-pipeline-job",
+        "--image=synthetic.example/project/brahma-pipeline:other", "--task-timeout=96000",
+    ]
+    step = "      - name: Later fixture repoint\n        run: |\n" + "".join(
+        f"          {line}\n" for line in command.splitlines()
+    )
+    _replace_at(verified_pipeline / cc.DEPLOY, "  deployment-outcome:\n", step + "  deployment-outcome:\n")
+    with pytest.raises(cc.ContractError, match="one actual Pipeline job update"):
+        cc.image(verified_pipeline, False)
+
+
+@pytest.mark.parametrize("flag", [
+    "--task-timeout 96000", "--image=synthetic.example/project/brahma-pipeline:other",
+    "--flags-file=fixture.yaml",
+])
+def test_other_job_cannot_override_pipeline_repoint_through_shell_spacing(verified_pipeline, flag):
+    path = verified_pipeline / cc.DEPLOY
+    path.write_text(path.read_text() + (
+        "\n  decoy-job:\n    steps:\n      - run: |\n"
+        "          gcloud --project=fixture run \\\n"
+        f"            jobs update {flag} 'brahma-build-pipeline-job'\n"
+    ))
+    with pytest.raises(cc.ContractError, match="outside the Pipeline job"):
+        cc.image(verified_pipeline, False)
+
+
+def test_other_job_can_keep_its_credential_only_update(verified_pipeline):
+    path = verified_pipeline / cc.DEPLOY
+    path.write_text(path.read_text() + """
+  credential-fixture:
+    steps:
+      - run: |
+          gcloud  run jobs update 'brahma-build-pipeline-job' --set-secrets=VALUE=fixture:latest
+""")
+    assert cc.image(verified_pipeline, False)["repository"].endswith("/brahma-pipeline")
+    assert cc.task_timeout(verified_pipeline)["source"] == f"{cc.DEPLOY}:2543"
+
+
+
+@pytest.mark.parametrize("run_field", [
+    '        run: "gcloud run jobs update brahma-build-pipeline-job --task-timeout=96000"\n',
+    "        run: >-\n          gcloud run\n          jobs update brahma-build-pipeline-job --task-timeout=96000\n",
+])
+def test_later_pipeline_override_cannot_hide_in_another_yaml_run_form(verified_pipeline, run_field):
+    step = "      - name: Later fixture override\n" + run_field
+    _replace_at(verified_pipeline / cc.DEPLOY, "  deployment-outcome:\n", step + "  deployment-outcome:\n")
+    with pytest.raises(cc.ContractError, match="one actual Pipeline job update"):
+        cc.image(verified_pipeline, False)
+
+
+def test_a_retained_smoke_step_cannot_be_replaced_with_an_unreviewed_command(verified_pipeline):
+    path = verified_pipeline / cc.DEPLOY
+    old = '''            -c "import ga_writers; print('ga_writers OK:', ga_writers.__file__)"'''
+    _replace_at(path, old, "            -c fixture_modified", after="  deploy-pipeline-job:\n")
+    with pytest.raises(cc.ContractError, match="unexpected Pipeline step after"):
+        cc.image(verified_pipeline, False)
+
+
+@pytest.mark.parametrize("run_field", [
+    '        run: "gcloud run jobs update brahma-build-pipeline-job --task-timeout=96000"\n',
+    "        run: >-\n          gcloud run\n          jobs update brahma-build-pipeline-job --task-timeout=96000\n",
+    "        run: 'gcloud run jobs update brahma-build-pipeline-job --task-timeout=96000'\n",
+])
+def test_dependent_job_cannot_hide_a_pipeline_override_in_a_run_scalar(verified_pipeline, run_field):
+    path = verified_pipeline / cc.DEPLOY
+    path.write_text(path.read_text() + (
+        "\n  dependent-fixture:\n    needs: [deploy-pipeline-job]\n    steps:\n"
+        "      - name: Fixture override\n" + run_field
+    ))
+    with pytest.raises(cc.ContractError, match="outside the Pipeline job"):
+        cc.image(verified_pipeline, False)
+
+
+@pytest.mark.parametrize("run_field", [
+    '        run: "gcloud run jobs update brahma-build-pipeline-job --set-secrets=VALUE=fixture:latest"\n',
+    "        run: >-\n          gcloud run\n          jobs update brahma-build-pipeline-job --set-secrets=VALUE=fixture:latest\n",
+])
+def test_credential_only_rebind_still_accepts_run_scalars(verified_pipeline, run_field):
+    path = verified_pipeline / cc.DEPLOY
+    path.write_text(path.read_text() + (
+        "\n  credential-scalar-fixture:\n    needs: [deploy-pipeline-job]\n    steps:\n"
+        "      - name: Fixture credentials\n" + run_field
+    ))
+    assert cc.image(verified_pipeline, False)["repository"].endswith("/brahma-pipeline")
+    assert cc.task_timeout(verified_pipeline)["source"] == f"{cc.DEPLOY}:2543"
+
+
+def test_visible_override_inside_a_literal_shell_argument_keeps_the_prior_guard(verified_pipeline):
+    path = verified_pipeline / cc.DEPLOY
+    path.write_text(path.read_text() + """
+  literal-shell-fixture:
+    needs: [deploy-pipeline-job]
+    steps:
+      - run: |
+          bash -c 'gcloud run jobs update brahma-build-pipeline-job --task-timeout=96000'
+""")
+    with pytest.raises(cc.ContractError, match="outside the Pipeline job"):
+        cc.image(verified_pipeline, False)
+
+
+@pytest.mark.parametrize("run_header", [
+    "        run: >2-\n",
+    '        "run": >-\n',
+    "        'run': >-2\n",
+])
+def test_unbound_folded_pipeline_mutation_is_refused(verified_pipeline, run_header):
+    path = verified_pipeline / cc.DEPLOY
+    path.write_text(path.read_text() + (
+        "\n  dependent-fixture:\n    needs: [deploy-pipeline-job]\n    steps:\n"
+        "      - name: Ambiguous override\n" + run_header +
+        "          gcloud run\n          jobs update brahma-build-pipeline-job --task-timeout=96000\n"
+    ))
+    with pytest.raises(cc.ContractError, match="ambiguous Pipeline image or timeout mutation"):
+        cc.image(verified_pipeline, False)
+
+
+def test_unbound_pipeline_mutation_cannot_hide_in_an_earlier_step(verified_pipeline):
+    marker = "      - name: Build and push pipeline job image\n"
+    step = """      - name: Ambiguous earlier override
+        "run": >2-
+          gcloud run
+          jobs update brahma-build-pipeline-job --image=synthetic.example/project/brahma-pipeline:other
+"""
+    _replace_at(verified_pipeline / cc.DEPLOY, marker, step + marker)
+    with pytest.raises(cc.ContractError, match="ambiguous Pipeline image or timeout mutation"):
+        cc.image(verified_pipeline, False)
+
+
+def test_credential_only_step_stays_separate_from_an_unrelated_job_update(verified_pipeline):
+    path = verified_pipeline / cc.DEPLOY
+    path.write_text(path.read_text() + """
+  credential-fixture:
+    needs: [deploy-pipeline-job]
+    steps:
+      - name: Fixture credentials
+        "run": >2-
+          gcloud run
+          jobs update brahma-build-pipeline-job --set-secrets=VALUE=fixture:latest
+      - name: Unrelated fixture
+        run: gcloud run jobs update fixture-other-job --image=synthetic.example/project/other:tag
+""")
+    assert cc.image(verified_pipeline, False)["repository"].endswith("/brahma-pipeline")
+    assert cc.task_timeout(verified_pipeline)["source"] == f"{cc.DEPLOY}:2543"

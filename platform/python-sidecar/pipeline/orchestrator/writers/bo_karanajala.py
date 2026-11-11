@@ -39,10 +39,10 @@ from bodha_writers.vichara_token import (
     assert_vichara_tokens,
     vichara_token_from_row,
 )
-from pipeline.orchestrator.writers.bo_bimba import (
-    _SUBJECT_TO_GRAHA as _GRAHA_SUBJECT_MAP,
+from bodha_writers.cgm_identity import (
+    SUBJECT_TO_GRAHA as _GRAHA_SUBJECT_MAP,
     yoga_node_subject as _yoga_node_subject,
-    _YOGA_NODE_CLASSES,
+    YOGA_NODE_CLASSES as _YOGA_NODE_CLASSES,
 )
 from brahmagyan.verification_tiers import DOCUMENTED_APPROXIMATION, SINGLE_PASS as LEGACY_SINGLE_PASS
 # DP-SD-015: L2 may reference exact L1 clock identities but must not invoke a
