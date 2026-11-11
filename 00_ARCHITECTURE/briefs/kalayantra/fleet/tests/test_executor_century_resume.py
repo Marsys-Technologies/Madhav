@@ -247,7 +247,7 @@ def oracle_x10_the_resume_dry_run_is_free_and_its_proof_is_bound(w, table, blob)
 
 # claim -> (oracle, the ONE planted reversion of executor.py that must make it fail)
 ORACLES = {
-    "x1": (oracle_x1_a_resume_needs_the_owners_go, ('    "century_resume",\n    "orchestrator_rebuild",\n', '    "orchestrator_rebuild",\n')),
+    "x1": (oracle_x1_a_resume_needs_the_owners_go, ('    "century_resume",\n    "k9_rebuild_stage",\n', '    "k9_rebuild_stage",\n')),
     "x2": (oracle_x2_the_two_gos_do_not_cross, ('("kind", req.get("kind")), ', "")),
     "x3": (oracle_x3_a_resume_is_fenced_like_a_dispatch, ('    "century_resume",\n    "measuring_dispatch",\n', '    "measuring_dispatch",\n')),
     "x4": (oracle_x4_a_century_cancel_covers_a_resume, ('"also_dispatch": ("century_resume",), ', "")),

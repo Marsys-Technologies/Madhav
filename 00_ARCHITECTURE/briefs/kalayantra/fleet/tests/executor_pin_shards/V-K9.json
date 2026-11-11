@@ -1,0 +1,61 @@
+{
+  "schema": "ky.executor_pin_shard/2",
+  "item": "V-K9",
+  "after": null,
+  "entries": {
+    "k9_rebuild_stage_dryrun": {
+      "enabled": true,
+      "needs": "builder",
+      "script": "platform/python-sidecar/services/kala_core/rebuild_stage.py",
+      "fixed_args": [
+        "stage-dryrun"
+      ],
+      "allowed_args": [
+        "assets",
+        "run-id",
+        "natal-build",
+        "expected-head"
+      ],
+      "production": false,
+      "enabled_by": "K9-4b",
+      "cwd": "platform/python-sidecar",
+      "python_module": "services.kala_core.rebuild_stage",
+      "timeout_s": 900
+    },
+    "k9_rebuild_stage": {
+      "enabled": true,
+      "needs": "builder",
+      "script": "platform/python-sidecar/services/kala_core/rebuild_stage.py",
+      "fixed_args": [
+        "stage"
+      ],
+      "allowed_args": [
+        "assets",
+        "run-id",
+        "natal-build",
+        "expected-head"
+      ],
+      "production": true,
+      "enabled_by": "K9-4b",
+      "cwd": "platform/python-sidecar",
+      "python_module": "services.kala_core.rebuild_stage",
+      "timeout_s": 900
+    }
+  },
+  "classes": {
+    "k9_rebuild_stage_dryrun": [
+      "dryrun_census"
+    ],
+    "k9_rebuild_stage": [
+      "marker_in_process"
+    ]
+  },
+  "function_hashes": {
+    "W4": {
+      "OWNER_GO_KINDS": "e6288ee5329980e364a1618d944a18978627c1c21db28f4d4b3cea1b0561c30d",
+      "k9_rebuild_stage_problem": "ba2c559fd3b6a09165932c3f8ec0fa57c3341c017e6c0ad998bf0c9bd347cb08",
+      "k9_stage_policy": "55a2c25efda49b70e5416d5d21c8112b979a05400500396a7f8a22c63a589a24",
+      "validate": "ed638fa3c39bb4004ab6a9d8d34f82b04d73aa9cb5f094407117ede9add78b92"
+    }
+  }
+}
