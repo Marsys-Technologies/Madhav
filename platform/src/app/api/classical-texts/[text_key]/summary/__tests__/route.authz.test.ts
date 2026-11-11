@@ -14,10 +14,10 @@ const fixture = {
   tradition: 'fixture-tradition',
   school: 'fixture-school',
   tier: 2,
-  language_original: 'fixture-language',
+  language_original: null,
   translation_author: null,
-  chunk_count: 0,
-  attribution_baseline_confidence: 0.625,
+  chunk_count: null,
+  attribution_baseline_confidence: null,
 }
 
 function request(textKey: string, headers: HeadersInit = { 'x-mcp-internal-token': token }) {
@@ -28,8 +28,10 @@ function assertExactQuery(textKey: string) {
   expect(query).toHaveBeenCalledTimes(1)
   const [statement, args] = query.mock.calls[0]
   expect(statement.replace(/\s+/g, ' ').trim()).toBe(
-    'SELECT text_key, title, author, tradition, school, tier, language_original, ' +
-    'translation_author, chunk_count, attribution_baseline_confidence FROM classical_texts WHERE text_key = $1 LIMIT 1',
+    'SELECT t.text_id AS text_key, t.title_en AS title, t.author, t.tradition, t.school, t.tier, ' +
+    'NULL::text AS language_original, NULL::text AS translation_author, ' +
+    'NULL::integer AS chunk_count, NULL::numeric AS attribution_baseline_confidence ' +
+    'FROM public.classical_texts t WHERE t.text_id = $1 LIMIT 1',
   )
   expect(args).toEqual([textKey])
 }
@@ -71,7 +73,7 @@ describe('GET classical-text summary', () => {
     expect(query).not.toHaveBeenCalled()
   })
 
-  it('binds an opaque text key once and returns the existing projected row bytes', async () => {
+  it('binds an opaque text key once and returns metadata with unavailable fields as null', async () => {
     query.mockResolvedValueOnce({ rows: [fixture] })
     const response = await GET(request(edgeKey), { params: Promise.resolve({ text_key: edgeKey }) })
     expect(response.status).toBe(200)
@@ -79,8 +81,7 @@ describe('GET classical-text summary', () => {
     assertExactQuery(edgeKey)
   })
 
-  it('returns the existing not_found body for a missing row', async () => {
-    const missing = 'fixture-missing'
+  it.each(['fixture-missing', "fixture-alpha' OR '1'='1"])('binds %s as one key and returns not_found', async (missing) => {
     query.mockResolvedValueOnce({ rows: [] })
     const response = await GET(request(missing), { params: Promise.resolve({ text_key: missing }) })
     expect(response.status).toBe(404)
@@ -88,8 +89,8 @@ describe('GET classical-text summary', () => {
     assertExactQuery(missing)
   })
 
-  it('leaves database failures to the existing route error handling', async () => {
-    const error = new Error('Synthetic query failure')
+  it('leaves database SELECT privilege failures to the existing route error handling', async () => {
+    const error = Object.assign(new Error('Synthetic insufficient SELECT privilege'), { code: '42501' })
     query.mockRejectedValueOnce(error)
     await expect(GET(request(edgeKey), { params: Promise.resolve({ text_key: edgeKey }) })).rejects.toBe(error)
     assertExactQuery(edgeKey)

@@ -11539,7 +11539,7 @@
     "applies": "D3",
     "nature": "single_derivation",
     "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
-    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py:69",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py:60",
     "per_witness_values": false
    },
    "prose_fields": [
@@ -11553,7 +11553,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_cgm_nodes; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:641 reads `bodha_cgm_nodes` (`FROM bodha_cgm_nodes n`). Dens.served=FAIL.",
-    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): the yoga/dosha node citation is f'{Class} node: {name}' and name comes from _yoga_config_name, which falls back to configuration_jsonb.fact_value_text: on the native chart bodha_cgm_nodes.citation_human holds 'Dosha node: afflicted', 'Yoga node: true', 'Yoga node: 1984-02-05T19:29:13+00:00', a computed status; the graha, fixed bhava ordinal and domain strings (:351 :406 :456) are structural labels and are not counted. Composed at platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py:529, platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py:253. AST census of the writer's citation_human sites (platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py): 4 composed, 0 constant, 0 forwarded, 0 other. Column bound at platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py:68 (INSERT INTO bodha_cgm_nodes); emitted by the writer INSERT (no served read of this table's citation_human confirmed)."
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): the yoga/dosha node citation is f'{Class} node: {name}' and name comes from _yoga_config_name, which falls back to configuration_jsonb.fact_value_text: on the native chart bodha_cgm_nodes.citation_human holds 'Dosha node: afflicted', 'Yoga node: true', 'Yoga node: 1984-02-05T19:29:13+00:00', a computed status; the graha, fixed bhava ordinal and domain strings (:313 :368 :418) are structural labels and are not counted. Composed at platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py:488, platform/python-sidecar/bodha_writers/cgm_identity.py:19. AST census of the writer's citation_human sites (platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py): 4 composed, 0 constant, 0 forwarded, 0 other. Column bound at platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py:59 (INSERT INTO bodha_cgm_nodes); emitted by the writer INSERT (no served read of this table's citation_human confirmed)."
    },
    "evidence_kind": "writer",
    "produced_tables": [

@@ -237,7 +237,7 @@ jobs:
       # on every PR that reaches this protected check prevents a sidecar-only change
       # from first discovering packaging/import failures after merge.
       - name: Build regular sidecar image (load, no push)
-        uses: docker/build-push-action@v6
+        uses: ./.github/actions/build-verified-cgm-image
         with:
           context: ./platform  # widened from ./platform/python-sidecar for #2096 (reach sibling scripts/temporal)
           file: ./platform/python-sidecar/Dockerfile
@@ -258,7 +258,7 @@ jobs:
       # repo root because Dockerfile.pipeline COPYs from repo-root paths
       # (platform/python-sidecar/* and 035_DISCOVERY_LAYER/*).
       - name: Build pipeline job image (load, no push)
-        uses: docker/build-push-action@v6
+        uses: ./.github/actions/build-verified-cgm-image
         with:
           context: .
           file: ./platform/python-sidecar/Dockerfile.pipeline
@@ -414,10 +414,10 @@ jobs:
                 printf '%s' "$sha"
                 ;;
               pipeline)
-                local img
+                local img ref='^asia-south1-docker\.pkg\.dev/madhav-astrology/amjis/brahma-pipeline:([0-9a-f]{40})(@sha256:[0-9a-f]{64})?$'
                 img=$(gcloud run jobs describe brahma-build-pipeline-job --region "$GCP_REGION" \
                   --format='value(spec.template.spec.template.spec.containers[0].image)' 2>/dev/null) || return 0
-                case "$img" in *:*) printf '%s' "${img##*:}" ;; esac
+                if [[ "$img" =~ $ref ]]; then printf '%s' "${BASH_REMATCH[1]}"; fi
                 ;;
             esac
           }
@@ -1855,7 +1855,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build and push sidecar image
-        uses: docker/build-push-action@v6
+        uses: ./.github/actions/build-verified-cgm-image
         with:
           context: ./platform  # widened from ./platform/python-sidecar for #2096 (reach sibling scripts/temporal)
           file: ./platform/python-sidecar/Dockerfile
@@ -1886,7 +1886,7 @@ jobs:
         with:
           service: amjis-sidecar
           region: ${{ env.GCP_REGION }}
-          image: asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-sidecar:${{ env.DEPLOY_SHA }}
+          image: ${{ env.CGM_VERIFIED_IMAGE }}
           suffix: ${{ steps.sidecar-candidate.outputs.suffix }}
           labels: |
             managed-by=github-actions
@@ -1936,7 +1936,7 @@ jobs:
           gcloud run jobs deploy amjis-sidecar-release-smoke \
             --project=madhav-astrology \
             --region=${{ env.GCP_REGION }} \
-            --image=asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-sidecar:${{ env.DEPLOY_SHA }} \
+            --image="$CGM_VERIFIED_IMAGE" \
             --service-account=amjis-sidecar-runtime@madhav-astrology.iam.gserviceaccount.com \
             --set-secrets=PYTHON_SIDECAR_API_KEY=PYTHON_SIDECAR_API_KEY:1 \
             --set-env-vars=NIRMANA_PROBE_CANDIDATE_URL="$CANDIDATE_URL",NIRMANA_PROBE_EXPECTED_REVISION="$EXPECTED_REVISION" \
@@ -2512,7 +2512,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build and push pipeline job image
-        uses: docker/build-push-action@v6
+        uses: ./.github/actions/build-verified-cgm-image
         with:
           context: .
           file: ./platform/python-sidecar/Dockerfile.pipeline
@@ -2533,11 +2533,11 @@ jobs:
           # the writer now logs the resolved path and filesystem kind at
           # startup) and raise --memory to cover the ~3-4.2GB RAM-backed spill
           # at the native chart's 10.5M-row scale on top of the job's existing
-          # working set. Provisioning a disk-backed volume mount is out of
-          # scope for this fix; see F-185 in the PARISESA-V4 findings.
+          # working set. See F-185 in the PARISESA-V4 findings for disk-backed storage.
+          python3 .github/actions/build-verified-cgm-image/probe_registration.py verify-repoint
           gcloud run jobs update brahma-build-pipeline-job \
             --region=${{ env.GCP_REGION }} \
-            --image=asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline:${{ env.DEPLOY_SHA }} \
+            --image="${CGM_VERIFIED_PIPELINE_REF:?missing verified Pipeline image}" \
             --service-account=data-plane-builder-runtime@madhav-astrology.iam.gserviceaccount.com \
             --update-secrets=DATABASE_URL=data-plane-builder-db-url:latest \
             --task-timeout=86400 \
@@ -2545,6 +2545,7 @@ jobs:
             --cpu=2 \
             --update-env-vars=GCP_PROJECT=madhav-astrology,PUBSUB_TOPIC=cockpit-events,KA_KSHETRA_HASH_SPILL_DIR=/tmp \
             --quiet
+          GOOGLE_CLOUD_REGION="${{ env.GCP_REGION }}" python3 .github/actions/build-verified-cgm-image/probe_registration.py post-repoint
           # SR-RIGHT-SIZE (owner approval OWNER-CLOUD-RUNS-APPROVED-20261023,
           # amend-1): --memory=8Gi --cpu=2 above (was 16Gi / 4) for BOTH the
           # century build and the K9-4b rebuild, which share this one job (an
@@ -2556,7 +2557,7 @@ jobs:
       - name: Verify ga_writers is importable in the pushed image
         run: |
           docker run --rm --entrypoint python \
-            asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline:${{ env.DEPLOY_SHA }} \
+            "$CGM_VERIFIED_IMAGE" \
             -c "import ga_writers; print('ga_writers OK:', ga_writers.__file__)"
 
       # A2.5: fail the deploy if the century job's command path is absent from
@@ -2565,10 +2566,10 @@ jobs:
       - name: Verify the gochara century runner exists in the pushed image
         run: |
           docker run --rm --entrypoint /bin/sh \
-            asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline:${{ env.DEPLOY_SHA }} \
+            "$CGM_VERIFIED_IMAGE" \
             -n /app/platform/python-sidecar/scripts/kala_gochara_cutover/century_run_4_1.sh
           docker run --rm --entrypoint python \
-            asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline:${{ env.DEPLOY_SHA }} \
+            "$CGM_VERIFIED_IMAGE" \
             -c "import sys; sys.path.insert(0, '/app/platform/python-sidecar/scripts/kala_gochara_cutover'); import common; print('cutover common OK:', common.__file__)"
 
       # The separately governed Pravāha A2.5 candidate job is intentionally

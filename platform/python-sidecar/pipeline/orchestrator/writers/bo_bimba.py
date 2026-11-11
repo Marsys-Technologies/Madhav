@@ -18,12 +18,16 @@ from __future__ import annotations
 
 import json
 import logging
-import re
 from datetime import datetime, timezone
 
 from . import WriterBase, ContextSpec, WriterResult, register
+from bodha_writers.cgm_identity import (
+    SUBJECT_TO_GRAHA as _SUBJECT_TO_GRAHA,
+    YOGA_NODE_CLASSES as _YOGA_NODE_CLASSES,
+    _yoga_config_name,
+    yoga_node_subject,
+)
 from bodha_writers.data_plane_contracts import l2_producer
-from brahmagyan.graha_vocabulary import to_title
 from brahmagyan.domain_vocabulary import CANONICAL_DOMAINS, CANONICAL_DOMAINS_SORTED
 from brahmagyan.verification_tiers import SINGLE_PASS as LEGACY_SINGLE_PASS
 
@@ -42,19 +46,6 @@ KNOWN_GRAHAS = [
     "Sun", "Moon", "Mars", "Mercury", "Jupiter",
     "Venus", "Saturn", "Rahu", "Ketu",
 ]
-
-# L1 fact_subject codes → KNOWN_GRAHAS canonical names.
-# subject.title() only worked for SUN→Sun and MOON→Moon; abbreviated codes like
-# MAR, MER, JUP, VEN, SAT title-case to Mar/Mer/Jup/Ven/Sat (wrong) causing 7/9
-# graha nodes to get position_in_chart_jsonb=null.
-# Values sourced from the graha SSoT's to_title() helper
-# (brahmagyan/graha_vocabulary) rather than hardcoded literals — ADHIṢṬHĀNA
-# Lane A2 (found via the full-tree census; not one of the originally-
-# enumerated retirement targets, but the same shape).
-_SUBJECT_TO_GRAHA: dict[str, str] = {
-    code: to_title(code)
-    for code in ("SUN", "MOON", "MAR", "MER", "JUP", "VEN", "SAT", "RAH_MEAN", "KET_MEAN")
-}
 
 # G13/PA-4 (R17): local 7-domain KNOWN_DOMAINS deleted; import canonical 13-domain
 # vocabulary from brahmagyan.domain_vocabulary (the L0 SSoT).
@@ -240,38 +231,6 @@ def _parse_graha_from_signal(cfg: dict) -> str | None:
                 if p in KNOWN_GRAHAS:
                     return p
     return None
-
-
-# ── Yoga / dosha first-class node key (WP-2.3 / LCA-9a-1) ─────────────────────
-# Shared with bo_karanajala so the edge builder can look up the yoga node that
-# bo_bimba created for the same signal. node_type carries the class ('yoga' or
-# 'dosha'); node_subject is a slug of the configuration name (stable per chart).
-
-_YOGA_NODE_CLASSES = ("yoga", "dosha")
-
-
-def _yoga_config_name(cfg: dict, signal_type_id: str | None) -> str | None:
-    """Human name of a yoga/dosha signal (the label the node is titled by). None when the
-    configuration names it nowhere and the signal carries no type id (an honest null, never a
-    blank label)."""
-    for k in ("fact_value_text", "yoga_name", "dosha_name", "name", "label"):
-        v = cfg.get(k)
-        if v and isinstance(v, str) and v.strip():
-            return v.strip()
-    return signal_type_id
-
-
-def yoga_node_subject(sig_class: str, cfg: dict, signal_type_id: str) -> str:
-    """Stable node_subject key for a yoga/dosha configuration node.
-
-    Same derivation used by bo_bimba (node creation) and bo_karanajala
-    (membership-edge wiring) so both resolve to the same node. Namespaced by
-    class to avoid a yoga and a dosha of the same name colliding on the
-    (node_type, node_subject) uniqueness key.
-    """
-    name = _yoga_config_name(cfg, signal_type_id)
-    slug = re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_") or "unnamed"
-    return f"{sig_class}:{slug}"
 
 
 def _parse_house_from_signal(cfg: dict) -> int | None:
