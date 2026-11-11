@@ -9,6 +9,17 @@ produced_during: CLOSEOUT-2026-05-22
 
 # Migration Directory Policy
 
+> **Superseded guidance (2026-11-11).** The [Migration and Merge Protocol](MIGRATION_AND_MERGE_PROTOCOL_v1_0.md)
+> governs current authoring and allocation. Create new numbered migrations only in
+> `platform/supabase/migrations/`. Run `npm run migration:next` from `platform/` in a checkout
+> matching refreshed `origin/main`. The guard checks both migration directories and reserved
+> owner paths. Reconcile active claims with the integration lead, recheck under the merge lock,
+> and obtain a migration-guard receipt for the exact file.
+>
+> Use the current protected workflow for protected migrations, including pending-set and ledger
+> verification. Retain existing applied SQL and both runner inputs. The May 22 policy, manual
+> apply commands, and pending list below are historical.
+
 ## Background
 
 The project has two parallel migration directories that both apply to the same prod Cloud SQL Postgres instance (`madhav-astrology:asia-south1:amjis-postgres` / DB `amjis`):
