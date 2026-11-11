@@ -68,7 +68,7 @@ import {
 import { deriveDefect001Note, deriveSignatureTierNote } from '../../../provenance/freshness_notes'
 import { BUILD_FENCE_INPUT, classifyBuildFence, explicitEmptyBuildFenceRefusal } from '../../generation/served_generation'
 import { resolveL2Lineage, l2LineageFlag } from '../../../provenance/l2_lineage'
-import type { JudgmentFlagEntry } from '../../../envelope'
+import type { JudgmentFlagEntry, VerificationPassStatus } from '../../../envelope'
 import { annotateAyurdayaYearRows, ayurdayaDisclosureObject, deriveAyurdayaFigureDisclosure } from '../L1_ganita/ayurdaya_unreduced_base'
 const FRAME_VALUES: ReferenceFrame[] = ['lagna', 'chandra', 'surya', 'arudha', 'karakamsha']
 
@@ -87,6 +87,26 @@ function stripInternalNamespaceTag(text: string): string {
 // Coarse candidate pool for composite re-ranking when domain is specified.
 // Fetch this many by computed_salience, then composite-rank in TypeScript, then slice.
 const CANDIDATE_FETCH_SIZE = 500
+const SIGNAL_VERIFICATION_CONTRACT_VERSION = 1
+
+type SignalVerificationDisclosure = {
+  row_index: number
+  verification_method: 'L1_fact_projection'
+  inherited_l1_verification_pass_status: Extract<VerificationPassStatus, 'two_pass_verified'>
+  l2_verification_pass_status: null
+}
+
+function signalPageBytes(
+  signals: readonly Record<string, unknown>[],
+  disclosure: readonly SignalVerificationDisclosure[],
+): number {
+  const rows = Buffer.byteLength(JSON.stringify(signals), 'utf8')
+  // A comma joins the companion to the existing provenance object; the braces
+  // of the temporary object below are not sent again.
+  return disclosure.length
+    ? rows + Buffer.byteLength(JSON.stringify({ signal_verification: disclosure }), 'utf8') - 1
+    : rows
+}
 
 // ── WP-1.3(g) / LCA-7: projection whitelist ──────────────────────────────────
 // msr_sql previously served a FIXED 17-of-82-column projection regardless of the
@@ -432,13 +452,14 @@ export const querySignalsCapability: CapabilityDescriptor = {
       return { content: { error: e instanceof Error ? e.message : String(e) }, is_error: true }
     }
 
-    // Cache check (H-11). priors_version in key ensures cache busts on prior updates.
+    // Keep projection disclosure and ranking versions independent in the existing cache.
     const _cacheKey = cacheKey('query_signals', { chart_id, ayanamsha_id, build_id, frame,
       domain: args['domain'], source_subsystem: args['source_subsystem'],
       signal_type_class: args['signal_type_class'], producer_asset_id: args['producer_asset_id'], min_salience: args['min_salience'],
       lel_enabled: args['lel_enabled'], top_k: args['top_k'], offset: args['offset'],
       semantic_query: args['semantic_query'], paradigm,
-      projection: projection.serve ?? '*', priors_version: PRIORS_VERSION })
+      projection: projection.serve ?? '*', priors_version: PRIORS_VERSION,
+      signal_verification_contract_version: SIGNAL_VERIFICATION_CONTRACT_VERSION })
     const _cached = cacheGet(_cacheKey)
     if (_cached !== undefined) return _cached as ReturnType<typeof this.handler>
     const domain          = args['domain'] as string | undefined
@@ -521,7 +542,11 @@ export const querySignalsCapability: CapabilityDescriptor = {
       const fetchColumns = aya.id === null && !projection.fetch.includes('ayanamsha_id')
         ? [...projection.fetch, 'ayanamsha_id']
         : projection.fetch
-      const SIGNAL_COLUMNS = fetchColumns.filter(c => c !== 'verification_pass_status').map(c => `m.${c}`).join(', ')
+      const SIGNAL_COLUMNS = [
+        ...fetchColumns.filter(c => c !== 'verification_pass_status').map(c => `m.${c}`),
+        'm.producer_asset_id AS _signal_verification_producer_asset_id',
+        'm.verification_method AS _signal_verification_method',
+      ].join(', ')
 
       // pBase: next param slot AFTER base filters (before LIMIT/OFFSET pushed).
       const pBase = p
@@ -650,6 +675,29 @@ export const querySignalsCapability: CapabilityDescriptor = {
         return { ...s, signal_headline_text: stripped }
       })
 
+      // These aliases travel with the selected row through ranking and pagination.
+      // Remove them before estimating bytes or serving any public projection.
+      let signalVerification: SignalVerificationDisclosure[] = []
+      signals = signals.map((signal, row_index) => {
+        const {
+          _signal_verification_producer_asset_id: producer,
+          _signal_verification_method: method,
+          ...row
+        } = signal
+        if (producer === 'bo_laksana'
+          && row.signal_type_id === 'graha_position:longitude_sidereal'
+          && method === 'L1_fact_projection'
+          && row.verification_pass_status === 'two_pass_verified') {
+          signalVerification.push({
+            row_index,
+            verification_method: method,
+            inherited_l1_verification_pass_status: row.verification_pass_status,
+            l2_verification_pass_status: null,
+          })
+        }
+        return row
+      })
+
       // Size guard (H-12): prevent >1.5MB responses from overwhelming the MCP transport
       // S3 fix (R5 W0a perf lane): Buffer.byteLength on the UTF-8 encoding, not
       // String.length — `.length` counts UTF-16 code units and undercounts the
@@ -658,11 +706,22 @@ export const querySignalsCapability: CapabilityDescriptor = {
       let truncated = false
       let truncated_from: number | undefined
       if (signals.length > 0) {
-        const serialized = JSON.stringify(signals)
-        const estimatedBytes = Buffer.byteLength(serialized, 'utf8')
+        const estimatedBytes = signalPageBytes(signals, signalVerification)
         if (estimatedBytes > 1_500_000) {
           truncated_from = signals.length
-          const keepCount = Math.floor(signals.length * (1_400_000 / estimatedBytes))
+          let keepCount = Math.floor(signals.length * (1_400_000 / estimatedBytes))
+          if (signalVerification.length > 0) {
+            // The existing estimate assumes uniform row sizes. Bound the actual prefix
+            // when charging the companion. Keep the old 1.4MB target for the estimate.
+            let lower = 0
+            while (lower < keepCount) {
+              const count = Math.ceil((lower + keepCount) / 2)
+              const disclosures = signalVerification.filter(entry => entry.row_index < count)
+              if (signalPageBytes(signals.slice(0, count), disclosures) <= 1_500_000) lower = count
+              else keepCount = count - 1
+            }
+            signalVerification = signalVerification.filter(entry => entry.row_index < keepCount)
+          }
           signals = signals.slice(0, keepCount)
           truncated = true
         }
@@ -821,6 +880,7 @@ export const querySignalsCapability: CapabilityDescriptor = {
         semantic_fallback: semantic_query ? 'Semantic embedding not available at query time — salience-ranked fallback used. Full vector search requires Vertex embedding of the query string.' : undefined,
         provenance: {
           tables: ['bodha_msr_signals'],
+          ...(signalVerification.length > 0 ? { signal_verification: signalVerification } : {}),
           ranking_note: useComposite
             ? `Composite 4D re-ranking applied: ${poolNote} (priors_version=${PRIORS_VERSION}).` +
               (aya.id === null ? " ayanamsha_scope 'all': each ayanamsha's candidates are composite-scored against its own L1 context, then merged by final_rank_score (Lahiri first on ties)." : '')

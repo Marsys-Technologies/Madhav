@@ -437,7 +437,11 @@ describe('DENS-F: the shared-table facets the serving code pins (chart_facts, bo
     await querySignalsCapability.handler({ chart_id: '33333333-3333-4333-8333-333333333333' }, undefined)
     const sqls = mockQuery.mock.calls.map(c => String(c[0])).filter(q => /FROM bodha_msr_signals m/i.test(q))
     expect(sqls.length).toBeGreaterThan(0)
-    for (const q of sqls) expect(q).not.toMatch(/producer_asset_id/)
+    for (const q of sqls) {
+      const predicate = q.split(/\bWHERE\b/i)[1]?.split(/\b(?:ORDER\s+BY|LIMIT|OFFSET)\b/i)[0]
+      expect(predicate).toBeDefined()
+      expect(predicate).not.toMatch(/\bproducer_asset_id\b/i)
+    }
   })
 
   it('query_signals: an empty result under a producer filter names the producer', async () => {
