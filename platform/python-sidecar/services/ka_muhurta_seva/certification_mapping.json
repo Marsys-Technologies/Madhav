@@ -359,7 +359,7 @@
     "platform/python-sidecar/main.py": "1049cf20a868efcfcef8fb0b398f3a1f270fc9689da92b59d9e461150e2fffd6",
     "platform/python-sidecar/routers/parihara_evaluate.py": "badd271975f936cd9d16ccb0d9dbdbd37b2887a35b1b3c6e3506fa8feee4b60b",
     "platform/python-sidecar/services/ka_muhurta_seva/parihara_eval.py": "8b0a2520aa85c4aeaf1f4a37073b38ec412031681dcb5fad800110b0df42eb04",
-    "platform/python-sidecar/services/kala_core/certification.py": "b9c1a7d73dd547af36f46fbb9991dc4c30f5e139645521f7c9051c507a60e01c",
+    "platform/python-sidecar/services/kala_core/certification.py": "e11499f3450c6b1960bd12920c4ef1b1ba343d4ec38c8130d63717ce03777397",
     "platform/python-sidecar/services/kala_core/sky/ephemeris.py": "3f511639550f0435778ffeb4250c94779611cc30505aed5fcc6624891725011c",
     "platform/python-sidecar/tests/l3/_disposable_db_guard.py": "a2ead8c7d8dca23b658002830f07264979d2d32aa39632af31a06c591511c231",
     "platform/python-sidecar/tests/l3/ka_muhurta_seva/conftest.py": "ca82b7dcab64b9f507bdc9ee6c1646c9399bc8af6b64c5a79c2a042b92cb7903",
