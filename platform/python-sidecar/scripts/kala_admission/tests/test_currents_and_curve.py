@@ -7,9 +7,12 @@ for that) -- these confirm the arithmetic is doing what it claims to do.
 """
 from __future__ import annotations
 
+import json
 import sys
 from datetime import date
 from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parents[2]))
 
@@ -53,35 +56,48 @@ def test_percentile_threshold_nearest_rank():
     assert percentile_threshold(curve, 0.9) == 9.0  # top-decile of 10 points, nearest-rank
 
 
-def test_permission_gate_uses_capability_floor():
-    periods = load_dasha_periods()
-    lord_capability = load_dasha_lord_capability()["lords"]
-    # Mercury MD runs 2010-08-18..2027-08-18 on the real chart; Mercury's
-    # warning_score is 2 (elevated) -- gate should be strictly < 1.0 whenever
-    # a warning-carrying lord is running, and >= the imported floor.
+@pytest.fixture
+def synthetic_periods(tmp_path):
+    path = tmp_path / "periods.json"
+    path.write_text(json.dumps({"periods": [
+        [period.level, period.lord, period.start.isoformat(), period.end.isoformat()]
+        for period in _toy_periods()
+    ]}))
+    return load_dasha_periods(path)
+
+
+def test_permission_gate_uses_capability_floor(synthetic_periods, tmp_path):
     from services.kala_permission.permission import _CAPABILITY_FLOOR
 
-    gate = permission_gate_at(periods, lord_capability, date(2015, 1, 1))
-    assert _CAPABILITY_FLOOR <= gate <= 1.0
+    path = tmp_path / "capability.json"
+    path.write_text(json.dumps({"lords": {
+        "Jupiter": {"warning_score": 4},
+        "Saturn": {"warning_score": 4},
+    }}))
+    lord_capability = load_dasha_lord_capability(path)["lords"]
+    when = date(2000, 6, 1)
+    assert permission_gate_at(synthetic_periods, lord_capability, when) == _CAPABILITY_FLOOR
+    assert permission_gate_at(synthetic_periods, {}, when) == 1.0
 
 
-def test_signed_trigger_term_bounded():
-    periods = load_dasha_periods()
+def test_signed_trigger_term_bounded(synthetic_periods):
+    when = date(2000, 6, 1)
     for add_w in (0.2, 0.8):
         for sup_w in (0.2, 0.8):
-            val = signed_trigger_term_at(periods, date(2015, 1, 1), add_w, sup_w)
+            val = signed_trigger_term_at(synthetic_periods, when, add_w, sup_w)
             assert -1.0 <= val <= 1.0
+    assert signed_trigger_term_at(synthetic_periods, when, 0.8, 0.0) > 0.0
+    assert signed_trigger_term_at(synthetic_periods, when, 0.0, 0.8) < 0.0
 
 
-def test_higher_suppressive_weight_never_increases_signed_term():
+def test_higher_suppressive_weight_never_increases_signed_term(synthetic_periods):
     """Monotonicity sanity check: raising the suppressive weight (holding
     additive fixed) should never INCREASE the signed trigger term, since
     suppressive only ever subtracts."""
-    periods = load_dasha_periods()
-    d = date(1992, 3, 1)  # inside a Saturn MD / Saturn AD stretch -- malefic-heavy window
-    low = signed_trigger_term_at(periods, d, 0.5, 0.2)
-    high = signed_trigger_term_at(periods, d, 0.5, 0.8)
-    assert high <= low + 1e-9
+    when = date(2000, 6, 1)
+    low = signed_trigger_term_at(synthetic_periods, when, 0.5, 0.2)
+    high = signed_trigger_term_at(synthetic_periods, when, 0.5, 0.8)
+    assert high < low
 
 
 def test_guru_shani_proxy_requires_both_planets_concurrently():

@@ -37,6 +37,31 @@ def _write_cache(tmp_path: Path, events: list[dict]) -> Path:
     return p
 
 
+def test_synthetic_train_cache_partitions_only_pre_boundary_rows(tmp_path):
+    path = _write_cache(tmp_path, [
+        {
+            "event_id": "synthetic-scorable",
+            "event_date": "2019-12-31",
+            "category": "positive",
+            "domain": "other",
+            "description": "A dated synthetic event",
+        },
+        {
+            "event_id": "synthetic-birth",
+            "event_date": "1980-01-01",
+            "category": "neutral",
+            "domain": "other/birth",
+        },
+    ])
+    scorable, excluded = partition_scorable(load_train_events(path))
+    assert [event.event_id for event in scorable] == ["synthetic-scorable"]
+    assert [(event.event_id, reasons) for event, reasons in excluded] == [
+        ("synthetic-birth", ["birth_anchor_not_an_outcome"]),
+    ]
+    assert all(event.event_date < TEST_SPLIT_BOUNDARY for event in scorable)
+    assert all(event.event_date < TEST_SPLIT_BOUNDARY for event, _ in excluded)
+
+
 # ═══════════════════════════════════════════════════════════════════════════
 # 1. THE core circuit-breaker test: a synthetic TEST-split row must be
 #    provably rejected, not silently dropped or silently accepted.
@@ -144,6 +169,7 @@ def test_test_split_boundary_constant_is_2020_01_01():
 #    can run directly against the committed artifact.
 # ═══════════════════════════════════════════════════════════════════════════
 
+@pytest.mark.integration
 def test_real_train_cache_contains_zero_test_split_events():
     events = load_train_events(REAL_CACHE)  # raises if contaminated -- this call IS the assertion
     assert len(events) == 36
@@ -151,6 +177,7 @@ def test_real_train_cache_contains_zero_test_split_events():
         assert e.event_date < TEST_SPLIT_BOUNDARY, f"{e.event_id} dated {e.event_date} is >= sealed boundary"
 
 
+@pytest.mark.integration
 def test_real_train_cache_never_contains_the_sealed_loss_event_id():
     """The 2025-05-15 loss/financial_deception event (event_id
     d81fae4e-edf4-58d9-b201-cced7eae19d7 per BRIEF's anchors) must not
@@ -160,6 +187,7 @@ def test_real_train_cache_never_contains_the_sealed_loss_event_id():
     assert "d81fae4e-edf4-58d9-b201-cced7eae19d7" not in ids
 
 
+@pytest.mark.integration
 def test_real_train_cache_contains_the_usable_windfall_event():
     """The 2010-07-01 finance/family_windfall event IS usable (TRAIN) --
     confirms the guard is not over-broad and the intended anchor event is
@@ -176,6 +204,7 @@ def test_real_train_cache_contains_the_usable_windfall_event():
 #    already-guarded output in the real pipeline (run_admission.py).
 # ═══════════════════════════════════════════════════════════════════════════
 
+@pytest.mark.integration
 def test_partition_scorable_on_real_cache_has_no_test_split_rows_in_either_bucket():
     events = load_train_events(REAL_CACHE)
     scorable, excluded = partition_scorable(events)
@@ -185,6 +214,7 @@ def test_partition_scorable_on_real_cache_has_no_test_split_rows_in_either_bucke
         assert e.event_date < TEST_SPLIT_BOUNDARY
 
 
+@pytest.mark.integration
 def test_birth_anchor_is_excluded_not_scored():
     events = load_train_events(REAL_CACHE)
     birth = next(e for e in events if e.domain == "other/birth")
