@@ -1,0 +1,650 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:marsys-jis:rulebook:rule-card:v1.1",
+  "title": "Rule Card v1.1 (MARSYS-JIS Rule Book programme, plan v0.3 sec.2; schema v1.1 per HARNESS-READY-20261027)",
+  "description": "One classical rule as a chart-agnostic, typed, citable object. Seven fields plus polarity, provenance and notes. Operands are ROLES (and, where the verse itself names one, the doctrinal graha of the rule); a card never carries any chart's placements, longitudes, degrees, dates or people. Field 7 admits classical discrete arithmetic only. uncited_extension is not a valid provenance: a card whose operand is absent from its quote is rejected, not stored. Quote policy (ledger BANK-BUILT-AND-SURROGATE-CALLS-20261027): a verse_cited card cites passage_id(s) from the brief's chunk pack; the quote is compared only against those cited passages (OCR-tolerant similarity >= 0.90), and every operand, the gate term and every branch must be found in the cited passages themselves. v1.1 adds field3_reference_frame.frame_citation: the chapter-head (or other same-chapter) passage that states the frame, cited by passage_id and checked like the main quote (anchored to the cited span, OCR-tolerant, frame words present).",
+  "type": "array",
+  "items": {
+    "$ref": "#/$defs/card"
+  },
+  "$defs": {
+    "card": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "card_id",
+        "schema_version",
+        "field1_citation",
+        "field2_target_scope",
+        "field3_reference_frame",
+        "field4_necessary_gate",
+        "field5_typed_operands",
+        "field6_exceptions",
+        "field7_discrete_arithmetic",
+        "polarity",
+        "provenance",
+        "confidence_notes"
+      ],
+      "properties": {
+        "card_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.:-]{3,80}$"
+        },
+        "schema_version": {
+          "enum": [
+            "rule-card-v1",
+            "rule-card-v1.1"
+          ]
+        },
+        "drafter": {
+          "type": "string",
+          "description": "panelist label (e.g. drafter_A); never a person"
+        },
+        "round": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3
+        },
+        "field1_citation": {
+          "$ref": "#/$defs/citation"
+        },
+        "field2_target_scope": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "class_group",
+            "category"
+          ],
+          "properties": {
+            "class_group": {
+              "enum": [
+                "illness_chronic_surgery",
+                "relocation_travel",
+                "major_gain",
+                "major_loss",
+                "career_adv_change_entry",
+                "business_launch",
+                "cross_cutting"
+              ]
+            },
+            "category": {
+              "enum": [
+                "natal_promise",
+                "dasha",
+                "transit"
+              ],
+              "description": "the plane this card belongs to; one card = one plane unless its own quote is a bridge"
+            },
+            "classical_descriptors": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 60
+              },
+              "maxItems": 12
+            }
+          }
+        },
+        "field3_reference_frame": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "frame"
+          ],
+          "properties": {
+            "frame": {
+              "enum": [
+                "janma_lagna",
+                "chandra_lagna",
+                "surya_lagna",
+                "navamsa_lagna",
+                "dasha_lord_natal_position",
+                "antardasha_lord_natal_position",
+                "natal_position_of_role",
+                "bhava_of_role",
+                "sign_of_transit_only"
+              ]
+            },
+            "frame_role": {
+              "type": "string",
+              "description": "role id when frame is *_of_role"
+            },
+            "frame_terms": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "words in the quote that state the frame (verifier checks them)"
+            },
+            "frame_citation": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "passage_ids",
+                "quote"
+              ],
+              "description": "the same-chapter passage(s) that state the frame (e.g. a gochara chapter's opening verse counting from the Moon); passage ids from the pack or the brief's chapter-head section; quote >= 8 words, compared only with the cited passages",
+              "properties": {
+                "passage_ids": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 3,
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9_]+_pg\\d{4}_c\\d{2}:(en|sa):p\\d{3}$"
+                  }
+                },
+                "quote": {
+                  "type": "string"
+                },
+                "quote_language": {
+                  "enum": [
+                    "en",
+                    "sa_devanagari",
+                    "sa_iast"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "field4_necessary_gate": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "expr",
+            "gate_term"
+          ],
+          "properties": {
+            "expr": {
+              "$ref": "#/$defs/expr"
+            },
+            "gate_term": {
+              "type": "string",
+              "minLength": 2,
+              "description": "the word(s) of the quote that make the gate necessary (e.g. 'when', 'if', 'yadā')"
+            }
+          }
+        },
+        "field5_typed_operands": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/operand"
+          }
+        },
+        "field6_exceptions": {
+          "type": "array",
+          "maxItems": 6,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "condition",
+              "effect",
+              "school_scope"
+            ],
+            "properties": {
+              "condition": {
+                "$ref": "#/$defs/expr"
+              },
+              "effect": {
+                "enum": [
+                  "cancels",
+                  "reduces",
+                  "reverses_polarity",
+                  "delays"
+                ]
+              },
+              "school_scope": {
+                "enum": [
+                  "parashari",
+                  "jataka_general",
+                  "nadi",
+                  "kerala",
+                  "tajaka",
+                  "same_text_only"
+                ]
+              },
+              "citation": {
+                "$ref": "#/$defs/citation"
+              },
+              "operands": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/operand"
+                }
+              }
+            }
+          }
+        },
+        "field7_discrete_arithmetic": {
+          "type": "array",
+          "maxItems": 4,
+          "description": "classical discrete arithmetic only; empty array when the rule has none. No tents, weights, percentiles or decimals other than drishti padas.",
+          "items": {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "kind",
+                  "value"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "rasi_binary"
+                  },
+                  "value": {
+                    "enum": [
+                      0,
+                      1
+                    ]
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "kind",
+                  "cell"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "kakshya_cell"
+                  },
+                  "cell": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 8
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "kind",
+                  "pada"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "drishti_pada"
+                  },
+                  "pada": {
+                    "enum": [
+                      0.25,
+                      0.5,
+                      0.75,
+                      1
+                    ]
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "kind",
+                  "bindus",
+                  "comparator"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "bindus_of_8"
+                  },
+                  "bindus": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 8
+                  },
+                  "comparator": {
+                    "enum": [
+                      "eq",
+                      "ge",
+                      "le",
+                      "gt",
+                      "lt"
+                    ]
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "kind",
+                  "orb_deg",
+                  "graha"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "combustion_orb_int"
+                  },
+                  "orb_deg": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 17
+                  },
+                  "graha": {
+                    "$ref": "#/$defs/graha"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "polarity": {
+          "enum": [
+            "promotive",
+            "obstructive"
+          ]
+        },
+        "provenance": {
+          "enum": [
+            "verse_cited",
+            "commentarial_practice"
+          ]
+        },
+        "commentarial_source": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "author",
+            "work"
+          ],
+          "properties": {
+            "author": {
+              "type": "string",
+              "minLength": 2
+            },
+            "work": {
+              "type": "string",
+              "minLength": 2
+            },
+            "page": {
+              "type": "string"
+            },
+            "attribution": {
+              "enum": [
+                "page_anchored_in_corpus",
+                "panel_memory_unverified"
+              ]
+            }
+          }
+        },
+        "confidence_notes": {
+          "type": "string",
+          "maxLength": 1200
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "provenance": {
+                "const": "commentarial_practice"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "commentarial_source"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "provenance": {
+                "const": "verse_cited"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "field1_citation": {
+                "required": [
+                  "passage_ids",
+                  "quote"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "citation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "work"
+      ],
+      "properties": {
+        "text_id": {
+          "type": "string",
+          "description": "bank text id, e.g. phaladeepika"
+        },
+        "chunk_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]+_pg\\d{4}_c\\d{2}$"
+        },
+        "work": {
+          "type": "string"
+        },
+        "edition": {
+          "type": "string"
+        },
+        "locus": {
+          "type": "string",
+          "description": "chapter/verse as printed, if any; page-anchored chunks cannot confirm it"
+        },
+        "quote": {
+          "type": "string",
+          "description": "the cited passage words, OCR errors may be corrected; >= 12 words; compared only against the cited passages"
+        },
+        "quote_language": {
+          "enum": [
+            "en",
+            "sa_devanagari",
+            "sa_iast"
+          ]
+        },
+        "passage_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9_]+_pg\\d{4}_c\\d{2}:(en|sa):p\\d{3}$"
+          },
+          "description": "pack passage ids the quote comes from; consecutive passages of one chunk field only"
+        }
+      }
+    },
+    "graha": {
+      "enum": [
+        "surya",
+        "chandra",
+        "mangala",
+        "budha",
+        "guru",
+        "shukra",
+        "shani",
+        "rahu",
+        "ketu"
+      ]
+    },
+    "operand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "role",
+        "relation"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,30}$"
+        },
+        "role": {
+          "enum": [
+            "transiting_graha",
+            "natal_graha",
+            "bhava_lord",
+            "bhava",
+            "karaka",
+            "dasha_lord",
+            "antardasha_lord",
+            "graha_class",
+            "lagna",
+            "moon_sign",
+            "ashtakavarga_bav",
+            "ashtakavarga_sav"
+          ]
+        },
+        "doctrinal_graha": {
+          "$ref": "#/$defs/graha",
+          "description": "only when the verse itself names the graha (doctrine); never a chart's placement"
+        },
+        "graha_class": {
+          "enum": [
+            "benefic",
+            "malefic",
+            "natural_benefic",
+            "natural_malefic"
+          ]
+        },
+        "bhava": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 12,
+          "description": "bhava counted in field3's frame"
+        },
+        "relation": {
+          "enum": [
+            "occupies",
+            "transits",
+            "aspects",
+            "conjoins",
+            "lord_of",
+            "is_dasha_lord",
+            "is_antardasha_lord",
+            "exalted",
+            "debilitated",
+            "own_sign",
+            "combust",
+            "retrograde",
+            "vedha_by",
+            "bindus",
+            "in_bhava_group"
+          ]
+        },
+        "target_bhavas": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 12
+          },
+          "maxItems": 12
+        },
+        "target_role": {
+          "type": "string"
+        },
+        "quote_terms": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "the quote's own words that state this operand (one-to-one lexical mapping)"
+        },
+        "bhava_group": {
+          "enum": [
+            "kendra",
+            "trikona",
+            "dusthana",
+            "upachaya",
+            "panaphara",
+            "apoklima",
+            "maraka"
+          ],
+          "description": "classical house group named by the verse (e.g. 'in a kendra')"
+        }
+      },
+      "not": {
+        "anyOf": [
+          {
+            "required": [
+              "longitude"
+            ]
+          },
+          {
+            "required": [
+              "degree"
+            ]
+          },
+          {
+            "required": [
+              "sign"
+            ]
+          },
+          {
+            "required": [
+              "date"
+            ]
+          },
+          {
+            "required": [
+              "chart"
+            ]
+          }
+        ]
+      }
+    },
+    "expr": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "operand"
+          ],
+          "properties": {
+            "operand": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "op",
+            "args"
+          ],
+          "properties": {
+            "op": {
+              "enum": [
+                "AND",
+                "OR",
+                "NOT"
+              ]
+            },
+            "args": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 8,
+              "items": {
+                "$ref": "#/$defs/expr"
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
