@@ -240,41 +240,61 @@ _RE_DISTINCT_ON_KEYED = re.compile(
 )
 
 
+_RE_SQL_STRING = re.compile(r"'(?:[^']|'')*'")
+_RE_SQL_COMPLEX = re.compile(
+    r"""["`'\\;{}]|--|/\*|\$(?:[a-z_][a-z_0-9]*)?\$|\b(?:union|intersect|except)\b""",
+    re.IGNORECASE,
+)
+_RE_SQL_SELECT = re.compile(r"\bSELECT\b", re.IGNORECASE)
+_RE_ZERO_ROWS = re.compile(r"\bLIMIT\s+0(?:\s+OFFSET\s+0)?\s*$", re.IGNORECASE)
+_RE_MEASUREMENT_FREE_PROJECTION = re.compile(
+    r"^SELECT\s+(?:COUNT\s*\(\s*\*\s*\)|1)"
+    r"(?:::(?:text|int|integer|bigint))?(?:\s+AS\s+[a-z_]\w*)?"
+    r"\s+FROM\s+chart_facts\b",
+    re.IGNORECASE,
+)
+_RE_CATEGORY_COUNTS = re.compile(
+    r"^SELECT\s+fact_category\s*,\s*COUNT\s*\(\s*\*\s*\)"
+    r"(?:\s+AS\s+[a-z_]\w*)?\s+FROM\s+chart_facts\b.*"
+    r"\bGROUP\s+BY\s+fact_category\s*(?:ORDER\s+BY\s+fact_category)?\s*$",
+    re.IGNORECASE | re.DOTALL,
+)
+
+
+def _cannot_select_measurement(sql: str) -> bool:
+    """Recognize flat SELECTs that expose no chart fact value.
+
+    Quoted text cannot supply the LIMIT or projection. Leave interpolated,
+    compound, commented and nested SQL to the ordinary check.
+    """
+    sql = sql.strip().removesuffix(";").rstrip()
+    if any(char in sql for char in "\\{}") or re.search(r"\$(?:[a-z_]\w*)?\$", sql, re.IGNORECASE):
+        return False
+    structure = _RE_SQL_STRING.sub("?", sql)
+    if not re.match(r"^SELECT\s", structure, re.IGNORECASE):
+        return False
+    if _RE_SQL_COMPLEX.search(structure) or len(_RE_SQL_SELECT.findall(structure)) != 1:
+        return False
+    return bool(
+        _RE_ZERO_ROWS.search(structure)
+        or _RE_MEASUREMENT_FREE_PROJECTION.match(structure)
+        or _RE_CATEGORY_COUNTS.fullmatch(structure)
+    )
+
+
 def _is_unsafe_sql_block(sql: str) -> bool:
-    """Pure predicate: True iff this SQL text is a fact_category selection
-    against chart_facts that carries NONE of the three recognized safety
-    mechanisms. Exposed standalone so the self-test can exercise it directly
-    without file I/O.
+    """Detect category-only chart fact selections that can expose a measurement.
 
-    Safety mechanisms (ANY ONE is sufficient — this is a disjunction, not a
-    conjunction; see the module docstring's "ground-truth calibration" note
-    for why):
-      (a) a `fact_key = ...` / `fact_key IN (...)` pin — this is what P0-5
-          (`bo_laksana.py:831`) and P0-1 (`registry_bridge.ts:3498`) both
-          lacked: without it, a category+subject pair can silently match
-          more than one row (different fact_key variants of the same
-          measurement) and whichever one the DB happens to return last wins
-          the application-side dict/lookup assignment — the exact reported
-          non-determinism.
-      (b) a deterministic `ORDER BY ... LIMIT 1` — safe even without a
-          fact_key pin, because the total order makes the one surviving row
-          reproducible.
-      (c) `DISTINCT ON (...)` — Postgres's native "one row per key by
-          construction" idiom.
-
-    A query that pins fact_key but fetches many rows (one per fact_subject,
-    e.g. one shadbala ratio per graha) is NOT the defect class: fact_key
-    already disambiguates which measurement is being read per subject, and
-    the multi-row result is the intended shape (a subject-keyed lookup), not
-    an ambiguous reduction. Requiring ORDER BY on top of that pin as well
-    (the earlier, stricter draft of this rule) was measured against the live
-    repo tree and produced ~90 false positives on exactly this legitimate
-    pattern (`bo_upaya.py`, `ga_structural_writer.py`, ...) — see the ci-lint
-    lane's session report. The disjunction is the calibrated rule.
+    A filter or a DISTINCT ON key list that includes fact_key keeps measurement
+    identity. ORDER BY with LIMIT 1 alone can reproducibly select the wrong
+    measurement. A flat count, presence marker, or zero-row probe cannot
+    expose a measurement at all.
     """
     if not _RE_SELECT_FROM_CHART_FACTS.search(sql):
         return False
     if not _RE_FACT_CATEGORY_FILTER.search(sql):
+        return False
+    if _cannot_select_measurement(sql):
         return False
     # `fact_key` is pinned either by a filter (fact_key = ...) or by appearing in a
     # DISTINCT ON key list -- both make which row is returned unambiguous per key.
@@ -411,7 +431,7 @@ def scan_ts_sql_text(text: str) -> List[tuple]:
     hits: List[tuple] = []
     for m in re.finditer(r"`[^`]*`", text, re.S):
         sql = m.group(0)
-        if not _is_unsafe_sql_block(sql):
+        if not _is_unsafe_sql_block(sql[1:-1]):
             continue
         line = text.count("\n", 0, m.start()) + 1
         snippet = " ".join(sql.split())[:160]
@@ -603,6 +623,27 @@ def run_self_test() -> int:
     mixed_source = f'def check(): """{unpinned_sql}"""; return execute("""{unpinned_sql}""")'
     if len(scan_python_text(mixed_source)) != 1:
         failures.append("A live SQL string adjacent to a docstring must still be flagged")
+
+    for sql in (
+        unpinned_sql + " LIMIT 0 OFFSET 0",
+        unpinned_sql.replace("fact_id", "COUNT(*)::text AS total"),
+        unpinned_sql.replace("fact_id", "1"),
+        unpinned_sql.replace("fact_id", "fact_category, COUNT(*) AS total") + " GROUP BY fact_category",
+    ):
+        if _is_unsafe_sql_block(sql):
+            failures.append(f"SQL that cannot expose a fact value was flagged: {sql}")
+    for sql in (
+        unpinned_sql + " -- LIMIT 0",
+        unpinned_sql + " AND fact_value_text = 'LIMIT 0'",
+        unpinned_sql + " LIMIT 0 + 1",
+        unpinned_sql + " UNION ALL " + unpinned_sql,
+        unpinned_sql + " LIMIT 0; " + unpinned_sql,
+        unpinned_sql.replace("fact_id", "COUNT(*), MAX(fact_value_num)"),
+        unpinned_sql.replace("fact_id", "(SELECT COUNT(*) FROM chart_facts), fact_value_num"),
+        unpinned_sql + " ${unknownClause} LIMIT 0",
+    ):
+        if not _is_unsafe_sql_block(sql):
+            failures.append(f"Unsafe or ambiguous SQL escaped the scanner: {sql}")
 
     hit = Violation("source.py", 2, "python", "sql_select", unpinned_sql, "fixture")
     allowed, new = partition_allowlisted([hit, hit], [{"file": hit.file, "pattern": "SELECT"}])

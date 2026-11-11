@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "$comment": "Allowlist for check_fact_category_pinning.py (brief §5 C.7, SUDDHA-VACA Phase C lane:ci-lint). Every entry requires: file (repo-relative POSIX path, must match a Violation.file exactly), EITHER line (int, matched exactly against the violation's line number) OR pattern (a string matched as a regex, falling back to a plain substring match, against the violation's snippet text) — line is preferred when known since it is unambiguous; pattern is for cases where line drift is expected, and justification (a non-empty, specific, human-readable reason — 'pre-existing' alone is not sufficient, say WHY it's safe or why it's out of scope). An entry with neither line nor pattern never matches anything (fails closed, not open). Populated 2026-07-28 during the initial rollout scan against the live repo tree (this worktree, base main, before this wave's other lanes landed) — see the ci-lint lane's session report for the full disposition rationale of every entry. A matching entry covers one finding by default. max_occurrences freezes the observed count when several intentionally share a pattern.",
   "generated_by": "check_fact_category_pinning.py initial-rollout scan, 2026-07-28",
-  "entry_count": 53,
+  "entry_count": 46,
   "entries": [
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
@@ -73,12 +73,6 @@
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": null,
-      "pattern": "`SELECT\\ fact_id,\\ fact_category,\\ ayanamsha_id,\\ fact_subject,\\ fact_key,\\ fact_value_text,\\ fact_value_num,\\ fact_value_jsonb\\ FROM\\ chart_facts\\ WHERE\\ chart_i",
-      "justification": "AUDITED zero-row source-query availability probe for get_kp_cusps. It mirrors the handler's KP-default ayanamsha and unconditional category set, but LIMIT 0 prevents selecting or reducing any fact row."
-    },
-    {
-      "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
       "line": 1564,
       "pattern": null,
       "justification": "AUDITED zero-row source-query availability probe for get_nakshatra. It reproduces the handler's complete default category set and pagination order with LIMIT 0, so it witnesses source access without reading or reducing a fact row. [Lahiri-primary combined batch rehearsal, 2026-10-10: line 1555->1563; the probe is unchanged in purpose, the lines moved because the batch edited this file.]"
@@ -132,12 +126,6 @@
       "justification": "NEW in PRATIJNA v4 Lane B1 (chart_reader_v4.py's special_points()). Intentionally returns ALL fact_key rows for a chart_facts fact_category (upapada_lagna / special_lagna / karaka_chara_position) — the caller needs every fact_key variant (e.g. upapada's 'sign' and 'lord_placement_verdict'), so there is nothing to reduce to a single row. fact_subject AND fact_key are both selected and preserved per output row, never collapsed into a dict keyed by subject alone — same safe shape as the pre-existing arudha_emitter.py/nakshatra_semantic_emitter.py entries below ('fact_key selected+preserved per row, no cross-fact_key collision hazard'). A deterministic ORDER BY fact_subject, fact_key, computed_at, fact_id is present on this query (visible in the surrounding source, not in this snippet) — this specific defect class (row silently picked at random among several sharing category+subject+key) is exactly what this function's own docstring documents and handles honestly for the live karaka_chara_position school-duplication case (both Jaimini karaka schools are returned, not one silently dropped)."
     },
     {
-      "file": "platform/python-sidecar/_rebuild_ga_structural_v2.py",
-      "line": 73,
-      "pattern": null,
-      "justification": "PRE-EXISTING, not in this wave's scope. `SELECT fact_category, COUNT(*) ... GROUP BY` — an aggregate count query, not a row selection; there is no row to misselect. Flagged only because the lint's fact_category-filter regex doesn't distinguish COUNT/GROUP BY aggregates from row-returning selects."
-    },
-    {
       "file": "platform/python-sidecar/bodha_writers/arudha_emitter.py",
       "line": null,
       "pattern": "fact_category = 'arudha_p",
@@ -162,12 +150,6 @@
       "justification": "PRE-EXISTING, not in this wave's scope. `bodha.signals` selected with an explicit `ORDER BY fact_subject` (a total, if not LIMIT-1-paired, order) and consumed as a full iteration, not reduced to one row."
     },
     {
-      "file": "platform/python-sidecar/brahmagyan/bodha/l2_embeddings.py",
-      "line": 269,
-      "pattern": null,
-      "justification": "PRE-EXISTING, not in this wave's scope. `SELECT 1 FROM chart_facts WHERE ... fact_category='bodha.embeddings' AND fact_subject=%s` — an EXISTS-style presence probe (fact_subject already pins the specific embedding row's identity; fact_key is not part of this category's identity), not a value read subject to misselection."
-    },
-    {
       "file": "platform/python-sidecar/brahmagyan/bodha/l2_lenses_salience.py",
       "line": 504,
       "pattern": null,
@@ -190,18 +172,6 @@
       "line": null,
       "pattern": "citation_human FROM chart_facts WHERE chart_id = %s AND ayanamsha_id = %s AND fact_category IN \\(",
       "justification": "PRE-EXISTING, not in this wave's scope. `_fetch_sade_sati_rows` returns the full row list (subject, key, text, num, citation) unmodified for the caller to interpret; no reduction/collapse happens in this function. [PK-R-9 IR-11 (F1), 2026-08-11: line-pinned entry (line 1043) had DRIFTED for the same reason as the sibling _fetch_kakshya_boundaries entry above (this lane's own MR-41(a) edits to this file) and was silently failing to match -- confirmed live: the violation reported at line 1130, not 1043. Converted line->pattern; the pattern's leading 'citation_human FROM chart_facts' column list distinguishes this from the shape-similar sade_sati query in services/gochara_v3/context.py (which selects a DIFFERENT column list — fact_key, fact_value_text, fact_value_num, fact_subject, fact_category, no citation_human — and carries its own ORDER BY) — no cross-file ambiguity regardless, since _matches_entry checks `file` before `pattern`.] [Lahiri-primary combined batch rehearsal, 2026-10-10: PR-5 pins ayanamsha_id in this SELECT and adds a total ORDER BY (fact_subject, fact_key, fact_id); pattern extended to the new WHERE clause. The function still returns the full row list unmodified.]"
-    },
-    {
-      "file": "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
-      "line": null,
-      "pattern": "fact_category = 'graha_position' AND fact_subject = 'MOON'",
-      "justification": "_verify_upstream_rows intentionally reports existence of any Moon position row. It consumes the count only. The sign reader separately pins the sign fact key."
-    },
-    {
-      "file": "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
-      "line": null,
-      "pattern": "SELECT COUNT\\(\\*\\) FROM chart_facts WHERE chart_id = %s AND fact_category = 'argala_natal_matrix'",
-      "justification": "_verify_upstream_rows intentionally reports presence of any argala matrix row. It consumes the count only."
     },
     {
       "file": "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
@@ -262,11 +232,6 @@
     },
     {
       "file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_tajik.ts",
-      "line": 134,
-      "justification": "Newly VISIBLE, not newly broken: TS SQL template literals were never scanned by this guard until F-C14 (issue #1750) — the scanner only read .find()/.filter()[0]. This query does NOT reduce to one row, so it cannot exhibit the shadbala defect the tightened reduction rule targets; its safety depends instead on the consumer keying results by (fact_subject, fact_key) application-side. That per-file audit is real work owned by the file's layer session, tracked in issue #1758. Allowlisted so the guard starts blocking NEW instances immediately rather than waiting on 18 audits. [Lahiri-primary combined batch rehearsal, 2026-10-10: line 131->133; the probe is unchanged in purpose, the lines moved because the batch edited this file.] [Combined batch rehearsal, N-404: line 133->134; a codegen-pilot comment line was added above in the ayanamsha_id input text fix.]"
-    },
-    {
-      "file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_tajik.ts",
       "line": 142,
       "justification": "Newly VISIBLE, not newly broken: TS SQL template literals were never scanned by this guard until F-C14 (issue #1750) — the scanner only read .find()/.filter()[0]. This query does NOT reduce to one row, so it cannot exhibit the shadbala defect the tightened reduction rule targets; its safety depends instead on the consumer keying results by (fact_subject, fact_key) application-side. That per-file audit is real work owned by the file's layer session, tracked in issue #1758. Allowlisted so the guard starts blocking NEW instances immediately rather than waiting on 18 audits. [Lahiri-primary combined batch rehearsal, 2026-10-10: line 142->141; the probe is unchanged in purpose, the lines moved because the batch edited this file.] [Combined batch rehearsal, N-404: line 141->142; a codegen-pilot comment line was added above in the ayanamsha_id input text fix.]"
     },
@@ -279,11 +244,6 @@
       "file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_structural_signals.ts",
       "line": 144,
       "justification": "NEW file (cycle 181, F-B32 slice 8), audited before landing, not grandfathered. Identical shape to get_nakshatra.ts:82 / get_positions.ts:157 / get_sensitive_points.ts:99: a paginated multi-category SELECT (ORDER BY fact_category, ayanamsha_id, fact_subject, fact_key LIMIT $3 OFFSET $4) serving ALL matching rows across 15 fact_categories — never reduces to one row, cannot exhibit the shadbala MIN-across-incommensurable-units defect. Safety depends on the consumer keying rows by (fact_category, fact_subject, ayanamsha_id, fact_key) application-side, exactly as documented for the sibling entries. [line 107->123, cycle 183: F-B32 slice added a docstring paragraph + 3 more categories earlier in the file — same query, verified via diff. line 123->135, cycle 185: added tara_bala + docstring paragraph — same query, verified via diff. line 135->142, DENS-SERVED: a density_contract block was added above the handler; the SELECT itself is unchanged, and it additionally serves total_matching and verification_pass_status per row.] [Lahiri-primary combined batch rehearsal, 2026-10-10: line 142->144; the probe is unchanged in purpose, the lines moved because the batch edited this file.]"
-    },
-    {
-      "file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_structural_signals.ts",
-      "line": 151,
-      "justification": "DENS-SERVED (SS N-211/N-212): the companion COUNT(*) over the same chart_id + fact_category = ANY($2) filter (plus the same optional ayanamsha_id filter), issued so the page discloses total_matching / more_available. It returns one integer and selects no fact row, so it cannot reduce a category to a single row and cannot exhibit the D1 defect class; the paginated row SELECT at line 142 is the audited one, and the consumer keys rows by (fact_category, fact_subject, ayanamsha_id, fact_key) application-side. [Lahiri-primary combined batch rehearsal, 2026-10-10: line 149->151; the probe is unchanged in purpose, the lines moved because the batch edited this file.]"
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",

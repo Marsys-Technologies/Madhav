@@ -186,6 +186,27 @@ class TestExportTableLogEntry:
 # ── 3. BQ dataset accessibility ───────────────────────────────────────────────
 
 class TestBigQueryAccessible:
+    @pytest.mark.parametrize("dataset_matches", [True, False])
+    def test_gate_ac2_checks_the_returned_dataset(self, dataset_matches):
+        m = _mod()
+        mock_conn = MagicMock()
+        mock_conn.__enter__.return_value = mock_conn
+        mock_conn.execute.return_value.fetchone.return_value = (0,)
+        mock_cloud = MagicMock()
+        dataset_id = m.BQ_DATASET if dataset_matches else "another_dataset"
+        mock_cloud.bigquery.Client.return_value.get_dataset.return_value.dataset_id = dataset_id
+
+        with (
+            patch.object(m, "_get_conn", return_value=mock_conn),
+            patch.dict("sys.modules", {"google.cloud": mock_cloud}),
+        ):
+            result = m.run_acceptance_gate()
+
+        ac2 = next(check for check in result["checks"] if check["id"] == "AC2")
+        assert ac2["passed"] is dataset_matches
+        assert ac2["value"] == dataset_id
+        assert result["gate_passed"] is dataset_matches
+
     def test_gate_ac2_is_unknown_when_bq_missing(self):
         """A missing BigQuery dependency leaves the probe and gate unmeasured."""
         m = _mod()
@@ -451,6 +472,24 @@ class TestAcceptanceGateAC1:
         ac1 = next(c for c in result["checks"] if c["id"] == "AC1")
         assert ac1["passed"] is True
         assert ac1["value"] == 42  # row count — range: >= 0
+
+    def test_missing_count_rows_cannot_pass_acceptance(self):
+        m = _mod()
+        mock_conn = MagicMock()
+        mock_conn.__enter__.return_value = mock_conn
+        mock_conn.execute.return_value.fetchone.return_value = None
+
+        with (
+            patch.object(m, "_get_conn", return_value=mock_conn),
+            patch.dict("sys.modules", {"google.cloud.bigquery": None}),
+        ):
+            result = m.run_acceptance_gate()
+
+        checks = {check["id"]: check for check in result["checks"]}
+        for check_id in ("AC1", "AC3", "AC4"):
+            assert checks[check_id]["passed"] is False
+            assert checks[check_id]["value"] is None
+        assert result["gate_passed"] is False
 
     def test_ac1_fails_when_table_missing(self):
         m = _mod()
