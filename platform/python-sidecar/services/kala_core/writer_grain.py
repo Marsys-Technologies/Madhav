@@ -17,6 +17,7 @@ import hashlib
 import json
 from typing import Any, Iterable, Mapping
 
+from psycopg import sql
 from psycopg.rows import dict_row, tuple_row
 
 from pipeline.orchestrator.writers import SubStep
@@ -102,6 +103,54 @@ def refuse_unbound_rewrite(conn: Any, chart_id: Any, asset_id: str) -> None:
             f'candidate; a rebuild goes through a candidate generation and the publish step, never in place')
 
 
+UNBOUND_REWRITE_CASCADES = 'unbound-rewrite-cascades-served-children'
+
+
+class UnboundRewriteCascades(UnboundRewriteRefused):
+    """An ordinary rebuild, before any published head, would delete served `kala_convergence` rows that other tables still reference (N2)."""
+
+
+def served_children_reach(conn: Any, chart_id: Any, generation: str) -> list[tuple[str, str, int]]:
+    """(table, action, rows) of every referencing row a delete of the chart's `generation` kala_convergence rows would delete or null.
+
+    The live foreign keys onto kala_convergence are read from ``pg_constraint`` (never a list kept here), so a table added later is covered. Unlike
+    `rebuild_control.cascade_reach` (which spares a candidate's own rows) EVERY referencing row counts: the rows of the legacy partition are the served
+    copy before a head exists, so each child of one is a served row."""
+    with conn.cursor(row_factory=tuple_row) as cur:
+        cur.execute("SELECT k.conrelid, n.nspname, c.relname, k.confdeltype, k.conkey, k.confkey, "
+                    "       (SELECT a.attname FROM pg_attribute a WHERE a.attrelid = k.conrelid AND a.attnum = k.conkey[1]), "
+                    "       (SELECT a.attname FROM pg_attribute a WHERE a.attrelid = k.confrelid AND a.attnum = k.confkey[1]) "
+                    "  FROM pg_constraint k JOIN pg_class c ON c.oid = k.conrelid JOIN pg_namespace n ON n.oid = c.relnamespace "
+                    " WHERE k.contype = 'f' AND k.confrelid = to_regclass('kala_convergence') AND k.confdeltype IN ('c', 'n', 'd') "
+                    " ORDER BY n.nspname, c.relname, k.conname")
+        foreign_keys = cur.fetchall()
+        reach = []
+        for _oid, schema, table, action, columns, referenced, column, parent in foreign_keys:
+            if len(columns) != 1 or len(referenced) != 1:
+                raise ValueError(f'{table} references kala_convergence by a composite key: refusing to judge what a delete would reach')
+            cur.execute(sql.SQL('SELECT count(*) FROM {}.{} WHERE {} IN (SELECT {} FROM kala_convergence WHERE chart_id = %s AND generation = %s)').format(
+                sql.Identifier(schema), sql.Identifier(table), sql.Identifier(column), sql.Identifier(parent)), (chart_id, generation))
+            n = cur.fetchone()[0]
+            if n:
+                reach.append((table, {'c': 'cascade', 'n': 'set null', 'd': 'set default'}[action], n))
+    return reach
+
+
+def refuse_unbound_cascade(conn: Any, chart_id: Any, asset_id: str) -> None:
+    """An ordinary (candidate-unbound) rebuild may not delete served `kala_convergence` rows that other tables still reference (N2).
+
+    Before a head exists the 'legacy' partition IS the served copy, and `refuse_unbound_rewrite` has nothing to refuse; but the delete-then-insert
+    replaces every row with a new `convergence_id`, so the foreign keys (kala_darshana, kala_obstruction, phala_anchors cascade; kala_bhavishya is
+    nulled) would silently destroy the served children (migration 1405 header). The foreign-key actions stay as they are: this refuses, deleting
+    nothing, so the operator clears or rebuilds the dependents on purpose (or builds a candidate). Read-only, so a writer may call it while planning."""
+    reach = served_children_reach(conn, chart_id, 'legacy')
+    if reach:
+        raise UnboundRewriteCascades(
+            f'{UNBOUND_REWRITE_CASCADES}: {asset_id} refused for chart {chart_id}: this build is bound to no candidate and rewriting the served '
+            f"(legacy) kala_convergence rows would "
+            + '; '.join(f'{action} {n} row(s) of {table}' for table, action, n in reach))
+
+
 def served_convergence_generation(conn: Any, chart_id: Any) -> str:
     """The generation `kala_convergence_served` serves: the published head, else 'legacy' (the same rule as the view)."""
     head = _head_generation(conn, chart_id)
@@ -129,6 +178,7 @@ def convergence_generation(conn: Any, chart_id: Any, candidate: Candidate | None
     """
     if candidate is None:
         refuse_unbound_rewrite(conn, chart_id, 'ka_sangam')
+        refuse_unbound_cascade(conn, chart_id, 'ka_sangam')
         return 'legacy'
     with conn.cursor(row_factory=dict_row) as cur:
         return building_candidate(cur, candidate.chart_id, candidate.generation, candidate.build_id)['generation']

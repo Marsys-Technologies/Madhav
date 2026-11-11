@@ -47,7 +47,7 @@ from services.ka_muhurta_seva.service import KaMuhurtaSevaService
 from services.kala_trigger.trigger import compute_trigger_currents, compose_with_ka_sangam
 from services.kala_core.writer_grain import (
     GRAIN_STEP, attest_inputs, bound_candidate, convergence_generation, grain_steps, predicate_generation,
-    refuse_unbound_rewrite)
+    refuse_unbound_cascade, refuse_unbound_rewrite)
 from panchang_engine.swiss_backend import records_swiss_backend
 
 # ── D-3 T-6: TRIGGER wiring at the ADMITTED weights ───────────────────────────
@@ -334,6 +334,8 @@ class _LegacyKaSangamWriter(WriterBase):
             # SR-K9-BIND B1b: a build bound to no candidate never rewrites a published head in place (read-only check, before any ledger
             # or delete); the same check guards every kala_convergence DELETE/INSERT through `convergence_generation` in run_substep.
             refuse_unbound_rewrite(conn, chart_id, 'ka_sangam')
+            # N2: before any head the legacy rows are the served copy; an in-place rewrite must not cascade into their children.
+            refuse_unbound_cascade(conn, chart_id, 'ka_sangam')
 
         # K9-WRITE-SCOPE F4: the resume ledger is keyed by the generation this
         # build reads (resolved from the DATABASE, never from ctx.config — the
