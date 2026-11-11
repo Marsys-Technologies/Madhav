@@ -1,0 +1,47 @@
+name: Build and verify CGM image
+description: Bind the normal build to a read-only probe of the packaged CGM writer registrations.
+inputs:
+  context:
+    description: Existing Docker context
+    required: true
+  file:
+    description: Existing Sidecar or Pipeline Dockerfile
+    required: true
+  push:
+    description: Existing registry export mode
+    default: 'false'
+  load:
+    description: Existing local export mode
+    default: 'false'
+  tags:
+    description: Existing build tags
+    required: true
+  cache-from:
+    description: Existing Buildx cache source
+  cache-to:
+    description: Existing Buildx cache destination
+runs:
+  using: composite
+  steps:
+    - id: build
+      uses: docker/build-push-action@v6
+      with:
+        context: ${{ inputs.context }}
+        file: ${{ inputs.file }}
+        push: ${{ inputs.push }}
+        load: ${{ inputs.load }}
+        tags: ${{ inputs.tags }}
+        cache-from: ${{ inputs.cache-from }}
+        cache-to: ${{ inputs.cache-to }}
+    - name: Verify exact packaged CGM registration
+      shell: bash
+      env:
+        CGM_BUILD_CONTEXT: ${{ inputs.context }}
+        CGM_BUILD_FILE: ${{ inputs.file }}
+        CGM_BUILD_PUSH: ${{ inputs.push }}
+        CGM_BUILD_LOAD: ${{ inputs.load }}
+        CGM_BUILD_TAGS: ${{ inputs.tags }}
+        CGM_BUILD_IMAGE_ID: ${{ steps.build.outputs.imageid }}
+        CGM_BUILD_DIGEST: ${{ steps.build.outputs.digest }}
+        CGM_BUILD_METADATA: ${{ steps.build.outputs.metadata }}
+      run: python3 "$GITHUB_ACTION_PATH/probe_registration.py" verify-build

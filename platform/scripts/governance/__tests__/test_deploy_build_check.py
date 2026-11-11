@@ -348,7 +348,7 @@ def deploy_diff_repo(path, operation, changed_path, destination=None):
     return base
 
 
-def run_deploy_diff(tmp_path, repo, base, *, fail_diff=False, traffic=None, fail_revision=False):
+def run_deploy_diff(tmp_path, repo, base, *, fail_diff=False, traffic=None, fail_revision=False, pipeline_image=None):
     """Execute the production selection step; Cloud Run and failure are local fixtures."""
     step = next(s for s in workflow()['jobs']['changes']['steps'] if s.get('id') == 'diff')
     output = tmp_path / 'deploy-output'
@@ -382,7 +382,7 @@ gcloud() {
                 *) return 97 ;;
             esac
             ;;
-        "run jobs describe") printf 'fixture/image:%s\\n' "$FIXTURE_DEPLOYED_SHA" ;;
+        "run jobs describe") printf '%s\\n' "$FIXTURE_PIPELINE_IMAGE" ;;
         *) return 97 ;;
     esac
 }
@@ -397,7 +397,8 @@ git() {
         ['bash', '-eo', 'pipefail', '-c', harness + step['run']],
         cwd=repo,
         env={**os.environ, 'GITHUB_OUTPUT': str(output),
-             'FIXTURE_DEPLOYED_SHA': base, 'FIXTURE_FAIL_DIFF': '1' if fail_diff else '0'},
+             'FIXTURE_DEPLOYED_SHA': base, 'FIXTURE_FAIL_DIFF': '1' if fail_diff else '0',
+             'FIXTURE_PIPELINE_IMAGE': pipeline_image or f'fixture/image:{base}'},
         capture_output=True, text=True, timeout=10,
     ), output
 
@@ -490,3 +491,305 @@ def test_production_deploy_diff_disregards_partial_revision_lookup_output(tmp_pa
     assert result.returncode == 0, result.stderr
     decisions = dict(line.split('=', 1) for line in output.read_text().splitlines())
     assert decisions == {'web': 'true', 'sidecar': 'true', 'mcp': 'true', 'pipeline': 'false'}
+
+
+CGM_ACTION = "./.github/actions/build-verified-cgm-image"
+CGM_PROBE = ROOT / CGM_ACTION / "probe_registration.py"
+
+
+@pytest.fixture
+def cgm_probe():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("probe_registration", CGM_PROBE)
+    probe = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(probe)
+    return probe
+
+
+def test_cgm_workflow_build_and_production_handoffs():
+    jobs = workflow()["jobs"]
+    assert jobs["build-check"]["timeout-minutes"] == 30
+    ordinary = jobs["build-check"]["steps"]
+    sidecar = jobs["deploy-sidecar"]["steps"]
+    pipeline = jobs["deploy-pipeline-job"]["steps"]
+    action = yaml.safe_load((CGM_PROBE.parent / "action.yml").read_text())
+    build, probe = action["runs"]["steps"]
+    assert build["id"] == "build"
+    assert probe["env"]["CGM_BUILD_IMAGE_ID"] == "${{ steps.build.outputs.imageid }}"
+    assert probe["env"]["CGM_BUILD_DIGEST"] == "${{ steps.build.outputs.digest }}"
+    assert probe["env"]["CGM_BUILD_METADATA"] == "${{ steps.build.outputs.metadata }}"
+
+    for steps, names, context, dockerfile, push in (
+        (ordinary, ("Build regular sidecar image (load, no push)", "Verify Nirmana route and release smoke are packaged"),
+         "./platform", "./platform/python-sidecar/Dockerfile", False),
+        (ordinary, ("Build pipeline job image (load, no push)", "Verify ga_writers is importable in the pipeline image"),
+         ".", "./platform/python-sidecar/Dockerfile.pipeline", False),
+        (sidecar, ("Build and push sidecar image", "Deploy sidecar candidate to Cloud Run (zero traffic)"),
+         "./platform", "./platform/python-sidecar/Dockerfile", True),
+        (pipeline, ("Build and push pipeline job image", "Re-point Cloud Run Job at the new image"),
+         ".", "./platform/python-sidecar/Dockerfile.pipeline", True),
+    ):
+        build_index, next_index = [next(i for i, step in enumerate(steps) if step.get("name") == name) for name in names]
+        selected = steps[build_index]
+        assert build_index < next_index
+        if steps is pipeline:
+            assert next_index == build_index + 1
+        assert selected["uses"] == CGM_ACTION and "if" not in selected and "continue-on-error" not in selected
+        assert selected["with"]["context"] == context
+        assert selected["with"]["file"] == dockerfile
+        assert selected["with"]["push"] is push
+        assert selected["with"].get("load", False) is not push
+
+    candidate = next(s for s in sidecar if s.get("id") == "deploy-sidecar")
+    assert candidate["with"]["image"] == "${{ env.CGM_VERIFIED_IMAGE }}"
+    smoke = next(s for s in sidecar if s.get("name") == "Configure authenticated candidate smoke job")
+    assert '--image="$CGM_VERIFIED_IMAGE"' in smoke["run"]
+    repoint = next(s["run"] for s in pipeline if s.get("name") == "Re-point Cloud Run Job at the new image")
+    lines = repoint.splitlines()
+    start = next(i for i, line in enumerate(lines) if line.startswith("gcloud run jobs update "))
+    assert lines[start + 2].strip().endswith("brahma-pipeline:${{ env.DEPLOY_SHA }} \\")
+    assert lines[start + 9].strip() == "--quiet"
+    assert lines[start + 10] == f"python3 {CGM_PROBE.relative_to(ROOT)} post-repoint"
+    assert WORKFLOW.read_text().splitlines()[2542].strip().split()[0] == "--task-timeout=86400"
+
+
+def fake_digest(value):
+    return "sha256:" + value * 64
+
+
+@pytest.mark.parametrize(("pushed", "component", "failure"), [
+    (pushed, component, failure)
+    for pushed in (False, True)
+    for component in ("amjis-sidecar", "brahma-pipeline")
+    for failure in (None, "probe", "identity")
+] + [(True, "brahma-pipeline", "pipeline-tag")])
+def test_cgm_exact_build_gate(tmp_path, monkeypatch, cgm_probe, pushed, component, failure):
+    commit = "a" * 40
+    top, child, config = map(fake_digest, "bcd")
+    repo = f"{cgm_probe.REGISTRY}/{component}"
+    tags = f"{repo}:{commit}\n{repo}:latest" if pushed else f"{component}:pr-check"
+    carrier = tmp_path / "job-env"
+    file, context = next((f, c) for f, (name, c) in cgm_probe.BUILD_SHAPES.items() if name == component)
+    for name, value in {
+        "CGM_BUILD_FILE": file, "CGM_BUILD_CONTEXT": context,
+        "CGM_BUILD_PUSH": str(pushed).lower(), "CGM_BUILD_LOAD": str(not pushed).lower(),
+        "CGM_BUILD_TAGS": tags, "CGM_BUILD_DIGEST": top, "CGM_BUILD_IMAGE_ID": config,
+        "GITHUB_ENV": str(carrier), "DEPLOY_SHA": commit,
+    }.items():
+        monkeypatch.setenv(name, value)
+    monkeypatch.delenv("CGM_BUILD_METADATA", raising=False)
+
+    calls = []
+
+    def stub(*argv, data=None, timeout=30):
+        calls.append(argv)
+        if argv[:3] == ("git", "rev-parse", "HEAD"):
+            return commit.encode()
+        if argv[:2] == ("git", "show"):
+            return argv[-1].encode()
+        if argv[:4] == ("docker", "buildx", "imagetools", "inspect"):
+            if "--raw" in argv:
+                assert argv[-1] == f"{repo}@{child}"
+                return json.dumps({
+                    "mediaType": "application/vnd.oci.image.manifest.v1+json", "config": {"digest": config},
+                }).encode()
+            assert argv[-1] in (f"{repo}@{top}", f"{repo}:{commit}")
+            actual = fake_digest("e") if failure == "pipeline-tag" and argv[-1].endswith(commit) else top
+            return json.dumps({
+                "digest": actual, "mediaType": "application/vnd.oci.image.index.v1+json",
+                "manifests": [{
+                    "digest": child, "mediaType": "application/vnd.oci.image.manifest.v1+json",
+                    "platform": {"os": "linux", "architecture": "amd64"},
+                }],
+            }).encode()
+        if argv[:3] == ("docker", "image", "inspect"):
+            assert argv[-1] == (f"{repo}@{child}" if pushed else tags)
+            return json.dumps({
+                "Id": fake_digest("e") if failure == "identity" else config,
+                "Os": "linux", "Architecture": "amd64", "Config": {},
+            }).encode()
+        if argv[:2] == ("docker", "pull"):
+            assert pushed and argv[-1] == f"{repo}@{child}"
+            return b""
+        assert argv[:2] == ("docker", "run")
+        assert argv[2:10] == (
+            "--pull=never", "--rm", "-i", "--network=none", "--read-only",
+            "--cap-drop=ALL", "--security-opt=no-new-privileges", "--entrypoint=/usr/bin/env",
+        )
+        assert argv[10:13] == (config, "-i", "PATH=/usr/local/bin:/usr/bin:/bin")
+        assert argv[13:20] == ("python", "-BI", "-X", "pycache_prefix=/dev/null", "-", "inside", component)
+        assert len(argv[20:]) == 3 and data == CGM_PROBE.read_bytes()
+        return b"CGM registration verified\n" if failure != "probe" else b"generic image smoke passed\n"
+
+    monkeypatch.setattr(cgm_probe, "command", stub)
+    if failure:
+        with pytest.raises(cgm_probe.ProbeFailure):
+            cgm_probe.verify_build()
+        assert not carrier.exists()
+        return
+
+    cgm_probe.verify_build()
+    if not pushed:
+        assert not carrier.exists()
+        assert not any(command[:3] == ("docker", "buildx", "imagetools") for command in calls)
+        return
+    expected = f"CGM_VERIFIED_IMAGE={repo}@{child}\n"
+    if component == cgm_probe.PIPELINE:
+        assert calls[-1][-1] == f"{repo}:{commit}"
+        expected += f"CGM_VERIFIED_PIPELINE_TOP={top}\n"
+    assert carrier.read_text() == expected
+
+
+@pytest.mark.parametrize("failure", [None, "config-tag", "tag-digest", "missing-carrier"])
+def test_cgm_pipeline_post_repoint(monkeypatch, cgm_probe, failure):
+    repo = f"{cgm_probe.REGISTRY}/{cgm_probe.PIPELINE}"
+    commit = "a" * 40
+    top, child = map(fake_digest, "bc")
+    tag = f"{repo}:{commit}"
+    monkeypatch.setenv("DEPLOY_SHA", commit)
+    monkeypatch.setenv("GCP_REGION", "example-region")
+    monkeypatch.setenv("CGM_VERIFIED_PIPELINE_TOP", top)
+    monkeypatch.setenv("CGM_VERIFIED_IMAGE", f"{repo}@{child}")
+    if failure == "missing-carrier":
+        monkeypatch.delenv("CGM_VERIFIED_PIPELINE_TOP")
+    calls = []
+
+    def stub(*argv):
+        calls.append(argv)
+        assert argv[:5] == ("gcloud", "run", "jobs", "describe", "brahma-build-pipeline-job")
+        return (f"{repo}@{child}" if failure == "config-tag" else tag).encode()
+
+    def identity(ref):
+        assert ref == tag
+        return (fake_digest("e") if failure == "tag-digest" else top, child)
+
+    monkeypatch.setattr(cgm_probe, "command", stub)
+    monkeypatch.setattr(cgm_probe, "manifest_identity", identity)
+    if failure:
+        with pytest.raises(cgm_probe.ProbeFailure):
+            cgm_probe.post_repoint()
+    else:
+        cgm_probe.post_repoint()
+        assert len(calls) == 1
+
+
+@pytest.mark.parametrize("mutation", [None, "wrong-class", "missing-key", "alias", "hash", "origin", "wrong-base"])
+def test_cgm_named_registration_and_historical_aliases(tmp_path, monkeypatch, cgm_probe, mutation):
+    import hashlib
+    import sys
+    from types import SimpleNamespace
+
+    class WriterBase:
+        def __init__(self):
+            pytest.fail("must not construct a writer")
+
+    class BoBimbaWriter(WriterBase):
+        pass
+
+    class BoKaranajalaWriter(WriterBase):
+        pass
+
+    identity = SimpleNamespace(
+        SUBJECT_TO_GRAHA={"sun": "Sun"}, YOGA_NODE_CLASSES=("yoga",),
+        _yoga_config_name=lambda: None, yoga_node_subject=lambda: None,
+    )
+    bimba = SimpleNamespace(
+        BoBimbaWriter=BoBimbaWriter, _SUBJECT_TO_GRAHA=identity.SUBJECT_TO_GRAHA,
+        _YOGA_NODE_CLASSES=identity.YOGA_NODE_CLASSES, _yoga_config_name=identity._yoga_config_name,
+        yoga_node_subject=identity.yoga_node_subject,
+    )
+    karanajala = SimpleNamespace(
+        BoKaranajalaWriter=BoKaranajalaWriter, _GRAHA_SUBJECT_MAP=identity.SUBJECT_TO_GRAHA,
+        _YOGA_NODE_CLASSES=identity.YOGA_NODE_CLASSES, _yoga_node_subject=identity.yoga_node_subject,
+    )
+    expected = []
+    for name, module in zip(cgm_probe.MODULES, (identity, bimba, karanajala)):
+        source = tmp_path / (name.replace(".", "/") + ".py")
+        source.parent.mkdir(parents=True, exist_ok=True)
+        source.write_text(f"# {name}\n")
+        module.__file__ = str(source)
+        expected.append(hashlib.sha256(source.read_bytes()).hexdigest())
+    entries = {"bo_bimba": BoBimbaWriter, "bo_karanajala": BoKaranajalaWriter}
+    registry = SimpleNamespace(WRITER_REGISTRY=entries, WriterBase=WriterBase)
+    if mutation == "wrong-class":
+        entries["bo_bimba"] = type("BoBimbaWriter", (WriterBase,), {})
+    elif mutation == "missing-key":
+        entries.pop("bo_karanajala")
+    elif mutation == "alias":
+        karanajala._GRAHA_SUBJECT_MAP = dict(identity.SUBJECT_TO_GRAHA)
+    elif mutation == "hash":
+        expected[0] = "0" * 64
+    elif mutation == "origin":
+        bimba.__file__ = identity.__file__
+    elif mutation == "wrong-base":
+        registry.WriterBase = type("WrongBase", (), {})
+
+    modules = dict(zip(cgm_probe.MODULES, (identity, bimba, karanajala)))
+    modules["pipeline.orchestrator.writers"] = registry
+    monkeypatch.setattr(cgm_probe.importlib, "import_module", modules.__getitem__)
+    monkeypatch.setattr(sys, "path", sys.path.copy())
+    if mutation:
+        with pytest.raises(cgm_probe.ProbeFailure):
+            cgm_probe.verify_registration(tmp_path, expected)
+    else:
+        cgm_probe.verify_registration(tmp_path, expected)
+
+
+@pytest.mark.parametrize("mode", ["metadata", "agree", "conflict", "missing"])
+def test_cgm_loaded_image_identity_carrier(monkeypatch, cgm_probe, mode):
+    config = fake_digest("d")
+    monkeypatch.setenv("CGM_BUILD_METADATA", json.dumps(
+        {"containerimage.config.digest": config} if mode != "missing" else {},
+    ))
+    monkeypatch.setenv(
+        "CGM_BUILD_IMAGE_ID", config if mode == "agree" else fake_digest("e") if mode == "conflict" else "",
+    )
+    if mode in ("conflict", "missing"):
+        with pytest.raises(cgm_probe.ProbeFailure):
+            cgm_probe.loaded_build_id()
+    else:
+        assert cgm_probe.loaded_build_id() == config
+
+
+@pytest.mark.parametrize("mode", ["single", "duplicate", "no-amd64"])
+def test_cgm_manifest_identity(monkeypatch, cgm_probe, mode):
+    manifest = {"digest": fake_digest("b"), "mediaType": "application/vnd.oci.image.manifest.v1+json"}
+    if mode != "single":
+        platform = {"os": "linux", "architecture": "amd64" if mode == "duplicate" else "arm64"}
+        manifest = {
+            "digest": fake_digest("b"), "mediaType": "application/vnd.oci.image.index.v1+json",
+            "manifests": [{**manifest, "platform": platform}] * 2,
+        }
+    monkeypatch.setattr(cgm_probe, "command", lambda *argv: json.dumps(manifest).encode())
+    if mode == "single":
+        assert cgm_probe.manifest_identity("fixture/image") == (fake_digest("b"), fake_digest("b"))
+    else:
+        with pytest.raises(cgm_probe.ProbeFailure):
+            cgm_probe.manifest_identity("fixture/image")
+
+
+@pytest.mark.parametrize("digest_only", [False, True])
+def test_cgm_preserves_pipeline_commit_tag_selection(tmp_path, digest_only):
+    repo = tmp_path / "repo"
+    base = deploy_diff_repo(repo, "add", "docs/notes.md")
+    pipeline_image = f"fixture/image@{fake_digest('d')}" if digest_only else f"fixture/image:{base}"
+    result, output = run_deploy_diff(tmp_path, repo, base, pipeline_image=pipeline_image)
+    assert result.returncode == 0, result.stderr
+    decisions = dict(line.split("=", 1) for line in output.read_text().splitlines())
+    assert decisions["pipeline"] == str(digest_only).lower()
+    assert all(decisions[name] == "false" for name in ("web", "sidecar", "mcp"))
+
+
+@pytest.mark.parametrize(("selector", "result_key", "job"), [
+    ("OUTCOME_SIDECAR_CHANGED", "OUTCOME_SIDECAR_RESULT", "deploy-sidecar"),
+    ("OUTCOME_PIPELINE_CHANGED", "OUTCOME_PIPELINE_RESULT", "deploy-pipeline-job"),
+])
+def test_cgm_required_job_failure_remains_terminal(selector, result_key, job):
+    if subprocess.run([NODE, "--experimental-strip-types", "--no-warnings", "-e", "0"],
+                      capture_output=True, text=True).returncode:
+        pytest.skip("node lacks --experimental-strip-types; gate verdicts are covered by vitest")
+    result = run_outcome_gate("success", "false", "success", "success",
+                              extra_env={selector: "true", result_key: "failure"})
+    assert result.returncode == 1
+    assert f"{job}=failure" in result.stderr
