@@ -9439,3 +9439,19 @@ Answers the KĀLA-YANTRA request of 2026-10-16T17:50Z. Measured read-only by Suv
 - Authority: SR-003 selector scope, SR-006 protected progression, SR-016 release order and its recorded source-locator follow-up. This record coordinates that existing authority.
 - Scope: the exact two-file C-ROUTE candidate, standard GitHub protected queue after all required checks, then observe the existing main deployment workflow's selected effects and artifact/traffic readback. Main and active queue/release state must be refreshed before submission.
 - Exclusions: no manual deployment, broader production lock, rule or permission change, schema or data change, extra service/job, paid resource, forced replay, foreign worktree or unrelated branch mutation. Other waves and workload executions remain separately governed.
+
+
+## L-MADHAV-CONSOLIDATION-CROUTE-20261111 — exact release completed
+
+- Status RELEASED after protected PR #3946 merged at 9b724915e9927f315ad9b15973b770d370bcf4fd, successful push Ganga 42946634405 and normal automatic Deploy 42949281048. Observed 2026-11-11 08:46 IST, web revision amjis-web-probe-9b724915e992-42949281048-1 at 100 percent, immutable runtime digest sha256:9aed050240069541fea8868d8b6da5ba573203dc30c756b194c49941f988a8b4. Zero-traffic smoke and inquiry canary passed, previous ready web revision retained. MCP and sidecar remain at 39d52683 and configured pipeline source remains 39d52683. No workload execution or rollback rehearsal claim.
+
+## L-MADHAV-CONSOLIDATION-GOVERNANCE-20261111 — exact protected release custody
+
+- Holder Madhav consolidation department lead, Codex GPT-6.1 Sol HIGH. Status ACTIVE_EXACT_GOVERNANCE_CUSTODY. Started 2026-11-11T08:47:35+05:30. Reconcile by 2026-11-11 11:00 IST and retain in-flight release custody until stable.
+- Source PR #3959 at 15e6a5663cb201d8d62cb74a965388f9ba8aa812, tree f44f71f4dad00a4e0a944ed9985d3580c4a90e6b, exact base 9b724915e9927f315ad9b15973b770d370bcf4fd. Authority SR-016 and SR-022. All 72 current PR checks and independent exact 12-file integration verification passed. Five per-slice effects retained from #3947, #3949, #3950 and #3957.
+- Scope ordinary protected queue and its automatic deployment only for that exact authority/session/verification change. Refresh current main, queue, protection and source before admission. Expected web input selection against installed bases, unchanged routine migration barrier. Preserve every required check and previous ready revision. Natural verification schedule remains independently observed.
+- Other component implementation and prepared releases remain separately owned. No manual dispatch, protected migration, role/IAM/ruleset change, workload execution, forced replay, new paid resource or unrelated source mutation is included.
+
+## Madhav consolidation — provisional upload migration source reservation
+
+- SR-023/SR-025/SR-026 source reserves 1415_chat_upload_receipts.sql at platform/supabase/migrations. Exact SQL sha256 b46fb3a75ebded3430e9a85144d1e12f00e10e7bc59b4aad3548db5797937c6b. Existing metadata and both directory sequence guards passed. Recheck origin/main, all owner paths and overlapping open proposals under the later merge lock. No migration apply or schema capability is claimed by this source reservation.
