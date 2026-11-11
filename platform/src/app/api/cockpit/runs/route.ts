@@ -339,16 +339,11 @@ export async function POST(req: NextRequest) {
     let clearAssets = fullRegistry.filter(a => clearable.has(a.asset_id) && a.scope !== 'global') as RegistryEntryWithScope[]
     const clearProtectedAssets = clearAssets.filter(a => protectedAssetIds.has(a.asset_id))
     clearAssets = clearAssets.filter(a => !protectedAssetIds.has(a.asset_id))
-    const clearAssetIds = clearAssets.map(a => a.asset_id)
-
-    // Compute transitive downstream outside the clear scope → mark stale
-    const downstreamSet = computeDownstreamClosure(clearAssetIds, fullRegistry)
-    for (const id of clearAssetIds) downstreamSet.delete(id)
-    const downstreamAssets = Array.from(downstreamSet)
 
     const pool = await getPool()
     const client = await pool.connect()
     let runId: string
+    let clearedAssetIds: string[] = []
     let clearNotices: Array<{ assetId: string; message: string }> = []
     try {
       await client.query('BEGIN')
@@ -356,21 +351,25 @@ export async function POST(req: NextRequest) {
       // Delete data — reverse order for FK safety (downstream first), each asset in
       // its own savepoint: the operator clear stays best effort.
       const invalidation = await invalidateAssets({ db: client, chartId: chart_id, assets: clearAssets, policy: 'operator-best-effort' })
+      clearedAssetIds = invalidation.clearedAssetIds
       clearNotices = invalidation.notices
 
-      // Reset throughput to dormant for all cleared assets (chart-scoped)
-      if (clearAssetIds.length > 0) {
+      // Only assets whose clear succeeded lose their own throughput state.
+      if (clearedAssetIds.length > 0) {
         await client.query(
           `UPDATE asset_throughput
            SET state='dormant', last_built_at=NULL, rows_written=NULL,
                built_against_upstream_hash=NULL, built_against_writer_hash=NULL,
                last_error=NULL
            WHERE chart_id=$1 AND asset_id = ANY($2::text[])`,
-          [chart_id, clearAssetIds]
+          [chart_id, clearedAssetIds]
         )
       }
 
-      // Mark transitive downstream as stale (only currently-built assets)
+      // A dependent can still be stale when its own clear failed but its upstream was cleared.
+      const downstreamSet = computeDownstreamClosure(clearedAssetIds, fullRegistry)
+      for (const id of clearedAssetIds) downstreamSet.delete(id)
+      const downstreamAssets = Array.from(downstreamSet)
       if (downstreamAssets.length > 0) {
         await client.query(
           `UPDATE asset_throughput SET state='stale'
@@ -413,17 +412,19 @@ export async function POST(req: NextRequest) {
     // 'lit' with an EMPTY table. NIRMANA_FORCE_EXECUTE is set on this job execution only.
     const dispatch = await dispatchPreparedRun(runId, { forceExecute: true })
     if (!dispatch.ok) {
-      console.error('[api/cockpit/runs] invokeRunJob failed after clear — run marked failed:', dispatch.message)
-      // Note: data was already cleared; user will need to rebuild again after fixing the job issue
+      console.error('[api/cockpit/runs] clear-before build job dispatch failed:', dispatch.message)
+      const error = clearedAssetIds.length > 0
+        ? 'Data cleared but build job failed to start'
+        : 'Failed to dispatch build job'
       return NextResponse.json(
-        { error: 'Data cleared but build job failed to start', detail: dispatch.message, run_id: runId, code: 'JOB_DISPATCH_FAILED' },
+        { error, detail: dispatch.message, run_id: runId, code: 'JOB_DISPATCH_FAILED' },
         { status: 503 }
       )
     }
 
     return NextResponse.json({
       data: {
-        run_id: runId, plan, asset_count: plan.length, job_image_tag: jobImageTag, cleared_asset_count: clearAssetIds.length,
+        run_id: runId, plan, asset_count: plan.length, job_image_tag: jobImageTag, cleared_asset_count: clearedAssetIds.length,
         ...(buildPlan.protected_assets.length > 0 || clearProtectedAssets.length > 0
           ? { protected_assets: buildPlan.protected_assets }
           : {}),
