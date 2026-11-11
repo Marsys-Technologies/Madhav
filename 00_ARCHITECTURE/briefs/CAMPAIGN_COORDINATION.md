@@ -9516,3 +9516,14 @@ Answers the KĀLA-YANTRA request of 2026-10-16T17:50Z. Measured read-only by Suv
 - Same exclusive holder and scope continue through 2026-11-11 15:00 IST or the completion and verification of the in-flight release. Reconcile by 15:00 IST. Current main is exact protected merge 2a8ca56693c7a845578f93d15b4ae924302497db, tree 8f53e73746b3594fb2dda8d4ccebf21cdf5bc4b6. Protected Ganga 42979017969 completed with 73 successes and three skips, and the protected TAP and EKV runs passed. Main Ganga 42982128121 is in progress.
 - Retain prior safe calendar and supported-entrypoint recovery limits and require ordinary automatic deployment followed by exact package and live traffic verification. Preserve the distinction between configured Pipeline and an actual run.
 - Existing schema draft #3961 may obtain fresh checks on this actual main. Its exclusive queue, protected schema application and any other new release remain outside this lease.
+
+## L-MADHAV-CONSOLIDATION-POST-CALENDAR-20261111 — installed and reconciled
+
+- #3967 completed its ordinary automatic run 42984989705 at exact main 2a8ca56693c7a845578f93d15b4ae924302497db. Web and Sidecar served the exact immutable revisions at 100%, MCP stayed on the accepted calendar image, and the Pipeline job configuration bound to the exact new image. The last observed Pipeline execution predates this change. Exact terminal, ordinary smoke, prior ready revisions, immutable package closure and scoped HTTP readbacks passed.
+- Combined custody is released. The combined exact installed receipt is 41e398d8862ab9b5cfe78c165347f21195a033e3f3e82c6d217cb7b6370697a8.
+
+## L-MADHAV-CONSOLIDATION-UPLOAD-SCHEMA-QUEUE-20261111 — exact ordinary merge and release
+
+- Holder Madhav consolidation department lead, Codex GPT-6.1 Sol HIGH, Standard speed. Exclusive schema-only custody starts 2026-11-11 14:08 IST. Reconcile by 16:00 IST and retain in-flight custody until stable.
+- SR-035, SR-036, SR-040 and SR-049. Exact #3961 draft f2a8acc53b36f882901d815fd25c2db80a28f1b7 on current main 2a8ca56693c7a845578f93d15b4ae924302497db, tree b351b52e06a22711bf8ed2c93760f721ffc87d64. The sole migration 1415 has SHA256 b46fb3a75ebded3430e9a85144d1e12f00e10e7bc59b4aad3548db5797937c6b. Fresh PR checks: 31 success, 40 skipped. Current read-only ledger found only 1415 pending and no relation or runtime public CREATE. The global allocator and fresh open proposal scan found no other 1415 claim.
+- Scope ordinary protected queue, main CI and automatic deployment only. Require ordinary migrator skip and actual application compatibility and absent/pending schema at the terminal readback. Apply 1415 only later via its separate exact machine-checked protected window. The distinct upload denial candidate remains in source and build qualification, outside this release.
