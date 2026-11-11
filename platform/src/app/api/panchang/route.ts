@@ -10,7 +10,6 @@
  * tree; a 308 alias is preserved at the old path for one release.)
  */
 import { getServerUser } from '@/lib/firebase/server'
-import { requireChartPermission } from '@/lib/auth/requireChartPermission'
 import { res } from '@/lib/errors'
 
 const SIDECAR_KEY = process.env.PYTHON_SIDECAR_API_KEY ?? ''
@@ -29,45 +28,19 @@ export async function POST(request: Request) {
     return res.badRequest('invalid request body')
   }
 
-  // Cross-tenant native_context disclosure guard.
-  //
-  // This route forwards the request body VERBATIM to the sidecar and returns
-  // the sidecar's response VERBATIM. When the body carries a `chart_id`, the
-  // sidecar's `_fetch_native_context` reads
-  //   SELECT name, birth_date, birth_time, birth_lat, birth_lng FROM charts WHERE id = %s
-  // and attaches a `native_context` containing `native_name`,
-  // `birth_nakshatra_name`, `moon_sign_name` and `active_dasha_lord`. That
-  // function's own docstring states: "caller must already have confirmed chart
-  // access (auth is enforced at the Next.js proxy layer; the sidecar trusts the
-  // proxy's chart_id)." THIS ROUTE IS THAT PROXY — and it previously enforced
-  // only "is anyone logged in", so any authenticated caller could post any
-  // chart_id and read that chart's birth data. Confirmed LIVE in production
-  // before this fix.
-  //
-  // 'read' level (permission !== 'deny'): this is read-only disclosure of
-  // chart-scoped data, so a chart_grants 'view' grantee legitimately passes —
-  // the same bar the sibling asset/cockpit read routes use.
-  //
-  // `chart_id` is OPTIONAL here. Without one the sidecar returns a
-  // location-only panchang with no native_context, which is public-safe; that
-  // path must keep working for any authenticated caller and is not gated.
-  // Fail closed on a malformed chart_id rather than forwarding it unchecked:
-  // the body goes to the sidecar VERBATIM, so a value this guard declines to
-  // recognise but some downstream parser coerces back into a chart id would be
-  // a bypass. Absent is fine; present-and-not-a-non-empty-string is refused.
-  const rawChartId = body && typeof body === 'object'
-    ? (body as { chart_id?: unknown }).chart_id
-    : undefined
+  const args = body && typeof body === 'object' ? body as Record<string, unknown> : {}
+  const { chart_id: rawChartId, date, lat, lon, tz_offset_minutes, fields } = args
   if (rawChartId !== undefined && rawChartId !== null) {
     if (typeof rawChartId !== 'string' || rawChartId.trim() === '') {
       return res.badRequest('chart_id must be a non-empty string')
     }
-    const denied = await requireChartPermission({
-      uid: user.uid,
-      chartId: rawChartId,
-      access: 'read',
-    })
-    if (denied) return denied
+  }
+
+  // Calendar parameters can be scalars or a field-name list. Refuse nested
+  // request objects even under an allowed calendar key.
+  if ([date, lat, lon, tz_offset_minutes].some((value) => value !== null && typeof value === 'object')
+    || (fields != null && (!Array.isArray(fields) || fields.some((field) => typeof field !== 'string')))) {
+    return res.internal('Panchang compute error')
   }
 
   let sidecarResponse: Response
@@ -78,7 +51,7 @@ export async function POST(request: Request) {
         'Content-Type': 'application/json',
         'x-api-key': SIDECAR_KEY,
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ date, lat, lon, tz_offset_minutes, fields }),
     })
   } catch {
     return res.sidecarDown()
@@ -89,6 +62,27 @@ export async function POST(request: Request) {
     return res.internal('Panchang compute error')
   }
 
-  const data = await sidecarResponse.json()
-  return Response.json(data)
+  let data: unknown
+  try {
+    data = await sidecarResponse.json()
+  } catch {
+    return res.internal('Panchang compute error')
+  }
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return Response.json(data)
+
+  const calendar = data as Record<string, unknown>
+  // Calendar responses may still come from a sidecar that includes legacy context.
+  if ('native_context' in calendar) calendar.native_context = null
+  if ('native_context_error' in calendar) calendar.native_context_error = null
+  const panchang = calendar.panchang
+  if (typeof rawChartId !== 'string' || calendar.ok !== true
+    || !panchang || typeof panchang !== 'object' || Array.isArray(panchang)) {
+    return Response.json(calendar)
+  }
+
+  return Response.json({
+    ...calendar,
+    native_context: null,
+    native_context_error: 'Chart overlay unavailable',
+  })
 }

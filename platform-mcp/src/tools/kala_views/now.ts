@@ -46,8 +46,8 @@
  *     membership comparisons (gulika-kālam / horā — "is `now` inside this already-computed
  *     window") — both squarely the "simple date/time comparison logic" the brief allows
  *     for [J] items, never a new astrological computation.
- *   - chandrāṣṭama reads `native_context.moon_sign_id` (birth Moon rāśi, already computed
- *     by panchang.py's `_fetch_native_context` from the chart's own birth data) against
+ *   - chandrāṣṭama reads the stored L1 birth Moon rāśi, directly or through the
+ *     workload-authenticated overlay with stored fact IDs, against
  *     `panchang.planets.moon.sign_id` (today's transit Moon rāśi, same call) — a single
  *     house-count comparison (classical Chāndra Bala rule, Muhūrta Chintāmaṇi §4; mirrors
  *     platform/src/lib/panchang/chandra_bala.ts's identical formula, inlined here rather
@@ -94,7 +94,8 @@ import {
 import { composeArgument } from '../../lib/argument_composer.js'
 import { autoDetectTrimmableSections, finalizeMcpBudget } from '../../lib/response_budget.js'
 import { buildSukshmaBoundaryIntervals, type SukshmaBoundaryInterval } from '../../lib/kala_uncertainty.js'
-import { resolveChartFactsAyanamsha } from '../../lib/ayanamsha.js'
+import { resolveChartFactsAyanamsha, STORED_AYANAMSHA_IDS } from '../../lib/ayanamsha.js'
+import { callPlatformPanchangaNow } from '../../client.js'
 import { buildKalaAyanamshaFrame, KALA_NOW_LAHIRI_ONLY_SECTIONS, type KalaAyanamshaFrame } from '../../lib/kala_ayanamsha_frame.js'
 // F-73: marsys://tool/L4/gochara_forecast_get was never backed by a registered
 // capability (no layers/*/index.ts entry exists for it) — every call 404'd silently,
@@ -1164,13 +1165,38 @@ interface PanchangPayload {
   [key: string]: unknown
 }
 
-interface NativeContext {
-  chart_id: string
-  moon_sign_id: number
-  moon_sign_name: string
-  birth_nakshatra_id: number
-  birth_nakshatra_name: string
-  [key: string]: unknown
+const StoredOverlayFactId = z.string().min(1).refine((id) => id.trim() === id)
+const StoredNativeContext = z.object({
+  chart_id: z.string().uuid(),
+  ayanamsha_id: z.string(),
+  moon_sign_id: z.number().int().min(1).max(12),
+  moon_sign_name: z.string().trim().min(1),
+  birth_nakshatra_id: z.number().int().min(1).max(27),
+  birth_nakshatra_name: z.string().trim().min(1),
+  fact_ids: z.object({
+    moon_sign_id: StoredOverlayFactId,
+    moon_sign_name: StoredOverlayFactId,
+    birth_nakshatra_id: StoredOverlayFactId,
+    birth_nakshatra_name: StoredOverlayFactId,
+  }),
+})
+
+function storedNativeContext(
+  response: Awaited<ReturnType<typeof callPlatformPanchangaNow>>,
+  chartId: string,
+  ayanamshaId: string,
+  date: string,
+) {
+  const content = response.content
+  if (!response.overlayRequested || !response.wrapped || content?.['mode'] !== 'single'
+      || content['date'] !== date || content['native_context_error'] !== null) return null
+
+  const parsed = StoredNativeContext.safeParse(content['native_context'])
+  if (!parsed.success) return null
+  const context = parsed.data
+  if (context.chart_id.toLowerCase() !== chartId.toLowerCase() || context.ayanamsha_id !== ayanamshaId
+      || new Set(Object.values(context.fact_ids)).size !== 4) return null
+  return context
 }
 
 interface NatalPanchangaFactRow {
@@ -1358,22 +1384,13 @@ export interface ChandrashtamaResult {
    * authority over every L2+ derivation, and an L2+ surface must reference the L1 fact rather
    * than a re-derivation of it.
    *
-   * `panchanga_native_context` is the fallback, used only when the L1 fact is unavailable. It
-   * is a genuine RE-DERIVATION: `_fetch_native_context` recomputes the birth Moon from
-   * `charts.birth_date` via `compute_panchang(birth_date, …)` — passing the birth DATE with no
-   * birth TIME. The Moon moves ~13°/day, so for a native born near a rāśi cusp that
-   * re-derivation can land in the adjoining sign and disagree with L1. This native is exactly
-   * such a case: Moon in Pūrva Bhādrapada, whose span straddles the Aquarius/Pisces boundary
-   * (Aquarius 20°00' – Pisces 3°20'). Hence the L1-first ordering and the explicit source
-   * label — never a silent choice between two disagreeing authorities.
+   * `panchanga_native_context` is the compatibility source label for the stored-fact
+   * overlay when the direct L1 read is unavailable. It carries the cited L1 fact ID.
    */
   natal_moon_sign_source: 'l1_chart_facts' | 'panchanga_native_context'
-  /** The L1 fact_id backing `natal_moon_sign_id` when source is `l1_chart_facts` (§N.5 —
-   *  the claim references the fact, it does not restate it). */
+  /** The L1 fact backing the selected natal Moon sign. */
   natal_moon_sign_fact_id: string | null
-  /** Cross-check, never a substitute: does the panchāṅga service's re-derived birth Moon rāśi
-   *  agree with L1's? `null` when one of the two is unavailable to compare. A `false` here is
-   *  a real, disclosed divergence between two computations of the same quantity. */
+  /** Comparison with the valid stored overlay when both paths resolve. */
   native_context_agrees_with_l1: boolean | null
 }
 
@@ -1643,8 +1660,7 @@ export interface KalaNowResult {
     windows_reachable: boolean
     darshana_reachable: boolean
     panchanga_reachable: boolean
-    /** The specific, disclosed reason the OPTIONAL birth-chart overlay failed, if it did
-     *  (ND-4) — `null` when it hydrated fine or was not requested. */
+    /** Bounded availability message for a requested overlay, otherwise null. */
     panchanga_native_context_error: string | null
     natal_panchanga_reachable: boolean
     gochara_dual_reference_reachable: boolean
@@ -1689,14 +1705,10 @@ export async function computeKalaNow(
       principal,
     ),
     fetchNatalReferenceSigns(chartId, ayanamshaId, principal),
-    // item 32/29 join source: date-parameterized panchāṅga (today's vara/tithi/nakshatra,
-    // gulika-kālam window, horā ladder, transit Moon sign) + native_context (birth Moon
-    // sign, when chart_id resolves) — engine-direct, Swiss-Ephemeris-backed compute.
-    callRegistryCapability(
-      'marsys://tool/L0/call_panchanga_service',
-      { mode: 'single', date: asOfDate, chart_id: chartId },
-      principal,
-    ),
+    // Calendar and optional stored overlay share one named, non-retrying request.
+    callPlatformPanchangaNow(asOfDate, principal, STORED_AYANAMSHA_IDS.includes(ayanamshaId)
+      ? { chartId, ayanamshaId }
+      : undefined),
     // item 29 janma-resonance source: the native's OWN birth tithi/vara/nakshatra, read
     // verbatim from L1 chart_facts (never re-derived — §N.5).
     callRegistryCapability(
@@ -1742,16 +1754,10 @@ export async function computeKalaNow(
 
   const panchangaOk = panchangaResp.ok
   const panchang = panchangaResp.content?.['panchang'] as PanchangPayload | undefined
-  const nativeContext = panchangaResp.content?.['native_context'] as NativeContext | null | undefined
+  const nativeContext = storedNativeContext(panchangaResp, chartId, ayanamshaId, asOfDate)
   const panchangaReachable = panchangaOk && panchang != null
-  // ND-4 (ṢAḌ-DARŚANA W1 verify-reopen): the specific, disclosed reason the OPTIONAL birth-chart
-  // overlay failed, when it did — passed through verbatim from call_panchanga_service (which
-  // gets it from routers/panchang.py's now-fail-soft native_context hydration). Before this
-  // fix, an overlay failure 500'd the whole endpoint and every dependent field was reported as
-  // "L0 panchāṅga service unreachable this call" — wording that named a transient outage for
-  // what was in fact a deterministic upstream defect reproducible on every call.
-  const nativeContextError = panchangaResp.content?.['native_context_error']
-  const nativeContextErrorDetail = sanitizeNativeContextError(nativeContextError)
+  const nativeContextErrorDetail =
+    panchangaResp.overlayRequested && panchangaReachable && nativeContext === null ? NATIVE_CONTEXT_ERROR_GENERIC : null
   /** The honest, non-misleading reason string for any panchāṅga-backed field that came up
    *  empty. Distinguishes a genuine dispatch failure from a present-but-incomplete payload —
    *  and never calls a persistent defect "unreachable this call". */
@@ -1811,11 +1817,8 @@ export async function computeKalaNow(
     }
   }
 
-  // §N.5: L1 `chart_facts` is the authority for the NATAL Moon rāśi — this facade already
-  // fetched it above (natalRefSigns, for item 8), so chandrāṣṭama references that fact instead
-  // of the panchāṅga service's own re-derivation. native_context is kept strictly as a
-  // disclosed cross-check + fallback. See ChandrashtamaResult's doc-comment for why this
-  // ordering matters concretely for THIS native (Pūrva Bhādrapada straddles a rāśi cusp).
+  // Prefer the direct L1 fact. An authenticated, provenance-checked overlay can
+  // also reference the stored L1 fact when the direct read is unavailable.
   let chandrashtama: ChandrashtamaResult | null = null
   const transitMoon = panchang?.planets?.['moon']
   const natalMoonFromL1 = natalRefSigns.ok ? natalRefSigns.moon_sign_number : null
@@ -1829,7 +1832,7 @@ export async function computeKalaNow(
       natal_moon_sign_id: natalMoonSignId,
       transit_moon_sign_id: transitMoon.sign_id,
       natal_moon_sign_source: natalMoonFromL1 != null ? 'l1_chart_facts' : 'panchanga_native_context',
-      natal_moon_sign_fact_id: natalMoonFromL1 != null ? natalRefSigns.moon_fact_id : null,
+      natal_moon_sign_fact_id: natalMoonFromL1 != null ? natalRefSigns.moon_fact_id : nativeContext?.fact_ids.moon_sign_id ?? null,
       native_context_agrees_with_l1:
         natalMoonFromL1 != null && natalMoonFromNativeContext != null
           ? natalMoonFromL1 === natalMoonFromNativeContext
@@ -1966,7 +1969,7 @@ export async function computeKalaNow(
             ? natalMoonSignId == null
               ? 'Natal Moon rāśi unavailable from BOTH authorities: L1 chart_facts ' +
                 '(get_dignity/graha_sign_attributes MOON) did not resolve, and the panchāṅga ' +
-                'service\'s native_context overlay was absent' +
+                'service\'s stored native overlay was unavailable' +
                 (nativeContextErrorDetail ? ` — overlay reported: ${nativeContextErrorDetail}.` : '.')
               : panchangaReason('transit Moon position absent')
             : panchangaReason('transit Moon position absent'),

@@ -1,53 +1,46 @@
-/**
- * Cross-tenant PII disclosure on POST /api/panchang (and its ICS sibling).
- *
- * Same defect family as B-001/B-007/B-008/V3-E-010/V3-E-011: a caller-supplied
- * `chart_id` trusted after only "is anyone logged in". This one is sharper than
- * most, because what leaks is birth data rather than build metadata, and because
- * the component that reads the chart says in its own docstring that somebody
- * else is enforcing:
- *
- *   platform/python-sidecar/routers/panchang.py::_fetch_native_context
- *     "Security: caller must already have confirmed chart access (auth is
- *      enforced at the Next.js proxy layer; the sidecar trusts the proxy's
- *      chart_id)."
- *
- * This route IS that proxy. Before this fix it authenticated, forwarded the
- * request body verbatim — `chart_id` included — and returned the sidecar's
- * response verbatim. The sidecar then ran
- * `SELECT name, birth_date, birth_time, birth_lat, birth_lng FROM charts
- *  WHERE id = %s` and attached a `native_context` carrying `native_name`,
- * `birth_nakshatra_name`, `moon_sign_name` and `active_dasha_lord`.
- *
- * Confirmed LIVE against production before the fix: an authenticated guest
- * holding exactly one `chart_grants` row — on a DIFFERENT chart — POSTed the
- * native's real chart_id and received HTTP 200 with that chart's real
- * `native_name`, `birth_nakshatra_name` and `moon_sign_name`.
- *
- * `chart_id` is optional on this endpoint: without one the response is a
- * location-only panchang with no `native_context`, which is public-safe and
- * must keep working for any authenticated caller.
- */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { mockGetServerUser, mockRequireChartPermission, mockFetch } = vi.hoisted(() => ({
+const { mockGetServerUser, mockGetPrincipalRole, mockResolveNativeContext, mockFetch } = vi.hoisted(() => ({
   mockGetServerUser: vi.fn(),
-  mockRequireChartPermission: vi.fn(),
+  mockGetPrincipalRole: vi.fn(),
+  mockResolveNativeContext: vi.fn(),
   mockFetch: vi.fn(),
 }))
 
 vi.mock('@/lib/firebase/server', () => ({ getServerUser: mockGetServerUser }))
-vi.mock('@/lib/auth/requireChartPermission', () => ({
-  requireChartPermission: mockRequireChartPermission,
-}))
+vi.mock('@/lib/auth/requireChartPermission', () => ({ getPrincipalRole: mockGetPrincipalRole }))
+vi.mock('@/lib/panchang/resolveNativeContext', () => ({ resolveNativeContext: mockResolveNativeContext }))
 
 import { POST } from '../route'
 
-const VICTIM_CHART = '482012f1-710e-4a25-994a-93821f5871aa'
-const ATTACKER_UID = 'attacker-uid'
-
-/** Sentinel standing in for the victim's birth data. Must never reach a denied caller. */
-const VICTIM_PII = 'VICTIM-NATIVE-NAME'
+const CHART = '00000000-0000-4000-8000-000000000001'
+const USER = 'fixture-browser-user'
+const CALENDAR_REQUEST = { date: '2026-08-28', lat: 20.2961, lon: 85.8245, tz_offset_minutes: 330 }
+const CALENDAR = {
+  ok: true,
+  panchang: { tithi: 'Fixture tithi' },
+  native_context: null,
+  native_context_error: null,
+  cache_hit: false,
+}
+const UNAVAILABLE = { native_context: null, native_context_error: 'Chart overlay unavailable' }
+const LEGACY_CONTEXT = { native_name: 'Legacy sidecar context', chart_id: 'legacy-chart' }
+const STORED_CONTEXT = {
+  chart_id: CHART,
+  native_name: 'Fixture chart',
+  ayanamsha_id: 'raman',
+  birth_nakshatra_id: 3,
+  birth_nakshatra_name: 'Krittika',
+  moon_sign_id: 2,
+  moon_sign_name: 'Vrishabha',
+  active_dasha_lord: null,
+  fact_ids: {
+    birth_nakshatra_id: 'fixture-nakshatra-id',
+    birth_nakshatra_name: 'fixture-nakshatra-name',
+    moon_sign_id: 'fixture-moon-id',
+    moon_sign_name: 'fixture-moon-name',
+  },
+}
 
 function req(body: unknown): Request {
   return new Request('http://localhost/api/panchang', {
@@ -57,103 +50,161 @@ function req(body: unknown): Request {
   })
 }
 
-const basePayload = { date: '2026-08-28', lat: 20.2961, lon: 85.8245, tz_offset_minutes: 330 }
+function expectNoOverlayRead() {
+  expect(mockGetPrincipalRole).not.toHaveBeenCalled()
+  expect(mockResolveNativeContext).not.toHaveBeenCalled()
+}
 
 beforeEach(() => {
-  vi.clearAllMocks()
-  process.env.PYTHON_SIDECAR_URL = 'http://sidecar.invalid'
-  mockGetServerUser.mockResolvedValue({ uid: ATTACKER_UID })
-  // The sidecar WILL hand back the victim's birth data if it is ever called —
-  // that is the whole point. The fix must prevent the call, not sanitise it.
-  mockFetch.mockResolvedValue({
-    ok: true,
-    status: 200,
-    json: async () => ({
-      ok: true,
-      panchang: { tithi: 'Shukla Tritiya' },
-      native_context: {
-        chart_id: VICTIM_CHART,
-        native_name: VICTIM_PII,
-        birth_nakshatra_name: 'Purva Bhadrapada',
-        moon_sign_name: 'Kumbha',
-      },
-    }),
-  })
+  vi.resetAllMocks()
+  vi.stubEnv('PYTHON_SIDECAR_URL', 'http://sidecar.invalid')
+  mockGetServerUser.mockResolvedValue({ uid: USER })
+  mockGetPrincipalRole.mockResolvedValue('guest')
+  mockResolveNativeContext.mockResolvedValue(UNAVAILABLE)
+  mockFetch.mockImplementation(async () => Response.json(CALENDAR))
   vi.stubGlobal('fetch', mockFetch)
 })
 
-describe('POST /api/panchang — cross-tenant native_context disclosure', () => {
-  it('DENIES a caller with no permission on the requested chart', async () => {
-    mockRequireChartPermission.mockResolvedValue(
-      new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 })
-    )
-    const res = await POST(req({ ...basePayload, chart_id: VICTIM_CHART }))
-    expect(res.status).toBe(403)
+afterEach(() => {
+  vi.unstubAllEnvs()
+  vi.unstubAllGlobals()
+})
+
+describe('POST /api/panchang', () => {
+  it.each([undefined, null])('preserves chartless calendar response for chart_id %j', async (chart_id) => {
+    const response = await POST(req({ ...CALENDAR_REQUEST, chart_id }))
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual(CALENDAR)
+    expect(mockFetch).toHaveBeenCalledOnce()
+    expect(JSON.parse(mockFetch.mock.calls[0][1].body)).toEqual(CALENDAR_REQUEST)
+    expectNoOverlayRead()
   })
 
-  it('leaks NO birth data to a denied caller', async () => {
-    mockRequireChartPermission.mockResolvedValue(
-      new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 })
-    )
-    const res = await POST(req({ ...basePayload, chart_id: VICTIM_CHART }))
-    const body = await res.text()
-    expect(body).not.toContain(VICTIM_PII)
-    expect(body).not.toContain('Purva Bhadrapada')
-    expect(body).not.toContain('Kumbha')
+  it('preserves a chartless response with an older calendar envelope', async () => {
+    const legacyCalendar = { ok: true, panchang: CALENDAR.panchang }
+    mockFetch.mockResolvedValueOnce(Response.json(legacyCalendar))
+    const response = await POST(req(CALENDAR_REQUEST))
+    expect(await response.json()).toEqual(legacyCalendar)
+    expectNoOverlayRead()
   })
 
-  it('never even CALLS the sidecar for a denied caller', async () => {
-    mockRequireChartPermission.mockResolvedValue(
-      new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 })
-    )
-    await POST(req({ ...basePayload, chart_id: VICTIM_CHART }))
-    expect(mockFetch).not.toHaveBeenCalled()
+  it('sends only calendar parameters and omits available stored context', async () => {
+    mockFetch.mockResolvedValueOnce(Response.json({ ...CALENDAR, native_context: LEGACY_CONTEXT }))
+    mockResolveNativeContext.mockResolvedValueOnce({ native_context: STORED_CONTEXT, native_context_error: null })
+    const fields = ['tithi']
+    const response = await POST(req({
+      ...CALENDAR_REQUEST,
+      fields,
+      chart_id: CHART,
+      ayanamsha_id: 'RAMAN',
+      uid: 'other-user',
+      role: 'super_admin',
+      principal: { uid: 'other-user', role: 'super_admin' },
+      birth_details: { name: 'Unrelated request data' },
+    }))
+
+    expect(response.status).toBe(200)
+    expect(mockFetch).toHaveBeenCalledOnce()
+    expect(mockFetch.mock.calls[0][0]).toBe('http://sidecar.invalid/api/compute/panchanga')
+    expect(JSON.parse(mockFetch.mock.calls[0][1].body)).toEqual({ ...CALENDAR_REQUEST, fields })
+    expect(await response.json()).toEqual({ ...CALENDAR, ...UNAVAILABLE })
+    expectNoOverlayRead()
   })
 
-  it('checks permission at READ level against the caller-supplied chart_id', async () => {
-    mockRequireChartPermission.mockResolvedValue(null)
-    await POST(req({ ...basePayload, chart_id: VICTIM_CHART }))
-    expect(mockRequireChartPermission).toHaveBeenCalledWith(
-      expect.objectContaining({ uid: ATTACKER_UID, chartId: VICTIM_CHART, access: 'read' })
-    )
+  it('preserves the calendar for an older chart request without a frame', async () => {
+    const response = await POST(req({ ...CALENDAR_REQUEST, chart_id: CHART }))
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ ...CALENDAR, ...UNAVAILABLE })
+    expectNoOverlayRead()
   })
 
-  it('ALLOWS an authorized caller — the legitimate personalised path still works', async () => {
-    mockRequireChartPermission.mockResolvedValue(null)
-    const res = await POST(req({ ...basePayload, chart_id: VICTIM_CHART }))
-    expect(res.status).toBe(200)
-    expect(JSON.stringify(await res.json())).toContain(VICTIM_PII)
-  })
-
-  it('ALLOWS a chart_id-less request without any authorization check — public-safe path', async () => {
-    const res = await POST(req(basePayload))
-    expect(res.status).toBe(200)
-    expect(mockRequireChartPermission).not.toHaveBeenCalled()
-    expect(mockFetch).toHaveBeenCalled()
-  })
-
-  // Fail-closed on a malformed chart_id. The guard can only authorize a value
-  // it recognises as a chart id; anything else it must refuse rather than
-  // forward unchecked, because the body is passed to the sidecar VERBATIM and
-  // the sidecar's own parsing is not this route's to assume. A non-string
-  // chart_id that some downstream parser coerces back into one would otherwise
-  // be a guard bypass.
   it.each([
-    ['a number', 12345],
-    ['an array', ['482012f1-710e-4a25-994a-93821f5871aa']],
-    ['an object', { toString: 'x' }],
-    ['null-ish empty string', ''],
-  ])('REFUSES a chart_id that is %s, and never calls the sidecar', async (_label, value) => {
-    mockRequireChartPermission.mockResolvedValue(null)
-    const res = await POST(req({ ...basePayload, chart_id: value }))
-    expect(res.status).toBe(400)
-    expect(mockFetch).not.toHaveBeenCalled()
+    ['denied', CHART],
+    ['unknown', '00000000-0000-4000-8000-000000000002'],
+    ['incomplete', '00000000-0000-4000-8000-000000000003'],
+  ])('returns the same calendar and generic overlay result for %s chart context', async (_case, chartId) => {
+    mockFetch.mockResolvedValueOnce(Response.json({
+      ...CALENDAR,
+      native_context: LEGACY_CONTEXT,
+      native_context_error: 'Legacy private detail',
+    }))
+    const response = await POST(req({ ...CALENDAR_REQUEST, chart_id: chartId }))
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ ...CALENDAR, ...UNAVAILABLE })
+    expect(JSON.parse(mockFetch.mock.calls[0][1].body)).toEqual(CALENDAR_REQUEST)
+    expectNoOverlayRead()
   })
 
-  it('DENIES an unauthenticated caller outright', async () => {
-    mockGetServerUser.mockResolvedValue(null)
-    const res = await POST(req({ ...basePayload, chart_id: VICTIM_CHART }))
-    expect(res.status).toBe(401)
+  it('drops legacy context from a chartless response without looking up chart data', async () => {
+    mockFetch.mockResolvedValueOnce(Response.json({
+      ...CALENDAR,
+      native_context: LEGACY_CONTEXT,
+      native_context_error: 'Legacy private detail',
+    }))
+    const response = await POST(req(CALENDAR_REQUEST))
+    expect(await response.json()).toEqual(CALENDAR)
+    expectNoOverlayRead()
+  })
+
+  it('keeps the calendar available without consulting an unavailable identity store', async () => {
+    mockGetPrincipalRole.mockRejectedValueOnce(new Error('Private identity-store detail'))
+    const response = await POST(req({ ...CALENDAR_REQUEST, chart_id: CHART }))
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ ...CALENDAR, ...UNAVAILABLE })
+    expectNoOverlayRead()
+  })
+
+  it.each([12345, [CHART], { chart_id: CHART }, '', '   '].map((chart_id) => ({ chart_id })))(
+    'refuses malformed chart_id %j before sidecar or overlay reads',
+    async ({ chart_id }) => {
+      const response = await POST(req({ ...CALENDAR_REQUEST, chart_id }))
+      expect(response.status).toBe(400)
+      expect(mockFetch).not.toHaveBeenCalled()
+      expectNoOverlayRead()
+    },
+  )
+
+  it.each([{ lat: { chart_id: CHART } }, { fields: [{ chart_id: CHART }] }])('refuses nested calendar input %j without forwarding it', async (input) => {
+    const response = await POST(req({ ...CALENDAR_REQUEST, chart_id: CHART, ...input }))
+    expect(response.status).toBe(500)
     expect(mockFetch).not.toHaveBeenCalled()
+    expectNoOverlayRead()
+  })
+
+  it('refuses unauthenticated callers before either read', async () => {
+    mockGetServerUser.mockResolvedValueOnce(null)
+    const response = await POST(req({ ...CALENDAR_REQUEST, chart_id: CHART }))
+    expect(response.status).toBe(401)
+    expect(mockFetch).not.toHaveBeenCalled()
+    expectNoOverlayRead()
+  })
+
+  it.each([[422, 500], [500, 503], [503, 503]])('maps sidecar HTTP %i to %i without an overlay read', async (sidecarStatus, routeStatus) => {
+    mockFetch.mockResolvedValueOnce(Response.json({ detail: 'Fixture error' }, { status: sidecarStatus }))
+    const response = await POST(req({ ...CALENDAR_REQUEST, chart_id: CHART }))
+    expect(response.status).toBe(routeStatus)
+    expectNoOverlayRead()
+  })
+
+  it('preserves service unavailability on a transport failure without an overlay read', async () => {
+    mockFetch.mockRejectedValueOnce(new Error('Fixture transport failure'))
+    const response = await POST(req({ ...CALENDAR_REQUEST, chart_id: CHART }))
+    expect(response.status).toBe(503)
+    expectNoOverlayRead()
+  })
+
+  it('reports a malformed sidecar response without an overlay read', async () => {
+    mockFetch.mockResolvedValueOnce(new Response('malformed JSON'))
+    const response = await POST(req({ ...CALENDAR_REQUEST, chart_id: CHART }))
+    expect(response.status).toBe(500)
+    expectNoOverlayRead()
+  })
+
+  it('does not load overlay context from an unsuccessful calendar envelope', async () => {
+    const failedCalendar = { ok: false, panchang: null }
+    mockFetch.mockResolvedValueOnce(Response.json(failedCalendar))
+    const response = await POST(req({ ...CALENDAR_REQUEST, chart_id: CHART }))
+    expect(await response.json()).toEqual(failedCalendar)
+    expectNoOverlayRead()
   })
 })

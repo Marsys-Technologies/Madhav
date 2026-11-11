@@ -132,12 +132,73 @@ describe('clients/[id] workspace — access control', () => {
     mockResolveAccess.mockResolvedValue(null)
     await expect(renderPage()).rejects.toThrow('NEXT_REDIRECT')
     expect(mockRedirect).toHaveBeenCalledWith('/login')
+    expect(mockQuery).not.toHaveBeenCalled()
+    expect(mockReadinessMap).not.toHaveBeenCalled()
+    expect(mockWorkspaceSummary).not.toHaveBeenCalled()
   })
 
   it('redirects a caller without access to /dashboard', async () => {
     setAccess('deny')
     await expect(renderPage()).rejects.toThrow('NEXT_REDIRECT')
     expect(mockRedirect).toHaveBeenCalledWith('/dashboard')
+    expect(mockQuery).not.toHaveBeenCalled()
+    expect(mockReadinessMap).not.toHaveBeenCalled()
+    expect(mockWorkspaceSummary).not.toHaveBeenCalled()
+  })
+
+  it('redirects when an authorized chart disappears before the identity read', async () => {
+    setAccess('all')
+    mockQuery.mockResolvedValueOnce({ rows: [] })
+
+    await expect(renderPage()).rejects.toThrow('NEXT_REDIRECT')
+    expect(mockRedirect).toHaveBeenCalledWith('/dashboard')
+    expect(mockQuery).toHaveBeenCalledTimes(1)
+    expect(mockReadinessMap).not.toHaveBeenCalled()
+    expect(mockWorkspaceSummary).not.toHaveBeenCalled()
+  })
+
+  it('propagates an identity query failure before loading any other chart data', async () => {
+    setAccess('all')
+    const failure = new Error('Chart identity unavailable')
+    mockQuery.mockRejectedValueOnce(failure)
+
+    await expect(renderPage()).rejects.toBe(failure)
+    expect(mockRedirect).not.toHaveBeenCalled()
+    expect(mockQuery).toHaveBeenCalledTimes(1)
+    expect(mockReadinessMap).not.toHaveBeenCalled()
+    expect(mockWorkspaceSummary).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['owner', 'all', 'guest'],
+    ['super admin', 'all', 'super_admin'],
+    ['view grantee', 'view', 'guest'],
+  ] as const)('reads the authorized chart for a %s before loading its data', async (_actor, permission, role) => {
+    setAccess(permission, role)
+    mockQuery.mockImplementationOnce(async () => {
+      await Promise.resolve()
+      expect(mockQuery).toHaveBeenCalledTimes(1)
+      expect(mockReadinessMap).not.toHaveBeenCalled()
+      expect(mockWorkspaceSummary).not.toHaveBeenCalled()
+      return { rows: [CHART_ROW] }
+    })
+
+    const { doc } = await renderPage()
+    expect(mockResolveAccess).toHaveBeenCalledExactlyOnceWith(TEST_CHART_ID)
+    expect(mockResolveAccess).toHaveBeenCalledBefore(mockQuery)
+    expect(mockQuery).toHaveBeenNthCalledWith(
+      1,
+      'SELECT id,name,birth_date::text,birth_time::text,birth_place,timezone_id,ayanamsa FROM charts WHERE id=$1',
+      [TEST_CHART_ID],
+    )
+    expect(mockQuery.mock.calls.map(([, args]) => args)).toEqual([
+      [TEST_CHART_ID],
+      [TEST_CHART_ID, 'lahiri_chitrapaksha'],
+      [TEST_CHART_ID],
+    ])
+    expect(mockReadinessMap).toHaveBeenCalledExactlyOnceWith([TEST_CHART_ID])
+    expect(mockWorkspaceSummary).toHaveBeenCalledExactlyOnceWith(TEST_CHART_ID, 'lahiri_chitrapaksha')
+    expect(doc.querySelector('.j1-chart-info h2')?.textContent).toBe(CHART_ROW.name)
   })
 
   it('a view grantee gets Paripraśna and Pañcāṅga but no Nirmāṇa and no secondary actions', async () => {

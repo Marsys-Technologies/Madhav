@@ -24,6 +24,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Principal } from '../types.js'
 import { computeKalaNow } from '../tools/kala_views/now.js'
 
+vi.mock('google-auth-library', () => ({
+  GoogleAuth: class {
+    getIdTokenClient() {
+      return Promise.reject(new Error('No workload identity in this fixture'))
+    }
+  },
+}))
+
 const TEST_CHART_ID = '00000000-0000-0000-0000-000000000001'
 const TEST_PRINCIPAL: Principal = { user_uid: 'test-uid', key_id: 'test-key', role: 'guest' }
 
@@ -68,6 +76,7 @@ function mockRegistryFetch(opts: {
   reachable: boolean
   panchangaReachable?: boolean
   natalReachable?: boolean
+  storedMoonSign?: number
   panchang?: ReturnType<typeof panchangPayload>
   nativeContext?: typeof NATIVE_CONTEXT | null
   natalRows?: typeof NATAL_ROWS
@@ -83,6 +92,8 @@ function mockRegistryFetch(opts: {
     } else if (body.uri === 'marsys://tool/L0/call_panchanga_service') {
       if (opts.panchangaReachable === false) throw new Error('panchanga service unreachable in test')
       inner = { panchang: opts.panchang ?? panchangPayload({}), native_context: opts.nativeContext === undefined ? NATIVE_CONTEXT : opts.nativeContext }
+    } else if (body.uri === 'marsys://tool/L1/get_dignity' && opts.storedMoonSign !== undefined) {
+      inner = { rows: [{ fact_id: 'fact-moon-sign', fact_subject: 'MOON', fact_key: 'sign_num', fact_value_num: opts.storedMoonSign }] }
     } else if (body.uri === 'marsys://tool/L1/get_panchanga') {
       if (opts.natalReachable === false) throw new Error('L1 get_panchanga unreachable in test')
       inner = { rows: opts.natalRows ?? NATAL_ROWS }
@@ -152,38 +163,34 @@ describe('kala_now_get W1 join — hora_now (item 29)', () => {
 describe('kala_now_get W1 join — chandrashtama (item 29)', () => {
   it('is_chandrashtama=true when transit Moon is house 8 from natal Moon', async () => {
     // native Moon sign_id=1 (Aries), transit Moon sign_id=8 (Scorpio) → house 8
-    vi.stubGlobal('fetch', mockRegistryFetch({ reachable: true, panchang: panchangPayload({ moonSignId: 8 }) }))
+    vi.stubGlobal('fetch', mockRegistryFetch({ reachable: true, storedMoonSign: 1, panchang: panchangPayload({ moonSignId: 8 }) }))
     const result = await computeKalaNow(TEST_CHART_ID, {}, TEST_PRINCIPAL)
-    // ṢAḌ-DARŚANA W1 verify-reopen (§N.5): chandrāṣṭama now takes the natal Moon rāśi from
-    // L1 `chart_facts` when available, and DISCLOSES which authority it used. This mock does
-    // not stub `get_dignity`, so the L1 fact is absent and the documented fallback to the
-    // panchāṅga service's own re-derivation applies — asserted explicitly here rather than
-    // left implicit, because "which authority produced this number" is exactly the question
-    // §N.5 exists to make answerable.
     expect(result.chandrashtama).toEqual({
       is_chandrashtama: true,
       house_from_natal_moon: 8,
       natal_moon_sign_id: 1,
       transit_moon_sign_id: 8,
-      natal_moon_sign_source: 'panchanga_native_context',
-      natal_moon_sign_fact_id: null,
+      natal_moon_sign_source: 'l1_chart_facts',
+      natal_moon_sign_fact_id: 'fact-moon-sign',
       native_context_agrees_with_l1: null,
     })
   })
 
   it('is_chandrashtama=false when transit Moon is in the natal Moon sign (house 1)', async () => {
-    vi.stubGlobal('fetch', mockRegistryFetch({ reachable: true, panchang: panchangPayload({ moonSignId: 1 }) }))
+    vi.stubGlobal('fetch', mockRegistryFetch({ reachable: true, storedMoonSign: 1, panchang: panchangPayload({ moonSignId: 1 }) }))
     const result = await computeKalaNow(TEST_CHART_ID, {}, TEST_PRINCIPAL)
     expect(result.chandrashtama?.is_chandrashtama).toBe(false)
     expect(result.chandrashtama?.house_from_natal_moon).toBe(1)
   })
 
-  it('honest_empty when native_context could not be resolved', async () => {
-    vi.stubGlobal('fetch', mockRegistryFetch({ reachable: true, nativeContext: null }))
-    const result = await computeKalaNow(TEST_CHART_ID, {}, TEST_PRINCIPAL)
-    expect(result.chandrashtama).toBeNull()
-    const byConcept = Object.fromEntries(result.coverage.map((c) => [c.concept, c]))
-    expect(byConcept['chandrashtama']?.state).toBe('honest_empty')
+  it('honest_empty without a stored natal Moon, even when an old web sends private context', async () => {
+    for (const nativeContext of [null, NATIVE_CONTEXT]) {
+      vi.stubGlobal('fetch', mockRegistryFetch({ reachable: true, nativeContext }))
+      const result = await computeKalaNow(TEST_CHART_ID, {}, TEST_PRINCIPAL)
+      expect(result.chandrashtama).toBeNull()
+      const byConcept = Object.fromEntries(result.coverage.map((c) => [c.concept, c]))
+      expect(byConcept['chandrashtama']?.state).toBe('honest_empty')
+    }
   })
 })
 
