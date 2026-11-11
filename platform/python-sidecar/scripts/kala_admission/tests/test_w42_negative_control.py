@@ -18,9 +18,12 @@ import sys
 from datetime import date, timedelta
 from pathlib import Path
 
+import pytest
+
 # Make kala_admission importable
 sys.path.insert(0, str(Path(__file__).parents[2]))
 
+from kala_admission import w42_negative_control  # noqa: E402
 from kala_admission.curve import DashaPeriod  # noqa: E402
 from kala_admission.lel import LelEvent, TEST_SPLIT_BOUNDARY  # noqa: E402
 from kala_admission.w42_negative_control import (  # noqa: E402
@@ -188,7 +191,21 @@ def test_p99_gte_p95():
 
 # ── Test 5: report JSON has required fields ───────────────────────────────────
 
-def test_report_has_required_fields():
+@pytest.fixture
+def synthetic_report(monkeypatch):
+    periods = [
+        DashaPeriod(1, "Jupiter", date(1984, 1, 1), date(1998, 12, 31)),
+        DashaPeriod(1, "Saturn", date(1999, 1, 1), date(2023, 1, 1)),
+        DashaPeriod(2, "Venus", date(1984, 1, 1), date(1992, 12, 31)),
+        DashaPeriod(2, "Mercury", date(1993, 1, 1), date(2023, 1, 1)),
+    ]
+    monkeypatch.setattr(w42_negative_control, "load_train_events", _toy_events)
+    monkeypatch.setattr(w42_negative_control, "load_dasha_periods", lambda: periods)
+    monkeypatch.setattr(w42_negative_control, "load_dasha_lord_capability", lambda: {"lords": _toy_lord_capability()})
+    return build_negative_control_report
+
+
+def test_report_has_required_fields(synthetic_report):
     """The report dict must contain every key specified in the W4.2 task spec."""
     required_keys = [
         "harness",
@@ -215,7 +232,7 @@ def test_report_has_required_fields():
     ]
 
     # Run with a very small n_shuffles so the test finishes quickly
-    report = build_negative_control_report(n_shuffles=10, seed=42)
+    report = synthetic_report(n_shuffles=10, seed=42)
 
     for k in required_keys:
         assert k in report, f"missing top-level key: {k!r}"
@@ -230,21 +247,22 @@ def test_report_has_required_fields():
     assert report["wave"] == "W4.2"
     assert report["n_shuffles"] == 10
     assert len(report["shuffle_hit_rates"]) == 10
+    assert report["real_score"]["scored_count"] == len(_toy_events())
     assert isinstance(report["exceeds_noise_floor"], bool)
     assert isinstance(report["margin_above_floor"], float)
 
 
-def test_report_hit_rate_in_unit_interval():
+def test_report_hit_rate_in_unit_interval(synthetic_report):
     """All hit_rates (real and shuffled) must be in [0.0, 1.0]."""
-    report = build_negative_control_report(n_shuffles=5, seed=7)
+    report = synthetic_report(n_shuffles=5, seed=7)
     for hr in report["shuffle_hit_rates"]:
         assert 0.0 <= hr <= 1.0, f"shuffle hit_rate out of bounds: {hr}"
     assert 0.0 <= report["real_score"]["hit_rate"] <= 1.0
 
 
-def test_report_margin_consistent_with_components():
+def test_report_margin_consistent_with_components(synthetic_report):
     """margin_above_floor must equal real_score.hit_rate - noise_floor_upper_bound."""
-    report = build_negative_control_report(n_shuffles=5, seed=13)
+    report = synthetic_report(n_shuffles=5, seed=13)
     nf = report["noise_floor"]
     upper_bound = nf["mean"] + 2 * nf["std"]
     expected_margin = report["real_score"]["hit_rate"] - upper_bound
@@ -253,18 +271,18 @@ def test_report_margin_consistent_with_components():
     )
 
 
-def test_shuffle_is_deterministic_per_seed():
+def test_shuffle_is_deterministic_per_seed(synthetic_report):
     """Two runs with the same seed must produce identical shuffle_hit_rates."""
-    r1 = build_negative_control_report(n_shuffles=10, seed=42)
-    r2 = build_negative_control_report(n_shuffles=10, seed=42)
+    r1 = synthetic_report(n_shuffles=10, seed=42)
+    r2 = synthetic_report(n_shuffles=10, seed=42)
     assert r1["shuffle_hit_rates"] == r2["shuffle_hit_rates"]
 
 
-def test_different_seeds_produce_different_distributions():
+def test_different_seeds_produce_different_distributions(synthetic_report):
     """Different seeds should produce different shuffle_hit_rates lists
     (with overwhelming probability for any non-trivial event set)."""
-    r1 = build_negative_control_report(n_shuffles=20, seed=1)
-    r2 = build_negative_control_report(n_shuffles=20, seed=9999)
+    r1 = synthetic_report(n_shuffles=20, seed=1)
+    r2 = synthetic_report(n_shuffles=20, seed=9999)
     # If all hit rates are identical under both seeds the scoring surface is
     # degenerate (constant output) -- a useful signal but not expected.
     # We just assert the lists are not byte-identical, which is the minimal bar.
