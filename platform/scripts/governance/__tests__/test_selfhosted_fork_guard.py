@@ -173,7 +173,7 @@ def test_only_the_named_db_heavy_jobs_can_run_self_hosted_and_each_keeps_a_probe
     for key in movable:
         assert guard.runs_on_is_fenced(jobs[key]['runs-on']), key
         assert 'db-runner-probe' in jobs[key]['needs'], key
-        # `!cancelled()` keeps the job running (on its ubuntu-latest fallback) even if the probe is skipped or errors.
+        # `!cancelled()` keeps the job running (on its ubuntu-24.04 fallback) even if the probe is skipped or errors.
         assert '!cancelled()' in jobs[key]['if'], key
         assert jobs[key]['services']['postgres']['image'].startswith('mirror.gcr.io/library/postgres:'), key
 
@@ -196,8 +196,8 @@ def test_the_probe_job_is_github_hosted_and_never_fails_the_pipeline():
     assert guard.provably_hosted(probe['runs-on'])
     assert 'needs' not in probe and 'if' not in probe
     script = probe['steps'][0]['run']
-    # the fallback answer is ubuntu-latest, and the only way out of the script is `exit 0` through choose()
-    assert "fallback='\"ubuntu-latest\"'" in script and 'exit 1' not in script
+    # the fallback answer is ubuntu-24.04, and the only way out of the script is `exit 0` through choose()
+    assert "fallback='\"ubuntu-24.04\"'" in script and 'exit 1' not in script
 
 
 def test_the_probe_uses_no_secret_and_no_runner_api_call():
@@ -214,7 +214,7 @@ def test_the_probe_uses_no_secret_and_no_runner_api_call():
 
 # -- claim: DB jobs route to madhav-db only on a fresh, parseable heartbeat (<= 180 s old, <= 60 s in the future) ---------------------
 SELF_HOSTED = '["self-hosted","madhav-db"]'
-UBUNTU = '"ubuntu-latest"'
+UBUNTU = '"ubuntu-24.04"'
 
 
 def _iso(offset_seconds: float) -> str:

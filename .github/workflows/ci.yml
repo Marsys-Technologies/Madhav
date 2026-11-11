@@ -129,7 +129,7 @@ jobs:
   generated-artifacts:
     # A5 D-33: compile once from this exact source; all existing guards check these bytes.
     name: Generated Artifacts (source-bound)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
       contents: read
@@ -171,7 +171,7 @@ jobs:
     # A broken/empty PR diff fails this job and the required event-contract aggregate.
     # Full events select all heavy contexts independently of these outputs.
     name: Change Classification
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       contents: read
@@ -214,7 +214,7 @@ jobs:
 
   # SR-SELFHOSTED-SPLIT (OWNER-SELFHOSTED-SPLIT-20261018) + SR-RUNNER-PROBE-NOSECRET: the DB-heavy jobs (Kāla DB
   # tests, the DB Integration shards and the Gochara A5.5f / C37 / C38 DB jobs) run on the owner's own ephemeral
-  # `madhav-db` runners when one is online, and on ubuntu-latest otherwise. Nothing waits on a sleeping machine: this
+  # `madhav-db` runners when one is online, and on ubuntu-24.04 otherwise. Nothing waits on a sleeping machine: this
   # probe runs on a GitHub-hosted runner, reads a heartbeat and publishes the `runs-on` value those jobs use.
   #
   # Heartbeat: a launchd job on the owner's Mac sets the repository VARIABLE MADHAV_DB_ONLINE to the current UTC time
@@ -222,20 +222,20 @@ jobs:
   # and never writes otherwise. No secret and no GitHub API call are involved here. The DB jobs move to madhav-db only
   # when the timestamp parses AND is at most 180 s older than this job's own clock (a value more than 60 s in the
   # future is clock skew or garbage, not a heartbeat). Missing, unparsable, future-dated, stale, kill switch or fork
-  # PR all answer ubuntu-latest, and the step always exits 0, so a broken probe can never skip or fail a DB job.
+  # PR all answer ubuntu-24.04, and the step always exits 0, so a broken probe can never skip or fail a DB job.
   #
   # Same job, same `name:` -- there is no second "mirror" job, so no required or aggregate check changes name,
   # none can report twice, and none is skipped on a full event (full-suite reads a skip there as a failure).
   # The fork fence lives in each DB job's `runs-on` expression (guard enforced by
-  # platform/scripts/governance/check_selfhosted_fork_guard.py): a fork PR gets ubuntu-latest and never a
+  # platform/scripts/governance/check_selfhosted_fork_guard.py): a fork PR gets ubuntu-24.04 and never a
   # self-hosted label. No workflow uses pull_request_target on a self-hosted label.
   #
   # Operation (runbook: 00_ARCHITECTURE/briefs/kalayantra/fleet/SELFHOSTED_RUNNERS_v1_1.md): variable not written or
-  # older than 180 s = always ubuntu-latest. Kill switch without a PR: set the repository variable
+  # older than 180 s = always ubuntu-24.04. Kill switch without a PR: set the repository variable
   # MADHAV_DB_ENABLED=false.
   db-runner-probe:
     name: DB runner probe (is a madhav-db runner online?)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 3
     permissions:
       contents: read
@@ -250,28 +250,28 @@ jobs:
         run: |
           set -u
           choose() { echo "runs_on=$1" >> "$GITHUB_OUTPUT"; echo "::notice title=db-runner-probe::$2"; exit 0; }
-          fallback='"ubuntu-latest"'
+          fallback='"ubuntu-24.04"'
           max_age=180
           max_skew=60
-          [ "${DB_ENABLED:-true}" = "false" ] && choose "$fallback" "MADHAV_DB_ENABLED=false: DB jobs use ubuntu-latest"
+          [ "${DB_ENABLED:-true}" = "false" ] && choose "$fallback" "MADHAV_DB_ENABLED=false: DB jobs use ubuntu-24.04"
           hb="${HEARTBEAT:-}"
-          [ -n "$hb" ] || choose "$fallback" "no MADHAV_DB_ONLINE heartbeat: DB jobs use ubuntu-latest"
+          [ -n "$hb" ] || choose "$fallback" "no MADHAV_DB_ONLINE heartbeat: DB jobs use ubuntu-24.04"
           case "$hb" in
             [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]Z) ;;
-            *) choose "$fallback" "MADHAV_DB_ONLINE is not an ISO 8601 UTC timestamp: DB jobs use ubuntu-latest" ;;
+            *) choose "$fallback" "MADHAV_DB_ONLINE is not an ISO 8601 UTC timestamp: DB jobs use ubuntu-24.04" ;;
           esac
           beat="$(python3 -c 'import calendar, sys, time; print(calendar.timegm(time.strptime(sys.argv[1], "%Y-%m-%dT%H:%M:%SZ")))' "$hb" 2>/dev/null)" || beat=""
-          case "$beat" in ''|*[!0-9]*) choose "$fallback" "MADHAV_DB_ONLINE does not parse as a date: DB jobs use ubuntu-latest" ;; esac
+          case "$beat" in ''|*[!0-9]*) choose "$fallback" "MADHAV_DB_ONLINE does not parse as a date: DB jobs use ubuntu-24.04" ;; esac
           age=$(( $(date -u +%s) - beat ))
-          [ "$age" -ge $(( -max_skew )) ] || choose "$fallback" "heartbeat is ${age}s in the future (> ${max_skew}s skew): DB jobs use ubuntu-latest"
-          [ "$age" -le "$max_age" ] || choose "$fallback" "heartbeat is ${age}s old (> ${max_age}s): DB jobs use ubuntu-latest"
+          [ "$age" -ge $(( -max_skew )) ] || choose "$fallback" "heartbeat is ${age}s in the future (> ${max_skew}s skew): DB jobs use ubuntu-24.04"
+          [ "$age" -le "$max_age" ] || choose "$fallback" "heartbeat is ${age}s old (> ${max_age}s): DB jobs use ubuntu-24.04"
           choose '["self-hosted","madhav-db"]' "heartbeat ${age}s old: DB jobs use madhav-db"
 
   typecheck:
     needs: [changes, generated-artifacts]
     if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     name: TypeScript (src only)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: platform
@@ -309,7 +309,7 @@ jobs:
     needs: [changes, generated-artifacts]
     if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     name: TypeScript — platform-mcp
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: platform-mcp
@@ -330,7 +330,7 @@ jobs:
     if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     # DB fixture contracts moved to unit-db-tests; full-suite retains their protected gate.
     name: Unit Tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # A healthy complete suite is measured in seconds locally and bounded minutes in
     # GitHub Actions. Fail explicitly rather than consuming the platform's six-hour
     # default if a hosted runner loses process progress.
@@ -423,10 +423,10 @@ jobs:
       ${{ !cancelled() && (((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request'
       || github.event_name == 'merge_group') && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'kala-db-tests'))) }}
     name: Kāla DB Tests (throwaway Postgres)
-    # SR-SELFHOSTED-SPLIT: madhav-db when the fork fence passes AND the probe saw a runner online; otherwise (fork PR, no runner, kill switch) ubuntu-latest. Same job, same check name.
+    # SR-SELFHOSTED-SPLIT: madhav-db when the fork fence passes AND the probe saw a runner online; otherwise (fork PR, no runner, kill switch) ubuntu-24.04. Same job, same check name.
     runs-on: >-
-      ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON(needs.db-runner-probe.outputs.runs_on || '"ubuntu-latest"') ||
-      'ubuntu-latest' }}
+      ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON(needs.db-runner-probe.outputs.runs_on || '"ubuntu-24.04"') ||
+      'ubuntu-24.04' }}
     services:
       postgres:
         image: mirror.gcr.io/library/postgres:16
@@ -521,7 +521,7 @@ jobs:
       ${{ !cancelled() && (((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request'
       || github.event_name == 'merge_group') && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'k3-sealed-db-tests'))) }}
     name: K3 sealed negative-space contract (throwaway Postgres)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
       CI_PR_DB_PROFILES: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group') && needs.changes.outputs.db_profiles || '' }}
@@ -594,10 +594,10 @@ jobs:
       fail-fast: false
       matrix:
         shard: [1, 2, 3, 4]
-    # SR-SELFHOSTED-SPLIT: madhav-db when the fork fence passes AND the probe saw a runner online; otherwise (fork PR, no runner, kill switch) ubuntu-latest. Same job, same check name.
+    # SR-SELFHOSTED-SPLIT: madhav-db when the fork fence passes AND the probe saw a runner online; otherwise (fork PR, no runner, kill switch) ubuntu-24.04. Same job, same check name.
     runs-on: >-
-      ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON(needs.db-runner-probe.outputs.runs_on || '"ubuntu-latest"') ||
-      'ubuntu-latest' }}
+      ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON(needs.db-runner-probe.outputs.runs_on || '"ubuntu-24.04"') ||
+      'ubuntu-24.04' }}
     defaults:
       run:
         working-directory: platform
@@ -1659,7 +1659,7 @@ jobs:
     # merge_group-only: on a PR the shards are skipped and this check says so, passing ONLY when `changes` succeeded and the
     # event is a pull_request whose scoping proved the shards not applicable. Anything else unexpected is red.
     if: ${{ always() }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - name: Every DB shard succeeded; a PR skip passes only when the scoping proved it not applicable
@@ -1711,7 +1711,7 @@ jobs:
       fail-fast: false
       matrix:
         body: [Sun, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     defaults:
       run:
@@ -1786,10 +1786,10 @@ jobs:
       fail-fast: false
       matrix:
         shard: [1, 2, 3, 4]
-    # SR-SELFHOSTED-SPLIT: madhav-db when the fork fence passes AND the probe saw a runner online; otherwise (fork PR, no runner, kill switch) ubuntu-latest. Same job, same check name.
+    # SR-SELFHOSTED-SPLIT: madhav-db when the fork fence passes AND the probe saw a runner online; otherwise (fork PR, no runner, kill switch) ubuntu-24.04. Same job, same check name.
     runs-on: >-
-      ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON(needs.db-runner-probe.outputs.runs_on || '"ubuntu-latest"') ||
-      'ubuntu-latest' }}
+      ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON(needs.db-runner-probe.outputs.runs_on || '"ubuntu-24.04"') ||
+      'ubuntu-24.04' }}
     timeout-minutes: 45
     defaults:
       run:
@@ -1855,7 +1855,7 @@ jobs:
     if: >-
       ${{ always() && (((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request' ||
       github.event_name == 'merge_group') && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'gochara-a55-replace-chain'))) }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - name: Every DB shard succeeded (failure, cancellation and skips are fatal)
@@ -1875,10 +1875,10 @@ jobs:
       ${{ !cancelled() && (((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request'
       || github.event_name == 'merge_group') && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'gochara-a55-slice-transitions'))) }}
     name: Gochara A5.5f - test-slice transitions (real writer, throwaway Postgres)
-    # SR-SELFHOSTED-SPLIT: madhav-db when the fork fence passes AND the probe saw a runner online; otherwise (fork PR, no runner, kill switch) ubuntu-latest. Same job, same check name.
+    # SR-SELFHOSTED-SPLIT: madhav-db when the fork fence passes AND the probe saw a runner online; otherwise (fork PR, no runner, kill switch) ubuntu-24.04. Same job, same check name.
     runs-on: >-
-      ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON(needs.db-runner-probe.outputs.runs_on || '"ubuntu-latest"') ||
-      'ubuntu-latest' }}
+      ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON(needs.db-runner-probe.outputs.runs_on || '"ubuntu-24.04"') ||
+      'ubuntu-24.04' }}
     timeout-minutes: 25
     defaults:
       run:
@@ -1939,10 +1939,10 @@ jobs:
       fail-fast: false
       matrix:
         shard: [1, 2, 3]
-    # SR-SELFHOSTED-SPLIT: madhav-db when the fork fence passes AND the probe saw a runner online; otherwise (fork PR, no runner, kill switch) ubuntu-latest. Same job, same check name.
+    # SR-SELFHOSTED-SPLIT: madhav-db when the fork fence passes AND the probe saw a runner online; otherwise (fork PR, no runner, kill switch) ubuntu-24.04. Same job, same check name.
     runs-on: >-
-      ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON(needs.db-runner-probe.outputs.runs_on || '"ubuntu-latest"') ||
-      'ubuntu-latest' }}
+      ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON(needs.db-runner-probe.outputs.runs_on || '"ubuntu-24.04"') ||
+      'ubuntu-24.04' }}
     timeout-minutes: 45
     defaults:
       run:
@@ -2002,7 +2002,7 @@ jobs:
     if: >-
       ${{ always() && (((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request' ||
       github.event_name == 'merge_group') && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'gochara-a55-teardown'))) }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - name: Every DB shard succeeded (failure, cancellation and skips are fatal)
@@ -2022,10 +2022,10 @@ jobs:
       ${{ !cancelled() && (((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request'
       || github.event_name == 'merge_group') && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'gochara-a55-teardown-round2'))) }}
     name: Gochara C38 - the small-test teardown, round 2 (ownership, end state, rehearsal) (real writer, throwaway Postgres)
-    # SR-SELFHOSTED-SPLIT: madhav-db when the fork fence passes AND the probe saw a runner online; otherwise (fork PR, no runner, kill switch) ubuntu-latest. Same job, same check name.
+    # SR-SELFHOSTED-SPLIT: madhav-db when the fork fence passes AND the probe saw a runner online; otherwise (fork PR, no runner, kill switch) ubuntu-24.04. Same job, same check name.
     runs-on: >-
-      ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON(needs.db-runner-probe.outputs.runs_on || '"ubuntu-latest"') ||
-      'ubuntu-latest' }}
+      ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON(needs.db-runner-probe.outputs.runs_on || '"ubuntu-24.04"') ||
+      'ubuntu-24.04' }}
     timeout-minutes: 45
     defaults:
       run:
@@ -2085,10 +2085,10 @@ jobs:
       fail-fast: false
       matrix:
         shard: [1, 2]
-    # SR-SELFHOSTED-SPLIT: madhav-db when the fork fence passes AND the probe saw a runner online; otherwise (fork PR, no runner, kill switch) ubuntu-latest. Same job, same check name.
+    # SR-SELFHOSTED-SPLIT: madhav-db when the fork fence passes AND the probe saw a runner online; otherwise (fork PR, no runner, kill switch) ubuntu-24.04. Same job, same check name.
     runs-on: >-
-      ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON(needs.db-runner-probe.outputs.runs_on || '"ubuntu-latest"') ||
-      'ubuntu-latest' }}
+      ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON(needs.db-runner-probe.outputs.runs_on || '"ubuntu-24.04"') ||
+      'ubuntu-24.04' }}
     timeout-minutes: 45
     defaults:
       run:
@@ -2148,7 +2148,7 @@ jobs:
     if: >-
       ${{ always() && (((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request' ||
       github.event_name == 'merge_group') && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'gochara-a55-teardown-round3'))) }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - name: Every DB shard succeeded (failure, cancellation and skips are fatal)
@@ -2169,7 +2169,7 @@ jobs:
       ${{ !cancelled() && (((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request'
       || github.event_name == 'merge_group') && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'gochara-a55-measuring-build'))) }}
     name: Gochara measuring build - horizon, basis, state guard, fired cap (real runner, throwaway Postgres)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     defaults:
       run:
@@ -2231,7 +2231,7 @@ jobs:
       ${{ !cancelled() && (((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request'
       || github.event_name == 'merge_group') && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'gochara-j5s-full-class-seal'))) }}
     name: J5S full-class independent verifier and approved seal (local fixture)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 110
     defaults:
       run:
@@ -2289,10 +2289,10 @@ jobs:
       ${{ !cancelled() && (((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request'
       || github.event_name == 'merge_group') && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'gochara-a55-dispatch'))) }}
     name: Gochara C37 - the small-test dispatch (real runner, throwaway Postgres)
-    # SR-SELFHOSTED-SPLIT: madhav-db when the fork fence passes AND the probe saw a runner online; otherwise (fork PR, no runner, kill switch) ubuntu-latest. Same job, same check name.
+    # SR-SELFHOSTED-SPLIT: madhav-db when the fork fence passes AND the probe saw a runner online; otherwise (fork PR, no runner, kill switch) ubuntu-24.04. Same job, same check name.
     runs-on: >-
-      ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON(needs.db-runner-probe.outputs.runs_on || '"ubuntu-latest"') ||
-      'ubuntu-latest' }}
+      ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON(needs.db-runner-probe.outputs.runs_on || '"ubuntu-24.04"') ||
+      'ubuntu-24.04' }}
     timeout-minutes: 25
     defaults:
       run:
@@ -2347,7 +2347,7 @@ jobs:
       ${{ !cancelled() && (((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request'
       || github.event_name == 'merge_group') && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'gochara-a55-g12-mutations'))) }}
     name: Gochara P06 - G12 mutations (throwaway Postgres)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     strategy:
       fail-fast: false
@@ -2407,7 +2407,7 @@ jobs:
       ${{ !cancelled() && (((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request'
       || github.event_name == 'merge_group') && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'gochara-a55-final-rules'))) }}
     name: Gochara P06 - final rules, census, snapshot and storage (real runner, throwaway Postgres)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     defaults:
       run:
@@ -2470,7 +2470,7 @@ jobs:
       ${{ !cancelled() && (((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request'
       || github.event_name == 'merge_group') && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'gochara-a55-p06-legacy'))) }}
     name: Gochara P06 - legacy ports (real runner, throwaway Postgres)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     defaults:
       run:
@@ -2534,10 +2534,10 @@ jobs:
       fail-fast: false
       matrix:
         shard: [1, 2, 3]
-    # SR-SELFHOSTED-SPLIT: madhav-db when the fork fence passes AND the probe saw a runner online; otherwise (fork PR, no runner, kill switch) ubuntu-latest. Same job, same check name.
+    # SR-SELFHOSTED-SPLIT: madhav-db when the fork fence passes AND the probe saw a runner online; otherwise (fork PR, no runner, kill switch) ubuntu-24.04. Same job, same check name.
     runs-on: >-
-      ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON(needs.db-runner-probe.outputs.runs_on || '"ubuntu-latest"') ||
-      'ubuntu-latest' }}
+      ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON(needs.db-runner-probe.outputs.runs_on || '"ubuntu-24.04"') ||
+      'ubuntu-24.04' }}
     timeout-minutes: 30
     defaults:
       run:
@@ -2597,7 +2597,7 @@ jobs:
     if: >-
       ${{ always() && (((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request' ||
       github.event_name == 'merge_group') && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'gochara-a55-round2-runner'))) }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - name: Every DB shard succeeded (failure, cancellation and skips are fatal)
@@ -2622,10 +2622,10 @@ jobs:
       fail-fast: false
       matrix:
         shard: [1, 2, 3]
-    # SR-SELFHOSTED-SPLIT: madhav-db when the fork fence passes AND the probe saw a runner online; otherwise (fork PR, no runner, kill switch) ubuntu-latest. Same job, same check name.
+    # SR-SELFHOSTED-SPLIT: madhav-db when the fork fence passes AND the probe saw a runner online; otherwise (fork PR, no runner, kill switch) ubuntu-24.04. Same job, same check name.
     runs-on: >-
-      ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON(needs.db-runner-probe.outputs.runs_on || '"ubuntu-latest"') ||
-      'ubuntu-latest' }}
+      ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON(needs.db-runner-probe.outputs.runs_on || '"ubuntu-24.04"') ||
+      'ubuntu-24.04' }}
     timeout-minutes: 30
     defaults:
       run:
@@ -2688,7 +2688,7 @@ jobs:
     if: >-
       ${{ always() && (((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request' ||
       github.event_name == 'merge_group') && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'gochara-a55-verifier-fixes'))) }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - name: Every DB shard succeeded (failure, cancellation and skips are fatal)
@@ -2731,7 +2731,7 @@ jobs:
     # of the master plan's named properties) that should fail loudly on the
     # PR that introduces it, not wait for a weekly smoke run.
     name: PRATIJÑĀ v4 Fixture Property Tests (Lane B3)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       CI_PR_DB_PROFILES: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group') && needs.changes.outputs.db_profiles || '' }}
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/pratijna_v4_fixture
@@ -2798,7 +2798,7 @@ jobs:
     needs: [changes, generated-artifacts]
     if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     name: Planner Regression Gate
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     permissions:
       actions: read
@@ -2842,7 +2842,7 @@ jobs:
     needs: [changes, generated-artifacts]
     if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     name: ICR PR Gate (synthetic smoke)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # continue-on-error: true — PERMANENT DESIGN DECISION (not a temp soft-pass)
     # The --dry-run --synthetic invocation tests script importability only.
     # Real ICR gate behavior runs in icr_weekly_scan.yml (Sunday cadence).
@@ -2881,7 +2881,7 @@ jobs:
     # "fix" by deleting the required-context binding later. The scope widening
     # itself (see the comment block below) is real and unaffected by the name.
     name: Secret Scan (unit 0b.2)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Stream B modernization unit 0b.2 — on_red: halt_queue.
     #
     # BLOCKING. No `continue-on-error` — a red job here makes this workflow red,
@@ -2948,7 +2948,7 @@ jobs:
   coverage-gate:
     needs: generated-artifacts
     name: Coverage Gate (COV-S7)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # continue-on-error removed 2026-05-25: M5 Coverage Campaign is COMPLETE and the
     # baseline is now clean (exit 0). Gate is a hard blocker from this point forward.
 
@@ -2979,7 +2979,7 @@ jobs:
   naming-lint:
     needs: generated-artifacts
     name: Naming Governance Gate (unit 0a.0)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     permissions:
       actions: read
@@ -3020,7 +3020,7 @@ jobs:
     # bo_laksana.py P0-5 and registry_bridge.ts P0-1 — see
     # SUDDHA_VACA_FIX_LEDGER_v1_0.md). Stdlib-only script (no pyyaml needed).
     name: Fact-Category Pinning Gate (§5 C.7)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     permissions:
       actions: read
@@ -3110,7 +3110,7 @@ jobs:
     # required-check context — do not rename it. Pinned by
     # test_earned_signal_gate_runs_on_merge_group in __tests__/test_ci_light_gate.py.
     name: Earned-Signal Gate (§N.8)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     permissions:
       actions: read
@@ -3163,7 +3163,7 @@ jobs:
     # tooling, not wired into CI (same rationale as msr_referential_integrity
     # --live and schema_pin_mimamsa_predictions --verify).
     name: Registry Parity + fact_subject Well-Formedness Gate (ADHIṢṬHĀNA A6)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     permissions:
       actions: read
@@ -3217,7 +3217,7 @@ jobs:
     # platform/scripts/governance/ci_shard.py (deterministic, size-balanced, `--verify` fails if any file is in no shard or in two).
     # The aggregate job below keeps the original job name; this one is test steps only.
     name: Governance Tool Tests shard ${{ matrix.shard }}/5
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Shard 1 also runs the J-1a lane step (apt + pip installs, a throwaway cluster, ~5-8 min of DB tests) after the shard pytest and the
     # four discovery steps, which the old 20-minute ceiling did not budget for.
     timeout-minutes: 35
@@ -3344,7 +3344,7 @@ jobs:
       ${{ !cancelled() && (((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request'
       || github.event_name == 'merge_group') && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'governance-readback-tests'))) }}
     name: Governance Gochara readback tests (throwaway Postgres)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
       actions: read
@@ -3455,7 +3455,7 @@ jobs:
     name: Governance Tool Tests (pytest)
     needs: [changes, governance-tool-tests-shard, governance-readback-tests, kala-db-tests, gochara-j5s-full-class-seal]
     if: ${{ always() }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       contents: read
@@ -3524,7 +3524,7 @@ jobs:
     # verifies the whole 4-way partition against its real full collection before running anything (sidecar_shard.py).
     if: ${{ !cancelled() && ((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) }}
     name: Governance Gates py-sidecar shard ${{ matrix.shard }}/4
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # One shard measured ~1/4 of the 21.5-24.9 min serial run; 20 min leaves >2x headroom and still surfaces a runner stall.
     timeout-minutes: 20
     permissions:
@@ -3665,7 +3665,7 @@ jobs:
     # `governance-gates-py-sidecar-shard`) runs here, in the original order, in parallel with the shards. The aggregate
     # `governance-gates` job below carries the original required name. NEVER skips (no `changes` dependency), as before.
     name: Governance Gates static checks (drift / schema / edge / native-literal / Nirmāṇa probe)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
       actions: read
@@ -3911,7 +3911,7 @@ jobs:
     name: Governance Gates (drift / schema / edge / native-literal / py-sidecar)
     needs: [full-suite, governance-gates-static]
     if: ${{ always() }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       contents: read
@@ -3942,7 +3942,7 @@ jobs:
     # now contributes to the required Governance Gates verdict through full-suite.
     # D-29 runs this real-ephemeris matrix on full events only.
     name: Governance Gates — gochara sidecar tests (C23)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
       actions: read
@@ -4056,7 +4056,7 @@ jobs:
     # closes R-19) adds its own kala_now_get serving test the same way — 10/10 green, no
     # pre-existing failures.
     name: Density Census (§N.6)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: platform
@@ -4217,7 +4217,7 @@ jobs:
     # connector job skipped, including when validating a PR head.
     name: Census Battery (D-2 §G master gate)
     if: github.event_name == 'workflow_dispatch' && inputs.census_battery
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: platform
@@ -4247,7 +4247,7 @@ jobs:
       ${{ !cancelled() && (((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request'
       || github.event_name == 'merge_group') && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'unit-db-tests'))) }}
     name: Unit DB contracts (throwaway Postgres)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     defaults:
       run:
@@ -4392,7 +4392,7 @@ jobs:
       unit-db-tests
     ]
     if: ${{ always() }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - name: All expected heavy jobs passed
