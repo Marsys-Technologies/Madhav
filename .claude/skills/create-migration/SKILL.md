@@ -9,13 +9,18 @@ User invokes: `/create-migration <description>`
 
 ## Steps
 
-1. Run this to find the next migration number:
+1. Refresh `origin/main`. Run the repository guard from a checkout matching that
+   source because it reads the local files. It checks both migration directories
+   and reserved owner paths. Reconcile active claims with the integration lead,
+   and recheck the number under the merge lock.
    ```bash
-   ls platform/migrations/*.sql | sed 's/.*\/\([0-9]*\)_.*/\1/' | sort -n | tail -1
+   cd platform
+   npm run migration:next
    ```
-   Add 1 to get `NNN`.
 
-2. Create file at `platform/migrations/NNN_<description>.sql` with this header:
+2. Create `platform/supabase/migrations/NNN_<description>.sql`. Keep the number
+   in the filename and header in sync, per
+   `00_ARCHITECTURE/MIGRATION_AND_MERGE_PROTOCOL_v1_0.md` §§2–3.
    ```sql
    -- Migration NNN: <description>
    -- Created: <date>
@@ -39,4 +44,5 @@ User invokes: `/create-migration <description>`
    ) ON CONFLICT (asset_id) DO NOTHING;
    ```
 
-4. After creating, dispatch the `migration-guard` subagent to review it.
+4. Run `npm run guard:migration-numbers` from `platform`, then dispatch the
+   `migration-guard` subagent to review the exact file.
