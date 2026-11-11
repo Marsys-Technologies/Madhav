@@ -152,16 +152,22 @@ process.stdout.write(JSON.stringify(Boolean(new Function('github', 'needs', 'alw
     return json.loads(result.stdout)
 
 
-def run_outcome_gate(changes_result, web_changed, migrate, web):
+def run_outcome_gate(changes_result, web_changed, migrate, web, *, event_name='workflow_run', extra_env=None):
     """Run the real gate script (the job's only step that can fail) offline."""
-    env = {**os.environ, 'OUTCOME_EVENT_NAME': 'workflow_run', 'OUTCOME_SHA': 'a' * 40,
+    env = {**os.environ, 'OUTCOME_EVENT_NAME': event_name, 'OUTCOME_SHA': 'a' * 40,
            'OUTCOME_CHANGES_RESULT': changes_result, 'OUTCOME_FORCE_ALL': 'false',
            'OUTCOME_WEB_CHANGED': web_changed, 'OUTCOME_SIDECAR_CHANGED': 'false',
            'OUTCOME_MCP_CHANGED': 'false', 'OUTCOME_PIPELINE_CHANGED': 'false',
-           'OUTCOME_MIGRATE_RESULT': migrate, 'OUTCOME_WEB_RESULT': web,
            'OUTCOME_SIDECAR_RESULT': 'skipped', 'OUTCOME_MCP_RESULT': 'skipped',
            'OUTCOME_PIPELINE_RESULT': 'skipped'}
     env.pop('NODE_ENV', None)
+    env.pop('OUTCOME_WEB_SHADOW', None)
+    for name, result in (('OUTCOME_MIGRATE_RESULT', migrate), ('OUTCOME_WEB_RESULT', web)):
+        if result is None:
+            env.pop(name, None)
+        else:
+            env[name] = result
+    env.update(extra_env or {})
     return subprocess.run([NODE, '--experimental-strip-types', '--no-warnings',
                            str(ROOT / 'platform/scripts/ci/deployment_outcome_gate.ts')],
                           env=env, capture_output=True, text=True, timeout=30)
@@ -195,6 +201,76 @@ def test_green_upstream_with_skipped_or_failed_deploy_still_fails():
         assert 'Deployment outcome not earned' in result.stderr
     assert run_outcome_gate('success', 'true', 'success', 'success').returncode == 0
     assert run_outcome_gate('failure', 'false', 'skipped', 'skipped').returncode == 1
+
+
+@pytest.mark.parametrize('event_name', ['workflow_run', 'workflow_dispatch'])
+def test_admitted_workflow_requires_routine_migration_and_web_without_selected_paths(event_name):
+    assert outcome_job_runs(event_name, 'success')
+    probe = subprocess.run([NODE, '--experimental-strip-types', '--no-warnings', '-e', '0'],
+                           capture_output=True, text=True)
+    if probe.returncode:
+        pytest.skip('node lacks --experimental-strip-types; gate verdicts are covered by vitest')
+
+    for status in ('skipped', 'failure', 'cancelled', None):
+        for job, migrate, web in (('migrate', status, 'success'), ('deploy-web', 'success', status)):
+            result = run_outcome_gate('success', 'false', migrate, web, event_name=event_name)
+            assert result.returncode == 1, (event_name, job, status, result.stdout, result.stderr)
+            assert f'{job}={status or "(missing)"}' in result.stderr
+
+    result = run_outcome_gate('success', 'false', 'success', 'success', event_name=event_name)
+    assert result.returncode == 0
+    assert 'earned-deployment' in result.stdout
+
+
+def test_web_shadow_is_terminal_observation_only():
+    doc = workflow()
+    shadow_steps = [
+        (job_id, step)
+        for job_id, job in doc['jobs'].items()
+        for step in job.get('steps', [])
+        if 'OUTCOME_WEB_SHADOW' in step.get('env', {})
+    ]
+    assert len(shadow_steps) == 1
+    job_id, step = shadow_steps[0]
+    assert job_id == 'deployment-outcome'
+    assert step['env']['OUTCOME_WEB_SHADOW'] == 'true'
+    assert step['run'] == 'cd platform && npx --yes tsx scripts/ci/deployment_outcome_gate.ts'
+    assert 'outputs' not in doc['jobs'][job_id]
+    assert doc['jobs'][job_id]['permissions'] == {'contents': 'read'}
+    assert WORKFLOW.read_text().splitlines()[2542].strip().split()[0] == '--task-timeout=86400'
+
+    probe = subprocess.run([NODE, '--experimental-strip-types', '--no-warnings', '-e', '0'],
+                           capture_output=True, text=True, timeout=10)
+    if probe.returncode:
+        pytest.skip('node lacks --experimental-strip-types; shadow is covered by vitest')
+    prefix = '[web-reconciliation-shadow] '
+    cases = [
+        (('success', 'false', 'success', 'success'), {}, 'unknown', 'comparison-unavailable', 'success', 0),
+        (('success', 'false', 'skipped', 'success'), {}, 'unknown', 'comparison-unavailable', 'success', 1),
+        (('success', 'false', 'success', 'skipped'), {}, 'unknown', 'comparison-unavailable', 'skipped', 1),
+        (('success', 'true', 'success', 'failure'), {}, 'rebuild', 'web-selected', 'failure', 1),
+        (('failure', 'true', 'skipped', 'skipped'), {}, 'unknown', 'change-detection-unavailable', 'skipped', 1),
+        (('success', 'TRUE', 'success', 'missing'), {}, 'unknown', 'invalid-change-signal', 'unknown', 1),
+        (('success', 'false', 'success', 'success'), {'OUTCOME_EVENT_NAME': 'workflow_dispatch'},
+         'rebuild', 'manual-dispatch', 'success', 0),
+        (('success', 'false', 'success', 'success'), {'OUTCOME_FORCE_ALL': 'true'},
+         'rebuild', 'force-all', 'success', 1),
+        (('success', 'false', 'success', 'skipped'), {'OUTCOME_MCP_CHANGED': 'true', 'OUTCOME_MCP_RESULT': 'success'},
+         'rebuild', 'mcp-needs-matching-web', 'skipped', 1),
+        (('success', 'false', 'success', 'success'), {'OUTCOME_WEB_CONFIG_MATCH': 'true', 'OUTCOME_WEB_IMAGE_MATCH': 'true'},
+         'unknown', 'comparison-unavailable', 'success', 0),
+    ]
+    for args, env, requested, reason, actual, expected_returncode in cases:
+        baseline = run_outcome_gate(*args, extra_env=env)
+        observed = run_outcome_gate(*args, extra_env={**env, 'OUTCOME_WEB_SHADOW': step['env']['OUTCOME_WEB_SHADOW']})
+        lines = observed.stdout.splitlines(keepends=True)
+        reports = [json.loads(line.removeprefix(prefix)) for line in lines if line.startswith(prefix)]
+        assert reports == [{
+            'comparison': 'unknown', 'requested': requested, 'reason': reason, 'actualWebJobResult': actual,
+        }]
+        assert observed.returncode == baseline.returncode == expected_returncode
+        assert observed.stderr == baseline.stderr
+        assert ''.join(line for line in lines if not line.startswith(prefix)) == baseline.stdout
 
 
 def test_required_contexts_remain_present_and_independent():
