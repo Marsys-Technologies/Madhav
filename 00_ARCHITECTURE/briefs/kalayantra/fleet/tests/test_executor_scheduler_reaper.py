@@ -84,6 +84,8 @@ class FakeCloud:
         self.fetches.append((url, body))
         if self.fetch_fails: raise OSError("network down")
         assert token == SECRET_TOKEN and url.endswith("/projects/madhav-astrology:testIamPermissions")
+        if "cloudscheduler.jobs.resume" in body["permissions"]:                  # Google: HTTP 400 "Permission cloudscheduler.jobs.resume is not valid for this resource."
+            raise google_error(400, "Permission cloudscheduler.jobs.resume is not valid for this resource.")
         bad = [p for p in body["permissions"] if p in self.invalid]
         if bad:
             raise google_error(400, f"Invalid permission {bad[0]} for resource projects/madhav-astrology (sent {SECRET_TOKEN} by {PRINCIPAL})")
@@ -425,17 +427,27 @@ def test_c5_a_dry_run_pause_arms_nothing(world):
 
 # ───────────────────────────── C6 permission + identity check ─────────────────────────────
 def test_c6_readback_reports_granted_and_missing_permissions_and_the_principal_never_a_token():
-    cloud = FakeCloud("PAUSED", granted=["cloudscheduler.jobs.get", "cloudscheduler.jobs.resume"])
+    cloud = FakeCloud("PAUSED", granted=["cloudscheduler.jobs.get", "cloudscheduler.jobs.enable"])
     out = io.StringIO()
     assert reaper.main(["--action", "readback"], environ={}, runner=cloud, fetch=cloud.fetch, out=out) == 0
     text = out.getvalue(); record = json.loads(text)
     assert SECRET_TOKEN not in text and "ya29" not in text
     assert record["state"] == "PAUSED" and record["status"] == "MEASURED" and record["identity"]["principal"] == PRINCIPAL
     p = record["permissions"]
-    assert p["status"] == "MEASURED" and p["requested"] == ["cloudscheduler.jobs.pause", "cloudscheduler.jobs.resume", "cloudscheduler.jobs.get", "run.executions.cancel"]
-    assert p["granted"] == ["cloudscheduler.jobs.resume", "cloudscheduler.jobs.get"] and p["missing"] == ["cloudscheduler.jobs.pause", "run.executions.cancel"]
+    assert p["status"] == "MEASURED" and p["requested"] == ["cloudscheduler.jobs.pause", "cloudscheduler.jobs.enable", "cloudscheduler.jobs.get", "run.executions.cancel"]
+    assert p["granted"] == ["cloudscheduler.jobs.enable", "cloudscheduler.jobs.get"] and p["missing"] == ["cloudscheduler.jobs.pause", "run.executions.cancel"]
     assert cloud.fetches == [(reaper.PERMISSION_ENDPOINT, {"permissions": list(reaper.PERMISSIONS)})]
     assert not {"pause", "resume"} & set(cloud.verbs())                      # read-only: no mutating verb in a readback
+
+
+def test_c6_resume_capability_is_tested_as_cloudscheduler_jobs_enable_which_google_documents_for_jobs_resume():
+    # Source: Cloud Scheduler REST reference, projects.locations.jobs.resume: "requires ... cloudscheduler.jobs.enable";
+    # production receipt J-3c.scheduler-readback-iam-20261018T120446Z: Google rejected cloudscheduler.jobs.resume with HTTP 400.
+    assert reaper.CAPABILITY_PERMISSIONS["resume"] == "cloudscheduler.jobs.enable" and "cloudscheduler.jobs.resume" not in reaper.PERMISSIONS
+    cloud = FakeCloud("ENABLED")
+    p = permissions_of(cloud)
+    assert p["capabilities"]["resume"] == "cloudscheduler.jobs.enable" and p["status"] == "MEASURED" and p["invalid"] == [] and p["reason"] is None
+    assert "cloudscheduler.jobs.enable" in p["granted"] and len(cloud.fetches) == 1
 
 
 def test_c6_an_unmeasurable_permission_check_is_unavailable_never_green():
@@ -475,8 +487,8 @@ def test_c10_all_granted_is_measured_and_the_batch_is_one_call():
 
 def test_c10_a_missing_permission_is_measured_and_listed():
     p = permissions_of(FakeCloud("ENABLED", granted=["cloudscheduler.jobs.pause", "cloudscheduler.jobs.get", "run.executions.cancel"]))
-    assert p["status"] == "MEASURED" and p["missing"] == ["cloudscheduler.jobs.resume"] and p["invalid"] == []
-    assert p["results"]["cloudscheduler.jobs.resume"]["result"] == "missing"
+    assert p["status"] == "MEASURED" and p["missing"] == ["cloudscheduler.jobs.enable"] and p["invalid"] == []
+    assert p["results"]["cloudscheduler.jobs.enable"]["result"] == "missing"
 
 
 def test_c10_a_batch_400_falls_back_to_one_call_per_permission_and_reports_an_invalid_name_as_invalid_never_granted():
@@ -486,7 +498,7 @@ def test_c10_a_batch_400_falls_back_to_one_call_per_permission_and_reports_an_in
     assert p["status"] == "MEASURED" and p["invalid"] == ["run.executions.cancel"]
     assert "run.executions.cancel" not in (p["granted"] or []) and "run.executions.cancel" not in (p["missing"] or [])
     assert p["results"]["run.executions.cancel"]["result"] == "invalid_permission" and "HTTP 400" in p["results"]["run.executions.cancel"]["reason"]
-    assert p["granted"] == ["cloudscheduler.jobs.pause", "cloudscheduler.jobs.resume", "cloudscheduler.jobs.get"]
+    assert p["granted"] == ["cloudscheduler.jobs.pause", "cloudscheduler.jobs.enable", "cloudscheduler.jobs.get"]
     assert p["reason"].startswith("batch testIamPermissions: HTTP 400: Invalid permission run.executions.cancel")
 
 
@@ -532,7 +544,7 @@ def test_c10_a_5xx_or_network_failure_on_the_batch_does_not_fan_out():
 
 # ───────────────────────────── C11 policy-read basis (SR-IAM-MEASURE) ─────────────────────────────
 # Sources: IAM basic roles (roles/owner and roles/editor include all Cloud Run and Cloud Scheduler permissions), roles/run.admin (run.executions.cancel),
-# roles/cloudscheduler.admin (cloudscheduler.jobs.pause/resume/get) — Google Cloud IAM roles reference.
+# roles/cloudscheduler.admin (cloudscheduler.jobs.pause/enable/get; `enable` is the permission of the jobs.resume method) — Google Cloud IAM roles reference.
 OTHERS = "user:someone.else@example.com"
 
 
