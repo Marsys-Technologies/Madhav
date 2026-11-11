@@ -622,3 +622,10 @@ coordination lease that produced it.
 - **Grounds (ids only):** provenance audit `DOUBLE_TRANSIT_PROVENANCE_v0_1`; PR #651; migrations 397/565; Pravāha v3.0 sealed doctrine (P4 `uncited_extension`); independent red-teams `FABLE-REDTEAM-RULEBOOK-RESULT-20261027`, `ARGON-REDTEAM-RULEBOOK-RESULT-20261027`.
 - **Implementation:** branch `kalayantra/demote-double-transit-testimony` (commit afcbd67; migration 1412), change note `00_ARCHITECTURE/briefs/pravaha/decisions/CHANGE_NOTE_DOUBLE_TRANSIT_DEMOTION.md`; routed through the cockpit's normal PR route after the native's confirmation.
 - **Re-admission:** only via the Rule Book panel protocol with a page-anchored pre-modern quotation; accuracy claims only via the public-chart track.
+
+## CCD-030 — Madhav consolidation v1.2 source publication and protected execution
+
+- **Authority:** Owner direction on 2026-11-11 authorizes autonomous execution after independent plan reconciliation. The designated strategy role decides in-scope architecture and acceptance questions. The execution lead owns source integration and release sequencing.
+- **Scope:** The [public campaign plan](briefs/madhav_consolidation/PUBLIC_CAMPAIGN_PLAN_v1_2.md) records the covered product and background behavior, component ownership, instruction obligations and release gates. Initial scoped work covers deploy-input routing, supported session validation and the guarded Chart Folio read interface. Later slices require exact scope and evidence.
+- **Publication:** Scoped source commits and focused PRs from isolated worktrees are authorized for this campaign. This supersedes the lease-row-only source restriction in the Governance and Integrity Protocol §P.4 for this scope. Protected branch, required CI, delivery, data, access and recovery controls continue to apply.
+- **Limits:** No protection bypass, access expansion, unqualified data change or new paid provision is authorized. Installed acceptance and retirement require their own evidence. Private review and operational records remain in their designated custody.
