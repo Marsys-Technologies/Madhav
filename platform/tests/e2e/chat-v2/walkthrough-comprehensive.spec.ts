@@ -15,8 +15,8 @@
  *   W8  → trace drawer (super_admin affordance)
  *   W9  → O6 (streamdown markdown: tables + code + KaTeX)
  *   W10 → O5 (citation chips with hover preview)
- *   W11 → O7 (PDF upload — fixture fallback)
- *   W12 → O8 (image upload — GCS fallback)
+ *   W11 → Consult attachment controls unavailable, text recovery
+ *   W12 → Consult rejects stale upload tokens
  *   W13 → abort propagation bonus
  *   W14 → conversation switching bonus
  *   W15 → console error survey
@@ -30,16 +30,12 @@
  * Without MARSYS_FIXTURE_MODE=false, runs against live providers.
  */
 
-import path from 'path'
 import { test, expect, type Page } from '@playwright/test'
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const CLIENT_ID = process.env.MARSYS_TEST_CLIENT_ID ?? '482012f1-710e-4a25-994a-93821f5871aa'
 const CONSUME_URL = `/clients/${CLIENT_ID}/consume`
 const SESSION = process.env.MARSYS_SUPER_ADMIN_SESSION
-
-const FIXTURE_PDF = path.join(__dirname, '../../fixtures/chat-v2/uploads/test-known.pdf')
-const FIXTURE_PNG = path.join(__dirname, '../../fixtures/chat-v2/uploads/test-known.png')
 
 // ── Auth helper ────────────────────────────────────────────────────────────
 async function injectSession(context: import('@playwright/test').BrowserContext) {
@@ -424,90 +420,38 @@ test.describe('Walkthrough W1–W15 — default provider (Gemini)', () => {
     await page.screenshot({ path: 'test-results/chat-v2/w10-citation-chips.png' }).catch(() => null)
   })
 
-  // W11 — PDF upload ────────────────────────────────────────────────────
-  test('W11 — PDF upload: preview shows filename; query completes without crash', async ({ page }) => {
+  test('W11 — Attachment controls are unavailable and text Consult still completes', async ({ page }) => {
     test.skip(!SESSION, 'Skipped: MARSYS_SUPER_ADMIN_SESSION required')
     test.setTimeout(90_000)
-
     await goto(page, CONSUME_URL)
+    await expect(page.getByText('Attachments are currently unavailable in Consult. You can send text.')).toBeVisible()
+    await expect(page.getByTestId('v2-attach-btn').first()).toBeDisabled()
+    await expect(page.getByTestId('v2-file-input')).toHaveCount(0)
 
-    // File input for attachment
-    const fileInput = page.getByTestId('v2-file-input').first()
-    await expect(fileInput).toBeAttached({ timeout: 10_000 })
-    await fileInput.setInputFiles(FIXTURE_PDF)
-
-    // PDF icon / filename preview conditional on GCS upload
-    const pdfPreviewVisible = await page
-      .getByTestId('v2-attachment-pdf-icon')
-      .isVisible({ timeout: 5_000 })
-      .catch(() => false)
-    if (pdfPreviewVisible) {
-      await expect(page.getByTestId('v2-attachment-pdf-icon')).toBeVisible()
-    }
-
-    await page.screenshot({ path: 'test-results/chat-v2/w11-pdf-preview.png' }).catch(() => null)
-
-    await fillComposer(page, 'What is in this PDF?')
+    await fillComposer(page, 'Give me an overview of the seventh house.')
     await sendQuery(page)
     await waitForAssistantMessage(page, 60_000)
     await waitForStreamComplete(page)
-
-    const assistantMsg = page.getByTestId('v2-assistant-message').last()
-    const responseText = await assistantMsg.textContent().catch(() => '')
-
-    // Real Vertex DU extraction OR acceptable fixture marker
-    const isVertexWired = !!process.env.VERTEX_AI_PROJECT_ID
-    if (isVertexWired && responseText) {
-      expect(responseText).not.toContain('[FIXTURE_PDF_TEXT]')
-    }
-
-    // Must not crash — assistant message exists and is non-empty
-    await expect(assistantMsg).toBeVisible()
-
-    await page.screenshot({ path: 'test-results/chat-v2/w11-pdf-upload.png' }).catch(() => null)
+    await expect(page.getByTestId('v2-assistant-message').last()).toBeVisible()
   })
 
-  // W12 — Image upload ──────────────────────────────────────────────────
-  test('W12 — Image upload: preview renders inline; synthesis completes without crash', async ({ page }) => {
+  test('W12 — A stale image token receives an explicit refusal through the legacy alias', async ({ page }) => {
     test.skip(!SESSION, 'Skipped: MARSYS_SUPER_ADMIN_SESSION required')
-    test.setTimeout(90_000)
-
-    // Watch for sign URL requests
-    const signedUrlResponses: number[] = []
-    page.on('response', r => {
-      if (r.url().includes('/api/uploads/sign') || r.url().includes('/api/upload')) {
-        signedUrlResponses.push(r.status())
-      }
+    const response = await page.request.post('/api/chat/consume', {
+      data: {
+        chartId: CLIENT_ID,
+        messages: [{ id: 'fixture-message', role: 'user', parts: [{ type: 'text', text: 'Describe the image.' }] }],
+        attachments: [{
+          token: '00000000-0000-4000-8000-000000000001',
+          filename: 'fixture.png',
+          contentType: 'image/png',
+        }],
+      },
     })
-
-    await goto(page, CONSUME_URL)
-    const fileInput = page.getByTestId('v2-file-input').first()
-    await expect(fileInput).toBeAttached({ timeout: 10_000 })
-    await fileInput.setInputFiles(FIXTURE_PNG)
-
-    const imgPreviewVisible = await page
-      .getByTestId('v2-attachment-preview-img')
-      .isVisible({ timeout: 5_000 })
-      .catch(() => false)
-    if (imgPreviewVisible) {
-      await expect(page.getByTestId('v2-attachment-preview-img')).toBeVisible()
-    }
-
-    await page.screenshot({ path: 'test-results/chat-v2/w12-image-preview.png' }).catch(() => null)
-
-    await fillComposer(page, 'What is in this image?')
-    await sendQuery(page)
-    await waitForAssistantMessage(page, 60_000)
-    await waitForStreamComplete(page)
-
-    await expect(page.getByTestId('v2-assistant-message').last()).toBeVisible()
-
-    if (signedUrlResponses.length > 0) {
-      const nonOk = signedUrlResponses.filter(s => s >= 400)
-      expect(nonOk).toHaveLength(0)
-    }
-
-    await page.screenshot({ path: 'test-results/chat-v2/w12-image-upload.png' }).catch(() => null)
+    expect(new URL(response.url()).pathname).toBe('/api/chat/consult')
+    expect(response.status()).toBe(503)
+    expect(response.headers()['cache-control']).toBe('private, no-store')
+    expect(await response.json()).toMatchObject({ error: { code: 'ATTACHMENT_UNAVAILABLE', retry: false } })
   })
 
   // W13 — Stream abort propagates ───────────────────────────────────────

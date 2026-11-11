@@ -4,7 +4,6 @@
  * ConsumeChatV2 — assistant-ui shell for MARSYS chat.
  *
  * β2: conversation list sidebar + write-through restore on mount.
- * β5: multi-modal file attachments (image + PDF) via upload → token flow.
  * Post-§M.16 (2026-05-18): sole chat shell — flag + legacy path removed.
  */
 
@@ -130,22 +129,6 @@ const R11B_LOOK_AND_FEEL_ENV =
   typeof process !== 'undefined' &&
   process.env.NEXT_PUBLIC_MARSYS_FLAG_R11B_LOOK_AND_FEEL === 'true'
 import type { Report, ConversationModule } from '@/lib/db/types'
-
-// ─── Upload / attachment types ────────────────────────────────────────────────
-
-export interface AttachedFile {
-  /** UUID token returned by /api/uploads/sign and stored by /api/uploads/store */
-  token: string
-  filename: string
-  contentType: string
-  size: number
-  /** Object URL for local preview (revoked on unmount) */
-  previewUrl: string | null
-  status: 'uploading' | 'ready' | 'error'
-  errorMsg?: string
-}
-
-const ACCEPT_TYPES = 'image/jpeg,image/png,image/gif,image/webp,application/pdf'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -377,6 +360,11 @@ function usePanelData(dataParts: ReadonlyArray<NormalizedDataPart>) {
   return { panelMembers, panelMeta, isPanel: panelMeta !== null }
 }
 
+function hasAttachments(message: { content: readonly { type: string }[]; attachments?: readonly unknown[] }) {
+  return Boolean(message.attachments?.length)
+    || message.content.some(part => part.type === 'file' || part.type === 'image' || part.type === 'audio')
+}
+
 // ─── Regenerate button (B.3 fix) ─────────────────────────────────────────────
 // Calls /api/chat/consume/regenerate to truncate conversation_messages before
 // letting assistant-ui reload — prevents dead turns accumulating on regenerate.
@@ -386,6 +374,7 @@ function V2RegenerateButton() {
   const messageRuntime = useMessageRuntime()
   const runtime = useThreadRuntime()
   const conversationId = useContext(ConversationIdCtx)
+  const [attachmentUnavailable, setAttachmentUnavailable] = useState(false)
 
   // Await DB truncation BEFORE triggering assistant-ui reload.
   // Prior implementation was fire-and-forget which caused a race: synthesis
@@ -397,6 +386,12 @@ function V2RegenerateButton() {
     const myIndex = messages.findIndex((m) => m.id === message.id)
     const parentId = myIndex > 0 ? messages[myIndex - 1].id : null
     if (!parentId) return
+    const replayedUser = messages.slice(0, myIndex).findLast(item => item.role === 'user')
+    if (replayedUser && hasAttachments(replayedUser)) {
+      setAttachmentUnavailable(true)
+      return
+    }
+    setAttachmentUnavailable(false)
     if (conversationId) {
       try {
         await fetch('/api/chat/consume/regenerate', {
@@ -412,15 +407,22 @@ function V2RegenerateButton() {
   }, [message.id, messageRuntime, runtime, conversationId])
 
   return (
-    <button
-      type="button"
-      onClick={handleClick}
-      className="flex h-8 w-8 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors"
-      title="Regenerate response"
-      data-testid="v2-regenerate-btn"
-    >
-      <RotateCcw className="h-4 w-4" aria-hidden="true" />
-    </button>
+    <>
+      <button
+        type="button"
+        onClick={handleClick}
+        className="flex h-8 w-8 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors"
+        title="Regenerate response"
+        data-testid="v2-regenerate-btn"
+      >
+        <RotateCcw className="h-4 w-4" aria-hidden="true" />
+      </button>
+      {attachmentUnavailable && (
+        <span role="alert" className="text-xs text-red-400">
+          This turn contains an attachment. You can send a new text message.
+        </span>
+      )}
+    </>
   )
 }
 
@@ -505,6 +507,10 @@ function TruncationContinueBanner() {
 
 // ─── Message ─────────────────────────────────────────────────────────────────
 
+function UnavailableAttachmentPart() {
+  return <span className="block text-xs text-muted-foreground">Attachment unavailable</span>
+}
+
 function V2Message() {
   // β6: details drawer state lives per-message (mounted inside MessagePrimitive.Root
   // so useMessage() is valid for the PerMessageDetailsDrawer).
@@ -517,6 +523,7 @@ function V2Message() {
 
   // γ1: panel data from message — merged from both stream sources via hook
   const message = useMessage()
+  const containsAttachment = hasAttachments(message)
   const dataParts = useDataParts(message)
   const { panelMembers, panelMeta, isPanel } = usePanelData(dataParts)
   const meta = (message.metadata?.custom ?? {}) as Record<string, unknown>
@@ -603,7 +610,13 @@ function V2Message() {
             data-testid="v2-user-message"
           >
             {/* F.2: flat props — renderer receives {text,...} directly, not a nested part object */}
-            <MessagePrimitive.Parts components={{ Text: (props) => <span>{props.text}</span> }} />
+            <MessagePrimitive.Parts components={{
+              Text: (props) => <span>{props.text}</span>,
+              File: UnavailableAttachmentPart,
+              Image: UnavailableAttachmentPart,
+              Unstable_Audio: UnavailableAttachmentPart,
+            }} />
+            {message.role === 'user' && Boolean(message.attachments.length) && <UnavailableAttachmentPart />}
           </div>
 
           {/* Edit action + branch picker for user messages */}
@@ -625,11 +638,11 @@ function V2Message() {
                   <Copy className="h-4 w-4" aria-hidden="true" />
                 </button>
               </ActionBarPrimitive.Copy>
-              <ActionBarPrimitive.Edit asChild>
+              <ActionBarPrimitive.Edit asChild disabled={containsAttachment}>
                 <button
                   type="button"
                   className="flex h-8 w-8 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors"
-                  title="Edit message"
+                  title={containsAttachment ? 'Attachments are currently unavailable. You can send a new text message.' : 'Edit message'}
                   data-testid="v2-edit-btn"
                 >
                   <Pencil className="h-4 w-4" aria-hidden="true" />
@@ -701,6 +714,9 @@ function V2Message() {
               // γ2: ReasoningProgress with live token count + elapsed timer + auto-collapse >2k tokens
               // F.2: props.text is the accumulated reasoning text (flat prop, not props.reasoning)
               Reasoning: (props) => <ReasoningProgress text={props.text} />,
+              File: UnavailableAttachmentPart,
+              Image: UnavailableAttachmentPart,
+              Unstable_Audio: UnavailableAttachmentPart,
               Text: (props) => <V2AssistantText text={props.text} onCitationCount={handleCitationCount} />,
             }}
           />
@@ -832,200 +848,22 @@ function V2Message() {
   )
 }
 
-// ─── Attachment context (shared between Composer + V2ChatRuntime) ────────────
-
-interface AttachmentContextValue {
-  attachments: AttachedFile[]
-  addAttachment: (file: File) => void
-  removeAttachment: (token: string) => void
-  clearAttachments: () => void
-}
-export const AttachmentCtx = createContext<AttachmentContextValue>({
-  attachments: [],
-  addAttachment: () => {},
-  removeAttachment: () => {},
-  clearAttachments: () => {},
-})
-
-function useAttachmentManager() {
-  const [attachments, setAttachments] = useState<AttachedFile[]>([])
-  const previewUrls = useRef<string[]>([])
-
-  // Revoke object URLs on unmount
-  useEffect(() => {
-    const urls = previewUrls.current
-    return () => {
-      for (const url of urls) URL.revokeObjectURL(url)
-    }
-  }, [])
-
-  const addAttachment = useCallback(async (file: File) => {
-    const tempToken = `pending-${crypto.randomUUID()}`
-    const previewUrl = file.type.startsWith('image/') ? URL.createObjectURL(file) : null
-    if (previewUrl) previewUrls.current.push(previewUrl)
-
-    const pending: AttachedFile = {
-      token: tempToken,
-      filename: file.name,
-      contentType: file.type,
-      size: file.size,
-      previewUrl,
-      status: 'uploading',
-    }
-    setAttachments(prev => [...prev, pending])
-
-    try {
-      // Step 1: get upload token + URL
-      const signRes = await fetch('/api/uploads/sign', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filename: file.name, contentType: file.type, size: file.size }),
-      })
-      if (!signRes.ok) {
-        const err = await signRes.json().catch(() => ({})) as { error?: string }
-        throw new Error(err.error ?? `Sign failed: ${signRes.status}`)
-      }
-      const { token, uploadUrl } = await signRes.json() as { token: string; uploadUrl: string }
-
-      // Step 2: upload bytes
-      const putRes = await fetch(uploadUrl, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': file.type,
-          'x-filename': encodeURIComponent(file.name),
-        },
-        body: file,
-      })
-      if (!putRes.ok) {
-        const err = await putRes.json().catch(() => ({})) as { error?: string }
-        throw new Error(err.error ?? `Upload failed: ${putRes.status}`)
-      }
-
-      // Replace pending entry with real token
-      setAttachments(prev =>
-        prev.map(a =>
-          a.token === tempToken
-            ? { ...a, token, status: 'ready' }
-            : a,
-        ),
-      )
-    } catch (e) {
-      setAttachments(prev =>
-        prev.map(a =>
-          a.token === tempToken
-            ? { ...a, status: 'error', errorMsg: e instanceof Error ? e.message : 'Upload failed' }
-            : a,
-        ),
-      )
-    }
-  }, [])
-
-  const removeAttachment = useCallback((token: string) => {
-    setAttachments(prev => {
-      const entry = prev.find(a => a.token === token)
-      if (entry?.previewUrl) URL.revokeObjectURL(entry.previewUrl)
-      return prev.filter(a => a.token !== token)
-    })
-  }, [])
-
-  const clearAttachments = useCallback(() => {
-    setAttachments(prev => {
-      for (const a of prev) if (a.previewUrl) URL.revokeObjectURL(a.previewUrl)
-      return []
-    })
-  }, [])
-
-  return { attachments, addAttachment, removeAttachment, clearAttachments }
-}
-
-// ─── Attachment strip (above composer) ───────────────────────────────────────
-
-function AttachmentStrip({
-  attachments,
-  onRemove,
-}: {
-  attachments: AttachedFile[]
-  onRemove: (token: string) => void
-}) {
-  if (attachments.length === 0) return null
-  return (
-    <div
-      className="mx-auto max-w-4xl flex flex-wrap gap-2 pb-2"
-      data-testid="v2-attachment-strip"
-    >
-      {attachments.map((a) => (
-        <div
-          key={a.token}
-          className={`relative flex items-center gap-2 rounded-lg border px-2 py-1.5 text-xs ${
-            a.status === 'error'
-              ? 'border-red-500/40 bg-red-900/20 text-red-400'
-              : a.status === 'uploading'
-                ? 'border-zinc-700 bg-zinc-800/60 text-zinc-400 animate-pulse'
-                : 'border-zinc-700 bg-zinc-800 text-zinc-300'
-          }`}
-          data-testid={`v2-attachment-${a.token}`}
-        >
-          {a.previewUrl ? (
-            // Image thumbnail
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={a.previewUrl}
-              alt={a.filename}
-              className="h-8 w-8 rounded object-cover shrink-0"
-              data-testid="v2-attachment-preview-img"
-            />
-          ) : (
-            // PDF icon
-            <div
-              className="flex h-8 w-8 items-center justify-center rounded bg-zinc-700 shrink-0 text-[9px] font-bold text-zinc-400"
-              data-testid="v2-attachment-pdf-icon"
-            >
-              PDF
-            </div>
-          )}
-          <div className="flex flex-col min-w-0">
-            <span className="truncate max-w-[120px]" title={a.filename}>
-              {a.filename}
-            </span>
-            {a.status === 'error' && (
-              <span className="text-[10px] text-red-400 truncate max-w-[120px]">
-                {a.errorMsg}
-              </span>
-            )}
-            {a.status === 'uploading' && (
-              <span className="text-[10px] text-zinc-500">Uploading…</span>
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={() => onRemove(a.token)}
-            className="ml-1 flex h-4 w-4 items-center justify-center rounded-full text-zinc-500 hover:bg-zinc-700 hover:text-zinc-300 transition-colors shrink-0"
-            title="Remove attachment"
-            data-testid={`v2-attachment-remove-${a.token}`}
-          >
-            ×
-          </button>
-        </div>
-      ))}
-    </div>
-  )
-}
-
 // ─── Composer ─────────────────────────────────────────────────────────────────
 
-function V2Composer({ slashEnabled = false, tokensEnabled = false }: { slashEnabled?: boolean; tokensEnabled?: boolean }) {
+function V2Composer({ slashEnabled = false, tokensEnabled = false, attachmentError }: {
+  slashEnabled?: boolean
+  tokensEnabled?: boolean
+  attachmentError: boolean
+}) {
   // F.3: useThreadRuntime().subscribe() for run-state (deprecated primitive avoided)
   const runtime = useThreadRuntime()
   const [isRunning, setIsRunning] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const cameraInputRef = useRef<HTMLInputElement>(null)
   const isRunningRef = useRef(false)
   const [composerValue, setComposerValue] = useState('')
   const [slashActiveIdx, setSlashActiveIdx] = useState(0)
   const { tokenCount, pctUsed } = useTokenCount(tokensEnabled ? composerValue : '')
 
-  const { attachments, addAttachment, removeAttachment } = useContext(AttachmentCtx)
   const conversationId = useContext(ConversationIdCtx)
   const [lastPrompt, saveLastPrompt] = useLastPrompt(conversationId)
   const setTruncatedId = useContext(SetTruncatedMsgCtx)
@@ -1038,23 +876,6 @@ function V2Composer({ slashEnabled = false, tokensEnabled = false }: { slashEnab
     })
     return unsub
   }, [runtime])
-
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files ?? [])
-    for (const f of files) addAttachment(f)
-    // Reset input so the same file can be re-selected after removal
-    e.target.value = ''
-  }
-
-  function handleDrop(e: React.DragEvent<HTMLDivElement>) {
-    e.preventDefault()
-    const files = Array.from(e.dataTransfer.files)
-    for (const f of files) addAttachment(f)
-  }
-
-  function handleDragOver(e: React.DragEvent<HTMLDivElement>) {
-    e.preventDefault()
-  }
 
   // Slash command detection
   const slashQuery = slashEnabled ? (() => {
@@ -1085,16 +906,6 @@ function V2Composer({ slashEnabled = false, tokensEnabled = false }: { slashEnab
     setComposerValue(newValue)
     setSlashActiveIdx(0)
     textarea.focus()
-  }
-
-  // Handle paste (images only — paste event carries DataTransfer items)
-  function handlePaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
-    const items = Array.from(e.clipboardData.items)
-    const imageItems = items.filter(i => i.kind === 'file' && i.type.startsWith('image/'))
-    for (const item of imageItems) {
-      const file = item.getAsFile()
-      if (file) addAttachment(file)
-    }
   }
 
   // X-S2: ArrowUp recall + save last prompt on Enter/send
@@ -1142,37 +953,18 @@ function V2Composer({ slashEnabled = false, tokensEnabled = false }: { slashEnab
   return (
     <div
       ref={containerRef}
-      onDrop={handleDrop}
-      onDragOver={handleDragOver}
+      onDrop={event => {
+        if (event.dataTransfer.files.length > 0) event.preventDefault()
+      }}
+      onDragOver={event => {
+        if (event.dataTransfer.types?.includes('Files')) event.preventDefault()
+      }}
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
     >
       <ComposerPrimitive.Root
         className="px-4 pb-3 pt-1"
         data-testid="v2-composer"
       >
-        {/* β5: hidden file input (inside form, outside pill) */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept={ACCEPT_TYPES}
-          multiple
-          className="sr-only"
-          aria-label="Attach file"
-          onChange={handleFileChange}
-          data-testid="v2-file-input"
-        />
-        {/* X-S1: camera-only input for mobile — capture="environment" opens back camera directly */}
-        <input
-          ref={cameraInputRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          className="sr-only"
-          aria-label="Take photo"
-          onChange={handleFileChange}
-          data-testid="v2-camera-input"
-        />
-
         {/* C.4: brand pill wrapper — paperclip + textarea + hints + send inside the pill */}
         <div className="mx-auto max-w-4xl relative">
           {slashOpen && (
@@ -1183,19 +975,12 @@ function V2Composer({ slashEnabled = false, tokensEnabled = false }: { slashEnab
             />
           )}
           <div className="relative flex flex-col rounded-3xl border border-[rgba(var(--brand-gold-rgb),0.35)] bg-background shadow-sm transition-all duration-200">
-            {/* β5: attachment strip inside pill top */}
-            {attachments.length > 0 && (
-              <div className="flex flex-wrap gap-2 px-4 pt-3">
-                <AttachmentStrip attachments={attachments} onRemove={removeAttachment} />
-              </div>
-            )}
-
             <ComposerPrimitive.Input
               className="w-full resize-none overflow-y-auto rounded-3xl bg-transparent px-5 py-4 text-[15px] leading-[1.55] text-foreground placeholder:text-muted-foreground/60 focus:outline-none"
               placeholder="Ask about the chart…"
               rows={3}
               data-testid="v2-composer-input"
-              onPaste={handlePaste}
+              addAttachmentOnPaste={false}
               onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
                 setComposerValue(e.target.value)
               }}
@@ -1214,9 +999,10 @@ function V2Composer({ slashEnabled = false, tokensEnabled = false }: { slashEnab
               <div className="flex items-center gap-1">
                 <button
                   type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-full text-zinc-500 transition-all hover:bg-zinc-800 hover:text-zinc-300"
-                  title="Attach image or PDF"
+                  disabled
+                  aria-describedby="consult-attachment-availability"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full text-zinc-500 disabled:opacity-50"
+                  title="Attachments unavailable"
                   aria-label="Attach image or PDF file"
                   data-testid="v2-attach-btn"
                 >
@@ -1225,9 +1011,10 @@ function V2Composer({ slashEnabled = false, tokensEnabled = false }: { slashEnab
                 {/* X-S1: camera shortcut — mobile only (md:hidden); desktop uses paperclip */}
                 <button
                   type="button"
-                  onClick={() => cameraInputRef.current?.click()}
-                  className="md:hidden inline-flex h-8 w-8 items-center justify-center rounded-full text-zinc-500 transition-all hover:bg-zinc-800 hover:text-zinc-300"
-                  title="Take photo"
+                  disabled
+                  aria-describedby="consult-attachment-availability"
+                  className="md:hidden inline-flex h-8 w-8 items-center justify-center rounded-full text-zinc-500 disabled:opacity-50"
+                  title="Attachments unavailable"
                   aria-label="Take photo with camera"
                   data-testid="v2-camera-btn"
                 >
@@ -1281,6 +1068,14 @@ function V2Composer({ slashEnabled = false, tokensEnabled = false }: { slashEnab
               </div>
             </div>
           </div>
+          <p id="consult-attachment-availability" className="px-5 pt-2 text-xs text-muted-foreground">
+            Attachments are currently unavailable in Consult. You can send text.
+          </p>
+          {attachmentError && (
+            <p role="alert" className="px-5 pt-2 text-sm text-red-400">
+              Attachment unavailable. You can send a new text message.
+            </p>
+          )}
         </div>
 
       </ComposerPrimitive.Root>
@@ -1553,7 +1348,13 @@ function V2ScrollDiscipline() {
 
 // ─── Thread ───────────────────────────────────────────────────────────────────
 
-function V2Thread({ chartId, chartName, slashEnabled = false, tokensEnabled = false }: { chartId: string; chartName: string; slashEnabled?: boolean; tokensEnabled?: boolean }) {
+function V2Thread({ chartId, chartName, slashEnabled = false, tokensEnabled = false, attachmentError }: {
+  chartId: string
+  chartName: string
+  slashEnabled?: boolean
+  tokensEnabled?: boolean
+  attachmentError: boolean
+}) {
   const [truncatedMsgId, setTruncatedMsgId] = useState<string | null>(null)
   // [PHASE-D-07] Shared readiness state — fetched once, used by banner + suggester.
   const [readyAssets, setReadyAssets] = useState<string[]>([])
@@ -1624,7 +1425,7 @@ function V2Thread({ chartId, chartName, slashEnabled = false, tokensEnabled = fa
       {/* [PHASE-D-05] Question suggester — shown above composer when assets are ready */}
       <QuestionSuggester readyAssets={readyAssets} onSelect={handleComposerFill} />
 
-      <V2Composer slashEnabled={slashEnabled} tokensEnabled={tokensEnabled} />
+      <V2Composer slashEnabled={slashEnabled} tokensEnabled={tokensEnabled} attachmentError={attachmentError} />
     </ThreadPrimitive.Root>
     </SetTruncatedMsgCtx.Provider>
     </TruncatedMsgCtx.Provider>
@@ -2209,8 +2010,7 @@ interface PendingStreamEntry {
 
 function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, onQueryId, onConversationId, onTitle, slashEnabled = false, tokensEnabled = false }: V2ChatRuntimeProps & { onQueryId?: (id: string) => void }) {
   // B-S7: Citation side panel retired. Citations are inline-only via NumberedCitation.
-  // β5: attachment manager — tokens injected into each request body
-  const attachmentManager = useAttachmentManager()
+  const [attachmentError, setAttachmentError] = useState(false)
 
   // O2: panel mode opt-in — persists in sessionStorage per conversation
   const panelStorageKey = conversationId ? `v2_panel_opt_in_${conversationId}` : 'v2_panel_opt_in_new'
@@ -2228,20 +2028,10 @@ function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, on
   const transport = useMemo(() => new DefaultChatTransport({
     api: '/api/chat/consume',
     body: () => {
-      // β5: include ready attachment tokens in the request body, then clear
-      const readyAttachments = attachmentManager.attachments
-        .filter(a => a.status === 'ready')
-        .map(a => ({ token: a.token, filename: a.filename, contentType: a.contentType }))
-
-      if (readyAttachments.length > 0) {
-        // Clear after capturing so the next message starts fresh
-        attachmentManager.clearAttachments()
-      }
-
+      setAttachmentError(false)
       return {
         chartId,
         ...(conversationId ? { conversationId } : {}),
-        ...(readyAttachments.length > 0 ? { attachments: readyAttachments } : {}),
         ...(panelOptIn ? { panel_opt_in: true } : {}),
         stack,
         style,
@@ -2252,7 +2042,6 @@ function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, on
     },
   }), [
     activePersonaIdCtx,
-    attachmentManager,
     chartId,
     conversationId,
     lelEnabled,
@@ -2264,6 +2053,14 @@ function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, on
   const runtime = useChatRuntime({
     transport,
     messages: initialMessages,
+    onError: error => {
+      try {
+        const body = JSON.parse(error.message) as { error?: { code?: string } }
+        if (body.error?.code === 'ATTACHMENT_UNAVAILABLE' || body.error?.code === 'ATTACHMENT_STORAGE_UNAVAILABLE') {
+          setAttachmentError(true)
+        }
+      } catch { /* Non-attachment errors are handled by the chat runtime. */ }
+    },
   })
 
 
@@ -2273,7 +2070,6 @@ function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, on
     <V2TitleCb.Provider value={onTitle ?? null}>
     <PanelOptInCtx.Provider value={panelOptInCtxValue}>
     <ConversationIdCtx.Provider value={conversationId}>
-      <AttachmentCtx.Provider value={attachmentManager}>
         <AssistantRuntimeProvider runtime={runtime}>
           {/* γ7: track session-storage pending-stream entry for stream-resume */}
           <V2StreamResumeTracker chartId={chartId} conversationId={conversationId} />
@@ -2283,10 +2079,9 @@ function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, on
           <V2RuntimeTracker />
           <div className="flex h-full overflow-hidden">
             {/* B-S7: side panel retired — citations are inline-only via NumberedCitation */}
-            <V2Thread chartId={chartId} chartName={chartName} slashEnabled={slashEnabled ?? false} tokensEnabled={tokensEnabled ?? false} />
+            <V2Thread chartId={chartId} chartName={chartName} slashEnabled={slashEnabled ?? false} tokensEnabled={tokensEnabled ?? false} attachmentError={attachmentError} />
           </div>
         </AssistantRuntimeProvider>
-      </AttachmentCtx.Provider>
     </ConversationIdCtx.Provider>
     </PanelOptInCtx.Provider>
     </V2TitleCb.Provider>

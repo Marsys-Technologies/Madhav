@@ -263,52 +263,39 @@ test.describe('Feature reachability — O1–O10 + remediation B.7–B.12', () =
     expect(errors.filter(e => e.includes('PPL') || e.includes('prediction') || e.includes('user_id'))).toHaveLength(0)
   })
 
-  // ── β5 — Image upload ─────────────────────────────────────────────────────
-  test('C7.12 — Upload an image; asserts it renders inline and is forwarded in synthesis request', async ({ page }) => {
+  test('C7.12 — Consult disables attachment controls and sends an ordinary text turn', async ({ page }) => {
     test.skip(!SESSION, 'Skipped: MARSYS_SUPER_ADMIN_SESSION required')
     await page.goto(CONSUME_URL)
-    // Use first() to avoid strict-mode violation (two file inputs may exist in DOM)
-    const fileInput = page.getByTestId('v2-file-input').first()
-    await expect(fileInput).toBeAttached({ timeout: 10_000 })
-    await fileInput.setInputFiles({
-      name: 'test.png',
-      mimeType: 'image/png',
-      buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64'),
-    })
-    // Preview may not render if GCS upload is required before state update — conditional check
-    const imgPreviewVisible = await page.getByTestId('v2-attachment-preview-img').isVisible({ timeout: 5_000 }).catch(() => false)
-    if (imgPreviewVisible) {
-      await expect(page.getByTestId('v2-attachment-preview-img')).toBeVisible()
-    }
-    await fillComposer(page, 'Describe this image')
+    await expect(page.getByText('Attachments are currently unavailable in Consult. You can send text.')).toBeVisible()
+    await expect(page.getByTestId('v2-attach-btn').first()).toBeDisabled()
+    await expect(page.getByTestId('v2-camera-btn').first()).toBeDisabled()
+    await expect(page.getByTestId('v2-file-input')).toHaveCount(0)
+    await expect(page.getByTestId('v2-camera-input')).toHaveCount(0)
+
+    const text = 'What is Rahu in the seventh house?'
+    await fillComposer(page, text)
+    const submitted = page.waitForRequest(request =>
+      request.method() === 'POST' && new URL(request.url()).pathname === '/api/chat/consume')
     await sendQuery(page)
-    await expect(page.getByTestId('v2-assistant-message')).toBeVisible({ timeout: 30_000 })
+    const body = (await submitted).postDataJSON()
+    expect(body).not.toHaveProperty('attachments')
+    expect(body.messages.at(-1).parts).toEqual([{ type: 'text', text }])
+    await expect(page.getByTestId('v2-assistant-message').last()).toBeVisible({ timeout: 30_000 })
   })
 
-  // ── O7 / B.10 — PDF extraction (conditional) ─────────────────────────────
-  test('C7.13 — Upload a PDF; if Vertex DU wired asserts real text; otherwise asserts fixture marker', async ({ page }) => {
+  test('C7.13 — The Consult alias explicitly refuses an inline PDF', async ({ page }) => {
     test.skip(!SESSION, 'Skipped: MARSYS_SUPER_ADMIN_SESSION required')
-    await page.goto(CONSUME_URL)
-    const fileInput = page.getByTestId('v2-file-input').first()
-    await expect(fileInput).toBeAttached({ timeout: 10_000 })
-    await fileInput.setInputFiles({
-      name: 'test.pdf',
-      mimeType: 'application/pdf',
-      buffer: Buffer.from('%PDF-1.4 test'),
+    const response = await page.request.post('/api/chat/consume', {
+      data: {
+        chartId: CLIENT_ID,
+        messages: [{ id: 'fixture-message', role: 'user', parts: [
+          { type: 'file', mediaType: 'application/pdf', url: 'data:application/pdf;base64,JVBERi0xLjQK' },
+        ] }],
+      },
     })
-    // PDF icon may not render if GCS upload is required before state update — conditional check
-    const pdfPreviewVisible = await page.getByTestId('v2-attachment-pdf-icon').isVisible({ timeout: 5_000 }).catch(() => false)
-    if (pdfPreviewVisible) {
-      await expect(page.getByTestId('v2-attachment-pdf-icon')).toBeVisible()
-    }
-    await fillComposer(page, 'Summarize this PDF')
-    await sendQuery(page)
-    await expect(page.getByTestId('v2-assistant-message')).toBeVisible({ timeout: 30_000 })
-    // Either real Vertex extraction result OR fixture/deferred marker is acceptable
-    const isVertexWired = !!process.env.VERTEX_AI_PROJECT_ID
-    if (isVertexWired) {
-      await expect(page.getByTestId('v2-assistant-message')).not.toContainText('[FIXTURE_PDF_TEXT]')
-    }
-    // If not wired: the upload+query completes without error = O7 wiring verified at API boundary
+    expect(new URL(response.url()).pathname).toBe('/api/chat/consult')
+    expect(response.status()).toBe(503)
+    expect(response.headers()['cache-control']).toBe('private, no-store')
+    expect(await response.json()).toMatchObject({ error: { code: 'ATTACHMENT_UNAVAILABLE', retry: false } })
   })
 })
