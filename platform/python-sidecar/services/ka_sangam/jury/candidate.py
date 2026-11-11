@@ -261,10 +261,13 @@ def compute(value: ClassInput, *, schedule: ShiftSchedule | None = None) -> Cand
 
 
 def bind_candidate(ctx, *, lock: bool) -> str:
+    # Previews still validate the binding and head, without taking row locks.
+    dry_run = getattr(ctx, 'dry_run', False)
+    binding_lock = '' if dry_run else (' FOR UPDATE' if lock else ' FOR SHARE')
+    head_lock = '' if dry_run else ' FOR SHARE'
     with ctx.db_conn.cursor(row_factory=tuple_row) as cursor:
-        suffix = ' FOR UPDATE' if lock else ' FOR SHARE'
         binding = cursor.execute('SELECT chart_id,generation,state,conventions FROM kala_layer_candidate '
-                                 'WHERE build_id=%s' + suffix, (str(ctx.build_id),)).fetchone()
+                                 'WHERE build_id=%s' + binding_lock, (str(ctx.build_id),)).fetchone()
         if binding is None or str(binding[0]) != str(ctx.config['chart_id']) or binding[2] != 'building':
             raise ValueError('only the build-bound building candidate may be replaced')
         if binding[3].get('fixture') is not True:
@@ -272,7 +275,7 @@ def bind_candidate(ctx, *, lock: bool) -> str:
         generation = binding[1]
         if not generation.startswith('candidate:') or generation == 'candidate:':
             raise ValueError('private candidate generation required')
-        head = cursor.execute('SELECT generation FROM kala_layer_head WHERE chart_id=%s FOR SHARE',
+        head = cursor.execute('SELECT generation FROM kala_layer_head WHERE chart_id=%s' + head_lock,
                               (str(ctx.config['chart_id']),)).fetchone()
         if head and head[0] == generation:
             raise ValueError('published generation cannot be replaced')

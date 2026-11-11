@@ -40,56 +40,64 @@ def main():
     logger.info("build_id=%s chart_id=%s dry_run=%s", build_id, CHART_ID, args.dry_run)
 
     conn = psycopg.connect(DB_URL, prepare_threshold=None)
-    conn.autocommit = False
-    # PARIṢKĀRA MR-39 + S7-LOCK: session-scoped SETs (never ALTER DATABASE/ROLE)
-    # so this build session cannot be killed by the server-side idle-in-transaction
-    # timeout while ka_sangam's substeps compute with no DB traffic in between;
-    # and lock_timeout='300s' bounds lock-wait hangs (S7-LOCK hardening).
-    with conn.cursor() as _mr39_cur:
-        _mr39_cur.execute("SET idle_in_transaction_session_timeout = 1800000")
-        _mr39_cur.execute("SET lock_timeout = '300s'")
-        # GUC smoke-log: read current_setting() for ground-truth evidence in job logs.
-        _mr39_cur.execute(
-            "SELECT current_setting('idle_in_transaction_session_timeout')"
-            ", current_setting('statement_timeout')"
-            ", current_setting('lock_timeout')"
-        )
-        idle_in_txn, stmt_timeout, lock_timeout = _mr39_cur.fetchone()
-        logger.info(
-            "[GUC smoke-log] idle_in_txn=%s statement_timeout=%s lock_timeout=%s",
-            idle_in_txn, stmt_timeout, lock_timeout,
-        )
-    conn.commit()
-
-    # Pre-delete phala_anchors rows that reference kala_convergence to avoid
-    # FK cascade + unique-index conflict when kala_convergence rows are deleted.
-    with conn.cursor() as cur:
-        cur.execute(
-            "DELETE FROM phala_anchors WHERE chart_id = %s AND anchor_source = %s",
-            (CHART_ID, "convergence"),
-        )
-        logger.info("Pre-deleted %d phala_anchors rows (anchor_source=convergence)", cur.rowcount)
-    conn.commit()
-
-    # ka_sangam is a @records_swiss_backend writer: it needs the chart's birth window to check the
-    # Swiss corpus range before it runs (WindowUncheckedError otherwise). Build birth_params the way
-    # the orchestrator does (pipeline/orchestrator/asset_runner.py): fetch_birth_params from public.charts.
-    from pipeline.orchestrator.birth_params import fetch_birth_params
-    birth_params = fetch_birth_params(conn, CHART_ID)
-    conn.commit()
-
-    ctx = ContextSpec(
-        asset_id="ka_sangam",
-        build_id=build_id,
-        db_conn=conn,
-        config={"chart_id": CHART_ID, "birth_params": birth_params},
-        dry_run=args.dry_run,
-    )
-
     try:
+        conn.autocommit = False
+        if args.dry_run:
+            conn.read_only = True
+        # PARIṢKĀRA MR-39 + S7-LOCK: session-scoped SETs (never ALTER DATABASE/ROLE)
+        # so this build session cannot be killed by the server-side idle-in-transaction
+        # timeout while ka_sangam's substeps compute with no DB traffic in between;
+        # and lock_timeout='300s' bounds lock-wait hangs (S7-LOCK hardening).
+        with conn.cursor() as _mr39_cur:
+            _mr39_cur.execute("SET idle_in_transaction_session_timeout = 1800000")
+            _mr39_cur.execute("SET lock_timeout = '300s'")
+            # GUC smoke-log: read current_setting() for ground-truth evidence in job logs.
+            _mr39_cur.execute(
+                "SELECT current_setting('idle_in_transaction_session_timeout')"
+                ", current_setting('statement_timeout')"
+                ", current_setting('lock_timeout')"
+            )
+            idle_in_txn, stmt_timeout, lock_timeout = _mr39_cur.fetchone()
+            logger.info(
+                "[GUC smoke-log] idle_in_txn=%s statement_timeout=%s lock_timeout=%s",
+                idle_in_txn, stmt_timeout, lock_timeout,
+            )
+        if not args.dry_run:
+            conn.commit()
+
+            # Pre-delete phala_anchors rows that reference kala_convergence to avoid
+            # FK cascade + unique-index conflict when kala_convergence rows are deleted.
+            with conn.cursor() as cur:
+                cur.execute(
+                    "DELETE FROM phala_anchors WHERE chart_id = %s AND anchor_source = %s",
+                    (CHART_ID, "convergence"),
+                )
+                logger.info("Pre-deleted %d phala_anchors rows (anchor_source=convergence)", cur.rowcount)
+            conn.commit()
+
+        # ka_sangam is a @records_swiss_backend writer: it needs the chart's birth window to check the
+        # Swiss corpus range before it runs (WindowUncheckedError otherwise). Build birth_params the way
+        # the orchestrator does (pipeline/orchestrator/asset_runner.py): fetch_birth_params from public.charts.
+        from pipeline.orchestrator.birth_params import fetch_birth_params
+        birth_params = fetch_birth_params(conn, CHART_ID)
+        if not args.dry_run:
+            conn.commit()
+
+        ctx = ContextSpec(
+            asset_id="ka_sangam",
+            build_id=build_id,
+            db_conn=conn,
+            config={"chart_id": CHART_ID, "birth_params": birth_params},
+            dry_run=args.dry_run,
+        )
+
         result = writer.run(ctx)
-        conn.commit()
-        logger.info("=== ka_sangam COMPLETE: rows_inserted=%d ===", result.rows_inserted)
+        if args.dry_run:
+            conn.rollback()
+            logger.info("=== ka_sangam DRY-RUN PREVIEW: no rows written ===")
+        else:
+            conn.commit()
+            logger.info("=== ka_sangam COMPLETE: rows_inserted=%d ===", result.rows_inserted)
     except Exception as exc:
         conn.rollback()
         import traceback; traceback.print_exc()

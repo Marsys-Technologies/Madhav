@@ -615,7 +615,11 @@ class _LegacyKaSangamWriter(WriterBase):
         # (read + lock), or 'legacy' for an unbound build that REFUSES once a head exists (SR-K9-BIND B1b). Every kala_convergence delete below is scoped to this generation, so
         # the FK cascade out of kala_convergence (migration 1405 header) can only reach the children of this
         # build's own rows (K9-WRITE-SCOPE F1).
-        self._conv_generation = convergence_generation(conn, chart_id, getattr(self, '_candidate', None))
+        candidate = getattr(self, '_candidate', None)
+        if not dry_run:
+            self._conv_generation = convergence_generation(conn, chart_id, candidate)
+        elif candidate is None:
+            refuse_unbound_rewrite(conn, chart_id, 'ka_sangam')
 
         if self._reset_pending and not dry_run:
             with conn.cursor() as cur:
@@ -700,22 +704,19 @@ class _LegacyKaSangamWriter(WriterBase):
     # ── substep implementations ───────────────────────────────────────────────
 
     def _substep_near(self, conn, chart_id: str, dry_run: bool) -> WriterResult:
-        with conn.cursor() as cur:
-            cur.execute("SET LOCAL statement_timeout = 0")
-        with conn.cursor() as cur:
-            cur.execute("DELETE FROM kala_convergence WHERE chart_id = %s AND generation = %s AND horizon_tier = 'near'",
-                        (chart_id, self._write_generation()))
-            # Self-scoped delete: only bulk-clear lifetime rows when there are NO
-            # lifetime substeps to clear their own (each _substep_lifetime clears
-            # its own signal's rows). Making every substep touch only its own rows
-            # is what lets a resumed attempt skip already-committed substeps without
-            # wiping another substep's committed data — and is what makes a
-            # resumed run byte-identical to an uninterrupted one.
-            if not self._lt_preds:
-                cur.execute(
-                    "DELETE FROM kala_convergence WHERE chart_id = %s AND generation = %s AND horizon_tier = 'lifetime'",
-                    (chart_id, self._write_generation()),
-                )
+        if not dry_run:
+            with conn.cursor() as cur:
+                cur.execute("SET LOCAL statement_timeout = 0")
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM kala_convergence WHERE chart_id = %s AND generation = %s AND horizon_tier = 'near'",
+                            (chart_id, self._write_generation()))
+                # Only clear the lifetime tier here when there are no lifetime substeps.
+                # Otherwise each lifetime substep replaces its own signal's rows.
+                if not self._lt_preds:
+                    cur.execute(
+                        "DELETE FROM kala_convergence WHERE chart_id = %s AND generation = %s AND horizon_tier = 'lifetime'",
+                        (chart_id, self._write_generation()),
+                    )
 
         today        = date.today()
         horizon_end  = date(today.year + _HORIZON_YEARS, today.month, today.day)
@@ -749,10 +750,8 @@ class _LegacyKaSangamWriter(WriterBase):
         pred      = self._lt_preds[idx]
         signal_id = pred.get('signal_id')
 
-        # Idempotency: lifetime rows were bulk-cleared in _substep_near before any
-        # lifetime substep runs; no additional full-table delete needed here.
-        with conn.cursor() as cur:
-            if signal_id:
+        if not dry_run and signal_id:
+            with conn.cursor() as cur:
                 cur.execute(
                     "DELETE FROM kala_convergence WHERE chart_id = %s AND generation = %s AND signal_id = %s::uuid AND horizon_tier = 'lifetime'",
                     (chart_id, self._write_generation(), str(signal_id)),
@@ -1456,6 +1455,8 @@ class KaSangamWriter(_LegacyKaSangamWriter):
     def run_substep(self, ctx, step: SubStep) -> WriterResult:
         if 'jury_fixture_inputs' not in ctx.config:
             if step.key == GRAIN_STEP:
+                if getattr(ctx, 'dry_run', False):
+                    return WriterResult('ka_sangam', 0, notes='dry_run=True')
                 return self._attest_candidate_grain(ctx)
             return super().run_substep(ctx, step)
         from services.ka_sangam.jury import candidate
