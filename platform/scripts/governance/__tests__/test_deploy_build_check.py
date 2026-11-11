@@ -295,7 +295,7 @@ git() {
     return subprocess.run(
         ['bash', '-eo', 'pipefail', '-c', harness + step['run']],
         cwd=repo,
-        env={**os.environ, 'GCP_REGION': 'fixture', 'GITHUB_OUTPUT': str(output),
+        env={**os.environ, 'GITHUB_OUTPUT': str(output),
              'FIXTURE_DEPLOYED_SHA': base, 'FIXTURE_FAIL_DIFF': '1' if fail_diff else '0'},
         capture_output=True, text=True, timeout=10,
     ), output
