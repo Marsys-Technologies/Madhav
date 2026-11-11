@@ -838,9 +838,9 @@ def _glob_match(path: str, globs: list) -> bool:
 def validate_scope_boundary(handshake_data: dict, close_data: dict) -> List[Violation]:
     """§C of ONGOING_HYGIENE_POLICIES_v1_0.md: close-checklist compliance check.
 
-    Each path in session_close.files_touched must match declared_scope.may_touch
-    AND must NOT match declared_scope.must_not_touch. Closes GA.20 at the
-    close-checklist layer (Step 7 closed the handshake layer).
+    Each path in session_close.files_touched must be canonical and repository-relative,
+    match declared_scope.may_touch, and not match declared_scope.must_not_touch.
+    Closes GA.20 at the close-checklist layer (Step 7 closed the handshake layer).
     """
     violations: List[Violation] = []
     so = handshake_data.get("session_open", {}) or {}
@@ -849,7 +849,18 @@ def validate_scope_boundary(handshake_data: dict, close_data: dict) -> List[Viol
     mnt = (so.get("declared_scope", {}) or {}).get("must_not_touch") or []
     for row in (sc.get("files_touched") or []):
         path = row.get("path")
-        if not path:
+        # Match declared globs against lexical Git paths without following symlinks.
+        if (not isinstance(path, str)
+                or "\\" in path or "\x00" in path
+                or re.match(r"^[A-Za-z]:", path)
+                or any(part in {"", ".", ".."} for part in path.split("/"))):
+            violations.append(Violation(
+                rule="scope_boundary_violation",
+                severity="HIGH",
+                path="<close>",
+                evidence=f"Touched path {path!r} must be a canonical repository-relative POSIX path",
+                suggested_remediation="Record the touched file using its canonical path from the repository root",
+            ))
             continue
         if _glob_match(path, mnt):
             violations.append(Violation(
