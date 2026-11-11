@@ -153,7 +153,7 @@ jobs:
   # ─────────────────────────────────────────────────────────────────────────────
   stage-3-e2e-chromium:
     name: 'Stage 3 — E2E (Chromium)'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: stage-1-lint-typecheck-unit
     steps:
       - uses: actions/checkout@v4
@@ -189,7 +189,7 @@ jobs:
   # ─────────────────────────────────────────────────────────────────────────────
   stage-6-a11y:
     name: 'Stage 6 — Accessibility (axe-core) [nightly]'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # ⚠️ THIS STAGE HAS NEVER PASSED IN CI. It fails with
     #     `Error: Timed out waiting 120000ms from config.webServer.`
     # i.e. the Playwright dev server never boots, so axe-core never runs at all.
@@ -238,7 +238,7 @@ jobs:
   # ─────────────────────────────────────────────────────────────────────────────
   stage-7-perf:
     name: 'Stage 7 — Performance [nightly]'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # ⚠️ LIKE STAGE 6, THIS HAS NEVER PASSED IN CI. The baseline run's log shows FOUR
     # `Timed out waiting 120000ms from config.webServer` errors across its two steps —
     # the dev server never boots, so neither the streaming nor the Web Vitals spec
