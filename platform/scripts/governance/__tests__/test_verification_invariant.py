@@ -4,6 +4,7 @@ import contextlib
 import json
 import os
 import runpy
+import sqlite3
 import subprocess
 import sys
 from pathlib import Path
@@ -25,6 +26,47 @@ def watchdog(monkeypatch):
     monkeypatch.setattr(sys, "path", list(sys.path))
     main = runpy.run_path(str(ROOT / SCRIPT))["main"]
     return main, main.__globals__
+
+
+@pytest.mark.parametrize(("level", "status", "unexamined"), [
+    (1, "two_pass_verified", 0),
+    (4, "two_pass_verified", 0),
+    (5, "two_pass_verified", 1),
+    (None, "two_pass_verified", 1),
+    (None, "single", 0),
+])
+def test_claim_vs_evidence_counts_only_verified_claims_outside_examined_rows(
+    watchdog, monkeypatch, level, status, unexamined
+):
+    _, namespace = watchdog
+    monkeypatch.setitem(namespace, "_tables_with_column", lambda cur: ["chart_dashas", "chart_facts"])
+
+    with contextlib.closing(sqlite3.connect(":memory:")) as connection:
+        connection.execute(
+            "CREATE TABLE chart_dashas (verification_pass_status TEXT, kp_sublevel INTEGER, "
+            "level_n INTEGER, system_id TEXT)"
+        )
+        connection.execute("INSERT INTO chart_dashas VALUES (?, NULL, ?, 'vimshottari')", (status, level))
+        connection.execute("CREATE TABLE chart_facts (verification_pass_status TEXT)")
+        connection.execute("INSERT INTO chart_facts VALUES ('two_pass_verified')")
+        cursor = connection.cursor()
+
+        def execute(sql, params):
+            # Adapt PostgreSQL array binding while evaluating the audit predicate unchanged.
+            statuses, = params
+            placeholders = ", ".join("?" for _ in statuses)
+            cursor.execute(sql.replace("= ANY(%s)", f"IN ({placeholders})"), statuses)
+
+        results = []
+        namespace["check_claim_vs_evidence"](SimpleNamespace(execute=execute, fetchone=cursor.fetchone), results)
+
+    dashas, facts = results
+    assert dashas["table"] == "chart_dashas"
+    assert dashas["status"] == ("FAIL" if unexamined else "PASS")
+    assert dashas["detail"].startswith(f"{int(status == 'two_pass_verified')} row(s) claim a verified tier; {unexamined} ")
+    assert facts["table"] == "chart_facts"
+    assert facts["status"] == "PASS"
+    assert facts["detail"].startswith("1 row(s) claim a verified tier; 0 ")
 
 
 def verdict(status):

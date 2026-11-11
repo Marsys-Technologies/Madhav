@@ -2619,6 +2619,7 @@ jobs:
           OUTCOME_PIPELINE_CHANGED: ${{ needs.changes.outputs.pipeline }}
           OUTCOME_MIGRATE_RESULT: ${{ needs.migrate.result }}
           OUTCOME_WEB_RESULT: ${{ needs.deploy-web.result }}
+          OUTCOME_WEB_SHADOW: 'true'
           OUTCOME_SIDECAR_RESULT: ${{ needs.deploy-sidecar.result }}
           OUTCOME_MCP_RESULT: ${{ needs.deploy-mcp.result }}
           OUTCOME_PIPELINE_RESULT: ${{ needs.deploy-pipeline-job.result }}

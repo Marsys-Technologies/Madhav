@@ -5,6 +5,7 @@ import YAML from 'js-yaml'
 
 import {
   evaluateDeploymentOutcome,
+  observeWebReconciliation,
   type DeploymentOutcomeInput,
 } from '../ci/deployment_outcome_gate'
 
@@ -53,18 +54,70 @@ describe('evaluateDeploymentOutcome — earned deployment signal', () => {
     expect(result.requiredFailures).toEqual([])
   })
 
-  it('requires a changed sidecar to deploy even though sidecar does not use the migration barrier', () => {
+  it.each([
+    ['sidecar', 'deploy-sidecar'],
+    ['mcp', 'deploy-mcp'],
+    ['pipeline', 'deploy-pipeline-job'],
+  ] as const)('requires a selected %s alongside the routine jobs', (component, job) => {
+    const baseline = input()
     const result = evaluateDeploymentOutcome(input({
-      changed: { web: 'false', sidecar: 'true', mcp: 'false', pipeline: 'false' },
+      changed: { ...baseline.changed, [component]: 'true' },
+      results: { ...baseline.results, migrate: 'success', web: 'success' },
     }))
     expect(result.allowed).toBe(false)
-    expect(result.requiredFailures).toEqual(['deploy-sidecar=skipped'])
+    expect(result.requiredFailures).toEqual([`${job}=skipped`])
   })
 
-  it('does not manufacture a deployment requirement for a docs-only run', () => {
-    const result = evaluateDeploymentOutcome(input())
-    expect(result.allowed).toBe(true)
-    expect(result.mode).toBe('no-deployable-change')
+  it.each(['workflow_run', 'workflow_dispatch'])('requires migration and Web for %s even with all flags false', eventName => {
+    const missing = evaluateDeploymentOutcome(input({ eventName }))
+    expect(missing.allowed).toBe(false)
+    expect(missing.mode).toBe('blocked-mutation-skipped')
+    expect(missing.requiredFailures).toEqual(['migrate=skipped', 'deploy-web=skipped'])
+
+    const baseline = input()
+    const earned = evaluateDeploymentOutcome(input({
+      eventName,
+      results: { ...baseline.results, migrate: 'success', web: 'success' },
+    }))
+    expect(earned.allowed).toBe(true)
+    expect(earned.mode).toBe('earned-deployment')
+    expect(earned.requiredFailures).toEqual([])
+  })
+
+  it.each(['failure', 'cancelled', 'skipped', ''])('requires explicit success for routine job result %j', result => {
+    const baseline = input()
+    for (const [field, job] of [['migrate', 'migrate'], ['web', 'deploy-web']] as const) {
+      const outcome = evaluateDeploymentOutcome(input({
+        results: { ...baseline.results, migrate: 'success', web: 'success', [field]: result },
+      }))
+      expect(outcome.allowed).toBe(false)
+      expect(outcome.requiredFailures).toEqual([`${job}=${result || '(missing)'}`])
+    }
+  })
+
+  it('requires every service on an admitted force-all dispatch', () => {
+    const baseline = input()
+    const result = evaluateDeploymentOutcome(input({
+      eventName: 'workflow_dispatch',
+      forceAll: 'true',
+      results: { ...baseline.results, migrate: 'success', web: 'success' },
+    }))
+    expect(result.allowed).toBe(false)
+    expect(result.requiredFailures).toEqual([
+      'deploy-sidecar=skipped', 'deploy-mcp=skipped', 'deploy-pipeline-job=skipped',
+    ])
+  })
+
+  it.each(['failure', 'cancelled', 'skipped', ''])('refuses unavailable changes evidence %j', changesResult => {
+    const result = evaluateDeploymentOutcome(input({ changesResult }))
+    expect(result.allowed).toBe(false)
+    expect(result.mode).toBe('blocked-invalid-signal')
+  })
+
+  it('rejects an event outside the configured deploy workflow', () => {
+    const result = evaluateDeploymentOutcome(input({ eventName: 'push' }))
+    expect(result.allowed).toBe(false)
+    expect(result.mode).toBe('blocked-invalid-signal')
   })
 
   it('fails closed when a change output is absent or malformed', () => {
@@ -84,6 +137,47 @@ describe('evaluateDeploymentOutcome — earned deployment signal', () => {
   })
 })
 
+describe('observeWebReconciliation', () => {
+  it('keeps an unchanged path signal unknown even when the actual Web job succeeded', () => {
+    const actual = { ...input().results, migrate: 'success', web: 'success' }
+    expect(observeWebReconciliation(input({ results: actual }))).toEqual({
+      comparison: 'unknown', requested: 'unknown', reason: 'comparison-unavailable', actualWebJobResult: 'success',
+    })
+  })
+
+  it.each([
+    [{ changed: { ...input().changed, web: 'true' } }, 'web-selected'],
+    [{ changed: { ...input().changed, mcp: 'true' } }, 'mcp-needs-matching-web'],
+    [{ eventName: 'workflow_dispatch' }, 'manual-dispatch'],
+    [{ eventName: 'workflow_dispatch', forceAll: 'true' }, 'force-all'],
+  ] satisfies [Partial<DeploymentOutcomeInput>, string][])('records rebuild demand without claiming completion', (overrides, reason) => {
+    expect(observeWebReconciliation(input(overrides))).toEqual({
+      comparison: 'unknown', requested: 'rebuild', reason, actualWebJobResult: 'skipped',
+    })
+  })
+
+  it.each(['failure', 'cancelled', 'skipped', ''])('cannot qualify a comparison when changes is %s', changesResult => {
+    expect(observeWebReconciliation(input({ changesResult }))).toEqual({
+      comparison: 'unknown', requested: 'unknown', reason: 'change-detection-unavailable', actualWebJobResult: 'skipped',
+    })
+  })
+
+  it('drops malformed signals and does not echo unexpected job metadata', () => {
+    expect(observeWebReconciliation(input({
+      changed: { ...input().changed, web: 'TRUE' },
+      results: { ...input().results, web: 'unexpected result' },
+    }))).toEqual({
+      comparison: 'unknown', requested: 'unknown', reason: 'invalid-change-signal', actualWebJobResult: 'unknown',
+    })
+  })
+
+  it('makes no deployment assertion for another event', () => {
+    expect(observeWebReconciliation(input({ eventName: 'pull_request' }))).toEqual({
+      comparison: 'unknown', requested: 'unknown', reason: 'not-a-deploy-event', actualWebJobResult: 'skipped',
+    })
+  })
+})
+
 describe('deploy.yml earned-signal wiring', () => {
   const workflow = YAML.load(
     fs.readFileSync(path.resolve(__dirname, '../../../.github/workflows/deploy.yml'), 'utf8'),
@@ -100,6 +194,17 @@ describe('deploy.yml earned-signal wiring', () => {
     expect(Object.keys(workflow.jobs.changes.outputs ?? {})).toContain('web')
     const detect = workflow.jobs.changes.steps?.find((step) => (step.run ?? '').includes('deployed_sha'))
     expect(detect?.run).toContain("web=$(decide web")
+  })
+
+  it('admits routine migration and Web through prerequisites independently of source flags', () => {
+    const migrate = workflow.jobs.migrate
+    const web = workflow.jobs['deploy-web']
+    expect(migrate.if).toContain("needs.changes.result == 'success'")
+    expect(migrate.if).not.toContain('needs.changes.outputs.')
+    expect(web.needs).toEqual(['changes', 'migrate'])
+    expect(web.if).toContain("needs.changes.result == 'success'")
+    expect(web.if).toContain("needs.migrate.result == 'success'")
+    expect(web.if).not.toContain('needs.changes.outputs.')
   })
 
   it('runs an always-evaluated terminal signal across every mutation job', () => {

@@ -120,7 +120,7 @@ def check_claim_vs_evidence(cur, results: list[dict]) -> None:
 
         cur.execute(
             f'SELECT count(*) FROM "{tbl}" '  # noqa: S608
-            f"WHERE verification_pass_status = ANY(%s) AND NOT ({pred})",
+            f"WHERE verification_pass_status = ANY(%s) AND ({pred}) IS NOT TRUE",
             (verified,),
         )
         unexamined = cur.fetchone()[0]

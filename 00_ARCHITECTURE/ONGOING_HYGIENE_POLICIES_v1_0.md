@@ -639,6 +639,21 @@ The 2026-05-15 3-day silent demote (root cause per `PHASE_3C_AIOPS_OBSERVABILITY
 
 ## §R — Migration-directory ruling: single directory only (doctrine-waves D-1.5a, 2026-07-15)
 
+### Current guidance (2026-11-11)
+
+Create new numbered migrations only in `platform/supabase/migrations/`. The
+[standing Migration and Merge Protocol](MIGRATION_AND_MERGE_PROTOCOL_v1_0.md)
+governs authoring and allocation. The integration lead reconciles active claims
+and uses the repository guard across both migration directories and reserved
+owner paths. Recheck the number against refreshed `origin/main` under the merge
+lock and obtain a migration-guard receipt for the exact file.
+
+Retain the existing migration files and both runner inputs. For protected
+migrations, use the current protected workflow and its pending-set and ledger
+verification. The July 15 policy and its apply example below are historical.
+The Madhav consolidation campaign's reference to §R follows this dated guidance
+under decision SR-040.
+
 ### Policy
 
 **All SQL migrations live in `platform/migrations/` and ONLY that directory, from this point
