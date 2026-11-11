@@ -108,20 +108,20 @@ describe('sealed_split_guard', () => {
   it.each(malformedEvents)('rejects %s with a redacted error and excludes it from train filtering', (_label, malformed) => {
     const input = [malformed as CurveEvent]
     expect(() => assertNoSealedSplitEvents(input)).toThrow(SealedTestSplitViolation)
-    expect(() => assertNoSealedSplitEvents(input)).toThrow('sealed_split_guard: INVALID_EVENT')
+    expect(() => assertNoSealedSplitEvents(input)).toThrow('sealed_split_guard refuses to proceed: INVALID_EVENT')
     expect(filterToTrainScope([...input, trainPoint])).toEqual([trainPoint])
   })
 
   it('rejects a malformed event list with a redacted error', () => {
     const input = null as unknown as CurveEvent[]
-    expect(() => assertNoSealedSplitEvents(input)).toThrow('sealed_split_guard: INVALID_EVENT')
-    expect(() => filterToTrainScope(input)).toThrow('sealed_split_guard: INVALID_EVENT')
+    expect(() => assertNoSealedSplitEvents(input)).toThrow('sealed_split_guard refuses to proceed: INVALID_EVENT')
+    expect(() => filterToTrainScope(input)).toThrow('sealed_split_guard refuses to proceed: INVALID_EVENT')
   })
 
   it.each([NaN, 0])('rejects an event list with a proxy length of %s', (length) => {
     const input = maskedLength([sealedPoint], length)
-    expect(() => assertNoSealedSplitEvents(input)).toThrow('sealed_split_guard: INVALID_EVENT')
-    expect(() => filterToTrainScope(input)).toThrow('sealed_split_guard: INVALID_EVENT')
+    expect(() => assertNoSealedSplitEvents(input)).toThrow('sealed_split_guard refuses to proceed: INVALID_EVENT')
+    expect(() => filterToTrainScope(input)).toThrow('sealed_split_guard refuses to proceed: INVALID_EVENT')
   })
 
   it('keeps all failure details out of the message and stack', () => {
@@ -132,7 +132,7 @@ describe('sealed_split_guard', () => {
     } catch (error) {
       expect(error).toMatchObject({
         name: 'SealedTestSplitViolation',
-        message: 'sealed_split_guard: SEALED_SPLIT',
+        message: 'sealed_split_guard refuses to proceed: SEALED_SPLIT',
       })
       expect((error as Error).stack).not.toMatch(/synthetic-|\d{4}-\d{2}-\d{2}/)
     }
