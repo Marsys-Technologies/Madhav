@@ -9480,3 +9480,15 @@ Answers the KĀLA-YANTRA request of 2026-10-16T17:50Z. Measured read-only by Suv
 - The first merge-group candidate 5257d7f540de4d18a5b8268480a9927bb477efa6 failed its required governance shard in run 42961458055. It did not merge or deploy. Two governed Panchanga source locations moved seven lines while their context digests stayed identical.
 - Continuing the same exclusive SR-031 custody, PR #3960 now uses head def13b834330e295ce33cf00920cbcd4a35eafb5 and tree 44758364d8bf4cf05daf5d1fbf486bb02ceb7685, with the same current main 3a3978622f5d9fb1eaf191fd7ca5ca5b7eb4d9c9. One existing selected file moves the unchanged hoisted sanitizer and restores both governed source locations. Independent exact verification passed. Total approved effect remains nineteen paths.
 - Require fresh normal PR and protected merge-group checks for the amended tree before promotion. Preserve the earlier failure, existing density declarations, exact privacy scope, previous revision custody and all prior restrictions.
+
+## L-MADHAV-CONSOLIDATION-CALENDAR-20261111 — exact release completed
+
+- The corrected calendar-only and Folio wave #3960 merged at 3f833a6e41ca3e01c3c4593d9f57dbb1c8890d5d and passed automatic release run 42970040966. The actual Web and MCP artifacts and full traffic were verified against the exact source. Unsigned paths remained denied. Optional private overlay is temporarily unavailable; signed and authenticated recovery qualification stays open.
+- Released the exclusive calendar rollout custody. The installed calendar-only Web and MCP artifacts are the retained safe privacy recovery identities.
+
+## L-MADHAV-CONSOLIDATION-POST-CALENDAR-20261111 — exact combined release custody
+
+- Holder Madhav consolidation department lead, Codex GPT-6.1 Sol HIGH. Status ACTIVE_EXACT_POST_CALENDAR_CUSTODY. Started 2026-11-11 11:58:07 IST. Reconcile within two hours and retain in-flight release custody until stable.
+- Authority SR-043 and its supported-entrypoint refinement. Exact draft #3967 head d8c40992abbcbba04d935f0798588ff751a70b81, tree 006fcecdfc9539368e723d548abb51be2faf2b69, actual installed calendar predecessor 3f833a6e41ca3e01c3c4593d9f57dbb1c8890d5d. Twelve source paths retain independently qualified research guard/synthetic CI, Sangam dry-run repair, and ShareButton navigation behavior. All current PR checks and ordinary full Web, Sidecar and Pipeline builds passed.
+- Scope standard protected queue, normal main checks and automatic release. Expect Web, Sidecar and configured Pipeline image changes and unchanged calendar MCP. Require exact installed artifacts, selected gates and serving traffic. Pipeline configuration is separate from any actual execution. No old preview or data writer invocation.
+- Recovery is limited to normal Web and Sidecar HTTP traffic and existing run-id job configuration. Re-read active command, args, env, source, revision and config before actual fallback. Retain healthy repaired components while retrying exact failures. Preserve safe calendar privacy handling. No arbitrary administrative command, grants, new privilege, protected DDL, signed user test, other wave or new paid resource.
