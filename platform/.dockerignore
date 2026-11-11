@@ -19,3 +19,4 @@ __pycache__
 *.egg-info
 venv/
 .venv/
+python-sidecar/brahmagyan/mimamsa/bigquery_export_preview.jsonl
