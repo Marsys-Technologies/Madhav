@@ -9673,3 +9673,11 @@ Answers the KĀLA-YANTRA request of 2026-10-16T17:50Z. Measured read-only by Suv
 
 - The fresh GraphQL queue snapshot (be46659b0f8e4793acb872ca747b4418cfa992ae2f603e6faf359ae969e4cd1b) showed #3973 exact c70569092c8a0d4f915802f283aa72b49fc20f33 at position 1 AWAITING_CHECKS. The simultaneous active main deploy snapshot was empty. The named independent observer agreed the protected queue conflict met the pre-dispatch stop condition.
 - Zero traffic PATCH requests were dispatched. The traffic runner was never started. SR096 released this unused rehearsal slot at the fresh conflict. Leave #3973 in existing custody. #3976 remains draft and ordinary-qualified while its admission is prepared. A subsequent production action requires its own exact selection and refreshed slot.
+
+
+## L-MADHAV-CONSOLIDATION-SR101-20261112 — exact Web traffic rehearsal reserved
+
+- SR101 selects 04:30–04:50 IST12Nov, latest outbound04:33, operator execution chat01a1c7aa-9cd3-74a1-846e-67f3a2e272b3 and independent product_runtime observer. Fresh queue/deploy and current live lease checks passed before this reservation.
+- Existing Web UID d42aa0ef-9a0f-44fb-8e09-4915b9178077, outbound519471af exact amjis-web-probe-519471af8c13-43078712461-1 / sha256:94e65d8a004080cfd4d6582182ee827c1317f0b152ed3d848691b210dfa85825, restorec2f0091b exact amjis-web-probe-c2f0091b3709-43110488545-1 / sha256:4c8ab902f5a234faf3e11728ba80504ed7722f7d5ecbace85ae1ec77bd53e6ba. Same direct SDK identity and traffic-only v2 PATCH, fresh directional etag, explicit100 percent, allowMissing=false, forceNewRevision=false.
+- Currentc2f MCP fabe3611ec9a9e2cbaec8c3f995c6c2b9a4166ed9fc35937ed2fe90658894e07, Sidecar d2a691eac8707ff41ee3f33bba92bd9882d37f21296e8582cdb94ba978ee012f and configuredPipeline AMD95dc8d3ab563df33bdfde10bc9c42e99b61b377b425505aa79da844d447fe930 stay fixed. Actual1037ledger and five reference versions bound. Known failed Classical continuity scoped, with no new resource invocation.
+- Exactly one outbound and one restoration. Each120sready/480sverification includes305s post-convergence cache interval. No additional revision, data write, job execution, protected admission or other carrier mutation. Preserve this lease and escalate any unresolved operation. Exact safe restoration remains authorized beyond planned end if needed.
