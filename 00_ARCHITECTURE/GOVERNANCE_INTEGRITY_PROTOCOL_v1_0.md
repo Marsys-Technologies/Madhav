@@ -1,6 +1,6 @@
 ---
 artifact: GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md
-version: 1.0
+version: 1.1
 status: CURRENT  # flipped DRAFT_PENDING_REDTEAM → CURRENT 2026-04-24 at Step 8 close (verdict PASS_WITH_FIXES per GOVERNANCE_INTEGRITY_REDTEAM_v1_0.md §1); F.1/F.2/F.3 findings are substantive coverage extensions booked to Step 12 per brief §4
 produced_during: STEP_6_GOVERNANCE_INTEGRITY_DESIGN (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -35,6 +35,11 @@ related_artifacts:
   - FILE_REGISTRY_v1_2.md — existing artifact inventory the §D redesign extends
   - LIVING_PROJECT_MAINTENANCE_GUIDE_v1_0.md, MAINTENANCE_SCHEDULE_v1_0.md — long-term hygiene cadences §C Axis 5 co-operates with
 changelog:
+  - >-
+    v1.1 (2026-11-11, MADHAV_CONSOLIDATION): Add supported Desktop session-open qualification without changing the existing authority and release gates.
+    Revision spec: briefs/madhav_consolidation/GOVERNANCE_INTEGRITY_PROTOCOL_REVISION_SPEC_v1_1.md.
+    Targeted independent review supports scoped draft source review. Source scope
+    approved on 2026-11-11. Installed qualification remains open; no mirror cascade.
   - v1.0 (2026-04-24, Step 6 of the Step 0 → Step 15 governance rebuild):
     Initial specification. Produced per STEP_BRIEFS/STEP_06_GOVERNANCE_INTEGRITY_DESIGN_v1_0.md.
     Status DRAFT_PENDING_REDTEAM until Step 8 red-team closes. Flips to CURRENT at Step 8 close
@@ -1088,11 +1093,12 @@ one leased worktree only while its lease remains live.
 
 ### P.4 — Codex local profiles and scope of this convention
 
-Codex uses the checked-in orientation loader plus the local `madhav-safe` and
-`madhav-parity` profiles. Both disable automatic project-document fallback so that the
+Codex CLI uses the checked-in orientation loader plus the local `madhav-safe` and
+`madhav-parity` profiles. The original onboarding configuration disabled automatic project-document fallback so that the
 loader can require the full canonical `CLAUDE.md`, rather than inheriting a truncated
-32 KiB fallback. Both expose only the project `marsys-jis` MCP, authenticated through
-`MARSYS_MCP_KEY`; the safe profile is reviewable and the parity profile is for explicit
+32 KiB fallback. The intended project connector is `marsys-jis`, authenticated through
+`MARSYS_MCP_KEY`. Verify actual profile loading and the effective connector set at qualification.
+The safe profile is reviewable and the parity profile is for explicit
 owner-authorized work. This session's native authority permits Codex to acquire and
 release only its campaign-coordination lease rows, and to commit and push only those
 lease-row changes. All other changes stay uncommitted for owner review. This is the
@@ -1109,15 +1115,34 @@ not a second server or credential surface; the repo configuration remains untouc
 **Warning:** keep the `/mcp` endpoint in both Codex profiles; do not change it back to the
 repository root endpoint, which returns HTTP 404 to streamable-HTTP initialization.
 
+`codex-desktop` is the identifier for a separately qualified local Codex Desktop
+session. Its admission requires an authorized caller to supply independent observations
+to `validate_handshake_yaml`. The observations bind the actual desktop session ID and
+local client identity to the governance session, absolute worktree, validator
+backing-file digest, effective instructions, and verified access posture. The caller reads the
+current remote coordination ref at admission and verifies the live lease, work order,
+expiry and scope for that session and worktree. The validator rejects observations
+older than ten minutes and leases that are expired, superseded or unverified.
+The app's identity alone does not establish the scope or access posture.
+
+The regular CLI handshake command cannot qualify Desktop. The authorized caller must
+obtain its evidence from the owning app, local session and coordination sources,
+independently of the submitted handshake. Until such a caller is qualified in the
+installed environment, formal Desktop governance remains pending. Preserve
+historical exceptions and their original validator outcomes. Profile qualification gives
+no authority to change protected resources or skip a release gate.
+
 ### P.5 — Mechanical enforcement and evidence
 
 `SESSION_OPEN_TEMPLATE_v1_0.md`, `SESSION_CLOSE_TEMPLATE_v1_0.md`, and
 `platform/scripts/governance/schema_validator.py` require tool identity, profile,
 worktree, lease verification, CCD consumption, and close synchronization for newly
 created session records. The acceptance suite must use fresh tool sessions, check the
-effective MCP surface, discover project skills, and prove a full `CLAUDE.md` read by
-citing content beyond byte 32,768. A loader that cannot produce that proof fails the
-acceptance test.
+effective MCP surface, discover project skills, and prove a full `CLAUDE.md` read against
+the exact checked-out revision. Record the file hash and byte length and demonstrate
+the final governing anchor was read. If that revision exceeds the client's default
+document limit, also demonstrate that governing content after that limit was read.
+A loader that cannot produce that proof fails the acceptance test.
 
 ---
 

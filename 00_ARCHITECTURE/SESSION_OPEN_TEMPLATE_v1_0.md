@@ -1,6 +1,6 @@
 ---
 artifact: SESSION_OPEN_TEMPLATE_v1_0.md
-version: 1.2
+version: 1.3
 status: CURRENT
 produced_during: STEP_7_GOVERNANCE_INTEGRITY_IMPLEMENTATION (2026-04-24)
 implements: GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md §F
@@ -22,6 +22,11 @@ consumers:
     the `step_number_or_macro_phase` field to name a CURRENT_STATE row instead of a STEP_LEDGER
     row post-rebuild
 changelog:
+  - >-
+    v1.3 (2026-11-11, MADHAV_CONSOLIDATION): Record independent current observations for the additional Desktop qualification path.
+    Revision spec: briefs/madhav_consolidation/GOVERNANCE_INTEGRITY_PROTOCOL_REVISION_SPEC_v1_1.md.
+    Targeted independent review supports scoped draft source review. Source scope
+    approved on 2026-11-11. Installed qualification remains open; no mirror cascade.
   - v1.2 (2026-08-15, CODEX_ONBOARDING): Adds tool/profile/worktree provenance,
     coordination-lease evidence, and mandatory CCD-register consumption for the shared
     Claude Code/Codex operating convention in GOVERNANCE_INTEGRITY_PROTOCOL §P.
@@ -75,9 +80,11 @@ session_open:
   agent_version: claude-opus-4-7
     # Model version identifier at session open (may equal agent_name).
   tool: "Claude Code"
-    # Required provenance: "Claude Code" or "Codex".
+    # Required provenance: "Claude Code", "Codex", or "Kimi Code".
   tool_profile: null
-    # Codex sessions record "madhav-safe" or "madhav-parity"; Claude Code records null.
+    # Codex CLI records the actual "madhav-safe" or "madhav-parity" profile.
+    # Qualified local Codex Desktop records "codex-desktop" and desktop_session_id.
+    # Claude Code records null.
   worktree_path: <absolute-path>
     # Every state-changing session uses its own task-specific worktree.
   step_number_or_macro_phase: STEP_7
@@ -243,11 +250,22 @@ The handshake is validated by `schema_validator.py` **before** any other action 
 
 1. `mandatory_reading_confirmation` is missing any item from the current mandatory-reading list (CLAUDE.md items + current step brief + any `open` ND.N matrix input).
 2. Any `canonical_artifact_fingerprint_check` row has `match: false` — indicates silent file mutation since last CANONICAL_ARTIFACTS update.
-3. Any `mirror_pair_freshness_check` row has `stale: true` — session must run `mirror_enforcer.py` as its first substantive action and either (a) confirm parity and refresh `last_verified_on` in CANONICAL_ARTIFACTS, or (b) open a DISAGREEMENT_REGISTER mirror-desync entry.
+3. The legacy `mirror_pair_freshness_check` field is missing. Use `[]` for new records. Its former freshness enforcement was retired in the ND.1 close-out.
 4. `declared_scope.must_not_touch` is empty — every session must declare both may-touch and must-not-touch positively.
 5. Any `open` ND.N whose matrix names this step has `acknowledged: false`.
 
 A session whose handshake fails does **not proceed**. It halts, reports the failing field(s) to the native, and waits for either a corrected handshake or explicit native override.
+
+For `tool: Codex` with `tool_profile: codex-desktop`, include the actual
+`desktop_session_id`, absolute `worktree_path`, and `coordination.remote_commit`
+from the current `origin/campaign-coordination` readback. Record the lease ID,
+readback timestamp, work order, exact authorized scope, and effective instruction
+fingerprints. Follow [GIP §P.4–P.5](GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md#p4--codex-local-profiles-and-scope-of-this-convention)
+for the independent qualification and proof of the effective access posture. The
+authorized in-process caller supplies those observations to the validator separately
+from the handshake. A Desktop label in the YAML or an ordinary CLI validation call
+cannot substitute for that observation. Use the actual client and profile on every
+record.
 
 ---
 
