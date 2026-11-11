@@ -586,11 +586,11 @@ def run_acceptance_gate(dry_run: bool = False) -> dict[str, Any]:
             row = conn.execute(
                 "SELECT COUNT(*) FROM mimamsa_export_log"
             ).fetchone()
-            count = int(row[0]) if row else 0
+            count = int(row[0]) if row is not None else None
         checks.append({
             "id": "AC1",
             "desc": "mimamsa_export_log table exists and is reachable",
-            "passed": True,
+            "passed": count is not None and count >= 0,
             "value": count,
         })
     except Exception as exc:
@@ -609,7 +609,7 @@ def run_acceptance_gate(dry_run: bool = False) -> dict[str, Any]:
         checks.append({
             "id": "AC2",
             "desc": f"BQ dataset {BQ_DATASET} accessible",
-            "passed": True,
+            "passed": dataset.dataset_id == BQ_DATASET,
             "value": str(dataset.dataset_id),
         })
     except ImportError:
@@ -634,7 +634,7 @@ def run_acceptance_gate(dry_run: bool = False) -> dict[str, Any]:
                 "SELECT COUNT(*) FROM mimamsa_export_log "
                 "WHERE source_citation IS NULL OR source_citation = ''"
             ).fetchone()
-            null_count = int(row[0]) if row else 0
+            null_count = int(row[0]) if row is not None else None
         checks.append({
             "id": "AC3",
             "desc": "All export_log rows have non-null source_citation",
@@ -657,7 +657,7 @@ def run_acceptance_gate(dry_run: bool = False) -> dict[str, Any]:
                 "WHERE table_name ILIKE 'life_events%' "
                 "   OR table_name ILIKE 'lel\\_%'"
             ).fetchone()
-            leakage_count = int(row[0]) if row else 0
+            leakage_count = int(row[0]) if row is not None else None
         checks.append({
             "id": "AC4",
             "desc": "no life_events / lel export_log rows (life_events is never exported)",
