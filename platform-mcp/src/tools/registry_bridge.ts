@@ -2261,7 +2261,7 @@ export async function fetchOrientationContext(
     // F-22: the boolean now reflects an assessment of the payload, not merely the absence
     // of a thrown exception.
     const assessment = assessOrientationPayload(ucdData, chart_id)
-    if (assessment.ok) return { orientation_context: ucdData, orientation_ok: true }
+    if (assessment.ok) return { orientation_context: ucdData, orientation_ok: assessment.ok }
     // Non-blocking and non-destructive: the real payload is preserved verbatim alongside
     // an honest note, so nothing is dropped (B.10) and no caller can read the hollow case
     // as a satisfied B.11 floor.
@@ -2270,7 +2270,7 @@ export async function fetchOrientationContext(
         ...(ucdData as Record<string, unknown>),
         b11_note: `UCD orientation did not establish holistic context. ${assessment.reason}`,
       },
-      orientation_ok: false,
+      orientation_ok: assessment.ok,
     }
   } catch (err) {
     // Non-blocking: domain tool still runs; orientation failure is annotated
