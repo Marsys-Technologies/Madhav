@@ -21,7 +21,7 @@ export class SealedTestSplitViolation extends Error {
   constructor(reason: SplitFailure | Array<{ eventId: string; date: Date }>) {
     // Keep the legacy constructor usable without retaining its sensitive arguments.
     const code = reason === 'INVALID_EVENT' ? 'INVALID_EVENT' : 'SEALED_SPLIT'
-    super(`sealed_split_guard: ${code}`)
+    super(`sealed_split_guard refuses to proceed: ${code}`)
     this.name = 'SealedTestSplitViolation'
     this.code = code
   }
