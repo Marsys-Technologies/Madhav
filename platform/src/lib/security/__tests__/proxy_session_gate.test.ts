@@ -252,6 +252,102 @@ describe('what the gate never touches', () => {
   })
 })
 
+describe('Classical Summary service ingress', () => {
+  const summaryPath = '/api/classical-texts/fixture-text/summary'
+  const serviceToken = 'fixture-classical-summary-token'
+  const tokenHeader = 'x-mcp-internal-token'
+
+  beforeEach(() => {
+    setMode('enforce')
+    vi.stubEnv('MCP_INTERNAL_TOKEN', serviceToken)
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it('passes an exact authenticated GET without a session', async () => {
+    const res = await proxy(req(summaryPath, { cookie: null, headers: { [tokenHeader]: serviceToken } }))
+    expect(res.headers.get('x-middleware-next')).toBe('1')
+    expect(verifyMock).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    '/api/classical-texts/%2e/fixture-text/summary',
+    '/api/classical-texts/extra/%2e%2e/fixture-text/summary',
+  ])('uses the normalized route for %s', async (path) => {
+    const request = req(path, { cookie: null, headers: { [tokenHeader]: serviceToken } })
+    expect(request.nextUrl.pathname).toBe(summaryPath)
+    const res = await proxy(request)
+    expect(res.headers.get('x-middleware-next')).toBe('1')
+    expect(verifyMock).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['absent', {}],
+    ['empty', { [tokenHeader]: '' }],
+    ['wrong', { [tokenHeader]: 'fixture-wrong-token' }],
+    ['malformed', { [tokenHeader]: 'Bearer ' + serviceToken }],
+    ['wrong header name', { 'x-mcp-token': serviceToken }],
+  ] as const)('refuses a GET with %s service authentication and no session', async (_label, headers) => {
+    const res = await proxy(req(summaryPath, { cookie: null, headers }))
+    expect(res.status).toBe(401)
+    expect(verifyMock).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['repeated value', serviceToken],
+    ['different value', 'fixture-wrong-token'],
+  ])('refuses an unequal normalized header with a %s', async (_label, second) => {
+    const headers = new Headers([[tokenHeader, serviceToken], ['X-MCP-Internal-Token', second]])
+    const request = new NextRequest('http://localhost' + summaryPath, { headers })
+    expect(request.headers.get(tokenHeader)).not.toBe(serviceToken)
+    expect((await proxy(request)).status).toBe(401)
+    expect(verifyMock).not.toHaveBeenCalled()
+  })
+
+  it('uses the canonical verifier for an opaque value equal to the normalized header', async () => {
+    vi.stubEnv('MCP_INTERNAL_TOKEN', 'fixture-left, fixture-right')
+    const headers = new Headers([[tokenHeader, 'fixture-left'], ['X-MCP-Internal-Token', 'fixture-right']])
+    const request = new NextRequest('http://localhost' + summaryPath, { headers })
+    expect(request.headers.get(tokenHeader)).toBe('fixture-left, fixture-right')
+    expect((await proxy(request)).headers.get('x-middleware-next')).toBe('1')
+    expect(verifyMock).not.toHaveBeenCalled()
+  })
+
+  it.each(['POST', 'HEAD', 'OPTIONS', 'PUT', 'PATCH', 'DELETE'])('requires a session for %s', async (method) => {
+    const res = await proxy(req(summaryPath, { method, cookie: null, headers: { [tokenHeader]: serviceToken } }))
+    expect(res.status).toBe(401)
+    expect(verifyMock).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    '/api/classical-texts/fixture-text',
+    '/api/classical-texts/fixture-text/other',
+    '/api/classical-texts/fixture-text/summary/extra',
+    '/api/classical-texts/extra/fixture-text/summary',
+    '/api/classical-texts/%66ixture-text/summary',
+    '/api/classical-texts/fixture%2ftext/summary',
+    '/api/classical-texts/fixture%252ftext/summary',
+    '/api/classical-texts/fixture-text/%73ummary',
+    '/api/classical-texts-other/fixture-text/summary',
+    '/api/charts/fixture-text',
+  ])('keeps %s behind the session gate', async (path) => {
+    const res = await proxy(req(path, { cookie: null, headers: { [tokenHeader]: serviceToken } }))
+    expect(res.status).toBe(401)
+    expect(verifyMock).not.toHaveBeenCalled()
+  })
+
+  it('still verifies a signed-in caller without a valid service credential', async () => {
+    verifyMock.mockResolvedValue({ sub: SECRET_UID })
+    const request = req(summaryPath, { headers: { [tokenHeader]: 'fixture-wrong-token' } })
+    const res = await proxy(request)
+    expect(res.headers.get('x-middleware-next')).toBe('1')
+    expect(verifyMock).toHaveBeenCalledWith(request.cookies.get('__session')?.value, false)
+  })
+})
+
+
 describe('enforce fails closed without throwing', () => {
   it('a throwing / hanging firebase-admin never produces an unhandled exception', async () => {
     setMode('enforce')

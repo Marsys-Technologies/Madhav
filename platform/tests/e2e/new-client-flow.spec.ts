@@ -1,30 +1,17 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 import { existsSync, readFileSync } from 'fs'
 
 /**
- * New Client → Cockpit end-to-end flow — [BUILD-ORCH-D-S5]
+ * New Client → Nirmāṇa and the direct cockpit bookmark — [BUILD-ORCH-D-S5].
  *
- * Verifies the full funnel:
- *   1. Auth via session cookie
- *   2. Navigate to /clients/new
- *   3. Fill form with valid data (DD MM YYYY date format)
- *   4. Submit → /api/clients/create
- *   5. Assert redirect to /clients/<id>/cockpit (or /build fallback)
- *   6. Assert cockpit page mounts
+ * Manual prerequisites: a dev server with Google Places unconfigured for
+ * manual birth-place entry, an existing Firebase session cookie at COOKIE_PATH,
+ * and a Cloud SQL connection for chart creation. The bookmark check uses
+ * SMOKE_CHART_ID for an existing chart the session can prepare.
  *
- * Prerequisites:
- *   - Dev server running on http://localhost:3000
- *   - Valid Firebase __session cookie in /tmp/smoke_session_cookie.txt
- *   - Cloud SQL Proxy running (for /api/clients/create DB insert)
+ * npx playwright test tests/e2e/new-client-flow.spec.ts --reporter=list --workers=1
  *
- * Skip conditions: session cookie absent, or SMOKE_CHART_ID env not set.
- * Both are normal in CI without the operator secrets injected.
- *
- * Re-run locally:
- *   Write a valid Firebase session cookie to /tmp/smoke_session_cookie.txt, then:
- *   npx playwright test tests/e2e/new-client-flow.spec.ts --reporter=list --workers=1
- *
- * @ci-skip (requires live dev server + Cloud SQL Proxy)
+ * @ci-skip (requires live dev server, session and Cloud SQL)
  */
 
 const COOKIE_PATH = '/tmp/smoke_session_cookie.txt'
@@ -38,18 +25,81 @@ function tryReadCookie(): string | null {
   }
 }
 
-const SESSION_COOKIE = tryReadCookie()
-const SKIP = !SESSION_COOKIE
+export async function expectPreparation(page: Page, chartId: string, timeout = 15_000) {
+  await expect(page).toHaveURL(`/clients/${chartId}/nirmana`, { timeout })
+  const preparation = page.getByTestId('build-page-root')
+  await expect(preparation).toHaveAttribute('data-permission', 'all', { timeout })
+  const toolbar = preparation.locator('.preparation-toolbar')
+  await expect(toolbar.getByRole('button', { name: /^(?:Build all|Rebuild all|■ Stop)$/i })).toBeVisible({ timeout })
+}
 
-test.describe('New client form → cockpit redirect', () => {
+export async function expectDirectCockpit(page: Page, chartId: string, timeout = 10_000) {
+  await expect(page).toHaveURL(`/clients/${chartId}/cockpit`, { timeout })
+  await expect(
+    page.getByRole('button', { name: /^(?:Build Chart|Continue Build|Rebuild All|Stop)$/ }).first(),
+  ).toBeVisible({ timeout })
+}
+
+export async function blockBuildCommands(page: Page) {
+  const attempts: string[] = []
+  await page.route(
+    (url) => url.pathname.startsWith('/api/build/') || url.pathname.startsWith('/api/cockpit/'),
+    async (route) => {
+      const request = route.request()
+      const method = request.method()
+      if (['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+        await route.fallback()
+        return
+      }
+      attempts.push(`${method} ${new URL(request.url()).pathname}`)
+      await route.abort()
+    },
+  )
+  return attempts
+}
+
+type ChartCreation = { ok: boolean; chartId: unknown }
+
+async function observeChartCreation(page: Page) {
+  let record!: (creation: ChartCreation) => void
+  const creation = new Promise<ChartCreation>((resolve) => { record = resolve })
+  await page.exposeBinding('__recordNewClientSmokeCreation', ({ frame }, result: ChartCreation) => {
+    if (frame === page.mainFrame()) record(result)
+  })
+  await page.addInitScript(() => {
+    const fetch = window.fetch.bind(window)
+    window.fetch = async (input, init) => {
+      const request = input instanceof Request ? input : null
+      const url = new URL(request?.url ?? String(input), location.href)
+      const method = init?.method ?? request?.method ?? 'GET'
+      const response = await fetch(input, init)
+      if (url.origin === location.origin && url.pathname === '/api/clients/create' && method.toUpperCase() === 'POST') {
+        // Capture the clone before the form can navigate away and discard the network response body.
+        const body = await response.clone().json().catch(() => null)
+        const smokeWindow = window as Window & {
+          __recordNewClientSmokeCreation?: (result: ChartCreation) => Promise<void>
+        }
+        const recordCreation = smokeWindow.__recordNewClientSmokeCreation
+        if (!recordCreation) throw new Error('Chart creation observer was not registered')
+        await recordCreation({ ok: response.ok, chartId: body?.chart_id })
+      }
+      return response
+    }
+  })
+  return { creation }
+}
+
+test.describe('New client preparation and direct cockpit', () => {
   test.beforeEach(async ({ page }) => {
-    test.skip(SKIP, 'No session cookie at /tmp/smoke_session_cookie.txt — write one and re-run (@ci-skip)')
-
-    // Inject Firebase __session cookie
+    const sessionCookie = tryReadCookie()
+    if (!sessionCookie) {
+      test.skip(true, 'No manual smoke session cookie (@ci-skip)')
+      return
+    }
     await page.context().addCookies([
       {
         name: '__session',
-        value: SESSION_COOKIE!,
+        value: sessionCookie,
         domain: 'localhost',
         path: '/',
         httpOnly: true,
@@ -58,84 +108,45 @@ test.describe('New client form → cockpit redirect', () => {
     ])
   })
 
-  test('new client form → cockpit redirect → page mounts', async ({ page }) => {
-    test.skip(SKIP, '@ci-skip: requires live server + session cookie')
-
-    // ── Navigate to form ──────────────────────────────────────────────────
+  test('new client form lands on the created chart’s preparation page', async ({ page }) => {
+    const buildCommands = await blockBuildCommands(page)
+    const { creation } = await observeChartCreation(page)
+    const chartName = 'D-S5 Smoke Native'
     await page.goto('/clients/new')
     await expect(page).not.toHaveURL(/login/)
 
-    // ── Fill form fields (state bindings, not visual) ─────────────────────
-    // Full name
-    const nameInput = page.getByLabel(/full name/i).first()
-    if (await nameInput.count() > 0) {
-      await nameInput.fill('D-S5 Smoke Native')
-    }
+    await page.getByLabel('Full name', { exact: true }).fill(chartName)
+    await page.getByRole('combobox', { name: 'Gender' }).click()
+    await page.getByRole('option', { name: 'Prefer not to say' }).click()
+    await page.getByLabel('Birth date in DD-MMM-YYYY format').fill('12-Mar-1991')
+    await page.getByLabel(/^Time \(24 h\)/).fill('09:15')
+    await page.getByLabel(/^Birth place/).fill('Puri, Odisha, India')
+    await page.getByLabel(/^Latitude/).fill('19.81')
+    await page.getByLabel(/^Longitude/).fill('85.83')
 
-    // Gender (select)
-    const genderSelect = page.locator('select').filter({ hasText: /male|female|gender/i }).first()
-    if (await genderSelect.count() > 0) {
-      await genderSelect.selectOption({ value: 'male' })
-    }
-
-    // Birth date — type="date" input (ISO format for native date picker)
-    const dateInput = page.locator('input[type="date"]').first()
-    if (await dateInput.count() > 0) {
-      await dateInput.fill('1984-02-05')
-    }
-
-    // Birth time
-    const timeInput = page.locator('input[type="time"]').first()
-    if (await timeInput.count() > 0) {
-      await timeInput.fill('10:43')
-    }
-
-    // Birth place
-    const placeInput = page.getByPlaceholder(/bhubaneswar|city|birth place/i).first()
-    if (await placeInput.count() > 0) {
-      await placeInput.fill('Bhubaneswar, Odisha, India')
-    }
-
-    // Latitude + longitude (manual override)
-    const latInput = page.locator('input[type="number"][placeholder*="20"]').first()
-    if (await latInput.count() > 0) {
-      await latInput.fill('20.2961')
-    }
-    const lngInput = page.locator('input[type="number"][placeholder*="85"]').first()
-    if (await lngInput.count() > 0) {
-      await lngInput.fill('85.8245')
-    }
-
-    // Timezone offset (if present)
-    const tzOffsetInput = page.locator('input[placeholder*="5.5"]').first()
-    if (await tzOffsetInput.count() > 0) {
-      await tzOffsetInput.fill('5.5')
-    }
-
-    // ── Submit ─────────────────────────────────────────────────────────────
-    const submitBtn = page.locator('button[type="submit"]').first()
-    await expect(submitBtn).toBeVisible()
-    await submitBtn.click()
-
-    // ── Assert redirect ────────────────────────────────────────────────────
-    await expect(page).toHaveURL(/\/clients\/[a-f0-9-]{36}\/(cockpit|build)/, { timeout: 15_000 })
+    const [created] = await Promise.all([
+      creation,
+      page.getByRole('button', { name: 'Build chart', exact: true }).click(),
+    ])
+    expect(created.ok).toBe(true)
+    const chartId = created.chartId
+    if (typeof chartId !== 'string') throw new Error('Create response did not include a chart UUID')
+    expect(chartId).toMatch(/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i)
+    await expectPreparation(page, chartId)
+    await expect(page.getByTestId('build-page-root').locator('.preparation-toolbar').getByText(chartName, { exact: true })).toBeVisible()
+    expect(buildCommands).toEqual([])
   })
 
-  test('cockpit page mounts after redirect', async ({ page }) => {
-    test.skip(SKIP, '@ci-skip: requires live server + session cookie')
-
-    // If we have a known chart ID from env, navigate directly
+  test('the direct chart cockpit bookmark still shows current build controls', async ({ page }) => {
     const chartId = process.env.SMOKE_CHART_ID
     if (!chartId) {
       test.skip(true, '@ci-skip: SMOKE_CHART_ID not set — cannot navigate directly to cockpit')
       return
     }
 
+    const buildCommands = await blockBuildCommands(page)
     await page.goto(`/clients/${chartId}/cockpit`)
-    // Assert cockpit-level element is present (chart area or build controls)
-    const cockpitMounted =
-      page.locator('[data-testid="build-button"]').first()
-
-    await expect(cockpitMounted).toBeVisible({ timeout: 10_000 })
+    await expectDirectCockpit(page, chartId)
+    expect(buildCommands).toEqual([])
   })
 })

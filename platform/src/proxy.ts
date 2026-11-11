@@ -96,6 +96,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 import { configService } from '@/lib/config/index'
 import { checkRpm } from '@/lib/mcp/rate_limiter_core'
+import { validateServiceToken } from '@/lib/mcp/service_token'
 import { apiError } from '@/lib/errors'
 import { RATE_LIMIT_ERROR_CODE } from '@/lib/limits/spend_ceiling'
 import { CHART_RETURN_PATH_HEADER, safeNextPath } from '@/lib/auth/safe_next'
@@ -285,8 +286,14 @@ export async function proxy(request: NextRequest) {
     observeForwardedForEntryCount(gateMode, pathname, request.headers.get('host'), request.headers.get('x-forwarded-for'))
   }
 
+  // The normalized GET route still revalidates the service token in its handler.
+  const isClassicalSummaryService =
+    request.method === 'GET' &&
+    /^\/api\/classical-texts\/[^/%]+\/summary$/.test(pathname) &&
+    validateServiceToken(request)
+
   let verifiedSub: string | undefined
-  if (!isPublic) {
+  if (!isPublic && !isClassicalSummaryService) {
     const sessionCookie = request.cookies.get('__session')?.value
     if (!isSessionValid(sessionCookie)) {
       return unauthorized(request, pathname)
