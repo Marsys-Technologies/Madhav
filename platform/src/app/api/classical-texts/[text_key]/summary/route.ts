@@ -7,8 +7,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { query } from '@/lib/db/client'
 import { validateServiceToken } from '@/lib/mcp/service_token'
+import { getClassicalTextSummary } from '@/lib/tools/classical_text_summary'
 
 export async function GET(
   req: NextRequest,
@@ -19,26 +19,9 @@ export async function GET(
   }
 
   const { text_key } = await params
-  const result = await query<{
-    text_key: string
-    title: string
-    author: string | null
-    tradition: string
-    school: string
-    tier: number
-    language_original: string
-    translation_author: string | null
-    chunk_count: number
-    attribution_baseline_confidence: number
-  }>(
-    `SELECT text_key, title, author, tradition, school, tier, language_original,
-            translation_author, chunk_count, attribution_baseline_confidence
-     FROM classical_texts WHERE text_key = $1 LIMIT 1`,
-    [text_key]
-  )
-
-  if (result.rows.length === 0) {
+  const summary = await getClassicalTextSummary(text_key)
+  if (summary === null) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 })
   }
-  return NextResponse.json(result.rows[0])
+  return NextResponse.json(summary)
 }

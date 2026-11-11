@@ -3218,7 +3218,7 @@ jobs:
     # The aggregate job below keeps the original job name; this one is test steps only.
     name: Governance Tool Tests shard ${{ matrix.shard }}/5
     runs-on: ubuntu-24.04
-    # Shard 1 also runs the J-1a lane step (apt + pip installs, a throwaway cluster, ~5-8 min of DB tests) after the shard pytest and the
+    # Shard 1 also runs the J-1a lane step (native PG16 + pip install, a throwaway cluster, ~5-8 min of DB tests) after the shard pytest and the
     # four discovery steps, which the old 20-minute ceiling did not budget for.
     timeout-minutes: 35
     permissions:
@@ -3314,10 +3314,27 @@ jobs:
           GOCHARA_A53_REQUIRE_DB: '1'
           GOCHARA_A53_ADMIN_DSN: postgresql://postgres@127.0.0.1:55433/postgres
         run: |
-          sudo apt-get update
-          sudo apt-get install -y postgresql
+          native_pg_bin=/usr/lib/postgresql/16/bin
+          native_pg_release=
+          for tool in postgres initdb pg_ctl; do
+            binary="$native_pg_bin/$tool"
+            if [[ ! -f "$binary" || ! -x "$binary" || "$(readlink -f -- "$binary")" != "$binary" ]]; then
+              echo "::error::Missing or unexpected native PostgreSQL 16 executable: $binary"
+              exit 1
+            fi
+            if ! banner="$(LC_ALL=C "$binary" --version)" ||
+               [[ ! $banner =~ ^$tool\ \(PostgreSQL\)\ (16\.[0-9]+)([[:blank:]]|$) ]]; then
+              echo "::error::Cannot verify native PostgreSQL 16 version: $binary"
+              exit 1
+            fi
+            if [[ -n "$native_pg_release" && "$native_pg_release" != "${BASH_REMATCH[1]}" ]]; then
+              echo "::error::Mismatched native PostgreSQL releases in $native_pg_bin"
+              exit 1
+            fi
+            native_pg_release="${BASH_REMATCH[1]}"
+          done
           python -m pip install -r platform/python-sidecar/requirements-ci.txt --quiet
-          LANE_PG_BIN="$(find /usr/lib/postgresql -mindepth 2 -maxdepth 2 -type d -name bin | sort -V | tail -n 1)"
+          LANE_PG_BIN="$native_pg_bin"
           LANE_PG_ROOT="$(mktemp -d "$RUNNER_TEMP/ky-j1a.XXXXXX")"
           cleanup_lane_pg() {
             if [ -f "$LANE_PG_ROOT/data/postmaster.pid" ]; then
@@ -3380,9 +3397,28 @@ jobs:
         working-directory: platform
       - name: Install pytest and disposable PostgreSQL server binaries
         run: |
+          native_pg_bin=/usr/lib/postgresql/16/bin
+          native_pg_release=
+          for tool in postgres initdb pg_ctl psql; do
+            binary="$native_pg_bin/$tool"
+            if [[ ! -f "$binary" || ! -x "$binary" || "$(readlink -f -- "$binary")" != "$binary" ]]; then
+              echo "::error::Missing or unexpected native PostgreSQL 16 executable: $binary"
+              exit 1
+            fi
+            if ! banner="$(LC_ALL=C "$binary" --version)" ||
+               [[ ! $banner =~ ^$tool\ \(PostgreSQL\)\ (16\.[0-9]+)([[:blank:]]|$) ]]; then
+              echo "::error::Cannot verify native PostgreSQL 16 version: $binary"
+              exit 1
+            fi
+            if [[ -n "$native_pg_release" && "$native_pg_release" != "${BASH_REMATCH[1]}" ]]; then
+              echo "::error::Mismatched native PostgreSQL releases in $native_pg_bin"
+              exit 1
+            fi
+            native_pg_release="${BASH_REMATCH[1]}"
+          done
           python -m pip install pytest 'psycopg[binary]'
-          sudo apt-get update
-          sudo apt-get install -y postgresql
+          printf 'SUVARNA_PG_BIN=%s\n' "$native_pg_bin" >> "$GITHUB_ENV"
+          printf '%s\n' "$native_pg_bin" >> "$GITHUB_PATH"
       - name: pytest — all ported Gochara readback oracles; skips fail
         if: >-
           ${{ ((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request' ||

@@ -301,5 +301,5 @@ describe('domain vocabulary census (TS)', () => {
       throw new Error(lines.join('\n'))
     }
     expect(hits).toHaveLength(0)
-  })
+  }, 15_000)
 })

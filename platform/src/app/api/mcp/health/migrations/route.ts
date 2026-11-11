@@ -11,9 +11,8 @@
 import 'server-only'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { query } from '@/lib/db/client'
+import { readAppliedMigrationSet } from '@/lib/db/migration-set'
 import { validateServiceToken } from '@/lib/mcp/service_token'
-import { readMigrationSet } from '@/lib/mcp/migration_set_digest'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,6 +20,6 @@ export async function GET(req: NextRequest): Promise<Response> {
   if (!validateServiceToken(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
-  const read = await readMigrationSet((sql) => query(sql))
+  const read = await readAppliedMigrationSet()
   return NextResponse.json(read, { status: read.ok ? 200 : 503 })
 }
