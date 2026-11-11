@@ -33,7 +33,6 @@ describe('call_panchanga_service — mode=single', () => {
         lat: 20.27,
         lon: 85.84,
         tz_offset_minutes: 330,
-        chart_id: undefined,
       })
       return {
         ok: true,
@@ -56,26 +55,41 @@ describe('call_panchanga_service — mode=single', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
-  it('passes through an optional chart_id to hydrate native_context', async () => {
+  it.each([
+    ['chart requested', { chart_id: '11111111-1111-4111-8111-111111111111', ayanamsha_id: 'lahiri' }],
+    ['calendar only', {}],
+  ])('keeps the global descriptor calendar-only when %s', async (_label, optionalArgs) => {
     process.env.PYTHON_SIDECAR_URL = 'http://sidecar.test'
-
     const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
-      expect(JSON.parse(init.body as string)).toMatchObject({ chart_id: '482012f1-710e-4a25-994a-93821f5871aa' })
+      expect(JSON.parse(init.body as string)).toEqual({
+        date: '2026-07-20',
+        lat: 20.27,
+        lon: 85.84,
+        tz_offset_minutes: 330,
+      })
       return {
         ok: true,
-        status: 200,
-        json: async () => ({ ok: true, panchang: {}, native_context: { birth_nakshatra: 'Purva Bhadrapada' }, cache_hit: false }),
+        json: async () => ({
+          ok: true,
+          panchang: { marker: 'synthetic-calendar' },
+          native_context: { marker: 'synthetic-legacy-overlay' },
+          native_context_error: 'synthetic-untrusted-overlay-error',
+          cache_hit: false,
+        }),
       }
     })
     vi.stubGlobal('fetch', fetchMock)
-
     const result = await callPanchangaServiceCapability.handler(
-      { date: '2026-07-20', chart_id: '482012f1-710e-4a25-994a-93821f5871aa' },
-      undefined
+      { date: '2026-07-20', ...optionalArgs },
+      { chart_id: '22222222-2222-4222-8222-222222222222' },
     )
     expect(result.is_error).toBe(false)
-    const content = result.content as Record<string, unknown>
-    expect(content['native_context']).toMatchObject({ birth_nakshatra: 'Purva Bhadrapada' })
+    expect(result.content).toMatchObject({
+      panchang: { marker: 'synthetic-calendar' },
+      native_context: null,
+      native_context_error: 'chart_id' in optionalArgs ? 'Chart overlay unavailable' : null,
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
   it('requires date for mode=single', async () => {
@@ -130,6 +144,27 @@ describe('call_panchanga_service — error handling', () => {
     const result = await callPanchangaServiceCapability.handler({ date: '2026-07-20' }, undefined)
     expect(result.is_error).toBe(true)
     expect(String((result.content as Record<string, unknown>)['error'])).toContain('500')
+  })
+
+  it.each([
+    { mode: 'single', date: '2026-07-20' },
+    { mode: 'range', date_from: '2026-07-20', date_to: '2026-07-21' },
+  ])('preserves calendar errors while removing unsolicited overlay details for $mode', async (args) => {
+    process.env.PYTHON_SIDECAR_URL = 'http://sidecar.test'
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: false,
+      status: 502,
+      json: async () => ({
+        detail: 'synthetic calendar failure',
+        native_context: { marker: 'synthetic-legacy-overlay' },
+        native_context_error: 'synthetic-legacy-error',
+      }),
+    })))
+    const result = await callPanchangaServiceCapability.handler(args, undefined)
+    expect(result).toEqual({
+      content: { error: 'Sidecar 502', detail: { detail: 'synthetic calendar failure' } },
+      is_error: true,
+    })
   })
 
   it('rejects an unknown mode', async () => {

@@ -25,9 +25,11 @@ import { authorizeChartAccess, type Permission } from '@/lib/auth/authorizeChart
 import { resolveMcpPrincipalRole } from '@/lib/mcp/auth'
 import { buildEntitlementDenialEnvelope, buildErrorEnvelope } from '@/lib/mcp/epistemics'
 import { query } from '@/lib/db/client'
-import { validateServiceToken } from '@/lib/mcp/service_token'
+import { validateMcpServiceRequest, validateServiceToken } from '@/lib/mcp/service_token'
+import type { CapabilityHandler } from '@/lib/retrieval/registry/types'
 import { configService } from '@/lib/config/index'
 import { getOrComputeCapability } from '@/lib/cache/capability_dispatch_cache'
+import { resolveNativeContext } from '@/lib/panchang/resolveNativeContext'
 import {
   applyAyanamshaContractForCapability,
   InvalidAyanamshaError,
@@ -145,6 +147,85 @@ async function ensureBootstrapped(): Promise<void> {
   await registerD5FanoutCapabilities()
 }
 
+const PANCHANGA_URI = 'marsys://tool/L0/call_panchanga_service'
+const PANCHANGA_CALENDAR_KEYS = ['mode', 'date', 'date_from', 'date_to', 'lat', 'lon', 'tz_offset_minutes'] as const
+const UNAVAILABLE_OVERLAY = { native_context: null, native_context_error: 'Chart overlay unavailable' } as const
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+function stripPanchangaOverlay(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(stripPanchangaOverlay)
+  if (!isRecord(value)) return value
+  return Object.fromEntries(Object.entries(value)
+    .filter(([key]) => key !== 'native_context' && key !== 'native_context_error')
+    .map(([key, item]) => [key, stripPanchangaOverlay(item)]))
+}
+
+async function dispatchPanchanga(
+  request: Request,
+  args: Record<string, unknown>,
+  principalUser: string,
+  handler: CapabilityHandler,
+  cacheable: boolean,
+): Promise<unknown> {
+  const calendarArgs: Record<string, unknown> = {}
+  for (const key of PANCHANGA_CALENDAR_KEYS) {
+    const value = args[key]
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' || value === null) {
+      calendarArgs[key] = value
+    }
+  }
+
+  const cached = await getOrComputeCapability(PANCHANGA_URI, calendarArgs, cacheable,
+    async () => stripPanchangaOverlay(await handler(calendarArgs)))
+  // A cache hit may have been written by an older version.
+  const result = stripPanchangaOverlay(cached)
+  if (!isRecord(result) || result.is_error !== false
+    || !isRecord(result.content) || result.content.mode !== 'single') return result
+
+  const chartId = args.chart_id
+  const overlay = chartId == null
+    ? { native_context: null, native_context_error: null }
+    : isRecord(result.content.panchang)
+      ? await resolvePanchangaOverlay(request, principalUser, chartId, args.ayanamsha_id)
+      : UNAVAILABLE_OVERLAY
+  return { ...result, content: { ...result.content, ...overlay } }
+}
+
+async function resolvePanchangaOverlay(
+  request: Request,
+  principalUser: string,
+  chartId: unknown,
+  requestedFrame: unknown,
+) {
+  if (typeof chartId !== 'string' || !chartId.trim()) return UNAVAILABLE_OVERLAY
+
+  // The shared validator has a local-only bypass. Optional chart context requires OIDC here.
+  if (process.env.NODE_ENV !== 'production'
+      && process.env.MCP_CALLER_OIDC_DISABLED_FOR_LOCAL_DEV === 'true') return UNAVAILABLE_OVERLAY
+
+  try {
+    if (!await validateMcpServiceRequest(request)) return UNAVAILABLE_OVERLAY
+    const role = await resolveMcpPrincipalRole(principalUser)
+    if (role === 'inactive') return UNAVAILABLE_OVERLAY
+
+    return await resolveNativeContext({ principal: { uid: principalUser, role }, chartId, requestedFrame })
+  } catch {
+    return UNAVAILABLE_OVERLAY
+  }
+}
+
+function capabilityHandlerError(uri: string, err: unknown) {
+  const msg = err instanceof Error ? err.message : String(err)
+  console.error(`[api/retrieval/capability] handler error for ${uri}:`, msg)
+  return NextResponse.json(
+    { ok: false, error: `Capability handler error: ${msg}` },
+    { status: 500 }
+  )
+}
+
 // ── POST handler ─────────────────────────────────────────────────────────────
 
 export async function POST(request: Request) {
@@ -216,6 +297,16 @@ export async function POST(request: Request) {
   }
 
   const safeArgs = (args && typeof args === 'object') ? args : {}
+
+  if (uri === PANCHANGA_URI) {
+    try {
+      const content = await dispatchPanchanga(request, safeArgs, principalUser, capability.handler,
+        capability.llm_hints?.agentic?.cacheable === true)
+      return NextResponse.json({ ok: true, content })
+    } catch (err) {
+      return capabilityHandlerError(uri, err)
+    }
+  }
 
   // Resolved for the entitlement gate below AND (W5 L6) folded into the cache
   // key for per_chart capabilities — chart_id can arrive via the request body
@@ -310,11 +401,6 @@ export async function POST(request: Request) {
     )
     return NextResponse.json({ ok: true, content })
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    console.error(`[api/retrieval/capability] handler error for ${uri}:`, msg)
-    return NextResponse.json(
-      { ok: false, error: `Capability handler error: ${msg}` },
-      { status: 500 }
-    )
+    return capabilityHandlerError(uri, err)
   }
 }

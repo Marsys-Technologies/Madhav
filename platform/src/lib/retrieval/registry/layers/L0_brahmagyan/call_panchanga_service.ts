@@ -36,9 +36,8 @@
  * prematurely close this block comment — asterisk-then-slash — a known campaign trap;
  * kept split across two words for that reason.)
  *
- * Global scope by default (any date/location); chart_id is optional and, when provided,
- * hydrates a native_context overlay (birth nakshatra + Moon sign for Tara Bala / Chandra
- * Bala) — same optional-enrichment shape the sidecar route itself already supports.
+ * The global handler serves the calendar for any date/location. A caller with
+ * separately verified chart authority may attach optional context outside this handler.
  */
 import type { CapabilityDescriptor } from '../../types'
 
@@ -48,6 +47,14 @@ import type { CapabilityDescriptor } from '../../types'
 const DEFAULT_LAT = 20.27
 const DEFAULT_LON = 85.84
 const DEFAULT_TZ_OFFSET_MINUTES = 330 // IST
+
+function withoutLegacyOverlay(value: unknown): unknown {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return value
+  const details = { ...value } as Record<string, unknown>
+  delete details.native_context
+  delete details.native_context_error
+  return details
+}
 
 export const callPanchangaServiceCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L0/call_panchanga_service',
@@ -59,7 +66,7 @@ export const callPanchangaServiceCapability: CapabilityDescriptor = {
     'Compute panchanga (tithi/vara/nakshatra/yoga/karana + sunrise/sunset) for an',
     'arbitrary date and location (panchang.py compute service, Swiss-Ephemeris-backed,',
     'engine-direct — not a table lookup). mode=single (default): one date, returns full',
-    'panchang + optional native_context if chart_id is provided. mode=range: date_from..',
+    'panchang. A separately authenticated chart request can add optional context. mode=range: date_from..',
     'date_to (max 31 days inclusive), returns one entry per day. Defaults to Bhubaneswar/',
     'IST coordinates when lat/lon/tz_offset_minutes are omitted. Distinct from the natal-',
     'only chart_panchanga (query_panchanga) — this is date-parameterized, any date.',
@@ -73,7 +80,7 @@ export const callPanchangaServiceCapability: CapabilityDescriptor = {
     lat:               { type: 'number', description: `Latitude, -90..90. Default ${DEFAULT_LAT} (Bhubaneswar).` },
     lon:               { type: 'number', description: `Longitude, -180..180. Default ${DEFAULT_LON} (Bhubaneswar).` },
     tz_offset_minutes: { type: 'number', description: `Timezone offset in minutes, -720..840. Default ${DEFAULT_TZ_OFFSET_MINUTES} (IST).` },
-    chart_id:          { type: 'string', description: 'mode=single only: optional chart UUID to hydrate a native_context overlay (birth nakshatra + Moon sign).' },
+    chart_id:          { type: 'string', description: 'mode=single only: optional chart UUID for an authenticated overlay request. The global handler returns calendar data.' },
   },
 
   required_inputs: [],
@@ -119,32 +126,22 @@ export const callPanchangaServiceCapability: CapabilityDescriptor = {
       if (mode === 'single') {
         const date = args['date'] ? String(args['date']) : ''
         if (!date) return { content: { error: 'date is required for mode=single' }, is_error: true }
-        const chart_id = args['chart_id'] ? String(args['chart_id']) : undefined
-
         const resp = await fetch(`${sidecarUrl}/api/compute/panchanga`, {
           method:  'POST',
           headers: { 'Content-Type': 'application/json', 'x-api-key': sidecarKey },
-          body:    JSON.stringify({ date, lat, lon, tz_offset_minutes, chart_id }),
+          body:    JSON.stringify({ date, lat, lon, tz_offset_minutes }),
         })
         if (!resp.ok) {
           const err = await resp.json().catch(() => ({}))
-          return { content: { error: `Sidecar ${resp.status}`, detail: err }, is_error: true }
+          return { content: { error: `Sidecar ${resp.status}`, detail: withoutLegacyOverlay(err) }, is_error: true }
         }
-        const data = await resp.json() as {
-          ok: boolean; panchang: unknown; native_context: unknown
-          native_context_error?: string | null; cache_hit: boolean
-        }
+        const data = await resp.json() as { panchang: unknown }
         return {
           content: {
             mode, date, lat, lon, tz_offset_minutes,
             panchang: data.panchang,
-            native_context: data.native_context,
-            // ṢAḌ-DARŚANA W1 verify-reopen: the sidecar now fails the OPTIONAL native_context
-            // overlay soft and names the reason instead of 500-ing the whole panchāṅga payload
-            // (routers/panchang.py compute_panchanga_endpoint). Passed through verbatim so a
-            // consumer can disclose the SPECIFIC gap ("birth-chart overlay unavailable: …")
-            // rather than mislabelling it as service unreachability (CLAUDE.md §N.8).
-            native_context_error: data.native_context_error ?? null,
+            native_context: null,
+            native_context_error: args['chart_id'] ? 'Chart overlay unavailable' : null,
             provenance: { source: 'panchang.py /api/compute/panchanga (Swiss-Ephemeris, engine-direct)' },
           },
           is_error: false,
@@ -163,7 +160,7 @@ export const callPanchangaServiceCapability: CapabilityDescriptor = {
         })
         if (!resp.ok) {
           const err = await resp.json().catch(() => ({}))
-          return { content: { error: `Sidecar ${resp.status}`, detail: err }, is_error: true }
+          return { content: { error: `Sidecar ${resp.status}`, detail: withoutLegacyOverlay(err) }, is_error: true }
         }
         const data = await resp.json() as { ok: boolean; panchangs: unknown[]; count: number }
         return {
