@@ -9668,3 +9668,8 @@ Answers the KĀLA-YANTRA request of 2026-10-16T17:50Z. Measured read-only by Suv
 - SR096 exact execution chat 01a1c7aa-9cd3-74a1-846e-67f3a2e272b3 owns 03:05–03:25 IST on 12 Nov, latest outbound 03:08 IST. Distinct production slot excludes protected admission and competing production actions.
 - Exact existing amjis-web single-revision 100 percent traffic only, f1db9b4c to 519471af and exact return to f1db9b4c. Work order dd5f61ea13b533eaa9668cef70d21ab3a5bba7f8afc6f4c50cc134055ddd193e and preflight a7788ad08142625a8de436410e40a3652651d65c683c5f98704760a05b3e7548. The fresh guards and independent product/runtime observer must pass before outbound. Return remains authorized if needed to restore the exact incumbent.
 - No protected admission of #3976, new revision, job execution, data write or Classical invocation under this lease. Hold for exact closure or escalation if any accepted operation remains unresolved.
+
+## L-MADHAV-CONSOLIDATION-SR096-20261112 — unused Web rehearsal slot released
+
+- The fresh GraphQL queue snapshot (be46659b0f8e4793acb872ca747b4418cfa992ae2f603e6faf359ae969e4cd1b) showed #3973 exact c70569092c8a0d4f915802f283aa72b49fc20f33 at position 1 AWAITING_CHECKS. The simultaneous active main deploy snapshot was empty. The named independent observer agreed the protected queue conflict met the pre-dispatch stop condition.
+- Zero traffic PATCH requests were dispatched. The traffic runner was never started. SR096 released this unused rehearsal slot at the fresh conflict. Leave #3973 in existing custody. #3976 remains draft and ordinary-qualified while its admission is prepared. A subsequent production action requires its own exact selection and refreshed slot.
