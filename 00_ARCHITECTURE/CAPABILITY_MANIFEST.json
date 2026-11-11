@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-10-27T16:10:05.110Z",
+  "generated_at": "2026-11-11T00:24:08.166Z",
   "generator_version": "1.0",
   "entry_count": 131,
-  "fingerprint": "38a633ded0a07164",
+  "fingerprint": "8a42a943fbc45f80",
   "entries": [
     {
       "canonical_id": "CGP_AUDIT_v1_0",
@@ -1634,7 +1634,7 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "081226e9c4e6367d7de36ff5e81a0ced82953d1006696e418eb452a468f971f1",
+      "fingerprint": "848a733bd194af347c088a1cbe00ab37483dd0490387eb0044fc670d56736841",
       "native_id": "project",
       "last_verified_session": "CITATIONS-SPRINT-20261007",
       "last_verified_on": "2026-10-07"
