@@ -204,6 +204,66 @@ export async function platformServiceGet(
   return { status: response.status, body }
 }
 
+// ── Kāla Now Panchanga (one chartless or workload-authenticated request) ────────
+
+async function fetchPanchangaWorkloadAuthorization(): Promise<string | undefined> {
+  try {
+    const client = await getIdTokenClient()
+    // The pinned IdTokenClient returns a plain header record with Authorization.
+    const authorization = (await client.getRequestHeaders(PLATFORM_URL))['Authorization']
+    const token = authorization?.match(/^Bearer (\S+)$/)?.[1]
+    if (token && token !== MCP_INTERNAL_TOKEN && token !== process.env['SERVICE_TOKEN']) return authorization
+  } catch {
+    // The calendar can still be requested through the existing chartless route.
+  }
+  return undefined
+}
+
+export async function callPlatformPanchangaNow(
+  date: string,
+  principal: Principal,
+  overlay?: { chartId: string; ayanamshaId: string },
+): Promise<{ content: Record<string, unknown> | null; ok: boolean; overlayRequested: boolean; wrapped: boolean }> {
+  const authorization = await fetchPanchangaWorkloadAuthorization()
+  const authorizedOverlay = authorization ? overlay : undefined
+  const overlayRequested = authorizedOverlay !== undefined
+  const unavailable = { content: null, ok: false, overlayRequested, wrapped: false }
+  try {
+    const response = await fetch(`${PLATFORM_URL}/api/retrieval/capability`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-MCP-Internal-Token': MCP_INTERNAL_TOKEN,
+        'X-MCP-User': principal.user_uid,
+        'X-MCP-Key-Id': principal.key_id,
+        ...(authorization ? { Authorization: authorization } : {}),
+      },
+      body: JSON.stringify({
+        uri: 'marsys://tool/L0/call_panchanga_service',
+        args: {
+          mode: 'single', date,
+          ...(authorizedOverlay ? { chart_id: authorizedOverlay.chartId, ayanamsha_id: authorizedOverlay.ayanamshaId } : {}),
+        },
+      }),
+      redirect: 'error',
+      signal: AbortSignal.timeout(20_000),
+    })
+    if (!response.ok) return unavailable
+    const data = await response.json() as { ok?: unknown; content?: unknown } | null
+    const outer = data?.content
+    if (data?.ok !== true || !outer || typeof outer !== 'object' || Array.isArray(outer)) return unavailable
+    if ('is_error' in outer) {
+      const inner = 'content' in outer ? outer.content : null
+      if (outer.is_error !== false || !inner || typeof inner !== 'object' || Array.isArray(inner)) return unavailable
+      return { content: inner as Record<string, unknown>, ok: true, overlayRequested, wrapped: true }
+    }
+    // Older flat responses can still supply public calendar fields.
+    return { content: outer as Record<string, unknown>, ok: true, overlayRequested, wrapped: false }
+  } catch {
+    return unavailable
+  }
+}
+
 // ── Exported call functions ───────────────────────────────────────────────────
 
 /**

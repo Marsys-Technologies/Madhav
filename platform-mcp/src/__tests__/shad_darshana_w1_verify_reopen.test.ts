@@ -24,8 +24,8 @@
  * the single-date + chart_id path reaches that function, which is exactly `kala_now_get`'s call
  * and exactly not `kala_ahead_get`'s (mode=range, no chart_id) — hence "range works, single is
  * broken". The Python-side fix is covered by the sidecar's own test; guarded here is the
- * SERVING half: the overlay now fails soft with a disclosed reason, and the facade must report
- * that specific reason instead of "unreachable" (ND-4).
+ * SERVING half: calendar fields survive an unavailable overlay. The authenticated stored
+ * overlay uses fact provenance, and the facade reports a bounded availability message.
  *
  * ── Root Cause C (item 30) — muntha ────────────────────────────────────────────────────
  * Covered in kala_ahead_get_mudda_w1_joins.test.ts (mock corrected to the real
@@ -43,7 +43,17 @@ import {
   type TriPlanePointers,
 } from '../lib/kala_envelope.js'
 
-const CHART = '00000000-0000-0000-0000-000000000001'
+vi.mock('google-auth-library', () => ({
+  GoogleAuth: class {
+    getIdTokenClient() {
+      return Promise.resolve({
+        getRequestHeaders: () => Promise.resolve({ Authorization: 'Bearer fixture-google-workload' }),
+      })
+    }
+  },
+}))
+
+const CHART = '00000000-0000-4000-8000-000000000001'
 const PRINCIPAL: Principal = { user_uid: 'test-uid', key_id: 'test-key', role: 'guest' }
 const AS_OF = '2026-07-30'
 
@@ -88,7 +98,7 @@ function mockFetch(opts: {
     }
 
     if (String(url).includes('/api/mcp/db/query')) {
-      return { ok: true, json: async () => ({ rows: [] }), text: async () => '' } as Response
+      return { ok: true, status: 200, json: async () => ({ rows: [] }), text: async () => '' } as Response
     }
 
     let inner: Record<string, unknown> = {}
@@ -136,6 +146,8 @@ function mockFetch(opts: {
       case 'marsys://tool/L0/call_panchanga_service':
         if (panchanga === 'dispatch_fail') throw new Error('panchanga dispatch failed in test')
         inner = {
+          mode: body.args?.['mode'],
+          date: body.args?.['date'],
           panchang: {
             tithi: { id: 3, name: 'Shukla Tritiya', end_utc: null },
             nakshatra: { id: 25, name: 'Purva Bhadrapada', end_utc: null },
@@ -146,9 +158,17 @@ function mockFetch(opts: {
           },
           native_context: panchanga === 'overlay_failed' || panchanga === 'overlay_not_found'
             ? null
-            : { chart_id: CHART, moon_sign_id: MOON_SIGN, moon_sign_name: 'Aquarius', birth_nakshatra_id: 25, birth_nakshatra_name: 'Purva Bhadrapada' },
+            : {
+                chart_id: CHART, ayanamsha_id: 'lahiri_chitrapaksha',
+                moon_sign_id: MOON_SIGN, moon_sign_name: 'Aquarius',
+                birth_nakshatra_id: 25, birth_nakshatra_name: 'Purva Bhadrapada',
+                fact_ids: {
+                  moon_sign_id: 'fact-moon', moon_sign_name: 'fact-moon-name',
+                  birth_nakshatra_id: 'fact-nakshatra', birth_nakshatra_name: 'fact-nakshatra-name',
+                },
+              },
           native_context_error: panchanga === 'overlay_failed'
-            ? "TypeError: compute_panchang() got an unexpected keyword argument 'tz_offset_minutes'"
+            ? 'Chart overlay unavailable'
             : panchanga === 'overlay_not_found'
               ? `HTTP 404: Chart '${CHART}' not found`
               : null,
@@ -190,6 +210,7 @@ function mockFetch(opts: {
     }
     return {
       ok: true,
+      status: 200,
       json: async () => ({ ok: true, content: { content: inner, is_error: false } }),
       text: async () => '',
     } as Response
@@ -322,7 +343,7 @@ describe('Root Cause B — items 29 + 32: the single-date panchāṅga joins act
     // Virgo (6) counted from Aquarius (11) = house 8 → chandrāṣṭama.
     expect(result.chandrashtama?.house_from_natal_moon).toBe(8)
     expect(result.chandrashtama?.is_chandrashtama).toBe(true)
-    // The panchāṅga service's own re-derivation agrees here; a disagreement would surface.
+    // The authenticated overlay references the same stored Moon fact.
     expect(result.chandrashtama?.native_context_agrees_with_l1).toBe(true)
   })
 
@@ -336,9 +357,9 @@ describe('Root Cause B — items 29 + 32: the single-date panchāṅga joins act
     for (const concept of ['disha_shula', 'gulika_kalam_now', 'hora_now', 'janma_resonance']) {
       expect(cov[concept]?.state, `${concept} must survive an overlay failure`).toBe('computed')
     }
-    // The specific upstream reason is carried through verbatim, not relabelled "unreachable".
+    expect(result.provenance_envelope.panchanga_reachable).toBe(true)
     expect(result.provenance_envelope.panchanga_native_context_error)
-      .toContain('tz_offset_minutes')
+      .toBe('the birth-chart overlay was not available for this chart on this call')
     // chandrāṣṭama still works, because L1 is its authority — not the failed overlay.
     expect(result.chandrashtama?.natal_moon_sign_source).toBe('l1_chart_facts')
   })
