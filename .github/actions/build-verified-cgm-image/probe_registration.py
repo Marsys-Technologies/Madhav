@@ -198,7 +198,7 @@ def post_repoint() -> None:
     reference = verified_pipeline_reference()
     configured = command(
         "gcloud", "run", "jobs", "describe", "brahma-build-pipeline-job",
-        "--region", os.environ["GCP_REGION"],
+        "--region", os.environ["GOOGLE_CLOUD_REGION"],
         "--format=value(spec.template.spec.template.spec.containers[0].image)",
     ).decode().removesuffix("\n")
     require(configured == reference, "configured Pipeline image is not the verified combined reference")

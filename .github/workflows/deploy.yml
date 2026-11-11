@@ -2545,7 +2545,7 @@ jobs:
             --cpu=2 \
             --update-env-vars=GCP_PROJECT=madhav-astrology,PUBSUB_TOPIC=cockpit-events,KA_KSHETRA_HASH_SPILL_DIR=/tmp \
             --quiet
-          python3 .github/actions/build-verified-cgm-image/probe_registration.py post-repoint
+          GOOGLE_CLOUD_REGION="${{ env.GCP_REGION }}" python3 .github/actions/build-verified-cgm-image/probe_registration.py post-repoint
           # SR-RIGHT-SIZE (owner approval OWNER-CLOUD-RUNS-APPROVED-20261023,
           # amend-1): --memory=8Gi --cpu=2 above (was 16Gi / 4) for BOTH the
           # century build and the K9-4b rebuild, which share this one job (an

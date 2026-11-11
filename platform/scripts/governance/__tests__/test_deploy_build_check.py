@@ -508,6 +508,13 @@ def cgm_probe():
     return probe
 
 
+def pipeline_region_expression(repoint):
+    region_arg, = (line.strip() for line in repoint.splitlines() if line.lstrip().startswith("--region="))
+    expression = region_arg.removeprefix("--region=").removesuffix(" \\")
+    assert expression.startswith("${{ env.") and expression.endswith(" }}")
+    return expression
+
+
 def test_cgm_workflow_build_and_production_handoffs():
     jobs = workflow()["jobs"]
     assert jobs["build-check"]["timeout-minutes"] == 30
@@ -552,7 +559,10 @@ def test_cgm_workflow_build_and_production_handoffs():
     assert lines[start - 1] == f"python3 {CGM_PROBE.relative_to(ROOT)} verify-repoint"
     assert lines[start + 2].strip() == '--image="${CGM_VERIFIED_PIPELINE_REF:?missing verified Pipeline image}" \\'
     assert lines[start + 9].strip() == "--quiet"
-    assert lines[start + 10] == f"python3 {CGM_PROBE.relative_to(ROOT)} post-repoint"
+    region = pipeline_region_expression(repoint)
+    assert lines[start + 10] == (
+        f'GOOGLE_CLOUD_REGION="{region}" python3 {CGM_PROBE.relative_to(ROOT)} post-repoint'
+    )
     assert WORKFLOW.read_text().splitlines()[2542].strip().split()[0] == "--task-timeout=86400"
 
 
@@ -654,7 +664,7 @@ def test_cgm_pipeline_post_repoint(monkeypatch, cgm_probe, failure):
     image = f"{repo}@{child}"
     reference = f"{repo}:{commit}@{child}"
     monkeypatch.setenv("DEPLOY_SHA", commit if failure != "wrong-source" else "not-a-commit")
-    monkeypatch.setenv("GCP_REGION", "example-region")
+    monkeypatch.setenv("GOOGLE_CLOUD_REGION", "example-region")
     monkeypatch.setenv("CGM_VERIFIED_IMAGE", {
         "wrong-repository": f"{repo}-other@{child}",
         "malformed-digest": f"{repo}@sha256:ab",
@@ -676,7 +686,9 @@ def test_cgm_pipeline_post_repoint(monkeypatch, cgm_probe, failure):
 
     def stub(*argv):
         calls.append(argv)
-        assert argv[:5] == ("gcloud", "run", "jobs", "describe", "brahma-build-pipeline-job")
+        assert argv[:7] == (
+            "gcloud", "run", "jobs", "describe", "brahma-build-pipeline-job", "--region", "example-region",
+        )
         return (configured.get(failure, reference) + "\n").encode()
 
     monkeypatch.setattr(cgm_probe, "command", stub)
@@ -708,15 +720,15 @@ def test_cgm_pipeline_repoint_shell_fails_closed(tmp_path, mode):
         step["run"] for step in workflow()["jobs"]["deploy-pipeline-job"]["steps"]
         if step.get("name") == "Re-point Cloud Run Job at the new image"
     )
+    env = {**os.environ, "PATH": f"{tmp_path}{os.pathsep}{os.environ['PATH']}",
+           "DEPLOY_SHA": commit, "CGM_VERIFIED_IMAGE": f"{PIPELINE_REPO}@{child}",
+           "CGM_VERIFIED_PIPELINE_REF": reference if mode != "rebound" else f"{PIPELINE_REPO}:{commit}@{fake_digest('c')}",
+           "CGM_TEST_TRACE": str(trace),
+           "CGM_TEST_CONFIGURED": reference if mode != "tag-only" else f"{PIPELINE_REPO}:{commit}"}
+    env.pop("GOOGLE_CLOUD_REGION", None)
+    rendered = repoint.replace(pipeline_region_expression(repoint), "example-region")
     result = subprocess.run(
-        ["bash", "-eo", "pipefail", "-c", repoint.replace("${{ env.GCP_REGION }}", "example-region")],
-        cwd=ROOT,
-        env={**os.environ, "PATH": f"{tmp_path}{os.pathsep}{os.environ['PATH']}",
-             "DEPLOY_SHA": commit, "GCP_REGION": "example-region",
-             "CGM_VERIFIED_IMAGE": f"{PIPELINE_REPO}@{child}",
-             "CGM_VERIFIED_PIPELINE_REF": reference if mode != "rebound" else f"{PIPELINE_REPO}:{commit}@{fake_digest('c')}",
-             "CGM_TEST_TRACE": str(trace),
-             "CGM_TEST_CONFIGURED": reference if mode != "tag-only" else f"{PIPELINE_REPO}:{commit}"},
+        ["bash", "-eo", "pipefail", "-c", rendered], cwd=ROOT, env=env,
         capture_output=True, text=True, timeout=10,
     )
     assert result.returncode == (0 if mode == "exact" else 1)
@@ -725,9 +737,9 @@ def test_cgm_pipeline_repoint_shell_fails_closed(tmp_path, mode):
         return
     update, describe = [json.loads(line) for line in trace.read_text().splitlines()]
     assert update[:4] == ["run", "jobs", "update", "brahma-build-pipeline-job"]
-    assert update[5] == f"--image={reference}"
+    assert update[4:6] == ["--region=example-region", f"--image={reference}"]
     assert "--task-timeout=86400" in update
-    assert describe[:4] == ["run", "jobs", "describe", "brahma-build-pipeline-job"]
+    assert describe[:6] == ["run", "jobs", "describe", "brahma-build-pipeline-job", "--region", "example-region"]
 
 
 @pytest.mark.parametrize("mutation", [None, "wrong-class", "missing-key", "alias", "hash", "origin", "wrong-base"])
