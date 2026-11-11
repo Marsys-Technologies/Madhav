@@ -81,8 +81,6 @@ import { res, errorResponse } from '@/lib/errors'
 import {
   writeQueryPlanLog,
 } from '@/lib/db/monitoring-write'
-import { fakeGcsRetrieve } from '@/lib/multimodal/fake_gcs_store'
-import { extractPdf } from '@/lib/multimodal/pdf_extractor'
 
 // Unit 3.gateway_pipeline_isolation built the QueryPipeline selector + shared
 // stages substrate; unit 4.refactor_pipeline_shim (this commit) moved the
@@ -178,12 +176,6 @@ function isPermanentSchemaError(err: unknown): boolean {
   return typeof code === 'string' && (code.startsWith('42') || code.startsWith('3F'))
 }
 
-interface AttachmentRef {
-  token: string
-  filename: string
-  contentType: string
-}
-
 interface RequestBody {
   chartId?: string
   conversationId?: string
@@ -195,36 +187,18 @@ interface RequestBody {
   style?: string
   panel_opt_in?: boolean
   lel_context_enabled?: boolean
-  /** β5: file attachment tokens from the upload flow */
-  attachments?: AttachmentRef[]
+  /** Legacy upload references are inspected only to refuse file-bearing turns. */
+  attachments?: unknown
   /** R9-S3: Active persona ID for synthesis prompt injection. */
   persona_id?: string
 }
 
-// β5: Resolve attachment tokens to ModelMessage-compatible parts.
-// Returns extra parts to append to the last user ModelMessage.
-async function resolveAttachments(
-  attachments: AttachmentRef[],
-): Promise<Array<{ type: 'image'; image: string; mimeType: string } | { type: 'text'; text: string }>> {
-  const parts: Array<{ type: 'image'; image: string; mimeType: string } | { type: 'text'; text: string }> = []
-
-  for (const att of attachments) {
-    const entry = fakeGcsRetrieve(att.token)
-    if (!entry) {
-      // Token expired or not found — silently skip (file already noted in client)
-      continue
-    }
-
-    if (att.contentType === 'application/pdf') {
-      const result = await extractPdf(att.filename, entry.bytes)
-      parts.push({ type: 'text', text: `[Attached PDF: ${att.filename}]\n\n${result.text}` })
-    } else if (att.contentType.startsWith('image/')) {
-      const base64 = entry.bytes.toString('base64')
-      parts.push({ type: 'image', image: `data:${att.contentType};base64,${base64}`, mimeType: att.contentType })
-    }
-  }
-
-  return parts
+function attachmentDenialResponse(malformedAttachments: boolean) {
+  const response = malformedAttachments
+    ? errorResponse('ATTACHMENT_UNAVAILABLE', 'Invalid attachments. Remove them and send text.', 400, { retry: false })
+    : errorResponse('ATTACHMENT_UNAVAILABLE', 'Attachments are currently unavailable in Consult. You can send text.', 503, { retry: false })
+  response.headers.set('Cache-Control', 'private, no-store')
+  return response
 }
 
 export async function POST(request: Request) {
@@ -247,11 +221,13 @@ async function executeMeteredRequest(request: Request) {
     return res.badRequest('Invalid JSON body')
   }
 
+  if (!body || typeof body !== 'object') return res.badRequest('Invalid JSON body')
+
   const { chartId } = body
   let { messages } = body
   let { conversationId } = body
 
-  if (!chartId || !messages) {
+  if (!chartId || !Array.isArray(messages)) {
     return res.badRequest('chartId and messages are required')
   }
 
@@ -260,8 +236,15 @@ async function executeMeteredRequest(request: Request) {
     return res.badRequest('INVALID_CHART_ID: chartId must be a valid UUID')
   }
 
+  const latestUser = messages.findLast(message => message?.role === 'user')
+  const hasInlineFile = Array.isArray(latestUser?.parts) && latestUser.parts.some(part => part?.type === 'file')
+  const attachments = body.attachments
+  const malformedAttachments = attachments != null && (
+    !Array.isArray(attachments) || attachments.some(attachment => typeof attachment?.token !== 'string' || !attachment.token.trim())
+  )
+  const hasAttachments = hasInlineFile || (Array.isArray(attachments) && attachments.length > 0)
   const byokEnabled = configService.getFlag('AI_CONSOLE_BYOK')
-  if (byokEnabled) {
+  if (byokEnabled && !malformedAttachments && !hasAttachments) {
     try { messages = await validateByokUiMessages(messages) }
     catch (error) {
       const safe = error instanceof AiConsoleError ? error : new AiConsoleError('AI_EXECUTION_FAILED')
@@ -386,6 +369,10 @@ async function executeMeteredRequest(request: Request) {
     return errorResponse(readingGate.code, readingGate.message, 409, { retry: readingGate.retryable })
   }
 
+  if (malformedAttachments || hasAttachments) {
+    return attachmentDenialResponse(malformedAttachments)
+  }
+
   if (!conversationId) {
     conversationId = crypto.randomUUID()
     isFirstTurn = true
@@ -450,11 +437,7 @@ async function executeMeteredRequest(request: Request) {
   const lastUserMessage = messages.filter(m => m.role === 'user').at(-1)
   const queryText = (lastUserMessage?.parts ?? []).filter(p => p.type === 'text').map(p => (p as { type: string; text?: string }).text ?? '').join(' ').trim()
 
-  // β5: resolve attachment tokens → model-ready parts
-  const attachmentParts = body.attachments?.length
-    ? await resolveAttachments(body.attachments)
-    : []
-  if (byokRuntime && !isByokEvidencePayloadWithinLimit({ messages, attachmentParts })) {
+  if (byokRuntime && !isByokEvidencePayloadWithinLimit({ messages })) {
     throw new AiConsoleError('AI_EXECUTION_FAILED')
   }
 
@@ -1184,25 +1167,21 @@ async function executeMeteredRequest(request: Request) {
   // β8: when MARSYS_FLAG_HISTORY_COMPRESSION_ENABLED, take the full prior history and let
   // compressHistory decide whether to summarize based on the token budget.
   // Flag OFF: use the existing planner-guided hard cap (unchanged behavior).
-  let trimmedConversationHistory: import('ai').ModelMessage[]
-  if (configService.getFlag(FEATURE_FLAGS.historyCompression)) {
-    const allPriorMessages = await convertToModelMessages(
-      messages
-        .filter(m => m.role === 'user' || m.role === 'assistant')
-        .slice(0, -1), // drop current user message
-    )
-    trimmedConversationHistory = await compressHistory(
-      allPriorMessages,
-      finalConversationId,
-    )
-  } else {
-    trimmedConversationHistory = await convertToModelMessages(
-      messages
-        .filter(m => m.role === 'user' || m.role === 'assistant')
-        .slice(-historyMessageCap)
-        .slice(0, -1), // drop current user message (appended via `query`)
-    )
-  }
+  const historyCompressionEnabled = configService.getFlag(FEATURE_FLAGS.historyCompression)
+  const priorMessages = messages
+    .filter(message => message.role === 'user' || message.role === 'assistant')
+    .slice(historyCompressionEnabled ? 0 : -historyMessageCap, -1)
+    .flatMap(message => {
+      if (!message.parts.some(part => part.type === 'file')) return [message]
+      const parts = message.parts.filter(part => part.type !== 'file')
+      return parts.length > 0 ? [{ ...message, parts }] : []
+    })
+  // Historical file parts remain in the persisted UI history. Neither model
+  // history conversion nor compression may replay their bytes or URLs.
+  const convertedHistory = await convertToModelMessages(priorMessages)
+  const trimmedConversationHistory = historyCompressionEnabled
+    ? await compressHistory(convertedHistory, finalConversationId)
+    : convertedHistory
 
   // [PHASE-D-06] Data-readiness context injection.
   // Queries build_checkpoints to determine which chart data assets are ready.
@@ -1264,7 +1243,7 @@ async function executeMeteredRequest(request: Request) {
   // `lib/pipelines/shared/run_adapter_dispatch.ts`. The route is a thin
   // selector: auth + chart resolution + planner-context + dispatch().
   if (byokRuntime) {
-    if (!isByokEvidencePayloadWithinLimit({ messages, attachmentParts, bundle, validToolResults })) {
+    if (!isByokEvidencePayloadWithinLimit({ messages, bundle, validToolResults })) {
       throw new AiConsoleError('AI_EXECUTION_FAILED')
     }
   }

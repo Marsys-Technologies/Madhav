@@ -6,6 +6,8 @@ import { archivedReadOnlyResponse, isCorrectionArchived } from '@/lib/conversati
 import { checkReadingReadiness } from '@/lib/charts/readingGate'
 import { errorResponse, res } from '@/lib/errors'
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 /**
  * POST /api/chat/consult/regenerate
  *
@@ -26,16 +28,23 @@ export async function POST(request: Request) {
   const user = await getServerUser()
   if (!user) return res.unauthenticated()
 
-  let body: { conversation_id?: string; parent_message_id?: string }
+  let body: { conversation_id?: unknown; parent_message_id?: unknown } | null
   try {
     body = await request.json()
   } catch {
     return res.badRequest('invalid body')
   }
 
+  if (!body || typeof body !== 'object') return res.badRequest('invalid body')
   const { conversation_id, parent_message_id } = body
   if (!conversation_id) return res.badRequest('conversation_id required')
   if (!parent_message_id) return res.badRequest('parent_message_id required')
+  if (typeof conversation_id !== 'string' || !UUID_RE.test(conversation_id)) {
+    return res.badRequest('Invalid conversation_id')
+  }
+  if (typeof parent_message_id !== 'string' || !UUID_RE.test(parent_message_id)) {
+    return res.badRequest('Invalid parent_message_id')
+  }
 
   // Resolve access: owner or super_admin.
   let isSuperAdmin = false
@@ -67,30 +76,43 @@ export async function POST(request: Request) {
     return errorResponse(readingGate.code, readingGate.message, 409, { retry: readingGate.retryable })
   }
 
-  // Get the created_at timestamp of the parent message so we can delete everything after it.
-  let parentCreatedAt: string | null = null
+  // Lock and inspect the stored parent in the same statement as the delete.
+  // A stale client can omit attachments from its follow-up Consult request.
+  let parent: { has_attachment: boolean } | undefined
   try {
-    const { rows } = await query<{ created_at: string }>(
-      'SELECT created_at FROM conversation_messages WHERE id=$1 AND conversation_id=$2',
+    const { rows } = await query<{ has_attachment: boolean }>(
+      `WITH parent AS MATERIALIZED (
+        SELECT created_at, EXISTS (
+          SELECT 1
+          FROM jsonb_array_elements(
+            CASE WHEN jsonb_typeof(parts_json) = 'array' THEN parts_json ELSE '[]'::jsonb END
+          ) AS part
+          WHERE part->>'type' IN ('file', 'image', 'audio')
+        ) AS has_attachment
+        FROM conversation_messages
+        WHERE id=$1 AND conversation_id=$2
+        FOR UPDATE
+      ), truncated AS (
+        DELETE FROM conversation_messages
+        USING parent
+        WHERE conversation_messages.conversation_id=$2
+          AND conversation_messages.created_at > parent.created_at
+          AND NOT parent.has_attachment
+      )
+      SELECT has_attachment FROM parent`,
       [parent_message_id, conversation_id],
     )
-    parentCreatedAt = rows[0]?.created_at ?? null
+    parent = rows[0]
   } catch {
     return res.dbError()
   }
 
-  if (!parentCreatedAt) {
-    return res.notFound('parent_message')
-  }
-
-  // Delete all conversation_messages created strictly after the parent message.
-  try {
-    await query(
-      'DELETE FROM conversation_messages WHERE conversation_id=$1 AND created_at > $2',
-      [conversation_id, parentCreatedAt],
-    )
-  } catch {
-    return res.dbError()
+  if (!parent) return res.notFound('parent_message')
+  if (parent.has_attachment) {
+    const response = errorResponse('ATTACHMENT_UNAVAILABLE',
+      'This turn contains an attachment. You can send a new text message.', 503, { retry: false })
+    response.headers.set('Cache-Control', 'private, no-store')
+    return response
   }
 
   return Response.json({ ok: true, truncated_after: parent_message_id })

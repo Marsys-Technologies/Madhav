@@ -48,10 +48,14 @@ describe('regenerate truncation wiring — B.3 fix', () => {
     expect(v2Src).toContain('useContext(ConversationIdCtx)')
   })
 
-  it('regenerate route deletes messages after parent_message_id (truncation semantics)', () => {
-    expect(regenRouteSrc).toContain('DELETE FROM conversation_messages')
-    expect(regenRouteSrc).toContain('created_at > $2')
-    expect(regenRouteSrc).toContain('parent_message_id')
+  it('regenerate deletes only strictly later messages in the locked parent conversation', () => {
+    const statement = regenRouteSrc.match(/`(WITH parent AS MATERIALIZED \([\s\S]*?SELECT has_attachment FROM parent)`/)?.[1]
+    expect(statement).toBeDefined()
+    expect(statement).toMatch(/SELECT created_at,/)
+    expect(statement).toMatch(/FROM conversation_messages\s+WHERE id=\$1 AND conversation_id=\$2\s+FOR UPDATE/)
+    expect(statement).toMatch(/DELETE FROM conversation_messages\s+USING parent\s+WHERE conversation_messages\.conversation_id=\$2/)
+    expect(statement).toMatch(/AND conversation_messages\.created_at > parent\.created_at\s+AND NOT parent\.has_attachment/)
+    expect(regenRouteSrc).toMatch(/SELECT has_attachment FROM parent`,\s*\[parent_message_id, conversation_id\]/)
   })
 
   it('regenerate route returns ok:true with truncated_after field', () => {
