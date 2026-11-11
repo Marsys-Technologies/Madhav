@@ -15,7 +15,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { Principal } from '../types.js'
-import { budgetMcpContent, finalizeMcpBudget, type TrimmableSection, type BudgetResult } from '../lib/response_budget.js'
+import { autoDetectTrimmableSections, budgetMcpContent, finalizeMcpBudget, type TrimmableSection, type BudgetResult } from '../lib/response_budget.js'
 
 type ToolHandler = (args: Record<string, unknown>) => Promise<{
   structuredContent?: { type: 'object'; object: unknown }
@@ -237,5 +237,112 @@ describe('still_over_budget resolution (GT-45/W-5) — deleted from BudgetResult
     })
     const flags = (budgeted['judgment_flags'] as Array<{ code: string } | string> | undefined) ?? []
     expect(flags.some(f => (typeof f === 'string' ? f : f.code) === 'budget_exceeded_after_trim')).toBe(false)
+  })
+})
+
+function signalVerificationEntry(row_index: number) {
+  return {
+    row_index,
+    verification_method: 'L1_fact_projection',
+    inherited_l1_verification_pass_status: 'two_pass_verified',
+    l2_verification_pass_status: null,
+  }
+}
+
+function signalDisclosurePage() {
+  const signals = Array.from({ length: 64 }, (_, index) => ({
+    signal_id: `synthetic-signal-${index}`,
+    verification_pass_status: index === 0 || index === 63 ? 'two_pass_verified' : 'single',
+    signature_tier: 'background',
+    configuration_jsonb: { padding: 'x'.repeat(1000) },
+  }))
+  return {
+    signals,
+    returned_count: signals.length,
+    total_matching_filters: signals.length,
+    provenance: { tables: ['bodha_msr_signals'], signal_verification: [signalVerificationEntry(0), signalVerificationEntry(63)] },
+  }
+}
+
+describe('MSR signal verification companion under MCP budgets', () => {
+  it.each([
+    ['bodha_signals_get', undefined],
+    ['get_signals', undefined],
+    ['get_signals', 'v3'],
+  ])('keeps only retained companions through the registered %s (%s) face', async (name, response_format) => {
+    const page = signalDisclosurePage()
+    const original = structuredClone(page.signals)
+    stubFetch({ 'marsys://tool/L2/query_signals': { content: page, is_error: false } })
+    const { server, handlers } = makeCapturingServer()
+    if (name === 'bodha_signals_get') {
+      const { registerP1AliasTools } = await import('../tools/register_p1_aliases.js')
+      registerP1AliasTools(server, PRINCIPAL)
+    } else {
+      const { registerRegistryBridgeTools } = await import('../tools/registry_bridge.js')
+      registerRegistryBridgeTools(server, PRINCIPAL)
+    }
+    const handler = handlers.get(name)
+    expect(handler).toBeDefined()
+    const result = await handler!({ chart_id: '11111111-2222-4333-8444-555555555555', response_format })
+    expect(result.isError).not.toBe(true)
+    const output = result.structuredContent?.object as {
+      content: typeof page & { verdict_summary?: { served_count: number } }
+      grounding?: { grounding_score: number }
+    }
+    const { signals, provenance } = output.content
+    expect(signals.length).toBeGreaterThan(0)
+    expect(signals.length).toBeLessThan(original.length)
+    expect(signals).toEqual(original.slice(0, signals.length))
+    expect(provenance).toMatchObject({
+      signal_verification: [signalVerificationEntry(0)],
+    })
+    if (name === 'bodha_signals_get') expect(output.content.verdict_summary?.served_count).toBe(signals.length)
+    if (response_format === 'v3') expect(output.grounding?.grounding_score).toBe(0.031)
+  })
+
+  it('prunes a repeated explicit and outer trim, including zero rows, without changing sibling provenance', () => {
+    const content = signalDisclosurePage()
+    const section: TrimmableSection<typeof content> = {
+      path: 'signals',
+      label: 'signals',
+      getArray: c => c.signals,
+      setArray: (c, kept) => { c.signals = kept as typeof c.signals },
+      minKeep: 20,
+      recover: { instrument: 'bodha_signals_get', hint: 'page again' },
+    }
+    finalizeMcpBudget(content, { maxKb: 25, sections: [section] })
+    expect(content.signals.length).toBeGreaterThan(10)
+    expect(content.signals.length).toBeLessThan(64)
+    expect(content.provenance.signal_verification).toEqual([signalVerificationEntry(0)])
+
+    const outer = { content }
+    finalizeMcpBudget(outer, {
+      maxKb: 1,
+      sections: autoDetectTrimmableSections(outer, 'bodha_signals_get'),
+    })
+    expect(content.signals).toEqual([])
+    expect(content.provenance).toEqual({ tables: ['bodha_msr_signals'] })
+  })
+
+  it('does not independently trim the companion or alter an under-budget page', () => {
+    const content = signalDisclosurePage()
+    content.provenance.signal_verification = content.signals.map((_, index) => signalVerificationEntry(index))
+    const before = structuredClone(content)
+    const sections = autoDetectTrimmableSections(content, 'bodha_signals_get')
+    expect(sections.map(section => section.path)).toContain('signals')
+    expect(sections.map(section => section.path)).not.toContain('provenance.signal_verification')
+    expect(finalizeMcpBudget(content, { maxKb: 200, sections })).toEqual(before)
+  })
+
+  it('keeps a legacy trimmed page free of a companion field', () => {
+    const page = signalDisclosurePage()
+    const content = { ...page, provenance: { tables: page.provenance.tables } }
+    const outer = { content }
+    finalizeMcpBudget(outer, {
+      maxKb: 25,
+      sections: autoDetectTrimmableSections(outer, 'get_signals'),
+    })
+    expect(content.signals.length).toBeLessThan(page.signals.length)
+    expect(content.provenance).toEqual({ tables: ['bodha_msr_signals'] })
   })
 })

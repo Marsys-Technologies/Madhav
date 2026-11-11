@@ -239,6 +239,33 @@ export function estimateBytes(value: unknown): number {
   }
 }
 
+/** A query_signals companion is indexed by its own signal holder's retained prefix. */
+function pruneSignalVerification(content: unknown, path: string, kept: unknown[]): void {
+  if (content === null || typeof content !== 'object') return
+  const root = content as Record<string, unknown>
+  const candidate = path === 'signals' ? root : path === 'content.signals' ? root['content'] : undefined
+  if (candidate === null || typeof candidate !== 'object') return
+  const holder = candidate as Record<string, unknown>
+  if (holder['signals'] !== kept) return
+
+  const source = holder['provenance']
+  if (source === null || typeof source !== 'object' || Array.isArray(source)) return
+  const provenance = source as Record<string, unknown>
+  const entries = provenance['signal_verification']
+  if (!Array.isArray(entries)) return
+
+  const retained = entries.filter(entry => {
+    if (entry === null || typeof entry !== 'object') return false
+    const index = (entry as Record<string, unknown>)['row_index']
+    return typeof index === 'number' && Number.isInteger(index) && index >= 0 && index < kept.length
+  })
+  if (retained.length > 0 && retained.length === entries.length) return
+  const next = { ...provenance }
+  if (retained.length > 0) next['signal_verification'] = retained
+  else delete next['signal_verification']
+  holder['provenance'] = next
+}
+
 /** Cut one section's array down toward `floor`, re-measuring `content` after each halving
  *  step, stopping as soon as `content` is at/under `maxBytes` or `floor` is reached.
  *  Only called when `arr.length > floor` (caller's responsibility) — always applies at
@@ -253,7 +280,9 @@ function shrinkSectionTo<T>(
   let keepCount = arr.length
   while (estimateBytes(content) > maxBytes && keepCount > floor) {
     keepCount = Math.max(floor, Math.floor(keepCount / 2))
-    section.setArray(content, arr.slice(0, keepCount))
+    const kept = arr.slice(0, keepCount)
+    section.setArray(content, kept)
+    pruneSignalVerification(content, section.path, kept)
   }
   return keepCount
 }
@@ -721,6 +750,8 @@ export function autoDetectTrimmableSections<T extends Record<string, unknown>>(
     } else if (topVal && typeof topVal === 'object' && !Array.isArray(topVal)) {
       for (const nestedKey of Object.keys(topVal as Record<string, unknown>)) {
         if (IMMUNE_HONESTY_FIELDS.has(nestedKey)) continue
+        // This companion is removed with its signals, never trimmed as its own section.
+        if (key === 'provenance' && nestedKey === 'signal_verification' && Array.isArray(content['signals'])) continue
         const nestedVal = (topVal as Record<string, unknown>)[nestedKey]
         if (Array.isArray(nestedVal)) {
           const path = `${key}.${nestedKey}`
