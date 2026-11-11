@@ -1,27 +1,25 @@
 ---
 name: session-close
-description: Emit and validate the SESSION_CLOSE artifact per CLAUDE.md §H and SESSION_CLOSE_TEMPLATE_v1_0.md. Run at end of every substantive session.
+description: Prepare and validate the SESSION_CLOSE checklist for a formal governance session or chartered campaign close.
 ---
 
 ## Steps
 
-1. Read `00_ARCHITECTURE/SESSION_CLOSE_TEMPLATE_v1_0.md` to get the current close schema.
+1. Follow root `CLAUDE.md` §C and §G / §H, the owning campaign charter, and the current `00_ARCHITECTURE/SESSION_CLOSE_TEMPLATE_v1_0.md`. Establish which session or campaign owns the close, the work order and its lease.
 
-2. Emit the SESSION_CLOSE block with all required fields filled:
-   - `session_id`, `step_completed`, `artifacts_produced`, `may_touch_actual`, `must_not_touch_respected`
-   - `drift_detector_run`, `schema_validator_run`, `red_team_due`, `red_team_discharged`
-   - `current_state_updated`, `session_log_appended`
+2. Save the `session_close` YAML using the template's actual fields. Record observed checks, changes, work-order outcome and verified lease release. Prepare the matching `session_open` YAML when the scope cross-check applies. Keep reports in the assigned evidence location.
 
-3. Run schema validation (verify the flag exists first):
+3. Validate the saved checklist from the repository root. Set the variables to the actual checklist, matching open YAML and report paths.
    ```bash
-   python3 platform/scripts/governance/schema_validator.py --help 2>&1 | grep -i session
-   # If --session-close flag exists, run it:
-   python3 platform/scripts/governance/schema_validator.py --session-close
-   # If not, skip this step — validator may not have this mode yet
+   python3 platform/scripts/governance/schema_validator.py \
+     --close-checklist "$close_checklist" \
+     --session-open-for-close "$session_open" \
+     --json-path "$validation_json" \
+     --report-path "$validation_report"
    ```
 
-4. If validation passes, append the session block to `00_ARCHITECTURE/SESSION_LOG.md`.
+   Include the open YAML for the scope cross-check when applicable. If validation fails or the validator is unavailable, leave the close pending and record the failing fields or missing evidence.
 
-5. Update `00_ARCHITECTURE/CURRENT_STATE_v1_0.md` §2 with the new position.
+4. After successful validation, append the open block, session body and close block as one entry to `00_ARCHITECTURE/SESSION_LOG.md` through the owning campaign's coordination path.
 
-6. Set `status: COMPLETE` in `CLAUDECODE_BRIEF.md` if one exists at project root.
+5. Apply any assigned state or work-order transition. A root `CLAUDECODE_BRIEF.md` applies only when it names this session or worktree and is active under §C. Mark it complete only when its own completion criteria and write authority are satisfied.
