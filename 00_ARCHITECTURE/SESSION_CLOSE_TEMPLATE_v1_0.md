@@ -8,14 +8,14 @@ authoritative_side: tool-neutral (per-session instantiations are the governed pr
   surface via SESSION_LOG + CURRENT_STATE_v1_0.md.)
 mirror_obligations: >
   None for this template file itself. Per-session instantiations are appended to SESSION_LOG
-  as the closing block of the session's entry; the Gemini-side mirror is the corresponding
-  state-after reflected in `.gemini/project_state.md` per MP.2 adapted parity.
+  as the closing block of the session's entry. The former Gemini counterpart was retired
+  on 2026-05-27 per root CLAUDE.md §K and GOVERNANCE_INTEGRITY_PROTOCOL §K.
 consumers:
   - Every Claude Code and Codex session closing on this project
   - `schema_validator.py` — validates the checklist YAML as its LAST action before SESSION_LOG
     append
-  - `drift_detector.py` + `mirror_enforcer.py` — their exit codes feed the checklist's
-    `drift_detector_run.exit_code` / `mirror_enforcer_run.exit_code` fields
+  - `drift_detector.py` — its exit code feeds the active drift_detector_run field
+  - Historical Step 7 consumer — mirror_enforcer.py and mirror_enforcer_run were retired
   - Step 9 (CLAUDE.md rebuild) — absorbs the "emit session-close checklist before claiming
     close" instruction into CLAUDE.md's operating-principle list
   - Step 10 (SESSION_LOG schema retrofit) — swaps `step_ledger_updated` for `current_state_updated`
@@ -51,13 +51,13 @@ the SESSION_LOG append happen atomically.*
 
 ## §1 — How to use this template
 
-1. As the session approaches close, the agent performs the close-side actions: runs the scripts (`drift_detector.py`, `schema_validator.py`, `mirror_enforcer.py`), updates registries, appends SESSION_LOG, transitions STEP_LEDGER (rebuild era) or CURRENT_STATE (post-rebuild).
+1. As the session approaches close, the agent runs the active governance scripts (`drift_detector.py`, `schema_validator.py`), updates registries, and prepares the required state transition. SESSION_LOG is appended after validation in step 4. The former Gemini mirror script is historical under root CLAUDE.md §K and GIP §K.
 2. It emits a YAML `session_close` block per the schema in §2.
 3. It passes the block to `schema_validator.py` (or equivalent in-session check).
 4. If every field passes, SESSION_LOG.md is appended atomically — session_open block + body + session_close block → one entry.
 5. If any field fails, the session does NOT close. It halts and either (a) fixes the failing item within-session, or (b) reports to the native with the failing fields and waits for decision.
 
-Fields with `true|false` values must be `true` for close. `exit_code` fields must be `0`. `within_declared_scope: false` anywhere fails close. Mirror pairs with `both_updated_same_session: false` fail close unless the rationale names a declared Claude-only or Gemini-only pair (MP.6, MP.7 as of Step 7).
+Active required `true|false` checks must pass their schema rules. The active `drift_detector_run` and `schema_validator_run` results must satisfy `ONGOING_HYGIENE_POLICIES_v1_0.md §F` and its existing booked `known_residuals` exception. Any `within_declared_scope: false` row fails close. The legacy `mirror_updates_propagated` and `mirror_enforcer_run` fields are optional historical compatibility data under root CLAUDE.md §K and GIP §K.
 
 ---
 
@@ -117,12 +117,12 @@ session_close:
         details: "ND.1 re-author to adapted parity with Asymmetries section"
 
   # ------------------------------------------------------------------
-  # Mirror updates propagated (ND.1; Axis C.6 enforcement)
+  # Historical mirror updates (retired ND.1 compatibility fields)
   # ------------------------------------------------------------------
   mirror_updates_propagated:
-    # For every mirror pair touched this session, confirm the counterpart was
-    # updated in the same session (ND.1 claim 1). Declared Claude-only / Gemini-only
-    # pairs have a required rationale when only one side is touched.
+    # Step 7 example rows retained for historical compatibility. Current checklists
+    # may omit this field. Mirror propagation was retired on 2026-05-27 per
+    # root CLAUDE.md §K and GIP §K.
     - pair_id: MP.1
       claude_side_touched: true    # CLAUDE.md got the one-line addition
       gemini_side_touched: true    # .geminirules re-authored
@@ -157,6 +157,7 @@ session_close:
     exit_code: 0
     report_path: 00_ARCHITECTURE/schema_reports/SCHEMA_VALIDATION_REPORT_STEP_7_v1_0.md
     violations_found: 0
+  # Historical Step 7 result below. Current checklists may omit this retired field.
   mirror_enforcer_run:
     script: platform/scripts/governance/mirror_enforcer.py
     exit_code: 0
@@ -261,7 +262,7 @@ session_close:
 
 ## §3 — Enforcement
 
-Every field with a `true|false` value must be `true` for close. Any `exit_code: nonzero` fails close. Any `within_declared_scope: false` row fails close. Any mirror pair with `both_updated_same_session: false` fails close unless the rationale explains a declared Claude-only or Gemini-only pair (currently MP.6 GOVERNANCE_STACK, MP.7 SESSION_LOG).
+Active required `true|false` checks must pass their schema rules. The active `drift_detector_run` and `schema_validator_run` results must satisfy `ONGOING_HYGIENE_POLICIES_v1_0.md §F` and its existing booked `known_residuals` exception. Any `within_declared_scope: false` row fails close. The legacy `mirror_updates_propagated` and `mirror_enforcer_run` fields are optional historical compatibility data under root CLAUDE.md §K and GIP §K.
 
 The schema validator runs the checklist validation as its **last** action of the session. Only after the checklist validates does the SESSION_LOG append happen atomically. This prevents a half-written log from recording a "closed" session that in fact failed its checklist.
 

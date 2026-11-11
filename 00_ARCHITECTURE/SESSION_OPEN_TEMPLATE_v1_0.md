@@ -9,13 +9,13 @@ authoritative_side: tool-neutral (the instantiated handshake produced by each se
   retired 2026-04-24; FILE_REGISTRY superseded by CAPABILITY_MANIFEST.json 2026-04-27.)
 mirror_obligations: >
   None for this template file itself. Per-session instantiations are appended to SESSION_LOG
-  (Claude-side) as the opening block of the session's entry; the Gemini-side mirror is the
-  corresponding state reflected in `.gemini/project_state.md` per MP.2 adapted parity.
+  as the opening block of the session's entry. The former Gemini counterpart was retired
+  on 2026-05-27 per root CLAUDE.md §K and GOVERNANCE_INTEGRITY_PROTOCOL §K.
 consumers:
   - Every Claude Code and Codex session opening on this project
   - `schema_validator.py` — validates the handshake YAML before any substantive work
-  - `mirror_enforcer.py` — reads `mirror_pair_freshness_check` to decide whether a mid-session
-    enforcer run is obligated
+  - Historical Step 7 consumer — the retired mirror_enforcer.py used the legacy
+    mirror_pair_freshness_check field; retirement is recorded at root §K and GIP §K
   - Step 9 (CLAUDE.md rebuild) — absorbs the "emit session-open handshake at start" instruction
     into CLAUDE.md's mandatory reading list
   - Step 10 (SESSION_LOG schema retrofit) — extends the session_id naming convention and upgrades
@@ -173,6 +173,8 @@ session_open:
       - 00_ARCHITECTURE/SESSION_CLOSE_TEMPLATE_v1_0.md
       - 00_ARCHITECTURE/DISAGREEMENT_REGISTER_v1_0.md
       - platform/scripts/governance/*.py
+      # Historical Step 7 mirror paths below. Current scope comes from the owning work order
+      # under root §K and GIP §K. These examples grant no mirror write obligation.
       - .geminirules
       - .gemini/project_state.md
       - 00_ARCHITECTURE/CAPABILITY_MANIFEST.json  # Supersedes FILE_REGISTRY (2026-04-27)
@@ -194,13 +196,12 @@ session_open:
       - platform/src/**                    # corpus-platform code out of Step 7 scope
 
   # ------------------------------------------------------------------
-  # Mirror-pair freshness (ND.1; Axis C.6 enforcement)
+  # Historical mirror-pair freshness (retired ND.1 compatibility field)
   # ------------------------------------------------------------------
   mirror_pair_freshness_check:
-    # For every mirror pair in CANONICAL_ARTIFACTS §2 (MP.1–MP.8 as of Step 7),
-    # report last_verified_on + gap-in-days. Threshold for stale: >1 day
-    # (daily-cadence project). A stale pair obligates running mirror_enforcer.py
-    # as the session's first substantive action.
+    # The rows below preserve the Step 7 shape. New handshakes use [] for this
+    # required compatibility field. Freshness and enforcer obligations were retired
+    # on 2026-05-27 per root CLAUDE.md §K and GIP §K.
     - pair_id: MP.1
       claude_side: CLAUDE.md
       gemini_side: .geminirules
