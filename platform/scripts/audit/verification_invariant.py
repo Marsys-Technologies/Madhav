@@ -20,9 +20,11 @@ It is deliberately NOT a required PR check — it measures the DATA, which a PR 
 It runs on a schedule and on dispatch. See .github/workflows/verification-invariant.yml.
 
     python platform/scripts/audit/verification_invariant.py            # all checks
-    python platform/scripts/audit/verification_invariant.py --report   # counts only, never fails
+    python platform/scripts/audit/verification_invariant.py --report   # tier counts when data is available
 
-Exit 0 = all checks pass. Exit 1 = at least one FAIL. Exit 3 = could not run (no DATABASE_URL).
+Exit 0 = all watchdog checks pass or the counts-only report was produced.
+Exit 1 = a watchdog check reported FAIL, including liveness with no DATABASE_URL.
+Exit 3 = no DATABASE_URL and incomplete coverage, including in report mode.
 DATABASE_URL is read from the environment and never taken as an argument.
 """
 from __future__ import annotations
@@ -237,7 +239,7 @@ def tier_report(cur) -> dict[str, dict[str, int]]:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--report", action="store_true", help="emit the tier report only; never fails")
+    ap.add_argument("--report", action="store_true", help="emit tier counts when database data is available")
     args = ap.parse_args()
 
     dsn = os.environ.get("DATABASE_URL")
@@ -247,6 +249,8 @@ def main() -> int:
         results: list[dict] = []
         check_detector_liveness(results)
         print(json.dumps({"results": results}, indent=2))
+        if not args.report and any(row["status"] == "FAIL" for row in results):
+            return 1
         return 3
 
     import psycopg

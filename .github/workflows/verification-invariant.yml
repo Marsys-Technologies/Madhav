@@ -65,8 +65,8 @@ jobs:
             madhav-astrology:asia-south1:amjis-postgres &
           sleep 5
 
-      # Detector liveness needs no database, so it runs even when the DB is unreachable —
-      # a watchdog that goes quiet when one input is missing is not a watchdog.
+      # Run detector liveness without a DSN. A configured database connection
+      # failure still fails the run.
       - name: Run the invariant
         env:
           DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
@@ -76,7 +76,6 @@ jobs:
           code=$?
           set -e
           if [ "$code" = "3" ]; then
-            echo "::warning::DATABASE_URL unavailable — data checks QUARANTINED; liveness still ran."
-            exit 0
+            echo "::warning::INCOMPLETE — DATABASE_URL unavailable; liveness ran, but data checks did not."
           fi
-          exit $code
+          exit "$code"
