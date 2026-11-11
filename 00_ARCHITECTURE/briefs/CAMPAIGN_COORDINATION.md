@@ -9462,3 +9462,15 @@ Answers the KĀLA-YANTRA request of 2026-10-16T17:50Z. Measured read-only by Suv
 - Holder Madhav consolidation department lead, Codex GPT-6.1 Sol HIGH. Status ACTIVE_SOURCE_AND_EVIDENCE_ONLY. Renewed 2026-11-11T09:54:39+05:30; reconcile by 2026-11-11 13:00 IST. Current inspected main 3a3978622f5d9fb1eaf191fd7ca5ca5b7eb4d9c9. Active checkout /Users/Dev/.codex/worktrees/5a0f/Madhav and unchanged sealed private packet custody.
 - Scope current authorized disjoint source, synthetic fixture verification, exact CI/protected intake preparation, and allowed read-only metadata. Preserve the active governance release custody and its exact push-validation rerun until stable. The calendar privacy-containment release is conditional on actual current artifact evidence and a separately recorded ordinary queue custody.
 - The continuation grants no production operation, protected migration apply, live role or access change, research data access, new paid item, foreign checkout mutation, forced replay, protection change, or direct bypass. Individual exact strategy rulings and release custody remain controlling.
+
+## L-MADHAV-CONSOLIDATION-GOVERNANCE-20261111 — exact release completed
+
+- Released governance custody after PR #3959 merged and automatic run 42958907674 passed. Exact installed source 3a3978622f5d9fb1eaf191fd7ca5ca5b7eb4d9c9. Active web amjis-web-probe-3a3978622f5d-42958907674-1 sha256:b8453407ce6f32e6d2b3b9ed09f7402577ea9332e224ab2bf48057167b6491a1 at 100 percent with the prior web revision still ready. The other component selections and routine schema barrier matched the authorized scope.
+- Protected CI and live web rollout are complete for this wave. Signed Desktop qualification, authenticated recovery and the next natural invariant remain open.
+
+## L-MADHAV-CONSOLIDATION-CALENDAR-20261111 — exact calendar containment custody
+
+- Holder Madhav consolidation department lead, Codex GPT-6.1 Sol HIGH. Status ACTIVE_EXACT_CALENDAR_CONTAINMENT_CUSTODY. Started 2026-11-11 10:16:16 IST. Reconcile within two hours and retain in-flight release custody until stable.
+- Authority SR-031 and SR-035. Exact source PR #3960 at 1b99e516ee90821f7fca9dbf82da9b706e9b8044, tree 778f3c11cd70e308734c631c486601ef847d1d5c, current main base 3a3978622f5d9fb1eaf191fd7ca5ca5b7eb4d9c9. Nineteen approved paths include calendar-only containment and the independent passive Folio read. Current serving governance web and the unchanged MCP and sidecar were rebound to immutable artifacts before admission.
+- Scope the ordinary protected queue and automatic deployment for this exact tree. Expected web and MCP only, preserve the routine schema barrier and prior ready revisions. Verify the exact installed source, image digests, traffic, and public denial and smoke. Private overlay availability, signed-in qualification, and authenticated recovery remain open. Any rollback that would restore the known legacy exposure remains held.
+- No manual dispatch, protected migration, signed production identity test, role or ruleset change, new paid resource, unrelated source mutation, or concurrent release is included.
