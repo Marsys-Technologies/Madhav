@@ -68,7 +68,7 @@ import {
 import { deriveDefect001Note, deriveSignatureTierNote } from '../../../provenance/freshness_notes'
 import { BUILD_FENCE_INPUT, classifyBuildFence, explicitEmptyBuildFenceRefusal } from '../../generation/served_generation'
 import { resolveL2Lineage, l2LineageFlag } from '../../../provenance/l2_lineage'
-import type { JudgmentFlagEntry } from '../../../envelope'
+import type { JudgmentFlagEntry, VerificationPassStatus } from '../../../envelope'
 import { annotateAyurdayaYearRows, ayurdayaDisclosureObject, deriveAyurdayaFigureDisclosure } from '../L1_ganita/ayurdaya_unreduced_base'
 const FRAME_VALUES: ReferenceFrame[] = ['lagna', 'chandra', 'surya', 'arudha', 'karakamsha']
 
@@ -92,7 +92,7 @@ const SIGNAL_VERIFICATION_CONTRACT_VERSION = 1
 type SignalVerificationDisclosure = {
   row_index: number
   verification_method: 'L1_fact_projection'
-  inherited_l1_verification_pass_status: 'two_pass_verified'
+  inherited_l1_verification_pass_status: Extract<VerificationPassStatus, 'two_pass_verified'>
   l2_verification_pass_status: null
 }
 
