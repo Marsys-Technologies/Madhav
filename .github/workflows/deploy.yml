@@ -381,32 +381,13 @@ jobs:
       - name: Detect changed paths
         id: diff
         run: |
-          # #2169, three failures deep in one hazard class ("deploy reports
-          # green while silently doing less" -- DVA Ruling 58's class):
-          # (1) HEAD~1 diffing missed backlog commits under a fast-merging
-          # queue. (2) The #2172 fix diffed from the GitHub API's "most
-          # recent successful deploy run" head_sha -- a live, mutable view
-          # that under fast cadence resolved to this run's OWN sha: a
-          # self-diff, always empty, silently skipping every component
-          # rebuild (confirmed live 2026-09-07: pipeline image stale ~3.5h
-          # across 17 green deploy runs; a real W4 build failed on it).
-          # (3) This fix: the diff base is no longer any record ABOUT
-          # deploys -- it is read from PRODUCTION ITSELF, per component.
-          # Each deploy job stamps what it ships (revision label
-          # `commit-sha` for services, the `:<sha>` image tag for the
-          # pipeline job); that value changes only when a deploy genuinely
-          # completes, so the diff accumulates the whole undeployed backlog
-          # by construction and cannot wobble with API-view instability.
-          # Skip is only chosen when diff(<deployed-sha>..HEAD) touches
-          # none of the component's paths -- the gate itself is now the
-          # §N.8 detector for "production already contains every relevant
-          # commit"; there is no separate marker to forget to update.
-          # FAIL-OPEN: any failure to resolve or fetch a component's
-          # deployed sha deploys that component. The gate may only fail
-          # toward doing MORE work, never silently less (charter C12
-          # rewrite-floor test, applied to CI). All three resolution
-          # commands were dry-run verified live against this project's
-          # real Cloud Run surfaces before this landed.
+          # #2169/#2172: HEAD~1 missed backlog, and a successful-run lookup could self-diff.
+          # Use each serving revision's commit or the configured pipeline image tag.
+          # This compares all changes since that component's installed source.
+          # Skip only after a complete diff with no matching component input.
+          # Unresolved source selects deployment. A failed diff fails the gate.
+          # The fleet century contract records the pipeline task-timeout source line.
+          # Keep that locator stable when changing only the selector.
 
           WEB_PATTERN='^(platform/|00_ARCHITECTURE/CAPABILITY_MANIFEST\.json$|00_ARCHITECTURE/manifest_overrides\.yaml$|00_ARCHITECTURE/PLANNER_PROMPT_v.*\.md$|01_FACTS_LAYER/|025_HOLISTIC_SYNTHESIS/|035_DISCOVERY_LAYER/)'
           # Include files copied from outside each component's source directory.
