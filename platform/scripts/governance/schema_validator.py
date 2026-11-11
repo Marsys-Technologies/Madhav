@@ -35,6 +35,7 @@ from __future__ import annotations
 import argparse
 import dataclasses
 import datetime as _dt
+import hashlib
 import json
 import os
 import pathlib
@@ -472,7 +473,104 @@ def validate_current_state(repo_root: pathlib.Path, schemas: dict) -> List[Viola
 # Session-open / session-close validation
 # --------------------------------------------------------------------------------------
 
-def validate_handshake_yaml(raw: str) -> List[Violation]:
+@dataclasses.dataclass(frozen=True)
+class CodexDesktopQualification:
+    """Independent observations supplied by an authorized in-process caller.
+
+    The caller establishes client identity, observes the effective startup and
+    access controls, and resolves the lease against the current remote ref.
+    Session YAML, user-supplied files and environment variables are not sources
+    of qualification. The CLI deliberately has no option to import one.
+    """
+
+    observed_client: str
+    observed_host: str
+    desktop_session_id: str
+    session_id: str
+    worktree_path: str
+    validator_sha256: str
+    coordination_commit: str
+    lease_id: str
+    lease_status: str
+    lease_checked_at: _dt.datetime
+    lease_expires_at: _dt.datetime
+    work_order_surface: str
+    may_touch: tuple[str, ...]
+    must_not_touch: tuple[str, ...]
+    instruction_fingerprints: tuple[tuple[str, str], ...]
+    access_posture: str
+    access_evidence_sha256: str
+
+
+def _desktop_qualification_matches(so: dict, evidence: CodexDesktopQualification | None) -> bool:
+    if not isinstance(evidence, CodexDesktopQualification):
+        return False
+
+    path = pathlib.PurePosixPath(evidence.worktree_path)
+    if not (
+        evidence.observed_client == "codex_work_desktop"
+        and evidence.observed_host == "local"
+        and evidence.desktop_session_id and evidence.desktop_session_id == so.get("desktop_session_id")
+        and evidence.session_id and evidence.session_id == so.get("session_id")
+        and path.anchor == "/" and ".." not in path.parts
+        and str(path) == evidence.worktree_path == so.get("worktree_path")
+        and evidence.validator_sha256 == hashlib.sha256(pathlib.Path(__file__).read_bytes()).hexdigest()
+    ):
+        return False
+
+    coordination = so.get("coordination", {}) or {}
+    if not (
+        evidence.lease_status == "live"
+        and evidence.lease_id and evidence.lease_id == coordination.get("lease_id")
+        and re.fullmatch(r"[0-9a-f]{40}", evidence.coordination_commit)
+        and evidence.coordination_commit == coordination.get("remote_commit")
+        and coordination.get("coordination_ref") == "origin/campaign-coordination"
+        and evidence.work_order_surface and evidence.work_order_surface == coordination.get("work_order_surface")
+    ):
+        return False
+
+    checked_at = coordination.get("lease_verified_at")
+    if isinstance(checked_at, str):
+        try:
+            checked_at = _dt.datetime.fromisoformat(checked_at)
+        except ValueError:
+            return False
+    now = _dt.datetime.now(_dt.timezone.utc)
+    if not (
+        isinstance(checked_at, _dt.datetime) and checked_at.utcoffset() is not None
+        and evidence.lease_checked_at.utcoffset() is not None
+        and evidence.lease_expires_at.utcoffset() is not None
+        and checked_at == evidence.lease_checked_at
+        and now - _dt.timedelta(minutes=10) <= checked_at <= now < evidence.lease_expires_at
+    ):
+        return False
+
+    scope = so.get("declared_scope", {}) or {}
+    if not (
+        scope.get("may_touch") == list(evidence.may_touch)
+        and evidence.must_not_touch and scope.get("must_not_touch") == list(evidence.must_not_touch)
+        and evidence.access_posture == "verified"
+        and re.fullmatch(r"[0-9a-f]{64}", evidence.access_evidence_sha256)
+    ):
+        return False
+
+    declared_reading = so.get("mandatory_reading_confirmation")
+    if not isinstance(declared_reading, list) or any(
+        not isinstance(row, dict) or not isinstance(row.get("file"), str) for row in declared_reading
+    ):
+        return False
+    observed = dict(evidence.instruction_fingerprints)
+    return (
+        "CLAUDE.md" in observed
+        and len(observed) == len(evidence.instruction_fingerprints) == len(declared_reading)
+        and all(re.fullmatch(r"[0-9a-f]{64}", digest) for digest in observed.values())
+        and observed == {row.get("file"): row.get("fingerprint_sha256") for row in declared_reading}
+    )
+
+
+def validate_handshake_yaml(
+    raw: str, *, trusted_desktop_qualification: CodexDesktopQualification | None = None
+) -> List[Violation]:
     """Validate a session-open YAML block per protocol §F."""
     violations: List[Violation] = []
     try:
@@ -562,7 +660,18 @@ def validate_handshake_yaml(raw: str) -> List[Violation]:
             suggested_remediation="Read and record CROSS_CUTTING_DECISION_REGISTER_v1_0.md before work.",
         ))
     profile = so.get("tool_profile")
-    if so.get("tool") == "Codex" and profile not in ("madhav-safe", "madhav-parity"):
+    if profile == "codex-desktop" or trusted_desktop_qualification is not None:
+        if (so.get("tool"), profile) != ("Codex", "codex-desktop") or not _desktop_qualification_matches(
+            so, trusted_desktop_qualification
+        ):
+            violations.append(Violation(
+                rule="handshake_codex_desktop_qualification_invalid",
+                severity="CRITICAL",
+                path="<handshake>",
+                evidence="codex-desktop requires matching independent client, worktree, validator, access and live lease evidence",
+                suggested_remediation="Use the authorized qualification path and record the actual client provenance.",
+            ))
+    elif so.get("tool") == "Codex" and profile not in ("madhav-safe", "madhav-parity"):
         violations.append(Violation(
             rule="handshake_codex_profile_invalid",
             severity="CRITICAL",
