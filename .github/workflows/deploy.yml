@@ -409,9 +409,10 @@ jobs:
           # real Cloud Run surfaces before this landed.
 
           WEB_PATTERN='^(platform/|00_ARCHITECTURE/CAPABILITY_MANIFEST\.json$|00_ARCHITECTURE/manifest_overrides\.yaml$|00_ARCHITECTURE/PLANNER_PROMPT_v.*\.md$|01_FACTS_LAYER/|025_HOLISTIC_SYNTHESIS/|035_DISCOVERY_LAYER/)'
-          SIDECAR_PATTERN='^platform/python-sidecar/'
-          MCP_PATTERN='^platform-mcp/'
-          PIPELINE_PATTERN='^(platform/python-sidecar/Dockerfile\.pipeline|platform/python-sidecar/ga_writers/|platform/python-sidecar/pipeline/|platform/python-sidecar/services/|platform/python-sidecar/brahmagyan/|platform/python-sidecar/pyjhora_adapter/|platform/python-sidecar/bodha_writers/|platform/python-sidecar/panchang_engine/|platform/python-sidecar/muhurat/|platform/python-sidecar/requirements|platform/python-sidecar/scripts/kala_gochara_cutover/|035_DISCOVERY_LAYER/)'
+          # Include files copied from outside each component's source directory.
+          SIDECAR_PATTERN='^platform/(python-sidecar/|scripts/temporal/(__init__|compute_transits)\.py$|\.dockerignore$)'
+          MCP_PATTERN='^(platform-mcp/|01_FACTS_LAYER/|025_HOLISTIC_SYNTHESIS/|00_ARCHITECTURE/(MACRO_PLAN_v2_0|PROJECT_ARCHITECTURE_v2_2|CURRENT_STATE_v1_0)\.md$|\.dockerignore$)'
+          PIPELINE_PATTERN='^(platform/python-sidecar/Dockerfile\.pipeline|platform/python-sidecar/ga_writers/|platform/python-sidecar/pipeline/|platform/python-sidecar/services/|platform/python-sidecar/brahmagyan/|platform/python-sidecar/pyjhora_adapter/|platform/python-sidecar/bodha_writers/|platform/python-sidecar/panchang_engine/|platform/python-sidecar/muhurat/|platform/python-sidecar/requirements|platform/python-sidecar/scripts/kala_gochara_cutover/|035_DISCOVERY_LAYER/|\.dockerignore$)'
 
           deployed_sha() {
             # Prints the commit production reports for one component; empty on any failure.
@@ -435,7 +436,7 @@ jobs:
 
           decide() {
             # $1 component, $2 grep -E path pattern -> echoes the true/false decision.
-            local component="$1" pattern="$2" sha changed
+            local component="$1" pattern="$2" sha selected
             sha=$(deployed_sha "$component")
             if [ -z "$sha" ]; then
               echo "::warning::${component}: deployed commit-sha unresolvable -- FAIL-OPEN, deploying" 1>&2
@@ -448,14 +449,25 @@ jobs:
               echo "::warning::${component}: deployed sha ${sha} not fetchable -- FAIL-OPEN, deploying" 1>&2
               echo true; return
             fi
-            changed=$(git diff --name-only "$sha" HEAD)
-            echo "--- ${component}: deployed=${sha}" 1>&2
-            printf '%s\n' "$changed" | sed 's/^/    /' 1>&2
-            if printf '%s\n' "$changed" | grep -qE "$pattern"; then
-              echo true
-            else
-              echo false
+            # Read both sides of renames and match raw paths without Git's
+            # quoting. Drain the whole diff so pipefail can detect Git errors.
+            if ! selected=$(
+              set -o pipefail
+              git diff --name-only --no-renames -z "$sha" HEAD | {
+                matched=false
+                while IFS= read -r -d '' path; do
+                  if [[ "$path" =~ $pattern ]]; then
+                    matched=true
+                  fi
+                done
+                printf '%s\n' "$matched"
+              }
+            ); then
+              echo "::error::${component}: cannot diff deployed commit ${sha} against HEAD" 1>&2
+              return 1
             fi
+            echo "--- ${component}: deployed=${sha}, selected=${selected}" 1>&2
+            printf '%s\n' "$selected"
           }
 
           web=$(decide web "$WEB_PATTERN")

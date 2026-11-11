@@ -234,3 +234,119 @@ def test_oracles_are_selected_by_profile_and_ci_shard_discovery():
             assert str(Path(__file__).relative_to(ROOT)) in mod.discover(ROOT, mod.profiles()['deploy-build-check-tests'])
         else:
             assert Path(__file__) in mod.test_files()
+
+
+def deploy_diff_repo(path, operation, changed_path, destination=None):
+    path.mkdir()
+    subprocess.run(['git', 'init', '-q', str(path)], check=True, timeout=10)
+
+    def git(*args):
+        return subprocess.run(
+            ['git', '-c', 'user.name=CI fixture', '-c', 'user.email=fixture@example.invalid',
+             '-c', 'commit.gpgsign=false', *args],
+            cwd=path, capture_output=True, text=True, check=True, timeout=10,
+        ).stdout.strip()
+
+    def write(name):
+        file = path / name
+        file.parent.mkdir(parents=True, exist_ok=True)
+        file.write_text('fixture\n')
+
+    write('fixture-root')
+    if operation in ('delete', 'rename'):
+        write(changed_path)
+    git('add', '.')
+    git('commit', '-qm', 'installed source')
+    base = git('rev-parse', 'HEAD')
+
+    if operation == 'add':
+        write(changed_path)
+    elif operation == 'delete':
+        (path / changed_path).unlink()
+    elif operation == 'rename':
+        assert destination is not None
+        (path / destination).parent.mkdir(parents=True, exist_ok=True)
+        git('mv', changed_path, destination)
+    git('add', '-A')
+    git('commit', '-qm', 'candidate source')
+    return base
+
+
+def run_deploy_diff(tmp_path, repo, base, *, fail_diff=False):
+    """Execute the production selection step; Cloud Run and failure are local fixtures."""
+    step = next(s for s in workflow()['jobs']['changes']['steps'] if s.get('id') == 'diff')
+    output = tmp_path / 'deploy-output'
+    harness = '''
+gcloud() {
+    case "$1 $2 $3" in
+        "run services describe") printf '%s\\n' fixture-revision ;;
+        "run revisions describe") printf '%s\\n' "$FIXTURE_DEPLOYED_SHA" ;;
+        "run jobs describe") printf 'fixture/image:%s\\n' "$FIXTURE_DEPLOYED_SHA" ;;
+        *) return 97 ;;
+    esac
+}
+git() {
+    if [ "$1" = diff ] && [ "$FIXTURE_FAIL_DIFF" = 1 ]; then
+        return 128
+    fi
+    command git "$@"
+}
+'''
+    return subprocess.run(
+        ['bash', '-eo', 'pipefail', '-c', harness + step['run']],
+        cwd=repo,
+        env={**os.environ, 'GCP_REGION': 'fixture', 'GITHUB_OUTPUT': str(output),
+             'FIXTURE_DEPLOYED_SHA': base, 'FIXTURE_FAIL_DIFF': '1' if fail_diff else '0'},
+        capture_output=True, text=True, timeout=10,
+    ), output
+
+
+@pytest.mark.parametrize('operation,path,destination,selected,not_selected', [
+    ('add', '00_ARCHITECTURE/MACRO_PLAN_v2_0.md', None, 'mcp', 'pipeline'),
+    ('add', '00_ARCHITECTURE/PROJECT_ARCHITECTURE_v2_2.md', None, 'mcp', 'sidecar'),
+    ('delete', '00_ARCHITECTURE/CURRENT_STATE_v1_0.md', None, 'mcp', 'pipeline'),
+    ('add', '01_FACTS_LAYER/runtime.md', None, 'mcp', 'pipeline'),
+    ('add', '025_HOLISTIC_SYNTHESIS/runtime.md', None, 'mcp', 'sidecar'),
+    ('add', '025_HOLISTIC_SYNTHESIS/runtime\nnotes.md', None, 'mcp', 'sidecar'),
+    ('add', 'platform/scripts/temporal/compute_transits.py', None, 'sidecar', 'mcp'),
+    ('delete', 'platform/scripts/temporal/__init__.py', None, 'sidecar', 'mcp'),
+    ('rename', 'platform-mcp/resources/runtime.md', 'docs/runtime.md', 'mcp', 'sidecar'),
+    ('rename', 'docs/runtime.md', 'platform-mcp/resources/runtime.md', 'mcp', 'sidecar'),
+    ('add', '.dockerignore', None, 'mcp', 'sidecar'),
+    ('add', '.dockerignore', None, 'pipeline', 'sidecar'),
+    ('add', 'platform/.dockerignore', None, 'sidecar', 'mcp'),
+    ('add', 'platform/scripts/temporal/notes.md', None, 'web', 'sidecar'),
+    ('add', '00_ARCHITECTURE/briefs/madhav_consolidation/KICKOFF.md', None, None, None),
+])
+def test_production_deploy_diff_selects_actual_copy_inputs(
+    tmp_path, operation, path, destination, selected, not_selected,
+):
+    repo = tmp_path / 'repo'
+    base = deploy_diff_repo(repo, operation, path, destination)
+    result, output = run_deploy_diff(tmp_path, repo, base)
+    assert result.returncode == 0, result.stderr
+    decisions = dict(line.split('=', 1) for line in output.read_text().splitlines())
+    if selected is None:
+        assert decisions == dict.fromkeys(('web', 'sidecar', 'mcp', 'pipeline'), 'false')
+    else:
+        assert decisions[selected] == 'true'
+        assert decisions[not_selected] == 'false'
+
+
+@pytest.mark.parametrize('base', ['', '1234567890abcdef1234567890abcdef12345678'])
+def test_production_deploy_diff_preserves_missing_installed_source(tmp_path, base):
+    repo = tmp_path / 'repo'
+    deploy_diff_repo(repo, 'add', 'docs/guide.md')
+    result, output = run_deploy_diff(tmp_path, repo, base)
+    assert result.returncode == 0, result.stderr
+    decisions = dict(line.split('=', 1) for line in output.read_text().splitlines())
+    assert decisions == dict.fromkeys(('web', 'sidecar', 'mcp', 'pipeline'), 'true')
+
+
+def test_production_deploy_diff_fails_when_existing_commit_cannot_be_diffed(tmp_path):
+    repo = tmp_path / 'repo'
+    base = deploy_diff_repo(repo, 'add', 'platform-mcp/src/index.ts')
+    result, output = run_deploy_diff(tmp_path, repo, base, fail_diff=True)
+    assert result.returncode != 0
+    assert 'cannot diff deployed commit' in result.stderr
+    assert not output.exists()
