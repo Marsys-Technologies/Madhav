@@ -343,7 +343,7 @@ issues:
       Rahu–Ketu structural 180° opposition preserved. Mercury D9 vargottama
       correctly True. Vimshottari 120-year total span correct.
     evidence:
-      oracle_assertions_failed: [A020,A030,A040,A050,A060,A070,A080,A090,A100]
+      oracle_assertions_failed: [A020, A030, A040, A050, A060, A070, A080, A090, A100]
     suspected_root_cause: RC-003
     suspected_files:
       - platform/python-sidecar/pipeline/writers/vargas_writer.py
@@ -402,7 +402,7 @@ issues:
       Assertions SKIPPED (all require A2_forensic_render data which is absent):
       lagna, house signs, Sripathi cusps, planet houses, planet abs_long, etc.
     evidence:
-      oracle_assertions_failed: [A020,A030,A040,A050,A060,A070,A080,A090,A100]
+      oracle_assertions_failed: [A020, A030, A040, A050, A060, A070, A080, A090, A100]
       oracle_assertions_passed: [A205, panchanga_A231..A234, vimshottari_structural]
     suspected_root_cause: RC-003
     status: open

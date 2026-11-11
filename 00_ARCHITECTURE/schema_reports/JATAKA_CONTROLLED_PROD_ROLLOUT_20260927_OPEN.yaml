@@ -46,4 +46,7 @@ session_open:
       obligation_summary: "No Macro Plan or health-crisis serving change."
       acknowledged: true
   red_team_due: false
-  notes: "Native explicitly authorized the controlled production rollout and later CCD-019's narrow temporary schema capability. Production writes were limited to the reviewed deploy path and one synthetic chart; full correction stopped safely on the inherited shared-asset failure."
+  notes: >-
+    Native explicitly authorized the controlled production rollout and later CCD-019's narrow temporary schema capability. Production
+    writes were limited to the reviewed deploy path and one synthetic chart; full correction stopped safely on the inherited shared-asset
+    failure.

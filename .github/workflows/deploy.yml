@@ -96,7 +96,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
-  GCP_REGION: asia-south1
+  DEPLOY_REGION: asia-south1
   WIF_PROVIDER: projects/938361928218/locations/global/workloadIdentityPools/github/providers/github-actions
   WIF_SERVICE_ACCOUNT: github-actions@madhav-astrology.iam.gserviceaccount.com
   # A workflow_run executes from the default branch by default, which may have
@@ -400,7 +400,7 @@ jobs:
             case "$1" in
               web|sidecar|mcp)
                 local service rev sha
-                service=$(gcloud run services describe "amjis-$1" --region "$GCP_REGION" \
+                service=$(gcloud run services describe "amjis-$1" --region "$DEPLOY_REGION" \
                   --format=json 2>/dev/null) || return 0
                 # A smoke candidate can be Ready while the previous revision
                 # still serves traffic. Split or unknown traffic cannot earn a skip.
@@ -409,13 +409,13 @@ jobs:
                   | if length == 1 and .[0].percent == 100 then .[0].revisionName // empty else empty end
                 ' <<<"$service" 2>/dev/null) || return 0
                 [ -n "$rev" ] || return 0
-                sha=$(gcloud run revisions describe "$rev" --region "$GCP_REGION" \
+                sha=$(gcloud run revisions describe "$rev" --region "$DEPLOY_REGION" \
                   --format="value(metadata.labels['commit-sha'])" 2>/dev/null) || return 0
                 printf '%s' "$sha"
                 ;;
               pipeline)
                 local img ref='^asia-south1-docker\.pkg\.dev/madhav-astrology/amjis/brahma-pipeline:([0-9a-f]{40})(@sha256:[0-9a-f]{64})?$'
-                img=$(gcloud run jobs describe brahma-build-pipeline-job --region "$GCP_REGION" \
+                img=$(gcloud run jobs describe brahma-build-pipeline-job --region "$DEPLOY_REGION" \
                   --format='value(spec.template.spec.template.spec.containers[0].image)' 2>/dev/null) || return 0
                 if [[ "$img" =~ $ref ]]; then printf '%s' "${BASH_REMATCH[1]}"; fi
                 ;;
@@ -606,7 +606,7 @@ jobs:
         id: data-plane-isolation
         env:
           GOOGLE_CLOUD_PROJECT: madhav-astrology
-          GOOGLE_CLOUD_REGION: ${{ env.GCP_REGION }}
+          GOOGLE_CLOUD_REGION: ${{ env.DEPLOY_REGION }}
           DATA_PLANE_DEPLOY_PRINCIPAL: serviceAccount:github-actions@madhav-astrology.iam.gserviceaccount.com
           DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL: ${{ vars.DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL }}
           DATA_PLANE_SECRET_ISOLATION_MODE: strict
@@ -958,7 +958,7 @@ jobs:
         if: steps.bootstrap-state.outputs.data_plane == 'unmarked' || needs.migration-state.outputs.data_plane_isolation != 'strict'
         env:
           GOOGLE_CLOUD_PROJECT: madhav-astrology
-          GOOGLE_CLOUD_REGION: ${{ env.GCP_REGION }}
+          GOOGLE_CLOUD_REGION: ${{ env.DEPLOY_REGION }}
           DATA_PLANE_DEPLOY_PRINCIPAL: serviceAccount:github-actions@madhav-astrology.iam.gserviceaccount.com
           DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL: ${{ vars.DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL }}
           DATA_PLANE_SECRET_ISOLATION_MODE: pre_transition
@@ -1015,7 +1015,7 @@ jobs:
         run: |
           gcloud run jobs update brahma-build-pipeline-job \
             --project=madhav-astrology \
-            --region="$GCP_REGION" \
+            --region="$DEPLOY_REGION" \
             --service-account=data-plane-builder-runtime@madhav-astrology.iam.gserviceaccount.com \
             --set-secrets=DATABASE_URL=data-plane-builder-db-url:latest \
             --quiet
@@ -1024,7 +1024,7 @@ jobs:
         if: steps.bootstrap-state.outputs.data_plane == 'unmarked' || needs.migration-state.outputs.data_plane_isolation != 'strict'
         env:
           GOOGLE_CLOUD_PROJECT: madhav-astrology
-          GOOGLE_CLOUD_REGION: ${{ env.GCP_REGION }}
+          GOOGLE_CLOUD_REGION: ${{ env.DEPLOY_REGION }}
           DATA_PLANE_DEPLOY_PRINCIPAL: serviceAccount:github-actions@madhav-astrology.iam.gserviceaccount.com
           DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL: ${{ vars.DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL }}
           DATA_PLANE_SECRET_ISOLATION_MODE: strict
@@ -1359,7 +1359,7 @@ jobs:
       - name: Verify data-plane secret and runtime isolation
         env:
           GOOGLE_CLOUD_PROJECT: madhav-astrology
-          GOOGLE_CLOUD_REGION: ${{ env.GCP_REGION }}
+          GOOGLE_CLOUD_REGION: ${{ env.DEPLOY_REGION }}
           DATA_PLANE_DEPLOY_PRINCIPAL: serviceAccount:github-actions@madhav-astrology.iam.gserviceaccount.com
           DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL: ${{ vars.DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL }}
           DATA_PLANE_VERIFIER_PHASE: ${{ vars.DATA_PLANE_VERIFIER_PHASE }}   # R15-1: staged (act 3 done) | deployable (act 10 done); required once the verifier service account exists
@@ -1500,7 +1500,7 @@ jobs:
           service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
 
       - name: Configure Docker for Artifact Registry
-        run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
+        run: gcloud auth configure-docker ${{ env.DEPLOY_REGION }}-docker.pkg.dev --quiet
 
       # NOTE: migrations no longer run here. They ran as four inline steps at this
       # point until 2026-08-21 and now live in the dedicated `migrate` job, which
@@ -1580,7 +1580,7 @@ jobs:
         uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: amjis-web
-          region: ${{ env.GCP_REGION }}
+          region: ${{ env.DEPLOY_REGION }}
           image: asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-web:${{ env.DEPLOY_SHA }}
           suffix: ${{ steps.web-candidate.outputs.suffix }}
           # deploy-cloudrun otherwise uses github.sha for commit-sha, which is
@@ -1681,7 +1681,7 @@ jobs:
         run: |
           candidate_url=$(gcloud run services describe amjis-web \
             --project=madhav-astrology \
-            --region=${{ env.GCP_REGION }} \
+            --region=${{ env.DEPLOY_REGION }} \
             --format=json | jq --arg tag "$CANDIDATE_TAG" -r \
               '.status.traffic[] | select(.tag == $tag) | .url')
           test -n "$candidate_url"
@@ -1747,7 +1747,7 @@ jobs:
           gcloud run services update-traffic amjis-web \
             --project=madhav-astrology \
             --to-revisions="$EXPECTED_REVISION=100" \
-            --region=${{ env.GCP_REGION }} \
+            --region=${{ env.DEPLOY_REGION }} \
             --quiet
 
       - name: Remove web candidate tag
@@ -1757,7 +1757,7 @@ jobs:
         run: |
           gcloud run services update-traffic amjis-web \
             --project=madhav-astrology \
-            --region=${{ env.GCP_REGION }} \
+            --region=${{ env.DEPLOY_REGION }} \
             --remove-tags="$CANDIDATE_TAG" \
             --quiet
       # ── /A-S8: deploy + smoke + promote ──────────────────────────────────────
@@ -1849,7 +1849,7 @@ jobs:
           service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
 
       - name: Configure Docker for Artifact Registry
-        run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
+        run: gcloud auth configure-docker ${{ env.DEPLOY_REGION }}-docker.pkg.dev --quiet
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -1885,7 +1885,7 @@ jobs:
         uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: amjis-sidecar
-          region: ${{ env.GCP_REGION }}
+          region: ${{ env.DEPLOY_REGION }}
           image: ${{ env.CGM_VERIFIED_IMAGE }}
           suffix: ${{ steps.sidecar-candidate.outputs.suffix }}
           labels: |
@@ -1919,7 +1919,7 @@ jobs:
         run: |
           candidate_url=$(gcloud run services describe amjis-sidecar \
             --project=madhav-astrology \
-            --region=${{ env.GCP_REGION }} \
+            --region=${{ env.DEPLOY_REGION }} \
             --format=json | jq --arg tag "$CANDIDATE_TAG" -r \
               '.status.traffic[] | select(.tag == $tag) | .url')
           test -n "$candidate_url"
@@ -1935,7 +1935,7 @@ jobs:
         run: |
           gcloud run jobs deploy amjis-sidecar-release-smoke \
             --project=madhav-astrology \
-            --region=${{ env.GCP_REGION }} \
+            --region=${{ env.DEPLOY_REGION }} \
             --image="$CGM_VERIFIED_IMAGE" \
             --service-account=amjis-sidecar-runtime@madhav-astrology.iam.gserviceaccount.com \
             --set-secrets=PYTHON_SIDECAR_API_KEY=PYTHON_SIDECAR_API_KEY:1 \
@@ -1950,7 +1950,7 @@ jobs:
         run: |
           gcloud run jobs execute amjis-sidecar-release-smoke \
             --project=madhav-astrology \
-            --region=${{ env.GCP_REGION }} \
+            --region=${{ env.DEPLOY_REGION }} \
             --wait \
             --quiet
 
@@ -1962,7 +1962,7 @@ jobs:
         run: |
           gcloud run services update-traffic amjis-sidecar \
             --project=madhav-astrology \
-            --region=${{ env.GCP_REGION }} \
+            --region=${{ env.DEPLOY_REGION }} \
             --to-revisions="$EXPECTED_REVISION=100" \
             --quiet
 
@@ -1973,7 +1973,7 @@ jobs:
         run: |
           gcloud run services update-traffic amjis-sidecar \
             --project=madhav-astrology \
-            --region=${{ env.GCP_REGION }} \
+            --region=${{ env.DEPLOY_REGION }} \
             --remove-tags="$CANDIDATE_TAG" \
             --quiet
 
@@ -2090,7 +2090,7 @@ jobs:
           service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
 
       - name: Configure Docker for Artifact Registry
-        run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
+        run: gcloud auth configure-docker ${{ env.DEPLOY_REGION }}-docker.pkg.dev --quiet
 
       - name: Copy governance files into MCP build context
         run: |
@@ -2137,7 +2137,7 @@ jobs:
         uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: amjis-mcp
-          region: ${{ env.GCP_REGION }}
+          region: ${{ env.DEPLOY_REGION }}
           image: asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-mcp:${{ env.DEPLOY_SHA }}
           suffix: ${{ steps.mcp-candidate.outputs.suffix }}
           labels: |
@@ -2252,7 +2252,7 @@ jobs:
         run: |
           candidate_url=$(gcloud run services describe amjis-mcp \
             --project=madhav-astrology \
-            --region=${{ env.GCP_REGION }} \
+            --region=${{ env.DEPLOY_REGION }} \
             --format=json | jq --arg tag "$CANDIDATE_TAG" -r \
               '.status.traffic[] | select(.tag == $tag) | .url')
           test -n "$candidate_url"
@@ -2322,14 +2322,14 @@ jobs:
           ready=false
           for attempt in $(seq 1 80); do
             service_json=$(gcloud run services describe amjis-web \
-              --region="${GCP_REGION}" --format=json 2>"$RUNNER_TEMP/web-service-readiness.err" || true)
+              --region="${DEPLOY_REGION}" --format=json 2>"$RUNNER_TEMP/web-service-readiness.err" || true)
             traffic_revision=$(jq -r \
               '[.status.traffic[]? | select((.percent // 0) == 100) | .revisionName][0] // empty' \
               <<<"$service_json" 2>/dev/null || true)
             traffic_sha=""
             if [ -n "$traffic_revision" ]; then
               traffic_sha=$(gcloud run revisions describe "$traffic_revision" \
-                --region="${GCP_REGION}" --format="value(metadata.labels['commit-sha'])" \
+                --region="${DEPLOY_REGION}" --format="value(metadata.labels['commit-sha'])" \
                 2>"$RUNNER_TEMP/web-revision-readiness.err" || true)
             fi
             if [ "$traffic_sha" = "$DEPLOY_SHA" ]; then
@@ -2395,7 +2395,7 @@ jobs:
           gcloud run services update-traffic amjis-mcp \
             --project=madhav-astrology \
             --to-revisions="$EXPECTED_REVISION=100" \
-            --region=${{ env.GCP_REGION }} \
+            --region=${{ env.DEPLOY_REGION }} \
             --quiet
 
       - name: Remove MCP candidate tag
@@ -2405,7 +2405,7 @@ jobs:
         run: |
           gcloud run services update-traffic amjis-mcp \
             --project=madhav-astrology \
-            --region=${{ env.GCP_REGION }} \
+            --region=${{ env.DEPLOY_REGION }} \
             --remove-tags="$CANDIDATE_TAG" \
             --quiet
 
@@ -2506,7 +2506,7 @@ jobs:
           service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
 
       - name: Configure Docker for Artifact Registry
-        run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
+        run: gcloud auth configure-docker ${{ env.DEPLOY_REGION }}-docker.pkg.dev --quiet
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -2536,7 +2536,7 @@ jobs:
           # working set. See F-185 in the PARISESA-V4 findings for disk-backed storage.
           python3 .github/actions/build-verified-cgm-image/probe_registration.py verify-repoint
           gcloud run jobs update brahma-build-pipeline-job \
-            --region=${{ env.GCP_REGION }} \
+            --region=${{ env.DEPLOY_REGION }} \
             --image="${CGM_VERIFIED_PIPELINE_REF:?missing verified Pipeline image}" \
             --service-account=data-plane-builder-runtime@madhav-astrology.iam.gserviceaccount.com \
             --update-secrets=DATABASE_URL=data-plane-builder-db-url:latest \
@@ -2545,7 +2545,7 @@ jobs:
             --cpu=2 \
             --update-env-vars=GCP_PROJECT=madhav-astrology,PUBSUB_TOPIC=cockpit-events,KA_KSHETRA_HASH_SPILL_DIR=/tmp \
             --quiet
-          GOOGLE_CLOUD_REGION="${{ env.GCP_REGION }}" python3 .github/actions/build-verified-cgm-image/probe_registration.py post-repoint
+          GOOGLE_CLOUD_REGION="${{ env.DEPLOY_REGION }}" python3 .github/actions/build-verified-cgm-image/probe_registration.py post-repoint
           # SR-RIGHT-SIZE (owner approval OWNER-CLOUD-RUNS-APPROVED-20261023,
           # amend-1): --memory=8Gi --cpu=2 above (was 16Gi / 4) for BOTH the
           # century build and the K9-4b rebuild, which share this one job (an

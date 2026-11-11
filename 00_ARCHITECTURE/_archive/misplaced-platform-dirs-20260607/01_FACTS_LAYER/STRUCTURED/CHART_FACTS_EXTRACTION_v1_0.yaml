@@ -3,7 +3,9 @@ schema_version: "1.2"
 source: FORENSIC_ASTROLOGICAL_DATA_v8_0.md
 extracted_at: "2026-05-10"
 extracted_by: "direct_read by Claude Code (Opus 4.7) — VARGA-ETL-FULL-S1-CPA"
-cross_check_finding: "All 9 natal planets show delta 0.003°–0.027° between FORENSIC (JH engine) and EVENT_CHART_STATES (pyswisseph). This is a known engine divergence, not a transcription error. FORENSIC values used as canonical per CLAUDE.md §B."
+cross_check_finding: >-
+  All 9 natal planets show delta 0.003°–0.027° between FORENSIC (JH engine) and EVENT_CHART_STATES (pyswisseph). This is a known engine divergence, not a transcription error.
+  FORENSIC values used as canonical per CLAUDE.md §B.
 v1_1_changelog: |
   v1.1 (2026-05-10, VARGA-ETL-FULL-S1-CPA): Phase 14C dual-pipeline race condition resolved
   by migrating six FORENSIC sections from the deprecated markdown extractor into this YAML
@@ -4356,7 +4358,17 @@ facts:
     divisional_chart: D1
     value_number: 340.08
     value_text: "House 1 — 340.08 virupa (rank 10)"
-    value_json: {engine: FORENSIC, house: 1, life_area: "Self / Body", total_bala_virupa: 340.08, forensic_rupas: 5.67, rank_forensic: 10, lord_strength_virupa: 316.23, lord: Mars, directional_dig: 30, aspectual_drishti: -6.15}
+    value_json:
+      engine: FORENSIC
+      house: 1
+      life_area: Self / Body
+      total_bala_virupa: 340.08
+      forensic_rupas: 5.67
+      rank_forensic: 10
+      lord_strength_virupa: 316.23
+      lord: Mars
+      directional_dig: 30
+      aspectual_drishti: -6.15
     source_section: "§6.4 row 10"
     extraction_method: direct_read
   - fact_id: BVB.FORENSIC.H02
@@ -4364,7 +4376,17 @@ facts:
     divisional_chart: D1
     value_number: 266.26
     value_text: "House 2 — 266.26 virupa (rank 11)"
-    value_json: {engine: FORENSIC, house: 2, life_area: "Family / Savings", total_bala_virupa: 266.26, forensic_rupas: 4.44, rank_forensic: 11, lord_strength_virupa: 276.01, lord: Venus, directional_dig: 20, aspectual_drishti: -29.75}
+    value_json:
+      engine: FORENSIC
+      house: 2
+      life_area: Family / Savings
+      total_bala_virupa: 266.26
+      forensic_rupas: 4.44
+      rank_forensic: 11
+      lord_strength_virupa: 276.01
+      lord: Venus
+      directional_dig: 20
+      aspectual_drishti: -29.75
     source_section: "§6.4 row 11"
     extraction_method: direct_read
   - fact_id: BVB.FORENSIC.H03
@@ -4372,7 +4394,17 @@ facts:
     divisional_chart: D1
     value_number: 447.37
     value_text: "House 3 — 447.37 virupa (rank 7)"
-    value_json: {engine: FORENSIC, house: 3, life_area: "Skills / Courage", total_bala_virupa: 447.37, forensic_rupas: 7.46, rank_forensic: 7, lord_strength_virupa: 393.26, lord: Mercury, directional_dig: 40, aspectual_drishti: 14.11}
+    value_json:
+      engine: FORENSIC
+      house: 3
+      life_area: Skills / Courage
+      total_bala_virupa: 447.37
+      forensic_rupas: 7.46
+      rank_forensic: 7
+      lord_strength_virupa: 393.26
+      lord: Mercury
+      directional_dig: 40
+      aspectual_drishti: 14.11
     source_section: "§6.4 row 7"
     extraction_method: direct_read
   - fact_id: BVB.FORENSIC.H04
@@ -4380,7 +4412,17 @@ facts:
     divisional_chart: D1
     value_number: 474.87
     value_text: "House 4 — 474.87 virupa (rank 6)"
-    value_json: {engine: FORENSIC, house: 4, life_area: "Home / Peace", total_bala_virupa: 474.87, forensic_rupas: 7.91, rank_forensic: 6, lord_strength_virupa: 435.51, lord: Moon, directional_dig: 60, aspectual_drishti: -20.64}
+    value_json:
+      engine: FORENSIC
+      house: 4
+      life_area: Home / Peace
+      total_bala_virupa: 474.87
+      forensic_rupas: 7.91
+      rank_forensic: 6
+      lord_strength_virupa: 435.51
+      lord: Moon
+      directional_dig: 60
+      aspectual_drishti: -20.64
     source_section: "§6.4 row 6"
     extraction_method: direct_read
   - fact_id: BVB.FORENSIC.H05
@@ -4388,7 +4430,17 @@ facts:
     divisional_chart: D1
     value_number: 486.86
     value_text: "House 5 — 486.86 virupa (rank 2)"
-    value_json: {engine: FORENSIC, house: 5, life_area: "Creativity / Future", total_bala_virupa: 486.86, forensic_rupas: 8.11, rank_forensic: 2, lord_strength_virupa: 510.85, lord: Sun, directional_dig: 10, aspectual_drishti: -33.99}
+    value_json:
+      engine: FORENSIC
+      house: 5
+      life_area: Creativity / Future
+      total_bala_virupa: 486.86
+      forensic_rupas: 8.11
+      rank_forensic: 2
+      lord_strength_virupa: 510.85
+      lord: Sun
+      directional_dig: 10
+      aspectual_drishti: -33.99
     source_section: "§6.4 row 2"
     extraction_method: direct_read
   - fact_id: BVB.FORENSIC.H06
@@ -4396,7 +4448,17 @@ facts:
     divisional_chart: D1
     value_number: 405.17
     value_text: "House 6 — 405.17 virupa (rank 8)"
-    value_json: {engine: FORENSIC, house: 6, life_area: "Enemies / Debt", total_bala_virupa: 405.17, forensic_rupas: 6.75, rank_forensic: 8, lord_strength_virupa: 393.26, lord: Mercury, directional_dig: 10, aspectual_drishti: 1.91}
+    value_json:
+      engine: FORENSIC
+      house: 6
+      life_area: Enemies / Debt
+      total_bala_virupa: 405.17
+      forensic_rupas: 6.75
+      rank_forensic: 8
+      lord_strength_virupa: 393.26
+      lord: Mercury
+      directional_dig: 10
+      aspectual_drishti: 1.91
     source_section: "§6.4 row 8"
     extraction_method: direct_read
   - fact_id: BVB.FORENSIC.H07
@@ -4404,7 +4466,17 @@ facts:
     divisional_chart: D1
     value_number: 253.36
     value_text: "House 7 — 253.36 virupa (rank 12 weakest)"
-    value_json: {engine: FORENSIC, house: 7, life_area: "Partners / Spouse", total_bala_virupa: 253.36, forensic_rupas: 4.22, rank_forensic: 12, lord_strength_virupa: 276.01, lord: Venus, directional_dig: 0, aspectual_drishti: -22.65}
+    value_json:
+      engine: FORENSIC
+      house: 7
+      life_area: Partners / Spouse
+      total_bala_virupa: 253.36
+      forensic_rupas: 4.22
+      rank_forensic: 12
+      lord_strength_virupa: 276.01
+      lord: Venus
+      directional_dig: 0
+      aspectual_drishti: -22.65
     source_section: "§6.4 row 12"
     extraction_method: direct_read
     notes: "FORENSIC engine 7H weakest — same conclusion as JH §6.6 (rank 12). ATT-architecture structural weakness."
@@ -4413,7 +4485,17 @@ facts:
     divisional_chart: D1
     value_number: 358.67
     value_text: "House 8 — 358.67 virupa (rank 9)"
-    value_json: {engine: FORENSIC, house: 8, life_area: "Crisis / Occult", total_bala_virupa: 358.67, forensic_rupas: 5.98, rank_forensic: 9, lord_strength_virupa: 316.23, lord: Mars, directional_dig: 50, aspectual_drishti: -7.56}
+    value_json:
+      engine: FORENSIC
+      house: 8
+      life_area: Crisis / Occult
+      total_bala_virupa: 358.67
+      forensic_rupas: 5.98
+      rank_forensic: 9
+      lord_strength_virupa: 316.23
+      lord: Mars
+      directional_dig: 50
+      aspectual_drishti: -7.56
     source_section: "§6.4 row 9"
     extraction_method: direct_read
   - fact_id: BVB.FORENSIC.H09
@@ -4421,7 +4503,17 @@ facts:
     divisional_chart: D1
     value_number: 477.55
     value_text: "House 9 — 477.55 virupa (rank 5)"
-    value_json: {engine: FORENSIC, house: 9, life_area: "Luck / Dharma", total_bala_virupa: 477.55, forensic_rupas: 7.96, rank_forensic: 5, lord_strength_virupa: 464.07, lord: Jupiter, directional_dig: 20, aspectual_drishti: -6.52}
+    value_json:
+      engine: FORENSIC
+      house: 9
+      life_area: Luck / Dharma
+      total_bala_virupa: 477.55
+      forensic_rupas: 7.96
+      rank_forensic: 5
+      lord_strength_virupa: 464.07
+      lord: Jupiter
+      directional_dig: 20
+      aspectual_drishti: -6.52
     source_section: "§6.4 row 5"
     extraction_method: direct_read
   - fact_id: BVB.FORENSIC.H10
@@ -4429,7 +4521,17 @@ facts:
     divisional_chart: D1
     value_number: 482.99
     value_text: "House 10 — 482.99 virupa (rank 3)"
-    value_json: {engine: FORENSIC, house: 10, life_area: "Career / Status", total_bala_virupa: 482.99, forensic_rupas: 8.05, rank_forensic: 3, lord_strength_virupa: 447.98, lord: Saturn, directional_dig: 60, aspectual_drishti: -24.99}
+    value_json:
+      engine: FORENSIC
+      house: 10
+      life_area: Career / Status
+      total_bala_virupa: 482.99
+      forensic_rupas: 8.05
+      rank_forensic: 3
+      lord_strength_virupa: 447.98
+      lord: Saturn
+      directional_dig: 60
+      aspectual_drishti: -24.99
     source_section: "§6.4 row 3"
     extraction_method: direct_read
   - fact_id: BVB.FORENSIC.H11
@@ -4437,7 +4539,17 @@ facts:
     divisional_chart: D1
     value_number: 478.27
     value_text: "House 11 — 478.27 virupa (rank 4)"
-    value_json: {engine: FORENSIC, house: 11, life_area: "Gains / Network", total_bala_virupa: 478.27, forensic_rupas: 7.97, rank_forensic: 4, lord_strength_virupa: 447.98, lord: Saturn, directional_dig: 40, aspectual_drishti: -9.71}
+    value_json:
+      engine: FORENSIC
+      house: 11
+      life_area: Gains / Network
+      total_bala_virupa: 478.27
+      forensic_rupas: 7.97
+      rank_forensic: 4
+      lord_strength_virupa: 447.98
+      lord: Saturn
+      directional_dig: 40
+      aspectual_drishti: -9.71
     source_section: "§6.4 row 4"
     extraction_method: direct_read
   - fact_id: BVB.FORENSIC.H12
@@ -4445,7 +4557,17 @@ facts:
     divisional_chart: D1
     value_number: 506.09
     value_text: "House 12 — 506.09 virupa (rank 1 strongest)"
-    value_json: {engine: FORENSIC, house: 12, life_area: "Isolation / Foreign", total_bala_virupa: 506.09, forensic_rupas: 8.43, rank_forensic: 1, lord_strength_virupa: 464.07, lord: Jupiter, directional_dig: 20, aspectual_drishti: 22.02}
+    value_json:
+      engine: FORENSIC
+      house: 12
+      life_area: Isolation / Foreign
+      total_bala_virupa: 506.09
+      forensic_rupas: 8.43
+      rank_forensic: 1
+      lord_strength_virupa: 464.07
+      lord: Jupiter
+      directional_dig: 20
+      aspectual_drishti: 22.02
     source_section: "§6.4 row 1"
     extraction_method: direct_read
   # ── §11.6 Chesta motion audit (v1.1 added) ────────────────────────────────
@@ -5651,7 +5773,10 @@ facts:
     divisional_chart: D1
     value_number: 85
     value_text: "Kalachakra Paramayush: 85 years"
-    value_json: {field: Paramayush, value_years: 85, governance_note: "Adopted as authoritative longevity anchor per GOVERNANCE_STACK; Parashari trio (Pindayu/Nisargayu/Amsayu) intentionally excluded"}
+    value_json:
+      field: Paramayush
+      value_years: 85
+      governance_note: Adopted as authoritative longevity anchor per GOVERNANCE_STACK; Parashari trio (Pindayu/Nisargayu/Amsayu) intentionally excluded
     source_section: "§24.1 row 4"
     forensic_ref: "FORENSIC v8.0 §24.1 — Kalachakra Paramayush; §24.2 Ayurdasaya Status"
     extraction_method: direct_read
@@ -5938,7 +6063,9 @@ facts:
   - fact_id: PVC.NOTE
     category: pancha_vargeeya
     divisional_chart: D1
-    value_text: "Operational triad: Mercury (primary instrument — 8-system convergence, PVC POWERFUL), Saturn (primary deliverer — AmK exalted, Shadbala JH #1, Ishta #1, PVC POWERFUL), Jupiter (primary authorizer — 9L own-sign, PVC MOST POWERFUL, but Phalita-weak per §6.7)"
+    value_text: >-
+      Operational triad: Mercury (primary instrument — 8-system convergence, PVC POWERFUL), Saturn (primary deliverer — AmK exalted, Shadbala JH #1, Ishta #1, PVC POWERFUL),
+      Jupiter (primary authorizer — 9L own-sign, PVC MOST POWERFUL, but Phalita-weak per §6.7)
     value_json:
       note: "Rahu/Ketu not in FORENSIC §6.8 source; JH Pancha-Vargeeya computed for 7 visible grahas only"
       operational_triad: "Jupiter (14.76 POWERFUL) + Saturn (12.12 POWERFUL) + Mercury (11.43 POWERFUL)"

@@ -87,7 +87,7 @@ session_open:
       stale: false
     - pair_id: MP.4
       claude_side: 00_ARCHITECTURE/PHASE_M9_PLAN_v1_0.md
-      gemini_side: phase plan pointer in .geminirules §C item #5
+      gemini_side: phase plan pointer in .geminirules §C item  # 5
       last_verified_on: 2026-05-14
       days_since_verification: 0
       stale: false

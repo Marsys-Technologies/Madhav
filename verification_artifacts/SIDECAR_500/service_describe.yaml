@@ -35,46 +35,46 @@ spec:
     spec:
       containerConcurrency: 80
       containers:
-      - env:
-        - name: SIDECAR_API_KEY
-          value: local-dev
-        image: asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-sidecar:latest
-        ports:
-        - containerPort: 8000
-          name: http1
-        resources:
-          limits:
-            cpu: '1'
-            memory: 1Gi
-        startupProbe:
-          failureThreshold: 1
-          periodSeconds: 240
-          tcpSocket:
-            port: 8000
-          timeoutSeconds: 240
+        - env:
+            - name: SIDECAR_API_KEY
+              value: local-dev
+          image: asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-sidecar:latest
+          ports:
+            - containerPort: 8000
+              name: http1
+          resources:
+            limits:
+              cpu: '1'
+              memory: 1Gi
+          startupProbe:
+            failureThreshold: 1
+            periodSeconds: 240
+            tcpSocket:
+              port: 8000
+            timeoutSeconds: 240
       serviceAccountName: 938361928218-compute@developer.gserviceaccount.com
       timeoutSeconds: 300
   traffic:
-  - latestRevision: true
-    percent: 100
+    - latestRevision: true
+      percent: 100
 status:
   address:
     url: https://amjis-sidecar-qm256lasva-el.a.run.app
   conditions:
-  - lastTransitionTime: '2026-04-25T16:00:13.700301Z'
-    status: 'True'
-    type: Ready
-  - lastTransitionTime: '2026-04-25T16:00:08.141927Z'
-    status: 'True'
-    type: ConfigurationsReady
-  - lastTransitionTime: '2026-04-25T16:00:13.671207Z'
-    status: 'True'
-    type: RoutesReady
+    - lastTransitionTime: '2026-04-25T16:00:13.700301Z'
+      status: 'True'
+      type: Ready
+    - lastTransitionTime: '2026-04-25T16:00:08.141927Z'
+      status: 'True'
+      type: ConfigurationsReady
+    - lastTransitionTime: '2026-04-25T16:00:13.671207Z'
+      status: 'True'
+      type: RoutesReady
   latestCreatedRevisionName: amjis-sidecar-00001-s55
   latestReadyRevisionName: amjis-sidecar-00001-s55
   observedGeneration: 1
   traffic:
-  - latestRevision: true
-    percent: 100
-    revisionName: amjis-sidecar-00001-s55
+    - latestRevision: true
+      percent: 100
+      revisionName: amjis-sidecar-00001-s55
   url: https://amjis-sidecar-qm256lasva-el.a.run.app

@@ -1799,18 +1799,19 @@ def run_acceptance_gate(chart_id: str) -> dict[str, Any]:
                 action_type="INVALID_TYPE",
                 date_range={"start": "2026-06-01", "end": "2026-06-30"},
             )
-            checks.append({
-                "id": "AC3",
-                "desc": "Invalid action_type raises ValueError",
-                "passed": False,
-                "value": "No exception raised — validation failure",
-            })
         except ValueError:
             checks.append({
                 "id": "AC3",
                 "desc": "Invalid action_type raises ValueError",
                 "passed": True,
                 "value": "ValueError raised correctly",
+            })
+        else:
+            checks.append({
+                "id": "AC3",
+                "desc": "Invalid action_type raises ValueError",
+                "passed": False,
+                "value": "No exception raised — validation failure",
             })
     except Exception as exc:
         checks.append({"id": "AC3", "desc": "action_type validation", "passed": False, "error": str(exc)})

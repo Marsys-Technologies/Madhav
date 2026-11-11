@@ -84,37 +84,42 @@ def run_engine_smoke() -> dict[str, Any]:
     # ── Engine import check ────────────────────────────────────────────────────
     try:
         import swisseph as swe
-        checks.append({"id": "E1", "desc": "pyswisseph importable", "passed": True, "value": "ok"})
     except ImportError as exc:
         checks.append({"id": "E1", "desc": "pyswisseph importable", "passed": False, "value": str(exc)})
         return {"status": "RED", "engine_version": ENGINE_VERSION, "checks": checks,
                 "positions": [], "lagna": {}, "dasha_tree": {},
                 "error": f"pyswisseph import failed: {exc}"}
+    else:
+        checks.append({"id": "E1", "desc": "pyswisseph importable", "passed": True, "value": "ok"})
 
     # ── Compute JD ────────────────────────────────────────────────────────────
     try:
         jd = _birth_jd_utc()
-        checks.append({"id": "E2", "desc": "Julian Day computation succeeds", "passed": True,
-                        "value": round(jd, 6)})
+        observed_value = round(jd, 6)
     except Exception as exc:
         checks.append({"id": "E2", "desc": "Julian Day computation succeeds", "passed": False,
                         "value": str(exc)})
         return {"status": "RED", "engine_version": ENGINE_VERSION, "checks": checks,
                 "positions": [], "lagna": {}, "dasha_tree": {},
                 "error": f"JD computation failed: {exc}"}
+    else:
+        checks.append({"id": "E2", "desc": "Julian Day computation succeeds", "passed": True,
+                        "value": observed_value})
 
     # ── Position computation ───────────────────────────────────────────────────
     try:
         from brahmagyan.ganita.engine import compute_positions
         positions = compute_positions(jd, "lahiri")
-        checks.append({"id": "E3", "desc": "compute_positions returns result", "passed": True,
-                        "value": f"{len(positions)} grahas"})
+        observed_value = f"{len(positions)} grahas"
     except Exception as exc:
         checks.append({"id": "E3", "desc": "compute_positions returns result", "passed": False,
                         "value": str(exc)})
         return {"status": "RED", "engine_version": ENGINE_VERSION, "checks": checks,
                 "positions": [], "lagna": {}, "dasha_tree": {},
                 "error": f"compute_positions failed: {exc}"}
+    else:
+        checks.append({"id": "E3", "desc": "compute_positions returns result", "passed": True,
+                        "value": observed_value})
 
     by_name = {p["name"]: p for p in positions}
 

@@ -151,6 +151,10 @@ against the live tree at base `a7dfefcb` (SUPPRESSED COUNT in brackets):
       authored rows were actually grounded is a real §N.8 question about the
       SEEDING process — it is an audit question, not a syntax question, and this
       lint does not answer it.
+      TypeScript recognizes the narrower closed, flat string/number table
+      shape. Spreads, nested objects, calls, computed keys, and boolean result
+      fields disqualify the whole table. Static labels and numeric priorities
+      are definitions, and their consumers still require semantic review.
   N3. **CONSTANT_CASE field names** [~6]. `ACHARYA_GRADE = 'A'`,
       `FALSIFIER_GATE = true` — the naming convention IS the declaration that
       the value is fixed. Whether a consumer then passes the constant off as a
@@ -168,6 +172,13 @@ against the live tree at base `a7dfefcb` (SUPPRESSED COUNT in brackets):
   N6. **SQL inside TypeScript template literals** [~4]. Any TS line carrying
       SQL keywords is skipped — `COUNT(*) FILTER (WHERE composite_verdict =
       'confirmed')` is query text, not an assignment.
+
+Explicit absence markers are also permitted: `grounding_status` may declare
+`UNGROUNDED` (optionally followed by an explanation) or `SCAFFOLD`, and
+`validator_verdict` may declare `UNKNOWN`. These state that evidence is absent.
+Positive grounding, verification, and fixed boolean outcomes remain findings.
+Python collection initializers are mutable when that same local name is later
+appended, extended, added to, or updated, including annotated initializers.
 
 Further false-negative mechanics:
   - Python: a constant that reaches the field through an intermediate module
@@ -548,6 +559,18 @@ def _is_none(node: ast.AST) -> bool:
     return isinstance(node, ast.Constant) and node.value is None
 
 
+def _is_unmeasured_marker(field: str, value: object) -> bool:
+    """Explicit absence of grounding or observation makes no positive claim."""
+    if not isinstance(value, str):
+        return False
+    if field == "validator_verdict":
+        return value == "UNKNOWN"
+    return field == "grounding_status" and (
+        value in {"UNGROUNDED", "SCAFFOLD"}
+        or value.startswith("UNGROUNDED ")
+    )
+
+
 def _collect_branch_guarded(tree: ast.AST) -> Set[int]:
     """Ids of nodes that sit inside a CONDITIONAL region of the source.
 
@@ -646,6 +669,8 @@ def _names_bound_more_than_once(scope: ast.AST) -> Set[str]:
             for tgt in sub.targets:
                 if isinstance(tgt, ast.Name):
                     bump(tgt.id)
+        elif isinstance(sub, ast.AnnAssign) and isinstance(sub.target, ast.Name):
+            bump(sub.target.id)
         elif isinstance(sub, ast.AugAssign):
             if isinstance(sub.target, ast.Name):
                 bump(sub.target.id, 2)  # an augment implies a prior binding
@@ -655,6 +680,13 @@ def _names_bound_more_than_once(scope: ast.AST) -> Set[str]:
         elif isinstance(sub, ast.withitem):
             if isinstance(sub.optional_vars, ast.Name):
                 bump(sub.optional_vars.id, 2)
+        elif (
+            isinstance(sub, ast.Call)
+            and isinstance(sub.func, ast.Attribute)
+            and isinstance(sub.func.value, ast.Name)
+            and sub.func.attr in {"append", "extend", "add", "update"}
+        ):
+            bump(sub.func.value.id, 2)
     return {n for n, c in counts.items() if c > 1}
 
 
@@ -742,6 +774,8 @@ def scan_python_text(text: str) -> List[Tuple[int, str, str, str]]:
                     continue
                 if not is_signal_name(k.value):
                     continue
+                if isinstance(v, ast.Constant) and _is_unmeasured_marker(k.value, v.value):
+                    continue
                 if _is_none(v) or not is_edit_time_constant(v):
                     continue
                 if k.value in subscript_keys:
@@ -752,6 +786,8 @@ def scan_python_text(text: str) -> List[Tuple[int, str, str, str]]:
         elif isinstance(node, ast.Call):
             for kw in node.keywords:
                 if kw.arg is None or not is_signal_name(kw.arg):
+                    continue
+                if isinstance(kw.value, ast.Constant) and _is_unmeasured_marker(kw.arg, kw.value.value):
                     continue
                 if _is_none(kw.value) or not is_edit_time_constant(kw.value):
                     continue
@@ -768,12 +804,16 @@ def scan_python_text(text: str) -> List[Tuple[int, str, str, str]]:
                 if isinstance(tgt, ast.Name):
                     if not is_signal_name(tgt.id):
                         continue
+                    if isinstance(value, ast.Constant) and _is_unmeasured_marker(tgt.id, value.value):
+                        continue
                     scope = parent_scope.get(id(node), tree)
                     if tgt.id in rebinds_for(scope):
                         continue  # initialiser pattern, later rebound
                     record(node, "name_assign", tgt.id)
                 elif isinstance(tgt, ast.Attribute):
                     if not is_signal_name(tgt.attr):
+                        continue
+                    if isinstance(value, ast.Constant) and _is_unmeasured_marker(tgt.attr, value.value):
                         continue
                     if collector.attr_writes.get(tgt.attr, 0) > 1:
                         continue  # overwritten elsewhere in this file
@@ -784,6 +824,8 @@ def scan_python_text(text: str) -> List[Tuple[int, str, str, str]]:
                     and isinstance(tgt.slice.value, str)
                     and is_signal_name(tgt.slice.value)
                 ):
+                    if isinstance(value, ast.Constant) and _is_unmeasured_marker(tgt.slice.value, value.value):
+                        continue
                     if collector.subscript_key_writes.get(tgt.slice.value, 0) > 1:
                         continue  # placeholder later overwritten in this file
                     record(node, "subscript_assign", tgt.slice.value)
@@ -814,6 +856,40 @@ _TS_SQL_CONTEXT_RE = re.compile(
     r"\b(SELECT|FROM|WHERE|FILTER\s*\(|GROUP\s+BY|ORDER\s+BY|INSERT\s+INTO|UPDATE\s+\w+\s+SET|COALESCE)\b",
     re.IGNORECASE,
 )
+
+_TS_TABLE_START_RE = re.compile(
+    r"^\s*(?:export\s+)?const\s+[A-Z][A-Z0-9_]*"
+    r"(?:\s*:\s*[^=]+)?\s*=\s*\{\s*$"
+)
+_TS_TABLE_ENTRY_RE = re.compile(
+    r"\s*(?:[A-Za-z_$][\w$]*|'[^'\\\n]+'|\"[^\"\\\n]+\")\s*:\s*"
+    r"(?:-?\d+(?:\.\d+)?|'[^'\\\n]*'|\"[^\"\\\n]*\")\s*,?\s*(?://.*)?$"
+)
+_TS_TABLE_END_RE = re.compile(r"\s*}\s*(?:as\s+const)?\s*;?\s*$")
+
+
+def _ts_primitive_table_lines(text: str) -> Set[int]:
+    """Recognize closed CONSTANT_CASE string/number lookup tables.
+
+    Boolean results, spreads, nested objects, computed keys and calls do not
+    qualify. This is the primitive subset of Python's CONSTANT_CASE table rule.
+    """
+    tables: Set[int] = set()
+    candidate: List[int] = []
+    for line_number, line in enumerate(text.splitlines(), start=1):
+        if _TS_TABLE_START_RE.fullmatch(line):
+            candidate = [line_number]
+        elif candidate:
+            if not line.strip() or _TS_COMMENT_RE.match(line):
+                continue
+            if _TS_TABLE_END_RE.fullmatch(line):
+                tables.update(candidate)
+                candidate = []
+            elif _TS_TABLE_ENTRY_RE.fullmatch(line):
+                candidate.append(line_number)
+            else:
+                candidate = []
+    return tables
 # `let x = false` / `var x = false` declares a MUTABLE variable; the initialiser
 # is a starting value, not a frozen signal, and later `x = true` reassignments in
 # the same file are the ordinary accumulate-then-report pattern. Mirrors the
@@ -921,6 +997,7 @@ def scan_ts_text(text: str) -> List[Tuple[int, str, str, str]]:
     in_block_comment = False
     mutable_cache: dict = {}
     conditional_return_lines = _ts_direct_conditional_return_object_lines(text)
+    primitive_table_lines = _ts_primitive_table_lines(text)
 
     def declared_mutable(name: str) -> bool:
         if name not in mutable_cache:
@@ -950,13 +1027,15 @@ def scan_ts_text(text: str) -> List[Tuple[int, str, str, str]]:
             continue
         if _TS_SQL_CONTEXT_RE.search(code):
             continue
-        if idx in conditional_return_lines:
+        if idx in conditional_return_lines or idx in primitive_table_lines:
             continue
 
         snippet = " ".join(stripped.split())[:160]
 
         m = _TS_PROP_RE.search(code)
         if m and not _TS_OPTIONAL_PROP_RE.match(code):
+            if _is_unmeasured_marker(m.group("name"), m.group("value")[1:-1]):
+                continue
             after = code[m.end():].lstrip()
             if not after.startswith("|") and is_signal_name(m.group("name")):
                 hits.append((idx, "object_property", m.group("name"), snippet))
@@ -964,6 +1043,8 @@ def scan_ts_text(text: str) -> List[Tuple[int, str, str, str]]:
 
         m2 = _TS_ASSIGN_RE.search(code)
         if m2 and is_signal_name(m2.group("name")):
+            if _is_unmeasured_marker(m2.group("name"), m2.group("value")[1:-1]):
+                continue
             after = code[m2.end():].lstrip()
             if not after.startswith("|") and not declared_mutable(m2.group("name")):
                 hits.append((idx, "assignment", m2.group("name"), snippet))

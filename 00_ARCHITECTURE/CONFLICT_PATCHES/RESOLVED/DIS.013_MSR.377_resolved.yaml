@@ -3,9 +3,9 @@ conflict_class: A
 signal_ids_affected:
   - MSR.377
 resolution_path: direct_rewrite
-  # ICR-S4 proposed patch (DIS.013_MSR.377_proposed.yaml) was rejected: it was a
-  # partial fix (signal_name swap only; body retained Virgo 6H / Mercury content).
-  # A full signal rewrite was performed directly in session MSR-377-LIBRA-7H-CORRECTION.
+# ICR-S4 proposed patch (DIS.013_MSR.377_proposed.yaml) was rejected: it was a
+# partial fix (signal_name swap only; body retained Virgo 6H / Mercury content).
+# A full signal rewrite was performed directly in session MSR-377-LIBRA-7H-CORRECTION.
 resolved_in_session: MSR-377-LIBRA-7H-CORRECTION
 resolved_on: "2026-05-21"
 resolved_by: "M5_COVERAGE_CAMPAIGN_CLOSE"

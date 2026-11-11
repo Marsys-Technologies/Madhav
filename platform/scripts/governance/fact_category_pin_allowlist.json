@@ -177,7 +177,7 @@
       "file": "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
       "line": null,
       "pattern": "fact_key, fact_value_num FROM chart_facts WHERE chart_id = %s AND ayanamsha_id = %s AND fact_category = 'argala_natal_matrix' AND fact_subject = %s",
-      "justification": "_verify_upstream_rows intentionally reports presence of any argala matrix row. It consumes the count only."
+      "justification": "_lookup_argala_for_sign fetches every nonzero argala fact_key for one target sign. Each row retains fact_key and the consumer decodes the donor sign from that key into a separate activation. No row is collapsed by fact_subject and no single measurement is selected. The original count-only rationale referred to a different query and has been corrected."
     },
     {
       "file": "platform/python-sidecar/services/gochara_v3/context.py",
