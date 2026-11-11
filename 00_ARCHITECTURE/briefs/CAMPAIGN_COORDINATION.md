@@ -60,7 +60,7 @@ cutover wave (its W6), UTKARṢA yields otherwise.
 
 | # | campaign | purpose | started (IST) | expiry (IST) | status |
 |---|---|---|---|---|---|
-| L-MADHAV-CONSOLIDATION-PASSIVE-READ-OWNERS-20261111 | Madhav consolidation | Exact #3972 protected passive read owners queue and ordinary Web-only rollout under SR065 | 2026-11-11 20:22 IST | 2026-11-11 23:20 IST | ACTIVE |
+| L-MADHAV-CONSOLIDATION-PASSIVE-READ-OWNERS-20261111 | Madhav consolidation | Exact #3972 protected passive read owners queue and ordinary Web-only rollout under SR065 | 2026-11-11 20:22 IST | 2026-11-11 23:20 IST | RELEASED 2026-11-11 21:16 IST — two removed groups; no merge or rollout |
 | L-MADHAV-CONSOLIDATION-FOLLOWER-20261111 | Madhav consolidation | Exact #3970 ordinary protected combined follower queue and automatic Web rollout under SR-057 | 2026-11-11 18:29 IST | 2026-11-11 20:45 IST | RELEASED 2026-11-11 19:46 IST — exact normal rollout 43032520223 and immutable serving Web verified |
 | L-MADHAV-CONSOLIDATION-PREVIEW-PACKAGING-20261111 | Madhav consolidation | Exact #3969 ordinary protected queue and automatic filtered Web, Sidecar and Pipeline packaging under SR-054 | 2026-11-11 16:57 IST | 2026-11-11 19:10 IST | RELEASED 2026-11-11 18:06 IST — exact normal rollout 43018363351 and current immutable packages verified |
 | L-MADHAV-CONSOLIDATION-UPLOAD-1415-APPLY-20261111 | Madhav consolidation | Apply only already-merged protected migration 1415 on exact main bb43f3df11b1b27fdbe323dd387ce98cfcf70d7b under SR-035 | 2026-11-11 15:22 IST | 2026-11-11 17:07 IST | RELEASED 2026-11-11 15:45 IST — exact 1415 applied and verified in run 42998928146 |
@@ -9614,3 +9614,9 @@ Answers the KĀLA-YANTRA request of 2026-10-16T17:50Z. Measured read-only by Suv
 - 2026-11-11 20:44 IST. #3972 original protected admission at 20:23:13 IST was removed after the required Gochara readback job failed before tests with Ubuntu package mirror DNS. Protected run 43042869423 remains preserved. Its merge-group ref is gone. Main remains installed 000856464f06f22d4c85d7de751863b12605e88b. No foreign active production lease, queued PR or active normal main deploy was found in this conflict check.
 - Continue the same SR065 exact head b31e386bb28aeef3877fc004eb29bd119ccbb79f/tree 33738a9306584346bff50901833b92822bf27a08. One normal requeue after the first run finishes and after refreshed conflict and predecessor evidence. All protected contexts and usual rollout gates remain. Another equivalent failure requires a new checkpoint.
 - Same holder and scope for the existing source, independent verification, evidence and cleanup. Renew that source/evidence interval and the exact SR065 release custody to 2026-11-11 23:20 IST. The SR067 successor and CGM retain ordinary/source authority only. SR068 stays in the authorized private source and synthetic lanes.
+
+## L-MADHAV-CONSOLIDATION-PASSIVE-READ-OWNERS-20261111 — both exact source admissions reconciled and released
+
+- GitHub removed both exact b31e386b queue groups. Original 43042869423 and retry 43047394580 finished with 68 passed, three expected skips and five failures. Both native disposable PostgreSQL metapackage setup steps hit the same hosted apt DNS error each time, and three dependent required gates correctly failed.
+- Main remains installed 000856464f06f22d4c85d7de751863b12605e88b. No successor merge or rollout occurred. Release this exact source custody and keep the same source/evidence continuation through 23:20 IST.
+- SR069 independently qualified the two-path native PG16 setup source and exact 10-path ordinary draft 70498865ee9265a119133845ad6b409b7717cf95. Its ordinary Ganga and Build Check are separate. Any changed-source protected release requires fresh scope and custody.
