@@ -89,7 +89,7 @@ jobs:
   # ───────────────────────────────────────────────────────────────────────
   gate-battery-chromium:
     name: 'Gate battery (chromium)'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: reducer-and-fixtures
     steps:
       - uses: actions/checkout@v4
@@ -123,7 +123,7 @@ jobs:
   # ───────────────────────────────────────────────────────────────────────
   gate-battery-mobile:
     name: 'Gate battery (mobile 390x844)'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: reducer-and-fixtures
     steps:
       - uses: actions/checkout@v4
@@ -162,7 +162,7 @@ jobs:
   # ───────────────────────────────────────────────────────────────────────
   gate-battery-selftest:
     name: 'Gate battery selftest (red-then-green proof) [soft]'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: gate-battery-chromium
     continue-on-error: true
     steps:
