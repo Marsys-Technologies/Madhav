@@ -24,10 +24,10 @@ interface ClassicalTextSummary {
   tradition: string
   school: string
   tier: number
-  language_original: string
+  language_original: string | null
   translation_author: string | null
-  chunk_count: number
-  attribution_baseline_confidence: number
+  chunk_count: number | null
+  attribution_baseline_confidence: number | string | null
 }
 
 async function fetchClassicalTextSummary(textKey: string): Promise<ClassicalTextSummary | null> {
@@ -52,7 +52,7 @@ function summaryToMarkdown(s: ClassicalTextSummary): string {
     `**text_key:** ${s.text_key}  |  **tradition:** ${s.tradition}  |  **school:** ${s.school}  |  **tier:** ${s.tier}`,
     s.author ? `**Author:** ${s.author}` : '',
     s.translation_author ? `**Translation:** ${s.translation_author}` : '',
-    `**Chunks available:** ${s.chunk_count}  |  **Attribution confidence baseline:** ${s.attribution_baseline_confidence}`,
+    `**Chunks available:** ${s.chunk_count ?? 'unavailable'}  |  **Attribution confidence baseline:** ${s.attribution_baseline_confidence ?? 'unavailable'}`,
     '',
     `Use \`read_classical_text\` tool with \`query\` to search this text semantically,`,
     `or cite verses as \`${s.text_key.toUpperCase()}.chapter.verse\`.`,
