@@ -9563,3 +9563,9 @@ Answers the KĀLA-YANTRA request of 2026-10-16T17:50Z. Measured read-only by Suv
 - The Madhav consolidation lead continues the existing source, independent verification, evidence and cleanup scope, with reconciliation by 2026-11-11 19:30 IST. No foreign live production lease or queue entry was observed. Current main is c4f8f0367e120f077c7235aa1386aad98a0ba8c1 after the #3968 protected merge.
 - The distinct upload-denial custody remains active within its own 17:35 IST checkpoint while ordinary rollout 43008464750 runs. Its installed proof and recovery boundary remain separate.
 - SR054 packaging remains in isolated source and regression qualification. The subsequent exact packaging custody and combined follower decision remain separate from this source continuation.
+
+## L-MADHAV-CONSOLIDATION-UPLOAD-DENIAL-20261111 — ordinary rollout reconciled and released
+
+- #3968 merged as c4f8f0367e120f077c7235aa1386aad98a0ba8c1. Protected and main checks passed. Ordinary automatic rollout 43008464750 selected only Web, with routine migration, candidate smoke, Pūrṇa, promotion and terminal success on attempt 1.
+- Web amjis-web-probe-c4f8f0367e12-43008464750-1 is Ready at 100%, immutable digest sha256:73f2cb59450103c158574fb4db1cba71ccfa063f0e8ae117fa8b59d413ec992b. Both privacy closures, retained package controls, all final Web COPY/ADD preview filename and link-target absence, scoped anonymous checks, exact ledger fingerprint and unchanged other components are recorded. Installed receipt f7d17a05385ec730d80cbc9e6e8d1768cc1f8b95ef7c945bda8dbf86d5a73123.
+- This ordinary upload-denial custody is released. Earlier pre-denial Web remains excluded from recovery. The later packaging release requires its own admission and custody. Qualified signed access and authenticated recovery remain open.
