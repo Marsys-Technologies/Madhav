@@ -1280,13 +1280,19 @@ GLOSSARY = [t for t in GLOSSARY if not (t["term_id"] in _seen_g or _seen_g.add(t
 # ── Writer ────────────────────────────────────────────────────────────────────
 
 def seed_reference(conn, build_id: str | None = None, dry_run: bool = False, autocommit: bool = True) -> dict[str, int]:
-    """
-    Seed all twelve reference tables (5 original + 7 new).
-    Returns dict of table_name -> rows_inserted (actual new rows only; conflicts are skipped).
-    If dry_run=True, returns counts without writing to DB.
+    """Compatibility entry point for callers that may own the transaction."""
+    if dry_run:
+        return seed_reference_borrowed(conn, build_id, dry_run=True)
+    counts = seed_reference_borrowed(conn, build_id)
+    if autocommit:
+        conn.commit()
+    return counts
 
-    autocommit: if False, skip conn.commit() — caller owns the transaction.
-    Writers called from asset_runner must pass autocommit=False.
+
+def seed_reference_borrowed(conn, build_id: str | None = None, dry_run: bool = False) -> dict[str, int]:
+    """Seed on the caller's transaction and return new row counts, skipping conflicts.
+
+    A dry run returns corpus counts without accessing the connection.
     """
     if dry_run:
         return {
@@ -1568,8 +1574,6 @@ def seed_reference(conn, build_id: str | None = None, dry_run: bool = False, aut
         counts["reference_glossary"] = inserted
         logger.info("[L0/reference] reference_glossary: %d rows inserted", inserted)
 
-    if autocommit:
-        conn.commit()
     return counts
 
 

@@ -911,6 +911,10 @@
       "include": [],
       "directories": [
         "tests/l3/ka_muhurta_seva"
+      ],
+      "path_triggers": [
+        "platform/scripts/governance/asset_census.py",
+        "platform/python-sidecar/services/ka_muhurta_seva/certification_mapping.json"
       ]
     },
     "k3-sealed-db-tests-all": {

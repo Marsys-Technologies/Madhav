@@ -536,3 +536,61 @@ def test_the_criteria_whose_behaviour_changed_carry_a_bumped_revision():
     assert ac.CRITERION_REGISTRY["Build.dag"]["revision"] == 4        # 3: the reads scan traces annotated module SQL constants and conditional SQL names (residual detector D1); 4: SS 2026-10-05 R-d (static data)
     assert ac.CRITERION_REGISTRY["Idem.pattern"]["revision"] == 5        # 3: N-150 R5 (pin 26) re-worded and bumped it; 4: SS 2026-10-05 Idem update-only; 5: registry revision 28 (ONE bump)
     assert ac.REGISTRY_REVISION >= 6     # 7: E6 item (f) bumped it (NA_CAUSES only); 9 declares the approved rules
+
+
+@pytest.mark.parametrize("seed", ["original", "extra-write", "unknown-sql"])
+def test_tulana_persistence_is_scanned_without_expanding_writer_discovery(monkeypatch, tmp_path, seed):
+    sidecar = tmp_path / "sidecar"
+    shim = "pipeline/orchestrator/writers/ka_tulana.py"
+    writer = "services/ka_tulana/writer.py"
+    persistence = "pipeline/orchestrator/service_health_persistence.py"
+    for rel in (shim, writer, persistence):
+        target = sidecar / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes((ac.SIDECAR / rel).read_bytes())
+
+    # A reference to another orchestrator function must not pull its SQL into the writer scope.
+    unrelated = sidecar / "pipeline/orchestrator/tulana_census_decoy.py"
+    unrelated.write_text('def unrelated(conn):\n    conn.execute("UPDATE unrelated_table SET value = 1")\n')
+    writer_path = sidecar / writer
+    writer_source = writer_path.read_text()
+    anchor = "    persist_tulana_selftest_health(conn, health=health, observed_at=now, detail_json=detail)\n"
+    assert writer_source.count(anchor) == 1
+    decoy_calls = (
+        "    from pipeline.orchestrator.tulana_census_decoy import unrelated\n"
+        "    from pipeline.orchestrator.service_health_persistence import other_symbol\n"
+        "    unrelated(conn)\n"
+        "    other_symbol(conn)\n"
+    )
+    writer_path.write_text(writer_source.replace(anchor, anchor + decoy_calls))
+
+    extra = {
+        "original": "",
+        "extra-write": '    conn.execute("UPDATE foreign_table SET value = 1")\n',
+        "unknown-sql": "    conn.execute(unknown_statement)\n",
+    }[seed]
+    leaf = sidecar / persistence
+    leaf.write_text(leaf.read_text() + extra +
+                    '\n\ndef other_symbol(conn):\n    conn.execute("UPDATE unrelated_table SET value = 2")\n')
+    monkeypatch.setattr(ac, "ROOT", tmp_path)
+    monkeypatch.setattr(ac, "SIDECAR", sidecar)
+    monkeypatch.setattr(ac, "WRITERS", (sidecar / shim).parent)
+
+    files = ac.registered_ids("ka_")
+    assert files == {"ka_tulana": [writer]}
+    assert persistence not in {name for name, _ in ac._writer_modules()}
+    scan = ac.static_write_scan("ka_tulana", files["ka_tulana"],
+                                ["asset_registry", "foreign_table", "unrelated_table"])
+    if seed == "unknown-sql":
+        assert not scan["complete"] and scan["hit"] == []
+        assert persistence in scan["why"] and "not a literal" in scan["why"]
+    else:
+        expected = ["asset_registry", "foreign_table"] if seed == "extra-write" else ["asset_registry"]
+        assert scan == {"complete": True, "why": None, "hit": expected}
+        assert ac.produced_set_written("ka_tulana", files["ka_tulana"]) == {
+            "written": [], "update_only": expected, "delete_only": [], "complete": True,
+        }
+
+    idem = ac._measure_idem("ka_tulana", files["ka_tulana"], "delete_then_insert", True)
+    assert idem["v"] == ac.PARTIAL
+    assert persistence in idem["measured"]

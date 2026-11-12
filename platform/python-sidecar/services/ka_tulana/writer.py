@@ -19,6 +19,8 @@ import json
 import logging
 from datetime import date, datetime, timezone
 
+from pipeline.orchestrator.service_health_persistence import persist_tulana_selftest_health
+
 logger = logging.getLogger(__name__)
 
 
@@ -46,18 +48,8 @@ def _update_registry_health(conn, ok: bool, detail: str) -> None:
     """Update asset_registry service_health + selftest_detail for ka_tulana."""
     health = "healthy" if ok else "degraded"
     now = datetime.now(timezone.utc)
-    conn.execute(
-        """
-        UPDATE asset_registry
-        SET service_health   = %s,
-            last_selftest_at = %s,
-            selftest_detail  = %s
-        WHERE asset_id = 'ka_tulana'
-        """,
-        [health, now, detail],
-    )
+    persist_tulana_selftest_health(conn, health=health, observed_at=now, detail_json=detail)
     logger.info("[ka_tulana writer] service_health=%s", health)
-    # DO NOT call conn.commit() -- orchestrator owns the transaction
 
 
 def _build_writer_class():
