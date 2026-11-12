@@ -2,22 +2,9 @@
   "schema_version": "1.0",
   "$comment": "Allowlist for check_earned_signal.py (CLAUDE.md \u00a7N.8 Earned-Signal Principle; SAM\u0100PTI v2.0 \u00a77.5, lane B-N8-LINT). Same shape as fact_category_pin_allowlist.json (#840) with ONE addition: `max_occurrences`. An entry requires `file` (repo-relative POSIX, exact match) and `field` (the signal name, exact match), plus EITHER `line` (exact) OR `pattern` (regex, falling back to substring, against the snippet) OR neither \u2014 a file+field entry with neither is a deliberate group disposition, and MUST then carry `max_occurrences`, which freezes the group at its rollout size. Occurrence N+1 in a frozen group is reported as NEW and fails the build, so this backlog can be paid down but never grown. An entry with no `field` never matches anything (fails closed, not open). HONESTY NOTE, required by the lane's own charter: the entries below are CATEGORICAL dispositions from a sampled review, not 81 individual code reviews. Each says which category it is in and whether it was individually examined. `sample_lines`/`sample_snippet` are locators recorded at rollout, not match keys \u2014 they may drift and are not used for matching.",
   "generated_by": "check_earned_signal.py initial-rollout scan, 2026-07-31, base a7dfefcb",
-  "entry_count": 17,
+  "entry_count": 16,
   "violation_count_at_rollout": 169,
   "entries": [
-    {
-      "file": "platform/python-sidecar/ga_writers/ga_condition_writer.py",
-      "field": "verification_pass_status",
-      "line": null,
-      "pattern": "^\\s*\"verification_pass_status\"\\s*:\\s*\"(floored|computed_extension)\",\\s*$",
-      "max_occurrences": 2,
-      "sample_lines": [
-        1362,
-        1594
-      ],
-      "sample_snippet": "\"verification_pass_status\":\"floored\",",
-      "justification": "Two existing non-verification provenance labels describe the D1 floor and the context-derived extension. Preserve the exact writer source consumed by the sealed Gochara implementation identity. Match only these two labels and cap the original occurrence count."
-    },
     {
       "file": "platform-mcp/src/resources/vidhi/composition_doctrine.ts",
       "field": "synthesis_gate",
