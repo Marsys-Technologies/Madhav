@@ -71,19 +71,19 @@ import {
   type CrossAyanamshaVariation,
   type RealAyanamsha,
 } from '../vidhi/ayanamsha_variation'
-// Graha code/name/alias vocabulary + grahaCodeOf() + AddressResolutionError live in
-// graha_labels.ts — the CLIENT-SAFE pure subset of this module (no `@/lib/db/client`
-// import, so no `server-only` poisoning of a client bundle that only needs graha
-// labels). Re-exported below so every existing address_resolver.{GRAHA_CODE_TO_NAME,
-// grahaCodeOf, AddressResolutionError} call site is unaffected — moved, not copied.
-// A CLIENT COMPONENT must import from './graha_labels' directly, never from this file.
-import { AddressResolutionError, GRAHA_CODE_TO_NAME, grahaCodeOf } from './graha_labels'
+// Pure Graha identity and vocabulary are owned by Brahmagyan.
+// This resolver retains compatibility exports for its server-side callers.
+// The error classes, map and functions are shared with the pure owner.
+// Client components import '@/lib/brahmagyan/grahaIdentity' directly.
+// DB-touching address resolution and zodiac vocabulary remain in this file.
+// See the import and compatibility export below.
+import { AddressResolutionError, GRAHA_CODE_TO_NAME, grahaCodeOf } from '../brahmagyan/grahaIdentity'
 import { resolvedBuildFenceIds, type BuildFence } from './registry/generation/served_generation'
-export { AddressResolutionError, GRAHA_CODE_TO_NAME, grahaCodeOf } from './graha_labels'
+export { AddressResolutionError, GRAHA_CODE_TO_NAME, grahaCodeOf } from '../brahmagyan/grahaIdentity'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // § Vocabulary — coordinates with design §27.1 `about` facet + §27.3 `frame` facet
-// (graha code/name/alias vocabulary + grahaCodeOf() moved to graha_labels.ts —
+// (graha identity/vocabulary is owned by brahmagyan/grahaIdentity.ts —
 // see the import/re-export block above)
 // ─────────────────────────────────────────────────────────────────────────────
 

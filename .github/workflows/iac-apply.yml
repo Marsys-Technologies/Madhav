@@ -8,10 +8,9 @@ on:
       module:
         description: "Which infra module to plan"
         required: true
-        default: cloud_scheduler
+        default: logging
         type: choice
         options:
-          - cloud_scheduler
           - iam
           - logging
           - scheduler
@@ -41,6 +40,12 @@ jobs:
     name: Terraform plan — ${{ github.event.inputs.module }}
     runs-on: ubuntu-latest
     steps:
+      - name: Reject retired build-reaper module before authentication
+        if: ${{ github.event.inputs.module == 'cloud_scheduler' }}
+        run: |
+          echo 'The default build-reaper module is retired. Follow the reviewed watchdog operator procedure in platform/scripts/provision_watchdog_scheduler.sh.' >&2
+          exit 2
+
       - name: Reject all applies before authentication
         if: ${{ github.event.inputs.action == 'apply' }}
         run: |

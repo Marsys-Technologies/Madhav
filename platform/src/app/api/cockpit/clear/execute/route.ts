@@ -163,6 +163,7 @@ export async function POST(req: NextRequest) {
   // No pre-filter by target_table — every scope asset must either clear or report failure
   const reversedAssets = [...scopeAssets].reverse()
 
+  const successfulAssetIds: string[] = []
   let cleared_op_count = 0
   let cleared_rows_total = 0
   const failed_tables: { table: string; error: string }[] = []
@@ -264,12 +265,12 @@ export async function POST(req: NextRequest) {
           const result = await client.query(op.sql, op.params)
           assetRows += result.rowCount ?? 0
           assetOps++
-        } catch (err) {
+        } catch {
           await client.query(`ROLLBACK TO SAVEPOINT ${assetSp}`)
           await client.query(`RELEASE SAVEPOINT ${assetSp}`)
           failed_tables.push({
             table: asset.asset_id,
-            error: ((err as Error).message ?? 'unknown').substring(0, 200),
+            error: 'The asset could not be cleared.',
           })
           assetFailed = true
           break
@@ -277,21 +278,14 @@ export async function POST(req: NextRequest) {
       }
       if (!assetFailed) {
         await client.query(`RELEASE SAVEPOINT ${assetSp}`)
+        if (assetOps > 0) successfulAssetIds.push(asset.asset_id)
         cleared_op_count += assetOps
         cleared_rows_total += assetRows
       }
     }
 
-    // Reset asset_throughput for scope assets (chart-scoped rows) — but ONLY for assets
-    // that actually cleared. An asset in failed_tables did NOT have its rows deleted (the
-    // op errored and was rolled back to its savepoint); marking it dormant/rows_written=0
-    // anyway would tell the cockpit UI the clear succeeded when it silently didn't — the
-    // exact false-success bug this fix closes (ga_structural's JOIN-derived DELETE used to
-    // fail here every time while the UI reported a clean clear).
-    const failedAssetIds = new Set(failed_tables.map(f => f.table))
-    // A noticed asset (append-only history) was NOT cleared: its throughput row must keep saying so.
-    const noticedAssetIds = new Set(notices.map(n => n.asset_id))
-    const successfulAssetIds = affectedAssetIds.filter(id => !failedAssetIds.has(id) && !noticedAssetIds.has(id))
+    // Only a successful clear can reset the selected asset. A zero-row
+    // DELETE is still a successfully executed clear statement.
     if (successfulAssetIds.length > 0) {
       await client.query(
         `UPDATE asset_throughput
@@ -307,7 +301,7 @@ export async function POST(req: NextRequest) {
     // that were cleared. Without this, the stats route's rows_written cache returns
     // the pre-clear count (e.g. mi_kula shows 15 after the underlying table is empty).
     const globalAssetIds = scopeAssets
-      .filter(a => a.scope === 'global' && !failedAssetIds.has(a.asset_id))
+      .filter(a => a.scope === 'global' && successfulAssetIds.includes(a.asset_id))
       .map(a => a.asset_id)
     if (globalAssetIds.length > 0) {
       await client.query(
@@ -320,9 +314,8 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Downstream is computed from the assets that were really cleared: an append-only asset
-    // (SS N-104) kept every row, so nothing downstream of it became stale because of this clear.
-    const downstreamSet = computeDownstreamClosure(affectedAssetIds.filter(id => !noticedAssetIds.has(id)), registry)
+    // A failed or preserved clear alone cannot make its dependants stale.
+    const downstreamSet = computeDownstreamClosure(successfulAssetIds, registry)
     for (const id of affectedAssetIds) downstreamSet.delete(id)
     downstreamAssets = Array.from(downstreamSet)
 
@@ -352,7 +345,7 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({
     cleared: {
-      assets: affectedAssetIds.length - notices.length,
+      assets: successfulAssetIds.length,
       preserved: notices.length,
       ops: cleared_op_count,
       rows: cleared_rows_total,

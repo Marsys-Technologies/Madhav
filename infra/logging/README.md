@@ -44,14 +44,13 @@ textPayload entry from the automatic `httpRequest` field this module addresses).
 
 - `main.tf` — the `google_logging_project_exclusion` resource.
 - `backend.tf` — GCS-backed terraform remote state (`infra/logging` state prefix).
-- `apply.sh` — idempotent plan/apply wrapper, matching `infra/iam/apply.sh` and
-  `infra/cloud_scheduler/apply.sh`'s conventions.
+- `apply.sh` — the logging module's Terraform wrapper.
 
-## Applying
+## Planning and applying
 
-Via the dispatch-only `IaC Apply` GitHub Actions workflow (`.github/workflows/iac-apply.yml`),
-selecting module `logging`. Never applied automatically on deploy or PR — same posture as every
-other `infra/*` module (PA-06). Plan is always shown before apply.
+Manually run [IaC Plan (manual — reviewed plan only)](../../.github/workflows/iac-apply.yml).
+Select `logging` as the module and `plan` as the action. Use the module-specific GCP-native
+reviewed release procedure for any apply.
 
 ## Scope note
 

@@ -51,7 +51,7 @@
 
 import type { CapabilityDescriptor } from '../../types'
 import { DEFAULT_AYANAMSHA, AYANAMSHA_SERVE_ORDER } from '../../constants'
-import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '../../../address_resolver'
+import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '@/lib/brahmagyan/grahaIdentity'
 import {
   compositeGenerationFence,
   resolveCompositeFence,

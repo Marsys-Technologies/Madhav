@@ -33,7 +33,7 @@
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import { tryResolveHandlerAyanamsha, ayanamshaServeOrderBy, ayanamshaScopeEcho, PRIMARY_AYANAMSHA_ID_INPUT_TEXT } from '../../handler_ayanamsha'
-import { grahaCodeOf } from '@/lib/retrieval/address_resolver'
+import { grahaCodeOf } from '@/lib/brahmagyan/grahaIdentity'
 
 const MAX_LIMIT = 500
 

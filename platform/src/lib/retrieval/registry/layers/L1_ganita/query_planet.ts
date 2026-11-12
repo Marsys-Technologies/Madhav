@@ -25,7 +25,7 @@
  *    authoritative drill-down.
  */
 import type { CapabilityDescriptor } from '../../types'
-import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '../../../address_resolver'
+import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '@/lib/brahmagyan/grahaIdentity'
 import {
   compositeGenerationFence,
   resolveCompositeFence,

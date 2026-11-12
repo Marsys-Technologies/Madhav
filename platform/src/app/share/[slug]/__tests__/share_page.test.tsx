@@ -473,3 +473,38 @@ describe('share viewers receive only rendered text (SS N-379 ii)', () => {
     for (const banned of BANNED) expect(serialized, banned).not.toContain(banned)
   })
 })
+
+describe('view owner preserves page-bound identity and null/error reads', () => {
+  it('passes only the active verified viewer UID and slug to the view owner', async () => {
+    setup({ user: { uid: 'another-active-viewer' }, profile: { id: 'another-active-viewer', role: 'guest', status: 'active' } })
+    const page = await importPage()
+    const owner = await import('@/lib/share/sharedConversationView')
+    const spy = vi.spyOn(owner, 'readSharedConversationView')
+    await page.default({ params: Promise.resolve({ slug: SLUG }) })
+    expect(spy).toHaveBeenCalledExactlyOnceWith({ slug: SLUG, verifiedViewerUid: 'another-active-viewer' })
+    expect(queryMock.mock.calls.filter(([sql]) => /FROM profiles/i.test(String(sql)))).toHaveLength(1)
+  })
+  it('null chart id still executes the exact bound chart-name query and leaves the display name empty', async () => {
+    setup()
+    const implementation = queryMock.getMockImplementation()!
+    queryMock.mockImplementation((sql: string, params?: unknown[]) => {
+      if (/FROM conversations/i.test(sql)) return Promise.resolve({ rows: [{ title: null, chart_id: null }] })
+      if (/FROM charts/i.test(sql)) return Promise.resolve({ rows: [] })
+      return implementation(sql, params)
+    })
+    const page = await renderPage()
+    const chart = queryMock.mock.calls.filter(([sql]) => /FROM charts/i.test(String(sql)))
+    expect(chart).toEqual([['SELECT name FROM charts WHERE id=$1', [null]]])
+    expect(loadMessagesMock).toHaveBeenCalledExactlyOnceWith('conv-1', { includeCanonicalText: true })
+    expect(serializeProps(page)).toContain('Untitled chat')
+    expect(serializeProps(page)).not.toContain('Chart Name')
+  })
+  it('missing conversation stays notFound after slug lookup without chart or message reads', async () => {
+    setup()
+    const implementation = queryMock.getMockImplementation()!
+    queryMock.mockImplementation((sql: string, params?: unknown[]) => /FROM conversations/i.test(sql) ? Promise.resolve({ rows: [] }) : implementation(sql, params))
+    await expect(renderPage()).rejects.toThrow('NEXT_NOT_FOUND')
+    expect(queryMock.mock.calls.some(([sql]) => /FROM charts/i.test(String(sql)))).toBe(false)
+    expect(loadMessagesMock).not.toHaveBeenCalled()
+  })
+})

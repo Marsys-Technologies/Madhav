@@ -58,7 +58,7 @@ import type { CapabilityDescriptor } from '../types'
 import { query } from '@/lib/db/client'
 import type { DrillPointer, JudgmentFlagEntry } from '../../envelope'
 import { judgmentFlag, judgmentFlagsInclude } from '../../envelope'
-import { grahaCodeOf } from '../../address_resolver'
+import { grahaCodeOf } from '@/lib/brahmagyan/grahaIdentity'
 import { resolvedBuildFenceIds, ExplicitEmptyBuildFenceError, resolveChartServedGeneration, servedGenerationIdentity, type BuildFence } from '../generation/served_generation'
 
 // ── Classical dignity weighting for the CONFIRMATION stage (design §28.1's own weighting

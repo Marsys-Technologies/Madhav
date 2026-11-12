@@ -54,9 +54,11 @@ interface Harness {
   throughput?: Array<{ asset_id: string; state: string }>
   freshness?: Array<{ asset_id: string; state: string; reasons: string[] }>
   failClientSql?: RegExp
+  registry?: Array<Omit<(typeof REGISTRY)[number], 'depends_on'> & { depends_on: string[] }>
 }
 
 let clientSql: string[] = []
+let clientCalls: Array<{ sql: string; params: unknown[] }> = []
 let poolSql: string[] = []
 
 function setup(h: Harness = {}) {
@@ -70,16 +72,18 @@ function setup(h: Harness = {}) {
     if (/FROM profiles/.test(sql)) return Promise.resolve({ rows: [{ role }] })
     if (/FROM chart_grants/.test(sql)) return Promise.resolve({ rows: grant ? [{ permission: grant }] : [] })
     if (/owner_id[\s\S]*FROM charts/.test(sql)) return Promise.resolve({ rows: [{ owner_id: ownerId }] })
-    if (/FROM asset_registry/.test(sql)) return Promise.resolve({ rows: REGISTRY })
+    if (/FROM asset_registry/.test(sql)) return Promise.resolve({ rows: h.registry ?? REGISTRY })
     if (/FROM build_protected_assets/.test(sql)) return Promise.resolve({ rows: (h.protectedIds ?? []).map((asset_id) => ({ asset_id })) })
     if (/FROM asset_throughput/.test(sql)) return Promise.resolve({ rows: h.throughput ?? [] })
     if (/FROM asset_freshness/.test(sql)) return Promise.resolve({ rows: h.freshness ?? [] })
     return Promise.resolve({ rows: [], rowCount: 0 })
   })
   clientSql = []
+  clientCalls = []
   const client = {
-    query: vi.fn((sql: string) => {
+    query: vi.fn((sql: string, params: unknown[] = []) => {
       clientSql.push(sql)
+      clientCalls.push({ sql, params })
       if (h.failClientSql?.test(sql)) return Promise.reject(new Error(`boom: ${sql.slice(0, 30)}`))
       if (/SELECT id FROM build_runs/.test(sql)) return Promise.resolve({ rows: activeRunId ? [{ id: activeRunId }] : [] })
       if (/INSERT INTO build_runs/.test(sql)) return Promise.resolve({ rows: [{ id: 'run-1' }], rowCount: 1 })
@@ -184,20 +188,88 @@ describe('cockpit runs characterization — persistence and clearing', () => {
     expect(mockInvokeRunJob).not.toHaveBeenCalled()
   })
 
-  it('operator clear_before stays savepoint-based best effort: a failing DELETE is rolled back to its savepoint and the run is still created', async () => {
-    setup({ failClientSql: /DELETE FROM kala_avadhi/ })
+  it('uses only successful DELETEs for reset, causal staleness and reported count', async () => {
+    const dep = (asset_id: string, depends_on: string[]) => ({
+      ...REGISTRY[0], asset_id, layer: 'fixture-other-layer', depends_on,
+    })
+    setup({ failClientSql: /DELETE FROM kala_avadhi/, registry: [
+      REGISTRY[0], REGISTRY[1],
+      dep('fixture_failed_only', ['ka_avadhi']),
+      dep('fixture_shared', ['ka_avadhi', 'ka_kshetra']),
+      dep('fixture_transitive', ['fixture_shared']),
+      { ...REGISTRY[0], asset_id: 'fixture_global', scope: 'global', target_table: 'fixture_global' },
+    ] })
     const res = await POST(req(LAYER_REBUILD_CLEAR))
     expect(res.status).toBe(201)
-    expect(clientSql.some((s) => /^SAVEPOINT cb_\d+$/.test(s))).toBe(true)
-    expect(clientSql.some((s) => /^ROLLBACK TO SAVEPOINT cb_\d+$/.test(s))).toBe(true)
-    expect(clientSql.some((s) => /INSERT INTO build_runs/.test(s))).toBe(true)
+    expect(clientSql.some(s => /^SAVEPOINT cb_\d+$/.test(s))).toBe(true)
+    expect(clientSql.some(s => /^ROLLBACK TO SAVEPOINT cb_\d+$/.test(s))).toBe(true)
+    expect(clientSql.some(s => /INSERT INTO build_runs/.test(s))).toBe(true)
     expect(clientSql).toContain('COMMIT')
-    expect(clientSql.some((s) => /SET state='dormant'/.test(s))).toBe(true)
-    expect((await res.json()).data.cleared_asset_count).toBe(2)
+    expect(clientCalls.find(call => call.sql.includes("SET state='dormant'"))?.params)
+      .toEqual([CHART, ['ka_kshetra']])
+    const stale = clientCalls.find(call => call.sql.includes("SET state='stale'"))?.params
+    expect(stale?.[0]).toBe(CHART)
+    expect(stale?.[1]).toEqual(expect.arrayContaining(['fixture_shared','fixture_transitive']))
+    expect(stale?.[1]).toHaveLength(2)
+    expect((await res.json()).data).toMatchObject({
+      cleared_asset_count: 1, failed_clear_asset_ids: ['ka_avadhi'], global_assets_not_cleared: ['fixture_global'],
+    })
+    expect(touched(/^DELETE FROM fixture_global/)).toBe(false)
+    expect(mockInvokeRunJob).toHaveBeenCalledExactlyOnceWith('run-1', { forceExecute: true })
+  })
+
+  it('all failed keeps the allowed planned dispatch, with zero cleared and no throughput mutations', async () => {
+    setup({ failClientSql: /^DELETE/ })
+    const res = await POST(req(LAYER_REBUILD_CLEAR))
+    expect(res.status).toBe(201)
+    expect((await res.json()).data).toMatchObject({
+      cleared_asset_count: 0, failed_clear_asset_ids: ['ka_avadhi','ka_kshetra'],
+    })
+    expect(touched(/UPDATE asset_throughput/)).toBe(false)
+    expect(mockInvokeRunJob).toHaveBeenCalledExactlyOnceWith('run-1', { forceExecute: true })
+  })
+
+  it('traverses a selected failed dependant without marking the selected failed row stale', async () => {
+    setup({ failClientSql: /DELETE FROM kala_avadhi/, registry: [
+      REGISTRY[0], { ...REGISTRY[1], depends_on: ['ka_kshetra'] },
+      { ...REGISTRY[0], asset_id: 'fixture_beyond_selected', layer: 'fixture-other-layer', depends_on: ['ka_avadhi'] },
+    ] })
+    expect((await POST(req(LAYER_REBUILD_CLEAR))).status).toBe(201)
+    expect(clientCalls.find(call => call.sql.includes("SET state='stale'"))?.params)
+      .toEqual([CHART, ['fixture_beyond_selected']])
+  })
+
+  it('successful zero-row statements count, explicit append-only no-op does not', async () => {
+    setup({ registry: [...REGISTRY, {
+      ...REGISTRY[0], asset_id: 'mi_bhavisya', target_table: 'fixture_never_delete',
+    }] })
+    const res = await POST(req(LAYER_REBUILD_CLEAR))
+    expect(res.status).toBe(201)
+    const { data } = await res.json()
+    expect(data.cleared_asset_count).toBe(2)
+    expect(data.failed_clear_asset_ids).toBeUndefined()
+    expect(data.notices).toEqual([expect.objectContaining({ assetId: 'mi_bhavisya' })])
+    expect(touched(/^DELETE FROM fixture_never_delete/)).toBe(false)
+    expect(clientCalls.find(call => call.sql.includes("SET state='dormant'"))?.params)
+      .toEqual([CHART, ['ka_avadhi','ka_kshetra']])
   })
 })
 
 describe('cockpit runs characterization — dispatch failure', () => {
+  it('all-failed clear dispatch failure keeps 503 and never claims data was cleared', async () => {
+    setup({ failClientSql: /^DELETE/ })
+    mockInvokeRunJob.mockRejectedValue(new Error('fixture dispatch refused'))
+    const res = await POST(req(LAYER_REBUILD_CLEAR))
+    expect(res.status).toBe(503)
+    expect(await res.json()).toMatchObject({
+      error: 'Build job failed to start', code: 'JOB_DISPATCH_FAILED', run_id: 'run-1',
+      failed_clear_asset_ids: ['ka_avadhi','ka_kshetra'],
+    })
+    expect(touched(/UPDATE asset_throughput/)).toBe(false)
+    expect(clientSql).toContain('COMMIT')
+    expect(mockInvokeRunJob).toHaveBeenCalledExactlyOnceWith('run-1', { forceExecute: true })
+  })
+
   it('non-clearing path: run failed with the raw error, queued assets aborted, HTTP 503', async () => {
     setup()
     mockInvokeRunJob.mockRejectedValue(new Error('cloud run down'))
