@@ -2522,18 +2522,18 @@ jobs:
             asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline:latest
           cache-from: type=gha,scope=brahma-pipeline
           cache-to: type=gha,mode=max,scope=brahma-pipeline
-
       - name: Re-point Cloud Run Job at the new image
         run: |
-          # F-185: KA_KSHETRA_HASH_SPILL_DIR was unconfigured, so the writer
-          # silently fell back to TMPDIR (`/tmp`), which is RAM-backed tmpfs on
-          # Cloud Run — no volume mount exists anywhere in this repo's infra to
-          # give it a real disk. Interim disposition: pin it to `/tmp`
-          # explicitly (so the choice is observable, not an implicit fallback —
-          # the writer now logs the resolved path and filesystem kind at
-          # startup) and raise --memory to cover the ~3-4.2GB RAM-backed spill
-          # at the native chart's 10.5M-row scale on top of the job's existing
-          # working set. See F-185 in the PARISESA-V4 findings for disk-backed storage.
+          local_image="${CGM_VERIFIED_LOCAL_IMAGE_ID:?missing verified local image}"
+          [[ "$local_image" =~ ^sha256:[a-f0-9]{64}$ ]] || exit 1
+          local_platform="$(docker image inspect --platform=linux/amd64 --format '{{.Id}}' "$local_image")" || exit 1
+          test "$local_platform" = "${CGM_VERIFIED_IMAGE##*@}" || exit 1
+          docker run --rm --pull=never --platform=linux/amd64 --network=none --entrypoint python "$local_image" \
+            -c "import ga_writers; print('ga_writers OK:', ga_writers.__file__)"
+          docker run --rm --pull=never --platform=linux/amd64 --network=none --entrypoint /bin/sh "$local_image" \
+            -n /app/platform/python-sidecar/scripts/kala_gochara_cutover/century_run_4_1.sh
+          docker run --rm --pull=never --platform=linux/amd64 --network=none --entrypoint python "$local_image" \
+            -c "import sys; sys.path.insert(0, '/app/platform/python-sidecar/scripts/kala_gochara_cutover'); import common; print('cutover common OK:', common.__file__)"
           python3 .github/actions/build-verified-cgm-image/probe_registration.py verify-repoint
           gcloud run jobs update brahma-build-pipeline-job \
             --region=${{ env.DEPLOY_REGION }} \
@@ -2546,6 +2546,15 @@ jobs:
             --update-env-vars=GCP_PROJECT=madhav-astrology,PUBSUB_TOPIC=cockpit-events,KA_KSHETRA_HASH_SPILL_DIR=/tmp \
             --quiet
           GOOGLE_CLOUD_REGION="${{ env.DEPLOY_REGION }}" python3 .github/actions/build-verified-cgm-image/probe_registration.py post-repoint
+          # F-185: KA_KSHETRA_HASH_SPILL_DIR was unconfigured, so the writer
+          # silently fell back to TMPDIR (`/tmp`), which is RAM-backed tmpfs on
+          # Cloud Run — no volume mount exists anywhere in this repo's infra to
+          # give it a real disk. Interim disposition: pin it to `/tmp`
+          # explicitly (so the choice is observable, not an implicit fallback —
+          # the writer now logs the resolved path and filesystem kind at
+          # startup) and raise --memory to cover the ~3-4.2GB RAM-backed spill
+          # at the native chart's 10.5M-row scale on top of the job's existing
+          # working set. See F-185 in the PARISESA-V4 findings for disk-backed storage.
           # SR-RIGHT-SIZE (owner approval OWNER-CLOUD-RUNS-APPROVED-20261023,
           # amend-1): --memory=8Gi --cpu=2 above (was 16Gi / 4) for BOTH the
           # century build and the K9-4b rebuild, which share this one job (an
@@ -2553,24 +2562,6 @@ jobs:
           # definition). The century's peak RSS is <= 427 MiB and it is
           # single-threaded; 8Gi still clears the F-185 /tmp spill (~3-4.2GB)
           # plus the working set.
-
-      - name: Verify ga_writers is importable in the pushed image
-        run: |
-          docker run --rm --entrypoint python \
-            "$CGM_VERIFIED_IMAGE" \
-            -c "import ga_writers; print('ga_writers OK:', ga_writers.__file__)"
-
-      # A2.5: fail the deploy if the century job's command path is absent from
-      # the image (the exact defect that left #2772's job pointing at a path
-      # the image never COPYed). Also smoke the chain's imports.
-      - name: Verify the gochara century runner exists in the pushed image
-        run: |
-          docker run --rm --entrypoint /bin/sh \
-            "$CGM_VERIFIED_IMAGE" \
-            -n /app/platform/python-sidecar/scripts/kala_gochara_cutover/century_run_4_1.sh
-          docker run --rm --entrypoint python \
-            "$CGM_VERIFIED_IMAGE" \
-            -c "import sys; sys.path.insert(0, '/app/platform/python-sidecar/scripts/kala_gochara_cutover'); import common; print('cutover common OK:', common.__file__)"
 
       # The separately governed Pravāha A2.5 candidate job is intentionally
       # absent from routine deploys. It cannot share this pipeline job's sole

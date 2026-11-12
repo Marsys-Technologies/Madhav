@@ -4,6 +4,7 @@ The policy comes from the job's runner-cap requirement and the actual Docker
 COPY inputs, rather than captured build output. GitHub expressions are executed
 with Node, as in test_ci_generated.py; no workflow/API/Docker is dispatched.
 """
+import hashlib
 import json
 import os
 import shutil
@@ -549,6 +550,24 @@ def test_cgm_workflow_build_and_production_handoffs():
         assert selected["with"]["push"] is push
         assert selected["with"].get("load", False) is not push
 
+        inputs = {
+            name: str(selected["with"].get(name, definition.get("default", ""))).lower()
+            for name, definition in action["inputs"].items()
+        }
+        expressions = [build["with"]["outputs"], build["with"]["attests"], probe["env"]["CGM_BUILD_LOAD"]]
+        script = """
+const [inputs, expressions] = JSON.parse(process.argv[1]);
+console.log(JSON.stringify(expressions.map(expr =>
+  new Function('inputs', 'return (' + expr.slice(3, -2) + ')')(inputs))));
+"""
+        rendered = subprocess.run(
+            [NODE, "-e", script, json.dumps([inputs, expressions])],
+            check=True, capture_output=True, text=True, timeout=10,
+        )
+        assert json.loads(rendered.stdout) == (
+            ["type=docker", "type=provenance,mode=max", "true"] if push else ["", "", "true"]
+        )
+
     candidate = next(s for s in sidecar if s.get("id") == "deploy-sidecar")
     assert candidate["with"]["image"] == "${{ env.CGM_VERIFIED_IMAGE }}"
     smoke = next(s for s in sidecar if s.get("name") == "Configure authenticated candidate smoke job")
@@ -570,87 +589,160 @@ def fake_digest(value):
     return "sha256:" + value * 64
 
 
-@pytest.mark.parametrize(("pushed", "component", "failure"), [
-    (pushed, component, failure)
-    for pushed in (False, True)
+@pytest.mark.parametrize(("mode", "component", "failure"), [
+    (mode, component, failure)
+    for mode in ("ordinary", "release")
     for component in ("amjis-sidecar", "brahma-pipeline")
     for failure in (None, "probe", "identity")
-] + [(True, "brahma-pipeline", "pipeline-tag")])
-def test_cgm_exact_build_gate(tmp_path, monkeypatch, cgm_probe, pushed, component, failure):
+] + [
+    ("ordinary-containerd", "amjis-sidecar", None),
+    ("ordinary-containerd", "brahma-pipeline", "identity"),
+    ("push-only", "amjis-sidecar", "mode"),
+    ("release", "amjis-sidecar", "top"),
+    ("release", "amjis-sidecar", "child"),
+    ("release", "amjis-sidecar", "config"),
+    ("release", "amjis-sidecar", "missing-descriptor"),
+    ("release", "amjis-sidecar", "wrong-descriptor"),
+    ("release", "amjis-sidecar", "wrong-platform"),
+    ("release", "amjis-sidecar", "volumes"),
+    ("release", "amjis-sidecar", "commit-tag"),
+    ("release", "brahma-pipeline", "commit-tag"),
+])
+def test_cgm_exact_build_gate(tmp_path, monkeypatch, cgm_probe, mode, component, failure):
     commit = "a" * 40
-    top, child, config = map(fake_digest, "bcd")
+    config, local_top, wrong = map(fake_digest, "def")
+    manifest_type = "application/vnd.oci.image.manifest.v1+json"
+    index_type = "application/vnd.oci.image.index.v1+json"
+    child_manifest = json.dumps({"mediaType": manifest_type, "config": {"digest": config}}).encode()
+    child = "sha256:" + hashlib.sha256(child_manifest).hexdigest()
+    index = json.dumps({
+        "mediaType": index_type,
+        "manifests": [
+            {"digest": child, "mediaType": manifest_type, "platform": {"os": "linux", "architecture": "amd64"}},
+            {"digest": wrong, "mediaType": manifest_type, "platform": {"os": "unknown", "architecture": "unknown"}},
+        ],
+    }).encode()
+    top = "sha256:" + hashlib.sha256(index).hexdigest()
     repo = f"{cgm_probe.REGISTRY}/{component}"
-    tags = f"{repo}:{commit}\n{repo}:latest" if pushed else f"{component}:pr-check"
+    commit_tag = f"{repo}:{commit}"
+    pushed = mode in ("release", "push-only")
+    tags = f"{commit_tag}\n{repo}:latest" if pushed else f"{component}:pr-check"
     carrier = tmp_path / "job-env"
     file, context = next((f, c) for f, (name, c) in cgm_probe.BUILD_SHAPES.items() if name == component)
     for name, value in {
         "CGM_BUILD_FILE": file, "CGM_BUILD_CONTEXT": context,
-        "CGM_BUILD_PUSH": str(pushed).lower(), "CGM_BUILD_LOAD": str(not pushed).lower(),
-        "CGM_BUILD_TAGS": tags, "CGM_BUILD_DIGEST": top, "CGM_BUILD_IMAGE_ID": config,
+        "CGM_BUILD_PUSH": str(pushed).lower(), "CGM_BUILD_LOAD": str(mode != "push-only").lower(),
+        "CGM_BUILD_TAGS": tags, "CGM_BUILD_DIGEST": top,
+        "CGM_BUILD_IMAGE_ID": config if mode == "ordinary" else top,
         "GITHUB_ENV": str(carrier), "DEPLOY_SHA": commit,
     }.items():
         monkeypatch.setenv(name, value)
-    monkeypatch.delenv("CGM_BUILD_METADATA", raising=False)
+    # The containerd exporter can omit the config digest from Buildx metadata.
+    monkeypatch.setenv("CGM_BUILD_METADATA", json.dumps(
+        {"containerimage.config.digest": wrong} if failure == "config" else {},
+    ))
 
     calls = []
+    run_id = local_top if pushed else top if mode == "ordinary-containerd" else config
 
-    def stub(*argv, data=None, timeout=30):
+    def stub(*argv, stage, data=None, timeout=30):
         calls.append(argv)
         if argv[:3] == ("git", "rev-parse", "HEAD"):
             return commit.encode()
         if argv[:2] == ("git", "show"):
             return argv[-1].encode()
-        if argv[:4] == ("docker", "buildx", "imagetools", "inspect"):
-            if "--raw" in argv:
-                assert argv[-1] == f"{repo}@{child}"
-                return json.dumps({
-                    "mediaType": "application/vnd.oci.image.manifest.v1+json", "config": {"digest": config},
-                }).encode()
-            assert argv[-1] in (f"{repo}@{top}", f"{repo}:{commit}")
-            actual = fake_digest("e") if failure == "pipeline-tag" and argv[-1].endswith(commit) else top
-            return json.dumps({
-                "digest": actual, "mediaType": "application/vnd.oci.image.index.v1+json",
-                "manifests": [{
-                    "digest": child, "mediaType": "application/vnd.oci.image.manifest.v1+json",
-                    "platform": {"os": "linux", "architecture": "amd64"},
-                }],
-            }).encode()
+        if argv[:5] == ("docker", "buildx", "imagetools", "inspect", "--raw"):
+            assert pushed and timeout == 30
+            if argv[-1] == f"{repo}@{top}":
+                return index + b" " if failure == "top" else index
+            if argv[-1] == f"{repo}@{child}":
+                return child_manifest + b" " if failure == "child" else child_manifest
+            assert argv[-1] == commit_tag
+            return index + b" " if failure == "commit-tag" else index
         if argv[:3] == ("docker", "image", "inspect"):
-            assert argv[-1] == (f"{repo}@{child}" if pushed else tags)
+            selected = "--platform=linux/amd64" in argv
+            assert argv[-1] == (run_id if selected else commit_tag if pushed else tags)
+            image_id = child if selected else run_id
+            descriptor = {"digest": image_id, "mediaType": manifest_type if selected else index_type}
+            if failure == "missing-descriptor":
+                descriptor = None
+            elif failure == "wrong-descriptor" and selected:
+                descriptor["digest"] = wrong
+            if failure == "identity" and (selected or not pushed):
+                image_id = wrong
             return json.dumps({
-                "Id": fake_digest("e") if failure == "identity" else config,
-                "Os": "linux", "Architecture": "amd64", "Config": {},
+                "Id": image_id,
+                "Descriptor": descriptor if pushed or mode == "ordinary-containerd" else None,
+                "Os": "linux", "Architecture": "arm64" if failure == "wrong-platform" else "amd64",
+                "Config": {"Volumes": {"/example": {}}} if failure == "volumes" else {},
             }).encode()
-        if argv[:2] == ("docker", "pull"):
-            assert pushed and argv[-1] == f"{repo}@{child}"
-            return b""
-        assert argv[:2] == ("docker", "run")
-        assert argv[2:10] == (
+        assert argv[:2] == ("docker", "run"), argv[:3]
+        assert argv[2:11] == (
             "--pull=never", "--rm", "-i", "--network=none", "--read-only",
-            "--cap-drop=ALL", "--security-opt=no-new-privileges", "--entrypoint=/usr/bin/env",
+            "--cap-drop=ALL", "--security-opt=no-new-privileges", "--platform=linux/amd64",
+            "--entrypoint=/usr/bin/env",
         )
-        assert argv[10:13] == (config, "-i", "PATH=/usr/local/bin:/usr/bin:/bin")
-        assert argv[13:20] == ("python", "-BI", "-X", "pycache_prefix=/dev/null", "-", "inside", component)
-        assert len(argv[20:]) == 3 and data == CGM_PROBE.read_bytes()
+        assert argv[11:14] == (run_id, "-i", "PATH=/usr/local/bin:/usr/bin:/bin")
+        assert argv[14:21] == ("python", "-BI", "-X", "pycache_prefix=/dev/null", "-", "inside", component)
+        assert len(argv[21:]) == 3 and data == CGM_PROBE.read_bytes()
         return b"CGM registration verified\n" if failure != "probe" else b"generic image smoke passed\n"
 
     monkeypatch.setattr(cgm_probe, "command", stub)
     if failure:
-        with pytest.raises(cgm_probe.ProbeFailure):
+        reason = {
+            "probe": "missing exact packaged probe result",
+            "identity": "loaded image identity mismatch",
+            "mode": "unsupported build export mode",
+            "top": "registry image differs from Buildx output",
+            "child": "registry AMD64 manifest digest mismatch",
+            "config": "Buildx image configuration mismatch",
+            "missing-descriptor": "missing loaded image descriptor",
+            "wrong-descriptor": "loaded image identity mismatch",
+            "wrong-platform": "wrong image platform",
+            "volumes": "probe image declares writable volumes",
+            "commit-tag": "release commit tag does not match the probed image",
+        }[failure]
+        with pytest.raises(cgm_probe.ProbeFailure, match=reason):
             cgm_probe.verify_build()
         assert not carrier.exists()
+        if failure == "mode":
+            assert not calls
+        elif failure not in ("probe", "commit-tag"):
+            assert not any(argv[:2] == ("docker", "run") for argv in calls)
         return
 
     cgm_probe.verify_build()
+    assert not any(argv[:2] == ("docker", "pull") for argv in calls)
     if not pushed:
         assert not carrier.exists()
-        assert not any(command[:3] == ("docker", "buildx", "imagetools") for command in calls)
+        assert not any(argv[:3] == ("docker", "buildx", "imagetools") for argv in calls)
         return
-    expected = f"CGM_VERIFIED_IMAGE={repo}@{child}\n"
+    expected = f"CGM_VERIFIED_IMAGE={repo}@{child}\nCGM_VERIFIED_LOCAL_IMAGE_ID={run_id}\n"
+    assert calls[-1][-1] == commit_tag
     if component == cgm_probe.PIPELINE:
-        assert calls[-1][-1] == f"{repo}:{commit}"
-        expected += f"CGM_VERIFIED_PIPELINE_REF={repo}:{commit}@{child}\n"
+        expected += f"CGM_VERIFIED_PIPELINE_REF={commit_tag}@{child}\n"
     assert carrier.read_text() == expected
+
+
+@pytest.mark.parametrize(("failure", "reason"), [
+    ("timeout", "registry image manifest timed out after 30s"),
+    ("nonzero", "registry image manifest failed"),
+    ("missing", "registry image manifest could not start"),
+])
+def test_cgm_command_failure_stage_without_subprocess_output(monkeypatch, cgm_probe, failure, reason):
+    def stub(argv, **kwargs):
+        assert kwargs["stdout"] == kwargs["stderr"] == subprocess.PIPE
+        assert kwargs["timeout"] == 30
+        if failure == "timeout":
+            raise subprocess.TimeoutExpired(argv, 30, output=b"private stdout", stderr=b"private stderr")
+        if failure == "missing":
+            raise FileNotFoundError("private command details")
+        return subprocess.CompletedProcess(argv, 1, b"private stdout", b"private stderr")
+
+    monkeypatch.setattr(cgm_probe.subprocess, "run", stub)
+    with pytest.raises(cgm_probe.ProbeFailure) as caught:
+        cgm_probe.manifest_identity("fixture/image")
+    assert str(caught.value) == reason
 
 
 @pytest.mark.parametrize("failure", [
@@ -684,8 +776,9 @@ def test_cgm_pipeline_post_repoint(monkeypatch, cgm_probe, failure):
     }
     calls = []
 
-    def stub(*argv):
+    def stub(*argv, stage):
         calls.append(argv)
+        assert stage == "Pipeline configured image inspection"
         assert argv[:7] == (
             "gcloud", "run", "jobs", "describe", "brahma-build-pipeline-job", "--region", "example-region",
         )
@@ -700,22 +793,33 @@ def test_cgm_pipeline_post_repoint(monkeypatch, cgm_probe, failure):
     assert len(calls) == int(failure is None or failure in configured)
 
 
-@pytest.mark.parametrize("mode", ["exact", "rebound", "tag-only"])
+@pytest.mark.parametrize("mode", ["exact", "missing-local", "mutable-local", "rebound-local", "inspect-error", "writer", "script", "imports", "rebound", "tag-only"])
 def test_cgm_pipeline_repoint_shell_fails_closed(tmp_path, mode):
     commit = "a" * 40
     child = fake_digest("b")
+    local_id = fake_digest("d")
     reference = f"{PIPELINE_REPO}:{commit}@{child}"
     trace = tmp_path / "trace"
-    gcloud = tmp_path / "gcloud"
-    gcloud.write_text(
-        '#!/usr/bin/env python3\n'
-        'import json, os, sys\n'
-        'with open(os.environ["CGM_TEST_TRACE"], "a") as f:\n'
-        '    f.write(json.dumps(sys.argv[1:]) + "\\n")\n'
-        'if sys.argv[3] == "describe":\n'
-        '    print(os.environ["CGM_TEST_CONFIGURED"])\n'
-    )
-    gcloud.chmod(0o755)
+    for tool in ("docker", "gcloud"):
+        stub = tmp_path / tool
+        stub.write_text(
+            '#!/usr/bin/env python3\n'
+            'import json, os, pathlib, sys\n'
+            'tool = pathlib.Path(sys.argv[0]).name\n'
+            'with open(os.environ["CGM_TEST_TRACE"], "a") as f:\n'
+            '    f.write(json.dumps([tool, *sys.argv[1:]]) + "\\n")\n'
+            'if tool == "gcloud" and sys.argv[3] == "describe":\n'
+            '    print(os.environ["CGM_TEST_CONFIGURED"])\n'
+            'if tool == "docker":\n'
+            '    args = sys.argv[1:]\n'
+            '    if args[:2] == ["image", "inspect"]:\n'
+            '        print(os.environ["CGM_TEST_SELECTED_IMAGE"])\n'
+            '        sys.exit(2 if os.environ["CGM_TEST_MODE"] == "inspect-error" else 0)\n'
+            '    check = "writer" if "import ga_writers;" in args[-1] else "script" if "-n" in args else "imports"\n'
+            '    if check == os.environ["CGM_TEST_MODE"]:\n'
+            '        sys.exit(1)\n'
+        )
+        stub.chmod(0o755)
     repoint = next(
         step["run"] for step in workflow()["jobs"]["deploy-pipeline-job"]["steps"]
         if step.get("name") == "Re-point Cloud Run Job at the new image"
@@ -723,24 +827,47 @@ def test_cgm_pipeline_repoint_shell_fails_closed(tmp_path, mode):
     env = {**os.environ, "PATH": f"{tmp_path}{os.pathsep}{os.environ['PATH']}",
            "DEPLOY_SHA": commit, "CGM_VERIFIED_IMAGE": f"{PIPELINE_REPO}@{child}",
            "CGM_VERIFIED_PIPELINE_REF": reference if mode != "rebound" else f"{PIPELINE_REPO}:{commit}@{fake_digest('c')}",
-           "CGM_TEST_TRACE": str(trace),
+           "CGM_TEST_TRACE": str(trace), "CGM_TEST_MODE": mode,
+           "CGM_TEST_SELECTED_IMAGE": fake_digest("e") if mode == "rebound-local" else child,
            "CGM_TEST_CONFIGURED": reference if mode != "tag-only" else f"{PIPELINE_REPO}:{commit}"}
     env.pop("GOOGLE_CLOUD_REGION", None)
+    env.pop("CGM_VERIFIED_LOCAL_IMAGE_ID", None)
+    if mode != "missing-local":
+        env["CGM_VERIFIED_LOCAL_IMAGE_ID"] = "brahma-pipeline:latest" if mode == "mutable-local" else local_id
     rendered = repoint.replace(pipeline_region_expression(repoint), "example-region")
     result = subprocess.run(
         ["bash", "-eo", "pipefail", "-c", rendered], cwd=ROOT, env=env,
         capture_output=True, text=True, timeout=10,
     )
     assert result.returncode == (0 if mode == "exact" else 1)
-    if mode == "rebound":
+    if mode in {"missing-local", "mutable-local"}:
         assert not trace.exists()
         return
-    update, describe = [json.loads(line) for line in trace.read_text().splitlines()]
-    assert update[:4] == ["run", "jobs", "update", "brahma-build-pipeline-job"]
-    assert update[4:6] == ["--region=example-region", f"--image={reference}"]
+    inspect, *calls = [json.loads(line) for line in trace.read_text().splitlines()]
+    assert inspect == ["docker", "image", "inspect", "--platform=linux/amd64", "--format", "{{.Id}}", local_id]
+    if mode in {"rebound-local", "inspect-error"}:
+        assert calls == []
+        return
+    smoke_count = {"writer": 1, "script": 2}.get(mode, 3)
+    prefix = ["docker", "run", "--rm", "--pull=never", "--platform=linux/amd64", "--network=none", "--entrypoint"]
+    for call, entrypoint in zip(calls[:smoke_count], ("python", "/bin/sh", "python")[:smoke_count], strict=True):
+        assert call[:9] == [*prefix, entrypoint, local_id]
+    assert calls[0][9:] == ["-c", "import ga_writers; print('ga_writers OK:', ga_writers.__file__)"]
+    if smoke_count >= 2:
+        assert calls[1][9:] == ["-n", "/app/platform/python-sidecar/scripts/kala_gochara_cutover/century_run_4_1.sh"]
+    if smoke_count == 3:
+        assert calls[2][9:] == [
+            "-c",
+            "import sys; sys.path.insert(0, '/app/platform/python-sidecar/scripts/kala_gochara_cutover'); import common; print('cutover common OK:', common.__file__)",
+        ]
+    if mode in {"writer", "script", "imports", "rebound"}:
+        assert len(calls) == smoke_count
+        return
+    update, describe = calls[3:]
+    assert update[:5] == ["gcloud", "run", "jobs", "update", "brahma-build-pipeline-job"]
+    assert update[5:7] == ["--region=example-region", f"--image={reference}"]
     assert "--task-timeout=86400" in update
-    assert describe[:6] == ["run", "jobs", "describe", "brahma-build-pipeline-job", "--region", "example-region"]
-
+    assert describe[:7] == ["gcloud", "run", "jobs", "describe", "brahma-build-pipeline-job", "--region", "example-region"]
 
 @pytest.mark.parametrize("mutation", [None, "wrong-class", "missing-key", "alias", "hash", "origin", "wrong-base"])
 def test_cgm_named_registration_and_historical_aliases(tmp_path, monkeypatch, cgm_probe, mutation):
@@ -829,9 +956,11 @@ def test_cgm_manifest_identity(monkeypatch, cgm_probe, mode):
             "digest": fake_digest("b"), "mediaType": "application/vnd.oci.image.index.v1+json",
             "manifests": [{**manifest, "platform": platform}] * 2,
         }
-    monkeypatch.setattr(cgm_probe, "command", lambda *argv: json.dumps(manifest).encode())
+    raw = json.dumps(manifest).encode()
+    monkeypatch.setattr(cgm_probe, "command", lambda *argv, stage: raw)
     if mode == "single":
-        assert cgm_probe.manifest_identity("fixture/image") == (fake_digest("b"), fake_digest("b"))
+        expected = "sha256:" + hashlib.sha256(raw).hexdigest()
+        assert cgm_probe.manifest_identity("fixture/image") == (expected, expected)
     else:
         with pytest.raises(cgm_probe.ProbeFailure):
             cgm_probe.manifest_identity("fixture/image")
