@@ -1000,3 +1000,18 @@ def test_cgm_required_job_failure_remains_terminal(selector, result_key, job):
                               extra_env={selector: "true", result_key: "failure"})
     assert result.returncode == 1
     assert f"{job}=failure" in result.stderr
+
+
+def test_current_pipeline_matches_committed_century_source_binding():
+    """Exercise the real fleet checker here without importing or running a writer."""
+    import importlib.util
+
+    source = ROOT / "00_ARCHITECTURE/briefs/kalayantra/fleet/century_contract.py"
+    spec = importlib.util.spec_from_file_location("century_ordinary_source_binding", source)
+    assert spec is not None and spec.loader is not None
+    checker = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(checker)
+    committed = json.loads((ROOT / checker.REL).read_text())
+    expected_image = {**committed["image"], "writer_source_digest": None}
+    assert checker.image(ROOT, with_digest=False) == expected_image
+    assert checker.task_timeout(ROOT) == committed["timeout"]
