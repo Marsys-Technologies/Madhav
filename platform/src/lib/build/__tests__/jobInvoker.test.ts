@@ -3,6 +3,7 @@
  */
 
 import { EventEmitter } from 'node:events'
+import { createRequire } from 'node:module'
 import { afterEach, describe, it, expect, vi } from 'vitest'
 import {
   readJobInvokerEnv,
@@ -174,6 +175,47 @@ describe('invokeRunJob — definite refusal evidence is opt-in', () => {
     await expect(rejection).rejects.not.toBeInstanceOf(RunSubmissionRejected)
     expect(spawnProcess).toHaveBeenCalledOnce()
     expect(cloudRunJob).not.toHaveBeenCalled()
+  })
+
+  it('does not inspect a code getter for default or injected callers', async () => {
+    const code = vi.fn(() => { throw new Error('the getter must not be read') })
+    const rejection = Object.defineProperty(new Error('synthetic original rejection'), 'code', { get: code })
+    cloudRunJob.mockRejectedValueOnce(rejection)
+    await expect(invokeRunJob('synthetic-run', { env: ENV })).rejects.toBe(rejection)
+    const transport = { runJob: vi.fn().mockRejectedValueOnce(rejection) }
+    await expect(invokeRunJob('synthetic-run', { env: ENV, transport, reportDefiniteRejection: true })).rejects.toBe(rejection)
+    expect(code).not.toHaveBeenCalled()
+  })
+
+  it('preserves named pending and successful initial GAX operations but treats named terminal failure as unknown', async () => {
+    const fromTest = createRequire(import.meta.url)
+    const fromCloudRun = createRequire(fromTest.resolve('@google-cloud/run'))
+    const { Operation, createDefaultBackoffSettings } = fromCloudRun('google-gax')
+    const getOperation = vi.fn(() => { throw new Error('the initial response must not be polled') })
+    const descriptor = {
+      operationsClient: { getOperation },
+      responseDecoder: vi.fn(() => ({ name: 'synthetic-execution' })),
+    }
+    const name = 'synthetic-operation'
+    const initial = { name, done: true, result: 'error', error: { code: 7, message: 'synthetic terminal error' } }
+    const operation = (raw: object) => new Operation(raw, descriptor, createDefaultBackoffSettings())
+    const failed = operation(initial)
+    expect(failed.done).toBe(true)
+    expect(failed.error).toMatchObject({ code: 7 })
+    expect(failed.latestResponse).toBe(initial)
+    cloudRunJob.mockResolvedValueOnce([failed])
+    await expect(invokeRunJob('synthetic-run', { env: ENV, reportDefiniteRejection: true })).resolves.toEqual({ executionName: '' })
+    cloudRunJob.mockResolvedValueOnce([failed])
+    await expect(invokeRunJob('synthetic-run', { env: ENV })).resolves.toEqual({ executionName: name })
+
+    const pending = operation({ name, done: false })
+    const succeeded = operation({ name, done: true, result: 'response', response: { value: new Uint8Array() } })
+    for (const good of [pending, succeeded]) {
+      cloudRunJob.mockResolvedValueOnce([good])
+      await expect(invokeRunJob('synthetic-run', { env: ENV, reportDefiniteRejection: true })).resolves.toEqual({ executionName: name })
+    }
+    expect(cloudRunJob).toHaveBeenCalledTimes(4)
+    expect(getOperation).not.toHaveBeenCalled()
   })
 
   it('leaves default callers and injected transport errors unchanged', async () => {

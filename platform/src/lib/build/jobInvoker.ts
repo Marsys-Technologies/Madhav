@@ -91,7 +91,7 @@ export function readJobInvokerEnv(env: NodeJS.ProcessEnv = process.env): JobInvo
   return out
 }
 
-async function defaultTransport(): Promise<JobTransport> {
+async function defaultTransport(checkInitialFailure = false): Promise<JobTransport> {
   const mod = await loadGcpModule('@google-cloud/run')
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const client = new (mod as any).JobsClient()
@@ -108,6 +108,14 @@ async function defaultTransport(): Promise<JobTransport> {
           ],
         },
       })
+      // A named initial LRO can already carry a terminal error. It does not
+      // establish nonadmission, so an opted-in caller gets no acceptance signal.
+      if (checkInitialFailure && (
+        (op?.done === true && op.error != null) ||
+        (op?.latestResponse?.done === true && op.latestResponse.error != null)
+      )) {
+        return { executionName: '' }
+      }
       const execName: string =
         // op is a LRO; `.name` is the execution resource id once the LRO is created.
         (op?.name as string | undefined) ?? (op?.latestResponse?.name as string | undefined) ?? ''
@@ -216,7 +224,7 @@ export async function invokeRunJob(
   let transport: JobTransport
   try {
     env = opts.env ?? readJobInvokerEnv()
-    transport = opts.transport ?? (await defaultTransport())
+    transport = opts.transport ?? (await defaultTransport(opts.reportDefiniteRejection === true))
   } catch (error) {
     if (opts.reportDefiniteRejection) throw new RunSubmissionRejected(error)
     throw error
@@ -232,10 +240,11 @@ export async function invokeRunJob(
       },
     })
   } catch (error) {
-    const code = (error as { code?: unknown })?.code
-    if (opts.reportDefiniteRejection && !opts.transport &&
-        typeof code === 'number' && RUN_SUBMISSION_REFUSAL_CODES.has(code)) {
-      throw new RunSubmissionRejected(error)
+    if (opts.reportDefiniteRejection && !opts.transport) {
+      const code = (error as { code?: unknown })?.code
+      if (typeof code === 'number' && RUN_SUBMISSION_REFUSAL_CODES.has(code)) {
+        throw new RunSubmissionRejected(error)
+      }
     }
     throw error
   }
