@@ -10,6 +10,33 @@ const RETIRED_COCKPIT_SECTIONS = [
   'activity',
 ] as const;
 
+// These names identify the exact bundled bytes. Use a new name if bytes change.
+const ROOT_FONT_FILES = [
+  '024ead497118aa23-s.woff2',
+  '19cfc7226ec3afaa-s.woff2',
+  '21350d82a1f187e9-s.woff2',
+  '393d45a2251e223a-s.woff2',
+  '48410f3df60da620-s.woff2',
+  '558ca1a6aa3cb55e-s.woff2',
+  '64d784ea54a4acde-s.woff2',
+  '6d831b18ae5b01dc-s.woff2',
+  '7b89a4fd5e90ede0-s.woff2',
+  '8715d2ed531152f4-s.woff2',
+  '8e9860b6e62d6359-s.woff2',
+  'ac0e76ddaeeb7981-s.woff2',
+  'ba9851c3c22cd980-s.woff2',
+  'c48b38fe8bb532f3-s.woff2',
+  'c5fe6dc8356a8c31-s.woff2',
+  'df0a9ae256c0569c-s.woff2',
+  'e18f83c737786aa7-s.woff2',
+  'e4af272ccee01ff0-s.p.woff2',
+  'e74f24ed7f0e4323-s.woff2',
+  'ea896c3885e026c1-s.woff2',
+  'edc640959b0c7826-s.woff2',
+  'fd3893c623c32b6d-s.woff2',
+  'ff71da380fbe67dd-s.woff2',
+] as const;
+
 const nextConfig: NextConfig = {
   webpack: (config, { isServer }) => {
     if (!isServer) {
@@ -71,6 +98,10 @@ const nextConfig: NextConfig = {
           { key: 'Cache-Control', value: 'private, no-store' },
         ],
       },
+      ...ROOT_FONT_FILES.map((filename) => ({
+        source: `/brand/fonts/root/${filename}`,
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
+      })),
     ]
   },
   output: "standalone",
