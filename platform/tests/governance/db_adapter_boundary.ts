@@ -156,8 +156,8 @@ export function inspectMigrationHealthPort(program: ts.Program, platformRoot: st
 
   function owner([file, name]: readonly [string, string]) {
     const source = program.getSourceFile(join(platformRoot, file))
-    const module = source && checker.getSymbolAtLocation(source)
-    const exports = module ? checker.getExportsOfModule(module) : []
+    const sourceModule = source && checker.getSymbolAtLocation(source)
+    const exports = sourceModule ? checker.getExportsOfModule(sourceModule) : []
     const symbol = origin(exports.find((item) => item.name === name))
     if (!source || !symbol?.valueDeclaration || symbol.valueDeclaration.getSourceFile() !== source) return
     return { source, symbol, exports, declaration: symbol.valueDeclaration }
