@@ -3,6 +3,44 @@ name: run-checks
 description: Run the local Madhav pre-PR checks for the Web platform and, for orchestrator changes, the Python suite. Report each result and check hosted CI separately.
 ---
 
+Before arming a PR, run the source-evidence battery from the repository root.
+Use the existing Python environment with
+`platform/python-sidecar/requirements-ci.txt` installed. Set `BASE_REF` to the
+accepted comparison base covering the complete change. Use owned approved
+`.noindex` scratch for `TMPDIR` and pytest.
+
+```bash
+: "${BASE_REF:?Set the accepted complete-change base}"
+: "${TMPDIR:?Set owned approved .noindex scratch}"
+classification=$(python3 platform/scripts/governance/ci_changes.py --event pull_request --base "$BASE_REF" --head HEAD) || classification=docs_only=false
+if [ "$classification" = docs_only=true ]; then
+  echo 'Source evidence battery is NOT APPLICABLE for proven unpinned docs only'
+else
+  DATABASE_URL='' PGHOST='' PYTHONDONTWRITEBYTECODE=1 python3 - <<'PYTHON'
+import subprocess
+import sys
+
+subprocess.run(
+    [
+        sys.executable, "-m", "pytest",
+        "platform/scripts/governance/__tests__/test_e6_1_declarations.py",
+        "platform/scripts/governance/__tests__/test_dens_not_served_committed.py",
+        "platform/scripts/governance/__tests__/test_dens_not_served.py",
+        "-q", "--no-header", "-rs", "-p", "no:cacheprovider",
+    ],
+    timeout=180,
+    check=True,
+)
+PYTHON
+fi
+```
+
+A failure or timeout stops PR arming. Report a proven documentation-only skip as
+NOT APPLICABLE. The battery validates 102 served-SQL citations, ten committed
+density cases and their existing negative controls. Unavailable or malformed
+comparison inputs select the battery. The full orchestrator and protected
+combination suites retain their existing selection and checks.
+
 Run this block in Bash from `platform/`. Set `run_orchestrator_tests=1` before running it if the orchestrator changed. It stops at the first failed check.
 
 ```bash

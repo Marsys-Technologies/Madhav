@@ -127,6 +127,8 @@ permissions:
 # (I) INTERPRETATION: full_gate runs source gates; live census needs a separate opt-in.
 jobs:
   generated-artifacts:
+    # Source-evidence preflight retains independent Earned-Signal ancestry.
+    if: ${{ !cancelled() }}
     # A5 D-33: compile once from this exact source; all existing guards check these bytes.
     name: Generated Artifacts (source-bound)
     runs-on: ubuntu-24.04
@@ -147,8 +149,34 @@ jobs:
           python-version: '3.11'
           cache: pip
           cache-dependency-path: platform/python-sidecar/requirements-ci.txt
-      - run: npm ci --prefix platform
       - run: pip install -r platform/python-sidecar/requirements-ci.txt --quiet
+      - name: Classify source-evidence inputs
+        id: source-evidence-classification
+        env:
+          SOURCE_EVIDENCE_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+        run: |
+          out=$(python3 platform/scripts/governance/ci_changes.py --event "$GITHUB_EVENT_NAME" --base "$SOURCE_EVIDENCE_BASE_SHA" --head HEAD) || out="docs_only=false"
+          case "$out" in docs_only=true|docs_only=false) ;; *) out="docs_only=false" ;; esac
+          echo "$out" >> "$GITHUB_OUTPUT"
+      - name: Source evidence pointers and strict density negatives
+        # Source-only preflight, separate from the deferred full GovTools family.
+        # Only exact proven docs-only output skips; absent/failed/unknown runs.
+        if: ${{ !cancelled() && steps.source-evidence-classification.outputs.docs_only != 'true' }}
+        timeout-minutes: 3
+        env:
+          DATABASE_URL: ''
+          PGHOST: ''
+          PYTHONDONTWRITEBYTECODE: '1'
+          PYTHONPATH: platform/scripts/governance
+          TMPDIR: ${{ runner.temp }}/source-evidence.noindex
+        run: |
+          mkdir -p "$TMPDIR"
+          python -m pytest \
+            platform/scripts/governance/__tests__/test_e6_1_declarations.py \
+            platform/scripts/governance/__tests__/test_dens_not_served_committed.py \
+            platform/scripts/governance/__tests__/test_dens_not_served.py \
+            -q --no-header -rs -p no:cacheprovider
+      - run: npm ci --prefix platform
       - name: Generate and independently verify aggregates
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}

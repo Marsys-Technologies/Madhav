@@ -50,7 +50,7 @@ def _pinned(extra: list[str] | tuple[str, ...] = ()) -> frozenset[str]:
 
 def is_doc(path: str, pinned: frozenset[str] | None = None) -> bool:
     raw = path
-    if not raw or raw != raw.strip() or "\\" in raw or raw.startswith("/") or any(seg in ("", ".", "..") for seg in raw.split("/")):
+    if not raw or not raw.isprintable() or raw != raw.strip() or "\\" in raw or raw.startswith("/") or any(seg in ("", ".", "..") for seg in raw.split("/")):
         return False                                     # git never reports these: anything odd is not a docs file
     low = raw.lower()
     if not low.endswith(DOC_EXT) or not raw.startswith(DOC_ROOTS):
