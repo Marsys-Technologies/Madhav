@@ -27,6 +27,7 @@ sys.path.insert(0, str(HERE))
 import asset_census as ac  # noqa: E402
 import _decl_version  # noqa: E402
 import _narr_writer_checks as nw  # noqa: E402
+from test_cgm_identity_boundary import _check_writer_imports  # noqa: E402
 
 FIXTURE = json.loads((HERE / "fixtures" / "census_cells_2026-09-30.json").read_text(encoding="utf-8"))
 REGISTRY_IDS = sorted(a for assets in FIXTURE["layers"].values() for a in assets)
@@ -373,7 +374,7 @@ NARR_CITES = {
                           (_WR + "bo_laksana.py", 4037, "_CONTRADICTS_SQL"), (_WR + "bo_laksana.py", 4096, "class BoLaksanaRerankWriter"),
                           (_WR + "bo_laksana.py", 4151, "payload = _rerank_payload("), (_WR + "bo_laksana.py", 4154, "SET graph_node_strength_contribution_jsonb"),
                           (_WR + "bo_laksana.py", 4218, "SET valence = %s, valence_source = %s"), (_WR + "bo_laksana.py", 4229, "notes=("),
-                          (_L + "L2_bodha/query_signals.ts", 546, "bodha_msr_signals")],
+                          (_L + "L2_bodha/query_signals.ts", 571, "bodha_msr_signals")],
     "ph_phaladesa": [(_WR + "ph_phaladesa.py", 94, "def _build_deterministic_narration"), (_WR + "ph_phaladesa.py", 103, "domain rests on {rec.anchor_count}"),
                      (_WR + "ph_phaladesa.py", 107, "No predictive anchors were derived"), (_WR + "ph_phaladesa.py", 110, "assessed magnitude of effect"),
                      (_WR + "ph_phaladesa.py", 113, "win = f"), (_WR + "ph_phaladesa.py", 115, "peaking around {rec.peak_date}"),
@@ -1292,7 +1293,7 @@ CITATION_DECISIONS = json.loads(r"""
   ],
   "served": [
    "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts",
-   122,
+   142,
    "'verification_pass_status', "
   ],
   "fields": [
@@ -1331,7 +1332,7 @@ CITATION_DECISIONS = json.loads(r"""
   ],
   "served": [
    "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts",
-   122,
+   142,
    "'verification_pass_status', "
   ],
   "fields": [
@@ -1376,7 +1377,7 @@ CITATION_DECISIONS = json.loads(r"""
   ],
   "served": [
    "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts",
-   122,
+   142,
    "'verification_pass_status', "
   ],
   "fields": [
@@ -1525,12 +1526,12 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py",
-    529,
+    488,
     "\"citation_human\": f\"{sig_cla"
    ],
    [
-    "platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py",
-    253,
+    "platform/python-sidecar/bodha_writers/cgm_identity.py",
+    19,
     "def _yoga_config_name(cfg: d"
    ]
   ],
@@ -2850,13 +2851,65 @@ def test_citation_composed_values_are_really_stated_in_the_declared_assets():
         assert any(specs), (path, ln)
 
 
+def _check_bimba_citation_source(writer, identity):
+    helper = "_yoga_config_name"
+    _check_writer_imports(writer, {helper: helper})
+    assert any(
+        isinstance(node, ast.ImportFrom) and node.module == "bodha_writers.cgm_identity"
+        and any(alias.name == helper and alias.asname is None for alias in node.names)
+        for node in writer.body
+    ), "Bimba must import the citation helper at module scope"
+    assert not any(isinstance(node, ast.arg) and node.arg == helper for node in ast.walk(writer)), (
+        "Bimba citation helper cannot be shadowed by an argument"
+    )
+    assert not any(
+        (isinstance(node, (ast.MatchAs, ast.MatchStar, ast.ExceptHandler)) and node.name == helper)
+        or (isinstance(node, ast.MatchMapping) and node.rest == helper)
+        for node in ast.walk(writer)
+    ), "Bimba citation helper cannot be rebound by a pattern or exception target"
+
+    definitions = [node for node in identity.body if isinstance(node, ast.FunctionDef) and node.name == helper]
+    assert len(definitions) == 1, "shared citation helper must have one definition"
+    fn = definitions[0]
+    args = fn.args
+    assert ([arg.arg for arg in args.args] == ["cfg", "signal_type_id"]
+            and not (args.posonlyargs or args.kwonlyargs or args.vararg or args.kwarg or args.defaults)), (
+        "shared citation helper must take cfg and signal_type_id in order without defaults"
+    )
+    expected = ast.parse(
+        "for k in ('fact_value_text', 'yoga_name', 'dosha_name', 'name', 'label'):\n"
+        "    v = cfg.get(k)\n"
+        "    if v and isinstance(v, str) and v.strip():\n"
+        "        return v.strip()\n"
+        "return signal_type_id\n"
+    )
+    body = fn.body[1:] if ast.get_docstring(fn) is not None else fn.body
+    assert [ast.dump(node) for node in body] == [ast.dump(node) for node in expected.body], (
+        "shared citation helper must derive the name from the fact datum with the existing fallback"
+    )
+
+    citation_line = 488
+    assert [ln for ln, how, kind, expr in nw.citation_sites(writer)
+            if (how, kind, expr) == ("dict", "composed", "f'{sig_class.capitalize()} node: {name}'")] == [citation_line], (
+        "Bimba citation expression or source coordinate changed"
+    )
+    builder = nw._function(writer, "_build_nodes_for_aya")
+    assert builder is not None
+    loop = next(node for node in builder.body if isinstance(node, ast.For) and node.lineno < citation_line <= node.end_lineno)
+    sources = {"cfg": "sig['_cfg']", "type_id": "sig['_type_id']", "name": "_yoga_config_name(cfg, type_id)"}
+    stores = [node.id for node in ast.walk(loop)
+              if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store) and node.id in sources]
+    bindings = {node.targets[0].id: ast.unparse(node.value) for node in loop.body
+                if isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name)
+                and node.targets[0].id in sources and node.lineno < citation_line}
+    assert sorted(stores) == sorted(sources) and bindings == sources, "Bimba citation must use the shared helper's result"
+
+
 def test_bo_bimba_node_citation_name_depends_on_a_fact_datum_so_the_column_is_declared():
     t = _ctree(_WR + "bo_bimba.py")
     flags = nw.interpolation_datum_flags(t)
-    assert flags["name"] is True and flags["sig_class.capitalize()"] is True       # followed through _yoga_config_name to fact_value_text
-    fn = next(n for n in t.body if isinstance(n, ast.FunctionDef) and n.name == "_yoga_config_name")
-    assert "fact_value_text" in [c.value for c in ast.walk(fn) if isinstance(c, ast.Constant)]
-    assert [s[0] for s in nw.citation_sites(t) if s[3] == "f'{sig_class.capitalize()} node: {name}'"] == [529]
+    assert flags["name"] is True and flags["sig_class.capitalize()"] is True
+    _check_bimba_citation_source(t, _ctree(_SC + "bodha_writers/cgm_identity.py"))
     # the tracer is not fooled by the variable name: the same shape over a constant is not a datum, over a renamed read it is
     syn = ("K = ('a',)\ndef nm(cfg, d):\n    for k in ('fact_value_text', 'x'):\n        v = cfg.get(k)\n        if v: return v\n    return d\n"
            "def run(cfg):\n    label = nm(cfg, 'z')\n    fixed = K[0]\n    r = {'citation_human': f'{label} {fixed}'}\n")
@@ -2869,6 +2922,62 @@ def test_bo_bimba_node_citation_name_depends_on_a_fact_datum_so_the_column_is_de
     assert nw.interpolation_datum_flags(ast.parse(syn2)) == {"label": True, "other": False, "a": True, "b": True}
     assert nw.reads_datum(st, ast.parse("K[0]", mode="eval").body) is False
     assert nw.reads_datum(st, ast.parse("cfg['configuration_jsonb']", mode="eval").body) is True
+
+
+@pytest.mark.parametrize(("mutation", "reason"), [
+    ("missing-import", "CGM identity bindings changed"),
+    ("wrong-import", "CGM identity bindings changed"),
+    ("decoy-import", "at module scope"),
+    ("shadow", "CGM identity binding was reassigned"),
+    ("pattern-shadow", "rebound by a pattern or exception target"),
+    ("star-shadow", "rebound by a pattern or exception target"),
+    ("mapping-shadow", "rebound by a pattern or exception target"),
+    ("except-shadow", "rebound by a pattern or exception target"),
+    ("swapped-parameters", "in order without defaults"),
+    ("default-parameter", "in order without defaults"),
+    ("disconnected", "must use the shared helper's result"),
+    ("changed-config", "must use the shared helper's result"),
+    ("changed-citation", "citation expression or source coordinate changed"),
+    ("changed-datum", "must derive the name from the fact datum"),
+    ("decoy-datum", "must derive the name from the fact datum"),
+])
+def test_bimba_citation_source_rejects_disconnected_provenance(mutation, reason):
+    writer = _read(_WR + "bo_bimba.py")
+    identity = _read(_SC + "bodha_writers/cgm_identity.py")
+    if mutation == "missing-import":
+        writer = writer.replace("    _yoga_config_name,\n", "\n", 1)
+    elif mutation == "wrong-import":
+        writer = writer.replace("from bodha_writers.cgm_identity import", "from synthetic_decoy import", 1)
+    elif mutation == "decoy-import":
+        writer = writer.replace("    _yoga_config_name,\n", "\n", 1)
+        writer += "\ndef decoy():\n    from bodha_writers.cgm_identity import _yoga_config_name\n"
+    elif mutation == "shadow":
+        writer += "\n_yoga_config_name = lambda cfg, type_id: type_id\n"
+    elif mutation in ("pattern-shadow", "star-shadow", "mapping-shadow"):
+        subject, pattern = {
+            "pattern-shadow": ("None", "_yoga_config_name"),
+            "star-shadow": ("[]", "[*_yoga_config_name]"),
+            "mapping-shadow": ("{}", "{**_yoga_config_name}"),
+        }[mutation]
+        writer += f"\nmatch {subject}:\n    case {pattern}:\n        pass\n"
+    elif mutation == "except-shadow":
+        writer += "\ntry:\n    raise ValueError()\nexcept ValueError as _yoga_config_name:\n    pass\n"
+    elif mutation == "swapped-parameters":
+        identity = identity.replace("cfg: dict, signal_type_id: str | None", "signal_type_id: str | None, cfg: dict", 1)
+    elif mutation == "default-parameter":
+        identity = identity.replace("cfg: dict, signal_type_id: str | None", "cfg: dict, signal_type_id: str | None = None", 1)
+    elif mutation == "disconnected":
+        writer = writer.replace("name     = _yoga_config_name(cfg, type_id)", "name     = type_id", 1)
+    elif mutation == "changed-config":
+        writer = writer.replace('cfg      = sig["_cfg"]', "cfg      = {}", 1)
+    elif mutation == "changed-citation":
+        writer = writer.replace("node: {name}", "node: {name.upper()}", 1)
+    else:
+        identity = identity.replace('"fact_value_text", "yoga_name"', '"display_label", "yoga_name"', 1)
+        if mutation == "decoy-datum":
+            identity = identity.replace("    return signal_type_id", '    unused = "fact_value_text"\n    return signal_type_id', 1)
+    with pytest.raises(AssertionError, match=reason):
+        _check_bimba_citation_source(ast.parse(writer), ast.parse(identity))
 
 
 def test_reads_datum_negative_cache_is_not_poisoned_by_freed_ad_hoc_nodes():

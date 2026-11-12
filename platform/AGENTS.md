@@ -10,12 +10,12 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 These three behaviors were silently reverted in commits `a37ede8` (parking bundle, 2026-05-01) and `eb427e3` ("four post-redesign tweaks", 2026-05-01) after the Portal Redesign workstream closed (PORTAL_REDESIGN_TRACKER ARCHIVED v1.0.12, 2026-04-30). They were restored 2026-05-02 by native direction. The PORTAL_REDESIGN_TRACKER is sealed and cannot record this; this section is the durable lock surface for the platform repo.
 
-Any change to one of these three lines must be raised with the native first. The corresponding code site carries a matching `// LOCKED` comment.
+Any change to one of these three lines must be raised with the native first. The table records the active V2 source anchors and their historical counterparts.
 
-| # | Decision | File | Anchor |
+| # | Decision | Active source | Anchor and verification |
 |---|---|---|---|
-| 1 | Left sidebar is **auto-collapsible**, default collapsed (`useState(true)`). The hover strip on the left edge expands it. Do not flip the default to `false`. | `src/components/consume/ConsumeChat.tsx` | `desktopSidebarCollapsed` initial state |
-| 2 | The Trace button (super_admin + pipelineEnabled) lives in the **top-right header** via `ChatShell`'s `headerActions` prop, **not** in the input toolbar above the composer. Do not move it back into the bottom toolbar. | `src/components/consume/ConsumeChat.tsx` | `<ChatShell ... headerActions={...}>` |
-| 3 | The composer textarea is **fixed-size** (plain `<textarea rows={3}>` with `overflow-y-auto`). Do not reintroduce `react-textarea-autosize`, `minRows`/`maxRows`, or CSS `field-sizing: content`. Long prompts scroll inside the fixed box. | `src/components/chat/Composer.tsx` | composer `<textarea>` |
+| 1 | Left sidebar is **auto-collapsible**, default collapsed (`useState(true)`). The hover strip on the left edge expands it. Do not flip the default to `false`. | `src/components/consume/ConsumeChatV2.tsx` | `sidebarCollapsed = useState(true)` and the left glass rail's `onMouseEnter={handleStripEnter}`. Historical anchor `desktopSidebarCollapsed` in `ConsumeChat.tsx`, now the V2 re-export. |
+| 2 | The Trace button (super_admin + pipelineEnabled) lives in the **top-right header**, **not** in the input toolbar above the composer. Do not move it back into the bottom toolbar. | `src/components/consume/ConsumeChatV2.tsx` | Right-side header action `v2-trace-btn`. Historical anchor `ChatShell.headerActions` in `ConsumeChat.tsx`. V2 currently checks `audienceTier === 'super_admin'` alone. The missing `pipelineEnabled` check remains an unresolved mismatch with this lock. |
+| 3 | The composer textarea is **fixed-size** (plain `<textarea rows={3}>` with `overflow-y-auto`). Do not reintroduce `react-textarea-autosize`, `minRows`/`maxRows`, or CSS `field-sizing: content`. Long prompts scroll inside the fixed box. | `src/components/consume/ConsumeChatV2.tsx` | `ComposerPrimitive.Input` with `rows={3}`, `resize-none`, and `overflow-y-auto`. Historical anchor `src/components/chat/Composer.tsx` textarea. These are source settings. Rendered fixed sizing and scrolling remain unverified. |
 
 If a future redesign reopens any of these three decisions, the right sequence is: (a) raise it with the native, (b) author a new versioned design-decisions artifact under `00_ARCHITECTURE/` (the redesign tracker is archived and will not be reopened), (c) update this section to point at the new artifact, (d) only then change the code.

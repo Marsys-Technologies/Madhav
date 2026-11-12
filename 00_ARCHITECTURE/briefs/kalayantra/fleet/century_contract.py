@@ -28,7 +28,9 @@ import hashlib
 import importlib.util
 import json
 import re
+import shlex
 import sys
+import textwrap
 from pathlib import Path
 
 FLEET = Path(__file__).resolve().parent
@@ -151,28 +153,396 @@ def cap(root: Path) -> dict:
     return {"writer_timeout_seconds": int(values[0]), "source": CAP_MIGRATION}
 
 
+_PIPELINE_JOB = "deploy-pipeline-job"
+_PIPELINE_DOCKERFILE = "./platform/python-sidecar/Dockerfile.pipeline"
+_PIPELINE_BUILD_STEP = "Build and push pipeline job image"
+_PIPELINE_REPOINT_STEP = "Re-point Cloud Run Job at the new image"
+_VERIFIED_ACTION = ".github/actions/build-verified-cgm-image"
+_PROBE = f"{_VERIFIED_ACTION}/probe_registration.py"
+_PROBE_RUN = f"python3 {_PROBE}"
+_SOURCE_TAG = ":${{ env.DEPLOY_SHA }}"
+_SOURCE_ENV = "DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}"
+_VERIFIED_REF = '"${CGM_VERIFIED_PIPELINE_REF:?missing verified Pipeline image}"'
+_REGION = "${{ env.GCP_REGION }}"
+_SAFE_FLAG = re.compile(r"[A-Za-z0-9_.@:/=,-]+")
+_REPOSITORY = re.compile(r"[a-z0-9.-]+(?:/[a-z0-9_.-]+)*/brahma-pipeline")
+
+# Reviewed top-level proof groups of the local action's probe. Fingerprint the
+# AST, not source bytes, and ignore docstrings and empty newer AST fields.
+# A substantive proof change requires requalification of the affected group.
+_PROBE_BINDINGS = (
+    ("validated source and platform", "SIDECAR PIPELINE REGISTRY SOURCE_ROOT BUILD_SHAPES PACKAGE_ROOTS MODULES DIGEST COMMIT MANIFEST_TYPES INDEX_TYPES ProbeFailure require digest command manifest_identity inspect_loaded loaded_build_id source_commit source_hashes probe_image verify_registration", "63720afa9e653ee995065e979af9292e49d2cf0738b7ee814eb1c15cd4c58f6c"),
+    ("verified carrier construction", "check_pipeline_tag pipeline_reference verified_pipeline_reference verify_build", "1cb0f0c82b5bcfe0537b3da2ba0fe4378397bfd4a10857e5df6a8c3c512f46e2"),
+    ("repoint readback and dispatch", "post_repoint main", "75e51523cbc4ab41ec273a853ab4e1272c0ee38d30a743d4c8c60bbe68c906b7"),
+)
+
+
+def _syntax(value):
+    if isinstance(value, ast.AST):
+        fields = {}
+        for key, item in ast.iter_fields(value):
+            if key == "type_params" and not item:
+                continue
+            if key == "body" and isinstance(item, list) and item:
+                first = item[0]
+                if isinstance(first, ast.Expr) and isinstance(first.value, ast.Constant) and isinstance(first.value.value, str):
+                    item = item[1:]
+            fields[key] = _syntax(item)
+        return [type(value).__name__, fields]
+    if isinstance(value, list):
+        return [_syntax(item) for item in value]
+    if isinstance(value, (bytes, complex)) or value is Ellipsis:
+        return [type(value).__name__, repr(value)]
+    return value
+
+
+def _syntax_hash(nodes) -> str:
+    data = json.dumps(_syntax(nodes), sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(data.encode()).hexdigest()
+
+
+def _verified_repository(root: Path) -> str:
+    action = (root / _VERIFIED_ACTION / "action.yml").read_text(encoding="utf-8")
+    lines = [line.rstrip() for line in action.splitlines() if line.strip() and not line.lstrip().startswith("#")]
+    top = [line.split(":", 1)[0] for line in lines if not line[0].isspace()]
+    if len(top) != 4 or set(top) != {"name", "description", "inputs", "runs"}:
+        raise ContractError("the verified Pipeline action has unexpected or duplicate top-level fields")
+    numbered = list(enumerate(lines, 1))
+    inputs = _section(numbered, "inputs:", 0)
+    keys = [line for _, line in inputs if line.startswith("  ") and not line.startswith("   ")]
+    expected_inputs = {
+        "context": ["    required: true"], "file": ["    required: true"],
+        "push": ["    default: 'false'"], "load": ["    default: 'false'"],
+        "tags": ["    required: true"], "cache-from": [], "cache-to": [],
+    }
+    if keys != [f"  {key}:" for key in expected_inputs] or lines.count("runs:") != 1:
+        raise ContractError("the verified Pipeline action must declare its exact inputs and composite")
+    for name, flags in expected_inputs.items():
+        got = [line for _, line in _section(inputs, f"  {name}:", 2) if not line.startswith("    description:")]
+        if got != flags:
+            raise ContractError("the verified Pipeline action must keep its reviewed push-only input defaults")
+    expected = """runs:
+  using: composite
+  steps:
+    - id: build
+      uses: docker/build-push-action@v6
+      with:
+        context: ${{ inputs.context }}
+        file: ${{ inputs.file }}
+        push: ${{ inputs.push }}
+        load: ${{ inputs.load }}
+        tags: ${{ inputs.tags }}
+        cache-from: ${{ inputs.cache-from }}
+        cache-to: ${{ inputs.cache-to }}
+    - name: Verify exact packaged CGM registration
+      shell: bash
+      env:
+        CGM_BUILD_CONTEXT: ${{ inputs.context }}
+        CGM_BUILD_FILE: ${{ inputs.file }}
+        CGM_BUILD_PUSH: ${{ inputs.push }}
+        CGM_BUILD_LOAD: ${{ inputs.load }}
+        CGM_BUILD_TAGS: ${{ inputs.tags }}
+        CGM_BUILD_IMAGE_ID: ${{ steps.build.outputs.imageid }}
+        CGM_BUILD_DIGEST: ${{ steps.build.outputs.digest }}
+        CGM_BUILD_METADATA: ${{ steps.build.outputs.metadata }}
+      run: python3 "$GITHUB_ACTION_PATH/probe_registration.py" verify-build"""
+    if lines[lines.index("runs:"):] != expected.splitlines():
+        raise ContractError("the verified Pipeline action must bind the exact Buildx output to the image probe")
+
+    probe = _tree(_PROBE, root)
+    definitions = {}
+    scaffolding = []
+    order = []
+    for node in probe.body:
+        if isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
+            continue
+        if isinstance(node, (ast.FunctionDef, ast.ClassDef)):
+            name = node.name
+        elif isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name):
+            name = node.targets[0].id
+        else:
+            scaffolding.append(node)
+            order.append(type(node).__name__)
+            continue
+        if name in definitions:
+            raise ContractError("duplicate definition in the verified Pipeline probe")
+        definitions[name] = node
+        order.append(name)
+    if _syntax_hash(order) != "1ed4293893c0a54883fb0a8701a7749ecf83aa2cf82a2339cf44ed2232c674c0":
+        raise ContractError("the verified Pipeline probe changed its reviewed declaration order")
+    if _syntax_hash(scaffolding) != "aa2007ece33612984bd23e7e8b027bfa9a818924b944f567934d73c319351c2b":
+        raise ContractError("the verified Pipeline probe must have its reviewed imports and entry point")
+    known = set()
+    for group, members, expected_hash in _PROBE_BINDINGS:
+        names = members.split()
+        known.update(names)
+        if any(name not in definitions for name in names) or _syntax_hash([definitions[name] for name in names]) != expected_hash:
+            raise ContractError(f"the verified Pipeline probe changed its {group} proof")
+    if definitions.keys() != known:
+        raise ContractError("unexpected definition in the verified Pipeline probe")
+    registry = _literal(_PROBE, "REGISTRY", root)
+    component = _literal(_PROBE, "PIPELINE", root)
+    return f"{registry}/{component}"
+
+
+def _section(lines, header: str, indent: int):
+    """Return a single exact block with original physical line numbers."""
+    starts = [i for i, (_, line) in enumerate(lines) if line == header]
+    if len(starts) != 1:
+        raise ContractError(f"{DEPLOY}: expected exactly one {header.strip()} block")
+    start = starts[0] + 1
+    end = next((i for i in range(start, len(lines)) if len(lines[i][1]) - len(lines[i][1].lstrip()) <= indent), len(lines))
+    return lines[start:end]
+
+
+def _named_step(steps, name: str):
+    labels = {f'{prefix}{quoted}' for prefix in ("      - name: ", "        name: ")
+              for quoted in (name, f'"{name}"', f"'{name}'")}
+    indexes = [i for i, step in enumerate(steps) if any(line in labels for _, line in step)]
+    if len(indexes) != 1 or steps[indexes[0]][0][1] != f"      - name: {name}":
+        raise ContractError(f"{DEPLOY}: expected exactly one {name} step in the Pipeline job")
+    return indexes[0], steps[indexes[0]][1:]
+
+
+def _source_command_lines(lines: list[str]):
+    """Expose literal step run scalars for the narrow gcloud argv check."""
+    index = 0
+    while index < len(lines):
+        number, line = index + 1, lines[index]
+        index += 1
+        match = re.fullmatch(r"(?: {6}- | {8})run:[ \t]*(.*)", line)
+        if not match:
+            yield number, line
+            continue
+        value = match[1]
+        if re.fullmatch(r">[+-]?(?:[ \t]+#.*)?", value):
+            start = index
+            while index < len(lines) and (not lines[index].strip() or lines[index].startswith("         ")):
+                index += 1
+            folded = []
+            previous_plain = False
+            for part in textwrap.dedent("\n".join(lines[start:index])).splitlines():
+                plain = bool(part and not part[0].isspace())
+                if previous_plain and plain:
+                    folded[-1] += " " + part
+                else:
+                    folded.append(part)
+                previous_plain = plain
+            yield from ((number, part) for part in folded)
+            continue
+        if value.startswith(('"', "'")):
+            try:
+                script = ast.literal_eval(value)
+            except (SyntaxError, ValueError):
+                pass  # Keep the raw spelling available to the literal guard.
+            else:
+                if isinstance(script, str):
+                    yield from ((number, part) for part in script.splitlines())
+                    continue
+        yield number, line
+
+
+def _target_job_updates(lines: list[str], job_name: str):
+    """Find literal gcloud job updates across shell spacing and escaped newlines."""
+    physical = []
+    separators = ";&|()"
+    update = ["run", "jobs", "update"]
+    for number, line in _source_command_lines(lines):
+        if not physical:
+            start = number
+        physical.append(line)
+        if (len(line) - len(line.rstrip("\\"))) % 2:
+            continue
+        invocation = textwrap.dedent("\n".join(physical)).replace("\\\n", "")
+        physical.clear()
+        if "gcloud" not in invocation and job_name not in invocation:
+            continue
+        lexer = shlex.shlex(invocation, posix=True, punctuation_chars=separators)
+        lexer.whitespace_split = True
+        try:
+            tokens = list(lexer)
+        except ValueError:
+            if job_name in invocation and "update" in invocation:
+                raise ContractError(f"{DEPLOY}: cannot read a possible Pipeline update argv") from None
+            continue
+        command = []
+        matched = False
+        for token in [*tokens, ";"]:
+            if token and all(char in separators for char in token):
+                for i in range(1, len(command) - len(update)):
+                    if (command[i:i + 3] == update and job_name in command[i + 3:]
+                            and any(Path(arg).name == "gcloud" for arg in command[:i])):
+                        flags = {arg.split("=", 1)[0] for arg in command if arg.startswith("--")}
+                        matched = True
+                        yield start, flags
+                command = []
+            else:
+                command.append(token)
+        # Retain the prior exact textual protection for a visible update whose
+        # outer scalar or quoting does not produce a literal argv match.
+        if not matched and f"gcloud run jobs update {job_name} " in invocation:
+            flags = set(re.findall(r"\s(--(?:image|task-timeout|flags-file))(?:=|\s|$)", invocation))
+            if flags:
+                yield start, flags
+
+
+def _visible_unbound_repoint(jobs, repoint, job_name: str) -> bool:
+    """Decline visible mutation clues outside the bound step, even in opaque run syntax."""
+    boundaries = [0, *(
+        i for i, (_, line) in enumerate(jobs)
+        if re.fullmatch(r"  [A-Za-z0-9_.-]+:", line) or line.startswith("      - ")
+    ), len(jobs)]
+    approved = {number for number, _ in repoint}
+    target = re.compile(rf"(?<![\w.-]){re.escape(job_name)}(?![\w.-])")
+    action = re.compile(r"""\brun[\s\\'"]+jobs[\s\\'"]+update\b""")
+    mutation = re.compile(r"""(?:^|[\s'"])--(?:image|task-timeout|flags-file)(?=[=\s'"]|$)""")
+    for start, end in zip(boundaries, boundaries[1:]):
+        fragment = jobs[start:end]
+        if any(number in approved for number, _ in fragment):
+            continue
+        text = "\n".join(line for _, line in fragment)
+        if re.search(r"(?<![\w.-])gcloud(?![\w.-])", text) and action.search(text) and target.search(text) and mutation.search(text):
+            return True
+    return False
+
+
+def _check_repoint_tail(steps, image_ref: str) -> None:
+    """The reviewed Pipeline tail has only the two image smoke steps."""
+    expected = r"""      - name: Verify ga_writers is importable in the pushed image
+        run: |
+          docker run --rm --entrypoint python \
+            IMAGE_REFERENCE \
+            -c "import ga_writers; print('ga_writers OK:', ga_writers.__file__)"
+      - name: Verify the gochara century runner exists in the pushed image
+        run: |
+          docker run --rm --entrypoint /bin/sh \
+            IMAGE_REFERENCE \
+            -n /app/platform/python-sidecar/scripts/kala_gochara_cutover/century_run_4_1.sh
+          docker run --rm --entrypoint python \
+            IMAGE_REFERENCE \
+            -c "import sys; sys.path.insert(0, '/app/platform/python-sidecar/scripts/kala_gochara_cutover'); import common; print('cutover common OK:', common.__file__)"
+"""
+    if [line for step in steps for _, line in step] != expected.replace("IMAGE_REFERENCE", image_ref).splitlines():
+        raise ContractError(f"{DEPLOY}: unexpected Pipeline step after the verified repoint")
+
+
+def _pipeline_repoint(root: Path, *, job_name: str, region: str) -> tuple[str, dict]:
+    workflow = (root / DEPLOY).read_text(encoding="utf-8").splitlines()
+    lines = [(i, line.rstrip()) for i, line in enumerate(workflow, 1)
+             if line.strip() and not line.lstrip().startswith("#")]
+    top = [line for _, line in lines if not line[0].isspace()]
+    if top.count("jobs:") != 1 or top.count("env:") != 1 or any(
+        not re.fullmatch(r"(?:name: .+|on:|concurrency:|env:|jobs:)", line) for line in top
+    ):
+        raise ContractError(f"{DEPLOY}: unexpected top-level workflow structure or shell defaults")
+    env = [line.strip() for _, line in _section(lines, "env:", 0)]
+    for key, expected in (("DEPLOY_SHA", _SOURCE_ENV), ("GCP_REGION", f"GCP_REGION: {region}")):
+        if [line for line in env if line.split(":", 1)[0].strip("\"'") == key] != [expected]:
+            raise ContractError(f"{DEPLOY}: unexpected Pipeline {key} source")
+    if any(line.startswith(("CGM_VERIFIED_", "<<:")) or line[0] in "\"'" for line in env):
+        raise ContractError(f"{DEPLOY}: unexpected Pipeline environment carrier")
+    jobs = _section(lines, "jobs:", 0)
+    if any(not re.fullmatch(r"  [a-zA-Z0-9_.-]+:", line)
+           for _, line in jobs if len(line) - len(line.lstrip()) == 2):
+        raise ContractError(f"{DEPLOY}: unsupported job alias or inline job definition")
+    job = _section(jobs, f"  {_PIPELINE_JOB}:", 2)
+    job_fields = [line.split(":", 1)[0].strip() for _, line in job if len(line) - len(line.lstrip()) == 4]
+    if len(job_fields) != len(set(job_fields)) or not set(job_fields) <= {
+        "name", "needs", "if", "runs-on", "permissions", "steps",
+    }:
+        raise ContractError(f"{DEPLOY}: unsupported Pipeline job override")
+    body = _section(job, "    steps:", 4)
+    starts = [i for i, (_, line) in enumerate(body) if line.startswith("      - ")]
+    if not starts or starts[0] != 0:
+        raise ContractError(f"{DEPLOY}: malformed Pipeline steps")
+    steps = [body[i:j] for i, j in zip(starts, starts[1:] + [len(body)])]
+    checkout_idx, checkout = _named_step(steps, "Checkout")
+    build_idx, build = _named_step(steps, _PIPELINE_BUILD_STEP)
+    repoint_idx, repoint = _named_step(steps, _PIPELINE_REPOINT_STEP)
+    if [line for _, line in checkout] != [
+        "        uses: actions/checkout@v4", "        with:", "          ref: ${{ env.DEPLOY_SHA }}",
+    ] or not checkout_idx < build_idx == repoint_idx - 1:
+        raise ContractError(f"{DEPLOY}: the exact Pipeline checkout, build and repoint must be ordered")
+    possible_builders = ("uses: docker/build-push-action@", f"uses: ./{_VERIFIED_ACTION}", f"file: {_PIPELINE_DOCKERFILE}")
+    if any(line.strip().removeprefix("- ").startswith(possible_builders)
+           for i, step in enumerate(steps) if i != build_idx for _, line in step):
+        raise ContractError(f"{DEPLOY}: unexpected alternate Pipeline builder")
+    if any(line.strip().removeprefix("- ").startswith("uses: actions/checkout@")
+           for i, step in enumerate(steps) if i != checkout_idx for _, line in step):
+        raise ContractError(f"{DEPLOY}: unexpected alternate Pipeline checkout")
+    command = f"gcloud run jobs update {job_name} "
+    updates = list(_target_job_updates(workflow, job_name))
+    job_lines = {number for number, _ in job}
+    if sum(number in job_lines for number, _ in updates) != 1:
+        raise ContractError(f"{DEPLOY}: expected one actual Pipeline job update in the deployment job")
+    if any(number not in job_lines and flags & {"--image", "--task-timeout", "--flags-file"}
+           for number, flags in updates):
+        raise ContractError(f"{DEPLOY}: unexpected image or timeout repoint outside the Pipeline job")
+    if _visible_unbound_repoint(jobs, repoint, job_name):
+        raise ContractError(f"{DEPLOY}: ambiguous Pipeline image or timeout mutation outside the reviewed repoint")
+    if not repoint or repoint[0][1] != "        run: |" or any(not line.startswith("          ") for _, line in repoint[1:]):
+        raise ContractError(f"{DEPLOY}: the Pipeline repoint must be one unguarded run step")
+
+    body = [(i, line.strip()) for i, line in repoint[1:]]
+    verified = bool(body and body[0][1] == f"{_PROBE_RUN} verify-repoint")
+    if verified:
+        if body[-1][1] != f'GOOGLE_CLOUD_REGION="{_REGION}" {_PROBE_RUN} post-repoint':
+            raise ContractError(f"{DEPLOY}: the verified Pipeline repoint must immediately check readback")
+        body = body[1:-1]
+    if len(body) < 4 or body[0][1] != command + "\\" or body[-1][1] != "--quiet":
+        raise ContractError(f"{DEPLOY}: expected the contiguous literal Pipeline repoint argv")
+    args = {}
+    for i, line in body[1:-1]:
+        if not line.endswith(" \\") or not line.startswith("--") or "=" not in line:
+            raise ContractError(f"{DEPLOY}: split, hidden or unbound Pipeline repoint argument")
+        flag, value = line[2:-2].split("=", 1)
+        if flag in args:
+            raise ContractError(f"{DEPLOY}: duplicate Pipeline repoint argument")
+        if flag not in {"region", "image", "task-timeout"} and (
+            flag not in {"service-account", "update-secrets", "memory", "cpu", "update-env-vars"} or not _SAFE_FLAG.fullmatch(value)
+        ):
+            raise ContractError(f"{DEPLOY}: unsupported Pipeline repoint argument")
+        args[flag] = (i, value)
+    if args.get("region", (None, None))[1] != _REGION or not {"image", "task-timeout"} <= args.keys():
+        raise ContractError(f"{DEPLOY}: the actual Pipeline repoint must bind region, image and timeout")
+    timeout_line, timeout = args["task-timeout"]
+    if not re.fullmatch(r"[1-9][0-9]*", timeout):
+        raise ContractError(f"{DEPLOY}: invalid Pipeline task timeout")
+    image_ref = args["image"][1]
+    if verified:
+        if image_ref != _VERIFIED_REF:
+            raise ContractError(f"{DEPLOY}: Pipeline image is not the exact verified combined reference")
+        repository = _verified_repository(root)
+    else:
+        repository = image_ref.removesuffix(_SOURCE_TAG)
+        if repository == image_ref or not _REPOSITORY.fullmatch(repository):
+            raise ContractError(f"{DEPLOY}: Pipeline image is not the exact direct source tag")
+    uses = f"./{_VERIFIED_ACTION}" if verified else "docker/build-push-action@v6"
+    expected_build = [
+        f"        uses: {uses}", "        with:", "          context: .",
+        f"          file: {_PIPELINE_DOCKERFILE}", "          push: true", "          tags: |",
+        f"            {repository}{_SOURCE_TAG}", f"            {repository}:latest",
+        "          cache-from: type=gha,scope=brahma-pipeline", "          cache-to: type=gha,mode=max,scope=brahma-pipeline",
+    ]
+    if [line for _, line in build] != expected_build:
+        raise ContractError(f"{DEPLOY}: the exact same-job Pipeline builder must bind the repoint repository and source")
+    _check_repoint_tail(steps[repoint_idx + 1:], '"$CGM_VERIFIED_IMAGE"' if verified else image_ref)
+    return repository, {"cloud_run_task_timeout_seconds": int(timeout), "source": f"{DEPLOY}:{timeout_line}"}
+
+
+def _deployment_image(root: Path) -> tuple[dict, dict]:
+    bindings = {k.lower(): _literal(DISPATCH, k, root) for k in ("LAUNCH_JOB", "LAUNCH_PROJECT", "LAUNCH_REGION")}
+    out = {"job": bindings["launch_job"], "project": bindings["launch_project"], "region": bindings["launch_region"]}
+    out["repository"], timeout = _pipeline_repoint(root, job_name=out["job"], region=out["region"])
+    return out, timeout
+
+
 def task_timeout(root: Path) -> dict:
-    lines = (root / DEPLOY).read_text(encoding="utf-8").splitlines()
-    found = []
-    for i, line in enumerate(lines):
-        if "gcloud run jobs update brahma-build-pipeline-job" in line:
-            for j in range(i, min(i + 14, len(lines))):
-                m = re.match(r"\s*--task-timeout=(\d+)\b", lines[j])
-                if m:
-                    found.append((int(m.group(1)), j + 1))
-                    break
-    if len(found) != 1:
-        raise ContractError(f"{DEPLOY}: expected exactly one task timeout on the brahma-build-pipeline-job update step, found {len(found)}")
-    return {"cloud_run_task_timeout_seconds": found[0][0], "source": f"{DEPLOY}:{found[0][1]}"}
+    return _deployment_image(root)[1]
 
 
 def image(root: Path, with_digest: bool) -> dict:
-    out = {k.lower(): _literal(DISPATCH, k, root) for k in ("LAUNCH_JOB", "LAUNCH_PROJECT", "LAUNCH_REGION")}
-    out = {"job": out["launch_job"], "project": out["launch_project"], "region": out["launch_region"]}
-    m = re.search(r"--image=(\S+brahma-pipeline):\$\{\{ env\.DEPLOY_SHA \}\}", (root / DEPLOY).read_text(encoding="utf-8"))
-    if not m:
-        raise ContractError(f"{DEPLOY}: the pipeline job's --image=<repository>:${{{{ env.DEPLOY_SHA }}}} was not found")
-    out["repository"] = m.group(1)
+    out, _ = _deployment_image(root)
     out["writer_source_digest"] = writer_source_digest(root) if with_digest else None
     out["digest_source"] = "pipeline.orchestrator.writer_runtime_support.get_writer_source_hash('ka_gochara_v5')"
     return out

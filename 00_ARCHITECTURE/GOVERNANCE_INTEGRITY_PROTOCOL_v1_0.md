@@ -22,9 +22,9 @@ role: >
   native directive ND.1 (Mirror Discipline).
 authoritative_side: Claude (Claude-only governance-surface; no Gemini-side counterpart required — the protocol governs mirror discipline but is not itself a mirror pair; the principle is stated verbatim in MP v2.0 §IS.2 and v2.2 §D.11, both of which do have Gemini-side mirrors)
 mirror_obligations: >
-  None for this file itself. The subordinate artifacts Step 7 implements (CANONICAL_ARTIFACTS_v1_0.md,
-  SESSION_OPEN_TEMPLATE, SESSION_CLOSE_TEMPLATE, DISAGREEMENT_REGISTER) carry their own
-  mirror_obligations declarations per §E and §J below.
+  None. The Step 7 Gemini mirror declarations in §E and §J are historical after the
+  2026-05-27 retirement recorded at root CLAUDE.md §K and §K below. Current session
+  coordination follows §P.
 related_artifacts:
   - MACRO_PLAN_v2_0.md §System Integrity Substrate (§IS.1–§IS.9) — the substrate declaration this protocol implements at design level
   - PROJECT_ARCHITECTURE_v2_2.md §D.9 (Governance Stack live scope), §D.11 (Multi-Agent Collaboration + MP.1–MP.8 mirror-pair inventory), §L (Governance Rebuild Reference) — the architecture surfaces that forward-point to this protocol
@@ -78,6 +78,8 @@ Every session emits a session-open handshake (§F) and a session-close checklist
 
 ### A.5 — Mirror discipline is mechanically enforced, not procedurally asserted
 
+**Historical axiom, retired 2026-05-27.** Root CLAUDE.md §K and §K below record the ND.1 close-out. The following paragraph describes the Step 7 design. Current cross-tool coordination follows §P.
+
 Per ND.1 (Mirror Discipline as a First-Class Governance Principle), every Claude-side governance file with a Gemini-side counterpart is kept in continuous semantic parity with its counterpart, via adapted parity not byte-identity. Enforcement is the `mirror_enforcer.py` script (Step 7 deliverable) operating over the mirror-pair inventory declared in CANONICAL_ARTIFACTS — not the honor system that GA.13 documented breaking within days of being written. The inventory is the architecture-layer MP.1–MP.8 list in PROJECT_ARCHITECTURE_v2_2 §D.11.2, re-declared machine-readably in CANONICAL_ARTIFACTS (§E).
 
 ### A.6 — The protocol itself is a living artifact under its own discipline
@@ -89,6 +91,8 @@ This file is a governance-layer artifact. It is registered in FILE_REGISTRY. It 
 ## §B — SCOPE AND NON-SCOPE
 
 ### B.1 — What this protocol governs
+
+Gemini mirror surfaces, mirror-pair obligations and the mirror enforcer named in the Step 7 inventory below are historical under root CLAUDE.md §K and §K. The active session, scope, disagreement and cross-tool controls remain applicable.
 
 - **Governance surfaces.** CLAUDE.md, `.geminirules`, `.gemini/project_state.md`, SESSION_LOG, STEP_LEDGER, FILE_REGISTRY, GOVERNANCE_STACK, MACRO_PLAN, PHASE_B_PLAN, PROJECT_ARCHITECTURE, this protocol, CANONICAL_ARTIFACTS (§E), DISAGREEMENT_REGISTER (§K), SESSION_OPEN_TEMPLATE (§F), SESSION_CLOSE_TEMPLATE (§G), CURRENT_STATE (Step 10 deliverable).
 - **Registries.** FILE_REGISTRY_v1_2.md (and successors), GOVERNANCE_STACK_v1_0.md (and successors), CANONICAL_ARTIFACTS_v1_0.md (new, Step 7 deliverable), LIVING_PROJECT_MAINTENANCE_GUIDE, MAINTENANCE_SCHEDULE, FALSIFIER_REGISTRY, CONTRADICTION_REGISTRY.
@@ -167,10 +171,10 @@ This section specifies one subsection per axis listed in the Step 6 brief §1. E
 
 **Controls**:
 - **Preventive**: CANONICAL_ARTIFACTS (§E) is the single authoritative source. Surfaces that cite canonical paths either (a) reference CANONICAL_ARTIFACTS by name rather than duplicating the path, or (b) duplicate the path with a declared `verified_against: CANONICAL_ARTIFACTS_v1_0 @ <sha256>` attestation at the top of the surface.
-- **Detective**: drift detector (§H) does explicit pairwise comparisons of: CLAUDE.md path table ↔ `.geminirules` canonical-path block; `.geminirules` block ↔ `.gemini/project_state.md` corpus state block; CANONICAL_ARTIFACTS ↔ each of the above; FILE_REGISTRY ↔ CANONICAL_ARTIFACTS; GOVERNANCE_STACK §1 version registry ↔ CANONICAL_ARTIFACTS.
-- **Corrective**: on pairwise disagreement, the drift detector emits a structured report naming (a) which pair disagrees, (b) which side is stale against CANONICAL_ARTIFACTS, (c) which sentence/row differs. The session that observes the drift report halts at close and opens a DISAGREEMENT_REGISTER entry (mirror-desync class per §K) — resolution is not silent overwriting.
+- **Detective**: the Step 7 design specified pairwise comparisons including Gemini mirrors. Those mirror legs were retired under root CLAUDE.md §K and §K. The active detector continues canonical-path and registry checks against the current manifest.
+- **Corrective**: on pairwise disagreement, the drift detector emits a structured report naming (a) which pair disagrees, (b) which side is stale against CANONICAL_ARTIFACTS, (c) which sentence/row differs. The session that observes the drift report halts at close and opens a DISAGREEMENT_REGISTER entry (applicable active disagreement class per §K) — resolution is not silent overwriting.
 
-**Enforcement mechanism**: `drift_detector.py` (§H). Runs at every session close as part of §G. Exit code 0 is required for close; exit code ≠ 0 fails the close and emits the drift report to the session's close-entry attachment.
+**Enforcement mechanism**: `drift_detector.py` (§H). Runs at every session close as part of §G. Session-close exit codes follow `ONGOING_HYGIENE_POLICIES_v1_0.md §F`. Exit code 0 passes. Exit code 3 is permitted only with a nonempty `known_residuals` list whose entries are all MEDIUM or LOW and each carries a booking reference. Exit codes 1, 2 and 4+, HIGH or CRITICAL residuals, and unbooked or malformed residual records fail close. The drift report is attached to the session's close entry.
 
 ### C.4 — Axis 4: Alignment to Goals and Plan (scope-boundary enforcement per Macro Plan and active phase plan)
 
@@ -211,6 +215,8 @@ This section specifies one subsection per axis listed in the Step 6 brief §1. E
 **Enforcement mechanism**: `schema_validator.py` (§I) + the FILE_REGISTRY + GOVERNANCE_STACK + SESSION_LOG triad + ongoing hygiene policies (Step 12 extension; this axis anchors the policies Step 12 will refine). Phantom-reference detection is a dedicated drift-detector check (§H.3.4).
 
 ### C.6 — Axis 6: Multi-Agent Collaboration (Claude ↔ Gemini sync, session-open handshake, session-close checklist)
+
+**Historical Gemini mirror design.** The propagation, freshness and enforcer obligations below describe Step 7 and were retired on 2026-05-27 under root CLAUDE.md §K and §K. Existing session, two-pass and remaining disagreement controls continue under their current authorities in §§F, G, K and P.
 
 **Definition.** Claude-side and Gemini-side governance surfaces are kept in continuous semantic parity per ND.1 Mirror Discipline. Session-open and session-close templates include cross-agent mirror checks; the disagreement register captures inter-agent conflicts including mirror-desync as a first-class class.
 
@@ -276,7 +282,7 @@ The authoritative specification follows in §E. Summary here: one row per canoni
 
 ### D.5 — How the three registries stay synchronized
 
-- Whenever an artifact's CURRENT version bumps (e.g., MSR_v3_0 → MSR_v4_0 at some future date): FILE_REGISTRY bumps its version (to, say, `FILE_REGISTRY_v1_3.md`), GOVERNANCE_STACK amends in-place (`§N STEP_X amendment log`), CANONICAL_ARTIFACTS bumps its fingerprint row for that canonical_id and any surfaces that cite the path directly are mirror-updated per §J.
+- Whenever an artifact's CURRENT version bumps (e.g., MSR_v3_0 → MSR_v4_0 at some future date): FILE_REGISTRY bumps its version (to, say, `FILE_REGISTRY_v1_3.md`), GOVERNANCE_STACK amends in-place (`§N STEP_X amendment log`), CANONICAL_ARTIFACTS bumps its fingerprint row for that canonical_id and any surfaces that cite the path directly are updated under the active governance rules. The former §J Gemini cascade is historical under root CLAUDE.md §K and §K.
 - The drift detector (§H) cross-checks all three pairwise every session close. Any two-of-three consensus or any lone disagreement is flagged.
 - The schema validator (§I) verifies each registry's frontmatter and body schema on every artifact write.
 
@@ -326,7 +332,7 @@ Two sections:
 ### E.5 — Update rules
 
 - **Version bump on any fingerprint change.** Rotating a fingerprint means the file content changed; the row is re-verified in the session that caused the change; the session ID and date are recorded; CANONICAL_ARTIFACTS itself is patch-bumped (v1.0 → v1.0.1) if the update is additive-only to metadata, minor-bumped (v1.0 → v1.1) if a new row is added, major-bumped (v1.0 → v2.0) if the schema changes.
-- **Claude-side vs Gemini-side authoritative declaration.** Per ND.1, MP.1 through MP.8 declare an authoritative side. Changes to an authoritative side trigger a mirror update to its counterpart in the same session. Changes to a non-authoritative side (unusual; typically only happens when Gemini sessions edit `.gemini/project_state.md` directly) trigger a mirror update back to the authoritative side in the same session.
+- **Historical Claude-side vs Gemini-side authoritative declaration.** ND.1 formerly required same-session propagation between the declared sides. The propagation obligation was retired on 2026-05-27 under root CLAUDE.md §K and §K.
 - **Never `SUPERSEDED` rows.** Superseded versions are removed from CANONICAL_ARTIFACTS and retained in FILE_REGISTRY §8 Archival. CANONICAL_ARTIFACTS is the CURRENT-only view.
 
 ### E.6 — What CANONICAL_ARTIFACTS does NOT do
@@ -345,6 +351,8 @@ Two sections:
 File path: `00_ARCHITECTURE/SESSION_OPEN_TEMPLATE.md`. Produced by Step 7 as template material; each session produces an instantiation (appended to SESSION_LOG as the first block of that session's entry).
 
 ### F.2 — Mandatory fields
+
+The Gemini mirror rows in this Step 7 schema are historical compatibility examples. Current handshakes retain `mirror_pair_freshness_check: []` as required by the validator and the current session-open template. Root CLAUDE.md §K and §K record the retirement.
 
 Every session, before any substantive tool call, emits a session-open handshake. Fields:
 
@@ -375,7 +383,7 @@ session_open:
     must_not_touch:
       - <path pattern, e.g., "025_HOLISTIC_SYNTHESIS/**" during Step 6>
   mirror_pair_freshness_check:
-    # For every mirror pair in CANONICAL_ARTIFACTS §2, report last_verified_on + gap-in-days since this session opens.
+    # Historical Step 7 rows. Current records use [] for this required compatibility field.
     - pair_id: MP.1
       last_verified_on: <date>
       days_since_verification: <int>
@@ -396,7 +404,7 @@ The handshake is validated by `schema_validator.py` (§I) before any other actio
 
 - If `mandatory_reading_confirmation` is missing an item from the current mandatory-reading list, the handshake fails.
 - If any `canonical_artifact_fingerprint_check` row has `match: false`, the handshake fails (indicates silent file mutation since last CANONICAL_ARTIFACTS update).
-- If any `mirror_pair_freshness_check` row has `stale: true`, the session is obligated to run `mirror_enforcer.py` (§J) as its first substantive action and either (a) confirm parity and update the `last_verified_on` field in CANONICAL_ARTIFACTS, or (b) open a DISAGREEMENT_REGISTER mirror-desync entry (§K).
+- The `mirror_pair_freshness_check` key remains required for compatibility. Current records use `[]`. Historical freshness values carry no enforcer obligation after the retirement recorded in root CLAUDE.md §K and §K.
 - If `declared_scope.must_not_touch` is empty, the handshake fails (every session must declare both may-touch and must-not-touch positively).
 - Any `open` directive's obligation not acknowledged fails the handshake.
 
@@ -419,6 +427,8 @@ Closes GA.15 (no session-open handshake — primary), GA.19 (no "you are here" m
 File path: `00_ARCHITECTURE/SESSION_CLOSE_TEMPLATE.md`. Produced by Step 7 as template material; each session produces an instantiation (appended to SESSION_LOG as the closing block of that session's entry).
 
 ### G.2 — Mandatory fields
+
+The Step 7 `mirror_updates_propagated` and `mirror_enforcer_run` examples below are optional historical compatibility fields under root CLAUDE.md §K and §K. Active close requirements follow the current session-close template and §P.
 
 Every session, before claiming close, emits a session-close checklist. Fields:
 
@@ -447,7 +457,7 @@ session_close:
         change: fingerprint_rotated|version_bumped|added|status_changed
         details: string
   mirror_updates_propagated:
-    # For every mirror pair touched this session, confirm the counterpart was updated in the same session.
+    # Historical Step 7 propagation example. Current checklists may omit this field.
     - pair_id: MP.1
       claude_side_touched: true|false
       gemini_side_touched: true|false
@@ -489,7 +499,7 @@ session_close:
 
 ### G.3 — Enforcement
 
-Every field with a `true|false` value must be `true` for the session to close. Any `exit_code: nonzero` from any script fails the close. Any `within_declared_scope: false` row fails the close. Any mirror pair with `both_updated_same_session: false` fails the close unless the rationale explains a declared Claude-only or Gemini-only pair (e.g., GOVERNANCE_STACK is Claude-only per MP.6).
+Active required `true|false` checks must pass their schema rules. The active `drift_detector_run` and `schema_validator_run` results must satisfy `ONGOING_HYGIENE_POLICIES_v1_0.md §F` and its existing booked `known_residuals` exception. Any `within_declared_scope: false` row fails close. The legacy `mirror_updates_propagated` and `mirror_enforcer_run` fields are optional historical compatibility data under root CLAUDE.md §K and §K.
 
 The schema validator (§I) verifies the checklist itself as its last action. Only after the checklist validates does the SESSION_LOG append happen atomically.
 
@@ -512,6 +522,8 @@ File path: `platform/scripts/governance/drift_detector.py`. Produced by Step 7 a
 
 ### H.2 — Inputs
 
+The Gemini surfaces listed in the Step 7 design below are historical inputs under root CLAUDE.md §K and §K. The current detector retains its existing active checks.
+
 - `CANONICAL_ARTIFACTS_v1_0.md` (read: canonical path + fingerprint per canonical_id; authoritative source for cross-surface comparison).
 - `/CLAUDE.md` (read: canonical path table — to be mirrored in CANONICAL_ARTIFACTS after Step 9).
 - `/.geminirules` (read: canonical path block + Mirror Discipline section).
@@ -526,6 +538,8 @@ File path: `platform/scripts/governance/drift_detector.py`. Produced by Step 7 a
 ### H.3 — Checks performed
 
 **H.3.1 — Canonical path table parity (CLAUDE.md ↔ `.geminirules` ↔ CANONICAL_ARTIFACTS)**
+
+The Gemini leg in the original design below is historical under root CLAUDE.md §K and §K. The active canonical-path comparison uses the current manifest.
 
 For each canonical_id in CANONICAL_ARTIFACTS: verify (a) CLAUDE.md names the same path (where CLAUDE.md cites it explicitly — post-Step-9 this becomes an "imports CANONICAL_ARTIFACTS by reference" check); (b) `.geminirules` canonical-path block names the same path (for the subset of canonical_ids Gemini-side surfaces reference — MP.5 defines this subset); (c) version in each surface matches CANONICAL_ARTIFACTS.
 
@@ -586,7 +600,7 @@ drift_report:
 
 - Script-internal error (IO failure, YAML parse error): exit 4; report is partial and tagged `incomplete: true`.
 - File missing: each missing file is a finding of class `phantom_reference` (the script does not halt).
-- `mirror_enforcer.py` integration: the drift detector does NOT duplicate mirror-enforcer's job. It covers fingerprint + registry + phantom + ledger. Mirror-desync is the mirror enforcer's job (§J). The two scripts are called sequentially at session close.
+- The Step 7 design paired the drift detector with the Gemini mirror enforcer at close. That integration is historical under root CLAUDE.md §K and §K. The active drift detector continues its current checks.
 
 ### H.6 — GA.N closure
 
@@ -634,6 +648,8 @@ Per STEP_LEDGER_v1_0.md's frontmatter declaration of row columns: `step`, `title
 
 **I.3.5 — Mirror-pair structural equivalence**
 
+Historical Step 7 check, retired with Gemini mirror discipline on 2026-05-27 under root CLAUDE.md §K and §K. The following description preserves design lineage.
+
 For each mirror pair per ND.1 MP.1–MP.8: verify the "shape" of the parity-bearing sections on both sides is equivalent (e.g., if Claude-side CLAUDE.md has a "Mandatory reading" block with N items, Gemini-side `.geminirules` has a "Mandatory reading before any work" block with N items — adapted to Gemini's phrasing, not byte-identical). The structural check is: header count, list count, item count per list. Content parity is the mirror-enforcer's job (§J).
 
 **I.3.6 — Registry-row-per-touched-file discipline (per Axis 5)**
@@ -658,9 +674,11 @@ Closes GA.21 (primary — orphan-mutation detection; via I.3.6), GA.17 + GA.18 (
 
 ## §J — MIRROR ENFORCER SPEC
 
+**Historical specification, retired 2026-05-27.** Root CLAUDE.md §K and §K record the ND.1 close-out. This section preserves the former inventory, cadence, commands, pass conditions and report examples for audit lineage. Current sessions use the active controls in §§F, G and P. Manifest parity remains a separate live utility at `platform/src/scripts/manifest/parity_validator.ts`.
+
 ### J.1 — The artifact: `mirror_enforcer.py`
 
-File path: `platform/scripts/governance/mirror_enforcer.py`. Produced by Step 7. Implements native directive **ND.1 — Mirror Discipline as a First-Class Governance Principle** verbatim.
+Historical script path `platform/scripts/governance/mirror_enforcer.py`. The script was removed at the ND.1 retirement recorded in root CLAUDE.md §K and §K.
 
 ### J.2 — Inputs
 
@@ -683,13 +701,13 @@ For each mirror pair (currently MP.1 through MP.8 per PROJECT_ARCHITECTURE_v2_2 
 | **MP.7** | `SESSION_LOG.md` | (none — Claude-only per Step 5A decision) | Claude-only | Same as MP.6. |
 | **MP.8** | `PROJECT_ARCHITECTURE_v2_2.md` | Compact architecture reference in `.geminirules` + `.gemini/project_state.md` | Claude-side | Compare: architecture version pointer (`.geminirules` item #2 and `.gemini/project_state.md` canonical corpus state); five-layer architecture summary (Gemini-side matches PROJECT_ARCHITECTURE §C by layer count and by L0..L4 names); mirror-pair inventory cite (Gemini side references `PROJECT_ARCHITECTURE_v2_2.md §D.11.2` as the architecture-layer first pass). Fail on version disagreement; fail on layer-naming disagreement. |
 
-**Future mirror pairs (MP.9+)**: added to the inventory as new pairs arise (e.g., if a Gemini-side SESSION_LOG-of-convenience is later introduced, MP.7 is re-opened; if a third agent is admitted per MP §3.4.E, new pairs MP.9+ are added with their own enforcement rules). Each new pair is added to CANONICAL_ARTIFACTS + mirror_enforcer.py rule set within the same session that introduces the pair.
+**Historical future-pair proposal (MP.9+)**. Step 7 proposed extending the mirror inventory on future-agent admission. The retired Gemini design creates no current admission or mirror-update obligation.
 
 ### J.4 — Cadence: when the script runs
 
-- **At every session close** as part of the §G checklist — exit code 0 required.
-- **On-demand during session** — if the session-open handshake's `mirror_pair_freshness_check` flags any pair as `stale: true` (defined: `days_since_verification > 1`, enforced strictly because this project's cadence is daily).
-- **Scheduled** — daily at a consistent time (Step 12 ongoing-hygiene deliverable decides exact time; likely end-of-day native-time).
+- **Historical close cadence**. Step 7 required a mirror-enforcer run and exit code 0 at every close.
+- **Historical on-demand cadence**. Step 7 freshness rows could trigger a mirror-enforcer run.
+- **Historical scheduled cadence**. Step 7 proposed a daily run. These Gemini cadences were retired under root CLAUDE.md §K and §K.
 
 The reason enforcement is script-based, not git-hook-based: git hooks assume every change passes through `git`, but the Cowork workflow edits files directly and only commits periodically. A git hook would under-fire relative to the daily session cadence. A script called at every session close + scheduled run covers the real pattern.
 
@@ -821,11 +839,13 @@ Closes ND.1 (secondary — §J is primary; §K implements the disagreement-class
 
 ### L.1 — Version-bump triggers
 
+The Gemini mirror-admission and mirror-cascade references in this revision history are historical under root CLAUDE.md §K and §K. Current governance revisions retain their scope, approval and validation obligations.
+
 The Governance & Integrity Protocol is revised when:
 
 1. A new ND.N directive is issued that requires changes to §J (Mirror enforcer) or §K (Disagreement protocol) or to the axis set §C.
 2. Any Step 7 implementation detail reveals a spec gap (e.g., a required field in §F.2 that `SESSION_OPEN_TEMPLATE` cannot populate) — triggers a spec amendment.
-3. A new mirror pair is admitted (e.g., MP.9 on future-agent admission); §J and §E both update.
+3. Historical trigger — a newly admitted Gemini mirror pair formerly updated §§J and E. ND.1 retirement ended that trigger.
 4. A new canonical-artifact class is admitted (e.g., if a new L4 Discovery Layer artifact class becomes canonical at M2 close); §E schema extends.
 5. An annual red-team of this protocol surfaces defects (≥ 1 CRITICAL or ≥ 3 HIGH) — bump triggered.
 6. A schema-break to CANONICAL_ARTIFACTS itself forces a reference re-alignment in §E, §H, §I, §J.
@@ -840,14 +860,14 @@ Ambiguity resolves upward per MP §3.10.D.
 
 ### L.3 — Approval protocol
 
-Revision → revision-spec artifact (e.g., `GOVERNANCE_INTEGRITY_PROTOCOL_REVISION_SPEC_vX_Y.md`) → red-team on the spec → native approval → version bump → mirror update per §J across all affected surfaces (primarily CLAUDE.md reference to this protocol + `.geminirules` if cross-agent-facing sections change) → STEP_LEDGER entry (rebuild era) or CURRENT_STATE entry (post-rebuild) → SESSION_LOG entry → updated FILE_REGISTRY + GOVERNANCE_STACK rows.
+Revision → revision-spec artifact (e.g., `GOVERNANCE_INTEGRITY_PROTOCOL_REVISION_SPEC_vX_Y.md`) → red-team on the spec → native approval → version bump → updates to affected active governance surfaces → STEP_LEDGER entry (rebuild era) or CURRENT_STATE entry (post-rebuild) → SESSION_LOG entry → updated FILE_REGISTRY + GOVERNANCE_STACK rows. The former §J Gemini mirror cascade is historical under root CLAUDE.md §K and §K.
 
 ### L.4 — Red-team cadence
 
 - **Annual.** This protocol is red-teamed every 12 months regardless of phase state, per MP §IS.8 + §3.10.C. Findings tagged per the Step 1 critique convention (MPC-style) re-used as `GIPRT-style` (Governance Integrity Protocol Red-Team).
 - **On each new ND.N.** A new native directive triggers a targeted red-team of §J + §K + §N for that directive's consumption obligation.
 - **At each macro-phase close.** The phase's red-team includes a governance-integrity-protocol-alignment pass: does the phase's closing state still match this protocol's claims?
-- **On script failure at meaningful rate.** If drift detector / schema validator / mirror enforcer emit > 3 CRITICALs per week over two consecutive weeks, the protocol is red-teamed for whether its enforcement rules are correctly calibrated.
+- **On script failure at meaningful rate.** If the active drift detector or schema validator emits > 3 CRITICALs per week over two consecutive weeks, the protocol is red-teamed for whether its enforcement rules are correctly calibrated. The former mirror-enforcer signal is historical under root CLAUDE.md §K and §K.
 
 ### L.5 — Sunset clause
 
@@ -864,6 +884,8 @@ Frontmatter `status:` carries exactly one of: `DRAFT_PENDING_REDTEAM` / `CURRENT
 ---
 
 ## §M — IMPLEMENTATION HAND-OFF (Step 7 deliverables)
+
+Historical Step 7 deliverables and acceptance criteria follow. Gemini mirror commands, cascade checks and closure mappings in §§M–N preserve the original rebuild record under root CLAUDE.md §K and §K.
 
 This section is the implementable spec for Step 7. A fresh conversation reading only §M (plus the brief cross-references below) can implement the full bundle without re-reading §A–§L. The brief cross-references required are: §C for threat-to-axis mapping; §E for CANONICAL_ARTIFACTS schema; §F for SESSION_OPEN_TEMPLATE schema; §G for SESSION_CLOSE_TEMPLATE schema; §H–§J for the three scripts; §K for DISAGREEMENT_REGISTER.
 

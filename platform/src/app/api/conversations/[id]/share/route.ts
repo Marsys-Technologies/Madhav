@@ -4,6 +4,7 @@ import { getConversation } from '@/lib/conversations'
 import { res } from '@/lib/errors'
 import { getFlag } from '@/lib/config/index'
 import { SHARE_DEFAULT_TTL_DAYS } from '@/lib/share/constants'
+import { listActiveConversationShares } from '@/lib/share/list_active_conversation_shares'
 import { shareMutationLimiter } from '@/lib/share/share_rate_limit'
 
 // Share create/revoke is limited per VERIFIED user (SS N-376 / PR-S4). Call only
@@ -68,10 +69,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     // SS N-383: a conversation can hold several active shares (one per distinct
     // hide-option pair). `share` keeps its old shape (the most recent active share)
     // so existing clients are unaffected; `shares` additively lists all of them.
-    const { rows } = await query<ShareRow>(
-      `SELECT ${SHARE_COLUMNS} FROM conversation_shares WHERE conversation_id=$1 AND ${ACTIVE_SHARE_PREDICATE} ORDER BY created_at DESC`,
-      [id]
-    )
+    const rows = await listActiveConversationShares(id)
 
     // SS N-379: tell the dialog whether hide options are OFFERED on a NEW share.
     // (The share PAGE applies a stored share's options regardless of this flag.)
