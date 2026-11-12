@@ -1007,6 +1007,38 @@ def test_loaded_preamble_keeps_exact_identity_platform_and_three_local_checks(ve
         cc.image(verified_pipeline, False)
 
 
+@pytest.mark.parametrize("change", ["run-comment", "space-after-backslash"])
+def test_loaded_pipeline_rejects_broken_shell_continuations_without_locator_drift(verified_pipeline, change):
+    path = verified_pipeline / cc.DEPLOY
+    lines = path.read_text().splitlines()
+    start = lines.index("      - name: Re-point Cloud Run Job at the new image")
+    command = next(i for i in range(start, len(lines)) if lines[i].strip().startswith("docker run "))
+    assert lines[command].endswith("\\") and lines[command + 1].strip().startswith("-c ")
+
+    def bash_result(smoke):
+        # The stub checks the actual run command's argv; Docker never runs.
+        script = ('local_image=synthetic\n'
+                  'docker() { [[ "$#" == 10 && "${9}" == -c ]]; }\n'
+                  + "\n".join(smoke))
+        return subprocess.run(["/bin/bash", "--noprofile", "--norc", "-e", "-c", script],
+                              env={}, capture_output=True, check=False).returncode
+
+    assert bash_result(lines[command:command + 2]) == 0
+    timeout = cc.task_timeout(verified_pipeline)
+    if change == "run-comment":
+        lines.insert(command + 1, "          # synthetic comment breaks the continued command")
+        assert bash_result(lines[command:command + 3]) != 0
+        del lines[max(i for i in range(start) if not lines[i].strip())]
+    else:
+        lines[command] += " "
+        assert bash_result(lines[command:command + 2]) != 0
+    assert timeout["source"] == f"{cc.DEPLOY}:2543"
+    assert lines[2542].strip() == "--task-timeout=86400 \\"
+    path.write_text("\n".join(lines) + "\n")
+    with pytest.raises(cc.ContractError, match="physically contiguous"):
+        cc.task_timeout(verified_pipeline)
+
+
 @pytest.mark.parametrize(("old", "new"), [
     ("type=docker", "type=registry"),
     ("type=provenance,mode=max", "type=provenance,mode=min"),

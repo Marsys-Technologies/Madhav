@@ -538,6 +538,12 @@ def _pipeline_repoint(root: Path, *, job_name: str, region: str) -> tuple[str, d
     body = [(i, line.strip()) for i, line in repoint[1:]]
     loaded = bool(body and body[0][1] == _LOADED_REPOINT_PREAMBLE[0])
     if loaded:
+        # A run-block comment or whitespace after a backslash changes Bash
+        # argv even when the normalized YAML lines look exactly as reviewed.
+        first = repoint[0][0]
+        if any(number != first + offset or workflow[number - 1] != line
+               for offset, (number, line) in enumerate(repoint)):
+            raise ContractError(f"{DEPLOY}: the loaded Pipeline repoint commands must be physically contiguous")
         if [line for _, line in body[:len(_LOADED_REPOINT_PREAMBLE)]] != list(_LOADED_REPOINT_PREAMBLE):
             raise ContractError(f"{DEPLOY}: unexpected Pipeline local image checks")
         body = body[len(_LOADED_REPOINT_PREAMBLE):]
