@@ -280,7 +280,7 @@ jobs:
             -n /app/platform/python-sidecar/scripts/kala_gochara_cutover/century_run_4_1.sh
           docker run --rm --entrypoint python brahma-pipeline:pr-check \
             -c "import sys; sys.path.insert(0, '/app/platform/python-sidecar/scripts/kala_gochara_cutover'); import common; print('cutover common OK:', common.__file__)"
-
+      - {name: Check Bodha files, run: python3 platform/scripts/governance/check_bodha_loaded_image_membership.py}
   # ── Deploy gate + path-change detection ─────────────────────────────────────
   # Runs only on workflow_run success or manual dispatch (same guard as deploy
   # jobs). pull_request events never reach this job. Fallback: if HEAD~1
