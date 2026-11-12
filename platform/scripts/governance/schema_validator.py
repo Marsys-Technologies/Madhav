@@ -592,7 +592,7 @@ def validate_handshake_yaml(
         "tool_profile", "worktree_path", "coordination", "cross_tool_state_read",
         "predecessor_session",
         "mandatory_reading_confirmation", "canonical_artifact_fingerprint_check",
-        "declared_scope", "mirror_pair_freshness_check", "native_directive_obligations",
+        "declared_scope", "native_directive_obligations",
         "red_team_due",
     ]
     for key in required:

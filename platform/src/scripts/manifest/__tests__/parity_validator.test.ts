@@ -397,7 +397,7 @@ describe('runParityCheck — PASS scenario', () => {
     expect(report.summary.missing_from_manifest).toBe(0)
   })
 
-  it('does NOT fail on missing_mirror_pairs alone', () => {
+  it('retains retired mirror rows as informational compatibility data', () => {
     const { artifacts, mirrorPairs } = parseCanonicalArtifacts(SAMPLE_CA_TEXT)
     const manifest = makeSampleManifest([
       FORENSIC_ENTRY, LEL_ENTRY, MSR_ENTRY,
@@ -423,10 +423,11 @@ describe('runParityCheck — PASS scenario', () => {
     if (hardFailCount === 0 && report.summary.canonical_id_mismatches === 0) {
       expect(report.parity_status).toBe('PASS')
     }
-    // missing_mirror_pairs are present but documented as expected
+    // Historical rows retain the legacy report shape and retired applicability.
     expect(report.summary.missing_mirror_pairs).toBe(2)
     const mirrorDrifts = report.drift_details.filter(d => d.drift_mode === 'missing_mirror_pair')
-    expect(mirrorDrifts[0].detail).toContain('EXPECTED DRIFT')
+    expect(mirrorDrifts[0].detail).toContain('retired on 2026-05-27')
+    expect(mirrorDrifts[0].detail).not.toContain('Stream G')
   })
 })
 

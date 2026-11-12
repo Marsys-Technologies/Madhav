@@ -180,6 +180,7 @@ export default async function ConsultPage({
       exportEnabled={exportEnabled}
       tokensEnabled={tokensEnabled}
       capabilityGateState={capabilityGateState}
+      buildPreparationHref={access.canBuild ? cockpitHref : undefined}
     />
     </div>
   )

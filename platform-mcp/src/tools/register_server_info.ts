@@ -1,47 +1,29 @@
-/**
- * tools/register_server_info.ts — EL-13 (tool-catalog caching).
- *
- * A global, chart-agnostic, no-entitlement tool exposing this MCP server's own metadata:
- * name/version, and (EL-13) `catalog_version` + `tools_changed_at` so a client can cache the
- * tool catalog across sessions instead of re-listing it every time, and know reliably when it
- * must invalidate that cache. See resources/mcp_catalog_version.ts for the version/timestamp
- * derivation and its honesty caveats (B.10 — tools_changed_at is best-effort, never fabricated).
- *
- * Registered BEFORE applyProfileGate in server.ts (same reasoning as prashna_ask/
- * prashna_status): server metadata must be reachable under every MCP surface profile
- * (full/compact/consult), not just the ones the generated MCP_SURFACE_PROFILES manifest lists
- * it under — a 'consult'-profile client still needs to detect catalog staleness.
- *
- * `client_catalog_version` (optional input) mirrors register_vidhi_plan.ts's
- * `client_catalog_version` handshake: when a caller presents its cached version and it no
- * longer matches the live one, the response flags `stale: true` AND (if the SDK transport is
- * connected) emits a `notifications/tools/list_changed` on this request's server, so a
- * compliant host re-fetches tools/resources/prompts (SDK support for this notification is
- * CONFIRMED — see server.sendToolListChanged(), already used by
- * resources/vidhi/capability_version.ts's notifyIfCapabilityStale).
- */
+/** Global metadata for this request's post-gate served descriptors; no tool-call authority. */
 import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import {
-  MCP_CATALOG_VERSION,
+  captureServedCatalog, SERVED_CATALOG_UNAVAILABLE, type ServedCatalogReader, type ServedCatalogSnapshot,
   RETRIEVAL_REGISTRY_PROFILE_TOTAL, RETRIEVAL_REGISTRY_PROFILE_GENERATED_AT,
   MCP_CATALOG_TOOLS_CHANGED_AT, MCP_CATALOG_TOOLS_CHANGED_AT_NOTE,
-  notifyIfCatalogStale, censusServedTools,
+  notifyIfCatalogStale,
 } from '../resources/mcp_catalog_version.js'
 
 export const MCP_SERVER_NAME = 'marsys-jis'
 export const MCP_SERVER_VERSION = '1.0.0'
 
-export function registerServerInfoTool(server: McpServer): void {
+export function registerServerInfoTool(
+  server: McpServer,
+  readCatalog: ServedCatalogReader = () => captureServedCatalog(server),
+): void {
   server.tool(
     'mcp_server_info',
     'Server + tool-catalog metadata for this MCP server. EL-13: pass your cached ' +
       '`client_catalog_version` to check staleness in the same call — the response reports ' +
       '`stale` and, when stale, emits a `tools/list_changed` notification so a compliant host ' +
       're-fetches the tool list. `catalog_version` is the field to CACHE and compare on your ' +
-      'next session; `tools_changed_at` is a best-effort, non-authoritative timestamp (see ' +
+      'next session; `tools_changed_at` is null unless an attributable served change time exists (see ' +
       '`tools_changed_at_note` for its caveats) — never treat it as precise. `tool_count` is ' +
-      'measured live from this request\'s own tool registry and equals the length of your ' +
+      'measured live from this request\'s own tool descriptors and equals the length of your ' +
       'tools/list response; `retrieval_registry_profile_total` is a dated build-time figure ' +
       'over a different population and is NOT the served catalog size.',
     {
@@ -51,18 +33,26 @@ export function registerServerInfoTool(server: McpServer): void {
     },
     async (args) => {
       const { client_catalog_version } = args as { client_catalog_version?: string }
-      const staleness = notifyIfCatalogStale(client_catalog_version, server)
-      // DVA Ruling 25 — `tool_count` is LIVE-DERIVED from this request's own MCP server
-      // registry (the object tools/list enumerates), measured at call time so every gate
-      // in server.ts has already run. It is never back-filled from the generated manifest:
-      // that figure counts a different population and is reported separately below.
-      const served = censusServedTools(server)
+      let served: ServedCatalogSnapshot
+      try { served = readCatalog() } catch { served = { ok: false, code: SERVED_CATALOG_UNAVAILABLE } }
+      if (!served || !served.ok) {
+        const unavailable = {
+          error: { code: SERVED_CATALOG_UNAVAILABLE, message: 'Served tool catalog is unavailable.' },
+          tool_count: null, catalog_version: null, stale: null, list_changed_notified: false,
+        }
+        return {
+          isError: true,
+          structuredContent: { type: 'object' as const, object: unavailable },
+          content: [{ type: 'text' as const, text: JSON.stringify(unavailable) }],
+        }
+      }
+      const staleness = await notifyIfCatalogStale(client_catalog_version, served, server)
       const payload = {
         name: MCP_SERVER_NAME,
         version: MCP_SERVER_VERSION,
-        catalog_version: MCP_CATALOG_VERSION,
+        catalog_version: served.version,
         tool_count: served.count,
-        tool_count_note: served.note,
+        tool_count_note: 'Exact SDK1.29 tools/list descriptor projection after all request gates; profile-scoped.',
         retrieval_registry_profile_total: RETRIEVAL_REGISTRY_PROFILE_TOTAL,
         retrieval_registry_profile_generated_at: RETRIEVAL_REGISTRY_PROFILE_GENERATED_AT,
         retrieval_registry_profile_note:

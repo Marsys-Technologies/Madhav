@@ -1,6 +1,7 @@
 import { FEATURE_FLAGS } from '@/lib/config/feature_flags'
 import { getServerUser } from '@/lib/firebase/server'
 import { resolveChartPageAccess } from '@/lib/auth/chart-page-guard'
+import { requireChartPermission } from '@/lib/auth/requireChartPermission'
 import { query } from '@/lib/db/client'
 import { redirect, notFound } from 'next/navigation'
 import { ConsumeChat } from '@/components/consume/ConsumeChat'
@@ -73,10 +74,18 @@ export default async function ConsultConversationPage({
   // crashed this server-component render for EVERY chart. We do NOT resurrect the
   // table: resolve an empty result so the page always renders and ConsumeChat
   // receives no legacy domain reports (content comes from the live retrieval path).
-  const [reportsResult, conversations, messages] = await Promise.all([
+  // A saved conversation's legacy client check permits viewing. Use the current
+  // write decision for the preparation link, on this signed actor and chart.
+  const [reportsResult, conversations, messages, canBuild] = await Promise.all([
     Promise.resolve({ rows: [] as unknown[] }),
     listConversations({ chartId: id, userId: user.uid, module: 'consume' }),
     loadConversationMessagesV2(conversationId),
+    requireChartPermission({
+      uid: user.uid,
+      role: isSuperAdmin ? 'super_admin' : 'guest',
+      chartId: id,
+      access: 'write',
+    }).then(denied => denied === null, () => false),
   ])
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const reports = reportsResult.rows as any[]
@@ -102,6 +111,7 @@ export default async function ConsultConversationPage({
         module: c.module,
       }))}
       currentConversationId={conversationId}
+      buildPreparationHref={canBuild ? `/clients/${encodeURIComponent(id)}/nirmana` : undefined}
       initialMessages={messages}
       panelModeEnabled={panelModeEnabled}
       costVisibilityEnabled={costVisibilityEnabled}

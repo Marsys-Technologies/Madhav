@@ -1011,12 +1011,16 @@ export async function runMigrations(
     const transactionSql = transactionalMigrationSql(sql, file.name)
     await client.query('BEGIN')
     try {
-      // Absorbing a historical COMMIT also retains SET LOCAL ROLE. Restore the
-      // entry role for runner bookkeeping without committing the migration DDL.
-      // Preserve an existing SET ROLE too: RESET ROLE would select session_user.
-      const entryRole = await client.query<{ role: string }>("SELECT current_setting('role') AS role")
+      // Absorbing a historical COMMIT retains the file's role/search_path changes.
+      // Restore both entry settings before ledger writes, at SESSION scope so
+      // the file's SET SESSION cannot reappear after COMMIT. SET LOCAL also works.
+      // Preserve an existing SET ROLE: RESET ROLE would select session_user.
+      const entrySettings = await client.query<{ role: string; search_path: string }>(
+        "SELECT current_setting('role') AS role, current_setting('search_path') AS search_path"
+      )
       await client.query(transactionSql)
-      await client.query("SELECT set_config('role', $1, true)", [entryRole.rows[0].role])
+      await client.query("SELECT pg_catalog.set_config('role', $1, false)", [entrySettings.rows[0].role])
+      await client.query("SELECT pg_catalog.set_config('search_path', $1, false)", [entrySettings.rows[0].search_path])
       await client.query(
         'INSERT INTO _migrations_applied (filename, sha256, sql_identity) VALUES ($1, $2, $3)',
         [file.name, sha256, identity]

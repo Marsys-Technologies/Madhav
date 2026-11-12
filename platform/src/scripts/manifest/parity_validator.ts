@@ -372,9 +372,8 @@ export function runParityCheck(
     }
   }
 
-  // Mirror-pair check — check whether manifest_overrides.yaml has mirror_pairs section.
-  // Stream G adds that section; at this time it does not exist, so all pairs will be
-  // flagged as expected drift (NOT a validator bug per brief).
+  // Mirror pairs are historical compatibility records after the ND.1 retirement.
+  // Preserve the report fields and informational rows for older registry snapshots.
   const missingMirrorPairIds: string[] = []
   for (const pair of mirrorPairs) {
     missingMirrorPairIds.push(pair.pair_id)
@@ -386,9 +385,9 @@ export function runParityCheck(
         `(claude_side="${pair.claude_side}", ` +
         `gemini_side="${pair.gemini_side ?? 'null'}", ` +
         `mode="${pair.mirror_mode}") ` +
-        `is NOT represented in manifest_overrides.yaml mirror_pairs section. ` +
-        `EXPECTED DRIFT at Phase 1B / Stream F: Stream G adds the mirror_pairs section. ` +
-        `This is not a validator bug.`,
+        `is retained as historical compatibility data. ` +
+        `Gemini mirror discipline retired on 2026-05-27 under root CLAUDE.md §K. ` +
+        `This row remains informational.`,
     })
   }
 
@@ -458,7 +457,7 @@ async function main(): Promise<void> {
   console.log(`  missing_from_manifest:           ${report.summary.missing_from_manifest}`)
   console.log(`  version_mismatches:              ${report.summary.version_mismatches}`)
   console.log(`  canonical_id_mismatches:         ${report.summary.canonical_id_mismatches}`)
-  console.log(`  missing_mirror_pairs (expected): ${report.summary.missing_mirror_pairs}`)
+  console.log(`  missing_mirror_pairs (legacy): ${report.summary.missing_mirror_pairs}`)
 
   if (report.drift_details.length > 0) {
     const hardFails = report.drift_details.filter(d => d.drift_mode !== 'missing_mirror_pair')
@@ -469,8 +468,8 @@ async function main(): Promise<void> {
         console.log(`    ${d.detail}`)
       }
     }
-    console.log(`\n[manifest:validate-parity] Expected drift (missing_mirror_pairs): ${report.summary.missing_mirror_pairs} pairs`)
-    console.log('  (Stream G will add mirror_pairs section to manifest_overrides.yaml)')
+    console.log(`\n[manifest:validate-parity] Historical compatibility (missing_mirror_pairs): ${report.summary.missing_mirror_pairs} pairs`)
+    console.log('  Gemini mirror discipline retired on 2026-05-27 under root CLAUDE.md §K.')
   }
 
   console.log(`\n[manifest:validate-parity] Report written to: ${OUTPUT_PATH}`)
