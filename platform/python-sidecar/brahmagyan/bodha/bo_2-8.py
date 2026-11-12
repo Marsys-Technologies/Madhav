@@ -196,8 +196,7 @@ async def holistic_bundle_async(chart_id: str) -> dict[str, Any]:
         }
     """
     queried_at = datetime.now(timezone.utc).isoformat()
-    subsystems_ok: list[str] = []
-    subsystems_errored: list[str] = []
+    subsystem_outcomes: dict[str, bool] = {}
 
     signals: list[dict] = []
     graph_edges: list[dict] = []
@@ -232,11 +231,11 @@ async def holistic_bundle_async(chart_id: str) -> dict[str, Any]:
     async def safe(name: str, coro):
         try:
             result = await coro
-            subsystems_ok.append(name)
+            subsystem_outcomes[name] = True
             return result
         except Exception as e:
             logger.warning("[bo_2-8] subsystem %s failed: %s", name, e)
-            subsystems_errored.append(name)
+            subsystem_outcomes[name] = False
             return []
 
     try:
@@ -266,8 +265,8 @@ async def holistic_bundle_async(chart_id: str) -> dict[str, Any]:
         "provenance_envelope": {
             "chart_id": chart_id,
             "queried_at": queried_at,
-            "subsystems_ok": subsystems_ok,
-            "subsystems_errored": subsystems_errored,
+            "subsystems_ok": [name for name, ok in subsystem_outcomes.items() if ok],
+            "subsystems_errored": [name for name, ok in subsystem_outcomes.items() if not ok],
             "signal_count": len(signals),
             "graph_edge_count": len(graph_edges),
             "domain_link_count": len(domain_links),

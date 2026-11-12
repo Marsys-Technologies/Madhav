@@ -19,8 +19,8 @@
  * overclaim, zero live rows, same defect class as get_graha_yuddha.ts's own hardcoded
  * zero-row category. `nakshatra_cross_ayanamsha` was already correctly present here.
  */
+import { queryFactCollection } from './fact_collection'
 import type { CapabilityDescriptor } from '../../types'
-import { query } from '@/lib/db/client'
 import {
   resolveHandlerAyanamsha, resolveKpFrameAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho,
   planKpCategories, pushMixedKpAyanamshaFilter, labelKpFrameRows, mixedKpFrameEcho,
@@ -125,7 +125,7 @@ export const getNakshatraCapability: CapabilityDescriptor = {
       // an order ending at fact_key leaves ties that sort unstably across LIMIT/OFFSET pages.
       sql += ` ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_subject, fact_key, formula_id NULLS FIRST, fact_id LIMIT $3 OFFSET $4`
 
-      const result = await query<Record<string, unknown>>(sql, params)
+      const result = await queryFactCollection<Record<string, unknown>>(sql, params)
       const narrated = normalizeNarrationRows(result.rows)
       const rows = kpOnly ? labelKpFrameRows(narrated, true) : mixed ? labelKpFrameRows(narrated) : narrated
       const mixedEcho = mixed ? mixedKpFrameEcho(args, plan.kp, rows.some((r) => r['frame_label'] !== undefined)) : null

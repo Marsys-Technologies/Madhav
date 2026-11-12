@@ -26,8 +26,8 @@
  * get_sensitive_degrees / sensitive_point_yogi; use this surface when the
  * multi-formula comparison itself (or the other 18 categories) is what's needed.
  */
+import { queryFactCollection } from './fact_collection'
 import type { CapabilityDescriptor } from '../../types'
-import { query } from '@/lib/db/client'
 import { planKpAwareRead, ayanamshaServeOrderBy, KP_AWARE_AYANAMSHA_ID_TEXT } from '../../handler_ayanamsha'
 import { CITATION_HUMAN_SELECT, normalizeNarrationRows } from './citation_narration'
 
@@ -121,7 +121,7 @@ export const getSensitivePointsCapability: CapabilityDescriptor = {
       sql += kp.filter(params)
       sql += ` ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_key, formula_id LIMIT $3 OFFSET $4`
 
-      const result = await query<Record<string, unknown>>(sql, params)
+      const result = await queryFactCollection<Record<string, unknown>>(sql, params)
       const rows = kp.label(normalizeNarrationRows(result.rows))
 
       // ── Multi-formula disclosure (WP-1.8) ────────────────────────────────────────

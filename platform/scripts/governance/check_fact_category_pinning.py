@@ -259,6 +259,22 @@ _RE_CATEGORY_COUNTS = re.compile(
     r"\bGROUP\s+BY\s+fact_category\s*(?:ORDER\s+BY\s+fact_category)?\s*$",
     re.IGNORECASE | re.DOTALL,
 )
+_RE_FACT_IDENTITY_PROJECTION = re.compile(
+    r"^SELECT\s+fact_id\s*,\s*"
+    r"(?:fact_category\s*,\s*)?fact_subject\s+FROM\s+chart_facts\b",
+    re.IGNORECASE,
+)
+_RE_FACT_INVENTORY_DIGEST = re.compile(
+    r"SELECT a\.ayanamsha_id, COUNT\(c\.fact_id\) AS n, "
+    r"encode\(sha256\(convert_to\(string_agg\(concat_ws\(\?, c\.fact_subject, "
+    r"c\.fact_key, COALESCE\(c\.fact_value_num::text, \?\)\), "
+    r"E\? ORDER BY c\.fact_subject COLLATE \"C\", c\.fact_key COLLATE \"C\", "
+    r"c\.fact_value_num\), \?\)\), \?\) AS digest "
+    r"FROM \(SELECT DISTINCT ayanamsha_id FROM chart_facts WHERE chart_id = %s\) a "
+    r"LEFT JOIN chart_facts c ON c\.chart_id = %s AND c\.ayanamsha_id = a\.ayanamsha_id "
+    r"AND c\.fact_category = \? GROUP BY a\.ayanamsha_id ORDER BY a\.ayanamsha_id",
+    re.IGNORECASE,
+)
 _RE_CTE_START = re.compile(r"([a-z_]\w*)\s+AS\s*\(", re.IGNORECASE)
 _RE_CROSS_JOIN = re.compile(
     r"SELECT\s+(?:1|[a-z_]\w*\.\*,\s*[a-z_]\w*\.total)"
@@ -315,9 +331,11 @@ def _cannot_select_measurement(sql: str) -> bool:
     compound, commented and nested SQL to the ordinary check.
     """
     sql = sql.strip().removesuffix(";").rstrip()
+    structure = _RE_SQL_STRING.sub("?", sql)
+    if not any(char in sql for char in "{}") and _RE_FACT_INVENTORY_DIGEST.fullmatch(" ".join(structure.split())):
+        return True
     if any(char in sql for char in "\\{}") or re.search(r"\$(?:[a-z_]\w*)?\$", sql, re.IGNORECASE):
         return False
-    structure = _RE_SQL_STRING.sub("?", sql)
     if _RE_SQL_COMPLEX.search(structure):
         return False
     if _is_zero_row_cross_join(structure):
@@ -330,6 +348,9 @@ def _cannot_select_measurement(sql: str) -> bool:
         _RE_ZERO_ROWS.search(structure)
         or _RE_MEASUREMENT_FREE_PROJECTION.match(structure)
         or _RE_CATEGORY_COUNTS.fullmatch(structure)
+        or (_RE_FACT_IDENTITY_PROJECTION.match(structure) and not re.search(
+            r"\b(?:limit|offset|fetch|distinct|group|having)\b", structure, re.IGNORECASE
+        ))
     )
 
 
@@ -462,10 +483,146 @@ def _python_docstring_spans(text: str) -> list[tuple[int, int]]:
     return spans
 
 
+def _method_call(node: ast.AST | None, name: str) -> bool:
+    return isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == name
+
+
+def _collection_fetches(tree: ast.AST, line: int, sql: str) -> bool:
+    """Recognize flat keyed reads consumed as complete collections in one scope.
+
+    The fetch result must have a single consumer: a loop or a list comprehension
+    that retains or interprets fact_key. A subscript, alias, early return or
+    cursor reused for another query falls through to ordinary lint.
+    """
+    projection = re.match(r"\s*SELECT\s+([a-z_,\s]+?)\s+FROM\s+chart_facts\s+WHERE\b", sql, re.I)
+    if not projection or "fact_key" not in {col.strip().lower() for col in projection[1].split(",")}:
+        return False
+    structure = _RE_SQL_STRING.sub("?", sql)
+    if len(_RE_SQL_SELECT.findall(structure)) != 1 or re.search(
+        r"""[;"`'\\{}]|--|/\*|\b(?:distinct|limit|offset|fetch|group|having|union|intersect|except|join)\b""",
+        structure, re.I,
+    ):
+        return False
+
+    for scope in ast.walk(tree):
+        if not isinstance(scope, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        annotation = scope.returns
+        if not (
+            isinstance(annotation, ast.Subscript)
+            and isinstance(annotation.value, ast.Name)
+            and annotation.value.id in {"dict", "list"}
+        ):
+            continue
+        nodes = list(ast.walk(scope))
+        executes = [
+            node for node in nodes
+            if _method_call(node, "execute") and node.args
+            and isinstance(node.args[0], ast.Constant) and node.args[0].lineno == line
+        ]
+        if len(executes) != 1:
+            continue
+        execute = executes[0]
+        cursors = [
+            target.id
+            for node in nodes
+            if isinstance(node, ast.Assign) and node.value is execute
+            for target in node.targets if isinstance(target, ast.Name)
+        ]
+        if isinstance(execute.func.value, ast.Name):
+            cursors.append(execute.func.value.id)
+        for node in nodes:
+            if not isinstance(node, ast.Assign) or len(node.targets) != 1:
+                continue
+            target = node.targets[0]
+            fetch = node.value
+            if not isinstance(target, ast.Name) or not _method_call(fetch, "fetchall") or fetch.end_lineno < line:
+                continue
+            cursor = fetch.func.value
+            if cursor is not execute:
+                if not isinstance(cursor, ast.Name) or cursor.id not in cursors:
+                    continue
+                if any(
+                    isinstance(ref, ast.Name) and isinstance(ref.ctx, ast.Load)
+                    and ref.id == cursor.id and ref not in (cursor, execute.func.value)
+                    for ref in nodes
+                ):
+                    continue
+            return _consumes_keyed_collection(nodes, target)
+    return False
+
+
+def _consumes_keyed_collection(nodes: list[ast.AST], binding: ast.Name) -> bool:
+    refs = [node for node in nodes if isinstance(node, ast.Name) and node.id == binding.id]
+    uses = [node for node in refs if node is not binding]
+    if len(uses) != 1 or not isinstance(uses[0].ctx, ast.Load):
+        return False
+    consumers = [
+        node for node in nodes
+        if (isinstance(node, ast.For) and node.iter is uses[0])
+        or (isinstance(node, ast.ListComp) and len(node.generators) == 1 and node.generators[0].iter is uses[0])
+    ]
+    assignments = [
+        (target, node.value)
+        for node in nodes if isinstance(node, (ast.Assign, ast.AnnAssign))
+        for target in (node.targets if isinstance(node, ast.Assign) else [node.target])
+        if isinstance(target, ast.Name)
+    ]
+    collections = {
+        target.id for target, value in assignments if isinstance(value, (ast.List, ast.Dict, ast.ListComp))
+    } - {
+        target.id for target, value in assignments if not isinstance(value, (ast.List, ast.Dict, ast.ListComp))
+    }
+    for consumer in consumers:
+        if not all(
+            node.value is None or (isinstance(node.value, ast.Name) and node.value.id in collections)
+            or node.value is consumer
+            or isinstance(node.value, ast.List) and not node.value.elts
+            for node in nodes if isinstance(node, ast.Return) and node.lineno >= binding.lineno
+        ):
+            return False
+        body = list(ast.walk(consumer))
+        if isinstance(consumer, ast.For):
+            if any(isinstance(node, (ast.Break, ast.Return, ast.Yield, ast.YieldFrom)) for node in body):
+                return False
+        else:
+            # Column names can be declared next to the fetch and passed to zip
+            # for drivers that return tuples instead of row mappings.
+            column_bindings = {
+                node.targets[0].id
+                for node in nodes
+                if isinstance(node, ast.Assign) and len(node.targets) == 1
+                and isinstance(node.targets[0], ast.Name) and isinstance(node.value, (ast.List, ast.Tuple))
+                and all(isinstance(item, ast.Constant) and isinstance(item.value, str) for item in node.value.elts)
+                and any(item.value == "fact_key" for item in node.value.elts)
+            }
+            if any(
+                isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+                and node.func.id == "zip" and len(node.args) == 2
+                and isinstance(node.args[0], ast.Name) and node.args[0].id in column_bindings
+                and isinstance(consumer.generators[0].target, ast.Name)
+                and isinstance(node.args[1], ast.Name) and node.args[1].id == consumer.generators[0].target.id
+                for node in body
+            ):
+                return True
+        if any(
+            isinstance(node, ast.Subscript) and isinstance(node.slice, ast.Constant)
+            and node.slice.value == "fact_key"
+            or isinstance(node, (ast.List, ast.Tuple))
+            and any(isinstance(item, ast.Constant) and item.value == "fact_key" for item in node.elts)
+            for node in body
+        ):
+            # Collection-producing comprehensions and the reviewed loop forms
+            # leave the result available to their caller as an array or keyed map.
+            return True
+    return False
+
+
 def scan_python_text(text: str) -> List[tuple]:
     """Return list of (line, snippet) for unsafe fact_category SQL blocks."""
     hits: List[tuple] = []
     docstrings = None
+    tree = None
     for m in _PY_STRING_RE.finditer(text):
         content = next((g for g in m.groups() if g is not None), "")
         if not content or "chart_facts" not in content.lower():
@@ -473,9 +630,15 @@ def scan_python_text(text: str) -> List[tuple]:
         if _is_unsafe_sql_block(content):
             if docstrings is None:
                 docstrings = _python_docstring_spans(text)
+                try:
+                    tree = ast.parse(text)
+                except SyntaxError:
+                    pass
             if any(start <= m.start() and m.end() <= end for start, end in docstrings):
                 continue
             line = text.count("\n", 0, m.start()) + 1
+            if tree is not None and _collection_fetches(tree, line, content):
+                continue
             snippet = " ".join(content.split())[:160]
             hits.append((line, snippet))
     return hits
@@ -487,6 +650,64 @@ def scan_python_text(text: str) -> List[tuple]:
 
 _TS_CALL_RE = re.compile(r"\.(find|filter)\s*\(")
 _RE_SORT_BEFORE = re.compile(r"\.sort\s*\(\s*[^)]*\)\s*(\.[a-zA-Z_]+\([^)]*\)\s*)*$")
+_TS_TRIVIA_RE = re.compile(
+    r"`[^`]*`|//[^\n]*|/\*.*?\*/|'(?:[^'\\\n]|\\.)*'|\"(?:[^\"\\\n]|\\.)*\"",
+    re.DOTALL,
+)
+_TS_COLLECTION_CALL = r"\bqueryFactCollection(?:<[\w\s,<>]+>)?\(\s*"
+_TS_COLLECTION_IMPORT = "import { queryFactCollection } from './fact_collection'"
+
+
+def _collection_query_templates(text: str) -> set[int]:
+    """Bind the SQL literal to the registry's validated collection executor.
+
+    Accept direct arguments or a single local SQL binding whose only other
+    references append fragments. A second call, reassignment, alias, or raw
+    query falls through to ordinary lint. The executor checks the final SQL,
+    including all appended fragments and interpolations, before it runs.
+    """
+    imports = list(re.finditer(rf"^{re.escape(_TS_COLLECTION_IMPORT)}$", text, re.MULTILINE))
+    if len(imports) != 1:
+        return set()
+
+    trivia = list(_TS_TRIVIA_RE.finditer(text))
+    code = _TS_TRIVIA_RE.sub(lambda m: re.sub(r"[^\n]", " ", m[0]), text)
+    if not re.fullmatch(r"import \{ queryFactCollection \} from +", code[imports[0].start():imports[0].end()]):
+        return set()
+    calls = list(re.finditer(_TS_COLLECTION_CALL, code))
+    if len(calls) != 1 or len(re.findall(r"\bqueryFactCollection\b", code)) != 2:
+        return set()
+    call = calls[0]
+    certified: set[int] = set()
+    for token in trivia:
+        if not token[0].startswith("`") or not _RE_SELECT_FROM_CHART_FACTS.search(token[0]):
+            continue
+        if _RE_LIMIT_1.search(_RE_SQL_STRING.sub("?", token[0])) or _RE_DISTINCT_ON.search(token[0]):
+            continue
+        if (
+            call.start() < token.start() < call.end()
+            and re.search(r"\(\s*$", text[call.start():token.start()])
+            and code[call.end():].startswith(",")
+        ):
+            certified.add(token.start())
+            continue
+        before = code[code.rfind("\n", 0, token.start()) + 1:token.start()]
+        binding = re.fullmatch(r"\s*(?:const|let)\s+(\w+)\s*=\s*", before)
+        if not binding:
+            continue
+        name = binding[1]
+        argument = re.match(rf"{re.escape(name)}\s*,", code[call.end():])
+        if not argument or call.start() < token.end():
+            continue
+        binding_start = token.start() - len(before) + binding.start(1)
+        uses = re.finditer(rf"\b{re.escape(name)}\b", code)
+        if all(
+            use.start() in (binding_start, call.end())
+            or token.end() <= use.start() < call.start() and re.match(r"\s*\+=", code[use.end():])
+            for use in uses
+        ):
+            certified.add(token.start())
+    return certified
 
 
 def _extract_balanced(text: str, open_paren_idx: int) -> tuple:
@@ -520,7 +741,9 @@ def _has_sort_before(text: str, call_start: int) -> bool:
     return ".sort(" in window
 
 
-def scan_ts_sql_text(text: str, probe_fragments: dict[str, str] | None = None) -> List[tuple]:
+def scan_ts_sql_text(
+    text: str, probe_fragments: dict[str, str] | None = None, *, registry_collection: bool = False
+) -> List[tuple]:
     """Return (line, kind, snippet) for unsafe chart_facts SQL in TS template literals.
 
     scan_ts_text below only ever inspected `.find(...)` / `.filter(...)[0]` over
@@ -533,7 +756,10 @@ def scan_ts_sql_text(text: str, probe_fragments: dict[str, str] | None = None) -
     one rule, two host languages, so the SQL rule cannot drift between them.
     """
     hits: List[tuple] = []
+    collection_templates = _collection_query_templates(text) if registry_collection else set()
     for m in re.finditer(r"`[^`]*`", text, re.S):
+        if m.start() in collection_templates:
+            continue
         sql = m.group(0)
         before_template = text[text.rfind("\n", 0, m.start()) + 1:m.start()]
         if probe_fragments and re.fullmatch(r"\s*sql:\s*", before_template):
@@ -641,7 +867,8 @@ def scan_repo(root: Path, py_globs: Sequence[str], ts_globs: Sequence[str]) -> L
             )
 
         probe_fragments = _probe_fragments(root, text) if path == root / _PROBE_SOURCE else None
-        for line, kind, snippet in scan_ts_sql_text(text, probe_fragments):
+        registry_collection = path.parent == root / _REGISTRY / "layers/L1_ganita"
+        for line, kind, snippet in scan_ts_sql_text(text, probe_fragments, registry_collection=registry_collection):
             violations.append(
                 Violation(
                     file=rel,
@@ -803,6 +1030,39 @@ def run_self_test() -> int:
     allowed, new = partition_allowlisted([hit, hit], [{"file": hit.file, "pattern": "SELECT"}])
     if allowed != [hit] or new != [hit]:
         failures.append("A new occurrence must not inherit an existing query's exception")
+
+    keyed_sql = unpinned_sql.replace("fact_id", "fact_id, fact_key, fact_value_num")
+    reader = (
+        f'def read(conn) -> list[dict]:\n    rows = conn.execute("""{keyed_sql}""").fetchall()\n'
+        '    return [{"fact_key": row["fact_key"], "value": row["fact_value_num"]} for row in rows]\n'
+    )
+    if scan_python_text(reader):
+        failures.append("A complete keyed projection must pass")
+    for unsafe in (
+        reader.replace("for row in rows]", "for row in rows[:1]]"),
+        reader.replace(".fetchall()", ".fetchone()"),
+        reader.replace(keyed_sql, keyed_sql + " ORDER BY fact_value_num LIMIT 1"),
+        reader.replace('return [{"fact_key": row["fact_key"], "value": row["fact_value_num"]} for row in rows]',
+                       'return rows[0]'),
+    ):
+        if not scan_python_text(unsafe):
+            failures.append(f"A scalar Python consumer escaped lint: {unsafe}")
+
+    collection = (
+        _TS_COLLECTION_IMPORT + f'\nlet sql = `{keyed_sql}`\n'
+        'sql += ` ORDER BY fact_key LIMIT $2 OFFSET $3`\n'
+        'await queryFactCollection<Row>(sql, params)\n'
+    )
+    if scan_ts_sql_text(collection, registry_collection=True):
+        failures.append("The collection executor must qualify its own SQL input")
+    for unsafe in (
+        collection + 'await query(sql, params)\n',
+        collection.replace('await queryFactCollection<Row>', '// await queryFactCollection<Row>'),
+        collection.replace(keyed_sql, keyed_sql + " ORDER BY fact_value_num LIMIT 1"),
+        collection.replace("./fact_collection", "./unchecked"),
+    ):
+        if not scan_ts_sql_text(unsafe, registry_collection=True):
+            failures.append(f"SQL without a collection boundary escaped lint: {unsafe}")
 
     for fixture in sorted(pass_dir.iterdir()):
         if not fixture.is_file():

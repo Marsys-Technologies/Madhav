@@ -5,6 +5,7 @@
  *         and l1_tajik_varsha_year_lords (separate table)
  * Tool: marsys://tool/L1/get_tajik
  */
+import { queryFactCollection } from './fact_collection'
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho } from '../../handler_ayanamsha'
@@ -149,7 +150,7 @@ export const getTajikCapability: CapabilityDescriptor = {
         sql += ` ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_key LIMIT $${params.length + 1} OFFSET $${params.length + 2}`
         params.push(limit, offset)
 
-        const cfResult = await query<Record<string, unknown>>(sql, params)
+        const cfResult = await queryFactCollection<Record<string, unknown>>(sql, params)
         haddaRows = cfResult.rows ?? []
       }
 

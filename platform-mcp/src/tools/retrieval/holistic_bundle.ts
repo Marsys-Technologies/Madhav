@@ -157,7 +157,8 @@ export function registerHolisticBundleRetrievalTool(server: McpServer, getPrinci
           getPrincipal(),
         )
 
-        if (status !== 200 || !envelope.ok) {
+        const platformBundleAvailable = status === 200 && envelope.ok
+        if (!platformBundleAvailable) {
           return {
             content: [{
               type: 'text' as const,
@@ -166,7 +167,7 @@ export function registerHolisticBundleRetrievalTool(server: McpServer, getPrinci
                 error: (envelope as McpEnvelopeError).error?.message ?? status,
                 chart_id,
                 grounding_status: 'SCAFFOLD',
-                b11_floor_passed: false,
+                b11_floor_passed: platformBundleAvailable,
               }, null, 2),
             }],
             isError: true,

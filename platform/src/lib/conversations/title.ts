@@ -89,7 +89,8 @@ export async function generateConversationTitle(
           input_tokens: usage?.inputTokens ?? null,
           output_tokens: usage?.outputTokens ?? null,
         }),
-        fallback_used: false,
+        // This direct adapter call has no routing attempt to report.
+        fallback_used: null,
         error_code: errorCode,
         payload: null,
       })

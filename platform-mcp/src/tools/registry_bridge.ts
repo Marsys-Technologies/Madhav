@@ -258,6 +258,7 @@ function envelope(
 /** Response size ceilings (brief §C1): the wire budget for a fully-assembled MCP tool
  *  response (envelope + orientation_context together — the whole structuredContent
  *  object), not just the inner `content` block. */
+const ASSESSMENT_RESPONSE_BUDGET_KB = 40
 const MCP_RESPONSE_BUDGET_KB = {
   judgment_query: 12,
   graha_portrait: 12,
@@ -267,10 +268,10 @@ const MCP_RESPONSE_BUDGET_KB = {
   // composite signals) — richer than the three single-purpose instruments above, so a wider
   // ceiling than 8-12KB is appropriate, but 40KB is still a two-orders-of-magnitude cut from
   // the register's measured 1.04MB assess_career payload.
-  assess_marriage: 40,
-  assess_career: 40,
-  assess_health: 40,
-  assess_wealth: 40,
+  assess_marriage: ASSESSMENT_RESPONSE_BUDGET_KB,
+  assess_career: ASSESSMENT_RESPONSE_BUDGET_KB,
+  assess_health: ASSESSMENT_RESPONSE_BUDGET_KB,
+  assess_wealth: ASSESSMENT_RESPONSE_BUDGET_KB,
   // D-1.6 Lane S-5 (R-1/R-8/CR-49 residuals): traverse_graph/get_cgm_subgraph measured 99KB,
   // get_projections 70KB on the live connector (BIND_D-1.6 S-7 probe) — all over the 64KB
   // Gate Ś default-page ceiling. 55KB leaves headroom under that ceiling for the dualOutput

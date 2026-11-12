@@ -179,8 +179,9 @@ export function registerHolisticBundleTool(
         bundle = await callSidecarHolisticBundle(chart_id)
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
+        const signals: HolisticBundleResult['signals'] = []
         const errorBundle: HolisticBundleResult = {
-          signals: [],
+          signals,
           graph_edges: [],
           domain_links: [],
           resonance: [],
@@ -189,11 +190,11 @@ export function registerHolisticBundleTool(
             queried_at: new Date().toISOString(),
             subsystems_ok: [],
             subsystems_errored: ['MSR', 'CGM', 'CDLM', 'RM'],
-            signal_count: 0,
+            signal_count: signals.length,
             graph_edge_count: 0,
             domain_link_count: 0,
             resonance_count: 0,
-            b11_floor_passed: false,
+            b11_floor_passed: signals.length > 0,
             error: message,
           },
         }

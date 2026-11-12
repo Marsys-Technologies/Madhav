@@ -187,13 +187,3 @@ export function buildReadingContract(page: DossierPageView): ReadingContract {
       'of the parts.',
   };
 }
-
-/**
- * WORKED EXAMPLE (documentation — the shape a fully-composed reading targets). This is the OPEN
- * contract for any domain once its dossier slice reaches 100% accounting. Exported so tests and
- * downstream consumers have a canonical reference instance.
- */
-export const READING_CONTRACT_EXAMPLE: ReadingContract = buildReadingContract({
-  synthesis_gate: 'OPEN',
-  coverage_so_far: { pct: 100 },
-});

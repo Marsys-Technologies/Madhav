@@ -569,6 +569,118 @@ def _is_unmeasured_marker(field: str, value: object) -> bool:
     )
 
 
+def _catalog_fields(tree: ast.Module) -> set[tuple[int, str]]:
+    """Recognize authored rule payloads before the engine evaluates a chart."""
+    fields: set[tuple[int, str]] = set()
+    for declaration in tree.body:
+        if not (
+            isinstance(declaration, ast.AnnAssign)
+            and isinstance(declaration.target, ast.Name)
+            and declaration.target.id in {"UPAPADA_RULES", "TAJIK_YOGAS"}
+            and isinstance(declaration.value, ast.List)
+        ):
+            continue
+        for row in declaration.value.elts:
+            if not isinstance(row, ast.Dict):
+                continue
+            entries = {
+                key.value: value
+                for key, value in zip(row.keys, row.values)
+                if isinstance(key, ast.Constant) and isinstance(key.value, str)
+            }
+            if len(entries) != len(row.keys):
+                continue
+            if declaration.target.id == "UPAPADA_RULES" and set(entries) == {
+                "rule_id", "slug", "condition", "verdict", "citation_human",
+            }:
+                rule_id = entries["rule_id"]
+                if (
+                    isinstance(rule_id, ast.Call) and isinstance(rule_id.func, ast.Name)
+                    and rule_id.func.id == "_rule_id" and len(rule_id.args) == 3
+                    and all(isinstance(rule_id.args[i], ast.Constant) for i in range(3))
+                    and all(isinstance(entries[key], ast.Constant) and isinstance(entries[key].value, str)
+                            and entries[key].value for key in ("slug", "condition", "verdict", "citation_human"))
+                    and rule_id.args[2].value == entries["slug"].value
+                ):
+                    fields.add((id(row), "verdict"))
+            if declaration.target.id == "TAJIK_YOGAS":
+                rule = entries.get("formation_rule_jsonb")
+                yoga_id = entries.get("yoga_id")
+                if not isinstance(yoga_id, ast.Constant) or yoga_id.value != "gairi_kambula":
+                    continue
+                if not isinstance(rule, ast.Dict) or len(rule.keys) != 2:
+                    continue
+                rule_values = {
+                    key.value: value.value
+                    for key, value in zip(rule.keys, rule.values)
+                    if isinstance(key, ast.Constant) and isinstance(key.value, str) and isinstance(value, ast.Constant)
+                }
+                if rule_values == {
+                    "condition": "moon_separating_from_significator",
+                    "moon_has_passed": "lord_1st_or_lord_matter_house",
+                }:
+                    fields.add((id(rule), "moon_has_passed"))
+    return fields
+
+
+def _verified_row_counter_initializers(tree: ast.Module) -> set[int]:
+    """A zero default is legitimate when the row comparator earns each increment."""
+    counters: set[int] = set()
+    for cls in tree.body:
+        if not isinstance(cls, ast.ClassDef) or not any(
+            isinstance(decorator, ast.Name) and decorator.id == "dataclass"
+            for decorator in cls.decorator_list
+        ):
+            continue
+        fields = [
+            node for node in cls.body if isinstance(node, ast.AnnAssign)
+            and isinstance(node.target, ast.Name) and node.target.id == "two_pass_verified"
+            and isinstance(node.annotation, ast.Name) and node.annotation.id == "int"
+            and isinstance(node.value, ast.Constant) and type(node.value.value) is int and node.value.value == 0
+        ]
+        if not fields:
+            continue
+        for scope in tree.body:
+            if not isinstance(scope, ast.FunctionDef):
+                continue
+            nodes = list(ast.walk(scope))
+            constructions = {
+                node.targets[0].id for node in nodes if isinstance(node, ast.Assign)
+                and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name)
+                and isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Name)
+                and node.value.func.id == cls.name and not node.value.args
+                and all(kw.arg is not None and kw.arg != "two_pass_verified" for kw in node.value.keywords)
+            }
+            for compare in nodes:
+                if not isinstance(compare, ast.If) or not isinstance(compare.test, ast.Compare):
+                    continue
+                test = compare.test
+                if not (
+                    isinstance(test.left, ast.Attribute) and test.left.attr == "verdict"
+                    and isinstance(test.left.value, ast.Name)
+                    and len(test.ops) == 1 and isinstance(test.ops[0], ast.Eq)
+                    and isinstance(test.comparators[0], ast.Name) and test.comparators[0].id == "TWO_PASS_VERIFIED"
+                ):
+                    continue
+                if not any(
+                    isinstance(node, ast.Assign) and len(node.targets) == 1
+                    and isinstance(node.targets[0], ast.Name) and node.targets[0].id == test.left.value.id
+                    and isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Name)
+                    and node.value.func.id == "compare_row" and len(node.value.args) >= 2
+                    and node.lineno < compare.lineno for node in nodes
+                ):
+                    continue
+                if any(
+                    isinstance(node, ast.AugAssign) and isinstance(node.op, ast.Add)
+                    and isinstance(node.target, ast.Attribute) and node.target.attr == "two_pass_verified"
+                    and isinstance(node.target.value, ast.Name) and node.target.value.id in constructions
+                    and isinstance(node.value, ast.Constant) and type(node.value.value) is int and node.value.value == 1
+                    for node in compare.body
+                ):
+                    counters.update(id(field) for field in fields)
+    return counters
+
+
 def _collect_branch_guarded(tree: ast.AST) -> Set[int]:
     """Ids of nodes that sit inside a CONDITIONAL region of the source.
 
@@ -695,6 +807,8 @@ def scan_python_text(text: str) -> List[Tuple[int, str, str, str]]:
     collector.visit(tree)
     subscript_keys = collector.subscript_string_keys
     branch_guarded = _collect_branch_guarded(tree)
+    catalog_fields = _catalog_fields(tree)
+    counter_initializers = _verified_row_counter_initializers(tree)
 
     # A dict literal assigned to a CONSTANT_CASE name is a lookup/weight table
     # (`VERIFICATION_RESCALE = {"two_pass_verified": 1.00, "single_pass": 0.85}`,
@@ -751,7 +865,7 @@ def scan_python_text(text: str) -> List[Tuple[int, str, str, str]]:
         hits.append((getattr(node, "lineno", 1), kind, field, snippet_at(node)))
 
     for node in ast.walk(tree):
-        if id(node) in branch_guarded:
+        if id(node) in branch_guarded or id(node) in counter_initializers:
             continue  # a constant selected by control flow is a branch outcome
 
         # (P-a) dict-literal entries
@@ -760,6 +874,8 @@ def scan_python_text(text: str) -> List[Tuple[int, str, str, str]]:
                 continue
             for k, v in zip(node.keys, node.values):
                 if not (isinstance(k, ast.Constant) and isinstance(k.value, str)):
+                    continue
+                if (id(node), k.value) in catalog_fields:
                     continue
                 if not is_signal_name(k.value):
                     continue
@@ -863,6 +979,27 @@ _TS_DIRECT_CONDITIONAL_RETURN_RE = re.compile(
     r"^\s*if\s*\([^{}\n]*\)\s*return\s*(?P<object>{)"
 )
 _TS_FAIL_CLOSED_PASSED_RE = re.compile(r"^\s*passed\s*:\s*false\s*(?:[,;}]|$)")
+_TS_FAILED_BUNDLE = re.compile(
+    r"text:\s*JSON\.stringify\(\{\s*status:\s*'ERROR',\s*error:\s*[^,\n]+,\s*"
+    r"chart_id,\s*grounding_status:\s*'SCAFFOLD',\s*(?P<floor>b11_floor_passed:\s*false),\s*"
+    r"\},\s*null,\s*2\),\s*\}\],\s*isError:\s*true,"
+)
+
+
+def _ts_is_input_counter(text: str, name: str, code: str) -> bool:
+    if not re.fullmatch(rf"\s*private\s+{re.escape(name)}\s*=\s*0\s*;?", code):
+        return False
+    counter = re.escape(f"this.{name}")
+    writes = re.findall(rf"\b{counter}\s*([+\-*/]?=|\+\+|--)(?![=>])\s*(\w*)", text)
+    if len(writes) != 1 or writes[0][0] != "+=" or not writes[0][1].isidentifier():
+        return False
+    source = re.escape(writes[0][1])
+    return bool(re.search(
+        rf"^\s*\w+\({source}: number\): void \{{\s*"
+        rf"this\.\w+ \+= 1\s*if \({source} > 0\) \{{\s*"
+        rf"this\.\w+ \+= 1\s*{counter} \+= {source}\s*\}}\s*\}}",
+        text, re.MULTILINE,
+    ))
 
 
 def _ts_brace_delta(code: str) -> int:
@@ -953,6 +1090,10 @@ def scan_ts_text(text: str) -> List[Tuple[int, str, str, str]]:
     in_block_comment = False
     mutable_cache: dict = {}
     conditional_return_lines = _ts_direct_conditional_return_object_lines(text)
+    failed_bundle_lines = {
+        text.count("\n", 0, match.start("floor")) + 1
+        for match in _TS_FAILED_BUNDLE.finditer(text)
+    }
 
     def declared_mutable(name: str) -> bool:
         if name not in mutable_cache:
@@ -989,6 +1130,8 @@ def scan_ts_text(text: str) -> List[Tuple[int, str, str, str]]:
 
         m = _TS_PROP_RE.search(code)
         if m and not _TS_OPTIONAL_PROP_RE.match(code):
+            if idx in failed_bundle_lines and m.group("name") == "b11_floor_passed" and m.group("value") == "false":
+                continue
             if _is_unmeasured_marker(m.group("name"), m.group("value")[1:-1]):
                 continue
             after = code[m.end():].lstrip()
@@ -998,6 +1141,8 @@ def scan_ts_text(text: str) -> List[Tuple[int, str, str, str]]:
 
         m2 = _TS_ASSIGN_RE.search(code)
         if m2 and is_signal_name(m2.group("name")):
+            if _ts_is_input_counter(text, m2.group("name"), code):
+                continue
             if _is_unmeasured_marker(m2.group("name"), m2.group("value")[1:-1]):
                 continue
             after = code[m2.end():].lstrip()
