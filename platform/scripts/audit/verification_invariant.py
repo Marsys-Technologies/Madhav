@@ -24,7 +24,7 @@ It runs on a schedule and on dispatch. See .github/workflows/verification-invari
 
 Exit 0 = all watchdog checks pass or the counts-only report was produced.
 Exit 1 = a watchdog check reported FAIL, including liveness with no DATABASE_URL.
-Exit 3 = no DATABASE_URL and incomplete coverage, including in report mode.
+Exit 3 = incomplete coverage with no measured failure, or no DATABASE_URL in report mode.
 DATABASE_URL is read from the environment and never taken as an argument.
 """
 from __future__ import annotations
@@ -55,8 +55,8 @@ from brahmagyan.verification_vocab import (  # noqa: E402
 #: `[r for r in rows if r["level_n"] == 1]`, and `_verify_vimshottari` is additionally
 #: pre-filtered on `kp_sublevel is None` at its call site.
 #:
-#: A table absent from this map is NOT exempt — it is reported as UNDECLARED, because "nobody
-#: wrote down what gets examined" is exactly the state that let the broadcast survive.
+#: An absent predicate does not exempt a verified claim. chart_facts and chart_divisionals
+#: report incomplete coverage below. Other undeclared tables with verified claims still fail.
 EXAMINED_PREDICATE: dict[str, str] = {
     # PR #1056 (2026-08-05) wired `_apply_vimshottari_independent_verification` into
     # ga_dashas_writer.build_system()'s vimshottari branch: every level_n 1-4, non-KP vimshottari
@@ -68,11 +68,6 @@ EXAMINED_PREDICATE: dict[str, str] = {
     # write to exercise #1056's write path since it merged, and its own genuinely-examined level
     # 2-4 rows tripped this check because the predicate had never been updated to match.
     "chart_dashas": "kp_sublevel IS NULL AND (level_n = 1 OR (system_id = 'vimshottari' AND level_n <= 4))",
-    # chart_facts / chart_divisionals: per-row verdicts (ga_nakshatra's two_pass_verdict, the
-    # ga_vargas policy lookup). Every row that claims a verified tier is its own examined unit,
-    # so the predicate is TRUE and the check degenerates to "no row claims more than it is".
-    "chart_facts": "TRUE",
-    "chart_divisionals": "TRUE",
 }
 
 #: Divergence tolerance. Zero: a row claiming a verified tier that no verifier examined is not a
@@ -107,7 +102,17 @@ def check_claim_vs_evidence(cur, results: list[dict]) -> None:
                 (verified,),
             )
             n = cur.fetchone()[0]
-            if n:
+            if tbl in ("chart_facts", "chart_divisionals"):
+                detail = (
+                    f"{n} row(s) claim a verified tier. Examined-row coverage is unknown without "
+                    f"a qualified row-level predicate for {tbl}."
+                    if n else "0 row(s) claim a verified tier. No verified claims to assess."
+                )
+                results.append({
+                    "check": "claim_vs_evidence", "table": tbl,
+                    "status": "INCOMPLETE" if n else "PASS", "detail": detail,
+                })
+            elif n:
                 results.append({
                     "check": "claim_vs_evidence", "table": tbl, "status": "FAIL",
                     "detail": (
@@ -266,12 +271,17 @@ def main() -> int:
     check_detector_liveness(results)
 
     fails = [r for r in results if r["status"] == "FAIL"]
+    incomplete = [r for r in results if r["status"] == "INCOMPLETE"]
     print(json.dumps({"tier_report": report, "results": results}, indent=2))
     print("\n=== verification invariant ===")
     for r in results:
         print(f"[{r['status']}] {r['check']}:{r['table']} — {r['detail']}")
     print(f"\n{len(fails)} FAIL / {len(results)} checks")
-    return 1 if fails else 0
+    if incomplete:
+        print(f"{len(incomplete)} INCOMPLETE / {len(results)} checks")
+    if fails:
+        return 1
+    return 3 if incomplete else 0
 
 
 if __name__ == "__main__":
