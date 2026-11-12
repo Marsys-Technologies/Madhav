@@ -539,17 +539,7 @@ export function checkCursorFingerprint(
  * Field is OPTIONAL and ADDITIVE — every existing `{instrument, hint}` pointer remains valid
  * without a `pointer_type`; callers written against the untyped shape are unaffected.
  */
-export type DrillPointerType =
-  | 'confirm_in_varga'
-  | 'check_from_moon'
-  | 'check_bhanga'
-  | 'opposing_yoga'
-  | 'karaka_condition'
-  | 'dasha_of_promise'
-  | 'transit_gate'
-  | 'dispositor_chain'
-  | 'tail_dissent'
-  | 'other'
+export type DrillPointerType = (typeof DRILL_POINTER_LABEL_ENTRIES)[number][0]
 
 /**
  * PACT chain stage marker (design §26 + §28.3 — "the same PACT chain the L4 redesign
@@ -707,19 +697,21 @@ export const PACT_STAGE_LABELS: Record<PactStage, string> = {
   trigger: 'PACT stage 4 — TRIGGER: the transit gate that fires an activated promise in-window.',
 }
 
-/** Typed drill-pointer classical-move labels (mirrors envelope.ts DrillPointerType). */
-export const POINTER_TYPE_LABELS: Record<DrillPointerType, string> = {
-  confirm_in_varga: 'Next step: confirm the promise in the operative divisional chart.',
-  check_from_moon: 'Next step: re-judge the same matter from the Chandra (Moon) frame (Sudarshana).',
-  check_bhanga: 'Next step: check for a cancellation / near-miss (bhanga) on a bearing yoga or dosha.',
-  opposing_yoga: 'Next step: a yoga/dosha of OPPOSITE valence also bears on this matter — weigh it.',
-  karaka_condition: 'Next step: examine the significator (karaka) graha’s own condition directly.',
-  dasha_of_promise: 'Next step: locate which dasha period carries/activates the promise.',
-  transit_gate: 'Next step: check current/upcoming transits gating an already-activated promise.',
-  dispositor_chain: 'Next step: follow the lord-of-the-lord (dispositor) indirection one level deeper.',
-  tail_dissent: 'Next step: the mandatory dissent / tail-check step of the investigation protocol.',
-  other: 'Next step outside the closed classical-move vocabulary (see the pointer hint).',
-}
+/** Classical-move labels and the accepted pointer vocabulary. */
+const DRILL_POINTER_LABEL_ENTRIES = [
+  ['confirm_in_varga', 'Next step: confirm the promise in the operative divisional chart.'],
+  ['check_from_moon', 'Next step: re-judge the same matter from the Chandra (Moon) frame (Sudarshana).'],
+  ['check_bhanga', 'Next step: check for a cancellation / near-miss (bhanga) on a bearing yoga or dosha.'],
+  ['opposing_yoga', 'Next step: a yoga/dosha of OPPOSITE valence also bears on this matter — weigh it.'],
+  ['karaka_condition', 'Next step: examine the significator (karaka) graha’s own condition directly.'],
+  ['dasha_of_promise', 'Next step: locate which dasha period carries/activates the promise.'],
+  ['transit_gate', 'Next step: check current/upcoming transits gating an already-activated promise.'],
+  ['dispositor_chain', 'Next step: follow the lord-of-the-lord (dispositor) indirection one level deeper.'],
+  ['tail_dissent', 'Next step: the mandatory dissent / tail-check step of the investigation protocol.'],
+  ['other', 'Next step outside the closed classical-move vocabulary (see the pointer hint).'],
+] as const
+
+export const POINTER_TYPE_LABELS = Object.fromEntries(DRILL_POINTER_LABEL_ENTRIES) as Record<DrillPointerType, string>
 
 /**
  * `marsys://` drill-URI FAMILY labels. A drill URI is `marsys://<primitive>/<segment>/<name>`;

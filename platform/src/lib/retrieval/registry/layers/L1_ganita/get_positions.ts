@@ -46,6 +46,7 @@
  * a position) — added to the `categories` enum only, alongside nakshatra_cross_ayanamsha,
  * never bundled into `include_upagrahas` (it is not an upagraha).
  */
+import { queryFactCollection } from './fact_collection'
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import { planKpAwareRead, ayanamshaServeOrderBy, KP_AWARE_AYANAMSHA_ID_TEXT } from '../../handler_ayanamsha'
@@ -253,7 +254,7 @@ export const getPositionsCapability: CapabilityDescriptor = {
                  fact_category, fact_key
                LIMIT $${params.length - 1} OFFSET $${params.length}`
 
-      const result = await query<Record<string, unknown>>(sql, params)
+      const result = await queryFactCollection<Record<string, unknown>>(sql, params)
       let rows = kp.label(normalizeNarrationRows(result.rows))
 
       let frameNote: string | undefined

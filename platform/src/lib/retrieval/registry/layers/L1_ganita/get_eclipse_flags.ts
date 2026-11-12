@@ -3,8 +3,8 @@
  * Covers: eclipse_proximity_natal
  * Tool: marsys://tool/L1/get_eclipse_flags
  */
+import { queryFactCollection } from './fact_collection'
 import type { CapabilityDescriptor } from '../../types'
-import { query } from '@/lib/db/client'
 import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho } from '../../handler_ayanamsha'
 
 export const getEclipseFlagsCapability: CapabilityDescriptor = {
@@ -49,7 +49,7 @@ export const getEclipseFlagsCapability: CapabilityDescriptor = {
       const aya = resolveHandlerAyanamsha(args)
       const params: unknown[] = [chartId, limit, offset]
       const ayaClause = pushAyanamshaFilter(aya, params)
-      const result = await query<Record<string, unknown>>(
+      const result = await queryFactCollection<Record<string, unknown>>(
         `SELECT fact_id, fact_category, ayanamsha_id, fact_key, fact_value_num,
                 fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
          FROM chart_facts

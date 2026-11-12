@@ -460,7 +460,7 @@ export function buildDossierReceipt(
         : [f.tool, f.states, f.concepts]) as DossierFamily
     })
 
-  const gateOpen = accounted === bundle.slice_size
+  const gateOpen = isSliceFullyAccounted(bundle, accounted)
   const pct = Number(((accounted / bundle.slice_size) * 100).toFixed(2))
 
   const out: DossierReceipt = {
@@ -574,11 +574,13 @@ export function runDossierReceipt(args: Pick<DossierArgs, 'domain' | 'chart_id'>
   const { domain, chart_id } = args
   const bundle = loadBundle(domain, chart_id)
   if (!bundle) {
+    const accounted = 0
     return {
       ok: false, tool: 'dossier', mode: 'receipt', domain, chart_id, slice_size: 0,
-      coverage: { ...emptyTally(), accounted: 0, slice_size: 0, pct: 0 },
+      coverage: { ...emptyTally(), accounted, slice_size: 0, pct: 0 },
       chain_pattern_units: 0, families: [], families_format: '',
-      synthesis_gate: 'BLOCKED', gate_basis: 'completeness_receipt',
+      synthesis_gate: isSliceFullyAccounted(bundle, accounted) ? 'OPEN' : 'BLOCKED',
+      gate_basis: 'completeness_receipt',
       gate_reason: 'slice_not_precomputed',
       reading_contract: '', drill_note: '', receipt: {}, provenance: {},
       judgment_flags: [],
@@ -591,6 +593,10 @@ export function runDossierReceipt(args: Pick<DossierArgs, 'domain' | 'chart_id'>
     }
   }
   return buildDossierReceipt(bundle, domain, chart_id)
+}
+
+function isSliceFullyAccounted(bundle: SliceBundle | null | undefined, accounted: number): boolean {
+  return bundle != null && accounted === bundle.slice_size
 }
 
 export function runDossier(args: DossierArgs): DossierPage {

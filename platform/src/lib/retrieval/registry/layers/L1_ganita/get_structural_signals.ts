@@ -56,6 +56,7 @@
  * scope for this tool, which serves the writer's own floored rows as-is like every other
  * category on this page).
  */
+import { queryFactCollection } from './fact_collection'
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import { planKpAwareRead, ayanamshaServeOrderBy, KP_AWARE_AYANAMSHA_ID_TEXT } from '../../handler_ayanamsha'
@@ -156,7 +157,7 @@ export const getStructuralSignalsCapability: CapabilityDescriptor = {
       sql += ` ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_subject, fact_key LIMIT $3 OFFSET $4`
 
       const [result, countResult] = await Promise.all([
-        query<Record<string, unknown>>(sql, params),
+        queryFactCollection<Record<string, unknown>>(sql, params),
         query<{ total: string }>(countSql, countParams),
       ])
       const rows = kp.label(normalizeNarrationRows(result.rows))

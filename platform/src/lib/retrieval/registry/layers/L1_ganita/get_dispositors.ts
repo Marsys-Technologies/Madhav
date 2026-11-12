@@ -14,8 +14,8 @@
  * undiscoverable under a misleading category name. Documented explicitly below so a caller
  * does not go looking for a `parivartana_pairs` category that will always return nothing.
  */
+import { queryFactCollection } from './fact_collection'
 import type { CapabilityDescriptor } from '../../types'
-import { query } from '@/lib/db/client'
 import { planKpAwareRead, ayanamshaServeOrderBy, KP_AWARE_AYANAMSHA_ID_TEXT } from '../../handler_ayanamsha'
 
 const DISP_CATEGORIES = [
@@ -87,7 +87,7 @@ export const getDispositorsCapability: CapabilityDescriptor = {
       }
       sql += ` ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_key LIMIT $3 OFFSET $4`
 
-      const result = await query<Record<string, unknown>>(sql, params)
+      const result = await queryFactCollection<Record<string, unknown>>(sql, params)
       const rows = kp.label(result.rows ?? [])
       return {
         content: { chart_id: chartId, ...kp.echo(rows), categories, rows, total: rows.length },

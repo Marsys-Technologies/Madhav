@@ -9,6 +9,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { registerHolisticBundleTool } from '../src/tools/bo_2-8.js'
+import { remoteAuthorize } from '../src/lib/authz.js'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { Principal } from '../src/types.js'
 
@@ -16,6 +17,7 @@ import type { Principal } from '../src/types.js'
 
 const mockFetch = vi.fn()
 vi.stubGlobal('fetch', mockFetch)
+vi.mock('../src/lib/authz.js', () => ({ remoteAuthorize: vi.fn() }))
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -153,6 +155,7 @@ describe('registerHolisticBundleTool', () => {
 describe('holistic_bundle handler', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(remoteAuthorize).mockResolvedValue(true)
   })
 
   afterEach(() => {
@@ -207,6 +210,7 @@ describe('holistic_bundle handler', () => {
     const payload = JSON.parse(result.content[0]!.text)
     expect(payload.ok).toBe(false)
     expect(payload.result.provenance_envelope.b11_floor_passed).toBe(false)
+    expect(payload.result.provenance_envelope.signal_count).toBe(0)
     expect(payload.result.provenance_envelope.subsystems_errored).toContain('MSR')
     expect(payload.result.signals).toHaveLength(0)
   })

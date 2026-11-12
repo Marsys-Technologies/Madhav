@@ -30,6 +30,7 @@
  * narrower, not to add a branch that can be triggered by the attacker's own text.
  */
 
+import { MEDICAL_CLASS_CAPABILITIES, MORTALITY_CLASS_CAPABILITIES } from './sensitive_capability_classes'
 import {
   MIN_SQUASHED_PATTERN_LENGTH,
   normalizeForClassification,
@@ -1037,20 +1038,12 @@ export const DOMAIN_CLASS_RULES: Array<{ domain: RegExp; cls: SafetyClass; sever
 
 /**
  * Capability → class. The registry's own mortality/medical capabilities.
- * Shared with `sensitive_capabilities.ts`, which owns the canonical list; this
- * map only says which CLASS each one implies.
+ * Uses the same reviewed capability groups as the plan and profile filters.
  */
-export const CAPABILITY_CLASS_RULES: Record<string, SafetyClass> = {
-  get_ayurdaya: 'hs4_mortality_window',
-  ganita_ayurdaya_get: 'hs4_mortality_window',
-  assess_health: 'hs3_health_crisis',
-  get_medical_indications: 'hs3_health_crisis',
-  ganita_medical_get: 'hs3_health_crisis',
-  query_medical_mappings: 'hs3_health_crisis',
-  query_nakshatra_medical: 'hs3_health_crisis',
-  query_sign_medical: 'hs3_health_crisis',
-  ref_sign_medical_get: 'hs3_health_crisis',
-}
+export const CAPABILITY_CLASS_RULES: Record<string, SafetyClass> = Object.fromEntries([
+  ...MORTALITY_CLASS_CAPABILITIES.map((name) => [name, 'hs4_mortality_window'] as const),
+  ...MEDICAL_CLASS_CAPABILITIES.map((name) => [name, 'hs3_health_crisis'] as const),
+])
 
 // ═══════════════════════════════════════════════════════════════════════════
 // The classifier

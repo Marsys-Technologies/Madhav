@@ -119,7 +119,8 @@ async function summarizeHistory(
         reasoning_tokens: null,
         latency_ms,
         cost_usd: null,
-        fallback_used: false,
+        // Routed worker calls own their telemetry. This is a direct adapter call.
+        fallback_used: null,
         error_code: errorCode,
         payload: null,
       })

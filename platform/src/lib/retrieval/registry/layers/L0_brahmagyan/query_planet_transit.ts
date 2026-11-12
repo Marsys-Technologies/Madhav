@@ -9,6 +9,7 @@
  */
 
 import type { ToolCapability } from '../../types'
+import { hasReviewedResultCollection } from '../../knowledge/pagination_review'
 
 // ṢAḌ-DARŚANA W1 verify-reopen fix (items 8 + 28), 2026-07-30. This capability forwarded NO
 // `x-api-key` to the sidecar. `main.py` mounts the whole `/brahmagyan/ephemeris` router behind
@@ -30,6 +31,15 @@ import type { ToolCapability } from '../../types'
 // sidecar outage is never again reported as a high-confidence empty.
 const SIDECAR_URL = process.env['PYTHON_SIDECAR_URL'] ?? 'http://localhost:8000'
 const SIDECAR_API_KEY = process.env['PYTHON_SIDECAR_API_KEY'] ?? ''
+
+const SNAPSHOT_COLLECTION_EVIDENCE = {
+  pagination: 'none' as const,
+  route_evidence: 'CapabilityDescriptor:marsys://tool/L0/query_current_transit_snapshot#complete-nine-graha-fanout',
+  pagination_contract: {
+    result_collection_path: 'components',
+    deterministic_order: ['canonical_graha_order'],
+  },
+}
 
 export const queryPlanetTransitCapability: ToolCapability = {
   uri: 'marsys://tool/L0/query_planet_transit',
@@ -117,16 +127,13 @@ export const queryPlanetTransitCapability: ToolCapability = {
       capability_uri: 'marsys://tool/L0/query_current_transit_snapshot',
       input_contract: { as_of_date: 'string:required' },
       output_contract: { structured_content: 'declared' },
-      pagination: 'none',
+      pagination: SNAPSHOT_COLLECTION_EVIDENCE.pagination,
       pagination_verified: null,
-      result_collection_verified: true,
-      pagination_contract: {
-        result_collection_path: 'components',
-        deterministic_order: ['canonical_graha_order'],
-      },
+      result_collection_verified: hasReviewedResultCollection(SNAPSHOT_COLLECTION_EVIDENCE),
+      pagination_contract: SNAPSHOT_COLLECTION_EVIDENCE.pagination_contract,
       executable: true,
       execution_channels: ['platform_internal'],
-      route_evidence: 'CapabilityDescriptor:marsys://tool/L0/query_current_transit_snapshot#complete-nine-graha-fanout',
+      route_evidence: SNAPSHOT_COLLECTION_EVIDENCE.route_evidence,
     }],
     edges: [],
     provenance_requirements: ['computed_at', 'engine_version'],

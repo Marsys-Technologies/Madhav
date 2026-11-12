@@ -8,8 +8,8 @@
  *         ashtama_shani_period, dhaiya_period, vishakha_shani_period, kantaka_shani_period
  * Tool: marsys://tool/L1/get_sade_sati
  */
+import { queryFactCollection } from './fact_collection'
 import type { CapabilityDescriptor } from '../../types'
-import { query } from '@/lib/db/client'
 import { planKpAwareRead, ayanamshaServeOrderBy } from '../../handler_ayanamsha'
 import { CITATION_HUMAN_SELECT, normalizeNarrationRows } from './citation_narration'
 
@@ -115,7 +115,7 @@ export const getSadeSatiCapability: CapabilityDescriptor = {
       // fact_subject, fact_id (the table's own PK) makes this a genuine total order.
       sql += ` ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_key, fact_subject, fact_id LIMIT $3 OFFSET $4`
 
-      const result = await query<Record<string, unknown>>(sql, params)
+      const result = await queryFactCollection<Record<string, unknown>>(sql, params)
       const rawRows = kp.label(normalizeNarrationRows(result.rows))
 
       if (all) {

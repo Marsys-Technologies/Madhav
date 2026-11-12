@@ -29,8 +29,8 @@
  * / `ayanamsha_scope` that is not Krishnamurti is ignored and disclosed in `ayanamsha_note`, like every
  * other KP read. Chart-scoped (principle #14): chart_id is the entitlement key.
  */
+import { queryFactCollection } from './fact_collection'
 import type { CapabilityDescriptor } from '../../types'
-import { query } from '@/lib/db/client'
 import { BUILD_FENCE_INPUT, classifyBuildFence, explicitEmptyBuildFenceRefusal } from '../../generation/served_generation'
 import { KP_FRAME_LABEL } from '../../../kp_frame'
 import { resolveKpFrameAyanamsha } from '../../handler_ayanamsha'
@@ -156,7 +156,7 @@ export const getKpCuspsCapability: CapabilityDescriptor = {
       ORDER BY fact_category, fact_subject, fact_key`
 
     try {
-      const res = await query<FactRow>(sql, build_ids
+      const res = await queryFactCollection<FactRow>(sql, build_ids
         ? [chart_id, ayanamsha_id, categories, build_ids]
         : [chart_id, ayanamsha_id, categories])
       const rows = res.rows ?? []

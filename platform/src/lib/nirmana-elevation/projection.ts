@@ -340,14 +340,14 @@ export function projectCampaignStages(input: {
   return { current_stage, stages, contradictions }
 }
 
-const BUILD_EVENT_BY_MILESTONE = {
-  analysed: 'asset_analysis_accepted',
-  decision_accepted: 'optimization_verdict_accepted',
-  built_or_dispositioned: 'implementation_accepted',
-  deployed_and_executed: 'accepted_rebuild_observed',
-  verified: 'integrity_verified',
-  frozen: 'asset_frozen',
-} as const
+const MILESTONE_EVIDENCE: Record<(typeof NIRMANA_MILESTONE_IDS)[number], { eventType: string; action: string }> = {
+  analysed: { eventType: 'asset_analysis_accepted', action: 'Accept asset analysis' },
+  decision_accepted: { eventType: 'optimization_verdict_accepted', action: 'Accept optimization decision' },
+  built_or_dispositioned: { eventType: 'implementation_accepted', action: 'Accept implementation or disposition' },
+  deployed_and_executed: { eventType: 'accepted_rebuild_observed', action: 'Accept deployed execution' },
+  verified: { eventType: 'integrity_verified', action: 'Verify asset integrity' },
+  frozen: { eventType: 'asset_frozen', action: 'Freeze asset evidence' },
+}
 
 const DISPOSITION_EVENTS = {
   static_acceptance: 'static_accepted',
@@ -355,15 +355,6 @@ const DISPOSITION_EVENTS = {
   empty_acceptance: 'empty_accepted',
   retired_with_disposition: 'retired_with_disposition',
 } as const
-
-const ACTIONS: Record<(typeof NIRMANA_MILESTONE_IDS)[number], string> = {
-  analysed: 'Accept asset analysis',
-  decision_accepted: 'Accept optimization decision',
-  built_or_dispositioned: 'Accept implementation or disposition',
-  deployed_and_executed: 'Accept deployed execution',
-  verified: 'Verify asset integrity',
-  frozen: 'Freeze asset evidence',
-}
 
 function after(event: CampaignEvent | undefined, predecessor: CampaignEvent | undefined): boolean {
   return event !== undefined && predecessor !== undefined && compareEvents(event, predecessor) > 0
@@ -421,17 +412,17 @@ export function projectAssetMilestones(input: {
 
   const acceptedEvents = new Map<(typeof NIRMANA_MILESTONE_IDS)[number], CampaignEvent>()
   const notApplicable = new Set<(typeof NIRMANA_MILESTONE_IDS)[number]>()
-  const analysis = latestTrustedAssetEvent(events, input.asset, BUILD_EVENT_BY_MILESTONE.analysed, (event) =>
+  const analysis = latestTrustedAssetEvent(events, input.asset, MILESTONE_EVIDENCE.analysed.eventType, (event) =>
     NirmanaAssetAnalysisEvidenceSchema.safeParse(event.evidence_payload).success
       && event.source_kind === 'git_commit' && hasExpectedWriter(event) && /^git:[a-f0-9]{40}$/.test(event.source_ref))
-  const decision = latestTrustedAssetEvent(events, input.asset, BUILD_EVENT_BY_MILESTONE.decision_accepted, (event) => {
+  const decision = latestTrustedAssetEvent(events, input.asset, MILESTONE_EVIDENCE.decision_accepted.eventType, (event) => {
     const payload = NirmanaOptimizationVerdictEvidenceSchema.safeParse(event.evidence_payload)
     return payload.success && event.source_kind === 'git_commit' && hasExpectedWriter(event) && /^git:[a-f0-9]{40}$/.test(event.source_ref)
       && hasCurrentBinding(payload.data, analysis) && after(event, analysis)
   })
-  const integrity = latestTrustedAssetEvent(events, input.asset, BUILD_EVENT_BY_MILESTONE.verified, (event) =>
+  const integrity = latestTrustedAssetEvent(events, input.asset, MILESTONE_EVIDENCE.verified.eventType, (event) =>
     NirmanaIntegrityEvidenceSchema.safeParse(event.evidence_payload).success && hasExpectedWriter(event) && hasCurrentBinding(event.evidence_payload, analysis))
-  const frozen = latestTrustedAssetEvent(events, input.asset, BUILD_EVENT_BY_MILESTONE.frozen, (event) =>
+  const frozen = latestTrustedAssetEvent(events, input.asset, MILESTONE_EVIDENCE.frozen.eventType, (event) =>
     NirmanaFreezeEvidenceSchema.safeParse(event.evidence_payload).success && hasExpectedWriter(event) && hasCurrentBinding(event.evidence_payload, analysis))
   if (analysis) acceptedEvents.set('analysed', analysis)
   if (decision) acceptedEvents.set('decision_accepted', decision)
@@ -442,7 +433,7 @@ export function projectAssetMilestones(input: {
     let implementation: CampaignEvent | undefined
     if (decisionPayload.success && !requiresChange) notApplicable.add('built_or_dispositioned')
     else {
-      implementation = latestTrustedAssetEvent(events, input.asset, BUILD_EVENT_BY_MILESTONE.built_or_dispositioned, (event) => {
+      implementation = latestTrustedAssetEvent(events, input.asset, MILESTONE_EVIDENCE.built_or_dispositioned.eventType, (event) => {
         const payload = NirmanaImplementationEvidenceSchema.safeParse(event.evidence_payload)
         return payload.success && event.source_kind === 'git_commit' && hasExpectedWriter(event) && /^git:[a-f0-9]{40}$/.test(event.source_ref)
           && hasCurrentBinding(payload.data, analysis)
@@ -452,7 +443,7 @@ export function projectAssetMilestones(input: {
       if (implementation) acceptedEvents.set('built_or_dispositioned', implementation)
     }
     const implementationPayload = NirmanaImplementationEvidenceSchema.safeParse(implementation?.evidence_payload)
-    const execution = latestTrustedAssetEvent(events, input.asset, BUILD_EVENT_BY_MILESTONE.deployed_and_executed, (event) => {
+    const execution = latestTrustedAssetEvent(events, input.asset, MILESTONE_EVIDENCE.deployed_and_executed.eventType, (event) => {
       const payload = NirmanaRebuildEvidenceSchema.safeParse(event.evidence_payload)
       const runId = /^build_run:([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i.exec(event.source_ref)?.[1]
       return payload.success && event.source_kind === 'build_run' && hasExpectedWriter(event) && runId !== undefined
@@ -466,7 +457,7 @@ export function projectAssetMilestones(input: {
   } else if (obligation === 'probe') {
     const decisionPayload = NirmanaOptimizationVerdictEvidenceSchema.safeParse(decision?.evidence_payload)
     const requiresChange = decisionPayload.success && ['optimize', 'correct', 'optimize_and_correct'].includes(decisionPayload.data.proposal.action)
-    const implementation = latestTrustedAssetEvent(events, input.asset, BUILD_EVENT_BY_MILESTONE.built_or_dispositioned, (event) => {
+    const implementation = latestTrustedAssetEvent(events, input.asset, MILESTONE_EVIDENCE.built_or_dispositioned.eventType, (event) => {
       const payload = NirmanaImplementationEvidenceSchema.safeParse(event.evidence_payload)
       return payload.success && event.source_kind === 'git_commit' && hasExpectedWriter(event) && /^git:[a-f0-9]{40}$/.test(event.source_ref)
         && hasCurrentBinding(payload.data, analysis)
@@ -484,10 +475,10 @@ export function projectAssetMilestones(input: {
         && after(event, requiresChange ? implementation : decision))
     if (execution) acceptedEvents.set('deployed_and_executed', execution)
   } else if (obligation === 'producer_covered') {
-    const producerAnalysis = validProducer ? latestTrustedAssetEvent(events, validProducer, BUILD_EVENT_BY_MILESTONE.analysed, (event) =>
+    const producerAnalysis = validProducer ? latestTrustedAssetEvent(events, validProducer, MILESTONE_EVIDENCE.analysed.eventType, (event) =>
       NirmanaAssetAnalysisEvidenceSchema.safeParse(event.evidence_payload).success
         && event.source_kind === 'git_commit' && hasExpectedWriter(event) && /^git:[a-f0-9]{40}$/.test(event.source_ref)) : undefined
-    const producerDecision = validProducer ? latestTrustedAssetEvent(events, validProducer, BUILD_EVENT_BY_MILESTONE.decision_accepted, (event) => {
+    const producerDecision = validProducer ? latestTrustedAssetEvent(events, validProducer, MILESTONE_EVIDENCE.decision_accepted.eventType, (event) => {
       const payload = NirmanaOptimizationVerdictEvidenceSchema.safeParse(event.evidence_payload)
       return payload.success && event.source_kind === 'git_commit' && hasExpectedWriter(event) && /^git:[a-f0-9]{40}$/.test(event.source_ref)
         && hasCurrentBinding(payload.data, producerAnalysis) && after(event, producerAnalysis)
@@ -495,7 +486,7 @@ export function projectAssetMilestones(input: {
     const producerDecisionPayload = NirmanaOptimizationVerdictEvidenceSchema.safeParse(producerDecision?.evidence_payload)
     const producerRequiresChange = producerDecisionPayload.success
       && ['optimize', 'correct', 'optimize_and_correct'].includes(producerDecisionPayload.data.proposal.action)
-    const producerImplementation = validProducer && producerRequiresChange ? latestTrustedAssetEvent(events, validProducer, BUILD_EVENT_BY_MILESTONE.built_or_dispositioned, (event) => {
+    const producerImplementation = validProducer && producerRequiresChange ? latestTrustedAssetEvent(events, validProducer, MILESTONE_EVIDENCE.built_or_dispositioned.eventType, (event) => {
       const payload = NirmanaImplementationEvidenceSchema.safeParse(event.evidence_payload)
       return payload.success && event.source_kind === 'git_commit' && hasExpectedWriter(event) && /^git:[a-f0-9]{40}$/.test(event.source_ref)
         && hasCurrentBinding(payload.data, producerAnalysis)
@@ -518,7 +509,7 @@ export function projectAssetMilestones(input: {
     if (coverage && coverageRunId) acceptedEvents.set('built_or_dispositioned', coverage)
     if (coverageRunId && validProducer) {
       const producerExecution = latest(events.filter((event) => {
-        if (event.event_type !== BUILD_EVENT_BY_MILESTONE.deployed_and_executed
+        if (event.event_type !== MILESTONE_EVIDENCE.deployed_and_executed.eventType
           || event.entity_type !== 'asset'
           || event.entity_id !== validProducer.asset_id
           || event.layer !== validProducer.layer) return false
@@ -590,8 +581,8 @@ export function projectAssetMilestones(input: {
     milestones_earned,
     milestones_required,
     current_action: currentIndex < 0 ? null
-      : input.activeRunState ? `Active run: ${input.activeRunState}` : ACTIONS[milestones[currentIndex].milestone_id],
-    next_action: nextIndex < 0 ? null : ACTIONS[milestones[nextIndex].milestone_id],
+      : input.activeRunState ? `Active run: ${input.activeRunState}` : MILESTONE_EVIDENCE[milestones[currentIndex].milestone_id].action,
+    next_action: nextIndex < 0 ? null : MILESTONE_EVIDENCE[milestones[nextIndex].milestone_id].action,
     inherited_from_asset_id: acceptedEvents.has('deployed_and_executed') ? validProducer?.asset_id ?? null : null,
   }
 }

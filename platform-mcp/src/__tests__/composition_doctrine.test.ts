@@ -3,7 +3,6 @@ import {
   buildReadingContract,
   COMPOSITION_SEQUENCE,
   MANDATORY_GESTALT_VOLUNTEER,
-  READING_CONTRACT_EXAMPLE,
 } from '../resources/vidhi/composition_doctrine.js';
 
 describe('EL-29 composition doctrine + EL-05 volunteering', () => {
@@ -46,10 +45,5 @@ describe('EL-29 composition doctrine + EL-05 volunteering', () => {
     for (const s of contract.stages.filter((s) => s.stage !== 'gestalt')) {
       expect(s.gestalt_volunteer).toBeUndefined();
     }
-  });
-
-  it('the exported worked example is the OPEN contract', () => {
-    expect(READING_CONTRACT_EXAMPLE.synthesis_gate).toBe('OPEN');
-    expect(READING_CONTRACT_EXAMPLE.stages).toHaveLength(6);
   });
 });

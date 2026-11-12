@@ -19,8 +19,8 @@
  * name the writer never actually emits (zero live rows across every chart, not just this one) —
  * requesting it honestly returns zero rows, never fabricated data (B.10).
  */
+import { queryFactCollection } from './fact_collection'
 import type { CapabilityDescriptor } from '../../types'
-import { query } from '@/lib/db/client'
 import { planKpAwareRead, ayanamshaServeOrderBy, KP_AWARE_AYANAMSHA_ID_TEXT } from '../../handler_ayanamsha'
 
 const AV_CATEGORIES = [
@@ -114,7 +114,7 @@ export const getAshtakavargaCapability: CapabilityDescriptor = {
       sql += kp.filter(params)
       sql += ` ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_key LIMIT $3 OFFSET $4`
 
-      const result = await query<Record<string, unknown>>(sql, params)
+      const result = await queryFactCollection<Record<string, unknown>>(sql, params)
       const rows = kp.label(result.rows ?? [])
       return {
         content: {
