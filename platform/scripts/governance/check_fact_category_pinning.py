@@ -556,6 +556,33 @@ def _fact_key_reference(node: ast.AST) -> bool:
     return isinstance(node, ast.Subscript) and isinstance(node.slice, ast.Constant) and node.slice.value == "fact_key"
 
 
+def _retains_row_key(value: ast.AST, row: str, assignments: dict[str, ast.AST], visited: set[str]) -> bool:
+    if isinstance(value, ast.Name):
+        if value.id == row:
+            return row not in assignments
+        if value.id in visited or value.id not in assignments:
+            return False
+        return _retains_row_key(assignments[value.id], row, assignments, visited | {value.id})
+    if isinstance(value, ast.IfExp):
+        return all(_retains_row_key(branch, row, assignments, visited) for branch in (value.body, value.orelse))
+    if isinstance(value, ast.Dict):
+        return any(
+            isinstance(key, ast.Constant) and key.value == "fact_key" and _fact_key_reference(item)
+            for key, item in zip(value.keys, value.values)
+        )
+    if isinstance(value, (ast.Tuple, ast.List)):
+        return any(_fact_key_reference(item) for item in value.elts)
+    if isinstance(value, ast.Call) and isinstance(value.func, ast.Name) and value.func.id == "dict" and len(value.args) == 1:
+        zipped = value.args[0]
+        return (
+            isinstance(zipped, ast.Call) and isinstance(zipped.func, ast.Name) and zipped.func.id == "zip"
+            and len(zipped.args) == 2 and isinstance(zipped.args[0], (ast.List, ast.Tuple))
+            and any(isinstance(key, ast.Constant) and key.value == "fact_key" for key in zipped.args[0].elts)
+            and isinstance(zipped.args[1], ast.Name) and zipped.args[1].id == row
+        )
+    return False
+
+
 def _collects_loop_rows(loop: ast.For, collections: set[str]) -> bool:
     body = list(ast.walk(loop))
     if any(
@@ -566,10 +593,13 @@ def _collects_loop_rows(loop: ast.For, collections: set[str]) -> bool:
     ):
         return False
     keyed_names: set[str] = set()
+    aliases: dict[str, ast.AST] = {}
     for node in body:
         if not isinstance(node, ast.Assign) or len(node.targets) != 1:
             continue
         target = node.targets[0]
+        if isinstance(target, ast.Name):
+            aliases[target.id] = node.value
         if isinstance(target, ast.Name) and _fact_key_reference(node.value):
             keyed_names.add(target.id)
         elif isinstance(target, ast.Tuple) and isinstance(node.value, ast.Tuple):
@@ -586,7 +616,11 @@ def _collects_loop_rows(loop: ast.For, collections: set[str]) -> bool:
             return True
         if isinstance(statement, ast.Expr) and _method_call(statement.value, "append"):
             receiver = statement.value.func.value
-            if isinstance(receiver, ast.Name) and receiver.id in collections:
+            if (
+                isinstance(receiver, ast.Name) and receiver.id in collections
+                and isinstance(loop.target, ast.Name) and len(statement.value.args) == 1
+                and _retains_row_key(statement.value.args[0], loop.target.id, aliases, set())
+            ):
                 return True
     return False
 
@@ -734,6 +768,15 @@ def _collection_result_stays_plural(code: str, call_start: int) -> bool:
             tail,
         ):
             return False
+        for start in re.finditer(value, tail):
+            end = start.end()
+            while transform := re.match(r"\s*\.\s*(?:map|filter|sort|toSorted)\s*\(", tail[end:]):
+                _, end = _extract_balanced(tail, end + transform.end() - 1)
+            if end != start.end() and re.match(
+                r"\s*(?:\?\.)?\s*(?:\[|\.\s*(?:at|find|findLast|reduce|reduceRight|pop|shift|slice|splice)\s*\()",
+                tail[end:],
+            ):
+                return False
     return True
 
 
@@ -1149,6 +1192,8 @@ def run_self_test() -> int:
         collection.replace('return result.rows', 'return result.rows[0]'),
         collection.replace('return result.rows', 'const rows = result.rows\nreturn rows.at(0)'),
         collection.replace('return result.rows', 'const rows = result.rows\nconst alias = rows\nreturn alias[0]'),
+        collection.replace('return result.rows', 'return result.rows.map(row => row.fact_value_num)[0]'),
+        collection.replace('return result.rows', 'return result.rows.filter(predicate).map(project).at(0)'),
     ):
         if not scan_ts_sql_text(unsafe, registry_collection=True):
             failures.append(f"SQL without a collection boundary escaped lint: {unsafe}")

@@ -1743,9 +1743,10 @@ def _lookup_argala_for_sign(
         WHERE chart_id = %s AND ayanamsha_id = %s
           AND fact_category = 'argala_natal_matrix'
           AND fact_subject = %s
+          AND fact_key LIKE %s
           AND fact_value_num IS NOT NULL AND fact_value_num != 0
         """,
-        [chart_id, ayanamsha_id, subj],
+        [chart_id, ayanamsha_id, subj, r"from\_sign\_%"],
     ).fetchall()
 
     to_h = ((target_num - lagna_num) % 12) + 1

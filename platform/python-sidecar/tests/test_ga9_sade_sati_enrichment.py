@@ -136,6 +136,8 @@ def test_lookup_argala_for_sign_converts_source_sign_to_house_via_lagna():
     def handler(sql, params):
         assert "argala_natal_matrix" in sql
         assert params[2] == "D1_SIGN_11"
+        assert "fact_key LIKE %s" in sql
+        assert params[3] == r"from\_sign\_%"
         return [{"fact_key": "from_sign_9_offset_3", "fact_value_num": 0.75}]
 
     conn = FakeConn(handler)
@@ -146,6 +148,25 @@ def test_lookup_argala_for_sign_converts_source_sign_to_house_via_lagna():
 def test_lookup_argala_for_sign_returns_empty_for_unknown_sign():
     conn = FakeConn(lambda sql, params: [])
     assert _lookup_argala_for_sign(conn, CHART_ID, AYANAMSHA, "NotASign", "Aries") == []
+
+
+def test_lookup_argala_key_family_keeps_all_parsed_keys():
+    rows = [
+        {"fact_key": f"from_sign_{source}_offset_{offset}", "fact_value_num": source / 12}
+        for source in range(1, 13) for offset in (3, 4, 11)
+    ]
+    rows.append({"fact_key": "another_measurement", "fact_value_num": 99})
+
+    def handler(sql, params):
+        assert "fact_key LIKE %s" in sql
+        assert params == [CHART_ID, AYANAMSHA, "D1_SIGN_11", r"from\_sign\_%"]
+        return rows
+
+    result = _lookup_argala_for_sign(FakeConn(handler), CHART_ID, AYANAMSHA, "Aquarius", "Aries")
+    assert result == [
+        {"from_h": source, "to_h": 11, "strength": source / 12}
+        for source in range(1, 13) for _ in (3, 4, 11)
+    ]
 
 
 # ── _lookup_d10_karya_activation_facts ───────────────────────────────────────
