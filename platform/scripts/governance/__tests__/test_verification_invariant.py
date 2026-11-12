@@ -72,31 +72,49 @@ def test_claim_vs_evidence_counts_only_verified_claims_outside_examined_rows(
     assert "Examined-row coverage is unknown" in facts["detail"]
 
 
-def test_no_verified_chart_facts_claims_are_explicit_without_predicate_credit(watchdog, monkeypatch):
+@pytest.mark.parametrize("table", ["chart_facts", "chart_divisionals"])
+def test_no_verified_claims_are_explicit_without_predicate_credit(watchdog, monkeypatch, table):
     _, namespace = watchdog
-    monkeypatch.setitem(namespace, "_tables_with_column", lambda cur: ["chart_facts"])
+    monkeypatch.setitem(namespace, "_tables_with_column", lambda cur: [table])
     queries = []
     cursor = SimpleNamespace(execute=lambda sql, params: queries.append((sql, params)), fetchone=lambda: (0,))
     results = []
     namespace["check_claim_vs_evidence"](cursor, results)
     assert results == [{
-        "check": "claim_vs_evidence", "table": "chart_facts", "status": "PASS",
+        "check": "claim_vs_evidence", "table": table, "status": "PASS",
         "detail": "0 row(s) claim a verified tier. No verified claims to assess.",
     }]
-    assert queries == [('SELECT count(*) FROM "chart_facts" WHERE verification_pass_status = ANY(%s)',
+    assert queries == [(f'SELECT count(*) FROM "{table}" WHERE verification_pass_status = ANY(%s)',
                         (["two_pass_verified"],))]
 
 
-def test_divisional_and_undeclared_claim_dispositions_are_unchanged(watchdog, monkeypatch):
+def test_divisional_unknown_coverage_preserves_verified_count_and_undeclared_failure(watchdog, monkeypatch):
     _, namespace = watchdog
     monkeypatch.setitem(namespace, "_tables_with_column", lambda cur: ["chart_divisionals", "fixture_undeclared"])
-    counts = iter([(0,), (1,), (1,)])
-    cursor = SimpleNamespace(execute=lambda sql, params: None, fetchone=lambda: next(counts))
-    results = []
-    namespace["check_claim_vs_evidence"](cursor, results)
-    assert [(r["table"], r["status"]) for r in results] == [("chart_divisionals", "PASS"), ("fixture_undeclared", "FAIL")]
-    assert "(TRUE). Tolerance 0." in results[0]["detail"]
-    assert "NO examined-row predicate" in results[1]["detail"]
+    with contextlib.closing(sqlite3.connect(":memory:")) as connection:
+        connection.execute("CREATE TABLE chart_divisionals (verification_pass_status TEXT)")
+        connection.executemany("INSERT INTO chart_divisionals VALUES (?)",
+                               [("two_pass_verified",), ("two_pass_verified",), ("single",), (None,)])
+        connection.execute("CREATE TABLE fixture_undeclared (verification_pass_status TEXT)")
+        connection.execute("INSERT INTO fixture_undeclared VALUES ('two_pass_verified')")
+        cursor = connection.cursor()
+
+        def execute(sql, params):
+            statuses, = params
+            placeholders = ", ".join("?" for _ in statuses)
+            cursor.execute(sql.replace("= ANY(%s)", f"IN ({placeholders})"), statuses)
+
+        results = []
+        namespace["check_claim_vs_evidence"](SimpleNamespace(execute=execute, fetchone=cursor.fetchone), results)
+
+    divisionals, undeclared = results
+    assert divisionals == {
+        "check": "claim_vs_evidence", "table": "chart_divisionals", "status": "INCOMPLETE",
+        "detail": "2 row(s) claim a verified tier. Examined-row coverage is unknown without "
+                  "a qualified row-level predicate for chart_divisionals.",
+    }
+    assert undeclared["table"] == "fixture_undeclared" and undeclared["status"] == "FAIL"
+    assert "NO examined-row predicate" in undeclared["detail"]
 
 
 def verdict(status):

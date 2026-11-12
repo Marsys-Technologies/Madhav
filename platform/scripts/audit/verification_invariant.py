@@ -55,8 +55,8 @@ from brahmagyan.verification_vocab import (  # noqa: E402
 #: `[r for r in rows if r["level_n"] == 1]`, and `_verify_vimshottari` is additionally
 #: pre-filtered on `kp_sublevel is None` at its call site.
 #:
-#: An absent predicate does not exempt a verified claim. chart_facts is tracked explicitly as
-#: incomplete coverage below. Other undeclared tables with verified claims still fail.
+#: An absent predicate does not exempt a verified claim. chart_facts and chart_divisionals
+#: report incomplete coverage below. Other undeclared tables with verified claims still fail.
 EXAMINED_PREDICATE: dict[str, str] = {
     # PR #1056 (2026-08-05) wired `_apply_vimshottari_independent_verification` into
     # ga_dashas_writer.build_system()'s vimshottari branch: every level_n 1-4, non-KP vimshottari
@@ -68,8 +68,6 @@ EXAMINED_PREDICATE: dict[str, str] = {
     # write to exercise #1056's write path since it merged, and its own genuinely-examined level
     # 2-4 rows tripped this check because the predicate had never been updated to match.
     "chart_dashas": "kp_sublevel IS NULL AND (level_n = 1 OR (system_id = 'vimshottari' AND level_n <= 4))",
-    # chart_divisionals retains the existing per-row ga_vargas policy lookup.
-    "chart_divisionals": "TRUE",
 }
 
 #: Divergence tolerance. Zero: a row claiming a verified tier that no verifier examined is not a
@@ -104,10 +102,10 @@ def check_claim_vs_evidence(cur, results: list[dict]) -> None:
                 (verified,),
             )
             n = cur.fetchone()[0]
-            if tbl == "chart_facts":
+            if tbl in ("chart_facts", "chart_divisionals"):
                 detail = (
                     f"{n} row(s) claim a verified tier. Examined-row coverage is unknown without "
-                    "a qualified row-level predicate for chart_facts."
+                    f"a qualified row-level predicate for {tbl}."
                     if n else "0 row(s) claim a verified tier. No verified claims to assess."
                 )
                 results.append({
