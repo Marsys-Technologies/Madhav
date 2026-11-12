@@ -141,6 +141,23 @@ def test_only_changed_discovered_db_profiles_run_on_a_pull_request(tmp_path, mon
     assert ci_gate.select_db(tmp_path, synthetic, ['platform/tests/integration/deleted.db.test.ts']) == (['db'], ['fresh'])
 
 
+@pytest.mark.parametrize('changed,expected', [
+    ('platform/scripts/governance/asset_census.py', True),
+    ('platform/python-sidecar/services/ka_muhurta_seva/certification_mapping.json', True),
+    ('platform/src/app/page.tsx', False),
+])
+def test_parihara_certification_inputs_select_the_required_pr_step(changed, expected):
+    import ci_gate
+    jobs = workflow()['jobs']
+    selected_jobs, selected_profiles = ci_gate.select_db(ROOT, jobs, [changed])
+    job = jobs['kala-db-tests']
+    profile = 'kala-db-tests-parihara'
+    step, = [step for step in job['steps'] if profile in ci_gate.PROFILE_CALL.findall(step.get('run', ''))]
+    assert (profile in selected_profiles) is expected
+    assert evaluate(step['if'], event='pull_request', profiles=selected_profiles) is expected
+    assert evaluate(job['if'], event='pull_request', selected=selected_jobs) is expected
+
+
 def test_discovery_does_not_launch_an_unselected_pr_profile(tmp_path, monkeypatch):
     """Brief (a): unrelated profiles skip; a selected failing suite makes its job fail."""
     import ci_discovery
