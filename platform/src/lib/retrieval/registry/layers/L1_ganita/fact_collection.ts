@@ -10,7 +10,10 @@ export function queryFactCollection<T extends QueryResultRow>(sql: string, param
   const structure = sql.replace(/'(?:[^']|'')*'/g, '?').trim()
   const projection = /^SELECT\s+([^]*?)\s+FROM\s+chart_facts\s+WHERE\b/i.exec(structure)?.[1]
   const columns = projection?.split(/,(?![^()]*\))/).map((column) => column.trim().toLowerCase())
+  const ordering = /\bORDER\s+BY\s+([^]*?)(?:\bLIMIT\b|$)/i.exec(structure)?.[1]
   if (!columns?.includes('fact_id') || !columns.includes('fact_key')
+    || !ordering || !/\bfact_key\b/i.test(ordering)
+    || /\bfact_value_\w*\b/i.test(ordering)
     || structure.match(/\bSELECT\b/gi)?.length !== 1
     || /[;"'\\]|--|\/\*|\$(?:[a-z_][a-z_0-9]*)?\$|\b(?:distinct|group\s+by|fetch|union|intersect|except|having|over|into|for\s+update)\b/i.test(structure)
     || (/\b(?:limit|offset)\b/i.test(structure)

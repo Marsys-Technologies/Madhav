@@ -556,7 +556,15 @@ def _fact_key_reference(node: ast.AST) -> bool:
     return isinstance(node, ast.Subscript) and isinstance(node.slice, ast.Constant) and node.slice.value == "fact_key"
 
 
-def _collects_loop_rows(body: list[ast.AST], collections: set[str]) -> bool:
+def _collects_loop_rows(loop: ast.For, collections: set[str]) -> bool:
+    body = list(ast.walk(loop))
+    if any(
+        isinstance(node, (ast.Assign, ast.AnnAssign))
+        and any(isinstance(target, ast.Name) and target.id in collections
+                for target in (node.targets if isinstance(node, ast.Assign) else [node.target]))
+        for node in body
+    ):
+        return False
     keyed_names: set[str] = set()
     for node in body:
         if not isinstance(node, ast.Assign) or len(node.targets) != 1:
@@ -569,13 +577,18 @@ def _collects_loop_rows(body: list[ast.AST], collections: set[str]) -> bool:
                 name.id for name, value in zip(target.elts, node.value.elts)
                 if isinstance(name, ast.Name) and _fact_key_reference(value)
             )
-    return any(
-        isinstance(node, ast.Subscript) and isinstance(node.ctx, ast.Store)
-        and (_fact_key_reference(node.slice) or isinstance(node.slice, ast.Name) and node.slice.id in keyed_names)
-        or _method_call(node, "append")
-        and isinstance(node.func.value, ast.Name) and node.func.value.id in collections
-        for node in body
-    )
+    for statement in loop.body:
+        if isinstance(statement, ast.Assign) and any(
+            isinstance(target, ast.Subscript)
+            and (_fact_key_reference(target.slice) or isinstance(target.slice, ast.Name) and target.slice.id in keyed_names)
+            for target in statement.targets
+        ):
+            return True
+        if isinstance(statement, ast.Expr) and _method_call(statement.value, "append"):
+            receiver = statement.value.func.value
+            if isinstance(receiver, ast.Name) and receiver.id in collections:
+                return True
+    return False
 
 
 def _consumes_keyed_collection(nodes: list[ast.AST], binding: ast.Name) -> bool:
@@ -611,7 +624,7 @@ def _consumes_keyed_collection(nodes: list[ast.AST], binding: ast.Name) -> bool:
         if isinstance(consumer, ast.For):
             if any(isinstance(node, (ast.Break, ast.Return, ast.Yield, ast.YieldFrom)) for node in body):
                 return False
-            if not _collects_loop_rows(body, collections):
+            if not _collects_loop_rows(consumer, collections):
                 return False
         else:
             # Column names can be declared next to the fetch and passed to zip
@@ -685,6 +698,45 @@ _TS_COLLECTION_CALL = r"\bqueryFactCollection(?:<[\w\s,<>]+>)?\(\s*"
 _TS_COLLECTION_IMPORT = "import { queryFactCollection } from './fact_collection'"
 
 
+def _collection_result_stays_plural(code: str, call_start: int) -> bool:
+    prefix = code[:call_start]
+    binding = re.search(r"\b(?:const|let)\s+(\w+)\s*=\s*await\s*$", prefix)
+    if binding is None:
+        binding = re.search(
+            r"\bconst\s*\[\s*(\w+)\s*,\s*\w+\s*\]\s*=\s*await\s+Promise\.all\(\[\s*$",
+            prefix,
+        )
+    if binding is None:
+        return False
+    result_name = binding[1]
+    tail = code[call_start:]
+    root = re.escape(result_name)
+    if any(
+        not re.match(r"\s*\.\s*rows\b", tail[use.end():])
+        for use in re.finditer(rf"\b{root}\b", tail)
+    ):
+        return False
+    aliases: set[str] = set()
+    assignments = list(re.finditer(r"^\s*(?:(?:const|let)\s+)?(\w+)\s*=\s*([^\n]+)", tail, re.MULTILINE))
+    for _ in range(len(assignments) + 1):
+        before = set(aliases)
+        for assignment in assignments:
+            if re.search(rf"\b{root}\s*\.\s*rows\b", assignment[2]) or any(
+                re.search(rf"(?<![\w.]){re.escape(name)}\b", assignment[2]) for name in aliases
+            ):
+                aliases.add(assignment[1])
+        if aliases == before:
+            break
+    plural_values = [rf"\b{root}\s*\.\s*rows"] + [rf"(?<![\w.]){re.escape(name)}\b" for name in aliases]
+    for value in plural_values:
+        if re.search(
+            value + r"\s*(?:\?\.)?\s*(?:\[|\.\s*(?:at|find|findLast|reduce|reduceRight|pop|shift|slice|splice)\s*\()",
+            tail,
+        ):
+            return False
+    return True
+
+
 def _collection_query_templates(text: str) -> set[int]:
     """Bind the SQL literal to the registry's validated collection executor.
 
@@ -705,6 +757,8 @@ def _collection_query_templates(text: str) -> set[int]:
     if len(calls) != 1 or len(re.findall(r"\bqueryFactCollection\b", code)) != 2:
         return set()
     call = calls[0]
+    if not _collection_result_stays_plural(code, call.start()):
+        return set()
     certified: set[int] = set()
     for token in trivia:
         if not token[0].startswith("`") or not _RE_SELECT_FROM_CHART_FACTS.search(token[0]):
@@ -1082,7 +1136,8 @@ def run_self_test() -> int:
     collection = (
         _TS_COLLECTION_IMPORT + f'\nlet sql = `{keyed_sql}`\n'
         'sql += ` ORDER BY fact_key LIMIT $2 OFFSET $3`\n'
-        'await queryFactCollection<Row>(sql, params)\n'
+        'const result = await queryFactCollection<Row>(sql, params)\n'
+        'return result.rows\n'
     )
     if scan_ts_sql_text(collection, registry_collection=True):
         failures.append("The collection executor must qualify its own SQL input")
@@ -1091,6 +1146,9 @@ def run_self_test() -> int:
         collection.replace('await queryFactCollection<Row>', '// await queryFactCollection<Row>'),
         collection.replace(keyed_sql, keyed_sql + " ORDER BY fact_value_num LIMIT 1"),
         collection.replace("./fact_collection", "./unchecked"),
+        collection.replace('return result.rows', 'return result.rows[0]'),
+        collection.replace('return result.rows', 'const rows = result.rows\nreturn rows.at(0)'),
+        collection.replace('return result.rows', 'const rows = result.rows\nconst alias = rows\nreturn alias[0]'),
     ):
         if not scan_ts_sql_text(unsafe, registry_collection=True):
             failures.append(f"SQL without a collection boundary escaped lint: {unsafe}")

@@ -647,16 +647,44 @@ def _verified_row_counter_initializers(tree: ast.Module) -> set[int]:
         for scope in tree.body:
             if not isinstance(scope, ast.FunctionDef):
                 continue
-            nodes = list(ast.walk(scope))
+            parameters = {arg.arg for arg in scope.args.args}
+            lengths = {
+                node.targets[0].id for node in scope.body if isinstance(node, ast.Assign)
+                and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name)
+                and isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Name)
+                and node.value.func.id == "max" and len(node.value.args) == 2
+                and all(
+                    isinstance(arg, ast.Call) and isinstance(arg.func, ast.Name) and arg.func.id == "len"
+                    and len(arg.args) == 1 and isinstance(arg.args[0], ast.Name) and arg.args[0].id in parameters
+                    for arg in node.value.args
+                )
+            }
+            loops = [
+                node for node in scope.body if isinstance(node, ast.For)
+                and isinstance(node.iter, ast.Call) and isinstance(node.iter.func, ast.Name)
+                and node.iter.func.id == "range" and len(node.iter.args) == 1
+                and isinstance(node.iter.args[0], ast.Name) and node.iter.args[0].id in lengths
+            ]
+            nodes = list(scope.body) + [node for loop in loops for node in loop.body]
             constructions = {
-                node.targets[0].id for node in nodes if isinstance(node, ast.Assign)
+                node.targets[0].id for node in scope.body if isinstance(node, ast.Assign)
                 and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name)
                 and isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Name)
                 and node.value.func.id == cls.name and not node.value.args
                 and all(kw.arg is not None and kw.arg != "two_pass_verified" for kw in node.value.keywords)
             }
+            constructions = {
+                name for name in constructions
+                if sum(
+                    isinstance(target, ast.Name) and target.id == name
+                    for node in scope.body if isinstance(node, (ast.Assign, ast.AnnAssign, ast.AugAssign))
+                    for target in (node.targets if isinstance(node, ast.Assign) else [node.target])
+                ) == 1
+            }
             for compare in nodes:
                 if not isinstance(compare, ast.If) or not isinstance(compare.test, ast.Compare):
+                    continue
+                if any(isinstance(node, (ast.Return, ast.Raise)) and node.lineno < compare.lineno for node in scope.body):
                     continue
                 test = compare.test
                 if not (
@@ -666,12 +694,23 @@ def _verified_row_counter_initializers(tree: ast.Module) -> set[int]:
                     and isinstance(test.comparators[0], ast.Name) and test.comparators[0].id == "TWO_PASS_VERIFIED"
                 ):
                     continue
-                if not any(
-                    isinstance(node, ast.Assign) and len(node.targets) == 1
-                    and isinstance(node.targets[0], ast.Name) and node.targets[0].id == test.left.value.id
-                    and isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Name)
-                    and node.value.func.id == "compare_row" and len(node.value.args) >= 2
-                    and node.lineno < compare.lineno for node in nodes
+                definitions = [
+                    node for node in nodes
+                    if isinstance(node, (ast.Assign, ast.AnnAssign, ast.AugAssign))
+                    and node.lineno < compare.lineno
+                    and any(
+                        isinstance(target, ast.Name) and target.id == test.left.value.id
+                        or isinstance(target, ast.Attribute) and isinstance(target.value, ast.Name)
+                        and target.value.id == test.left.value.id
+                        for target in (node.targets if isinstance(node, ast.Assign) else [node.target])
+                    )
+                ]
+                reaching = max(definitions, key=lambda node: node.lineno, default=None)
+                if not (
+                    isinstance(reaching, ast.Assign) and len(reaching.targets) == 1
+                    and isinstance(reaching.targets[0], ast.Name)
+                    and isinstance(reaching.value, ast.Call) and isinstance(reaching.value.func, ast.Name)
+                    and reaching.value.func.id == "compare_row" and len(reaching.value.args) >= 2
                 ):
                     continue
                 if any(
@@ -990,9 +1029,27 @@ _TS_FAILED_BUNDLE = re.compile(
 )
 
 
-def _ts_is_input_counter(text: str, name: str, code: str) -> bool:
+def _ts_is_input_counter(text: str, name: str, code: str, line_number: int) -> bool:
     if not re.fullmatch(rf"\s*private\s+{re.escape(name)}\s*=\s*0\s*;?", code):
         return False
+    text = re.sub(
+        r"\x60[^\x60]*\x60|'(?:[^'\\\n]|\\.)*'|\"(?:[^\"\\\n]|\\.)*\"|//[^\n]*|/\*.*?\*/",
+        lambda match: re.sub(r"[^\n]", " ", match[0]), text, flags=re.DOTALL,
+    )
+    offset = sum(len(line) + 1 for line in text.splitlines()[:line_number - 1])
+    containing_class = None
+    for declaration in re.finditer(r"\bclass\s+\w+\s*\{", text):
+        start = declaration.end() - 1
+        depth = 1
+        end = start + 1
+        while end < len(text) and depth:
+            depth += (text[end] == "{") - (text[end] == "}")
+            end += 1
+        if depth == 0 and start < offset < end:
+            containing_class = text[start:end]
+    if containing_class is None:
+        return False
+    text = containing_class
     counter = re.escape(f"this.{name}")
     writes = re.findall(rf"\b{counter}\s*([+\-*/]?=|\+\+|--)(?![=>])\s*(\w*)", text)
     if len(writes) != 1 or writes[0][0] != "+=" or not writes[0][1].isidentifier():
@@ -1145,7 +1202,7 @@ def scan_ts_text(text: str) -> List[Tuple[int, str, str, str]]:
 
         m2 = _TS_ASSIGN_RE.search(code)
         if m2 and is_signal_name(m2.group("name")):
-            if _ts_is_input_counter(text, m2.group("name"), code):
+            if _ts_is_input_counter(text, m2.group("name"), code, idx):
                 continue
             if _is_unmeasured_marker(m2.group("name"), m2.group("value")[1:-1]):
                 continue

@@ -25,6 +25,7 @@ describe('queryFactCollection', () => {
     base + ' ORDER BY fact_value_num LIMIT 1',
     base + ' ORDER BY fact_value_num FETCH FIRST 1 ROW ONLY',
     base + ' ORDER BY fact_value_num LIMIT $2',
+    base + ' ORDER BY fact_value_num LIMIT $2 OFFSET $3',
     base.replace('fact_id, fact_key, ', 'fact_id, '),
     base.replace('fact_id,', 'DISTINCT ON (fact_id) fact_id,'),
     base.replace('fact_value_num FROM', 'MAX(fact_value_num) OVER () FROM'),
