@@ -26,7 +26,7 @@
 import { query } from '@/lib/db/client'
 import { resolveChartServedGeneration, resolvedRowsBuildId } from './registry/generation/served_generation'
 import { AYANAMSHA_SERVE_ORDER } from './registry/constants'
-import { GRAHA_CODE_TO_NAME } from './graha_labels'
+import { GRAHA_CODE_TO_NAME } from '@/lib/brahmagyan/grahaIdentity'
 import {
   buildAyanamshaCrossCheck,
   identityFactSpecs,

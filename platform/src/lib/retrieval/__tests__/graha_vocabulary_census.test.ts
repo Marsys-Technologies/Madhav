@@ -6,15 +6,15 @@
  * TypeScript tree: R17 (Adoption over addition) requires acceptance by an actual,
  * detector-cited removal census, not an estimate.
  *
- * address_resolver.ts's GRAHA_CODE_TO_NAME / grahaCodeOf() (declared canonical per the
- * ADHIṢṬHĀNA Lane A2 brief) is the ONE permitted independent graha-alias object literal.
+ * lib/brahmagyan/grahaIdentity.ts derives the canonical graha identity vocabulary
+ * from the immutable L0 semantic release.
  * Every other TS graha map found tree-wide is retired to either:
  *   - an import of grahaCodeOf()/GRAHA_CODE_TO_NAME directly, or
  *   - a `Record<string,string>` built via `Object.fromEntries([...].map(x => [x, grahaCodeOf(x)]))`
  *     (a derivation, not a literal — this scanner cannot see it as an independent map,
  *     which is the pass signal, exactly as the Python scanner's comprehension-blindness is).
  *
- * WHAT IS A VIOLATION: a TS source file (outside address_resolver.ts and this file itself)
+ * WHAT IS A VIOLATION: a production TS source file
  * containing an object literal with >= GRAHA_KEY_THRESHOLD (4) distinct string-literal
  * PROPERTIES whose KEY and VALUE are BOTH graha-identifier tokens (short code, long English
  * name, or classical Sanskrit name/2-letter code) — i.e. an alias/subject NORMALIZATION map,
@@ -24,8 +24,9 @@
 import { describe, it, expect } from 'vitest'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
+import * as os from 'node:os'
 import * as ts from 'typescript'
-import { GRAHA_CODE_TO_NAME } from '../graha_labels'
+import { GRAHA_CODE_TO_NAME } from '../../brahmagyan/grahaIdentity'
 
 const REPO_SRC = path.resolve(__dirname, '../../../')
 
@@ -52,14 +53,9 @@ for (const extra of [
 
 const GRAHA_KEY_THRESHOLD = 4
 
-// The SSoT is now two files (ADHIṢṬHĀNA build-break fix, 2026-08-08): the graha
-// code/name/alias vocabulary + grahaCodeOf() itself live in graha_labels.ts (the
-// CLIENT-SAFE pure subset, extracted so a 'use client' component can import graha
-// labels without pulling in address_resolver.ts's `@/lib/db/client` → `server-only`
-// chain); address_resolver.ts re-exports the same names for its existing DB-touching
-// call sites. Both are excluded from the scan — the object literal genuinely lives
-// in graha_labels.ts now, address_resolver.ts carries only a re-export.
-const SSOT_FILES = new Set(['address_resolver.ts', 'graha_labels.ts'])
+// The implementation is owned by lib/brahmagyan/grahaIdentity.ts. Both old
+// retrieval paths are compatibility exports. Scan all three actual files:
+// filename exemptions could hide a new independent map in a facade or owner.
 
 // ── Known-safe exclusions ──────────────────────────────────────────────────────
 const EXCLUDED_PATH_SUBSTRINGS = ['__tests__', '.test.ts', '.gate.test.ts', 'node_modules', '/generated/']
@@ -89,7 +85,6 @@ function collectTsFiles(dir: string, out: string[]): void {
       collectTsFiles(full, out)
     } else if (entry.isFile() && (entry.name.endsWith('.ts') || entry.name.endsWith('.tsx'))) {
       if (EXCLUDED_PATH_SUBSTRINGS.some(s => full.includes(s))) continue
-      if (SSOT_FILES.has(entry.name)) continue
       out.push(full)
     }
   }
@@ -161,14 +156,34 @@ describe('graha vocabulary census (TS)', () => {
     expect(names).toContain('priors_config.ts')
   })
 
-  it('SSoT files (address_resolver.ts, graha_labels.ts) are excluded from the scan', () => {
+  it('scans the actual Brahmagyan owner and both compatibility files', () => {
     const files: string[] = []
     for (const dir of SCAN_DIRS) collectTsFiles(dir, files)
-    const names = files.map(f => path.basename(f))
-    for (const ssot of SSOT_FILES) expect(names).not.toContain(ssot)
+    for (const relative of [
+      'lib/brahmagyan/grahaIdentity.ts', 'lib/retrieval/graha_labels.ts',
+      'lib/retrieval/address_resolver.ts',
+    ]) expect(files).toContain(path.join(REPO_SRC, relative))
   })
 
-  it('THE GATE (R17): exactly ONE independent TS graha map survives tree-wide', () => {
+  it.each(['grahaIdentity.ts', 'graha_labels.ts', 'address_resolver.ts'])(
+    'detects an independent map even under the owner or compatibility filename %s', name => {
+      const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'graha-census-'))
+      try {
+        const file = path.join(directory, name)
+        fs.writeFileSync(file, "export const copied = { SUN: 'Sun', MOON: 'Moon', MAR: 'Mars', MER: 'Mercury' }")
+        const files: string[] = []
+        collectTsFiles(directory, files)
+        expect(files).toContain(file)
+        expect(findGrahaMapsInFile(file)).toEqual([
+          expect.objectContaining({ file, name: 'copied', numKeys: 4 }),
+        ])
+      } finally {
+        fs.rmSync(directory, { recursive: true, force: true })
+      }
+    },
+  )
+
+  it('THE GATE (R17): no independent TS graha map survives tree-wide', () => {
     // Before ADHIṢṬHĀNA Lane A2: 18 independent literal graha-alias object
     // literals found by this exact scanner shape tree-wide across 15 files,
     // re-run directly against the pre-lane git tree (`git stash` to the base
@@ -193,7 +208,8 @@ describe('graha vocabulary census (TS)', () => {
     // graha labels without pulling in address_resolver.ts's `@/lib/db/client`
     // → `server-only` chain. address_resolver.ts re-exports the same names
     // (still zero independent literals there); both files are now the SSoT
-    // pair excluded from the scan (SSOT_FILES above).
+    // pair excluded from that historical scan. The current scan includes all three files.
+    // Current ownership is JSON-derived. The owner and both facades are included.
     const hits = runCensus()
     if (hits.length > 0) {
       const lines = ['Independent TS graha maps found outside the SSoT (R17 violation):']

@@ -19,7 +19,7 @@
  * B.10: never fabricates a rank — callers supply the real ordered population;
  * this module only formats it consistently.
  */
-import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '@/lib/retrieval/address_resolver'
+import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '@/lib/brahmagyan/grahaIdentity'
 
 export interface RankStatement {
   /** 1-indexed rank within the stated population (1 = strongest/first by the stated basis). */

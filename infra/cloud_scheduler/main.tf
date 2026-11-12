@@ -1,5 +1,6 @@
-// Cloud Scheduler module — build reaper cron + supporting IAM.
-// Applied via deploy.yml on every main-branch push.
+// Retired build-reaper definitions for the verified default deployment.
+// Backend/provider declarations are retained for history; apply.sh refuses all operations.
+// Alternate projects, regions and backends require a separate state disposition.
 
 terraform {
   required_version = ">= 1.5.0"
@@ -29,13 +30,4 @@ variable "amjis_web_url" {
 provider "google" {
   project = var.gcp_project
   region  = var.gcp_region
-}
-
-// Allow build-reaper SA to invoke the amjis-web Cloud Run service.
-resource "google_cloud_run_v2_service_iam_member" "reaper_invokes_web" {
-  project  = var.gcp_project
-  location = var.gcp_region
-  name     = "amjis-web"
-  role     = "roles/run.invoker"
-  member   = "serviceAccount:${google_service_account.build_reaper.email}"
 }

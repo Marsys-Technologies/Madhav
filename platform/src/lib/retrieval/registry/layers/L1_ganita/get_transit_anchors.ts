@@ -11,7 +11,7 @@
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, PRIMARY_AYANAMSHA_ID_INPUT_TEXT } from '../../handler_ayanamsha'
-import { grahaCodeOf } from '@/lib/retrieval/graha_labels'
+import { grahaCodeOf } from '@/lib/brahmagyan/grahaIdentity'
 
 // F-D25 (L1_W1_ANALYSIS_BATCH_D.md, NOW, §N.6; D-SERVICE ≤2 hops to L1): the writer
 // (ga_transit_anchors.py) derives natal_sign/natal_degree_absolute/natal_nakshatra from

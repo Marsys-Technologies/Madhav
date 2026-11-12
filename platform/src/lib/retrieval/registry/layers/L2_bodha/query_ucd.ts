@@ -43,7 +43,7 @@ import { applyCompositeRanking, buildRankingBasis, buildHierarchicalProfiles, co
 import { fetchL1Context } from '../../../ranking/l1_context_fetcher'
 import { PRIORS_VERSION } from '../../../ranking/priors_config'
 import { demoteSignatureTiers } from '../../../ranking/salience_demotion'
-import { GRAHA_CODE_TO_NAME } from '../../../address_resolver'
+import { GRAHA_CODE_TO_NAME } from '@/lib/brahmagyan/grahaIdentity'
 
 /** Max resolvable fact_ids surfaced in the envelope-level grounding block (payload safety). */
 const GROUNDING_FACT_IDS_CAP = 200

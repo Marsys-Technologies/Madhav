@@ -8,10 +8,8 @@ name: Gochara Serving Outage Smoke Probe (MR-35)
 # convention as elev-serving-gates.yml's LIVE mode) for every gochara tool
 # against both canonical charts, plus one kala and one judgment baseline.
 #
-# SCHEDULE: runs every 6 hours (00:00 / 06:00 / 12:00 / 18:00 UTC). A 3-hour
-# outage therefore never goes more than ~3h before the next probe fires — the
-# stated MR-35 goal of "detect serving outages within minutes" on a scheduled
-# basis. workflow_dispatch is also wired so the native can trigger immediately.
+# SCHEDULE: runs every 6 hours (00:00 / 06:00 / 12:00 / 18:00 UTC). An outage
+# can start and end between checks. workflow_dispatch supports an on-demand probe.
 #
 # SECRETS:
 #   MARSYS_MCP_URL  — base URL of the deployed MCP endpoint (e.g. https://host/mcp).
@@ -30,8 +28,8 @@ name: Gochara Serving Outage Smoke Probe (MR-35)
 #   - kala_now_get               × primary chart (L3 serving baseline)
 #   - judgment_query             × primary chart (verdict pipeline baseline)
 #
-# KEY OUTAGE-SPECIFIC CHECK: backing_data_reachable=false is FAIL even on
-# HTTP 200 — that was the exact symptom of the 3h+ outage that a naive
+# KEY OUTAGE-SPECIFIC CHECK: provenance_envelope.backing_data_reachable=false
+# is FAIL even on HTTP 200 — that was the exact symptom of the 3h+ outage that a naive
 # HTTP-200 check would have silently passed.
 #
 # ADDITIVE-ONLY: this file is new. It adds no trigger to, and modifies no
@@ -40,8 +38,6 @@ name: Gochara Serving Outage Smoke Probe (MR-35)
 on:
   schedule:
     # Every 6 hours: 00:00, 06:00, 12:00, 18:00 UTC.
-    # A 3h+ outage is caught within ≤6h rather than "eventually, if someone
-    # notices by hand" (the actual failure mode this workflow closes).
     - cron: '0 0,6,12,18 * * *'
   workflow_dispatch:
     inputs:
@@ -86,7 +82,7 @@ jobs:
           fi
           if [ -z "${MCP_SERVER_URL}" ]; then
             echo "::error::[gochara-smoke] MARSYS_MCP_URL secret not configured — failing loudly."
-            echo "[gochara-smoke] Set the MARSYS_MCP_URL repo secret (same as elev-serving-gates.yml uses) to enable the gochara smoke probe."
+            echo "[gochara-smoke] Confirm the approved endpoint and credential binding with the monitoring owner. No live probe was attempted."
             echo "[gochara-smoke] This probe MUST NOT silently report green when misconfigured — that is the failure mode it exists to prevent."
             exit 1
           fi
@@ -102,11 +98,12 @@ jobs:
 
       - run: npm ci
 
-      - name: Run gochara smoke probe (LIVE — calls deployed MCP product)
+      - name: Run gochara smoke probe (LIVE or explicit PLAN)
+        id: probe
         # PLAN mode (dry_run=true): MCP_SERVER_URL unset so probe self-switches
         # to plan mode (printPlanAndExit → exit 0). Credentials not needed.
         # LIVE mode: calls all 3 gochara tools × 2 charts + 2 baseline tools
-        # directly against the deployed connector. Exit 1 = outage detected.
+        # directly against the deployed connector. Exit 1 = a live check failed.
         env:
           DRY_RUN: ${{ inputs.dry_run }}
         run: |
@@ -116,9 +113,7 @@ jobs:
           fi
           npx tsx scripts/gochara/smoke_probe.ts
 
-      - name: Annotate failure (helps GH surface the right line in the Actions UI)
-        if: failure()
+      - name: Annotate live probe failure
+        if: failure() && steps.probe.outcome == 'failure' && inputs.dry_run != 'true'
         run: |
-          echo "::error::[gochara-smoke] One or more gochara tool checks FAILED."
-          echo "::error::[gochara-smoke] Check the 'Run gochara smoke probe' step above for which tool/chart failed and why."
-          echo "::error::[gochara-smoke] Likely causes: server outage, DB connectivity loss (backing_data_reachable=false), deploy regression."
+          echo "::error::[gochara-smoke] Live probe failed. See the probe step for its fixed reason codes."

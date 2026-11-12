@@ -31,7 +31,7 @@ import type {
   FactProvenance,
 } from './types'
 import { FORENSIC_V8_REQUIRED_DOMAINS } from './types'
-import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '@/lib/retrieval/address_resolver'
+import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '@/lib/brahmagyan/grahaIdentity'
 
 // ─── DB client interface (injected; avoids hard coupling to pg Pool) ──────────
 

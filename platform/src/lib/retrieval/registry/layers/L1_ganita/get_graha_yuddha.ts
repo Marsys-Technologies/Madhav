@@ -41,7 +41,7 @@
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, PRIMARY_AYANAMSHA_ID_INPUT_TEXT } from '../../handler_ayanamsha'
-import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '../../../address_resolver'
+import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '@/lib/brahmagyan/grahaIdentity'
 
 const OPTION_A_CITATION =
   'Brhat Parasara Hora Sastra (graha-yuddha sloka): Venus is conqueror whether North or South; ' +

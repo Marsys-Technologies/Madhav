@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
 import { spawnSync } from 'node:child_process'
@@ -204,5 +204,71 @@ describe('Nirmana elevation monitor scheduler contract', () => {
         else process.env[name] = value
       }
     }
+  })
+})
+
+
+describe('retired default build-reaper module', () => {
+  const legacyDirectory = resolve(process.cwd(), '../infra/cloud_scheduler')
+
+  it('has no obsolete resource definitions and retains a non-operational compatibility entrypoint', () => {
+    expect(existsSync(join(legacyDirectory, 'build_reaper.tf'))).toBe(false)
+    const terraform = readFileSync(join(legacyDirectory, 'main.tf'), 'utf8')
+    expect(terraform).not.toMatch(/\bresource\s+"/)
+    expect(terraform).not.toContain('google_service_account.build_reaper')
+    expect(terraform).toContain('Alternate projects, regions and backends require a separate state disposition.')
+  })
+
+  it('refuses every legacy invocation before invoking a tool or reading host credentials', () => {
+    const tempDirectory = mkdtempSync(join(tmpdir(), 'retired-build-reaper-'))
+    const binDirectory = join(tempDirectory, 'bin')
+    const marker = join(tempDirectory, 'tool-called')
+    mkdirSync(binDirectory)
+    for (const command of ['terraform', 'gcloud', 'gsutil', 'curl']) {
+      writeFileSync(join(binDirectory, command), '#!/bin/bash\nprintf called > "$TRIPWIRE"\nexit 91\n', { mode: 0o755 })
+    }
+    try {
+      for (const args of [[], ['plan'], ['apply'], ['destroy'], ['unknown'], ['apply', 'extra.tfplan']]) {
+        const result = spawnSync('/bin/bash', [join(legacyDirectory, 'apply.sh'), ...args], {
+          encoding: 'utf8',
+          env: {
+            PATH: binDirectory,
+            TRIPWIRE: marker,
+            TF_VAR_gcp_project: 'unqualified-alternate-project',
+            TF_VAR_gcp_region: 'unqualified-alternate-region',
+            TF_STATE_BUCKET: 'unqualified-alternate-backend',
+          },
+          timeout: 5_000,
+        })
+        expect(result.status).toBe(2)
+        expect(result.stdout).toBe('')
+        expect(result.stderr).toContain('build-reaper module is retired')
+        expect(result.stderr).toContain('platform/scripts/provision_watchdog_scheduler.sh')
+        expect(existsSync(marker)).toBe(false)
+      }
+    } finally {
+      rmSync(tempDirectory, { recursive: true, force: true })
+    }
+  })
+
+  it('removes dispatch selection and rejects stale retired input before authentication while preserving plan-only dispatch', () => {
+    const workflow = readFileSync(iacWorkflow, 'utf8')
+    const moduleInput = workflow.slice(workflow.indexOf('      module:'), workflow.indexOf('      action:'))
+    expect(moduleInput).toContain('default: logging')
+    expect(moduleInput).not.toContain('cloud_scheduler')
+    for (const moduleName of ['iam', 'logging', 'scheduler']) expect(moduleInput).toContain(`- ${moduleName}`)
+    const retiredStart = workflow.indexOf('      - name: Reject retired build-reaper module before authentication')
+    const authStart = workflow.indexOf('      - name: Authenticate to Google Cloud')
+    expect(retiredStart).toBeGreaterThanOrEqual(0)
+    expect(authStart).toBeGreaterThan(retiredStart)
+    const retiredStep = workflow.slice(retiredStart, workflow.indexOf('\n      - name:', retiredStart + 1))
+    expect(retiredStep).toContain("if: ${{ github.event.inputs.module == 'cloud_scheduler' }}")
+    expect(retiredStep).toContain('exit 2')
+    expect(retiredStep).not.toContain('continue-on-error')
+    expect(workflow).toContain("if: ${{ github.event.inputs.action == 'apply' }}")
+    expect(workflow).toContain('GitHub Actions does not apply Terraform')
+    expect(workflow).toContain('default: plan')
+    expect(workflow).toContain('run: bash apply.sh plan')
+    expect(workflow).not.toContain('run: bash apply.sh ${{')
   })
 })

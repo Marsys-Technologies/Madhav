@@ -18,7 +18,7 @@
  * MUST NOT: write to bodha_* tables, run migrations, modify stored salience.
  * All values are query-time multipliers only.
  */
-import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '@/lib/retrieval/address_resolver'
+import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '@/lib/brahmagyan/grahaIdentity'
 import type { CanonicalDomain } from '@/lib/domain_vocabulary'
 
 // '1.0': Frozen after P2T iteration. Formula is correct; G10-QT score ≈9/15.

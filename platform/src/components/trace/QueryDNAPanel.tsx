@@ -16,11 +16,11 @@
 import { useState } from 'react'
 import { ChevronDown, ChevronUp, ChevronRight, Sparkles, AlertTriangle } from 'lucide-react'
 import type { TraceStep, TraceQueryPlan, TraceToolCallSpec } from '@/lib/trace/types'
-// CLIENT-SAFE import — this file is 'use client', so it must import graha
-// labels from graha_labels.ts, never from address_resolver.ts (which pulls
-// in @/lib/db/client → `server-only` and poisons the client bundle; see
-// graha_labels.ts's own header for the full defect-class explanation).
-import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '@/lib/retrieval/graha_labels'
+// This client component reads the released Graha vocabulary from Brahmagyan.
+// The pure owner supplies the shared map and function references.
+// Its client-safe dependency closure also supports the compatibility exports.
+
+import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '@/lib/brahmagyan/grahaIdentity'
 import { ordinal } from '@/lib/format/ordinal'
 
 interface Props {

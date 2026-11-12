@@ -1,10 +1,8 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
-import { query } from '@/lib/db/client'
-import { loadConversationMessagesV2 } from '@/lib/persistence/conversation_writer'
 import { requireActiveUserPage } from '@/lib/auth/active-user-page-guard'
-import { buildShareViewMessages } from '@/lib/share/shareView'
+import { readSharedConversationView } from '@/lib/share/sharedConversationView'
 import { SharedConversation } from './SharedConversation'
 import styles from './folio.module.css'
 
@@ -41,53 +39,9 @@ export default async function SharedConversationPage({
   // SS N-379: a refused visitor goes to /login?next=/share/<slug> so the login page
   // can bring them back (it re-validates `next` with safeNextPath). The slug is
   // only echoed when it has the exact minted shape; otherwise plain /login.
-  await requireActiveUserPage(loginPathFor(slug))
-
-  const shareResult = await query<{
-    conversation_id: string
-    revoked_at: string | null
-    expires_at: string | null
-    hide_reasoning: boolean
-    hide_methodology: boolean
-  }>(
-    'SELECT conversation_id, revoked_at, expires_at, hide_reasoning, hide_methodology FROM conversation_shares WHERE slug=$1 AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > now())',
-    [slug]
-  )
-  const share = shareResult.rows[0] ?? null
-
-  if (!share) notFound()
-
-  // SS N-379: read only what the page renders (no SELECT *).
-  const conversationResult = await query<{
-    title: string | null
-    chart_id: string
-  }>('SELECT title, chart_id FROM conversations WHERE id=$1', [share.conversation_id])
-  const conversation = conversationResult.rows[0] ?? null
-  if (!conversation) notFound()
-
-  const chartResult = await query<{ name: string }>(
-    'SELECT name FROM charts WHERE id=$1',
-    [conversation.chart_id]
-  )
-  const chart = chartResult.rows[0] ?? null
-
-  const messages = await loadConversationMessagesV2(share.conversation_id, { includeCanonicalText: true })
-
-  // X-S8 / SS N-379: the STORED hide options of the share row are ALWAYS applied,
-  // whatever R10_SELECTIVE_SHARE says. The flag only controls whether the options
-  // are OFFERED on NEW shares (the dialog control and the POST body parsing): a
-  // switch must never un-hide content someone chose to hide.
-  //
-  // The reduction happens HERE, on the server: SharedConversation is a client
-  // component, so anything passed to it is in the RSC payload the viewer's browser
-  // receives. buildShareViewMessages applies the hide options and then builds a NEW
-  // minimal message per turn (text only, opaque display role); tool-call parts,
-  // data-* parts and message metadata never leave the server.
-  const visibleMessages = buildShareViewMessages(
-    messages,
-    share.hide_reasoning === true,
-    share.hide_methodology === true,
-  )
+  const viewer = await requireActiveUserPage(loginPathFor(slug))
+  const view = await readSharedConversationView({ slug, verifiedViewerUid: viewer.user.uid })
+  if (!view) notFound()
 
   return (
     <div className="mx-auto flex min-h-[100dvh] max-w-3xl flex-col px-4 py-6 print:max-w-none print:px-0 print:py-0">
@@ -100,14 +54,14 @@ export default async function SharedConversationPage({
           Shared conversation
         </p>
         <h1 className="mt-1 font-heading text-2xl font-semibold text-foreground print:text-black print:mt-0">
-          {conversation.title ?? 'Untitled chat'}
+          {view.title ?? 'Untitled chat'}
         </h1>
-        {chart?.name && (
-          <p className="mt-1 text-sm text-muted-foreground print:text-gray-600">{chart.name}</p>
+        {view.optionalChartName && (
+          <p className="mt-1 text-sm text-muted-foreground print:text-gray-600">{view.optionalChartName}</p>
         )}
       </header>
       <main className={`flex-1 print:text-black ${styles.transcript}`}>
-        <SharedConversation messages={visibleMessages} />
+        <SharedConversation messages={view.visibleMessages} />
       </main>
       {/* Footer is navigation chrome — hidden in print */}
       <footer className="mt-8 border-t border-border pt-4 text-center text-xs text-muted-foreground print:hidden">

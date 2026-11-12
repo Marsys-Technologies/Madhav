@@ -15,26 +15,21 @@
  *   - judgment_query             × 1 chart (baseline: verdict pipeline health)
  *
  * PASS CRITERIA (per call):
- *   - HTTP status < 500 (no server error)
- *   - No transport timeout (30s per call)
- *   - No `error: true` in the JSON-RPC response envelope
- *   - For gochara tools: backing_data_reachable must NOT be false
- *     (the exact symptom of the outage: tools returned backing_data_reachable=false
- *     rather than crashing, so a naive HTTP-200 pass would have masked the outage)
+ *   - HTTP 2xx, no transport timeout (30s per call)
+ *   - Matching JSON-RPC success with a non-empty tool payload
+ *   - For gochara tools: provenance_envelope.backing_data_reachable is true
+ *   - Coverage refusals and withheld generations are reported separately
  *
- * CALLING CONVENTION: follows the exact `_mcp_client.ts` / `ElevMcpClient` pattern
- * established by `platform/scripts/census/elev_gates/` (the authoritative MCP calling
- * convention for this repo). Self-contained for scheduling reliability — no imports
- * from the elev_gates directory (same cross-manifest-isolation reason documented in
- * `elev_gates/_mcp_client.ts`'s header).
+ * CALLING CONVENTION: a self-contained stateless JSON-RPC request to the MCP endpoint.
+ * Accepts JSON and complete SSE responses.
  *
  * TWO MODES:
  *   PLAN mode (MCP_SERVER_URL not set):
  *     Prints the probe plan and exits 0. Never a false pass — exit 0 is explicit
  *     about being plan-only. Safe to run anywhere, no credentials needed.
  *   LIVE mode (MCP_SERVER_URL set):
- *     Calls the deployed product. Exit 0 = all checks pass. Exit 1 = at least one
- *     check failed (with which tool and chart in the output).
+ *     Calls the deployed product. Exit 0 = no failed checks, with skipped outcomes
+ *     counted separately. Exit 1 = at least one check failed.
  *
  * ENVIRONMENT:
  *   MCP_SERVER_URL  — base URL of the deployed MCP endpoint (e.g. https://host/mcp)
@@ -77,23 +72,74 @@ function probeWindow(): { start: string; end: string } {
   return { start: fmt(start), end: fmt(end) }
 }
 
-// ── MCP client (self-contained, mirrors elev_gates/_mcp_client.ts) ────────────
+// ── MCP client ──────────────────────────────────────────────────────────────
 
-type McpCallOutcome = {
-  ok: boolean
-  status: number
-  body: string
-  json?: unknown
-  timed_out: boolean
-  elapsed_ms: number
-  error?: string
-}
+type CallFailure = 'http_failure' | 'timeout' | 'transport_error' | 'invalid_rpc'
+  | 'rpc_error' | 'tool_error' | 'missing_payload' | 'judgment_error'
+
+type McpCallOutcome = { status: number; elapsed_ms: number } & (
+  | { ok: true; payload: Record<string, unknown> }
+  | { ok: false; reason: CallFailure }
+)
 
 function resolveMcpTarget(): { baseUrl: string; bearer?: string } | null {
   const baseUrl = process.env['MCP_SERVER_URL']
   if (!baseUrl) return null
   const bearer = process.env['MCP_BEARER'] || process.env['MCP_SMOKE_BEARER_TOKEN'] || undefined
   return { baseUrl, bearer }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function parseRecord(text: string): Record<string, unknown> | null {
+  try {
+    const value: unknown = JSON.parse(text)
+    return isRecord(value) ? value : null
+  } catch {
+    return null
+  }
+}
+
+function readRpcReply(text: string, mediaType: string | undefined, requestId: number): Record<string, unknown> | null {
+  if (mediaType === 'application/json') {
+    const reply = parseRecord(text)
+    return reply?.jsonrpc === '2.0' && reply.id === requestId ? reply : null
+  }
+  if (mediaType !== 'text/event-stream') return null
+
+  // SSE joins every data line in one event. Progress and unrelated replies can
+  // precede the final response. A duplicate matching reply is ambiguous.
+  const completeEvents = text.replace(/\r\n?/g, '\n').split('\n\n')
+  completeEvents.pop() // A stream ending without a blank line cannot dispatch its trailing event.
+  let reply: Record<string, unknown> | null = null
+  for (const event of completeEvents) {
+    const data = event.split('\n').filter((line) => line.startsWith('data:'))
+      .map((line) => line.slice(5).replace(/^ /, ''))
+    if (data.length === 0) continue
+    const message = parseRecord(data.join('\n'))
+    if (message?.jsonrpc !== '2.0') return null
+    if (message.id !== requestId) continue
+    if (reply !== null) return null
+    reply = message
+  }
+  return reply
+}
+
+function readToolPayload(result: Record<string, unknown>): Record<string, unknown> | null {
+  if ('structuredContent' in result) {
+    const structured = result.structuredContent
+    if (!isRecord(structured)) return null
+    const payload = 'object' in structured ? structured.object : structured
+    return isRecord(payload) && Object.keys(payload).length > 0 ? payload : null
+  }
+  const content = result.content
+  if (!Array.isArray(content) || content.length !== 1) return null
+  const [item] = content
+  if (!isRecord(item) || item.type !== 'text' || typeof item.text !== 'string') return null
+  const payload = parseRecord(item.text)
+  return payload && Object.keys(payload).length > 0 ? payload : null
 }
 
 async function mcpCall(
@@ -104,6 +150,11 @@ async function mcpCall(
   timeoutMs: number,
 ): Promise<McpCallOutcome> {
   const started = Date.now()
+  const requestId = 1
+  let status = 0
+  const fail = (reason: CallFailure): McpCallOutcome => ({
+    ok: false, reason, status, elapsed_ms: Date.now() - started,
+  })
   const headers: Record<string, string> = {
     'content-type': 'application/json',
     accept: 'application/json, text/event-stream',
@@ -116,95 +167,85 @@ async function mcpCall(
       headers,
       body: JSON.stringify({
         jsonrpc: '2.0',
-        id: 1,
+        id: requestId,
         method: 'tools/call',
         params: { name: toolName, arguments: args },
       }),
       signal: AbortSignal.timeout(timeoutMs),
     })
-    const text = await res.text()
-    let json: unknown
-    try {
-      const dataLine = text.split('\n').find((l) => l.startsWith('data:'))
-      const raw = dataLine ? dataLine.slice('data:'.length).trim() : text
-      json = raw ? JSON.parse(raw) : undefined
-    } catch {
-      json = undefined
+    status = res.status
+    if (!res.ok) return fail('http_failure')
+
+    const mediaType = res.headers.get('content-type')?.split(';', 1)[0]?.trim().toLowerCase()
+    const reply = readRpcReply(await res.text(), mediaType, requestId)
+    if (!reply) return fail('invalid_rpc')
+    if ('error' in reply) {
+      const error = reply.error
+      const validError = !('result' in reply) && isRecord(error)
+        && Number.isInteger(error.code) && typeof error.message === 'string'
+      return fail(validError ? 'rpc_error' : 'invalid_rpc')
     }
-    return { ok: res.ok, status: res.status, body: text, json, timed_out: false, elapsed_ms: Date.now() - started }
+    if (!isRecord(reply.result)) return fail('invalid_rpc')
+    if (reply.result.isError === true) return fail('tool_error')
+    if ('isError' in reply.result && reply.result.isError !== false) return fail('invalid_rpc')
+
+    const payload = readToolPayload(reply.result)
+    if (!payload) return fail('missing_payload')
+    if (payload.ok === false || payload.error === true) return fail('tool_error')
+    // The judgment bridge retains registrar errors in its retrieval content while
+    // discarding the capability's is_error flag. Inspect only that own content.
+    if (toolName === 'judgment_query' && isRecord(payload.content) && typeof payload.content.error === 'string') {
+      return fail('judgment_error')
+    }
+    return { ok: true, status, payload, elapsed_ms: Date.now() - started }
   } catch (err) {
-    const isAbort = err instanceof Error && (err.name === 'AbortError' || err.name === 'TimeoutError')
-    return {
-      ok: false,
-      status: 0,
-      body: '',
-      timed_out: isAbort,
-      elapsed_ms: Date.now() - started,
-      error: err instanceof Error ? err.message : String(err),
-    }
+    const timedOut = err instanceof Error && (err.name === 'AbortError' || err.name === 'TimeoutError')
+    return fail(timedOut ? 'timeout' : 'transport_error')
   }
 }
 
-/** Unwraps the MCP envelope and returns the tool payload + isToolError flag.
- *  Mirrors `elev_gates/_mcp_client.ts`'s `unwrapToolPayload`. */
-function unwrapPayload(outcome: McpCallOutcome): { payload: unknown; isToolError: boolean } {
-  const envelope = (outcome.json as { result?: unknown; error?: unknown } | undefined) ?? {}
-  const result = (
-    envelope as {
-      result?: {
-        isError?: boolean
-        content?: Array<{ text?: string }>
-        structuredContent?: { object?: unknown }
-      }
-    }
-  ).result
-  const isToolError = Boolean(result?.isError) || Boolean((envelope as { error?: unknown }).error)
-  let payload: unknown = envelope
-  if (result?.structuredContent && typeof result.structuredContent === 'object' && 'object' in result.structuredContent) {
-    payload = (result.structuredContent as { object: unknown }).object
-  } else if (Array.isArray(result?.content) && result.content[0]?.text) {
-    try {
-      payload = JSON.parse(result.content[0].text as string)
-    } catch {
-      payload = result.content[0].text
-    }
-  }
-  return { payload, isToolError }
-}
-
-// ── Probe result types ────────────────────────────────────────────────────────
+// ── Individual probe checks ──────────────────────────────────────────────────
 
 type ProbeStatus = 'PASS' | 'FAIL' | 'SKIPPED'
 
 type ProbeResult = {
   id: string
   tool: string
-  chart_id: string
   status: ProbeStatus
   detail: string
+  http_status?: number
   elapsed_ms?: number
 }
 
-// ── Individual probe checks ───────────────────────────────────────────────────
-
-/**
- * Checks whether a gochara tool response indicates a real outage.
- *
- * The 2026-08 outage pattern: HTTP 200, no JSON-RPC error, but
- * `backing_data_reachable: false` in the payload. A naive HTTP-200 check
- * would pass while the tool is completely non-functional. This is the
- * discriminating check MR-35 exists to add.
- */
-function gocharaOutageCheck(payload: Record<string, unknown>): string | null {
-  // Explicit backing_data_reachable: false = the outage symptom
-  if (payload['backing_data_reachable'] === false) {
-    return `backing_data_reachable=false — tool is up but has no DB access (this was the outage symptom)`
+function gocharaVerdict(
+  payload: Record<string, unknown>, tool: string, chartId: string,
+): Pick<ProbeResult, 'status' | 'detail'> {
+  const provenance = payload.provenance_envelope
+  if (!isRecord(provenance) || provenance.source !== tool || provenance.chart_id !== chartId) {
+    return { status: 'FAIL', detail: 'missing_gochara_evidence' }
   }
-  // A not_covered refusal is legitimate (domain not swept for this chart) — not an outage
-  if (payload['status'] === 'not_covered') {
-    return null // PASS — honest coverage disclosure, not an error
+  if (provenance.backing_data_reachable === false) {
+    return { status: 'FAIL', detail: 'backing_data_unreachable' }
   }
-  return null // PASS
+  if (provenance.backing_data_reachable !== true || !Array.isArray(payload.windows) || !isRecord(payload.coverage)) {
+    return { status: 'FAIL', detail: 'missing_gochara_evidence' }
+  }
+  if (payload.invalid_domain != null) return { status: 'FAIL', detail: 'invalid_domain' }
+  if (payload.not_covered != null) {
+    const refusal = payload.not_covered
+    if (!isRecord(refusal) || typeof refusal.domain !== 'string' || !isRecord(refusal.cross_pointer)
+      || typeof refusal.cross_pointer.instrument !== 'string' || payload.windows.length !== 0) {
+      return { status: 'FAIL', detail: 'invalid_coverage_refusal' }
+    }
+    return { status: 'SKIPPED', detail: 'not_covered' }
+  }
+  if (payload.coverage.withheld_reason) {
+    return { status: 'SKIPPED', detail: 'generation_withheld' }
+  }
+  if (payload.coverage.status === 'unpublished') {
+    return { status: 'SKIPPED', detail: 'generation_unpublished' }
+  }
+  return { status: 'PASS', detail: 'backing_data_reachable' }
 }
 
 async function probeGocharaTool(
@@ -216,93 +257,23 @@ async function probeGocharaTool(
   extraArgs: Record<string, unknown>,
 ): Promise<ProbeResult> {
   const id = `gochara:${toolName}:${chartLabel}`
-  const args = { chart_id: chartId, ...extraArgs }
-
-  const outcome = await mcpCall(baseUrl, bearer, toolName, args, TOOL_TIMEOUT_MS)
-
-  if (outcome.timed_out) {
-    return {
-      id, tool: toolName, chart_id: chartId, status: 'FAIL', elapsed_ms: outcome.elapsed_ms,
-      detail: `TIMEOUT after ${TOOL_TIMEOUT_MS}ms — tool hung (outage class: server unresponsive)`,
-    }
-  }
-  if (outcome.status >= 500) {
-    return {
-      id, tool: toolName, chart_id: chartId, status: 'FAIL', elapsed_ms: outcome.elapsed_ms,
-      detail: `HTTP ${outcome.status} — server error. body(300)=${outcome.body.slice(0, 300)}`,
-    }
-  }
-  if (outcome.status === 0) {
-    return {
-      id, tool: toolName, chart_id: chartId, status: 'FAIL', elapsed_ms: outcome.elapsed_ms,
-      detail: `Transport error before response: ${outcome.error ?? 'unknown'}`,
-    }
-  }
-
-  const { payload, isToolError } = unwrapPayload(outcome)
-  if (isToolError) {
-    return {
-      id, tool: toolName, chart_id: chartId, status: 'FAIL', elapsed_ms: outcome.elapsed_ms,
-      detail: `Tool-level error (isError=true in MCP envelope): ${JSON.stringify(payload).slice(0, 400)}`,
-    }
-  }
-
-  if (typeof payload === 'object' && payload !== null) {
-    const p = payload as Record<string, unknown>
-    const outageReason = gocharaOutageCheck(p)
-    if (outageReason) {
-      return {
-        id, tool: toolName, chart_id: chartId, status: 'FAIL', elapsed_ms: outcome.elapsed_ms,
-        detail: `OUTAGE DETECTED: ${outageReason}`,
-      }
-    }
-  }
-
-  return {
-    id, tool: toolName, chart_id: chartId, status: 'PASS', elapsed_ms: outcome.elapsed_ms,
-    detail: `HTTP ${outcome.status}, non-error payload, backing_data_reachable check passed. elapsed_ms=${outcome.elapsed_ms}`,
-  }
+  const outcome = await mcpCall(baseUrl, bearer, toolName, { chart_id: chartId, ...extraArgs }, TOOL_TIMEOUT_MS)
+  const verdict = outcome.ok ? gocharaVerdict(outcome.payload, toolName, chartId)
+    : { status: 'FAIL' as const, detail: outcome.reason }
+  return { id, tool: toolName, http_status: outcome.status, elapsed_ms: outcome.elapsed_ms, ...verdict }
 }
 
 async function probeBaselineTool(
   baseUrl: string,
   bearer: string | undefined,
   toolName: string,
-  chartId: string,
   args: Record<string, unknown>,
-  label: string,
 ): Promise<ProbeResult> {
-  const id = `baseline:${toolName}`
   const outcome = await mcpCall(baseUrl, bearer, toolName, args, TOOL_TIMEOUT_MS)
-
-  if (outcome.timed_out) {
-    return {
-      id, tool: toolName, chart_id: chartId, status: 'FAIL', elapsed_ms: outcome.elapsed_ms,
-      detail: `TIMEOUT after ${TOOL_TIMEOUT_MS}ms — ${label}`,
-    }
-  }
-  if (outcome.status >= 500) {
-    return {
-      id, tool: toolName, chart_id: chartId, status: 'FAIL', elapsed_ms: outcome.elapsed_ms,
-      detail: `HTTP ${outcome.status} — ${label}. body(300)=${outcome.body.slice(0, 300)}`,
-    }
-  }
-  if (outcome.status === 0) {
-    return {
-      id, tool: toolName, chart_id: chartId, status: 'FAIL', elapsed_ms: outcome.elapsed_ms,
-      detail: `Transport error: ${outcome.error ?? 'unknown'} — ${label}`,
-    }
-  }
-  const { isToolError, payload } = unwrapPayload(outcome)
-  if (isToolError) {
-    return {
-      id, tool: toolName, chart_id: chartId, status: 'FAIL', elapsed_ms: outcome.elapsed_ms,
-      detail: `Tool-level error — ${label}: ${JSON.stringify(payload).slice(0, 300)}`,
-    }
-  }
   return {
-    id, tool: toolName, chart_id: chartId, status: 'PASS', elapsed_ms: outcome.elapsed_ms,
-    detail: `HTTP ${outcome.status} — ${label} baseline healthy`,
+    id: `baseline:${toolName}`, tool: toolName, status: outcome.ok ? 'PASS' : 'FAIL',
+    detail: outcome.ok ? 'baseline_response' : outcome.reason,
+    http_status: outcome.status, elapsed_ms: outcome.elapsed_ms,
   }
 }
 
@@ -326,7 +297,7 @@ function printPlanAndExit(): never {
   console.log('[gochara/smoke_probe] PLAN MODE — MCP_SERVER_URL not set. No live calls. Exit 0.')
   console.log('[gochara/smoke_probe] Probe plan:')
   for (const p of plan) {
-    console.log(`  ${p.tool}(chart_id=${p.chart}, ...${JSON.stringify(p.args)})`)
+    console.log(`  ${p.tool}(chart=${p.label}, ...${JSON.stringify(p.args)})`)
   }
   console.log('[gochara/smoke_probe] Set MCP_SERVER_URL (and optionally MCP_BEARER) to run LIVE.')
   process.exit(0)
@@ -366,7 +337,6 @@ async function main(): Promise<void> {
     const syntheticResult: ProbeResult = {
       id: 'tdd-skeleton:always-fail',
       tool: 'SKELETON',
-      chart_id: PRIMARY_CHART_ID,
       status: 'FAIL',
       detail: 'TDD skeleton: ALWAYS_FAIL_MODE=true. This proves the probe exit-1 path works. Commit 2 wires real logic.',
     }
@@ -400,21 +370,19 @@ async function main(): Promise<void> {
     { date_range: window }))
 
   // ── Baseline: kala_now_get (L3 serving health) ──
-  results.push(await probeBaselineTool(baseUrl, bearer, 'kala_now_get', PRIMARY_CHART_ID,
-    { chart_id: PRIMARY_CHART_ID, ayanamsha_id: 'lahiri_chitrapaksha' },
-    'L3 Kāla baseline'))
+  results.push(await probeBaselineTool(baseUrl, bearer, 'kala_now_get',
+    { chart_id: PRIMARY_CHART_ID, ayanamsha_id: 'lahiri_chitrapaksha' }))
 
   // ── Baseline: judgment_query (verdict pipeline health) ──
-  results.push(await probeBaselineTool(baseUrl, bearer, 'judgment_query', PRIMARY_CHART_ID,
-    { chart_id: PRIMARY_CHART_ID, ayanamsha_id: 'lahiri_chitrapaksha', domain: 'career' },
-    'verdict pipeline baseline'))
+  results.push(await probeBaselineTool(baseUrl, bearer, 'judgment_query',
+    { chart_id: PRIMARY_CHART_ID, ayanamsha_id: 'lahiri_chitrapaksha', domain: 'career' }))
 
   printReport(results)
   const hasFail = results.some((r) => r.status === 'FAIL')
   process.exit(hasFail ? 1 : 0)
 }
 
-main().catch((err) => {
-  console.error('[gochara/smoke_probe] FATAL:', err)
+main().catch(() => {
+  console.error('[gochara/smoke_probe] FATAL: unexpected_probe_failure')
   process.exit(1)
 })

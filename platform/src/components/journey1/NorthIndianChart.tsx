@@ -13,7 +13,7 @@ const signs = [
   "Aquarius",
   "Pisces",
 ];
-import { grahaIdentityOf } from "@/lib/retrieval/graha_labels";
+import { grahaIdentityOf } from "@/lib/brahmagyan/grahaIdentity";
 function shortLabel(planet: string) {
   try {
     return grahaIdentityOf(planet).canonical_label.slice(0, 2);

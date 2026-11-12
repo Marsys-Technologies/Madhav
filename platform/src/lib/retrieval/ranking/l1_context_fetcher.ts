@@ -25,7 +25,7 @@
 import { query } from '@/lib/db/client'
 import type { L1ChartContext, GrahaStrength } from './composite_ranker'
 import { COMPOSITE_CACHE_TTL_MS } from './priors_config'
-import { grahaCodeOf } from '@/lib/retrieval/address_resolver'
+import { grahaCodeOf } from '@/lib/brahmagyan/grahaIdentity'
 import { classifyBuildFence, type BuildFence } from '@/lib/retrieval/registry/generation/served_generation'
 
 // Ranking-layer cache (separate from 60s retrieval cache — needs 30d TTL)
