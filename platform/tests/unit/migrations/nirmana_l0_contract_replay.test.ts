@@ -72,7 +72,7 @@ describe('Nirmana T0 sky-calendar replay ordering', () => {
       fs.writeFileSync(path.join(dir, '597_nirmana_t0_sky_calendar_replay_compat.sql'), 'SELECT 597;')
       const client = {
         query: vi.fn(async (sql: string) => {
-          if (sql === "SELECT current_setting('role') AS role") return { rows: [{ role: 'none' }] }
+          if (sql === "SELECT current_setting('role') AS role, current_setting('search_path') AS search_path") return { rows: [{ role: 'none', search_path: 'pg_catalog, public' }] }
           return { rows: [] }
         }),
       } as unknown as PoolClient
@@ -84,6 +84,9 @@ describe('Nirmana T0 sky-calendar replay ordering', () => {
         '597_nirmana_t0_sky_calendar_replay_compat.sql',
         '594_nirmana_t0_sky_calendar_contract.sql',
       ])
+      expect(client.query).toHaveBeenCalledWith("SELECT current_setting('role') AS role, current_setting('search_path') AS search_path")
+      expect(client.query).toHaveBeenCalledWith("SELECT pg_catalog.set_config('role', $1, false)", ['none'])
+      expect(client.query).toHaveBeenCalledWith("SELECT pg_catalog.set_config('search_path', $1, false)", ['pg_catalog, public'])
     } finally {
       fs.rmSync(dir, { recursive: true, force: true })
     }
@@ -100,7 +103,7 @@ describe('Nirmana T0 sky-calendar replay ordering', () => {
       const applied = [{ filename: compatibilityName, sha256: compatibilityHash, sql_identity: null }]
       const client = {
         query: vi.fn(async (sql: string) => {
-          if (sql === "SELECT current_setting('role') AS role") return { rows: [{ role: 'none' }] }
+          if (sql === "SELECT current_setting('role') AS role, current_setting('search_path') AS search_path") return { rows: [{ role: 'none', search_path: 'pg_catalog, public' }] }
           if (sql.includes('SELECT filename, sha256, sql_identity FROM _migrations_applied')) {
             return { rows: applied }
           }
@@ -112,6 +115,9 @@ describe('Nirmana T0 sky-calendar replay ordering', () => {
         disclosures: new Map(),
         renumberDisclosures: new Map(),
       })).resolves.toEqual(['594_nirmana_t0_sky_calendar_contract.sql'])
+      expect(client.query).toHaveBeenCalledWith("SELECT current_setting('role') AS role, current_setting('search_path') AS search_path")
+      expect(client.query).toHaveBeenCalledWith("SELECT pg_catalog.set_config('role', $1, false)", ['none'])
+      expect(client.query).toHaveBeenCalledWith("SELECT pg_catalog.set_config('search_path', $1, false)", ['pg_catalog, public'])
     } finally {
       fs.rmSync(dir, { recursive: true, force: true })
     }
