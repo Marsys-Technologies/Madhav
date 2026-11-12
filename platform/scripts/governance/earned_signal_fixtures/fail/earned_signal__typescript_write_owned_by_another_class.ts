@@ -15,3 +15,5 @@ class MeasuredSummary {
     }
   }
 }
+
+export { FrozenSummary, MeasuredSummary }

@@ -26,3 +26,5 @@ function fabricatedBundle(chart_id: string, msg: string) {
     isError: true,
   }
 }
+
+export { FrozenMetrics, fabricatedBundle }

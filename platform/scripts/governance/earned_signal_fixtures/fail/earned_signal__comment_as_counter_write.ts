@@ -12,3 +12,5 @@ class FrozenSummary {
   */
   value() { return this.trap2_narration_leak_count }
 }
+
+export { FrozenSummary }
