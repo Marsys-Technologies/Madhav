@@ -177,45 +177,53 @@ export function lintReaderProse(text: string, resolver?: CitationResolver): Lint
   } catch (err) {
     // Backstop's backstop: on internal failure, do NOT block the turn. Pass the
     // text through and log a telemetry flag so the failure is observable.
-    return {
-      clean: text,
-      flags: [
-        {
-          type: 'flag',
-          flag: 'register_leak',
-          verdict: 'telemetry',
-          pattern: 'lint_internal_error',
-          original: String((err as Error)?.message ?? err),
-        },
-      ],
-      leakCount: 0,
-    }
+    return lintResult(text, [
+      registerLeakFlag('telemetry', 'lint_internal_error', String((err as Error)?.message ?? err)),
+    ])
   }
+}
+
+function registerLeakFlag(
+  verdict: RegisterLeakFlag['verdict'],
+  pattern: string,
+  original: string,
+  replacement?: string,
+): RegisterLeakFlag {
+  return {
+    type: 'flag',
+    flag: 'register_leak',
+    verdict,
+    pattern,
+    original,
+    ...(replacement === undefined ? {} : { replacement }),
+  }
+}
+
+function lintResult(clean: string, flags: RegisterLeakFlag[]): LintResult {
+  const leakCount = flags.reduce((count, flag) => count + Number(flag.verdict !== 'telemetry'), 0)
+  return { clean, flags, leakCount }
 }
 
 function lintInner(text: string, resolver?: CitationResolver): LintResult {
   const flags: RegisterLeakFlag[] = []
-  let leakCount = 0
   let clean = text
 
   // Hard patterns (non-subjectSafe, BEFORE the run-aware pass): REWRITE or
   // REDACT by replacing each match in-place, exactly as before this fix.
   for (const pat of NON_SUBJECT_SAFE_BEFORE) {
-    clean = applyHardPatternReplace(clean, pat, resolver, flags, (n) => (leakCount += n))
+    clean = applyHardPatternReplace(clean, pat, resolver, flags)
   }
 
   // subjectSafe patterns: ONE run-aware pass over BOTH register_acronym and
   // register_full_name matches together — see the LIST-COLLAPSE FIX header
   // comment. A run of 1 behaves byte-for-byte as the old per-pattern
   // `.replace()` did; a run of 2+ collapses to a single demonstrative.
-  const subjectSafeResult = applySubjectSafeRun(clean, SUBJECT_SAFE_PATTERNS, flags)
-  clean = subjectSafeResult.text
-  leakCount += subjectSafeResult.leakCount
+  clean = applySubjectSafeRun(clean, SUBJECT_SAFE_PATTERNS, flags)
 
   // Hard patterns (non-subjectSafe, AFTER — same relative order as the
   // original single array, where fact_id_namespace ran last).
   for (const pat of NON_SUBJECT_SAFE_AFTER) {
-    clean = applyHardPatternReplace(clean, pat, resolver, flags, (n) => (leakCount += n))
+    clean = applyHardPatternReplace(clean, pat, resolver, flags)
   }
 
   // Tidy whitespace left by redactions ("word  ." → "word.", doubled spaces).
@@ -226,58 +234,35 @@ function lintInner(text: string, resolver?: CitationResolver): LintResult {
     const re = new RegExp(pat.re.source, pat.re.flags)
     let m: RegExpExecArray | null
     while ((m = re.exec(clean)) !== null) {
-      flags.push({
-        type: 'flag',
-        flag: 'register_leak',
-        verdict: 'telemetry',
-        pattern: pat.name,
-        original: m[0],
-      })
+      flags.push(registerLeakFlag('telemetry', pat.name, m[0]))
       if (m.index === re.lastIndex) re.lastIndex += 1 // zero-width guard
     }
   }
 
-  return { clean, flags, leakCount }
+  return lintResult(clean, flags)
 }
 
 /**
  * Apply ONE non-subjectSafe hard pattern with the original REWRITE/REDACT
- * verdict logic, unchanged from before the list-collapse fix. `bumpLeakCount`
- * is called with the number of matches this pattern fired (always 1 per
- * callback invocation) so the caller can accumulate a shared counter.
+ * verdict logic. Each match emits one flag for the transformation applied.
  */
 function applyHardPatternReplace(
   text: string,
   pat: HardPattern,
   resolver: CitationResolver | undefined,
   flags: RegisterLeakFlag[],
-  bumpLeakCount: (n: number) => void,
 ): string {
   return text.replace(new RegExp(pat.re.source, pat.re.flags), (match: string) => {
-    bumpLeakCount(1)
     // (a) REWRITE — id-shaped + a reader label exists.
     if (pat.idShaped && resolver) {
       const label = safeReaderLabel(resolver, match)
       if (label && !wouldStillLeak(label)) {
-        flags.push({
-          type: 'flag',
-          flag: 'register_leak',
-          verdict: 'rewrite',
-          pattern: pat.name,
-          original: match,
-          replacement: label,
-        })
+        flags.push(registerLeakFlag('rewrite', pat.name, match, label))
         return label
       }
     }
     // (b) REDACT+FLAG — strip from reader prose.
-    flags.push({
-      type: 'flag',
-      flag: 'register_leak',
-      verdict: 'redact',
-      pattern: pat.name,
-      original: match,
-    })
+    flags.push(registerLeakFlag('redact', pat.name, match))
     return ''
   })
 }
@@ -321,7 +306,7 @@ function applySubjectSafeRun(
   text: string,
   patterns: readonly HardPattern[],
   flags: RegisterLeakFlag[],
-): { text: string; leakCount: number } {
+): string {
   const rawMatches: SubjectSafeMatch[] = []
   for (const pat of patterns) {
     const re = new RegExp(pat.re.source, pat.re.flags)
@@ -337,7 +322,7 @@ function applySubjectSafeRun(
       if (m.index === re.lastIndex) re.lastIndex += 1 // zero-width guard
     }
   }
-  if (rawMatches.length === 0) return { text, leakCount: 0 }
+  if (rawMatches.length === 0) return text
   rawMatches.sort((a, b) => a.index - b.index)
 
   const runs: SubjectSafeMatch[][] = []
@@ -351,14 +336,12 @@ function applySubjectSafeRun(
     }
   }
 
-  let leakCount = 0
   let result = ''
   let cursor = 0
   for (const run of runs) {
     const first = run[0]
     const last = run[run.length - 1]
     result += text.slice(cursor, first.index)
-    leakCount += run.length
 
     const precedingTrimmed = text.slice(0, first.index).trimEnd()
     const isBareCitationMarker = precedingTrimmed.endsWith('(')
@@ -367,13 +350,7 @@ function applySubjectSafeRun(
       // existing S-3 behavior for a single match, generalized to a run: the
       // whole span is just deleted, no demonstrative substitution.
       for (const m of run) {
-        flags.push({
-          type: 'flag',
-          flag: 'register_leak',
-          verdict: 'redact',
-          pattern: m.patternName,
-          original: m.matchText,
-        })
+        flags.push(registerLeakFlag('redact', m.patternName, m.matchText))
       }
     } else {
       const capitalize = first.article
@@ -383,21 +360,14 @@ function applySubjectSafeRun(
       const replacement = capitalize ? (plural ? 'These' : 'This') : (plural ? 'these' : 'this')
       result += replacement
       for (const m of run) {
-        flags.push({
-          type: 'flag',
-          flag: 'register_leak',
-          verdict: 'redact',
-          pattern: m.patternName,
-          original: m.matchText,
-          replacement,
-        })
+        flags.push(registerLeakFlag('redact', m.patternName, m.matchText, replacement))
       }
     }
     cursor = last.index + last.length
   }
   result += text.slice(cursor)
 
-  return { text: result, leakCount }
+  return result
 }
 
 /** A reader label must itself be clean — guard against a label that re-leaks. */
