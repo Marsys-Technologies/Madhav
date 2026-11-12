@@ -46,6 +46,7 @@ const REGISTRY = [
 ]
 
 let clientQueries: string[] = []
+let clientCalls: Array<{ sql: string; params: unknown[] }> = []
 
 function makeReq(body: object): NextRequest {
   return new NextRequest('http://localhost/api/cockpit/clear/execute', {
@@ -60,7 +61,10 @@ function previewHash(scope: string, scope_target: string | null, affected: strin
     .digest('hex').slice(0, 32)
 }
 
-function setupMocks(role: 'client' | 'super_admin') {
+function setupMocks(role: 'client' | 'super_admin', options: {
+  registry?: Array<Omit<(typeof REGISTRY)[number], 'depends_on'> & { depends_on: string[] }>; failDelete?: RegExp; rowCount?: number
+} = {}) {
+  const registry = options.registry ?? REGISTRY
   const uid = role === 'super_admin' ? ADMIN_UID : OWNER_UID
   mockGetServerUser.mockResolvedValue({ uid })
   mockQuery.mockImplementation((sql: string) => {
@@ -68,13 +72,19 @@ function setupMocks(role: 'client' | 'super_admin') {
     if (/owner_id[\s\S]*FROM charts/.test(sql)) return Promise.resolve({ rows: [{ owner_id: OWNER_UID }], rowCount: 1 })
     if (/subject_name[\s\S]*FROM charts/.test(sql)) return Promise.resolve({ rows: [{ subject_name: 'Native', name: 'Native' }], rowCount: 1 })
     if (/FROM asset_registry WHERE asset_id/.test(sql)) return Promise.resolve({ rows: [{ scope: 'per_chart' }], rowCount: 1 })
-    if (/FROM asset_registry/.test(sql)) return Promise.resolve({ rows: REGISTRY, rowCount: REGISTRY.length })
+    if (/FROM asset_registry/.test(sql)) return Promise.resolve({ rows: registry, rowCount: registry.length })
     if (/FROM build_protected_assets/.test(sql)) return Promise.resolve({ rows: [], rowCount: 0 })
     return Promise.resolve({ rows: [], rowCount: 0 })
   })
   clientQueries = []
+  clientCalls = []
   const client = {
-    query: vi.fn((sql: string) => { clientQueries.push(sql); return Promise.resolve({ rows: [], rowCount: 2 }) }),
+    query: vi.fn((sql: string, params: unknown[] = []) => {
+      clientQueries.push(sql)
+      clientCalls.push({ sql, params })
+      if (options.failDelete?.test(sql)) return Promise.reject(new Error('fixture private SQL detail'))
+      return Promise.resolve({ rows: [], rowCount: options.rowCount ?? 2 })
+    }),
     release: vi.fn(),
   }
   mockGetPool.mockResolvedValue({ connect: vi.fn().mockResolvedValue(client) })
@@ -118,5 +128,51 @@ describe('POST /api/cockpit/clear/execute - chart_fact_identity is cleared by ex
     expect(res.status).toBe(200)
     expect(identityStatements()).toEqual(['DELETE FROM chart_fact_identity WHERE chart_id = $1'])
     expect(clientQueries.filter(q => /^\s*DELETE\b/i.test(q))).toEqual(['DELETE FROM chart_fact_identity WHERE chart_id = $1'])
+  })
+})
+
+
+describe('true Clear reports and propagates only successful assets', () => {
+  const request = () => makeReq({
+    chart_id: CHART, scope: 'layer', scope_target: 'ganita',
+    preview_hash: previewHash('layer', 'ganita', ['ga_control','ga_fact_identity']),
+  })
+  const downstream = (asset_id: string, depends_on: string[]) => ({
+    ...REGISTRY[0], asset_id, layer: 'fixture-other-layer', depends_on,
+  })
+  it('excludes the failed-only branch and keeps a shared transitive dependant', async () => {
+    setupMocks('client', { rowCount: 0, failDelete: /^DELETE FROM chart_fact_identity/,
+      registry: [...REGISTRY, downstream('fixture_failed_only', ['ga_fact_identity']),
+        downstream('fixture_shared', ['ga_control','ga_fact_identity']),
+        downstream('fixture_transitive', ['fixture_shared']),
+        { ...REGISTRY[0], asset_id: 'fixture_global', scope: 'global', target_table: 'fixture_global' }],
+    })
+    const res = await EXECUTE(request())
+    expect(res.status).toBe(200)
+    expect(await res.json()).toMatchObject({
+      cleared: { assets: 1, ops: 1, rows: 0, downstream_stale: 2 },
+      failed_tables: [{ table: 'ga_fact_identity', error: 'The asset could not be cleared.' }],
+    })
+    expect(clientQueries.some(sql => /^ROLLBACK TO SAVEPOINT clr_/.test(sql))).toBe(true)
+    expect(clientCalls.find(call => call.sql.includes("SET state='dormant'"))?.params).toEqual([CHART, ['ga_control']])
+    const stale = clientCalls.find(call => call.sql.includes("SET state='stale'"))?.params
+    expect(stale?.[0]).toBe(CHART)
+    expect(stale?.[1]).toEqual(expect.arrayContaining(['fixture_shared','fixture_transitive']))
+    expect(stale?.[1]).toHaveLength(2)
+    expect(deletesOf('fixture_global')).toEqual([])
+    expect(clientQueries).toContain('COMMIT')
+    expect(clientQueries.some(sql => /INSERT INTO build_run/.test(sql))).toBe(false)
+  })
+
+  it('all failed commits the empty best-effort transaction and changes no throughput', async () => {
+    setupMocks('client', { failDelete: /^DELETE/ })
+    const res = await EXECUTE(request())
+    expect(res.status).toBe(200)
+    expect(await res.json()).toMatchObject({
+      cleared: { assets: 0, ops: 0, rows: 0, downstream_stale: 0 },
+      failed_tables: [{ table: 'ga_fact_identity' },{ table: 'ga_control' }],
+    })
+    expect(clientQueries.some(sql => /UPDATE asset_throughput/.test(sql))).toBe(false)
+    expect(clientQueries).toContain('COMMIT')
   })
 })

@@ -341,36 +341,35 @@ export async function POST(req: NextRequest) {
     clearAssets = clearAssets.filter(a => !protectedAssetIds.has(a.asset_id))
     const clearAssetIds = clearAssets.map(a => a.asset_id)
 
-    // Compute transitive downstream outside the clear scope → mark stale
-    const downstreamSet = computeDownstreamClosure(clearAssetIds, fullRegistry)
-    for (const id of clearAssetIds) downstreamSet.delete(id)
-    const downstreamAssets = Array.from(downstreamSet)
-
     const pool = await getPool()
     const client = await pool.connect()
     let runId: string
-    let clearNotices: Array<{ assetId: string; message: string }> = []
+    let invalidation: Awaited<ReturnType<typeof invalidateAssets>>
     try {
       await client.query('BEGIN')
 
       // Delete data — reverse order for FK safety (downstream first), each asset in
       // its own savepoint: the operator clear stays best effort.
-      const invalidation = await invalidateAssets({ db: client, chartId: chart_id, assets: clearAssets, policy: 'operator-best-effort' })
-      clearNotices = invalidation.notices
+      invalidation = await invalidateAssets({ db: client, chartId: chart_id, assets: clearAssets, policy: 'operator-best-effort' })
+      const { clearedAssetIds } = invalidation
 
-      // Reset throughput to dormant for all cleared assets (chart-scoped)
-      if (clearAssetIds.length > 0) {
+      // A rolled-back or preserved clear cannot reset the selected asset.
+      if (clearedAssetIds.length > 0) {
         await client.query(
           `UPDATE asset_throughput
            SET state='dormant', last_built_at=NULL, rows_written=NULL,
                built_against_upstream_hash=NULL, built_against_writer_hash=NULL,
                last_error=NULL
            WHERE chart_id=$1 AND asset_id = ANY($2::text[])`,
-          [chart_id, clearAssetIds]
+          [chart_id, clearedAssetIds]
         )
       }
 
-      // Mark transitive downstream as stale (only currently-built assets)
+      // Traverse the full registry from successful clears, then exclude every
+      // asset originally selected for clearing from the downstream update.
+      const downstreamSet = computeDownstreamClosure(clearedAssetIds, fullRegistry)
+      for (const id of clearAssetIds) downstreamSet.delete(id)
+      const downstreamAssets = Array.from(downstreamSet)
       if (downstreamAssets.length > 0) {
         await client.query(
           `UPDATE asset_throughput SET state='stale'
@@ -416,18 +415,25 @@ export async function POST(req: NextRequest) {
       console.error('[api/cockpit/runs] invokeRunJob failed after clear — run marked failed:', dispatch.message)
       // Note: data was already cleared; user will need to rebuild again after fixing the job issue
       return NextResponse.json(
-        { error: 'Data cleared but build job failed to start', detail: dispatch.message, run_id: runId, code: 'JOB_DISPATCH_FAILED' },
+        {
+          error: invalidation.clearedAssetIds.length > 0
+            ? 'Data cleared but build job failed to start'
+            : 'Build job failed to start',
+          detail: dispatch.message, run_id: runId, code: 'JOB_DISPATCH_FAILED',
+          ...(invalidation.failedAssetIds.length > 0 ? { failed_clear_asset_ids: invalidation.failedAssetIds } : {}),
+        },
         { status: 503 }
       )
     }
 
     return NextResponse.json({
       data: {
-        run_id: runId, plan, asset_count: plan.length, job_image_tag: jobImageTag, cleared_asset_count: clearAssetIds.length,
+        run_id: runId, plan, asset_count: plan.length, job_image_tag: jobImageTag, cleared_asset_count: invalidation.clearedAssetIds.length,
+        ...(invalidation.failedAssetIds.length > 0 ? { failed_clear_asset_ids: invalidation.failedAssetIds } : {}),
         ...(buildPlan.protected_assets.length > 0 || clearProtectedAssets.length > 0
           ? { protected_assets: buildPlan.protected_assets }
           : {}),
-        ...(clearNotices.length > 0 ? { notices: clearNotices } : {}),
+        ...(invalidation.notices.length > 0 ? { notices: invalidation.notices } : {}),
         ...(chartScopedClear?.ok && chartScopedClear.globalAssetsLeftUntouched.length > 0
           ? { global_assets_not_cleared: chartScopedClear.globalAssetsLeftUntouched }
           : {}),
