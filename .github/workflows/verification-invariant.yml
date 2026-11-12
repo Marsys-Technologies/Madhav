@@ -76,6 +76,10 @@ jobs:
           code=$?
           set -e
           if [ "$code" = "3" ]; then
-            echo "::warning::INCOMPLETE — DATABASE_URL unavailable; liveness ran, but data checks did not."
+            if [ -z "${DATABASE_URL:-}" ]; then
+              echo "::warning::INCOMPLETE — DATABASE_URL unavailable; liveness ran, but data checks did not."
+            else
+              echo "::warning::INCOMPLETE — data checks ran, but verified-claim evidence coverage is incomplete."
+            fi
           fi
           exit "$code"
