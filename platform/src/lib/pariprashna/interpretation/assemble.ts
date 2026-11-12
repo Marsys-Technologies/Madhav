@@ -33,13 +33,13 @@ export const MAX_SIGNIFICANT_JUDGMENTS_PER_TURN = 8
  *  load-bearing for the reader (a verdict, a detected prediction) go first;
  *  the more numerous, finer-grained `time_indexed` category is truncated
  *  first when a turn has more significant judgments than the cap allows. */
-const CATEGORY_PRIORITY: Readonly<Record<string, number>> = {
-  domain_verdict: 0,
-  prediction_detected: 1,
-  remedial: 2,
-  rules_in_tension: 3,
-  time_indexed: 4,
-}
+const CATEGORY_PRIORITY = new Map([
+  'domain_verdict',
+  'prediction_detected',
+  'remedial',
+  'rules_in_tension',
+  'time_indexed',
+].map((category, priority) => [category, priority]))
 
 export interface AssembleInterpretationSetsArgs extends DetectSignificantJudgmentsArgs {
   turnId: string
@@ -99,7 +99,7 @@ export async function assembleInterpretationSets(
 
   const detected = detectSignificantJudgments(args)
   const ordered = [...detected].sort(
-    (a, b) => (CATEGORY_PRIORITY[a.category] ?? 99) - (CATEGORY_PRIORITY[b.category] ?? 99),
+    (a, b) => (CATEGORY_PRIORITY.get(a.category) ?? 99) - (CATEGORY_PRIORITY.get(b.category) ?? 99),
   )
   const toProcess = ordered.slice(0, MAX_SIGNIFICANT_JUDGMENTS_PER_TURN)
   const truncatedCount = ordered.length - toProcess.length
