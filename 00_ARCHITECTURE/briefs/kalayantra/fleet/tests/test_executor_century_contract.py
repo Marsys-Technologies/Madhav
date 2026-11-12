@@ -406,16 +406,21 @@ def test_unrelated_comments_and_probe_formatting_do_not_change_the_proof(verifie
     assert cc.image(verified_pipeline, False)["repository"].endswith("/brahma-pipeline")
 
 
-@pytest.mark.parametrize("replacement", [
-    "            --task-timeout=86401",
-    "            # fixture moved the locator\n            --task-timeout=86400",
-])
-def test_strict_v1_comparison_retains_timeout_value_line_and_cap(verified_pipeline, replacement):
+@pytest.mark.parametrize("change", ["value", "coordinate"])
+def test_strict_v1_comparison_retains_timeout_value_line_and_cap(verified_pipeline, change):
     committed = json.loads((REPO / PATH).read_text())
     derived = copy.deepcopy(committed)
     path = verified_pipeline / cc.DEPLOY
-    _replace_at(path, "            --task-timeout=86400", replacement)
+    if change == "value":
+        _replace_at(path, "            --task-timeout=86400", "            --task-timeout=86401")
+        expected = {"cloud_run_task_timeout_seconds": 86401, "source": f"{cc.DEPLOY}:2543"}
+    else:
+        # Move the coordinate without altering the shell argv inside run: |.
+        step = "      - name: Re-point Cloud Run Job at the new image"
+        _replace_at(path, step, "      # synthetic YAML-only locator movement\n" + step)
+        expected = {"cloud_run_task_timeout_seconds": 86400, "source": f"{cc.DEPLOY}:2544"}
     derived["timeout"] = cc.task_timeout(verified_pipeline)
+    assert derived["timeout"] == expected
     assert cc.compare(committed, derived, with_digest=True, with_pack=True) == ["timeout"]
     derived["cap"]["writer_timeout_seconds"] += 1
     assert cc.compare(committed, derived, with_digest=True, with_pack=True) == ["cap", "timeout"]
