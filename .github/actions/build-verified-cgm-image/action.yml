@@ -8,10 +8,10 @@ inputs:
     description: Existing Sidecar or Pipeline Dockerfile
     required: true
   push:
-    description: Existing registry export mode
+    description: Push the release and also load its build result locally
     default: 'false'
   load:
-    description: Existing local export mode
+    description: Load the ordinary build locally
     default: 'false'
   tags:
     description: Existing build tags
@@ -30,6 +30,10 @@ runs:
         file: ${{ inputs.file }}
         push: ${{ inputs.push }}
         load: ${{ inputs.load }}
+        # Put the local exporter first so the registry exporter supplies the release digest.
+        outputs: ${{ inputs.push == 'true' && 'type=docker' || '' }}
+        # The Docker exporter disables the action's automatic GitHub provenance.
+        attests: ${{ inputs.push == 'true' && 'type=provenance,mode=max' || '' }}
         tags: ${{ inputs.tags }}
         cache-from: ${{ inputs.cache-from }}
         cache-to: ${{ inputs.cache-to }}
@@ -39,7 +43,7 @@ runs:
         CGM_BUILD_CONTEXT: ${{ inputs.context }}
         CGM_BUILD_FILE: ${{ inputs.file }}
         CGM_BUILD_PUSH: ${{ inputs.push }}
-        CGM_BUILD_LOAD: ${{ inputs.load }}
+        CGM_BUILD_LOAD: ${{ inputs.push == 'true' && 'true' || inputs.load }}
         CGM_BUILD_TAGS: ${{ inputs.tags }}
         CGM_BUILD_IMAGE_ID: ${{ steps.build.outputs.imageid }}
         CGM_BUILD_DIGEST: ${{ steps.build.outputs.digest }}

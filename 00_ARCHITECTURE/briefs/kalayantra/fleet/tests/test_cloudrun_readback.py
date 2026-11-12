@@ -95,7 +95,7 @@ def refusal(cloud, execution=None):
 def test_c1_targets_are_the_ones_the_repo_deploys_and_launches():
     deploy = (REPO / ".github/workflows/deploy.yml").read_text()
     launch = (FLEET / "smalltest_launch.py").read_text()
-    assert f"gcloud run jobs update {CR.JOB}" in deploy and f"GCP_REGION: {CR.REGION}" in deploy
+    assert f"gcloud run jobs update {CR.JOB}" in deploy and f"DEPLOY_REGION: {CR.REGION}" in deploy
     assert f"--project={CR.PROJECT}" in launch and f"--region={CR.REGION}" in launch
     assert f'JOB = "{CR.JOB}"' in launch
     assert f"{CR.IMAGE_REPO}:${{{{ env.DEPLOY_SHA }}}}" in deploy          # the tag scheme the commit is read from

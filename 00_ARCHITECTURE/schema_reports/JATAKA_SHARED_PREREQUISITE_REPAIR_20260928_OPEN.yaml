@@ -50,4 +50,6 @@ session_open:
       obligation_summary: "No Macro Plan or health-crisis serving change."
       acknowledged: true
   red_team_due: false
-  notes: "Native authorized a controlled production repair. Preserve rule 133; prove exact blockers; fix only healthy-service preflight semantics; use governed bounded probes/rebuilds after backup; rerun only blocked synthetic acceptance."
+  notes: >-
+    Native authorized a controlled production repair. Preserve rule 133; prove exact blockers; fix only healthy-service preflight semantics;
+    use governed bounded probes/rebuilds after backup; rerun only blocked synthetic acceptance.

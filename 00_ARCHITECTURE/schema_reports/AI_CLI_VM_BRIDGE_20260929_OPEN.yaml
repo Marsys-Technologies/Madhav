@@ -50,4 +50,7 @@ session_open:
       obligation_summary: "No Macro Plan or health-crisis serving change."
       acknowledged: true
   red_team_due: false
-  notes: "Native authorized a minimal-essential-security production repair: keep the four authenticated personal CLIs on the companion VM, connect only the hosted product through a private allowlisted bridge, preserve existing per-user grants, and verify direct CLI health before product validation."
+  notes: >-
+    Native authorized a minimal-essential-security production repair: keep the four authenticated personal CLIs on the companion VM,
+    connect only the hosted product through a private allowlisted bridge, preserve existing per-user grants, and verify direct CLI health
+    before product validation.

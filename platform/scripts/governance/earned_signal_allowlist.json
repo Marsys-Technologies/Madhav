@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "$comment": "Allowlist for check_earned_signal.py (CLAUDE.md \u00a7N.8 Earned-Signal Principle; SAM\u0100PTI v2.0 \u00a77.5, lane B-N8-LINT). Same shape as fact_category_pin_allowlist.json (#840) with ONE addition: `max_occurrences`. An entry requires `file` (repo-relative POSIX, exact match) and `field` (the signal name, exact match), plus EITHER `line` (exact) OR `pattern` (regex, falling back to substring, against the snippet) OR neither \u2014 a file+field entry with neither is a deliberate group disposition, and MUST then carry `max_occurrences`, which freezes the group at its rollout size. Occurrence N+1 in a frozen group is reported as NEW and fails the build, so this backlog can be paid down but never grown. An entry with no `field` never matches anything (fails closed, not open). HONESTY NOTE, required by the lane's own charter: the entries below are CATEGORICAL dispositions from a sampled review, not 81 individual code reviews. Each says which category it is in and whether it was individually examined. `sample_lines`/`sample_snippet` are locators recorded at rollout, not match keys \u2014 they may drift and are not used for matching.",
   "generated_by": "check_earned_signal.py initial-rollout scan, 2026-07-31, base a7dfefcb",
-  "entry_count": 35,
+  "entry_count": 21,
   "violation_count_at_rollout": 169,
   "entries": [
     {
@@ -92,31 +92,6 @@
       "justification": "Reviewed current source. The two error envelopes are selected only after a non-OK upstream response or a thrown retrieval error. No successful bundle is available to meet the floor."
     },
     {
-      "file": "platform-mcp/src/tools/retrieval/holistic_bundle.ts",
-      "field": "grounding_status",
-      "line": null,
-      "pattern": null,
-      "max_occurrences": 2,
-      "sample_lines": [
-        168,
-        253
-      ],
-      "sample_snippet": "grounding_status: 'SCAFFOLD',",
-      "justification": "Reviewed current source. The two error envelopes explicitly disclose SCAFFOLD after upstream failure. They never carry a grounded bundle."
-    },
-    {
-      "file": "platform/python-sidecar/brahmagyan/bodha/bo_2-5.py",
-      "field": "passed",
-      "line": null,
-      "pattern": null,
-      "max_occurrences": 1,
-      "sample_lines": [
-        374
-      ],
-      "sample_snippet": "\"passed\": True,",
-      "justification": "Reviewed current source. The AC3 claim is that query_negative_space executes without error. It is emitted after the call returns and the count is read; the exception branch records failure."
-    },
-    {
       "file": "platform/python-sidecar/brahmagyan/bodha/bo_2-8.py",
       "field": "subsystems_ok",
       "line": null,
@@ -127,113 +102,6 @@
       ],
       "sample_snippet": "subsystems_ok: list[str] = []",
       "justification": "Reviewed current source. Empty accumulator before any subsystem is called. Successful non-empty responses are appended individually and failures are tracked separately."
-    },
-    {
-      "file": "platform/python-sidecar/brahmagyan/bodha/l2_domain_links.py",
-      "field": "grounding_status",
-      "line": null,
-      "pattern": null,
-      "max_occurrences": 2,
-      "sample_lines": [
-        262,
-        278
-      ],
-      "sample_snippet": "\"grounding_status\": \"UNGROUNDED\",",
-      "justification": "Reviewed current source. Seed and scaffold branches explicitly disclose UNGROUNDED because these rows carry no independent grounding proof. No pass or verified result is asserted."
-    },
-    {
-      "file": "platform/python-sidecar/brahmagyan/bodha/l2_embeddings.py",
-      "field": "grounding_status",
-      "line": null,
-      "pattern": null,
-      "max_occurrences": 2,
-      "sample_lines": [
-        339,
-        424
-      ],
-      "sample_snippet": "\"grounding_status\": \"UNGROUNDED\",",
-      "justification": "Reviewed current source. Seed and scaffold branches explicitly disclose UNGROUNDED because these rows carry no independent grounding proof. No pass or verified result is asserted."
-    },
-    {
-      "file": "platform/python-sidecar/brahmagyan/bodha/l2_graph.py",
-      "field": "grounding_status",
-      "line": null,
-      "pattern": null,
-      "max_occurrences": 2,
-      "sample_lines": [
-        432,
-        451
-      ],
-      "sample_snippet": "\"grounding_status\": \"UNGROUNDED\",",
-      "justification": "Reviewed current source. Seed and scaffold branches explicitly disclose UNGROUNDED because these rows carry no independent grounding proof. No pass or verified result is asserted."
-    },
-    {
-      "file": "platform/python-sidecar/brahmagyan/bodha/l2_lenses_salience.py",
-      "field": "grounding_status",
-      "line": null,
-      "pattern": null,
-      "max_occurrences": 5,
-      "sample_lines": [
-        372,
-        414,
-        487,
-        568,
-        582
-      ],
-      "sample_snippet": "return {\"seeded\": rows, \"build_id\": build_id, \"grounding_status\": \"UNGROUNDED\"}",
-      "justification": "Reviewed current source. Seed and scaffold branches explicitly disclose UNGROUNDED because these rows carry no independent grounding proof. No pass or verified result is asserted."
-    },
-    {
-      "file": "platform/python-sidecar/brahmagyan/bodha/l2_resonance.py",
-      "field": "grounding_status",
-      "line": null,
-      "pattern": null,
-      "max_occurrences": 2,
-      "sample_lines": [
-        286,
-        306
-      ],
-      "sample_snippet": "\"grounding_status\": \"UNGROUNDED\",",
-      "justification": "Reviewed current source. Seed and scaffold branches explicitly disclose UNGROUNDED because these rows carry no independent grounding proof. No pass or verified result is asserted."
-    },
-    {
-      "file": "platform/python-sidecar/brahmagyan/bodha/l2_signals_scaffold.py",
-      "field": "grounding_status",
-      "line": null,
-      "pattern": null,
-      "max_occurrences": 2,
-      "sample_lines": [
-        344,
-        396
-      ],
-      "sample_snippet": "\"grounding_status\": \"UNGROUNDED\",",
-      "justification": "Reviewed current source. Seed and scaffold branches explicitly disclose UNGROUNDED because these rows carry no independent grounding proof. No pass or verified result is asserted."
-    },
-    {
-      "file": "platform/python-sidecar/brahmagyan/ganita/l1_engine_check.py",
-      "field": "passed",
-      "line": null,
-      "pattern": null,
-      "max_occurrences": 3,
-      "sample_lines": [
-        84,
-        94,
-        107
-      ],
-      "sample_snippet": "checks.append({\"id\": \"E1\", \"desc\": \"pyswisseph importable\", \"passed\": True, \"value\": \"ok\"})",
-      "justification": "Reviewed current source. E1 follows the actual Swiss import, E2 the Julian-day calculation, and E3 the position call and row count. Each corresponding exception records failure. E4 separately checks the number of grahas."
-    },
-    {
-      "file": "platform/python-sidecar/brahmagyan/kala/temporal.py",
-      "field": "passed",
-      "line": null,
-      "pattern": null,
-      "max_occurrences": 1,
-      "sample_lines": [
-        685
-      ],
-      "sample_snippet": "checks.append({\"id\": \"AC1\", \"desc\": \"temporal() executes without error\", \"passed\": True})",
-      "justification": "Reviewed current source. AC1 only claims execution without error. The checked temporal call precedes the receipt and the exception branch records failure."
     },
     {
       "file": "platform/python-sidecar/brahmagyan/l0_prashna.py",
@@ -261,54 +129,6 @@
       ],
       "sample_snippet": "\"verdict\": \"auspicious_marriage_indication\",",
       "justification": "Reviewed current source. Static rule catalog values describe the consequence of matching each distinct antecedent. They are definitions rather than evaluations of a chart."
-    },
-    {
-      "file": "platform/python-sidecar/brahmagyan/mimamsa/l5_calibration_substrate.py",
-      "field": "grounding_status",
-      "line": null,
-      "pattern": null,
-      "max_occurrences": 1,
-      "sample_lines": [
-        172
-      ],
-      "sample_snippet": "\"grounding_status\": \"UNGROUNDED scaffold \u2014 awaiting WS-3 rule_base completion\",",
-      "justification": "Reviewed current source. The calibration substrate explicitly discloses its scaffold status and the missing WS-3 rule base."
-    },
-    {
-      "file": "platform/python-sidecar/brahmagyan/phala/muhurta.py",
-      "field": "passed",
-      "line": null,
-      "pattern": null,
-      "max_occurrences": 1,
-      "sample_lines": [
-        1270
-      ],
-      "sample_snippet": "\"passed\": False,",
-      "justification": "Reviewed current source. AC3 deliberately calls the validator with an invalid action type. A return without ValueError is the measured negative outcome."
-    },
-    {
-      "file": "platform/python-sidecar/pipeline/orchestrator/writers/ka_graha_sancara.py",
-      "field": "passed",
-      "line": null,
-      "pattern": null,
-      "max_occurrences": 1,
-      "sample_lines": [
-        113
-      ],
-      "sample_snippet": "checks.append({\"check\": \"ephemeris_computes\", \"passed\": True})",
-      "justification": "Reviewed current source. The ephemeris-computes receipt follows a real get_ephemeris call. Its exception branch emits failure, and subsequent checks validate the returned rows."
-    },
-    {
-      "file": "platform/src/lib/admin/trace_assembler.ts",
-      "field": "validator_verdict",
-      "line": null,
-      "pattern": null,
-      "max_occurrences": 1,
-      "sample_lines": [
-        303
-      ],
-      "sample_snippet": "validator_verdict: 'UNKNOWN',",
-      "justification": "Reviewed current source. The trace uses the explicit UNKNOWN sentinel where no validator observation is available."
     },
     {
       "file": "platform/src/lib/conversations/title.ts",

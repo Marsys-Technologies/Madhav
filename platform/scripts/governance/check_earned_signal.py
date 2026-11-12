@@ -169,6 +169,11 @@ against the live tree at base `a7dfefcb` (SUPPRESSED COUNT in brackets):
       SQL keywords is skipped — `COUNT(*) FILTER (WHERE composite_verdict =
       'confirmed')` is query text, not an assignment.
 
+Explicit absence markers are also permitted: `grounding_status` may declare
+`UNGROUNDED` (optionally followed by an explanation) or `SCAFFOLD`, and
+`validator_verdict` may declare `UNKNOWN`. These state that evidence is absent.
+Positive grounding, verification, and fixed boolean outcomes remain findings.
+
 Further false-negative mechanics:
   - Python: a constant that reaches the field through an intermediate module
     constant (`STATUS = "PASS"` … `{"verification_pass_status": STATUS}`) is a
@@ -548,6 +553,18 @@ def _is_none(node: ast.AST) -> bool:
     return isinstance(node, ast.Constant) and node.value is None
 
 
+def _is_unmeasured_marker(field: str, value: object) -> bool:
+    """Explicit absence of grounding or observation makes no positive claim."""
+    if not isinstance(value, str):
+        return False
+    if field == "validator_verdict":
+        return value == "UNKNOWN"
+    return field == "grounding_status" and (
+        value in {"UNGROUNDED", "SCAFFOLD"}
+        or value.startswith("UNGROUNDED ")
+    )
+
+
 def _collect_branch_guarded(tree: ast.AST) -> Set[int]:
     """Ids of nodes that sit inside a CONDITIONAL region of the source.
 
@@ -742,6 +759,8 @@ def scan_python_text(text: str) -> List[Tuple[int, str, str, str]]:
                     continue
                 if not is_signal_name(k.value):
                     continue
+                if isinstance(v, ast.Constant) and _is_unmeasured_marker(k.value, v.value):
+                    continue
                 if _is_none(v) or not is_edit_time_constant(v):
                     continue
                 if k.value in subscript_keys:
@@ -752,6 +771,8 @@ def scan_python_text(text: str) -> List[Tuple[int, str, str, str]]:
         elif isinstance(node, ast.Call):
             for kw in node.keywords:
                 if kw.arg is None or not is_signal_name(kw.arg):
+                    continue
+                if isinstance(kw.value, ast.Constant) and _is_unmeasured_marker(kw.arg, kw.value.value):
                     continue
                 if _is_none(kw.value) or not is_edit_time_constant(kw.value):
                     continue
@@ -768,12 +789,16 @@ def scan_python_text(text: str) -> List[Tuple[int, str, str, str]]:
                 if isinstance(tgt, ast.Name):
                     if not is_signal_name(tgt.id):
                         continue
+                    if isinstance(value, ast.Constant) and _is_unmeasured_marker(tgt.id, value.value):
+                        continue
                     scope = parent_scope.get(id(node), tree)
                     if tgt.id in rebinds_for(scope):
                         continue  # initialiser pattern, later rebound
                     record(node, "name_assign", tgt.id)
                 elif isinstance(tgt, ast.Attribute):
                     if not is_signal_name(tgt.attr):
+                        continue
+                    if isinstance(value, ast.Constant) and _is_unmeasured_marker(tgt.attr, value.value):
                         continue
                     if collector.attr_writes.get(tgt.attr, 0) > 1:
                         continue  # overwritten elsewhere in this file
@@ -784,6 +809,8 @@ def scan_python_text(text: str) -> List[Tuple[int, str, str, str]]:
                     and isinstance(tgt.slice.value, str)
                     and is_signal_name(tgt.slice.value)
                 ):
+                    if isinstance(value, ast.Constant) and _is_unmeasured_marker(tgt.slice.value, value.value):
+                        continue
                     if collector.subscript_key_writes.get(tgt.slice.value, 0) > 1:
                         continue  # placeholder later overwritten in this file
                     record(node, "subscript_assign", tgt.slice.value)
@@ -814,6 +841,7 @@ _TS_SQL_CONTEXT_RE = re.compile(
     r"\b(SELECT|FROM|WHERE|FILTER\s*\(|GROUP\s+BY|ORDER\s+BY|INSERT\s+INTO|UPDATE\s+\w+\s+SET|COALESCE)\b",
     re.IGNORECASE,
 )
+
 # `let x = false` / `var x = false` declares a MUTABLE variable; the initialiser
 # is a starting value, not a frozen signal, and later `x = true` reassignments in
 # the same file are the ordinary accumulate-then-report pattern. Mirrors the
@@ -957,6 +985,8 @@ def scan_ts_text(text: str) -> List[Tuple[int, str, str, str]]:
 
         m = _TS_PROP_RE.search(code)
         if m and not _TS_OPTIONAL_PROP_RE.match(code):
+            if _is_unmeasured_marker(m.group("name"), m.group("value")[1:-1]):
+                continue
             after = code[m.end():].lstrip()
             if not after.startswith("|") and is_signal_name(m.group("name")):
                 hits.append((idx, "object_property", m.group("name"), snippet))
@@ -964,6 +994,8 @@ def scan_ts_text(text: str) -> List[Tuple[int, str, str, str]]:
 
         m2 = _TS_ASSIGN_RE.search(code)
         if m2 and is_signal_name(m2.group("name")):
+            if _is_unmeasured_marker(m2.group("name"), m2.group("value")[1:-1]):
+                continue
             after = code[m2.end():].lstrip()
             if not after.startswith("|") and not declared_mutable(m2.group("name")):
                 hits.append((idx, "assignment", m2.group("name"), snippet))

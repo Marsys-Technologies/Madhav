@@ -366,14 +366,16 @@ def run_acceptance_gate(chart_id: str) -> dict[str, Any]:
     # AC3: Negative space executes
     try:
         ns_rows = query_negative_space(chart_id)
+        observed_value = len(ns_rows)
+    except Exception as exc:
+        checks.append({"id": "AC3", "desc": "negative_space", "passed": False, "error": str(exc)})
+    else:
         checks.append({
             "id": "AC3",
             "desc": "negative_space executes without error",
             "passed": True,
-            "value": len(ns_rows),
+            "value": observed_value,
         })
-    except Exception as exc:
-        checks.append({"id": "AC3", "desc": "negative_space", "passed": False, "error": str(exc)})
 
     # AC4: Concordance lens returns >= 1 group
     try:

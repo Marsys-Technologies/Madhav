@@ -163,7 +163,7 @@ _PROBE_RUN = f"python3 {_PROBE}"
 _SOURCE_TAG = ":${{ env.DEPLOY_SHA }}"
 _SOURCE_ENV = "DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}"
 _VERIFIED_REF = '"${CGM_VERIFIED_PIPELINE_REF:?missing verified Pipeline image}"'
-_REGION = "${{ env.GCP_REGION }}"
+_REGION_NAMES = ("GCP_REGION", "DEPLOY_REGION")
 _SAFE_FLAG = re.compile(r"[A-Za-z0-9_.@:/=,-]+")
 _REPOSITORY = re.compile(r"[a-z0-9.-]+(?:/[a-z0-9_.-]+)*/brahma-pipeline")
 
@@ -174,6 +174,32 @@ _PROBE_BINDINGS = (
     ("validated source and platform", "SIDECAR PIPELINE REGISTRY SOURCE_ROOT BUILD_SHAPES PACKAGE_ROOTS MODULES DIGEST COMMIT MANIFEST_TYPES INDEX_TYPES ProbeFailure require digest command manifest_identity inspect_loaded loaded_build_id source_commit source_hashes probe_image verify_registration", "63720afa9e653ee995065e979af9292e49d2cf0738b7ee814eb1c15cd4c58f6c"),
     ("verified carrier construction", "check_pipeline_tag pipeline_reference verified_pipeline_reference verify_build", "1cb0f0c82b5bcfe0537b3da2ba0fe4378397bfd4a10857e5df6a8c3c512f46e2"),
     ("repoint readback and dispatch", "post_repoint main", "75e51523cbc4ab41ec273a853ab4e1272c0ee38d30a743d4c8c60bbe68c906b7"),
+)
+
+
+# Reviewed single-build local-export policy. The original push-only policy above
+# remains separately supported. Every definition belongs to one proof group.
+_LOADED_PROBE_BINDINGS = (
+    ('validated source and platform', 'SIDECAR PIPELINE REGISTRY SOURCE_ROOT BUILD_SHAPES PACKAGE_ROOTS MODULES DIGEST COMMIT MANIFEST_TYPES INDEX_TYPES ProbeFailure require digest command json_object content_digest registry_manifest manifest_identity inspect_image check_probe_platform check_loaded_descriptor build_metadata loaded_build_id ordinary_image_id release_image_id source_commit source_hashes probe_image verify_registration', '9f6b0cc99c254fb65f454477b4cb17f0503f04fa7528143004004d100410456e'),
+    ('verified carrier construction', 'check_release_tag pipeline_reference verified_pipeline_reference verify_build', 'ee407e932c49566715b2c50cc5414f8fb344f4c3604b2f4697cafaffa2036aad'),
+    ('repoint readback and dispatch', 'post_repoint main', '50fbcf675304e8fa886ec2bc91006586cbcc50d4d3adad38537bc08ce891115a'),
+)
+_LOADED_PROBE_ORDER = 'c54cef725bdb11c9f6e6e4d1cdf673a49a361b35e7be362407880762168ae0e5'
+_LOADED_PROBE_SCAFFOLDING = 'aa2007ece33612984bd23e7e8b027bfa9a818924b944f567934d73c319351c2b'
+
+# Exact local identity binding and three retained package checks before repoint.
+# Keep these literal commands paired with the loaded action/probe policy.
+_LOADED_REPOINT_PREAMBLE = (
+    'local_image="${CGM_VERIFIED_LOCAL_IMAGE_ID:?missing verified local image}"',
+    '[[ "$local_image" =~ ^sha256:[a-f0-9]{64}$ ]] || exit 1',
+    'local_platform="$(docker image inspect --platform=linux/amd64 --format \'{{.Id}}\' "$local_image")" || exit 1',
+    'test "$local_platform" = "${CGM_VERIFIED_IMAGE##*@}" || exit 1',
+    'docker run --rm --pull=never --platform=linux/amd64 --network=none --entrypoint python "$local_image" \\',
+    '-c "import ga_writers; print(\'ga_writers OK:\', ga_writers.__file__)"',
+    'docker run --rm --pull=never --platform=linux/amd64 --network=none --entrypoint /bin/sh "$local_image" \\',
+    '-n /app/platform/python-sidecar/scripts/kala_gochara_cutover/century_run_4_1.sh',
+    'docker run --rm --pull=never --platform=linux/amd64 --network=none --entrypoint python "$local_image" \\',
+    '-c "import sys; sys.path.insert(0, \'/app/platform/python-sidecar/scripts/kala_gochara_cutover\'); import common; print(\'cutover common OK:\', common.__file__)"',
 )
 
 
@@ -201,7 +227,7 @@ def _syntax_hash(nodes) -> str:
     return hashlib.sha256(data.encode()).hexdigest()
 
 
-def _verified_repository(root: Path) -> str:
+def _verified_repository(root: Path, *, loaded: bool = False) -> str:
     action = (root / _VERIFIED_ACTION / "action.yml").read_text(encoding="utf-8")
     lines = [line.rstrip() for line in action.splitlines() if line.strip() and not line.lstrip().startswith("#")]
     top = [line.split(":", 1)[0] for line in lines if not line[0].isspace()]
@@ -246,6 +272,16 @@ def _verified_repository(root: Path) -> str:
         CGM_BUILD_DIGEST: ${{ steps.build.outputs.digest }}
         CGM_BUILD_METADATA: ${{ steps.build.outputs.metadata }}
       run: python3 "$GITHUB_ACTION_PATH/probe_registration.py" verify-build"""
+    if loaded:
+        expected = expected.replace(
+            "        load: ${{ inputs.load }}\n",
+            "        load: ${{ inputs.load }}\n"
+            "        outputs: ${{ inputs.push == 'true' && 'type=docker' || '' }}\n"
+            "        attests: ${{ inputs.push == 'true' && 'type=provenance,mode=max' || '' }}\n",
+        ).replace(
+            "        CGM_BUILD_LOAD: ${{ inputs.load }}",
+            "        CGM_BUILD_LOAD: ${{ inputs.push == 'true' && 'true' || inputs.load }}",
+        )
     if lines[lines.index("runs:"):] != expected.splitlines():
         raise ContractError("the verified Pipeline action must bind the exact Buildx output to the image probe")
 
@@ -268,12 +304,15 @@ def _verified_repository(root: Path) -> str:
             raise ContractError("duplicate definition in the verified Pipeline probe")
         definitions[name] = node
         order.append(name)
-    if _syntax_hash(order) != "1ed4293893c0a54883fb0a8701a7749ecf83aa2cf82a2339cf44ed2232c674c0":
+    expected_order = _LOADED_PROBE_ORDER if loaded else "1ed4293893c0a54883fb0a8701a7749ecf83aa2cf82a2339cf44ed2232c674c0"
+    if _syntax_hash(order) != expected_order:
         raise ContractError("the verified Pipeline probe changed its reviewed declaration order")
-    if _syntax_hash(scaffolding) != "aa2007ece33612984bd23e7e8b027bfa9a818924b944f567934d73c319351c2b":
+    expected_scaffolding = _LOADED_PROBE_SCAFFOLDING if loaded else "aa2007ece33612984bd23e7e8b027bfa9a818924b944f567934d73c319351c2b"
+    if _syntax_hash(scaffolding) != expected_scaffolding:
         raise ContractError("the verified Pipeline probe must have its reviewed imports and entry point")
     known = set()
-    for group, members, expected_hash in _PROBE_BINDINGS:
+    bindings = _LOADED_PROBE_BINDINGS if loaded else _PROBE_BINDINGS
+    for group, members, expected_hash in bindings:
         names = members.split()
         known.update(names)
         if any(name not in definitions for name in names) or _syntax_hash([definitions[name] for name in names]) != expected_hash:
@@ -406,7 +445,7 @@ def _visible_unbound_repoint(jobs, repoint, job_name: str) -> bool:
     return False
 
 
-def _check_repoint_tail(steps, image_ref: str) -> None:
+def _check_repoint_tail(steps, image_ref: str, *, loaded: bool = False) -> None:
     """The reviewed Pipeline tail has only the two image smoke steps."""
     expected = r"""      - name: Verify ga_writers is importable in the pushed image
         run: |
@@ -422,6 +461,8 @@ def _check_repoint_tail(steps, image_ref: str) -> None:
             IMAGE_REFERENCE \
             -c "import sys; sys.path.insert(0, '/app/platform/python-sidecar/scripts/kala_gochara_cutover'); import common; print('cutover common OK:', common.__file__)"
 """
+    if loaded:
+        expected = ""
     if [line for step in steps for _, line in step] != expected.replace("IMAGE_REFERENCE", image_ref).splitlines():
         raise ContractError(f"{DEPLOY}: unexpected Pipeline step after the verified repoint")
 
@@ -435,10 +476,21 @@ def _pipeline_repoint(root: Path, *, job_name: str, region: str) -> tuple[str, d
         not re.fullmatch(r"(?:name: .+|on:|concurrency:|env:|jobs:)", line) for line in top
     ):
         raise ContractError(f"{DEPLOY}: unexpected top-level workflow structure or shell defaults")
-    env = [line.strip() for _, line in _section(lines, "env:", 0)]
-    for key, expected in (("DEPLOY_SHA", _SOURCE_ENV), ("GCP_REGION", f"GCP_REGION: {region}")):
-        if [line for line in env if line.split(":", 1)[0].strip("\"'") == key] != [expected]:
-            raise ContractError(f"{DEPLOY}: unexpected Pipeline {key} source")
+    environment = _section(lines, "env:", 0)
+    env = [line.strip() for _, line in environment]
+    source_rows = [line for line in env if line.split(":", 1)[0].strip("\"'") == "DEPLOY_SHA"]
+    if source_rows != [_SOURCE_ENV]:
+        raise ContractError(f"{DEPLOY}: unexpected Pipeline DEPLOY_SHA source")
+    region_rows = [
+        line for _, line in environment
+        if line.strip().split(":", 1)[0].strip("\"'") in _REGION_NAMES
+    ]
+    if len(region_rows) != 1:
+        raise ContractError(f"{DEPLOY}: expected one literal Pipeline region source")
+    region_name = region_rows[0].strip().split(":", 1)[0]
+    if region_rows[0] != f"  {region_name}: {region}":
+        raise ContractError(f"{DEPLOY}: unexpected Pipeline region source")
+    region_reference = "${{ env." + region_name + " }}"
     if any(line.startswith(("CGM_VERIFIED_", "<<:")) or line[0] in "\"'" for line in env):
         raise ContractError(f"{DEPLOY}: unexpected Pipeline environment carrier")
     jobs = _section(lines, "jobs:", 0)
@@ -484,9 +536,22 @@ def _pipeline_repoint(root: Path, *, job_name: str, region: str) -> tuple[str, d
         raise ContractError(f"{DEPLOY}: the Pipeline repoint must be one unguarded run step")
 
     body = [(i, line.strip()) for i, line in repoint[1:]]
+    loaded = bool(body and body[0][1] == _LOADED_REPOINT_PREAMBLE[0])
+    if loaded:
+        # A run-block comment or whitespace after a backslash changes Bash
+        # argv even when the normalized YAML lines look exactly as reviewed.
+        first = repoint[0][0]
+        if any(number != first + offset or workflow[number - 1] != line
+               for offset, (number, line) in enumerate(repoint)):
+            raise ContractError(f"{DEPLOY}: the loaded Pipeline repoint commands must be physically contiguous")
+        if [line for _, line in body[:len(_LOADED_REPOINT_PREAMBLE)]] != list(_LOADED_REPOINT_PREAMBLE):
+            raise ContractError(f"{DEPLOY}: unexpected Pipeline local image checks")
+        body = body[len(_LOADED_REPOINT_PREAMBLE):]
     verified = bool(body and body[0][1] == f"{_PROBE_RUN} verify-repoint")
+    if loaded and not verified:
+        raise ContractError(f"{DEPLOY}: local image checks require the verified Pipeline repoint")
     if verified:
-        if body[-1][1] != f'GOOGLE_CLOUD_REGION="{_REGION}" {_PROBE_RUN} post-repoint':
+        if body[-1][1] != f'GOOGLE_CLOUD_REGION="{region_reference}" {_PROBE_RUN} post-repoint':
             raise ContractError(f"{DEPLOY}: the verified Pipeline repoint must immediately check readback")
         body = body[1:-1]
     if len(body) < 4 or body[0][1] != command + "\\" or body[-1][1] != "--quiet":
@@ -503,7 +568,7 @@ def _pipeline_repoint(root: Path, *, job_name: str, region: str) -> tuple[str, d
         ):
             raise ContractError(f"{DEPLOY}: unsupported Pipeline repoint argument")
         args[flag] = (i, value)
-    if args.get("region", (None, None))[1] != _REGION or not {"image", "task-timeout"} <= args.keys():
+    if args.get("region", (None, None))[1] != region_reference or not {"image", "task-timeout"} <= args.keys():
         raise ContractError(f"{DEPLOY}: the actual Pipeline repoint must bind region, image and timeout")
     timeout_line, timeout = args["task-timeout"]
     if not re.fullmatch(r"[1-9][0-9]*", timeout):
@@ -512,7 +577,7 @@ def _pipeline_repoint(root: Path, *, job_name: str, region: str) -> tuple[str, d
     if verified:
         if image_ref != _VERIFIED_REF:
             raise ContractError(f"{DEPLOY}: Pipeline image is not the exact verified combined reference")
-        repository = _verified_repository(root)
+        repository = _verified_repository(root, loaded=loaded)
     else:
         repository = image_ref.removesuffix(_SOURCE_TAG)
         if repository == image_ref or not _REPOSITORY.fullmatch(repository):
@@ -526,7 +591,7 @@ def _pipeline_repoint(root: Path, *, job_name: str, region: str) -> tuple[str, d
     ]
     if [line for _, line in build] != expected_build:
         raise ContractError(f"{DEPLOY}: the exact same-job Pipeline builder must bind the repoint repository and source")
-    _check_repoint_tail(steps[repoint_idx + 1:], '"$CGM_VERIFIED_IMAGE"' if verified else image_ref)
+    _check_repoint_tail(steps[repoint_idx + 1:], '"$CGM_VERIFIED_IMAGE"' if verified else image_ref, loaded=loaded)
     return repository, {"cloud_run_task_timeout_seconds": int(timeout), "source": f"{DEPLOY}:{timeout_line}"}
 
 

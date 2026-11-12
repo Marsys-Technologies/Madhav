@@ -87,7 +87,12 @@ def test_the_statement_label_strips_every_literal_and_is_at_most_60_chars():
 def test_no_host_credential_value_or_full_statement_is_stored(monkeypatch):
     monkeypatch.setenv("PGHOST", "db.internal.example")
     monkeypatch.setenv("PGPASSWORD", "hunter" + "2")
-    FakePsql(monkeypatch, ac, [fail("psql: error: connection to server at db.internal.example failed: FATAL: password authentication failed for user bob")])
+    # A real duration can contain the SQL sentinel's digits in the JSON log.
+    clock = FakeClock()
+    monkeypatch.setattr(ac, "time", clock)
+    FakePsql(monkeypatch, ac,
+             [fail("psql: error: connection to server at db.internal.example failed: FATAL: password authentication failed for user bob")],
+             clock=clock, elapsed=0.25)
     sentinel = "Sentinel-Secret-Value-0042"
     with pytest.raises(ac.Unknown):
         ac.psql(f"SELECT '{sentinel}', pg_sleep(12345), a_very_long_column_name_to_push_past_sixty_characters_of_text FROM some_table")
