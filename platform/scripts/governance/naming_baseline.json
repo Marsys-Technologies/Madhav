@@ -6,12 +6,11 @@
     "google_env_prefix|platform/src/lib/config/google_cloud_env.ts|GCP_BILLING_PROJECT_ID",
     "google_env_prefix|platform/src/lib/config/google_cloud_env.ts|GCP_BILLING_TABLE_ID",
     "google_env_prefix|platform/src/lib/config/google_cloud_env.ts|GCP_PROJECT",
-    "google_env_prefix|platform/src/lib/config/google_cloud_env.ts|GCP_REGION",
-    "google_env_prefix|platform/src/lib/multimodal/pdf_extractor.ts|GOOGLE_APPLICATION_CREDENTIALS_JSON"
+    "google_env_prefix|platform/src/lib/config/google_cloud_env.ts|GCP_REGION"
   ],
   "generated_by": "naming_lint.py --first-run",
   "schema_version": "1.0",
-  "violation_count": 8,
+  "violation_count": 7,
   "violations": [
     {
       "rule_id": "google_env_prefix",
@@ -75,15 +74,6 @@
       "message": "forbidden Google env prefix 'GCP_BILLING_TABLE_ID' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
       "match": "GCP_BILLING_TABLE_ID",
       "justification": "Compatibility alias for an existing deployed or operator-supplied environment key. Legacy precedence is covered by google_cloud_env.test.ts."
-    },
-    {
-      "rule_id": "google_env_prefix",
-      "severity": "error",
-      "file": "platform/src/lib/multimodal/pdf_extractor.ts",
-      "line": 29,
-      "message": "non-canonical Google env var 'GOOGLE_APPLICATION_CREDENTIALS_JSON' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
-      "match": "GOOGLE_APPLICATION_CREDENTIALS_JSON",
-      "justification": "Compatibility check for the existing inline JSON credential option. Retains its original credential scope and fallback behavior."
     }
   ]
 }

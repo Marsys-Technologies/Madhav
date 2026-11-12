@@ -259,10 +259,57 @@ _RE_CATEGORY_COUNTS = re.compile(
     r"\bGROUP\s+BY\s+fact_category\s*(?:ORDER\s+BY\s+fact_category)?\s*$",
     re.IGNORECASE | re.DOTALL,
 )
+_RE_CTE_START = re.compile(r"([a-z_]\w*)\s+AS\s*\(", re.IGNORECASE)
+_RE_CROSS_JOIN = re.compile(
+    r"SELECT\s+(?:1|[a-z_]\w*\.\*,\s*[a-z_]\w*\.total)"
+    r"\s+FROM\s+([a-z_]\w*(?:\s+CROSS\s+JOIN\s+[a-z_]\w*)+)\s*",
+    re.IGNORECASE,
+)
+
+
+def _is_zero_row_cross_join(sql: str) -> bool:
+    """Recognize an inner product of flat, non-measurement CTEs.
+
+    Each input is either a zero-row SELECT or a count-only SELECT. A zero-row
+    input forces the CROSS JOIN to emit no rows. Other joins, output shapes,
+    and nested queries require the normal fact-key check.
+    """
+    prefix = re.match(r"WITH\s+", sql, re.IGNORECASE)
+    if not prefix:
+        return False
+    remainder = sql[prefix.end():]
+    inputs: set[str] = set()
+    has_empty_input = False
+    while header := _RE_CTE_START.match(remainder):
+        name = header[1].lower()
+        if name in inputs:
+            return False
+        body, end = _extract_balanced(remainder, header.end() - 1)
+        if end <= header.end() or remainder[end - 1] != ")":
+            return False
+        body = body.strip()
+        if not re.match(r"SELECT\s", body, re.IGNORECASE):
+            return False
+        if len(_RE_SQL_SELECT.findall(body)) != 1:
+            return False
+        if _RE_ZERO_ROWS.search(body):
+            has_empty_input = True
+        elif not _RE_MEASUREMENT_FREE_PROJECTION.match(body):
+            return False
+        inputs.add(name)
+        remainder = remainder[end:].lstrip()
+        if not remainder.startswith(","):
+            break
+        remainder = remainder[1:].lstrip()
+    output = _RE_CROSS_JOIN.fullmatch(remainder)
+    if not has_empty_input or not output:
+        return False
+    joined = re.split(r"\s+cross\s+join\s+", output[1].lower())
+    return len(joined) == len(inputs) and set(joined) == inputs
 
 
 def _cannot_select_measurement(sql: str) -> bool:
-    """Recognize flat SELECTs that expose no chart fact value.
+    """Recognize flat SELECTs and empty CROSS JOINs that expose no fact value.
 
     Quoted text cannot supply the LIMIT or projection. Leave interpolated,
     compound, commented and nested SQL to the ordinary check.
@@ -271,15 +318,72 @@ def _cannot_select_measurement(sql: str) -> bool:
     if any(char in sql for char in "\\{}") or re.search(r"\$(?:[a-z_]\w*)?\$", sql, re.IGNORECASE):
         return False
     structure = _RE_SQL_STRING.sub("?", sql)
+    if _RE_SQL_COMPLEX.search(structure):
+        return False
+    if _is_zero_row_cross_join(structure):
+        return True
     if not re.match(r"^SELECT\s", structure, re.IGNORECASE):
         return False
-    if _RE_SQL_COMPLEX.search(structure) or len(_RE_SQL_SELECT.findall(structure)) != 1:
+    if len(_RE_SQL_SELECT.findall(structure)) != 1:
         return False
     return bool(
         _RE_ZERO_ROWS.search(structure)
         or _RE_MEASUREMENT_FREE_PROJECTION.match(structure)
         or _RE_CATEGORY_COUNTS.fullmatch(structure)
     )
+
+
+_REGISTRY = Path("platform/src/lib/retrieval/registry")
+_PROBE_SOURCE = _REGISTRY / "knowledge/source_query_availability.ts"
+_PROBE_ORDER_BODY = """export function ayanamshaServeOrderBy(column = 'ayanamsha_id'): string {
+  const list = AYANAMSHA_SERVE_ORDER.map((id) => `'${id}'`).join(',')
+  return `array_position(ARRAY[${list}]::text[], ${column}::text), ${column}`
+}"""
+
+
+def _probe_fragments(root: Path, text: str) -> dict[str, str]:
+    """Resolve only the two reviewed interpolations used by availability probes.
+
+    Verify the imports and the source that produces each fragment. Unknown
+    templates or changes to these source shapes fall through to ordinary lint.
+    """
+    try:
+        ordering = (root / _REGISTRY / "handler_ayanamsha.ts").read_text(encoding="utf-8")
+        constants = (root / _REGISTRY / "constants.ts").read_text(encoding="utf-8")
+        citation = (root / _REGISTRY / "layers/L1_ganita/citation_narration.ts").read_text(encoding="utf-8")
+    except (OSError, UnicodeError):
+        return {}
+    return _resolve_probe_fragments(text, ordering, constants, citation)
+
+
+def _resolve_probe_fragments(text: str, ordering: str, constants: str, citation: str) -> dict[str, str]:
+    fragments: dict[str, str] = {}
+    identifiers = re.findall(
+        r"^export const AYANAMSHA_SERVE_ORDER = \[((?:\s*'[a-z_][a-z_0-9]*',)+)\s*\] as const$",
+        constants, re.MULTILINE,
+    )
+    if (
+        re.search(r"^import \{ ayanamshaServeOrderBy \} from '\.\./handler_ayanamsha'$", text, re.MULTILINE)
+        and len(identifiers) == 1
+        and ordering.count("export function ayanamshaServeOrderBy(") == 1
+        and f"\n{_PROBE_ORDER_BODY}\n" in ordering
+        and re.search(r"^import \{ [^{}\n]*\bAYANAMSHA_SERVE_ORDER\b[^{}\n]* \} from '\./constants'$",
+                      ordering, re.MULTILINE)
+    ):
+        ids = ", ".join(re.findall(r"'[a-z_][a-z_0-9]*'", identifiers[0]))
+        fragments["${ayanamshaServeOrderBy()}"] = (
+            f"array_position(ARRAY[{ids}]::text[], ayanamsha_id::text), ayanamsha_id"
+        )
+
+    projection = "NULLIF(BTRIM(citation_human), '') AS citation_human"
+    if (
+        re.search(r"^import \{ CITATION_HUMAN_SELECT \} from '\.\./layers/L1_ganita/citation_narration'$",
+                  text, re.MULTILINE)
+        and citation.count("export const CITATION_HUMAN_SELECT = ") == 1
+        and f"export const CITATION_HUMAN_SELECT = `{projection}`\n" in citation
+    ):
+        fragments["${CITATION_HUMAN_SELECT}"] = projection
+    return fragments
 
 
 def _is_unsafe_sql_block(sql: str) -> bool:
@@ -416,7 +520,7 @@ def _has_sort_before(text: str, call_start: int) -> bool:
     return ".sort(" in window
 
 
-def scan_ts_sql_text(text: str) -> List[tuple]:
+def scan_ts_sql_text(text: str, probe_fragments: dict[str, str] | None = None) -> List[tuple]:
     """Return (line, kind, snippet) for unsafe chart_facts SQL in TS template literals.
 
     scan_ts_text below only ever inspected `.find(...)` / `.filter(...)[0]` over
@@ -431,6 +535,13 @@ def scan_ts_sql_text(text: str) -> List[tuple]:
     hits: List[tuple] = []
     for m in re.finditer(r"`[^`]*`", text, re.S):
         sql = m.group(0)
+        before_template = text[text.rfind("\n", 0, m.start()) + 1:m.start()]
+        if probe_fragments and re.fullmatch(r"\s*sql:\s*", before_template):
+            rendered = sql[1:-1]
+            for interpolation, fragment in probe_fragments.items():
+                rendered = rendered.replace(interpolation, fragment)
+            if _cannot_select_measurement(rendered):
+                continue
         if not _is_unsafe_sql_block(sql[1:-1]):
             continue
         line = text.count("\n", 0, m.start()) + 1
@@ -529,7 +640,8 @@ def scan_repo(root: Path, py_globs: Sequence[str], ts_globs: Sequence[str]) -> L
                 )
             )
 
-        for line, kind, snippet in scan_ts_sql_text(text):
+        probe_fragments = _probe_fragments(root, text) if path == root / _PROBE_SOURCE else None
+        for line, kind, snippet in scan_ts_sql_text(text, probe_fragments):
             violations.append(
                 Violation(
                     file=rel,
@@ -624,7 +736,13 @@ def run_self_test() -> int:
     if len(scan_python_text(mixed_source)) != 1:
         failures.append("A live SQL string adjacent to a docstring must still be flagged")
 
+    zero_row_join = (
+        f"WITH facts AS ({unpinned_sql} LIMIT 0), "
+        "counts AS (SELECT COUNT(*)::text AS total FROM chart_facts) "
+        "SELECT facts.*, counts.total FROM facts CROSS JOIN counts"
+    )
     for sql in (
+        zero_row_join,
         unpinned_sql + " LIMIT 0 OFFSET 0",
         unpinned_sql.replace("fact_id", "COUNT(*)::text AS total"),
         unpinned_sql.replace("fact_id", "1"),
@@ -633,6 +751,12 @@ def run_self_test() -> int:
         if _is_unsafe_sql_block(sql):
             failures.append(f"SQL that cannot expose a fact value was flagged: {sql}")
     for sql in (
+        zero_row_join.replace("LIMIT 0", "LIMIT 1"),
+        zero_row_join.replace("CROSS JOIN", "RIGHT JOIN"),
+        zero_row_join.replace("facts CROSS JOIN counts", "other CROSS JOIN counts"),
+        zero_row_join.replace("COUNT(*)::text AS total", "MAX(fact_value_num) AS total"),
+        zero_row_join.replace("LIMIT 0", "LIMIT 0 /* ambiguity */"),
+        zero_row_join.replace("LIMIT 0", "LIMIT 0 ${unsafeClause}"),
         unpinned_sql + " -- LIMIT 0",
         unpinned_sql + " AND fact_value_text = 'LIMIT 0'",
         unpinned_sql + " LIMIT 0 + 1",
@@ -644,6 +768,36 @@ def run_self_test() -> int:
     ):
         if not _is_unsafe_sql_block(sql):
             failures.append(f"Unsafe or ambiguous SQL escaped the scanner: {sql}")
+
+    imports = (
+        "import { ayanamshaServeOrderBy } from '../handler_ayanamsha'\n"
+        "import { CITATION_HUMAN_SELECT } from '../layers/L1_ganita/citation_narration'\n"
+    )
+    ordering = "import { AYANAMSHA_SERVE_ORDER } from './constants'\n" + _PROBE_ORDER_BODY + "\n"
+    constants = "export const AYANAMSHA_SERVE_ORDER = ['lahiri_chitrapaksha',] as const\n"
+    citation = "export const CITATION_HUMAN_SELECT = `NULLIF(BTRIM(citation_human), '') AS citation_human`\n"
+    probe = (
+        "    sql: `SELECT fact_id, ${CITATION_HUMAN_SELECT} FROM chart_facts "
+        "WHERE fact_category = 'strength' ORDER BY ${ayanamshaServeOrderBy()} LIMIT 0`,"
+    )
+    fragments = _resolve_probe_fragments(imports, ordering, constants, citation)
+    if scan_ts_sql_text(probe, fragments):
+        failures.append("The reviewed probe fragments must preserve the zero-row proof")
+    for ambiguous in (
+        probe.replace("LIMIT 0", "LIMIT 1"),
+        probe.replace("LIMIT 0", "${unknownClause} LIMIT 0"),
+        probe.replace("sql:", "query:"),
+    ):
+        if not scan_ts_sql_text(ambiguous, fragments):
+            failures.append(f"An unsafe or unknown probe escaped the scanner: {ambiguous}")
+    for unresolved in (
+        _resolve_probe_fragments(imports.replace("../handler_ayanamsha", "../other"), ordering, constants, citation),
+        _resolve_probe_fragments(imports, ordering.replace("array_position", "other"), constants, citation),
+        _resolve_probe_fragments(imports, ordering, constants.replace("lahiri_chitrapaksha", "unknown;"), citation),
+        _resolve_probe_fragments(imports, ordering, constants, citation.replace("AS citation_human", "AS other")),
+    ):
+        if not scan_ts_sql_text(probe, unresolved):
+            failures.append("Changed probe fragment sources must fall through to ordinary lint")
 
     hit = Violation("source.py", 2, "python", "sql_select", unpinned_sql, "fixture")
     allowed, new = partition_allowlisted([hit, hit], [{"file": hit.file, "pattern": "SELECT"}])
