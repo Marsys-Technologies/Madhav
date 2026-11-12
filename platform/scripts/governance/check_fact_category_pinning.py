@@ -552,6 +552,32 @@ def _collection_fetches(tree: ast.AST, line: int, sql: str) -> bool:
     return False
 
 
+def _fact_key_reference(node: ast.AST) -> bool:
+    return isinstance(node, ast.Subscript) and isinstance(node.slice, ast.Constant) and node.slice.value == "fact_key"
+
+
+def _collects_loop_rows(body: list[ast.AST], collections: set[str]) -> bool:
+    keyed_names: set[str] = set()
+    for node in body:
+        if not isinstance(node, ast.Assign) or len(node.targets) != 1:
+            continue
+        target = node.targets[0]
+        if isinstance(target, ast.Name) and _fact_key_reference(node.value):
+            keyed_names.add(target.id)
+        elif isinstance(target, ast.Tuple) and isinstance(node.value, ast.Tuple):
+            keyed_names.update(
+                name.id for name, value in zip(target.elts, node.value.elts)
+                if isinstance(name, ast.Name) and _fact_key_reference(value)
+            )
+    return any(
+        isinstance(node, ast.Subscript) and isinstance(node.ctx, ast.Store)
+        and (_fact_key_reference(node.slice) or isinstance(node.slice, ast.Name) and node.slice.id in keyed_names)
+        or _method_call(node, "append")
+        and isinstance(node.func.value, ast.Name) and node.func.value.id in collections
+        for node in body
+    )
+
+
 def _consumes_keyed_collection(nodes: list[ast.AST], binding: ast.Name) -> bool:
     refs = [node for node in nodes if isinstance(node, ast.Name) and node.id == binding.id]
     uses = [node for node in refs if node is not binding]
@@ -585,6 +611,8 @@ def _consumes_keyed_collection(nodes: list[ast.AST], binding: ast.Name) -> bool:
         if isinstance(consumer, ast.For):
             if any(isinstance(node, (ast.Break, ast.Return, ast.Yield, ast.YieldFrom)) for node in body):
                 return False
+            if not _collects_loop_rows(body, collections):
+                return False
         else:
             # Column names can be declared next to the fetch and passed to zip
             # for drivers that return tuples instead of row mappings.
@@ -606,8 +634,7 @@ def _consumes_keyed_collection(nodes: list[ast.AST], binding: ast.Name) -> bool:
             ):
                 return True
         if any(
-            isinstance(node, ast.Subscript) and isinstance(node.slice, ast.Constant)
-            and node.slice.value == "fact_key"
+            _fact_key_reference(node)
             or isinstance(node, (ast.List, ast.Tuple))
             and any(isinstance(item, ast.Constant) and item.value == "fact_key" for item in node.elts)
             for node in body
@@ -1044,6 +1071,10 @@ def run_self_test() -> int:
         reader.replace(keyed_sql, keyed_sql + " ORDER BY fact_value_num LIMIT 1"),
         reader.replace('return [{"fact_key": row["fact_key"], "value": row["fact_value_num"]} for row in rows]',
                        'return rows[0]'),
+        reader.replace(
+            'return [{"fact_key": row["fact_key"], "value": row["fact_value_num"]} for row in rows]',
+            'out = {}\n    for row in rows:\n        out["last"] = row["fact_key"]\n    return out',
+        ),
     ):
         if not scan_python_text(unsafe):
             failures.append(f"A scalar Python consumer escaped lint: {unsafe}")

@@ -601,6 +601,10 @@ def _catalog_fields(tree: ast.Module) -> set[tuple[int, str]]:
                     and all(isinstance(entries[key], ast.Constant) and isinstance(entries[key].value, str)
                             and entries[key].value for key in ("slug", "condition", "verdict", "citation_human"))
                     and rule_id.args[2].value == entries["slug"].value
+                    and entries["verdict"].value in {
+                        "auspicious_marriage_indication", "afflicted_marriage_indication",
+                        "benefic_association_strengthens_pada", "malefic_association_afflicts_pada",
+                    }
                 ):
                     fields.add((id(row), "verdict"))
             if declaration.target.id == "TAJIK_YOGAS":
