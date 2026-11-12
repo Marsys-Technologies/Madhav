@@ -23,6 +23,12 @@ from datetime import date
 
 import psycopg
 
+from pipeline.orchestrator.substep_progress import (
+    clear_sangam_substeps,
+    load_sangam_completed_substeps,
+    record_sangam_substep,
+    sum_sangam_rows_written,
+)
 from pipeline.orchestrator.writers import WriterBase, WriterResult, SubStep, register
 from services.ka_sangam.engine import (
     mode_a_search,
@@ -585,10 +591,8 @@ class _LegacyKaSangamWriter(WriterBase):
         remaining = [s for s in steps if s.key not in completed]
         self._resume_skipped = len(steps) - len(remaining)
         self._final_step_key = remaining[-1].key if remaining else None
-        with conn.cursor() as cur:       # the windows the resumed (skipped) substeps already committed count toward this run's total
-            cur.execute("SELECT COALESCE(SUM(rows_written), 0) AS n FROM build_substep_progress WHERE chart_id = %s AND asset_id = 'ka_sangam'", (chart_id,))
-            row = cur.fetchone()
-        self._windows_written = int((row['n'] if isinstance(row, dict) else row[0]) or 0)
+        # Include the windows committed by steps that this attempt skips.
+        self._windows_written = sum_sangam_rows_written(conn, chart_id)
         logger.info(
             "ka_sangam: RESUMING build for chart %s — %d/%d substeps already committed, %d remaining",
             chart_id, self._resume_skipped, len(steps), len(remaining),
@@ -625,10 +629,7 @@ class _LegacyKaSangamWriter(WriterBase):
             with conn.cursor() as cur:
                 cur.execute("DELETE FROM kala_convergence WHERE chart_id = %s AND generation = %s",
                             (chart_id, self._write_generation()))
-                cur.execute(
-                    "DELETE FROM build_substep_progress WHERE chart_id = %s AND asset_id = 'ka_sangam'",
-                    (chart_id,),
-                )
+                clear_sangam_substeps(cur, chart_id)
         if step.key == 'near':
             result = self._substep_near(conn, chart_id, dry_run)
         else:
@@ -670,18 +671,7 @@ class _LegacyKaSangamWriter(WriterBase):
         → caller skips them (resume). Returns None when the ledger is empty (first
         run) OR holds any row from a different fingerprint (a prior/changed build)
         → caller deletes-all and replans fresh."""
-        with conn.cursor() as cur:
-            cur.execute(
-                "SELECT substep_key, build_fingerprint FROM build_substep_progress "
-                "WHERE chart_id = %s AND asset_id = 'ka_sangam'",
-                (chart_id,),
-            )
-            rows = cur.fetchall()
-        if not rows:
-            return None
-        if {r['build_fingerprint'] for r in rows} != {fingerprint}:
-            return None
-        return {r['substep_key'] for r in rows}
+        return load_sangam_completed_substeps(conn, chart_id, fingerprint)
 
     def _record_substep(self, conn, chart_id: str, substep_key: str, rows: int) -> None:
         """Record this substep's completion in the resumption ledger, INSIDE the
@@ -689,17 +679,7 @@ class _LegacyKaSangamWriter(WriterBase):
         atomically with the substep's data rows (durable iff the data is durable,
         rolled back with it on failure). The writer never commits/rolls back/closes;
         the FROZEN orchestrator contract is untouched."""
-        with conn.cursor() as cur:
-            cur.execute(
-                """INSERT INTO build_substep_progress
-                       (chart_id, asset_id, substep_key, build_fingerprint, rows_written, completed_at)
-                   VALUES (%s, 'ka_sangam', %s, %s, %s, now())
-                   ON CONFLICT (chart_id, asset_id, substep_key)
-                   DO UPDATE SET build_fingerprint = EXCLUDED.build_fingerprint,
-                                 rows_written      = EXCLUDED.rows_written,
-                                 completed_at      = EXCLUDED.completed_at""",
-                (chart_id, substep_key, self._resume_fingerprint, rows),
-            )
+        record_sangam_substep(conn, chart_id, substep_key, self._resume_fingerprint, rows)
 
     # ── substep implementations ───────────────────────────────────────────────
 
