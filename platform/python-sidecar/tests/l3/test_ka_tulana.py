@@ -3,7 +3,7 @@ import copy
 import importlib
 import json
 import ast
-from datetime import date
+from datetime import date, datetime, timezone
 from itertools import permutations
 from pathlib import Path
 from types import SimpleNamespace
@@ -251,6 +251,51 @@ def test_selftest_and_writer_false_health(monkeypatch):
     with pytest.raises(RuntimeError): writer.KaTulanaWriter().run(ctx)
     conn.commit.assert_not_called(); conn.close.assert_not_called()
     assert "asset_throughput" not in str(conn.execute.call_args)
+
+
+@pytest.mark.parametrize(("ok", "health"), [(True, "healthy"), (False, "degraded")])
+def test_tulana_writer_delegates_only_the_borrowed_health_update(monkeypatch, ok, health):
+    writer = importlib.import_module("services.ka_tulana.writer")
+    persistence = importlib.import_module("pipeline.orchestrator.service_health_persistence")
+    delegate = MagicMock(wraps=persistence.persist_tulana_selftest_health)
+    monkeypatch.setattr(writer, "persist_tulana_selftest_health", delegate, raising=False)
+
+    observed_at = datetime(2026, 10, 13, 12, tzinfo=timezone.utc)
+    now = MagicMock(return_value=observed_at)
+    monkeypatch.setattr(writer, "datetime", SimpleNamespace(now=now))
+    detail = '{"test": "fixture", "detail": "unchanged"}'
+    detector = MagicMock(return_value=(ok, detail))
+    monkeypatch.setattr(writer, "_run_selftest", detector)
+    conn = MagicMock()
+    ctx = SimpleNamespace(db_conn=conn, dry_run=True)
+
+    dry_run = writer.KaTulanaWriter().run(ctx)
+    assert (dry_run.rows_inserted, dry_run.rows_updated, dry_run.notes) == (0, 0, "dry_run=True")
+    detector.assert_not_called()
+    delegate.assert_not_called()
+    now.assert_not_called()
+    assert conn.method_calls == []
+
+    ctx.dry_run = False
+    if ok:
+        result = writer.KaTulanaWriter().run(ctx)
+        assert (result.rows_inserted, result.rows_updated) == (0, 0)
+        assert result.notes == f"service_health=healthy; {detail}"
+    else:
+        with pytest.raises(RuntimeError, match="self-test failed") as raised:
+            writer.KaTulanaWriter().run(ctx)
+        assert str(raised.value) == f"ka_tulana self-test failed (service_health=degraded): {detail}"
+
+    detector.assert_called_once_with()
+    now.assert_called_once_with(timezone.utc)
+    delegate.assert_called_once_with(conn, health=health, observed_at=observed_at, detail_json=detail)
+    assert [entry[0] for entry in conn.method_calls] == ["execute"]
+    sql, params = conn.execute.call_args.args
+    assert " ".join(sql.split()) == (
+        "UPDATE asset_registry SET service_health = %s, last_selftest_at = %s, "
+        "selftest_detail = %s WHERE asset_id = 'ka_tulana'"
+    )
+    assert params == [health, observed_at, detail]
 
 
 def test_exact_boundary_no_extra_tie_band():

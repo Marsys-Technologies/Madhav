@@ -5364,7 +5364,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) reference_planets; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
     "carriage": "served_surface null (unknown): negative scan is not proof; editorial map PRODUCER_SEMANTIC_REVIEW marks it directly_serves_output for scu.catalog.query_classical_texts.",
-    "prose_fields": "stores the 11 typed reference tables (planets, signs, aspects, vargas, houses, strength systems, karakas, upagrahas, constants, topic tags, glossary) as the committed seed's rows: seed_reference (platform/python-sidecar/brahmagyan/l0_reference.py:1282, called by the writer platform/python-sidecar/pipeline/orchestrator/writers/bg_reference.py:3) inserts PLANETS (platform/python-sidecar/brahmagyan/l0_reference.py:49), SIGNS, ASPECTS, VARGAS, HOUSES, STRENGTH_SYSTEMS, KARAKAS, UPAGRAHAS, CONSTANTS (built by _c at platform/python-sidecar/brahmagyan/l0_reference.py:748 from f-strings over fixed lists), TOPIC_TAGS (cross products built by _tag at platform/python-sidecar/brahmagyan/l0_reference.py:850) and GLOSSARY (built by _g at platform/python-sidecar/brahmagyan/l0_reference.py:894) at platform/python-sidecar/brahmagyan/l0_reference.py:1316-1557; every value is a fixed seed literal or a deterministic cross product of fixed lists, none depends on a chart or on a computed value; each text column is declared closed by the values the seed writes."
+    "prose_fields": "stores the 11 typed reference tables (planets, signs, aspects, vargas, houses, strength systems, karakas, upagrahas, constants, topic tags, glossary) as the committed seed's rows: seed_reference_borrowed (platform/python-sidecar/brahmagyan/l0_reference.py:1292, called by the writer platform/python-sidecar/pipeline/orchestrator/writers/bg_reference.py:30) inserts PLANETS (platform/python-sidecar/brahmagyan/l0_reference.py:49), SIGNS, ASPECTS, VARGAS, HOUSES, STRENGTH_SYSTEMS, KARAKAS, UPAGRAHAS, CONSTANTS (built by _c at platform/python-sidecar/brahmagyan/l0_reference.py:748 from f-strings over fixed lists), TOPIC_TAGS (cross products built by _tag at platform/python-sidecar/brahmagyan/l0_reference.py:850) and GLOSSARY (built by _g at platform/python-sidecar/brahmagyan/l0_reference.py:894) at platform/python-sidecar/brahmagyan/l0_reference.py:1322-1563; every value is a fixed seed literal or a deterministic cross product of fixed lists, none depends on a chart or on a computed value; each text column is declared closed by the values the seed writes."
    },
    "source": {
     "level": "row",
@@ -5399,7 +5399,7 @@
        "Sun",
        "Venus"
       ],
-      "why": "the values the committed seed writes to reference_planets.canonical_name_en (PLANETS, platform/python-sidecar/brahmagyan/l0_reference.py:49), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1316: 11 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_planets.canonical_name_en (PLANETS, platform/python-sidecar/brahmagyan/l0_reference.py:49), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1322: 11 distinct value(s); the live column may hold only these"
      },
      {
       "column": "canonical_name_sa",
@@ -5416,7 +5416,7 @@
        "Shukra",
        "Surya"
       ],
-      "why": "the values the committed seed writes to reference_planets.canonical_name_sa (PLANETS, platform/python-sidecar/brahmagyan/l0_reference.py:49), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1316: 11 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_planets.canonical_name_sa (PLANETS, platform/python-sidecar/brahmagyan/l0_reference.py:49), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1322: 11 distinct value(s); the live column may hold only these"
      },
      {
       "column": "karak_domains",
@@ -5481,7 +5481,7 @@
        "wisdom",
        "writing"
       ],
-      "why": "the values the committed seed writes to reference_planets.karak_domains (PLANETS, platform/python-sidecar/brahmagyan/l0_reference.py:49), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1316: 59 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_planets.karak_domains (PLANETS, platform/python-sidecar/brahmagyan/l0_reference.py:49), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1322: 59 distinct value(s); the live column may hold only these"
      },
      {
       "table": "reference_signs",
@@ -5500,7 +5500,7 @@
        "Taurus",
        "Virgo"
       ],
-      "why": "the values the committed seed writes to reference_signs.canonical_name_en (SIGNS, platform/python-sidecar/brahmagyan/l0_reference.py:269), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1363: 12 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_signs.canonical_name_en (SIGNS, platform/python-sidecar/brahmagyan/l0_reference.py:269), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1369: 12 distinct value(s); the live column may hold only these"
      },
      {
       "table": "reference_signs",
@@ -5519,7 +5519,7 @@
        "Vrishabha",
        "Vrishchika"
       ],
-      "why": "the values the committed seed writes to reference_signs.canonical_name_sa (SIGNS, platform/python-sidecar/brahmagyan/l0_reference.py:269), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1363: 12 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_signs.canonical_name_sa (SIGNS, platform/python-sidecar/brahmagyan/l0_reference.py:269), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1369: 12 distinct value(s); the live column may hold only these"
      },
      {
       "table": "reference_signs",
@@ -5533,7 +5533,7 @@
        "sun",
        "venus"
       ],
-      "why": "the values the committed seed writes to reference_signs.lord (SIGNS, platform/python-sidecar/brahmagyan/l0_reference.py:269), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1363: 7 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_signs.lord (SIGNS, platform/python-sidecar/brahmagyan/l0_reference.py:269), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1369: 7 distinct value(s); the live column may hold only these"
      },
      {
       "table": "reference_signs",
@@ -5544,7 +5544,7 @@
        "fire",
        "water"
       ],
-      "why": "the values the committed seed writes to reference_signs.element (SIGNS, platform/python-sidecar/brahmagyan/l0_reference.py:269), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1363: 4 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_signs.element (SIGNS, platform/python-sidecar/brahmagyan/l0_reference.py:269), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1369: 4 distinct value(s); the live column may hold only these"
      },
      {
       "table": "reference_signs",
@@ -5554,7 +5554,7 @@
        "fixed",
        "movable"
       ],
-      "why": "the values the committed seed writes to reference_signs.modality (SIGNS, platform/python-sidecar/brahmagyan/l0_reference.py:269), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1363: 3 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_signs.modality (SIGNS, platform/python-sidecar/brahmagyan/l0_reference.py:269), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1369: 3 distinct value(s); the live column may hold only these"
      },
      {
       "table": "reference_signs",
@@ -5620,7 +5620,7 @@
        "waist",
        "wealth"
       ],
-      "why": "the values the committed seed writes to reference_signs.significations (SIGNS, platform/python-sidecar/brahmagyan/l0_reference.py:269), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1363: 59 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_signs.significations (SIGNS, platform/python-sidecar/brahmagyan/l0_reference.py:269), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1369: 59 distinct value(s); the live column may hold only these"
      },
      {
       "table": "reference_signs",
@@ -5628,7 +5628,7 @@
       "values": [
        "BPHS Ch.6 (Rasi-svarupa-adhyaya)"
       ],
-      "why": "the values the committed seed writes to reference_signs.source_citation (SIGNS, platform/python-sidecar/brahmagyan/l0_reference.py:269), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1363: 1 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_signs.source_citation (SIGNS, platform/python-sidecar/brahmagyan/l0_reference.py:269), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1369: 1 distinct value(s); the live column may hold only these"
      },
      {
       "table": "reference_aspects",
@@ -5636,7 +5636,7 @@
       "values": [
        "full"
       ],
-      "why": "the values the committed seed writes to reference_aspects.aspect_strength (ASPECTS (_make_aspects), platform/python-sidecar/brahmagyan/l0_reference.py:362), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1382: 1 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_aspects.aspect_strength (ASPECTS (_make_aspects), platform/python-sidecar/brahmagyan/l0_reference.py:362), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1388: 1 distinct value(s); the live column may hold only these"
      },
      {
       "table": "reference_aspects",
@@ -5645,7 +5645,7 @@
        "BPHS Ch.26 (Drishti-phala-adhyaya)",
        "BPHS Ch.26 (Drishti-phala-adhyaya); note: Rahu/Ketu aspects per later tradition"
       ],
-      "why": "the values the committed seed writes to reference_aspects.source_citation (ASPECTS (_make_aspects), platform/python-sidecar/brahmagyan/l0_reference.py:362), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1382: 2 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_aspects.source_citation (ASPECTS (_make_aspects), platform/python-sidecar/brahmagyan/l0_reference.py:362), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1388: 2 distinct value(s); the live column may hold only these"
      },
      {
       "table": "reference_vargas",
@@ -5671,7 +5671,7 @@
        "Trimshamsha",
        "Vimshamsha"
       ],
-      "why": "the values the committed seed writes to reference_vargas.canonical_name_en (VARGAS, platform/python-sidecar/brahmagyan/l0_reference.py:366), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1402: 19 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_vargas.canonical_name_en (VARGAS, platform/python-sidecar/brahmagyan/l0_reference.py:366), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1408: 19 distinct value(s); the live column may hold only these"
      },
      {
       "table": "reference_vargas",
@@ -5697,7 +5697,7 @@
        "Trimshamsha",
        "Vimshamsha"
       ],
-      "why": "the values the committed seed writes to reference_vargas.canonical_name_sa (VARGAS, platform/python-sidecar/brahmagyan/l0_reference.py:366), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1402: 19 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_vargas.canonical_name_sa (VARGAS, platform/python-sidecar/brahmagyan/l0_reference.py:366), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1408: 19 distinct value(s); the live column may hold only these"
      },
      {
       "table": "reference_vargas",
@@ -5723,7 +5723,7 @@
        "Vehicles; conveyances; happiness",
        "Wealth; finances; material possessions"
       ],
-      "why": "the values the committed seed writes to reference_vargas.primary_signification (VARGAS, platform/python-sidecar/brahmagyan/l0_reference.py:366), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1402: 19 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_vargas.primary_signification (VARGAS, platform/python-sidecar/brahmagyan/l0_reference.py:366), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1408: 19 distinct value(s); the live column may hold only these"
      },
      {
       "table": "reference_vargas",
@@ -5749,7 +5749,7 @@
        "Transformation",
        "Vehicles"
       ],
-      "why": "the values the committed seed writes to reference_vargas.secondary_signification (VARGAS, platform/python-sidecar/brahmagyan/l0_reference.py:366), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1402: 19 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_vargas.secondary_signification (VARGAS, platform/python-sidecar/brahmagyan/l0_reference.py:366), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1408: 19 distinct value(s); the live column may hold only these"
      },
      {
       "table": "reference_vargas",
@@ -5757,7 +5757,7 @@
       "values": [
        "BPHS Ch.6 (Shodasha-varga-adhyaya)"
       ],
-      "why": "the values the committed seed writes to reference_vargas.source_citation (VARGAS, platform/python-sidecar/brahmagyan/l0_reference.py:366), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1402: 1 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_vargas.source_citation (VARGAS, platform/python-sidecar/brahmagyan/l0_reference.py:366), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1408: 1 distinct value(s); the live column may hold only these"
      },
      {
       "table": "reference_houses",
@@ -5776,7 +5776,7 @@
        "Vyaya",
        "Yuvati/Kalatra"
       ],
-      "why": "the values the committed seed writes to reference_houses.name_sa (HOUSES, platform/python-sidecar/brahmagyan/l0_reference.py:392), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1444: 12 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_houses.name_sa (HOUSES, platform/python-sidecar/brahmagyan/l0_reference.py:392), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1450: 12 distinct value(s); the live column may hold only these"
      },
      {
       "table": "reference_houses",
@@ -5795,7 +5795,7 @@
        "Siblings/Courage",
        "Wealth"
       ],
-      "why": "the values the committed seed writes to reference_houses.name_en (HOUSES, platform/python-sidecar/brahmagyan/l0_reference.py:392), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1444: 12 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_houses.name_en (HOUSES, platform/python-sidecar/brahmagyan/l0_reference.py:392), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1450: 12 distinct value(s); the live column may hold only these"
      },
      {
       "table": "reference_houses",
@@ -5807,7 +5807,7 @@
        "panapara",
        "trikona"
       ],
-      "why": "the values the committed seed writes to reference_houses.category (HOUSES, platform/python-sidecar/brahmagyan/l0_reference.py:392), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1444: 5 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_houses.category (HOUSES, platform/python-sidecar/brahmagyan/l0_reference.py:392), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1450: 5 distinct value(s); the live column may hold only these"
      },
      {
       "table": "reference_houses",
@@ -5905,7 +5905,7 @@
        "wealth",
        "younger_siblings"
       ],
-      "why": "the values the committed seed writes to reference_houses.natural_significations (HOUSES, platform/python-sidecar/brahmagyan/l0_reference.py:392), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1444: 91 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_houses.natural_significations (HOUSES, platform/python-sidecar/brahmagyan/l0_reference.py:392), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1450: 91 distinct value(s); the live column may hold only these"
      },
      {
       "table": "reference_houses",
@@ -5920,7 +5920,7 @@
        "sun",
        "venus"
       ],
-      "why": "the values the committed seed writes to reference_houses.karakas (HOUSES, platform/python-sidecar/brahmagyan/l0_reference.py:392), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1444: 8 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_houses.karakas (HOUSES, platform/python-sidecar/brahmagyan/l0_reference.py:392), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1450: 8 distinct value(s); the live column may hold only these"
      },
      {
       "table": "reference_houses",
@@ -5946,7 +5946,7 @@
        "upachaya",
        "vyaya/moksha-sthana"
       ],
-      "why": "the values the committed seed writes to reference_houses.classical_doctrine_jsonb (HOUSES, platform/python-sidecar/brahmagyan/l0_reference.py:392), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1444: 19 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_houses.classical_doctrine_jsonb (HOUSES, platform/python-sidecar/brahmagyan/l0_reference.py:392), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1450: 19 distinct value(s); the live column may hold only these"
      },
      {
       "table": "reference_houses",
@@ -5954,7 +5954,7 @@
       "values": [
        "BPHS Ch.7; Phaladeepika Ch.4"
       ],
-      "why": "the values the committed seed writes to reference_houses.source_citation (HOUSES, platform/python-sidecar/brahmagyan/l0_reference.py:392), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1444: 1 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_houses.source_citation (HOUSES, platform/python-sidecar/brahmagyan/l0_reference.py:392), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1450: 1 distinct value(s); the live column may hold only these"
      },
      {
       "table": "reference_strength_systems",
@@ -5994,7 +5994,7 @@
        "Yuddha Bala",
        "Śodhya Piṇḍa"
       ],
-      "why": "the values the committed seed writes to reference_strength_systems.name_sa (STRENGTH_SYSTEMS, platform/python-sidecar/brahmagyan/l0_reference.py:456), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1465: 33 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_strength_systems.name_sa (STRENGTH_SYSTEMS, platform/python-sidecar/brahmagyan/l0_reference.py:456), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1471: 33 distinct value(s); the live column may hold only these"
      },
      {
       "table": "reference_strength_systems",
@@ -6034,7 +6034,7 @@
        "Twenty-Point Varga Strength",
        "Year-Lord Strength"
       ],
-      "why": "the values the committed seed writes to reference_strength_systems.name_en (STRENGTH_SYSTEMS, platform/python-sidecar/brahmagyan/l0_reference.py:456), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1465: 33 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_strength_systems.name_en (STRENGTH_SYSTEMS, platform/python-sidecar/brahmagyan/l0_reference.py:456), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1471: 33 distinct value(s); the live column may hold only these"
      },
      {
       "table": "reference_strength_systems",
@@ -6045,7 +6045,7 @@
        "other",
        "shadbala"
       ],
-      "why": "the values the committed seed writes to reference_strength_systems.category (STRENGTH_SYSTEMS, platform/python-sidecar/brahmagyan/l0_reference.py:456), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1465: 4 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_strength_systems.category (STRENGTH_SYSTEMS, platform/python-sidecar/brahmagyan/l0_reference.py:456), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1471: 4 distinct value(s); the live column may hold only these"
      },
      {
       "table": "reference_strength_systems",
@@ -6056,7 +6056,7 @@
        "virupa",
        "year"
       ],
-      "why": "the values the committed seed writes to reference_strength_systems.units (STRENGTH_SYSTEMS, platform/python-sidecar/brahmagyan/l0_reference.py:456), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1465: 4 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_strength_systems.units (STRENGTH_SYSTEMS, platform/python-sidecar/brahmagyan/l0_reference.py:456), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1471: 4 distinct value(s); the live column may hold only these"
      },
      {
       "table": "reference_strength_systems",
@@ -6068,7 +6068,7 @@
        "BPHS Ch.66-72",
        "BPHS Ch.7"
       ],
-      "why": "the values the committed seed writes to reference_strength_systems.source_citation (STRENGTH_SYSTEMS, platform/python-sidecar/brahmagyan/l0_reference.py:456), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1465: 5 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_strength_systems.source_citation (STRENGTH_SYSTEMS, platform/python-sidecar/brahmagyan/l0_reference.py:456), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1471: 5 distinct value(s); the live column may hold only these"
      },
      {
       "table": "reference_karakas",
@@ -6152,7 +6152,7 @@
        "Śukra Kāraka",
        "Ṛṇa Kāraka"
       ],
-      "why": "the values the committed seed writes to reference_karakas.name_sa (KARAKAS, platform/python-sidecar/brahmagyan/l0_reference.py:559), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1484: 77 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_karakas.name_sa (KARAKAS, platform/python-sidecar/brahmagyan/l0_reference.py:559), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1490: 77 distinct value(s); the live column may hold only these"
      },
      {
       "table": "reference_karakas",
@@ -6236,7 +6236,7 @@
        "Sun as significator",
        "Venus as significator"
       ],
-      "why": "the values the committed seed writes to reference_karakas.name_en (KARAKAS, platform/python-sidecar/brahmagyan/l0_reference.py:559), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1484: 77 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_karakas.name_en (KARAKAS, platform/python-sidecar/brahmagyan/l0_reference.py:559), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1490: 77 distinct value(s); the live column may hold only these"
      },
      {
       "table": "reference_karakas",
@@ -6246,7 +6246,7 @@
        "sthira_house",
        "sthira_planet"
       ],
-      "why": "the values the committed seed writes to reference_karakas.karaka_type (KARAKAS, platform/python-sidecar/brahmagyan/l0_reference.py:559), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1484: 3 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_karakas.karaka_type (KARAKAS, platform/python-sidecar/brahmagyan/l0_reference.py:559), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1490: 3 distinct value(s); the live column may hold only these"
      },
      {
       "table": "reference_karakas",
@@ -6330,7 +6330,7 @@
        "wisdom",
        "younger_siblings"
       ],
-      "why": "the values the committed seed writes to reference_karakas.applies_to (KARAKAS, platform/python-sidecar/brahmagyan/l0_reference.py:559), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1484: 77 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_karakas.applies_to (KARAKAS, platform/python-sidecar/brahmagyan/l0_reference.py:559), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1490: 77 distinct value(s); the live column may hold only these"
      },
      {
       "table": "reference_karakas",
@@ -6392,7 +6392,7 @@
        "wealth",
        "wisdom"
       ],
-      "why": "the values the committed seed writes to reference_karakas.classical_significations (KARAKAS, platform/python-sidecar/brahmagyan/l0_reference.py:559), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1484: 55 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_karakas.classical_significations (KARAKAS, platform/python-sidecar/brahmagyan/l0_reference.py:559), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1490: 55 distinct value(s); the live column may hold only these"
      },
      {
       "table": "reference_karakas",
@@ -6401,7 +6401,7 @@
        "BPHS Ch.27",
        "Jaimini Sutram Ch.1"
       ],
-      "why": "the values the committed seed writes to reference_karakas.source_citation (KARAKAS, platform/python-sidecar/brahmagyan/l0_reference.py:559), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1484: 2 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_karakas.source_citation (KARAKAS, platform/python-sidecar/brahmagyan/l0_reference.py:559), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1490: 2 distinct value(s); the live column may hold only these"
      },
      {
       "table": "reference_upagrahas",
@@ -6419,7 +6419,7 @@
        "Vyatīpāta",
        "Yamaghaṇṭaka"
       ],
-      "why": "the values the committed seed writes to reference_upagrahas.name_sa (UPAGRAHAS, platform/python-sidecar/brahmagyan/l0_reference.py:720), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1503: 11 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_upagrahas.name_sa (UPAGRAHAS, platform/python-sidecar/brahmagyan/l0_reference.py:720), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1509: 11 distinct value(s); the live column may hold only these"
      },
      {
       "table": "reference_upagrahas",
@@ -6437,7 +6437,7 @@
        "Vyatipata",
        "Yamaghantaka"
       ],
-      "why": "the values the committed seed writes to reference_upagrahas.name_en (UPAGRAHAS, platform/python-sidecar/brahmagyan/l0_reference.py:720), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1503: 11 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_upagrahas.name_en (UPAGRAHAS, platform/python-sidecar/brahmagyan/l0_reference.py:720), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1509: 11 distinct value(s); the live column may hold only these"
      },
      {
       "table": "reference_upagrahas",
@@ -6449,7 +6449,7 @@
        "saturn",
        "sun"
       ],
-      "why": "the values the committed seed writes to reference_upagrahas.parent_planet (UPAGRAHAS, platform/python-sidecar/brahmagyan/l0_reference.py:720), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1503: 5 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_upagrahas.parent_planet (UPAGRAHAS, platform/python-sidecar/brahmagyan/l0_reference.py:720), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1509: 5 distinct value(s); the live column may hold only these"
      },
      {
       "table": "reference_upagrahas",
@@ -6467,7 +6467,7 @@
        "mixed; sudden brilliance then fade",
        "strong malefic; poison-point; marks affliction"
       ],
-      "why": "the values the committed seed writes to reference_upagrahas.significations (UPAGRAHAS, platform/python-sidecar/brahmagyan/l0_reference.py:720), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1503: 11 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_upagrahas.significations (UPAGRAHAS, platform/python-sidecar/brahmagyan/l0_reference.py:720), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1509: 11 distinct value(s); the live column may hold only these"
      },
      {
       "table": "reference_upagrahas",
@@ -6476,7 +6476,7 @@
        "BPHS Ch.3",
        "BPHS Ch.3; Ch.5"
       ],
-      "why": "the values the committed seed writes to reference_upagrahas.source_citation (UPAGRAHAS, platform/python-sidecar/brahmagyan/l0_reference.py:720), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1503: 2 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_upagrahas.source_citation (UPAGRAHAS, platform/python-sidecar/brahmagyan/l0_reference.py:720), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1509: 2 distinct value(s); the live column may hold only these"
      },
      {
       "table": "reference_constants",
@@ -6686,7 +6686,7 @@
        "Vimshopaka shodashavarga weight — D9",
        "Vimshottari total cycle"
       ],
-      "why": "the values the committed seed writes to reference_constants.name (CONSTANTS (built by _c), platform/python-sidecar/brahmagyan/l0_reference.py:746), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1522: 203 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_constants.name (CONSTANTS (built by _c), platform/python-sidecar/brahmagyan/l0_reference.py:746), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1528: 203 distinct value(s); the live column may hold only these"
      },
      {
       "table": "reference_constants",
@@ -6773,7 +6773,7 @@
        "virgo 27°",
        "~23°51'"
       ],
-      "why": "the values the committed seed writes to reference_constants.value_text (CONSTANTS (built by _c), platform/python-sidecar/brahmagyan/l0_reference.py:746), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1522: 80 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_constants.value_text (CONSTANTS (built by _c), platform/python-sidecar/brahmagyan/l0_reference.py:746), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1528: 80 distinct value(s); the live column may hold only these"
      },
      {
       "table": "reference_constants",
@@ -6793,7 +6793,7 @@
        "virupa",
        "year"
       ],
-      "why": "the values the committed seed writes to reference_constants.unit (CONSTANTS (built by _c), platform/python-sidecar/brahmagyan/l0_reference.py:746), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1522: 13 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_constants.unit (CONSTANTS (built by _c), platform/python-sidecar/brahmagyan/l0_reference.py:746), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1528: 13 distinct value(s); the live column may hold only these"
      },
      {
       "table": "reference_constants",
@@ -6817,7 +6817,7 @@
        "varga",
        "vimshopaka"
       ],
-      "why": "the values the committed seed writes to reference_constants.category (CONSTANTS (built by _c), platform/python-sidecar/brahmagyan/l0_reference.py:746), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1522: 17 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_constants.category (CONSTANTS (built by _c), platform/python-sidecar/brahmagyan/l0_reference.py:746), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1528: 17 distinct value(s); the live column may hold only these"
      },
      {
       "table": "reference_constants",
@@ -6833,7 +6833,7 @@
        "Lahiri/Chitrapaksha",
        "classical_tradition"
       ],
-      "why": "the values the committed seed writes to reference_constants.source_citation (CONSTANTS (built by _c), platform/python-sidecar/brahmagyan/l0_reference.py:746), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1522: 9 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_constants.source_citation (CONSTANTS (built by _c), platform/python-sidecar/brahmagyan/l0_reference.py:746), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1528: 9 distinct value(s); the live column may hold only these"
      },
      {
       "table": "reference_topic_tags",
@@ -7321,7 +7321,7 @@
        "Yogini Moon period",
        "Yogini Sun period"
       ],
-      "why": "the values the committed seed writes to reference_topic_tags.name (TOPIC_TAGS (built by _tag), platform/python-sidecar/brahmagyan/l0_reference.py:848), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1541: 481 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_topic_tags.name (TOPIC_TAGS (built by _tag), platform/python-sidecar/brahmagyan/l0_reference.py:848), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1547: 481 distinct value(s); the live column may hold only these"
      },
      {
       "table": "reference_topic_tags",
@@ -7333,13 +7333,13 @@
        "placement",
        "transit"
       ],
-      "why": "the values the committed seed writes to reference_topic_tags.category (TOPIC_TAGS (built by _tag), platform/python-sidecar/brahmagyan/l0_reference.py:848), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1541: 5 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_topic_tags.category (TOPIC_TAGS (built by _tag), platform/python-sidecar/brahmagyan/l0_reference.py:848), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1547: 5 distinct value(s); the live column may hold only these"
      },
      {
       "table": "reference_topic_tags",
       "column": "example_chunks",
       "no_string_leaves": true,
-      "why": "the jsonb list is the empty list in every seed row (platform/python-sidecar/brahmagyan/l0_reference.py:1541: example_chunks []), so it has no string leaf"
+      "why": "the jsonb list is the empty list in every seed row (platform/python-sidecar/brahmagyan/l0_reference.py:1547: example_chunks []), so it has no string leaf"
      },
      {
       "table": "reference_glossary",
@@ -7681,7 +7681,7 @@
        "Yupa",
        "Yuti"
       ],
-      "why": "the values the committed seed writes to reference_glossary.term_sa (GLOSSARY (built by _g), platform/python-sidecar/brahmagyan/l0_reference.py:892), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1557: 335 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_glossary.term_sa (GLOSSARY (built by _g), platform/python-sidecar/brahmagyan/l0_reference.py:892), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1563: 335 distinct value(s); the live column may hold only these"
      },
      {
       "table": "reference_glossary",
@@ -8040,7 +8040,7 @@
        "Yoni",
        "Yupa (Nabhasa)"
       ],
-      "why": "the values the committed seed writes to reference_glossary.term_en (GLOSSARY (built by _g), platform/python-sidecar/brahmagyan/l0_reference.py:892), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1557: 352 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_glossary.term_en (GLOSSARY (built by _g), platform/python-sidecar/brahmagyan/l0_reference.py:892), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1563: 352 distinct value(s); the live column may hold only these"
      },
      {
       "table": "reference_glossary",
@@ -8057,7 +8057,7 @@
        "timing",
        "yoga"
       ],
-      "why": "the values the committed seed writes to reference_glossary.category (GLOSSARY (built by _g), platform/python-sidecar/brahmagyan/l0_reference.py:892), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1557: 10 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_glossary.category (GLOSSARY (built by _g), platform/python-sidecar/brahmagyan/l0_reference.py:892), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1563: 10 distinct value(s); the live column may hold only these"
      },
      {
       "table": "reference_glossary",
@@ -8101,7 +8101,7 @@
        "Tajaka tradition",
        "classical_tradition"
       ],
-      "why": "the values the committed seed writes to reference_glossary.classical_citation (GLOSSARY (built by _g), platform/python-sidecar/brahmagyan/l0_reference.py:892), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1557: 37 distinct value(s); the live column may hold only these"
+      "why": "the values the committed seed writes to reference_glossary.classical_citation (GLOSSARY (built by _g), platform/python-sidecar/brahmagyan/l0_reference.py:892), inserted at platform/python-sidecar/brahmagyan/l0_reference.py:1563: 37 distinct value(s); the live column may hold only these"
      },
      {
       "table": "reference_glossary",
@@ -8478,56 +8478,56 @@
     "identifier_columns": [
      {
       "column": "planet_id",
-      "why": "planet_id identifies a row of reference_planets: a member of a unique or primary key of the table, written from the seed row by seed_reference (platform/python-sidecar/brahmagyan/l0_reference.py:1316)",
-      "evidence": "platform/python-sidecar/brahmagyan/l0_reference.py:1317"
+      "why": "planet_id identifies a row of reference_planets: a member of a unique or primary key of the table, written from the seed row by seed_reference (platform/python-sidecar/brahmagyan/l0_reference.py:1322)",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_reference.py:1323"
      },
      {
       "table": "reference_aspects",
       "column": "planet_id",
-      "why": "planet_id identifies a row of reference_aspects: a member of a unique or primary key of the table, written from the seed row by seed_reference (platform/python-sidecar/brahmagyan/l0_reference.py:1382)",
-      "evidence": "platform/python-sidecar/brahmagyan/l0_reference.py:1383"
+      "why": "planet_id identifies a row of reference_aspects: a member of a unique or primary key of the table, written from the seed row by seed_reference (platform/python-sidecar/brahmagyan/l0_reference.py:1388)",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_reference.py:1389"
      },
      {
       "table": "reference_vargas",
       "column": "varga_id",
-      "why": "varga_id identifies a row of reference_vargas: a member of a unique or primary key of the table, written from the seed row by seed_reference (platform/python-sidecar/brahmagyan/l0_reference.py:1402)",
-      "evidence": "platform/python-sidecar/brahmagyan/l0_reference.py:1403"
+      "why": "varga_id identifies a row of reference_vargas: a member of a unique or primary key of the table, written from the seed row by seed_reference (platform/python-sidecar/brahmagyan/l0_reference.py:1408)",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_reference.py:1409"
      },
      {
       "table": "reference_strength_systems",
       "column": "strength_id",
-      "why": "strength_id identifies a row of reference_strength_systems: a member of a unique or primary key of the table, written from the seed row by seed_reference (platform/python-sidecar/brahmagyan/l0_reference.py:1465)",
-      "evidence": "platform/python-sidecar/brahmagyan/l0_reference.py:1466"
+      "why": "strength_id identifies a row of reference_strength_systems: a member of a unique or primary key of the table, written from the seed row by seed_reference (platform/python-sidecar/brahmagyan/l0_reference.py:1471)",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_reference.py:1472"
      },
      {
       "table": "reference_karakas",
       "column": "karaka_id",
-      "why": "karaka_id identifies a row of reference_karakas: a member of a unique or primary key of the table, written from the seed row by seed_reference (platform/python-sidecar/brahmagyan/l0_reference.py:1484)",
-      "evidence": "platform/python-sidecar/brahmagyan/l0_reference.py:1485"
+      "why": "karaka_id identifies a row of reference_karakas: a member of a unique or primary key of the table, written from the seed row by seed_reference (platform/python-sidecar/brahmagyan/l0_reference.py:1490)",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_reference.py:1491"
      },
      {
       "table": "reference_upagrahas",
       "column": "upagraha_id",
-      "why": "upagraha_id identifies a row of reference_upagrahas: a member of a unique or primary key of the table, written from the seed row by seed_reference (platform/python-sidecar/brahmagyan/l0_reference.py:1503)",
-      "evidence": "platform/python-sidecar/brahmagyan/l0_reference.py:1504"
+      "why": "upagraha_id identifies a row of reference_upagrahas: a member of a unique or primary key of the table, written from the seed row by seed_reference (platform/python-sidecar/brahmagyan/l0_reference.py:1509)",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_reference.py:1510"
      },
      {
       "table": "reference_constants",
       "column": "constant_id",
-      "why": "constant_id identifies a row of reference_constants: a member of a unique or primary key of the table, written from the seed row by seed_reference (platform/python-sidecar/brahmagyan/l0_reference.py:1522)",
-      "evidence": "platform/python-sidecar/brahmagyan/l0_reference.py:1523"
+      "why": "constant_id identifies a row of reference_constants: a member of a unique or primary key of the table, written from the seed row by seed_reference (platform/python-sidecar/brahmagyan/l0_reference.py:1528)",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_reference.py:1529"
      },
      {
       "table": "reference_topic_tags",
       "column": "canonical_id",
-      "why": "canonical_id identifies a row of reference_topic_tags: a member of a unique or primary key of the table, written from the seed row by seed_reference (platform/python-sidecar/brahmagyan/l0_reference.py:1541)",
-      "evidence": "platform/python-sidecar/brahmagyan/l0_reference.py:1542"
+      "why": "canonical_id identifies a row of reference_topic_tags: a member of a unique or primary key of the table, written from the seed row by seed_reference (platform/python-sidecar/brahmagyan/l0_reference.py:1547)",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_reference.py:1548"
      },
      {
       "table": "reference_glossary",
       "column": "term_id",
-      "why": "term_id identifies a row of reference_glossary: a member of a unique or primary key of the table, written from the seed row by seed_reference (platform/python-sidecar/brahmagyan/l0_reference.py:1557)",
-      "evidence": "platform/python-sidecar/brahmagyan/l0_reference.py:1558"
+      "why": "term_id identifies a row of reference_glossary: a member of a unique or primary key of the table, written from the seed row by seed_reference (platform/python-sidecar/brahmagyan/l0_reference.py:1563)",
+      "evidence": "platform/python-sidecar/brahmagyan/l0_reference.py:1564"
      }
     ]
    },
@@ -8609,19 +8609,19 @@
      "table": "reference_karakas",
      "column": "karaka_id",
      "why": "reference_karakas.karaka_id is a declared identifier column: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
-     "evidence": "platform/python-sidecar/brahmagyan/l0_reference.py:1485"
+     "evidence": "platform/python-sidecar/brahmagyan/l0_reference.py:1491"
     },
     {
      "table": "reference_constants",
      "column": "constant_id",
      "why": "reference_constants.constant_id is a declared identifier column: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
-     "evidence": "platform/python-sidecar/brahmagyan/l0_reference.py:1523"
+     "evidence": "platform/python-sidecar/brahmagyan/l0_reference.py:1529"
     },
     {
      "table": "reference_topic_tags",
      "column": "canonical_id",
      "why": "reference_topic_tags.canonical_id is a declared identifier column: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
-     "evidence": "platform/python-sidecar/brahmagyan/l0_reference.py:1542"
+     "evidence": "platform/python-sidecar/brahmagyan/l0_reference.py:1548"
     }
    ]
   },

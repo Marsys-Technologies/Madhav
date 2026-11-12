@@ -1,4 +1,4 @@
-import { relative } from 'node:path'
+import { join, relative } from 'node:path'
 
 import ts from 'typescript'
 
@@ -128,5 +128,163 @@ export function inspectDbAdapter(
   }
 
   visit(source)
+  return violations
+}
+
+const migrationHealthOwners = {
+  route: ['src/app/api/mcp/health/migrations/route.ts', 'GET'],
+  facade: ['src/lib/db/migration-set.ts', 'readAppliedMigrationSet'],
+  auth: ['src/lib/mcp/service_token.ts', 'validateServiceToken'],
+  digest: ['src/lib/mcp/migration_set_digest.ts', 'readMigrationSet'],
+  query: ['src/lib/db/client.ts', 'query'],
+} as const
+
+type MigrationHealthPortViolation = 'missing owner export' | 'unresolved local module'
+  | 'route must call its facade once' | 'route has an unapproved local value import'
+  | 'facade must inject only the canonical query'
+  | 'digest must call its injected query once without escape'
+
+/** Keep the named Portal/MCP GET, Data/release facade and digest, and DB infrastructure port connected. */
+export function inspectMigrationHealthPort(program: ts.Program, platformRoot: string): MigrationHealthPortViolation[] {
+  const checker = program.getTypeChecker()
+  const violations: MigrationHealthPortViolation[] = []
+
+  function origin(symbol: ts.Symbol | undefined): ts.Symbol | undefined {
+    if (symbol && symbol.flags & ts.SymbolFlags.Alias) return checker.getAliasedSymbol(symbol)
+    return symbol
+  }
+
+  function owner([file, name]: readonly [string, string]) {
+    const source = program.getSourceFile(join(platformRoot, file))
+    const sourceModule = source && checker.getSymbolAtLocation(source)
+    const exports = sourceModule ? checker.getExportsOfModule(sourceModule) : []
+    const symbol = origin(exports.find((item) => item.name === name))
+    if (!source || !symbol?.valueDeclaration || symbol.valueDeclaration.getSourceFile() !== source) return
+    return { source, symbol, exports, declaration: symbol.valueDeclaration }
+  }
+
+  function valueSymbol(node: ts.Node): ts.Symbol | undefined {
+    if (ts.isShorthandPropertyAssignment(node)) return origin(checker.getShorthandAssignmentValueSymbol(node))
+    return origin(checker.getSymbolAtLocation(node))
+  }
+
+  function references(root: ts.Node, symbol: ts.Symbol): ts.Node[] {
+    const found: ts.Node[] = []
+    function visit(node: ts.Node) {
+      if (ts.isTypeNode(node) || ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) return
+      const isPropertyName = ts.isPropertyAccessExpression(node.parent) && node.parent.name === node
+      const isShorthandName = ts.isShorthandPropertyAssignment(node.parent) && node.parent.name === node
+      if (!isPropertyName && !isShorthandName && valueSymbol(node) === symbol) {
+        found.push(node)
+        return
+      }
+      ts.forEachChild(node, visit)
+    }
+    ts.forEachChild(root, visit)
+    return found
+  }
+
+  function inOwnerBody(node: ts.Node, body: ts.Block): boolean {
+    for (let parent = node.parent; parent; parent = parent.parent) {
+      if (parent === body) return true
+      if (ts.isFunctionLike(parent) || ts.isIfStatement(parent) || ts.isConditionalExpression(parent)
+        || ts.isIterationStatement(parent, false) || ts.isSwitchStatement(parent)) return false
+      if (ts.isBinaryExpression(parent) && [
+        ts.SyntaxKind.AmpersandAmpersandToken, ts.SyntaxKind.BarBarToken, ts.SyntaxKind.QuestionQuestionToken,
+      ].includes(parent.operatorToken.kind)) return false
+    }
+    return false
+  }
+
+  const route = owner(migrationHealthOwners.route)
+  const facade = owner(migrationHealthOwners.facade)
+  const auth = owner(migrationHealthOwners.auth)
+  const digest = owner(migrationHealthOwners.digest)
+  const query = owner(migrationHealthOwners.query)
+  if (!route || !facade || !auth || !digest || !query) return ['missing owner export']
+  const querySymbol = query.symbol
+
+  function isLocalSpecifier(node: ts.Node | undefined): boolean {
+    return !!node && ts.isStringLiteralLike(node) && (node.text.startsWith('.') || node.text.startsWith('@/'))
+  }
+
+  function unapprovedLocalValueImport(node: ts.Node, allowedOwners: readonly { source: ts.SourceFile; symbol: ts.Symbol }[]): boolean {
+    if (ts.isImportDeclaration(node) && isLocalSpecifier(node.moduleSpecifier)) {
+      const clause = node.importClause
+      if (clause?.isTypeOnly) return false
+      const bindings = clause?.namedBindings
+      if (!bindings || !ts.isNamedImports(bindings) || clause?.name) return true
+      const source = checker.getSymbolAtLocation(node.moduleSpecifier)?.declarations?.[0]
+      return bindings.elements.some((item) => !item.isTypeOnly && !allowedOwners.some((allowed) =>
+        source === allowed.source && valueSymbol(item.name) === allowed.symbol))
+    }
+    if (ts.isExportDeclaration(node) && !node.isTypeOnly && isLocalSpecifier(node.moduleSpecifier)) {
+      return !node.exportClause || !ts.isNamedExports(node.exportClause)
+        || node.exportClause.elements.some((item) => !item.isTypeOnly)
+    }
+    if (ts.isImportEqualsDeclaration(node) && !node.isTypeOnly && ts.isExternalModuleReference(node.moduleReference)) {
+      return isLocalSpecifier(node.moduleReference.expression)
+    }
+    if (ts.isCallExpression(node) && (node.expression.kind === ts.SyntaxKind.ImportKeyword
+      || (ts.isIdentifier(node.expression) && node.expression.text === 'require'))) {
+      const name = node.arguments[0]
+      return !name || !ts.isStringLiteralLike(name) || isLocalSpecifier(name)
+    }
+    return ts.forEachChild(node, (child) => unapprovedLocalValueImport(child, allowedOwners) || undefined) ?? false
+  }
+
+  function exportsQuery(symbol: ts.Symbol): boolean {
+    if (symbol.declarations?.length && symbol.declarations.every((node) =>
+      ts.isExportSpecifier(node) && (node.isTypeOnly || node.parent.parent.isTypeOnly))) return false
+    return origin(symbol) === querySymbol
+  }
+
+  for (const { source } of [route, facade, digest]) {
+    const unresolved = source.statements.some((node) => {
+      if (!ts.isImportDeclaration(node) && !ts.isExportDeclaration(node)) return false
+      const name = node.moduleSpecifier
+      return name && isLocalSpecifier(name) && !checker.getSymbolAtLocation(name)
+    })
+    if (unresolved) {
+      violations.push('unresolved local module')
+      break
+    }
+  }
+
+  if (unapprovedLocalValueImport(route.source, [facade, auth])) violations.push('route has an unapproved local value import')
+
+  const get = route.declaration
+  const body = ts.isFunctionDeclaration(get) && get.body
+  const routeReferences = references(route.source, facade.symbol)
+  const [routeRef] = routeReferences
+  if (!body || routeReferences.length !== 1 || !ts.isCallExpression(routeRef.parent)
+    || routeRef.parent.expression !== routeRef || routeRef.parent.arguments.length !== 0
+    || !ts.isAwaitExpression(routeRef.parent.parent) || !inOwnerBody(routeRef, body)) {
+    violations.push('route must call its facade once')
+  }
+
+  const applied = facade.declaration
+  const forward = ts.isFunctionDeclaration(applied) && applied.body?.statements.length === 1
+    ? applied.body.statements[0] : undefined
+  const injected = forward && ts.isReturnStatement(forward) && forward.expression
+  const queryReferences = references(facade.source, query.symbol)
+  if (!injected || !ts.isCallExpression(injected) || valueSymbol(injected.expression) !== digest.symbol
+    || injected.arguments.length !== 1 || queryReferences.length !== 1 || injected.arguments[0] !== queryReferences[0]
+    || unapprovedLocalValueImport(facade.source, [digest, query]) || facade.exports.some(exportsQuery)) {
+    violations.push('facade must inject only the canonical query')
+  }
+
+  const read = digest.declaration
+  const parameter = ts.isFunctionDeclaration(read) && read.parameters.length === 1 && read.parameters[0]
+  const port = parameter && !parameter.initializer && !parameter.dotDotDotToken && ts.isIdentifier(parameter.name)
+    && valueSymbol(parameter.name)
+  const portReferences = port && ts.isFunctionDeclaration(read) && read.body ? references(read.body, port) : []
+  const [use] = portReferences
+  if (portReferences.length !== 1 || !ts.isCallExpression(use.parent) || use.parent.expression !== use
+    || use.parent.arguments.length !== 1 || !ts.isAwaitExpression(use.parent.parent)
+    || !ts.isFunctionDeclaration(read) || !read.body || !inOwnerBody(use, read.body)
+    || inspectDbAdapter(program, digest.source, platformRoot).some((row) => row.kind !== 'adapter SQL')) {
+    violations.push('digest must call its injected query once without escape')
+  }
   return violations
 }
