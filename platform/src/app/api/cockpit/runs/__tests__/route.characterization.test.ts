@@ -30,7 +30,7 @@ const CHART = '482012f1-710e-4a25-994a-93821f5871aa'
 const OWNER = 'owner-uid'
 
 // Two real per-chart writers with sidecar digests in the generated inventory.
-const REGISTRY = [
+const KALA_REGISTRY = [
   {
     asset_id: 'ka_kshetra', layer: 'kala', depends_on: [], estimated_seconds: 60,
     scope: 'per_chart', has_writer: true, target_table: 'kala_kshetra',
@@ -45,6 +45,12 @@ const REGISTRY = [
   },
 ]
 
+const REGISTRY = [
+  ...KALA_REGISTRY,
+  { ...KALA_REGISTRY[0], asset_id: 'ph_from_kshetra', layer: 'phala', depends_on: ['ka_kshetra'] },
+  { ...KALA_REGISTRY[1], asset_id: 'ph_from_avadhi', layer: 'phala', depends_on: ['ka_avadhi'] },
+]
+
 interface Harness {
   role?: string
   ownerId?: string
@@ -57,6 +63,7 @@ interface Harness {
 }
 
 let clientSql: string[] = []
+let clientBindings: Array<[string, unknown[] | undefined]> = []
 let poolSql: string[] = []
 
 function setup(h: Harness = {}) {
@@ -77,9 +84,11 @@ function setup(h: Harness = {}) {
     return Promise.resolve({ rows: [], rowCount: 0 })
   })
   clientSql = []
+  clientBindings = []
   const client = {
-    query: vi.fn((sql: string) => {
+    query: vi.fn((sql: string, params?: unknown[]) => {
       clientSql.push(sql)
+      clientBindings.push([sql, params])
       if (h.failClientSql?.test(sql)) return Promise.reject(new Error(`boom: ${sql.slice(0, 30)}`))
       if (/SELECT id FROM build_runs/.test(sql)) return Promise.resolve({ rows: activeRunId ? [{ id: activeRunId }] : [] })
       if (/INSERT INTO build_runs/.test(sql)) return Promise.resolve({ rows: [{ id: 'run-1' }], rowCount: 1 })
@@ -102,6 +111,8 @@ const LAYER_BUILD = { chart_id: CHART, scope: 'layer', scope_target: 'kala', act
 const LAYER_REBUILD_CLEAR = { chart_id: CHART, scope: 'layer', scope_target: 'kala', action: 'rebuild', clear_before: true }
 
 const touched = (re: RegExp) => [...poolSql, ...clientSql].some((s) => re.test(s))
+const throughputBindings = (state: 'dormant' | 'stale') =>
+  clientBindings.filter(([sql]) => sql.includes(`SET state='${state}'`)).map(([, params]) => params)
 
 beforeEach(() => vi.clearAllMocks())
 
@@ -184,15 +195,63 @@ describe('cockpit runs characterization — persistence and clearing', () => {
     expect(mockInvokeRunJob).not.toHaveBeenCalled()
   })
 
-  it('operator clear_before stays savepoint-based best effort: a failing DELETE is rolled back to its savepoint and the run is still created', async () => {
+  it('rolls back a failed clear to its savepoint and reports only the successfully cleared asset', async () => {
     setup({ failClientSql: /DELETE FROM kala_avadhi/ })
+    mockInvokeRunJob.mockImplementationOnce(async () => {
+      expect(clientSql.at(-1)).toBe('COMMIT')
+      return { executionName: 'exec-1' }
+    })
     const res = await POST(req(LAYER_REBUILD_CLEAR))
     expect(res.status).toBe(201)
-    expect(clientSql.some((s) => /^SAVEPOINT cb_\d+$/.test(s))).toBe(true)
-    expect(clientSql.some((s) => /^ROLLBACK TO SAVEPOINT cb_\d+$/.test(s))).toBe(true)
-    expect(clientSql.some((s) => /INSERT INTO build_runs/.test(s))).toBe(true)
-    expect(clientSql).toContain('COMMIT')
-    expect(clientSql.some((s) => /SET state='dormant'/.test(s))).toBe(true)
+    const failedDelete = clientSql.findIndex((s) => /DELETE FROM kala_avadhi/.test(s))
+    expect(failedDelete).toBeGreaterThan(0)
+    expect(clientSql[failedDelete - 1]).toBe('SAVEPOINT cb_0')
+    expect(clientSql.slice(failedDelete + 1, failedDelete + 3)).toEqual([
+      'ROLLBACK TO SAVEPOINT cb_0',
+      'RELEASE SAVEPOINT cb_0',
+    ])
+    const runInsert = clientSql.findIndex((s) => /INSERT INTO build_runs/.test(s))
+    expect(runInsert).toBeGreaterThan(failedDelete + 2)
+    expect(clientSql.lastIndexOf('COMMIT')).toBeGreaterThan(runInsert)
+    expect(mockInvokeRunJob).toHaveBeenCalledExactlyOnceWith('run-1', { forceExecute: true })
+    expect.soft(throughputBindings('dormant')).toEqual([[CHART, ['ka_kshetra']]])
+    expect.soft(throughputBindings('stale')).toEqual([[CHART, ['ph_from_kshetra']]])
+    expect.soft((await res.json()).data).toMatchObject({
+      cleared_asset_count: 1,
+      plan: expect.arrayContaining(['ka_kshetra', 'ka_avadhi']),
+    })
+  })
+
+  it('creates and force-dispatches the run without resetting throughput when every clear fails', async () => {
+    setup({ failClientSql: /DELETE FROM kala_/ })
+    const res = await POST(req(LAYER_REBUILD_CLEAR))
+    expect(res.status).toBe(201)
+    expect(clientSql.filter((s) => s.startsWith('ROLLBACK TO SAVEPOINT cb_'))).toEqual([
+      'ROLLBACK TO SAVEPOINT cb_0',
+      'ROLLBACK TO SAVEPOINT cb_1',
+    ])
+    const runAssetsInsert = clientSql.findIndex((s) => /INSERT INTO build_run_assets/.test(s))
+    expect(runAssetsInsert).toBeGreaterThan(0)
+    expect(clientSql.lastIndexOf('COMMIT')).toBeGreaterThan(runAssetsInsert)
+    expect(mockInvokeRunJob).toHaveBeenCalledExactlyOnceWith('run-1', { forceExecute: true })
+    expect.soft(throughputBindings('dormant')).toEqual([])
+    expect.soft(throughputBindings('stale')).toEqual([])
+    expect.soft((await res.json()).data.cleared_asset_count).toBe(0)
+  })
+
+  it('reports both assets and invalidates both downstream branches after a successful clear', async () => {
+    setup()
+    const res = await POST(req(LAYER_REBUILD_CLEAR))
+    expect(res.status).toBe(201)
+    expect(clientSql.filter((s) => s.startsWith('ROLLBACK TO SAVEPOINT cb_'))).toEqual([])
+    expect(throughputBindings('dormant')).toEqual([
+      [CHART, expect.arrayContaining(['ka_kshetra', 'ka_avadhi'])],
+    ])
+    expect(throughputBindings('dormant')[0]?.[1]).toHaveLength(2)
+    expect(throughputBindings('stale')).toEqual([
+      [CHART, expect.arrayContaining(['ph_from_kshetra', 'ph_from_avadhi'])],
+    ])
+    expect(throughputBindings('stale')[0]?.[1]).toHaveLength(2)
     expect((await res.json()).data.cleared_asset_count).toBe(2)
   })
 })
@@ -216,7 +275,26 @@ describe('cockpit runs characterization — dispatch failure', () => {
     mockInvokeRunJob.mockRejectedValue(new Error('spawn failed'))
     const res = await POST(req(LAYER_REBUILD_CLEAR))
     expect(res.status).toBe(503)
-    expect(await res.json()).toMatchObject({ code: 'JOB_DISPATCH_FAILED', run_id: 'run-1' })
+    expect(await res.json()).toMatchObject({
+      code: 'JOB_DISPATCH_FAILED',
+      run_id: 'run-1',
+      error: 'Data cleared but build job failed to start',
+    })
+    const failCall = mockQuery.mock.calls.find(([s]) => /UPDATE build_runs\s+SET state = 'failed'/.test(s))
+    expect(failCall?.[1]).toEqual(['spawn failed', 'run-1'])
+  })
+
+  it('does not report cleared data when every DELETE and dispatch fail', async () => {
+    setup({ failClientSql: /DELETE FROM kala_/ })
+    mockInvokeRunJob.mockRejectedValue(new Error('spawn failed'))
+    const res = await POST(req(LAYER_REBUILD_CLEAR))
+    expect(res.status).toBe(503)
+    expect(await res.json()).toMatchObject({
+      code: 'JOB_DISPATCH_FAILED',
+      run_id: 'run-1',
+      detail: 'spawn failed',
+      error: 'Failed to dispatch build job',
+    })
     const failCall = mockQuery.mock.calls.find(([s]) => /UPDATE build_runs\s+SET state = 'failed'/.test(s))
     expect(failCall?.[1]).toEqual(['spawn failed', 'run-1'])
   })
