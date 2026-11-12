@@ -682,7 +682,6 @@ def run_acceptance_gate(chart_id: str) -> dict[str, Any]:
     result: dict[str, Any] | None = None
     try:
         result = temporal(chart_id, {"start": 1984, "end": 2026})
-        checks.append({"id": "AC1", "desc": "temporal() executes without error", "passed": True})
     except Exception as exc:
         checks.append(
             {
@@ -693,6 +692,8 @@ def run_acceptance_gate(chart_id: str) -> dict[str, Any]:
             }
         )
         return {"chart_id": chart_id, "gate_passed": False, "checks": checks}
+    else:
+        checks.append({"id": "AC1", "desc": "temporal() executes without error", "passed": True})
 
     # Check 2: timeline non-empty
     timeline_count = len(result.get("timeline", []))

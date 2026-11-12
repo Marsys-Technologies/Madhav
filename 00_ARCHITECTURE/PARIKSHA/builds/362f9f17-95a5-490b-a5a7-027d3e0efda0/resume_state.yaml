@@ -4,9 +4,9 @@ build_id: 9fd9b9dd-aba0-4ed5-8d26-2e3fe97cbe27
 last_checkpoint_at: "2026-06-01T07:22:00Z"
 last_checkpoint_by: orchestrator
 checkpoints:
-  arc_initialized: { at: "2026-06-01T07:16:00Z" }
-  existing_build_discovered: { at: "2026-06-01T07:22:00Z", build_id: "9fd9b9dd-aba0-4ed5-8d26-2e3fe97cbe27",
-    note: "Most recent complete build; queued/finished 2026-05-31; all 5 ayanamshas; engine natal_engine/0.2.0-jh-parity" }
+  arc_initialized: {at: "2026-06-01T07:16:00Z"}
+  existing_build_discovered: {at: "2026-06-01T07:22:00Z", build_id: "9fd9b9dd-aba0-4ed5-8d26-2e3fe97cbe27", note: "Most recent complete
+      build; queued/finished 2026-05-31; all 5 ayanamshas; engine natal_engine/0.2.0-jh-parity"}
 current_stage: 4   # Pramana post-build (stages 3-5 outputs)
 current_checkpoint: existing_build_discovered
 next_expected_action: pramana_battery_run

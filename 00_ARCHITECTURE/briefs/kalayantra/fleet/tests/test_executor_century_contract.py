@@ -31,6 +31,7 @@ spec.loader.exec_module(cc)
 
 PATH = "00_ARCHITECTURE/briefs/kalayantra/fleet/century_contract.json"
 ARGS = {"classes": "all"}
+CURRENT_REGION = "${{ env.DEPLOY_REGION }}"
 
 
 def contract_body(**overrides):
@@ -362,9 +363,9 @@ def test_verified_pipeline_uses_the_same_repository_and_physical_timeout(verifie
     (f"          {cc._PROBE_RUN} verify-repoint\n", ""),
     (f"          {cc._PROBE_RUN} verify-repoint\n",
      f"          {cc._PROBE_RUN} post-repoint\n"),
-    (f'          GOOGLE_CLOUD_REGION="{cc._REGION}" {cc._PROBE_RUN} post-repoint\n', ""),
-    (f'          GOOGLE_CLOUD_REGION="{cc._REGION}" {cc._PROBE_RUN} post-repoint\n',
-     f'          GOOGLE_CLOUD_REGION="{cc._REGION}" {cc._PROBE_RUN} verify-repoint\n'),
+    (f'          GOOGLE_CLOUD_REGION="{CURRENT_REGION}" {cc._PROBE_RUN} post-repoint\n', ""),
+    (f'          GOOGLE_CLOUD_REGION="{CURRENT_REGION}" {cc._PROBE_RUN} post-repoint\n',
+     f'          GOOGLE_CLOUD_REGION="{CURRENT_REGION}" {cc._PROBE_RUN} verify-repoint\n'),
     (cc._VERIFIED_REF, "${{ env.DEPLOY_SHA }}"),
     (cc._VERIFIED_REF, "reg.example/p/brahma-pipeline@sha256:broken"),
     (cc._VERIFIED_REF, ' "$CGM_VERIFIED_IMAGE"'),
@@ -405,16 +406,21 @@ def test_unrelated_comments_and_probe_formatting_do_not_change_the_proof(verifie
     assert cc.image(verified_pipeline, False)["repository"].endswith("/brahma-pipeline")
 
 
-@pytest.mark.parametrize("replacement", [
-    "            --task-timeout=86401",
-    "            # fixture moved the locator\n            --task-timeout=86400",
-])
-def test_strict_v1_comparison_retains_timeout_value_line_and_cap(verified_pipeline, replacement):
+@pytest.mark.parametrize("change", ["value", "coordinate"])
+def test_strict_v1_comparison_retains_timeout_value_line_and_cap(verified_pipeline, change):
     committed = json.loads((REPO / PATH).read_text())
     derived = copy.deepcopy(committed)
     path = verified_pipeline / cc.DEPLOY
-    _replace_at(path, "            --task-timeout=86400", replacement)
+    if change == "value":
+        _replace_at(path, "            --task-timeout=86400", "            --task-timeout=86401")
+        expected = {"cloud_run_task_timeout_seconds": 86401, "source": f"{cc.DEPLOY}:2543"}
+    else:
+        # Move the coordinate without altering the shell argv inside run: |.
+        step = "      - name: Re-point Cloud Run Job at the new image"
+        _replace_at(path, step, "      # synthetic YAML-only locator movement\n" + step)
+        expected = {"cloud_run_task_timeout_seconds": 86400, "source": f"{cc.DEPLOY}:2544"}
     derived["timeout"] = cc.task_timeout(verified_pipeline)
+    assert derived["timeout"] == expected
     assert cc.compare(committed, derived, with_digest=True, with_pack=True) == ["timeout"]
     derived["cap"]["writer_timeout_seconds"] += 1
     assert cc.compare(committed, derived, with_digest=True, with_pack=True) == ["cap", "timeout"]
@@ -504,7 +510,7 @@ def test_a_retained_smoke_step_cannot_be_replaced_with_an_unreviewed_command(ver
     path = verified_pipeline / cc.DEPLOY
     old = '''            -c "import ga_writers; print('ga_writers OK:', ga_writers.__file__)"'''
     _replace_at(path, old, "            -c fixture_modified", after="  deploy-pipeline-job:\n")
-    with pytest.raises(cc.ContractError, match="unexpected Pipeline step after"):
+    with pytest.raises(cc.ContractError, match="unexpected Pipeline local image checks"):
         cc.image(verified_pipeline, False)
 
 
@@ -593,3 +599,519 @@ def test_credential_only_step_stays_separate_from_an_unrelated_job_update(verifi
 """)
     assert cc.image(verified_pipeline, False)["repository"].endswith("/brahma-pipeline")
     assert cc.task_timeout(verified_pipeline)["source"] == f"{cc.DEPLOY}:2543"
+
+
+# Standalone reviewed historical fixtures. A shallow checkout must not need old
+# Git objects to prove the original action and all pinned proof groups still work.
+HISTORICAL_VERIFIED_ACTION = r'''name: Build and verify CGM image
+description: Bind the normal build to a read-only probe of the packaged CGM writer registrations.
+inputs:
+  context:
+    description: Existing Docker context
+    required: true
+  file:
+    description: Existing Sidecar or Pipeline Dockerfile
+    required: true
+  push:
+    description: Existing registry export mode
+    default: 'false'
+  load:
+    description: Existing local export mode
+    default: 'false'
+  tags:
+    description: Existing build tags
+    required: true
+  cache-from:
+    description: Existing Buildx cache source
+  cache-to:
+    description: Existing Buildx cache destination
+runs:
+  using: composite
+  steps:
+    - id: build
+      uses: docker/build-push-action@v6
+      with:
+        context: ${{ inputs.context }}
+        file: ${{ inputs.file }}
+        push: ${{ inputs.push }}
+        load: ${{ inputs.load }}
+        tags: ${{ inputs.tags }}
+        cache-from: ${{ inputs.cache-from }}
+        cache-to: ${{ inputs.cache-to }}
+    - name: Verify exact packaged CGM registration
+      shell: bash
+      env:
+        CGM_BUILD_CONTEXT: ${{ inputs.context }}
+        CGM_BUILD_FILE: ${{ inputs.file }}
+        CGM_BUILD_PUSH: ${{ inputs.push }}
+        CGM_BUILD_LOAD: ${{ inputs.load }}
+        CGM_BUILD_TAGS: ${{ inputs.tags }}
+        CGM_BUILD_IMAGE_ID: ${{ steps.build.outputs.imageid }}
+        CGM_BUILD_DIGEST: ${{ steps.build.outputs.digest }}
+        CGM_BUILD_METADATA: ${{ steps.build.outputs.metadata }}
+      run: python3 "$GITHUB_ACTION_PATH/probe_registration.py" verify-build
+'''
+HISTORICAL_VERIFIED_PROBE = r'''"""Read-only CGM registration probe for the two normal image shapes."""
+from __future__ import annotations
+
+import hashlib
+import importlib
+import json
+import os
+from pathlib import Path
+import re
+import subprocess
+import sys
+
+
+SIDECAR = "amjis-sidecar"
+PIPELINE = "brahma-pipeline"
+REGISTRY = "asia-south1-docker.pkg.dev/madhav-astrology/amjis"
+SOURCE_ROOT = "platform/python-sidecar"
+BUILD_SHAPES = {
+    "./platform/python-sidecar/Dockerfile": (SIDECAR, "./platform"),
+    "./platform/python-sidecar/Dockerfile.pipeline": (PIPELINE, "."),
+}
+PACKAGE_ROOTS = {
+    SIDECAR: "/app/python-sidecar",
+    PIPELINE: "/app/platform/python-sidecar",
+}
+MODULES = (
+    "bodha_writers.cgm_identity",
+    "pipeline.orchestrator.writers.bo_bimba",
+    "pipeline.orchestrator.writers.bo_karanajala",
+)
+DIGEST = re.compile(r"sha256:[0-9a-f]{64}")
+COMMIT = re.compile(r"[0-9a-f]{40}")
+MANIFEST_TYPES = {
+    "application/vnd.oci.image.manifest.v1+json",
+    "application/vnd.docker.distribution.manifest.v2+json",
+}
+INDEX_TYPES = {
+    "application/vnd.oci.image.index.v1+json",
+    "application/vnd.docker.distribution.manifest.list.v2+json",
+}
+
+
+class ProbeFailure(ValueError):
+    """A fixed, safe diagnostic that can be written to the workflow log."""
+
+
+def require(condition: bool, reason: str) -> None:
+    if not condition:
+        raise ProbeFailure(reason)
+
+
+def digest(value: object) -> str:
+    if not isinstance(value, str) or not DIGEST.fullmatch(value):
+        raise ProbeFailure("missing or invalid image digest")
+    return value
+
+
+def command(*args: str, data: bytes | None = None, timeout: int = 30) -> bytes:
+    result = subprocess.run(
+        args,
+        input=data,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+        timeout=timeout,
+    )
+    require(result.returncode == 0, f"{args[0]} {args[1]} failed")
+    return result.stdout
+
+
+def manifest_identity(ref: str) -> tuple[str, str]:
+    manifest = json.loads(command(
+        "docker", "buildx", "imagetools", "inspect", "--format", "{{json .Manifest}}", ref,
+    ))
+    top = digest(manifest["digest"])
+    if manifest["mediaType"] in MANIFEST_TYPES:
+        return top, top
+    require(manifest["mediaType"] in INDEX_TYPES, "unsupported image manifest")
+    matches = [
+        item for item in manifest["manifests"]
+        if item.get("platform", {}).get("os") == "linux"
+        and item.get("platform", {}).get("architecture") == "amd64"
+    ]
+    require(len(matches) == 1, "expected exactly one Linux AMD64 platform image")
+    require(matches[0]["mediaType"] in MANIFEST_TYPES, "unsupported platform manifest")
+    return top, digest(matches[0]["digest"])
+
+
+def inspect_loaded(ref: str, expected_id: str) -> str:
+    image = json.loads(command("docker", "image", "inspect", "--format", "{{json .}}", ref))
+    image_id = digest(image["Id"])
+    require(image_id == expected_id, "loaded image identity mismatch")
+    require((image["Os"], image["Architecture"]) == ("linux", "amd64"), "wrong image platform")
+    require(not image["Config"].get("Volumes"), "probe image declares writable volumes")
+    return image_id
+
+
+def loaded_build_id() -> str:
+    output = os.environ.get("CGM_BUILD_IMAGE_ID")
+    metadata = json.loads(os.environ.get("CGM_BUILD_METADATA") or "{}")
+    config = metadata.get("containerimage.config.digest")
+    if output and config:
+        require(output == config, "contradictory Buildx image IDs")
+    return digest(output or config)
+
+
+def source_commit() -> str:
+    commit = os.environ["DEPLOY_SHA"]
+    require(COMMIT.fullmatch(commit) is not None, "invalid deployment source")
+    return commit
+
+
+def check_pipeline_tag(tag: str, expected: tuple[str, str]) -> None:
+    require(manifest_identity(tag) == expected, "Pipeline commit tag does not match the probed image")
+
+
+def pipeline_reference(commit: str, image: str) -> str:
+    repository = f"{REGISTRY}/{PIPELINE}"
+    prefix = f"{repository}@"
+    require(COMMIT.fullmatch(commit) is not None, "invalid Pipeline source")
+    require(image.startswith(prefix), "wrong verified Pipeline repository")
+    return f"{repository}:{commit}@{digest(image.removeprefix(prefix))}"
+
+
+def verified_pipeline_reference() -> str:
+    image = os.environ.get("CGM_VERIFIED_IMAGE", "")
+    reference = pipeline_reference(source_commit(), image)
+    require(
+        os.environ.get("CGM_VERIFIED_PIPELINE_REF") == reference,
+        "missing or rebound verified Pipeline reference",
+    )
+    return reference
+
+
+def source_hashes(commit: str) -> list[str]:
+    return [
+        hashlib.sha256(command("git", "show", f"{commit}:{SOURCE_ROOT}/{name.replace('.', '/')}.py")).hexdigest()
+        for name in MODULES
+    ]
+
+
+def probe_image(component: str, image_id: str, expected: list[str]) -> None:
+    output = command(
+        "docker", "run", "--pull=never", "--rm", "-i", "--network=none", "--read-only",
+        "--cap-drop=ALL", "--security-opt=no-new-privileges", "--entrypoint=/usr/bin/env",
+        image_id, "-i", "PATH=/usr/local/bin:/usr/bin:/bin", "python", "-BI",
+        "-X", "pycache_prefix=/dev/null", "-",
+        "inside", component, *expected,
+        data=Path(__file__).read_bytes(), timeout=30,
+    )
+    require(output == b"CGM registration verified\n", "missing exact packaged probe result")
+
+
+def verify_build() -> None:
+    component, context = BUILD_SHAPES[os.environ["CGM_BUILD_FILE"]]
+    require(os.environ["CGM_BUILD_CONTEXT"] == context, "wrong Docker build context")
+    mode = (os.environ["CGM_BUILD_PUSH"], os.environ["CGM_BUILD_LOAD"])
+    tags = os.environ["CGM_BUILD_TAGS"].splitlines()
+    head = command("git", "rev-parse", "HEAD").decode().strip()
+    require(COMMIT.fullmatch(head) is not None, "invalid checkout source")
+    expected = source_hashes(head)
+
+    if mode == ("false", "true"):
+        local_tag = f"{component}:pr-check"
+        require(tags == [local_tag], "unexpected ordinary image tag")
+        image_id = inspect_loaded(local_tag, loaded_build_id())
+        probe_image(component, image_id, expected)
+        print(f"CGM {component} source={head} image={image_id} registration verified")
+        return
+
+    require(mode == ("true", "false"), "unsupported build export mode")
+    require(head == source_commit(), "deployment checkout mismatch")
+    repository = f"{REGISTRY}/{component}"
+    commit_tag = f"{repository}:{head}"
+    require(tags == [commit_tag, f"{repository}:latest"], "unexpected release image tags")
+    build_digest = digest(os.environ.get("CGM_BUILD_DIGEST"))
+    top, platform = manifest_identity(f"{repository}@{build_digest}")
+    require(top == build_digest, "registry image differs from Buildx output")
+    image = f"{repository}@{platform}"
+    manifest = json.loads(command("docker", "buildx", "imagetools", "inspect", "--raw", image))
+    require(manifest["mediaType"] in MANIFEST_TYPES, "expected a platform image manifest")
+    expected_id = digest(manifest["config"]["digest"])
+    command("docker", "pull", "--platform", "linux/amd64", image, timeout=180)
+    image_id = inspect_loaded(image, expected_id)
+    probe_image(component, image_id, expected)
+    if component == PIPELINE:
+        check_pipeline_tag(commit_tag, (top, platform))
+
+    # Publish only validated, non-secret identifiers to later steps of this job.
+    with Path(os.environ["GITHUB_ENV"]).open("a", encoding="utf-8") as env_file:
+        env_file.write(f"CGM_VERIFIED_IMAGE={image}\n")
+        if component == PIPELINE:
+            env_file.write(f"CGM_VERIFIED_PIPELINE_REF={pipeline_reference(head, image)}\n")
+    print(f"CGM {component} source={head} image={image} registration verified")
+
+
+def post_repoint() -> None:
+    reference = verified_pipeline_reference()
+    configured = command(
+        "gcloud", "run", "jobs", "describe", "brahma-build-pipeline-job",
+        "--region", os.environ["GOOGLE_CLOUD_REGION"],
+        "--format=value(spec.template.spec.template.spec.containers[0].image)",
+    ).decode().removesuffix("\n")
+    require(configured == reference, "configured Pipeline image is not the verified combined reference")
+    print(f"CGM Pipeline configuration verified image={reference}")
+
+
+def verify_registration(root: Path, expected: list[str]) -> None:
+    require(len(expected) == len(MODULES), "missing source fingerprints")
+    paths = []
+    for name, checksum in zip(MODULES, expected):
+        path = root / f"{name.replace('.', '/')}.py"
+        require(path.resolve(strict=True) == path, "shadowed packaged source")
+        require(hashlib.sha256(path.read_bytes()).hexdigest() == checksum, "packaged source hash mismatch")
+        paths.append(path)
+
+    sys.path.insert(0, str(root))
+    identity, bimba, karanajala = (importlib.import_module(name) for name in MODULES)
+    for module, path in zip((identity, bimba, karanajala), paths):
+        require(Path(module.__file__).resolve(strict=True) == path, "wrong loaded module origin")
+    registry = importlib.import_module("pipeline.orchestrator.writers")
+    for asset, cls in (
+        ("bo_bimba", bimba.BoBimbaWriter),
+        ("bo_karanajala", karanajala.BoKaranajalaWriter),
+    ):
+        require(issubclass(cls, registry.WriterBase), "wrong writer base")
+        require(registry.WRITER_REGISTRY.get(asset) is cls, "incorrect concrete registration")
+
+    for module, aliases in (
+        (bimba, {
+            "_SUBJECT_TO_GRAHA": "SUBJECT_TO_GRAHA",
+            "_YOGA_NODE_CLASSES": "YOGA_NODE_CLASSES",
+            "_yoga_config_name": "_yoga_config_name",
+            "yoga_node_subject": "yoga_node_subject",
+        }),
+        (karanajala, {
+            "_GRAHA_SUBJECT_MAP": "SUBJECT_TO_GRAHA",
+            "_YOGA_NODE_CLASSES": "YOGA_NODE_CLASSES",
+            "_yoga_node_subject": "yoga_node_subject",
+        }),
+    ):
+        for old, shared in aliases.items():
+            require(getattr(module, old) is getattr(identity, shared), "incorrect historical alias identity")
+
+
+def main() -> None:
+    mode, *args = sys.argv[1:]
+    if mode == "verify-build" and not args:
+        verify_build()
+    elif mode == "verify-repoint" and not args:
+        verified_pipeline_reference()
+    elif mode == "post-repoint" and not args:
+        post_repoint()
+    elif mode == "inside":
+        component, *expected = args
+        verify_registration(Path(PACKAGE_ROOTS[component]), expected)
+        print("CGM registration verified")
+    else:
+        raise ProbeFailure("invalid probe mode")
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as exc:
+        # Never print raw registry, subprocess, or application output.
+        if isinstance(exc, ProbeFailure):
+            print(f"CGM verification failed: {exc}", file=sys.stderr)
+        else:
+            print("CGM verification failed: missing or invalid evidence", file=sys.stderr)
+        raise SystemExit(1) from None
+'''
+
+
+@pytest.fixture
+def historical_verified_pipeline(verified_pipeline):
+    action = verified_pipeline / cc._VERIFIED_ACTION / "action.yml"
+    probe = verified_pipeline / cc._PROBE
+    action.write_text(HISTORICAL_VERIFIED_ACTION)
+    probe.write_text(HISTORICAL_VERIFIED_PROBE)
+    workflow = verified_pipeline / cc.DEPLOY
+    source = workflow.read_text().replace("DEPLOY_REGION", "GCP_REGION")
+    start = source.index('          local_image="${CGM_VERIFIED_LOCAL_IMAGE_ID:')
+    end = source.index(f"          {cc._PROBE_RUN} verify-repoint\n", start)
+    assert [line.strip() for line in source[start:end].splitlines()] == list(cc._LOADED_REPOINT_PREAMBLE)
+    # Preserve the original physical timeout coordinate while changing the form.
+    padding = "          # historical fixture preamble padding\n" * len(cc._LOADED_REPOINT_PREAMBLE)
+    source = source[:start] + padding + source[end:]
+    tail = legacy_workflow().split("      - name: Verify ga_writers", 1)[1]
+    tail = "      - name: Verify ga_writers" + tail
+    tail = tail.replace("reg.example/p/brahma-pipeline:${{ env.DEPLOY_SHA }}", '"$CGM_VERIFIED_IMAGE"')
+    source = source.replace("  deployment-outcome:\n", tail + "  deployment-outcome:\n")
+    workflow.write_text(source)
+    return verified_pipeline
+
+
+def test_historical_verified_action_and_all_original_probe_groups_are_supported(historical_verified_pipeline):
+    assert cc.image(historical_verified_pipeline, False)["repository"].endswith("/brahma-pipeline")
+    assert cc.task_timeout(historical_verified_pipeline) == {
+        "cloud_run_task_timeout_seconds": 86400, "source": f"{cc.DEPLOY}:2543",
+    }
+
+
+@pytest.mark.parametrize(("old", "new", "message"), [
+    ("sha256:[0-9a-f]{64}", "sha256:[0-9a-f]+", "source and platform"),
+    ("require(head == source_commit(),", "require(True,", "carrier construction"),
+    ("require(configured == reference,", "require(configured.startswith(reference),", "readback"),
+])
+def test_historical_probe_proof_refusals_are_retained(historical_verified_pipeline, old, new, message):
+    _replace_at(historical_verified_pipeline / cc._PROBE, old, new)
+    with pytest.raises(cc.ContractError, match=message):
+        cc.image(historical_verified_pipeline, False)
+
+
+@pytest.mark.parametrize("region_name", ["GCP_REGION", "DEPLOY_REGION"])
+def test_both_supported_region_names_bind_one_literal_launch_region(verified_pipeline, region_name):
+    path = verified_pipeline / cc.DEPLOY
+    path.write_text(path.read_text().replace("DEPLOY_REGION", region_name))
+    assert cc.image(verified_pipeline, False)["region"] == cc._literal(cc.DISPATCH, "LAUNCH_REGION", verified_pipeline)
+
+
+@pytest.mark.parametrize("change", ["duplicate", "both-names", "expression", "wrong-literal", "quoted", "nested"])
+def test_region_sources_cannot_be_duplicated_ambiguous_or_indirect(verified_pipeline, change):
+    path = verified_pipeline / cc.DEPLOY
+    region = cc._literal(cc.DISPATCH, "LAUNCH_REGION", verified_pipeline)
+    declaration = f"  DEPLOY_REGION: {region}\n"
+    replacement = {
+        "duplicate": declaration * 2,
+        "both-names": declaration + f"  GCP_REGION: {region}\n",
+        "expression": "  DEPLOY_REGION: ${{ vars.REGION }}\n",
+        "wrong-literal": "  DEPLOY_REGION: wrong-region\n",
+        "quoted": f"  'DEPLOY_REGION': {region}\n",
+        "nested": f"  REGION_BLOCK:\n    DEPLOY_REGION: {region}\n",
+    }[change]
+    _replace_at(path, declaration, replacement)
+    with pytest.raises(cc.ContractError):
+        cc.image(verified_pipeline, False)
+
+
+@pytest.mark.parametrize(("old", "new"), [
+    ('local_image="${CGM_VERIFIED_LOCAL_IMAGE_ID:?missing verified local image}"', 'local_image="fixture:unverified"'),
+    ('[[ "$local_image" =~ ^sha256:[a-f0-9]{64}$ ]] || exit 1', 'true'),
+    ('--platform=linux/amd64 --format', '--platform=linux/arm64 --format'),
+    ('test "$local_platform" = "${CGM_VERIFIED_IMAGE##*@}" || exit 1', 'true'),
+    ('--pull=never', '--pull=always'),
+    ('--network=none', '--network=host'),
+    ('--entrypoint /bin/sh', '--entrypoint python'),
+    ('-n /app/platform/python-sidecar/scripts/kala_gochara_cutover/century_run_4_1.sh', '-c pass'),
+])
+def test_loaded_preamble_keeps_exact_identity_platform_and_three_local_checks(verified_pipeline, old, new):
+    path = verified_pipeline / cc.DEPLOY
+    source = path.read_text()
+    start = source.index("      - name: Re-point Cloud Run Job at the new image\n")
+    before = source[:start]
+    active = source[start:]
+    assert old in active
+    path.write_text(before + active.replace(old, new))
+    with pytest.raises(cc.ContractError):
+        cc.image(verified_pipeline, False)
+
+
+@pytest.mark.parametrize("change", ["run-comment", "space-after-backslash"])
+def test_loaded_pipeline_rejects_broken_shell_continuations_without_locator_drift(verified_pipeline, change):
+    path = verified_pipeline / cc.DEPLOY
+    lines = path.read_text().splitlines()
+    start = lines.index("      - name: Re-point Cloud Run Job at the new image")
+    command = next(i for i in range(start, len(lines)) if lines[i].strip().startswith("docker run "))
+    assert lines[command].endswith("\\") and lines[command + 1].strip().startswith("-c ")
+
+    def bash_result(smoke):
+        # The stub checks the actual run command's argv; Docker never runs.
+        script = ('local_image=synthetic\n'
+                  'docker() { [[ "$#" == 10 && "${9}" == -c ]]; }\n'
+                  + "\n".join(smoke))
+        return subprocess.run(["/bin/bash", "--noprofile", "--norc", "-e", "-c", script],
+                              env={}, capture_output=True, check=False).returncode
+
+    assert bash_result(lines[command:command + 2]) == 0
+    timeout = cc.task_timeout(verified_pipeline)
+    if change == "run-comment":
+        lines.insert(command + 1, "          # synthetic comment breaks the continued command")
+        assert bash_result(lines[command:command + 3]) != 0
+        del lines[max(i for i in range(start) if not lines[i].strip())]
+    else:
+        lines[command] += " "
+        assert bash_result(lines[command:command + 2]) != 0
+    assert timeout["source"] == f"{cc.DEPLOY}:2543"
+    assert lines[2542].strip() == "--task-timeout=86400 \\"
+    path.write_text("\n".join(lines) + "\n")
+    with pytest.raises(cc.ContractError, match="physically contiguous"):
+        cc.task_timeout(verified_pipeline)
+
+
+@pytest.mark.parametrize(("old", "new"), [
+    ("type=docker", "type=registry"),
+    ("type=provenance,mode=max", "type=provenance,mode=min"),
+    ("CGM_BUILD_LOAD: ${{ inputs.push == 'true' && 'true' || inputs.load }}", "CGM_BUILD_LOAD: ${{ inputs.load }}"),
+])
+def test_loaded_action_export_provenance_and_mode_are_exact(verified_pipeline, old, new):
+    _replace_at(verified_pipeline / cc._VERIFIED_ACTION / "action.yml", old, new)
+    with pytest.raises(cc.ContractError, match="Buildx output"):
+        cc.image(verified_pipeline, False)
+
+
+@pytest.mark.parametrize(("old", "new"), [
+    ('require(image_id == loaded_build_id(),', 'require(True,'),
+    ('"--platform=linux/amd64",) if platform else ()', '"--platform=linux/arm64",) if platform else ()'),
+    ('digest(descriptor.get("digest")) == expected_id', 'True'),
+    ('require(not config.get("Volumes"),', 'require(True,'),
+    ('check_loaded_descriptor(selected, platform_digest, MANIFEST_TYPES)', 'check_loaded_descriptor(selected, local_id, MANIFEST_TYPES)'),
+    ('content_digest(raw), json_object(raw, stage)', '"sha256:" + "a" * 64, json_object(raw, stage)'),
+    ('"--network=none", "--read-only"', '"--network=host", "--read-only"'),
+])
+def test_loaded_identity_and_isolation_proof_cannot_be_weakened(verified_pipeline, old, new):
+    _replace_at(verified_pipeline / cc._PROBE, old, new)
+    with pytest.raises(cc.ContractError, match="source and platform"):
+        cc.image(verified_pipeline, False)
+
+
+def test_loaded_commit_tag_check_is_required_for_both_release_components(verified_pipeline):
+    _replace_at(verified_pipeline / cc._PROBE, "check_release_tag(commit_tag, (top, platform))", "require(True, 'unbound tag')")
+    with pytest.raises(cc.ContractError, match="carrier construction"):
+        cc.image(verified_pipeline, False)
+
+
+@pytest.mark.parametrize("change", ["extra-import", "extra-definition", "reordered-definition"])
+def test_loaded_probe_scaffolding_definition_membership_and_order_are_bound(verified_pipeline, change):
+    path = verified_pipeline / cc._PROBE
+    source = path.read_text()
+    if change == "extra-import":
+        source = "import socket\n" + source
+    elif change == "extra-definition":
+        source += "\ndef unexpected_helper():\n    return None\n"
+    else:
+        old = "def content_digest(data: bytes) -> str:\n    return f\"sha256:{hashlib.sha256(data).hexdigest()}\"\n\n\n"
+        assert source.count(old) == 1
+        source = source.replace(old, "")
+        source = source.replace("def command(", old + "def command(", 1)
+    path.write_text(source)
+    with pytest.raises(cc.ContractError, match="declaration order|imports and entry point"):
+        cc.image(verified_pipeline, False)
+
+
+def test_loaded_policy_cannot_accept_the_historical_probe(verified_pipeline):
+    (verified_pipeline / cc._PROBE).write_text(HISTORICAL_VERIFIED_PROBE)
+    with pytest.raises(cc.ContractError, match="declaration order"):
+        cc.image(verified_pipeline, False)
+
+
+def test_historical_policy_cannot_accept_the_loaded_probe(historical_verified_pipeline):
+    (historical_verified_pipeline / cc._PROBE).write_bytes((REPO / cc._PROBE).read_bytes())
+    with pytest.raises(cc.ContractError, match="declaration order"):
+        cc.image(historical_verified_pipeline, False)
+
+
+def test_loaded_mode_refuses_every_additional_tail_step(verified_pipeline):
+    path = verified_pipeline / cc.DEPLOY
+    source = path.read_text().replace(
+        "  deployment-outcome:\n",
+        "      - name: Unreviewed tail\n        run: true\n  deployment-outcome:\n",
+    )
+    path.write_text(source)
+    with pytest.raises(cc.ContractError, match="unexpected Pipeline step after"):
+        cc.image(verified_pipeline, False)

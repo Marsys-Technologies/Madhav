@@ -32,7 +32,11 @@ def assert_exact_cgm_delegate(action: dict) -> None:
     assert delegate == {
         "id": "build",
         "uses": "docker/build-push-action@v6",
-        "with": {key: "${{ inputs." + key + " }}" for key in BUILD_INPUTS},
+        "with": {
+            **{key: "${{ inputs." + key + " }}" for key in BUILD_INPUTS},
+            "outputs": "${{ inputs.push == 'true' && 'type=docker' || '' }}",
+            "attests": "${{ inputs.push == 'true' && 'type=provenance,mode=max' || '' }}",
+        },
     }
     assert "uses" not in probe and "if" not in probe and "continue-on-error" not in probe
     assert probe["run"] == 'python3 "$GITHUB_ACTION_PATH/probe_registration.py" verify-build'
@@ -112,7 +116,7 @@ def assert_preview_exclusion(root: Path, context: Path, dockerfile: Path) -> Non
     assert not later_negations
 
 
-@pytest.mark.parametrize("change", ["context", "file", "load", "push", "cache-to", "if", "extra-builder"])
+@pytest.mark.parametrize("change", ["context", "file", "load", "push", "cache-to", "outputs", "attests", "if", "extra-builder"])
 def test_preview_guard_rejects_composite_build_bypass(change):
     action = yaml.safe_load((ROOT / CGM_ACTION / "action.yml").read_text())
     delegate = action["runs"]["steps"][0]

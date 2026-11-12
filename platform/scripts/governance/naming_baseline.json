@@ -1,7 +1,6 @@
 {
   "baseline_keys": [
     "google_env_prefix|.github/workflows/deploy.yml|GCP_PROJECT",
-    "google_env_prefix|.github/workflows/deploy.yml|GCP_REGION",
     "google_env_prefix|platform/scripts/pipeline_smoke_audit.py|GCP_PROJECT",
     "google_env_prefix|platform/src/lib/config/google_cloud_env.ts|GCP_BILLING_DATASET_ID",
     "google_env_prefix|platform/src/lib/config/google_cloud_env.ts|GCP_BILLING_PROJECT_ID",
@@ -12,17 +11,8 @@
   ],
   "generated_by": "naming_lint.py --first-run",
   "schema_version": "1.0",
-  "violation_count": 54,
+  "violation_count": 8,
   "violations": [
-    {
-      "rule_id": "google_env_prefix",
-      "severity": "error",
-      "file": ".github/workflows/deploy.yml",
-      "line": 99,
-      "message": "forbidden Google env prefix 'GCP_REGION' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
-      "match": "GCP_REGION",
-      "justification": "Workflow-local region input deliberately insulated from the credential action environment. Preflight steps explicitly bridge it into GOOGLE_CLOUD_REGION."
-    },
     {
       "rule_id": "google_env_prefix",
       "severity": "error",

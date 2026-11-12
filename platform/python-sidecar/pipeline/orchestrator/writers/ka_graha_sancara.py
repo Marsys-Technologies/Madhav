@@ -125,11 +125,12 @@ class KaGrahaSancaraWriter(WriterBase):
                 ayanamsha="lahiri",
                 db_conn=ctx.db_conn,
             )
-            checks.append({"check": "ephemeris_computes", "passed": True})
         except Exception as exc:
             checks.append({"check": "ephemeris_computes", "passed": False, "error": str(exc)})
             errors.append(f"ephemeris computation failed: {exc}")
             return "unhealthy", {"checks": checks, "errors": errors}
+        else:
+            checks.append({"check": "ephemeris_computes", "passed": True})
 
         # ── Check 2: 9 grahas present ──
         graha_names = list(result.grahas.keys())
