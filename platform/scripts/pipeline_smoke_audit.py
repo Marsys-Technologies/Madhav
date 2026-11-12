@@ -38,6 +38,7 @@ Outputs:
 from __future__ import annotations
 
 import argparse
+from collections.abc import Mapping
 import json
 import os
 import re
@@ -49,6 +50,14 @@ from typing import Any
 
 # The canonical chart (CLAUDE.md section B): the only default where a chart selector is needed.
 CANONICAL_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
+
+def read_google_cloud_project(env: Mapping[str, str | None]) -> str:
+    """Resolve the project while preserving legacy-first overlap and empty values."""
+    project = env.get("GCP_PROJECT")
+    if project is None:
+        project = env.get("GOOGLE_CLOUD_PROJECT")
+    return "madhav-astrology" if project is None else project
+
 
 # ── Colours ───────────────────────────────────────────────────────────────────
 
@@ -452,7 +461,7 @@ def audit_gcs() -> None:
             check(r_id, "gcs", "GCS bucket").skip("google-cloud-storage not installed").print()
         return
 
-    project = os.environ.get("GCP_PROJECT", "madhav-astrology")
+    project = read_google_cloud_project(os.environ)
 
     buckets_to_check = [
         ("3.1", os.environ.get("GCS_BUCKET_CHAT_ATTACHMENTS", "madhav-astrology-chat-attachments"),
@@ -546,7 +555,7 @@ def audit_vertex_ai() -> None:
         check("4.1", "vertex_ai", "Vertex AI embedding call").skip("google-auth not installed").print()
         return
 
-    project = os.environ.get("GCP_PROJECT", "madhav-astrology")
+    project = read_google_cloud_project(os.environ)
     location = os.environ.get("VERTEX_AI_LOCATION", "us-central1")
 
     # 4.1 — ADC credentials
@@ -555,7 +564,7 @@ def audit_vertex_ai() -> None:
     try:
         creds, proj = gauth_default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
         lat = (time.perf_counter() - t0) * 1000
-        r.ok(f"ADC: project={proj or '(none in creds)'}  GCP_PROJECT env={project}", latency=lat).print()
+        r.ok(f"ADC: project={proj or '(none in creds)'}  resolved project={project}", latency=lat).print()
         creds.refresh(None) if not creds.valid else None
     except Exception as e:
         r.fail(f"{e}\n         → Run: gcloud auth application-default login").print()
