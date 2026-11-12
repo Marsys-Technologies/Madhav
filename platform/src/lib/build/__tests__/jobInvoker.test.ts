@@ -130,12 +130,15 @@ describe('invokeRunJob force flag (FIX2: a clear must never be followed by a del
 
 describe('invokeRunJob — definite refusal evidence is opt-in', () => {
   it('classifies a missing project as rejected before an SDK call', async () => {
-    vi.stubEnv('GOOGLE_CLOUD_PROJECT', undefined)
-    vi.stubEnv('GCP_PROJECT', undefined)
-    vi.stubEnv('GCLOUD_PROJECT', undefined)
-    const error = invokeRunJob('synthetic-run', { reportDefiniteRejection: true })
-    await expect(error).rejects.toBeInstanceOf(RunSubmissionRejected)
-    expect(cloudRunJob).not.toHaveBeenCalled()
+    const originalEnv = process.env
+    try {
+      process.env = { NODE_ENV: originalEnv.NODE_ENV }
+      const error = invokeRunJob('synthetic-run', { reportDefiniteRejection: true })
+      await expect(error).rejects.toBeInstanceOf(RunSubmissionRejected)
+      expect(cloudRunJob).not.toHaveBeenCalled()
+    } finally {
+      process.env = originalEnv
+    }
   })
 
   it.each([3, 5, 7, 9, 16])('wraps a direct SDK application refusal (status %s)', async (code) => {
