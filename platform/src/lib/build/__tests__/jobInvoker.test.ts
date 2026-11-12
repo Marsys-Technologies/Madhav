@@ -2,15 +2,29 @@
  * Unit tests for lib/build/jobInvoker.ts — Platform Modernization 4.build_trigger.
  */
 
-import { describe, it, expect } from 'vitest'
+import { EventEmitter } from 'node:events'
+import { afterEach, describe, it, expect, vi } from 'vitest'
 import {
   readJobInvokerEnv,
   jobPath,
   invokeBuildJob,
   invokeRunJob,
+  RunSubmissionRejected,
   type JobInvokerEnv,
   type JobTransport,
 } from '../jobInvoker'
+
+const { cloudRunJob, spawnProcess } = vi.hoisted(() => ({ cloudRunJob: vi.fn(), spawnProcess: vi.fn() }))
+vi.mock('child_process', () => ({ spawn: spawnProcess }))
+vi.mock('@google-cloud/run', () => ({
+  JobsClient: class { runJob = cloudRunJob },
+}))
+
+afterEach(() => {
+  vi.unstubAllEnvs()
+  cloudRunJob.mockReset()
+  spawnProcess.mockReset()
+})
 
 const ENV: JobInvokerEnv = {
   gcpProject: 'madhav-astrology',
@@ -110,5 +124,64 @@ describe('invokeRunJob force flag (FIX2: a clear must never be followed by a del
     const { seen, transport } = capture()
     await invokeRunJob('run-1', { env: ENV, transport, forceExecute: true })
     expect(seen.envOverrides).toEqual({ MARSYS_RUN_ID: 'run-1', NIRMANA_FORCE_EXECUTE: '1' })
+  })
+})
+
+describe('invokeRunJob — definite refusal evidence is opt-in', () => {
+  it('classifies a missing project as rejected before an SDK call', async () => {
+    vi.stubEnv('GOOGLE_CLOUD_PROJECT', undefined)
+    vi.stubEnv('GCP_PROJECT', undefined)
+    vi.stubEnv('GCLOUD_PROJECT', undefined)
+    const error = invokeRunJob('synthetic-run', { reportDefiniteRejection: true })
+    await expect(error).rejects.toBeInstanceOf(RunSubmissionRejected)
+    expect(cloudRunJob).not.toHaveBeenCalled()
+  })
+
+  it.each([3, 5, 7, 9, 16])('wraps a direct SDK application refusal (status %s)', async (code) => {
+    const refusal = Object.assign(new Error('synthetic refusal'), { code })
+    cloudRunJob.mockRejectedValueOnce(refusal)
+    const submission = invokeRunJob('synthetic-run', { env: ENV, reportDefiniteRejection: true })
+    await expect(submission).rejects.toBeInstanceOf(RunSubmissionRejected)
+    await expect(submission).rejects.toMatchObject({ cause: refusal })
+    expect(cloudRunJob).toHaveBeenCalledOnce()
+  })
+
+  it.each([1, 2, 4, 8, 13, 14])('preserves an uncertain SDK error (status %s) without retry', async (code) => {
+    const uncertain = Object.assign(new Error('synthetic uncertainty'), { code })
+    cloudRunJob.mockRejectedValueOnce(uncertain)
+    await expect(invokeRunJob('synthetic-run', { env: ENV, reportDefiniteRejection: true })).rejects.toBe(uncertain)
+    expect(cloudRunJob).toHaveBeenCalledOnce()
+  })
+
+  it('classifies a local spawn failure before any child was created', async () => {
+    vi.stubEnv('BUILD_EXECUTOR', 'local')
+    const child = Object.assign(new EventEmitter(), { stderr: new EventEmitter(), pid: undefined })
+    spawnProcess.mockImplementationOnce(() => {
+      queueMicrotask(() => child.emit('error', new Error('synthetic spawn failure')))
+      return child
+    })
+    await expect(invokeRunJob('synthetic-run', { reportDefiniteRejection: true })).rejects.toBeInstanceOf(RunSubmissionRejected)
+    expect(spawnProcess).toHaveBeenCalledOnce()
+    expect(cloudRunJob).not.toHaveBeenCalled()
+  })
+
+  it('preserves uncertainty when an existing local child exits during the grace period', async () => {
+    vi.stubEnv('BUILD_EXECUTOR', 'local')
+    const child = Object.assign(new EventEmitter(), { stderr: new EventEmitter(), pid: 4321, exitCode: 1 })
+    spawnProcess.mockReturnValueOnce(child)
+    const rejection = invokeRunJob('synthetic-run', { reportDefiniteRejection: true })
+    await expect(rejection).rejects.toThrow('exited immediately')
+    await expect(rejection).rejects.not.toBeInstanceOf(RunSubmissionRejected)
+    expect(spawnProcess).toHaveBeenCalledOnce()
+    expect(cloudRunJob).not.toHaveBeenCalled()
+  })
+
+  it('leaves default callers and injected transport errors unchanged', async () => {
+    const refusal = Object.assign(new Error('synthetic failure'), { code: 7 })
+    cloudRunJob.mockRejectedValueOnce(refusal)
+    await expect(invokeRunJob('synthetic-run', { env: ENV })).rejects.toBe(refusal)
+    const transport = { runJob: vi.fn().mockRejectedValueOnce(refusal) }
+    await expect(invokeRunJob('synthetic-run', { env: ENV, transport, reportDefiniteRejection: true })).rejects.toBe(refusal)
+    expect(transport.runJob).toHaveBeenCalledOnce()
   })
 })
