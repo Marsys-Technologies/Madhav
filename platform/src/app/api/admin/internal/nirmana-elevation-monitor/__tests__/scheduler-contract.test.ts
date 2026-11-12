@@ -256,7 +256,7 @@ describe('retired default build-reaper module', () => {
     const moduleInput = workflow.slice(workflow.indexOf('      module:'), workflow.indexOf('      action:'))
     expect(moduleInput).toContain('default: logging')
     expect(moduleInput).not.toContain('cloud_scheduler')
-    for (const module of ['iam', 'logging', 'scheduler']) expect(moduleInput).toContain(`- ${module}`)
+    for (const moduleName of ['iam', 'logging', 'scheduler']) expect(moduleInput).toContain(`- ${moduleName}`)
     const retiredStart = workflow.indexOf('      - name: Reject retired build-reaper module before authentication')
     const authStart = workflow.indexOf('      - name: Authenticate to Google Cloud')
     expect(retiredStart).toBeGreaterThanOrEqual(0)
