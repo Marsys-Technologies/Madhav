@@ -151,10 +151,6 @@ against the live tree at base `a7dfefcb` (SUPPRESSED COUNT in brackets):
       authored rows were actually grounded is a real §N.8 question about the
       SEEDING process — it is an audit question, not a syntax question, and this
       lint does not answer it.
-      TypeScript recognizes the narrower closed, flat string/number table
-      shape. Spreads, nested objects, calls, computed keys, and boolean result
-      fields disqualify the whole table. Static labels and numeric priorities
-      are definitions, and their consumers still require semantic review.
   N3. **CONSTANT_CASE field names** [~6]. `ACHARYA_GRADE = 'A'`,
       `FALSIFIER_GATE = true` — the naming convention IS the declaration that
       the value is fixed. Whether a consumer then passes the constant off as a
@@ -177,8 +173,6 @@ Explicit absence markers are also permitted: `grounding_status` may declare
 `UNGROUNDED` (optionally followed by an explanation) or `SCAFFOLD`, and
 `validator_verdict` may declare `UNKNOWN`. These state that evidence is absent.
 Positive grounding, verification, and fixed boolean outcomes remain findings.
-Python collection initializers are mutable when that same local name is later
-appended, extended, added to, or updated, including annotated initializers.
 
 Further false-negative mechanics:
   - Python: a constant that reaches the field through an intermediate module
@@ -669,8 +663,6 @@ def _names_bound_more_than_once(scope: ast.AST) -> Set[str]:
             for tgt in sub.targets:
                 if isinstance(tgt, ast.Name):
                     bump(tgt.id)
-        elif isinstance(sub, ast.AnnAssign) and isinstance(sub.target, ast.Name):
-            bump(sub.target.id)
         elif isinstance(sub, ast.AugAssign):
             if isinstance(sub.target, ast.Name):
                 bump(sub.target.id, 2)  # an augment implies a prior binding
@@ -680,13 +672,6 @@ def _names_bound_more_than_once(scope: ast.AST) -> Set[str]:
         elif isinstance(sub, ast.withitem):
             if isinstance(sub.optional_vars, ast.Name):
                 bump(sub.optional_vars.id, 2)
-        elif (
-            isinstance(sub, ast.Call)
-            and isinstance(sub.func, ast.Attribute)
-            and isinstance(sub.func.value, ast.Name)
-            and sub.func.attr in {"append", "extend", "add", "update"}
-        ):
-            bump(sub.func.value.id, 2)
     return {n for n, c in counts.items() if c > 1}
 
 
@@ -857,39 +842,6 @@ _TS_SQL_CONTEXT_RE = re.compile(
     re.IGNORECASE,
 )
 
-_TS_TABLE_START_RE = re.compile(
-    r"^\s*(?:export\s+)?const\s+[A-Z][A-Z0-9_]*"
-    r"(?:\s*:\s*[^=]+)?\s*=\s*\{\s*$"
-)
-_TS_TABLE_ENTRY_RE = re.compile(
-    r"\s*(?:[A-Za-z_$][\w$]*|'[^'\\\n]+'|\"[^\"\\\n]+\")\s*:\s*"
-    r"(?:-?\d+(?:\.\d+)?|'[^'\\\n]*'|\"[^\"\\\n]*\")\s*,?\s*(?://.*)?$"
-)
-_TS_TABLE_END_RE = re.compile(r"\s*}\s*(?:as\s+const)?\s*;?\s*$")
-
-
-def _ts_primitive_table_lines(text: str) -> Set[int]:
-    """Recognize closed CONSTANT_CASE string/number lookup tables.
-
-    Boolean results, spreads, nested objects, computed keys and calls do not
-    qualify. This is the primitive subset of Python's CONSTANT_CASE table rule.
-    """
-    tables: Set[int] = set()
-    candidate: List[int] = []
-    for line_number, line in enumerate(text.splitlines(), start=1):
-        if _TS_TABLE_START_RE.fullmatch(line):
-            candidate = [line_number]
-        elif candidate:
-            if not line.strip() or _TS_COMMENT_RE.match(line):
-                continue
-            if _TS_TABLE_END_RE.fullmatch(line):
-                tables.update(candidate)
-                candidate = []
-            elif _TS_TABLE_ENTRY_RE.fullmatch(line):
-                candidate.append(line_number)
-            else:
-                candidate = []
-    return tables
 # `let x = false` / `var x = false` declares a MUTABLE variable; the initialiser
 # is a starting value, not a frozen signal, and later `x = true` reassignments in
 # the same file are the ordinary accumulate-then-report pattern. Mirrors the
@@ -997,7 +949,6 @@ def scan_ts_text(text: str) -> List[Tuple[int, str, str, str]]:
     in_block_comment = False
     mutable_cache: dict = {}
     conditional_return_lines = _ts_direct_conditional_return_object_lines(text)
-    primitive_table_lines = _ts_primitive_table_lines(text)
 
     def declared_mutable(name: str) -> bool:
         if name not in mutable_cache:
@@ -1027,7 +978,7 @@ def scan_ts_text(text: str) -> List[Tuple[int, str, str, str]]:
             continue
         if _TS_SQL_CONTEXT_RE.search(code):
             continue
-        if idx in conditional_return_lines or idx in primitive_table_lines:
+        if idx in conditional_return_lines:
             continue
 
         snippet = " ".join(stripped.split())[:160]
