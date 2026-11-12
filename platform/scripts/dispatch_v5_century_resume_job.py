@@ -26,6 +26,7 @@ from __future__ import annotations
 import contextlib
 import hashlib
 import io
+import importlib.util
 import json
 from pathlib import Path
 import sys
@@ -52,7 +53,14 @@ def build_century_manifest(*, candidate, slice_marker=None):
 
 def load_contract(path=None):
     """fleet/century_contract.json of the tree this script runs from (the executor runs it from a tree at the reviewed commit)."""
-    return json.loads(Path(path or CONTRACT).read_text(encoding="utf-8"))
+    try:
+        source = CONTRACT.with_name("century_contract.py")
+        spec = importlib.util.spec_from_file_location("reviewed_century_contract", source)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module.read_contract(Path(path or CONTRACT).read_bytes())
+    except (OSError, ValueError) as exc:
+        raise shared.Refused("the Century contract is unreadable or has an unsupported format") from exc
 
 
 def resume_gate(req):

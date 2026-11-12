@@ -214,3 +214,32 @@ def test_oracle_fails_on_its_planted_reversion(tmp_path, monkeypatch, claim):
     with pytest.raises((AssertionError, pytest.fail.Exception, shared.Refused, bridge.Refused)) as caught:
         call(oracle, load_launcher(tmp_path / "copy", mutation), tmp_path / "run", monkeypatch)
     assert "mutation anchor" not in str(caught.value)
+
+
+def test_resume_preflight_and_staging_accept_v2_and_refuse_unknown_before_staging(tmp_path):
+    module = load_launcher(tmp_path)
+    import dispatch_v5_century_resume_job as staging
+    from century_contract import SCHEMA_V2, TIMEOUT_LOCATOR, render
+
+    v2 = {"schema": SCHEMA_V2, "launch_args": {},
+          "image": {"job": "brahma-build-pipeline-job", "writer_source_digest": WRITER},
+          "cap": {"writer_timeout_seconds": 72000},
+          "timeout": {"cloud_run_task_timeout_seconds": 86400, "source": TIMEOUT_LOCATOR}}
+    path = tmp_path / "century_contract.json"
+    path.write_bytes(render(v2))
+    assert staging.load_contract(path) == v2
+    assert module.resume_preflight(request(), v2) == request()
+    local_contract = Path(module.__file__).with_name("century_contract.json")
+    local_contract.write_bytes(render(v2))
+    assert module.resume_preflight(request()) == request()
+    bad = dict(v2, schema="ky.century_contract/3")
+    path.write_bytes(render(bad))
+    local_contract.write_bytes(render(bad))
+    with pytest.raises(bridge.Refused, match="unsupported format"):
+        module.resume_preflight(request())
+    with pytest.raises(shared.Refused, match="unsupported format"):
+        staging.load_contract(path)
+    dispatcher = Dispatcher()
+    with pytest.raises(bridge.Refused, match="unsupported format"):
+        module.run(["--resume", *ARGV], dispatcher=dispatcher, request=request(), contract=bad)
+    assert dispatcher.staged == []

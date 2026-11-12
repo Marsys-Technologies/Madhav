@@ -65,7 +65,8 @@ def build(tmp_path, monkeypatch, mutation=None, contract_blob=None, shipped=Fals
 
     def git(*args, **kwargs):
         if len(args) == 2 and args[0] == "show" and args[1].endswith(":" + CONTRACT_PATH):
-            return SimpleNamespace(returncode=0, stdout=blob.decode(), stderr="")
+            assert kwargs.get("text") is False
+            return SimpleNamespace(returncode=0, stdout=blob, stderr=b"")
         return real_git(*args, **kwargs)
     monkeypatch.setattr(w.mod, "git", git)
     namespace = {"__name__": "reviewed_smalltest_policy", "__file__": "reviewed_smalltest_policy.py"}

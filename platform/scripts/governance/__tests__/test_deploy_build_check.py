@@ -1011,7 +1011,7 @@ def test_current_pipeline_matches_committed_century_source_binding():
     assert spec is not None and spec.loader is not None
     checker = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(checker)
-    committed = json.loads((ROOT / checker.REL).read_text())
+    committed = checker.read_contract((ROOT / checker.REL).read_bytes())
     expected_image = {**committed["image"], "writer_source_digest": None}
     assert checker.image(ROOT, with_digest=False) == expected_image
-    assert checker.task_timeout(ROOT) == committed["timeout"]
+    assert checker.task_timeout(ROOT, schema=committed["schema"]) == committed["timeout"]

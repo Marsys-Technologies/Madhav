@@ -24,6 +24,7 @@ from __future__ import annotations
 import argparse
 import ast
 import datetime as dt
+import math
 import hashlib
 import importlib.util
 import json
@@ -37,6 +38,8 @@ FLEET = Path(__file__).resolve().parent
 REPO = FLEET.parents[3]
 REL = "00_ARCHITECTURE/briefs/kalayantra/fleet/century_contract.json"
 SCHEMA = "ky.century_contract/1"
+SCHEMA_V2 = "ky.century_contract/2"
+CENTURY_JOB = "brahma-build-pipeline-job"
 ITEM = "J-4e"
 RULINGS = ["SR-EDGES-PROOF 2", "SR-HORIZON-PUBLIC", "SR-W34-LEASE", "SR-W3-SHAPE 3", "SR-J3-CAP-LIVE"]
 BIRTH_PATH = "CLAUDE.md"
@@ -157,6 +160,10 @@ _PIPELINE_JOB = "deploy-pipeline-job"
 _PIPELINE_DOCKERFILE = "./platform/python-sidecar/Dockerfile.pipeline"
 _PIPELINE_BUILD_STEP = "Build and push pipeline job image"
 _PIPELINE_REPOINT_STEP = "Re-point Cloud Run Job at the new image"
+TIMEOUT_LOCATOR = (
+    f"{DEPLOY}::jobs.{_PIPELINE_JOB}::{_PIPELINE_REPOINT_STEP}::"
+    f"gcloud run jobs update {CENTURY_JOB}::--task-timeout"
+)
 _VERIFIED_ACTION = ".github/actions/build-verified-cgm-image"
 _PROBE = f"{_VERIFIED_ACTION}/probe_registration.py"
 _PROBE_RUN = f"python3 {_PROBE}"
@@ -602,12 +609,27 @@ def _deployment_image(root: Path) -> tuple[dict, dict]:
     return out, timeout
 
 
-def task_timeout(root: Path) -> dict:
-    return _deployment_image(root)[1]
+def task_timeout(root: Path, *, schema: str = SCHEMA) -> dict:
+    binding, physical = _deployment_image(root)
+    timeout, _ = _project_timeout(binding["job"], physical, schema)
+    return timeout
+
+
+def _project_timeout(job: str, physical: dict, schema: str) -> tuple[dict, int | None]:
+    if schema == SCHEMA:
+        return physical, None
+    if schema != SCHEMA_V2 or job != CENTURY_JOB:
+        raise ContractError("the Century v2 timeout must bind the reviewed Pipeline job")
+    observed_line = int(physical["source"].removeprefix(f"{DEPLOY}:"))
+    return {**physical, "source": TIMEOUT_LOCATOR}, observed_line
 
 
 def image(root: Path, with_digest: bool) -> dict:
-    out, _ = _deployment_image(root)
+    binding, _ = _deployment_image(root)
+    return _image_with_digest(root, binding, with_digest)
+
+
+def _image_with_digest(root: Path, out: dict, with_digest: bool) -> dict:
     out["writer_source_digest"] = writer_source_digest(root) if with_digest else None
     out["digest_source"] = "pipeline.orchestrator.writer_runtime_support.get_writer_source_hash('ka_gochara_v5')"
     return out
@@ -688,18 +710,27 @@ def launch_args(shared, pol: dict, hz: dict) -> dict:
             "result_policy": pol["result_policy"]}
 
 
-def derive(root: Path = REPO, pack: Path | None = None, with_digest: bool = True) -> dict:
+def derive(root: Path = REPO, pack: Path | None = None, with_digest: bool = True, *, schema: str = SCHEMA) -> dict:
+    contract, _ = _derive(root, pack, with_digest, schema)
+    return contract
+
+
+def _derive(root: Path, pack: Path | None, with_digest: bool, schema: str) -> tuple[dict, int | None]:
+    if schema not in (SCHEMA, SCHEMA_V2):
+        raise ContractError("unsupported Century contract schema")
     root = Path(root)
     shared = _load(root / SHARED, "century_contract_shared")
     pol, hz = policy(root, pack), horizon(root)
     args = launch_args(shared, pol, hz)
+    binding, physical = _deployment_image(root)
+    timeout, observed_line = _project_timeout(binding["job"], physical, schema)
     contract = {
-        "schema": SCHEMA, "item": shared.CENTURY_ITEM, "rulings": RULINGS,
+        "schema": schema, "item": shared.CENTURY_ITEM, "rulings": RULINGS,
         "generation": shared.GENERATION, "triggered_by": shared.CENTURY_TRIGGERED_BY,
         "stored_scope": _literal(INPUT_VECTOR, "STORED_SCOPE", root),
         "launch_args": args, "cancel_schema": _literal(CANCEL, "SCHEMA", root),
         "horizon": hz, "classes": classes(root, args), "policy": pol,
-        "cap": cap(root), "timeout": task_timeout(root), "image": image(root, with_digest),
+        "cap": cap(root), "timeout": timeout, "image": _image_with_digest(root, binding, with_digest),
         "output_tables": output_tables(root, shared),
     }
     for key in ("generation", "triggered_by", "stored_scope"):
@@ -708,12 +739,60 @@ def derive(root: Path = REPO, pack: Path | None = None, with_digest: bool = True
     if contract["item"] != ITEM:
         raise ContractError("the century item changed")
     check_cap_below_timeout(contract["cap"], contract["timeout"])
-    return contract
+    return contract, observed_line
 
 
 def check_cap_below_timeout(cap_: dict, timeout_: dict) -> None:
     if cap_["writer_timeout_seconds"] >= timeout_["cloud_run_task_timeout_seconds"]:
         raise ContractError("the writer cap is not below the Cloud Run task timeout: the watchdog could never fire first")
+
+
+def read_contract(body: bytes) -> dict:
+    """Read known Century formats and refuse ambiguous JSON."""
+    def unique(pairs):
+        result = dict(pairs)
+        if len(result) != len(pairs):
+            raise ValueError("duplicate JSON field")
+        return result
+
+    def reject_constant(_value):
+        raise ValueError("nonfinite JSON number")
+
+    def finite_float(value):
+        number = float(value)
+        if not math.isfinite(number):
+            raise ValueError("nonfinite JSON number")
+        return number
+
+    try:
+        contract = json.loads(body.decode("utf-8"), object_pairs_hook=unique,
+                              parse_constant=reject_constant, parse_float=finite_float)
+    except (ValueError, RecursionError):
+        raise ValueError("the century contract is not JSON") from None
+    return validate_contract(contract)
+
+
+def validate_contract(contract: object) -> dict:
+    if isinstance(contract, dict) and contract.get("schema") == SCHEMA:
+        return contract
+    if not isinstance(contract, dict) or contract.get("schema") != SCHEMA_V2:
+        raise ValueError("the century contract has an unsupported schema")
+
+    timeout, image, cap = (contract.get(key) for key in ("timeout", "image", "cap"))
+    if not (
+        isinstance(timeout, dict) and set(timeout) == {"cloud_run_task_timeout_seconds", "source"}
+        and type(timeout["cloud_run_task_timeout_seconds"]) is int
+        and timeout["source"] == TIMEOUT_LOCATOR
+        and isinstance(cap, dict) and type(cap.get("writer_timeout_seconds")) is int
+        and 0 < cap["writer_timeout_seconds"] < timeout["cloud_run_task_timeout_seconds"]
+        and isinstance(image, dict) and image.get("job") == CENTURY_JOB
+        and isinstance(image.get("writer_source_digest"), str)
+        and re.fullmatch(r"[0-9a-f]{64}", image["writer_source_digest"])
+        and isinstance(contract.get("launch_args"), dict)
+        and "observed_timeout_line" not in contract
+    ):
+        raise ValueError("the century contract has a malformed v2 binding")
+    return contract
 
 
 def render(contract: dict) -> bytes:
@@ -745,29 +824,88 @@ def compare(committed: dict, derived: dict, *, with_digest: bool, with_pack: boo
     return [k for k in sorted(set(want) | set(have)) if want.get(k) != have.get(k)]
 
 
+def _matches_generated_v1_shape(existing: object, derived: object) -> bool:
+    if isinstance(derived, dict):
+        return isinstance(existing, dict) and existing.keys() == derived.keys() and all(
+            _matches_generated_v1_shape(existing[key], value) for key, value in derived.items()
+        )
+    if isinstance(derived, list):
+        # The remaining generated lists, rulings and scored classes, contain strings.
+        return isinstance(existing, list) and all(isinstance(entry, str) for entry in existing)
+    return type(existing) is type(derived)
+
+
+def _validate_existing_v1_for_write(existing: dict, derived: dict) -> None:
+    """Implicit regeneration requires a generated active v1 record."""
+    malformed = ContractError("the existing active v1 contract is malformed")
+    if existing.keys() != derived.keys() or not all(
+        _matches_generated_v1_shape(existing[key], value) for key, value in derived.items()
+        if key != "output_tables"
+    ):
+        raise malformed
+    # Output tables may change in number and their optional columns/predicates
+    # may legitimately be null or strings, independent of the newly derived rows.
+    tables = existing["output_tables"]
+    if not isinstance(tables, list) or not all(
+        isinstance(table, dict) and table.keys() == {"object", "table", "class_column", "where"}
+        and isinstance(table["object"], str) and isinstance(table["table"], str)
+        and (table["class_column"] is None or isinstance(table["class_column"], str))
+        and (table["where"] is None or isinstance(table["where"], str))
+        for table in tables
+    ):
+        raise malformed
+    timeout, cap = existing["timeout"], existing["cap"]
+    task_seconds, cap_seconds = timeout["cloud_run_task_timeout_seconds"], cap["writer_timeout_seconds"]
+    source = timeout["source"]
+    digest = existing["image"]["writer_source_digest"]
+    if (type(task_seconds) is not int or type(cap_seconds) is not int or not 0 < cap_seconds < task_seconds
+            or not isinstance(source, str) or not re.fullmatch(re.escape(DEPLOY) + r":[1-9][0-9]*", source)
+            or not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest)):
+        raise malformed
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     mode = ap.add_mutually_exclusive_group(required=True)
     mode.add_argument("--write", action="store_true")
     mode.add_argument("--check", action="store_true")
     ap.add_argument("--pack", type=Path, default=None)
+    ap.add_argument("--schema", choices=(SCHEMA, SCHEMA_V2), help="contract format for --write (default: existing validated format or v1 for a new file)")
     ap.add_argument("--no-image", action="store_true")
     ap.add_argument("--root", type=Path, default=REPO)
     a = ap.parse_args(argv)
     path = a.root / REL
+    if a.check and a.schema is not None:
+        ap.error("--check uses the committed contract schema")
     try:
         if a.write:
             if a.pack is None or a.no_image:
                 raise ContractError("--write needs --pack and the image digest: a contract with a null fact is not written")
-            body = render(derive(a.root, a.pack, True))
+            try:
+                existing = read_contract(path.read_bytes())
+            except FileNotFoundError:
+                existing = None
+            current_schema = existing["schema"] if existing is not None else SCHEMA
+            contract, observed_line = _derive(a.root, a.pack, True, a.schema or current_schema)
+            if a.schema is None and existing is not None and current_schema == SCHEMA:
+                _validate_existing_v1_for_write(existing, contract)
+            body = render(contract)
+            read_contract(body)
             path.write_bytes(body)
-            print(json.dumps({"written": REL, "sha256": sha256(body)}, sort_keys=True))
-            return 0
-        derived = derive(a.root, a.pack, not a.no_image)
-        differing = compare(json.loads(path.read_text(encoding="utf-8")), derived, with_digest=not a.no_image, with_pack=a.pack is not None)
-        print(json.dumps({"check": REL, "sha256": sha256(path.read_bytes()), "equal": not differing, "differs_in": differing,
-                          "partial": bool(a.no_image or a.pack is None)}, sort_keys=True))
-        return 0 if not differing else 1
+            outcome = {"written": REL, "sha256": sha256(body)}
+            status = 0
+        else:
+            body = path.read_bytes()
+            committed = read_contract(body)
+            derived, observed_line = _derive(a.root, a.pack, not a.no_image, committed["schema"])
+            differing = compare(committed, derived, with_digest=not a.no_image, with_pack=a.pack is not None)
+            outcome = {"check": REL, "sha256": sha256(body), "equal": not differing, "differs_in": differing,
+                       "partial": bool(a.no_image or a.pack is None)}
+            status = 1 if differing else 0
+        if observed_line is not None:
+            outcome["observed_timeout_line"] = observed_line
+        print(json.dumps(outcome, sort_keys=True))
+        return status
     except (ContractError, OSError, ValueError) as exc:
         print(f"century_contract: {exc}", file=sys.stderr)
         return 2
