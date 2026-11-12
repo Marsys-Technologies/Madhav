@@ -554,11 +554,15 @@ def _is_none(node: ast.AST) -> bool:
 
 
 def _is_unmeasured_marker(field: str, value: object) -> bool:
-    """Explicit absence of grounding or observation makes no positive claim."""
+    """Recognize explicit absence and provenance labels that earn no verification."""
     if not isinstance(value, str):
         return False
     if field == "validator_verdict":
         return value == "UNKNOWN"
+    if field == "verification_pass_status":
+        # verification_vocab.py defines these as an abstention or an extension
+        # without independent verification. Positive pass labels still need a detector.
+        return value in {"floored", "computed_extension"}
     return field == "grounding_status" and (
         value in {"UNGROUNDED", "SCAFFOLD"}
         or value.startswith("UNGROUNDED ")

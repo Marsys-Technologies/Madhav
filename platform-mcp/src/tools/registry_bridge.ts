@@ -2279,7 +2279,7 @@ export async function fetchOrientationContext(
         b11_note: 'UCD orientation pre-fetch failed (graceful-empty). Domain tool executed without holistic context.',
         error: String(err),
       },
-      orientation_ok: false,
+      orientation_ok: assessOrientationPayload(null, chart_id).ok,
     }
   }
 }
