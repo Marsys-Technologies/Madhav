@@ -552,11 +552,16 @@ def _collection_fetches(tree: ast.AST, line: int, sql: str) -> bool:
     return False
 
 
-def _fact_key_reference(node: ast.AST) -> bool:
-    return isinstance(node, ast.Subscript) and isinstance(node.slice, ast.Constant) and node.slice.value == "fact_key"
+def _fact_key_reference(node: ast.AST, row: str | None = None) -> bool:
+    return (
+        isinstance(node, ast.Subscript) and isinstance(node.slice, ast.Constant) and node.slice.value == "fact_key"
+        and (row is None or isinstance(node.value, ast.Name) and node.value.id == row)
+    )
 
 
 def _retains_row_key(value: ast.AST, row: str, assignments: dict[str, ast.AST], visited: set[str]) -> bool:
+    if row in assignments:
+        return False
     if isinstance(value, ast.Name):
         if value.id == row:
             return row not in assignments
@@ -566,12 +571,20 @@ def _retains_row_key(value: ast.AST, row: str, assignments: dict[str, ast.AST], 
     if isinstance(value, ast.IfExp):
         return all(_retains_row_key(branch, row, assignments, visited) for branch in (value.body, value.orelse))
     if isinstance(value, ast.Dict):
-        return any(
-            isinstance(key, ast.Constant) and key.value == "fact_key" and _fact_key_reference(item)
+        return all(
+            isinstance(item, ast.Subscript) and isinstance(item.value, ast.Name) and item.value.id == row
+            and isinstance(item.slice, ast.Constant) and isinstance(item.slice.value, str)
+            for item in value.values
+        ) and any(
+            isinstance(key, ast.Constant) and key.value == "fact_key" and _fact_key_reference(item, row)
             for key, item in zip(value.keys, value.values)
         )
     if isinstance(value, (ast.Tuple, ast.List)):
-        return any(_fact_key_reference(item) for item in value.elts)
+        return all(
+            isinstance(item, ast.Subscript) and isinstance(item.value, ast.Name) and item.value.id == row
+            and isinstance(item.slice, ast.Constant) and isinstance(item.slice.value, str)
+            for item in value.elts
+        ) and any(_fact_key_reference(item, row) for item in value.elts)
     if isinstance(value, ast.Call) and isinstance(value.func, ast.Name) and value.func.id == "dict" and len(value.args) == 1:
         zipped = value.args[0]
         return (
@@ -607,6 +620,9 @@ def _collects_loop_rows(loop: ast.For, collections: set[str]) -> bool:
                 name.id for name, value in zip(target.elts, node.value.elts)
                 if isinstance(name, ast.Name) and _fact_key_reference(value)
             )
+    for node in body:
+        if isinstance(node, (ast.Subscript, ast.Attribute)) and isinstance(node.ctx, ast.Store) and isinstance(node.value, ast.Name):
+            aliases[node.value.id] = ast.Constant(None)
     for statement in loop.body:
         if isinstance(statement, ast.Assign) and any(
             isinstance(target, ast.Subscript)
