@@ -82,6 +82,9 @@ describe.skipIf(!adminDsn && !required)('protected window PostgreSQL regressions
   })
 
   afterAll(async () => {
+    // Pool.end() can resolve before its removed idle client's socket has ended.
+    // Close our checked-out client first so DROP FORCE cannot race that socket.
+    await client?.end()
     client?.release()
     await pool?.end()
     if (created) await admin.query(`DROP DATABASE "${dbname}" WITH (FORCE)`)
