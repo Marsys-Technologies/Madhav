@@ -48,7 +48,9 @@ def test_claim_vs_evidence_counts_only_verified_claims_outside_examined_rows(
         )
         connection.execute("INSERT INTO chart_dashas VALUES (?, NULL, ?, 'vimshottari')", (status, level))
         connection.execute("CREATE TABLE chart_facts (verification_pass_status TEXT)")
-        connection.execute("INSERT INTO chart_facts VALUES ('two_pass_verified')")
+        connection.executemany(
+            "INSERT INTO chart_facts VALUES (?)", [("two_pass_verified",), ("two_pass_verified",), ("single",), (None,)]
+        )
         cursor = connection.cursor()
 
         def execute(sql, params):
@@ -65,15 +67,43 @@ def test_claim_vs_evidence_counts_only_verified_claims_outside_examined_rows(
     assert dashas["status"] == ("FAIL" if unexamined else "PASS")
     assert dashas["detail"].startswith(f"{int(status == 'two_pass_verified')} row(s) claim a verified tier; {unexamined} ")
     assert facts["table"] == "chart_facts"
-    assert facts["status"] == "PASS"
-    assert facts["detail"].startswith("1 row(s) claim a verified tier; 0 ")
+    assert facts["status"] == "INCOMPLETE"
+    assert facts["detail"].startswith("2 row(s) claim a verified tier.")
+    assert "Examined-row coverage is unknown" in facts["detail"]
+
+
+def test_no_verified_chart_facts_claims_are_explicit_without_predicate_credit(watchdog, monkeypatch):
+    _, namespace = watchdog
+    monkeypatch.setitem(namespace, "_tables_with_column", lambda cur: ["chart_facts"])
+    queries = []
+    cursor = SimpleNamespace(execute=lambda sql, params: queries.append((sql, params)), fetchone=lambda: (0,))
+    results = []
+    namespace["check_claim_vs_evidence"](cursor, results)
+    assert results == [{
+        "check": "claim_vs_evidence", "table": "chart_facts", "status": "PASS",
+        "detail": "0 row(s) claim a verified tier. No verified claims to assess.",
+    }]
+    assert queries == [('SELECT count(*) FROM "chart_facts" WHERE verification_pass_status = ANY(%s)',
+                        (["two_pass_verified"],))]
+
+
+def test_divisional_and_undeclared_claim_dispositions_are_unchanged(watchdog, monkeypatch):
+    _, namespace = watchdog
+    monkeypatch.setitem(namespace, "_tables_with_column", lambda cur: ["chart_divisionals", "fixture_undeclared"])
+    counts = iter([(0,), (1,), (1,)])
+    cursor = SimpleNamespace(execute=lambda sql, params: None, fetchone=lambda: next(counts))
+    results = []
+    namespace["check_claim_vs_evidence"](cursor, results)
+    assert [(r["table"], r["status"]) for r in results] == [("chart_divisionals", "PASS"), ("fixture_undeclared", "FAIL")]
+    assert "(TRUE). Tolerance 0." in results[0]["detail"]
+    assert "NO examined-row predicate" in results[1]["detail"]
 
 
 def verdict(status):
     return {"check": "detector_liveness", "table": "-", "status": status, "detail": "fixture"}
 
 
-def workflow_step(exit_code):
+def workflow_step(exit_code, database_url=""):
     workflow = yaml.load(WORKFLOW.read_text(), Loader=yaml.BaseLoader)
     steps = workflow["jobs"]["invariant"]["steps"]
     run = next(step["run"] for step in steps if step.get("name") == "Run the invariant")
@@ -85,7 +115,8 @@ python() {
 '''
     return subprocess.run(
         ["/bin/bash", "-c", python_stub + run],
-        env={"PATH": os.defpath, "WATCHDOG_SCRIPT": SCRIPT, "WATCHDOG_EXIT": str(exit_code)},
+        env={"PATH": os.defpath, "WATCHDOG_SCRIPT": SCRIPT, "WATCHDOG_EXIT": str(exit_code),
+             "DATABASE_URL": database_url},
         capture_output=True,
         text=True,
         check=False,
@@ -109,6 +140,7 @@ def test_no_database_preserves_measured_liveness_and_incomplete_coverage(
     assert ("::warning::" in step.stdout) == (expected == 3)
     if expected == 3:
         assert "INCOMPLETE" in step.stdout
+        assert "DATABASE_URL unavailable; liveness ran, but data checks did not" in step.stdout
 
 
 @pytest.fixture
@@ -124,23 +156,49 @@ def fixture_database(watchdog, monkeypatch):
     monkeypatch.setitem(namespace, "tier_report", lambda cur: {"fixture_table": {"verified": 2}})
 
 
-@pytest.mark.parametrize(("data_status", "detector_status", "expected"), [
-    ("PASS", "PASS", 0), ("FAIL", "PASS", 1), ("PASS", "FAIL", 1),
+@pytest.mark.parametrize(("data_status", "detector_status", "additional_failure", "expected"), [
+    ("PASS", "PASS", None, 0),
+    ("FAIL", "PASS", None, 1),
+    ("PASS", "FAIL", None, 1),
+    ("INCOMPLETE", "PASS", None, 3),
+    ("INCOMPLETE", "FAIL", None, 1),
+    ("INCOMPLETE", "PASS", "claim_vs_evidence", 1),
+    ("INCOMPLETE", "PASS", "vocabulary_conformance", 1),
 ])
 def test_full_watchdog_preserves_data_and_detector_failures(
-    watchdog, fixture_database, monkeypatch, capsys, data_status, detector_status, expected
+    watchdog, fixture_database, monkeypatch, capsys, data_status, detector_status, additional_failure, expected
 ):
     main, namespace = watchdog
-    data_result = {"check": "claim_vs_evidence", "table": "fixture_table", "status": data_status, "detail": "fixture"}
-    monkeypatch.setitem(namespace, "check_claim_vs_evidence", lambda cur, results: results.append(data_result))
-    monkeypatch.setitem(namespace, "check_vocabulary_conformance", lambda cur, results: None)
+    data_result = {"check": "claim_vs_evidence", "table": "chart_facts", "status": data_status, "detail": "fixture"}
+    extra = {"check": additional_failure, "table": "fixture_other", "status": "FAIL", "detail": "fixture"}
+    claims = [data_result] + ([extra] if additional_failure == "claim_vs_evidence" else [])
+    vocabulary = [extra] if additional_failure == "vocabulary_conformance" else []
+    monkeypatch.setitem(namespace, "check_claim_vs_evidence", lambda cur, results: results.extend(claims))
+    monkeypatch.setitem(namespace, "check_vocabulary_conformance", lambda cur, results: results.extend(vocabulary))
     monkeypatch.setitem(namespace, "check_detector_liveness", lambda results: results.append(verdict(detector_status)))
 
     cli_status = main()
     cli_output = capsys.readouterr()
-    payload, _, _ = cli_output.out.partition("\n\n=== verification invariant ===")
-    assert json.loads(payload)["results"] == [data_result, verdict(detector_status)]
-    assert (cli_status, workflow_step(cli_status).returncode) == (expected, expected)
+    payload, _, summary = cli_output.out.partition("\n\n=== verification invariant ===")
+    results = claims + vocabulary + [verdict(detector_status)]
+    assert json.loads(payload) == {"tier_report": {"fixture_table": {"verified": 2}}, "results": results}
+    assert f"{sum(row['status'] == 'FAIL' for row in results)} FAIL / {len(results)} checks" in summary
+    assert ("1 INCOMPLETE" in summary) == (data_status == "INCOMPLETE")
+    step = workflow_step(cli_status, database_url="isolated-test-dsn")
+    assert (cli_status, step.returncode) == (expected, expected)
+    assert "isolated-test-dsn" not in step.stdout
+    assert ("::warning::" in step.stdout) == (expected == 3)
+    if expected == 3:
+        assert "data checks ran, but verified-claim evidence coverage is incomplete" in step.stdout
+        assert "DATABASE_URL unavailable" not in step.stdout
+
+
+def test_with_database_incomplete_wrapper_never_claims_data_checks_were_skipped():
+    step = workflow_step(3, database_url="isolated-test-dsn")
+    assert step.returncode == 3
+    assert "verified-claim evidence coverage is incomplete" in step.stdout
+    assert "DATABASE_URL unavailable" not in step.stdout
+    assert "isolated-test-dsn" not in step.stdout
 
 
 def test_connection_error_still_propagates(watchdog, fixture_database, monkeypatch):
