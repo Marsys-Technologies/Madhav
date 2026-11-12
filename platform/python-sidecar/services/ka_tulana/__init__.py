@@ -358,7 +358,8 @@ CERTIFICATION_MAPPING = json.loads(r'''
     "platform-mcp/src/tools/register_p1_aliases.ts": "9d2c038d3a5ef27343b7fb322e827a509abc41cc6360ecffbba25e3d37079128",
     "platform/migrations/1377_k7_4_tulana_pareto_health_probe.sql": "b978e1b088631aadad198cc8080576575d06f706d3a8ffb50e36979dbfa39e76",
     "platform/python-sidecar/services/ka_tulana/ranker.py": "656aa4902d38168773a109202db62d3f700b6d4ac3da7c076d839c01f32703f0",
-    "platform/python-sidecar/services/ka_tulana/writer.py": "06688590c72dcac9000545f02ba7b49bb85b01c3fd032208a07320e973b1a620",
+    "platform/python-sidecar/services/ka_tulana/writer.py": "6f48be0a04e4c60d8a75c95f8ab23e75487f0b5f2438e47b522cccce6f5df8cb",
+    "platform/python-sidecar/pipeline/orchestrator/service_health_persistence.py": "fa30b658fff5aa1018fdadcccccfb486eb0b3879ec56e04085f029186f1d56a3",
     "platform/src/lib/retrieval/registry/layers/L3_kala/__tests__/f131_priority_ranking_glossary.test.ts": "75805a1b3c77cde0cf5ff9ab634d8a1befe9d92159d2e3ad9a537f52af917d62",
     "platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts": "73b4ea74e3b3e57ea3a6a1992df6cfa6842301087472f797f147d448e73c8635",
     "platform/src/lib/retrieval/registry/layers/L3_kala/view_ahead.ts": "8b86d0fea6b3a802dab0dbbd40313e660fae360841c34b0561b7718aac515938",
@@ -401,6 +402,7 @@ def validate_certification_mapping(root: Path, mapping=None) -> list[str]:
         "platform-mcp/src/tools/register_p1_aliases.ts",
         "platform/python-sidecar/services/ka_tulana/ranker.py",
         "platform/python-sidecar/services/ka_tulana/writer.py",
+        "platform/python-sidecar/pipeline/orchestrator/service_health_persistence.py",
         "platform/migrations/1377_k7_4_tulana_pareto_health_probe.sql",
     }
     if not required_hashes <= set(mapping.get("hashes", {})):

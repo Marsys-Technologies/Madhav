@@ -15829,7 +15829,11 @@ def _import_map(tree: ast.AST, here: Path) -> dict[str, tuple[Path, str | None]]
                     f = mod_file(SIDECAR, a.name.split("."))
                     if f is not None:
                         out.setdefault(a.asname, (f, None))
-    return {k: v for k, v in out.items() if not _is_framework(v[0])}
+    # The Build-owned Tulana persistence leaf is a writer delegate. Follow its
+    # named function without pulling the rest of the orchestrator into the scan.
+    return {name: (path, symbol) for name, (path, symbol) in out.items()
+            if not _is_framework(path) or (_rel(path), symbol) == (
+                "pipeline/orchestrator/service_health_persistence.py", "persist_tulana_selftest_health")}
 
 
 def _is_framework(p: Path) -> bool:

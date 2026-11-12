@@ -1,6 +1,6 @@
 """
-bg_reference writer — populates the 5 typed reference tables.
-Delegates to brahmagyan.l0_reference.seed_reference() for actual INSERT logic.
+bg_reference writer — populates the typed reference tables.
+Delegates to brahmagyan.l0_reference.seed_reference_borrowed() for INSERT logic.
 Per holistic design v1.1: ZERO LLM use.
 """
 from __future__ import annotations
@@ -10,7 +10,7 @@ import time
 import psycopg.rows
 
 from pipeline.orchestrator.writers import register, WriterBase, ContextSpec, WriterResult
-from brahmagyan.l0_reference import seed_reference
+from brahmagyan.l0_reference import seed_reference_borrowed
 
 logger = logging.getLogger(__name__)
 
@@ -22,23 +22,12 @@ class ReferenceWriter(WriterBase):
     def run(self, ctx: ContextSpec) -> WriterResult:
         t0 = time.time()
         conn = ctx.db_conn
-        # The orchestrator connection is created with row_factory=dict_row
-        # (pipeline/orchestrator/db.py:26), but the delegate
-        # brahmagyan.l0_reference.seed_reference indexes fetched rows
-        # numerically (l0_reference.py:1418, `r[0]` on the brahma_ontology
-        # FK-validation query) — the KeyError: 0 that put this asset into
-        # error state in the 2026-08-02 L0 global build (run 6fd72ed9).
-        # l0_reference.py is a shared brahmagyan module outside this writer
-        # lane's scope, so the fix is applied at this boundary: pin tuple_row
-        # for the duration of the delegate call and restore the caller's
-        # factory in a finally. row_factory only affects cursors opened after
-        # this point; the writer still never commits/closes the connection
-        # (FROZEN contract, §N.2).
+        # The orchestrator uses dict_row. The reference seed reads the
+        # ontology check by tuple position, so scope tuple_row to that call.
         prior_row_factory = getattr(conn, "row_factory", None)
         conn.row_factory = psycopg.rows.tuple_row
         try:
-            # autocommit=False: caller (asset_runner) owns the transaction boundary
-            counts = seed_reference(conn, ctx.build_id, dry_run=ctx.dry_run, autocommit=False)
+            counts = seed_reference_borrowed(conn, ctx.build_id, dry_run=ctx.dry_run)
         finally:
             conn.row_factory = prior_row_factory
         # counts is a dict like {'reference_planets': N, 'reference_nakshatras': N, ...}
