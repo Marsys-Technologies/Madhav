@@ -14,7 +14,7 @@
  * growing a second one — the naming-governance gate this charter item asks for
  * is "one formatter used everywhere", not "one formatter per file".
  */
-import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '@/lib/retrieval/address_resolver'
+import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '@/lib/brahmagyan/grahaIdentity'
 
 // ── Graha canonicalization (EL-32) ─────────────────────────────────────────────
 // Every alias variant observed across L1/L2 layers resolves to ONE canonical

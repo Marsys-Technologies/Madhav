@@ -22,7 +22,7 @@
  * re-tuning a fragile prior — a caller never has to ask for them by name.
  */
 import { query } from '@/lib/db/client'
-import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '@/lib/retrieval/address_resolver'
+import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '@/lib/brahmagyan/grahaIdentity'
 import { CANONICAL_DOMAINS } from '@/lib/domain_vocabulary'
 import { isVerifiedPassStatus, type VerificationPassStatus } from '@/lib/retrieval/envelope'
 import { KP_FRAME_AYANAMSHA, KP_FRAME_LABEL } from '@/lib/retrieval/kp_frame'

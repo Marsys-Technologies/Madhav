@@ -1,19 +1,13 @@
 import type { Chart } from '@/lib/db/types'
-import type { BrahmaLayerId } from '@/lib/brahma/lexicon'
-import type { ChartReadiness } from '@/lib/charts/readiness'
+import type { ChartReadiness, LayerPip } from '@/lib/build/readiness/types'
+
+export type { LayerPip, LayerPipState } from '@/lib/build/readiness/types'
 
 export interface RosterStats {
   total: number
   inActiveBuild: number
   consumedToday: number
   predictionsOverdue: number
-}
-
-export type LayerPipState = 'dim' | 'building' | 'amber' | 'lit'
-
-export interface LayerPip {
-  layer: BrahmaLayerId
-  state: LayerPipState
 }
 
 export interface ChartBuildState {
@@ -26,7 +20,7 @@ export interface ChartBuildState {
 }
 
 export interface ChartWithMeta extends Chart {
-  /** Shared readiness authority (lib/charts/readiness) — the only source for state labels. */
+  /** Shared readiness authority (lib/build/readiness/model) — the only source for state labels. */
   readiness: ChartReadiness
   pyramidPercent: number
   lastLayerActivity: string | null

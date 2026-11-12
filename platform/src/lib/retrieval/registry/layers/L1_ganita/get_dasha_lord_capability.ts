@@ -37,7 +37,7 @@ import { query } from '@/lib/db/client'
 import { tryResolveHandlerAyanamsha, PRIMARY_AYANAMSHA } from '../../handler_ayanamsha'
 import type { JudgmentFlagEntry } from '../../../envelope'
 import { judgmentFlag } from '../../../envelope'
-import { grahaCodeOf } from '@/lib/retrieval/address_resolver'
+import { grahaCodeOf } from '@/lib/brahmagyan/grahaIdentity'
 
 // ── graha display-name <-> chart_facts/chart_vichara subject-code map ──────────────────
 // Values sourced from the graha SSoT (address_resolver.grahaCodeOf) rather than

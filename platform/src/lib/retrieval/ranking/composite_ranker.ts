@@ -20,7 +20,7 @@ import {
   DIGNITY_SCORE,
   VARGA_WEIGHT_CITATION,
 } from './priors_config'
-import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '@/lib/retrieval/address_resolver'
+import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '@/lib/brahmagyan/grahaIdentity'
 
 // Graha code normalizer: converts any key variant to the 2-char code used in L1ChartContext.graha_map.
 // L1 stores graha_map under 2-char codes (SU, MO, SA, etc.); MSR signals use MOON/SATURN/etc.

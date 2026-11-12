@@ -72,7 +72,7 @@
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import { DEFAULT_AYANAMSHA } from '../../constants'
-import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '@/lib/retrieval/address_resolver'
+import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '@/lib/brahmagyan/grahaIdentity'
 
 // ── CR-69 (SARVA-SIDDHI W-3): leverage-ranked remedy synthesis ──────────────
 // intervention_synthesis calls this tool with `leverage_ranked: true`, but the

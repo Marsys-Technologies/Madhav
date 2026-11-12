@@ -1,6 +1,6 @@
 import type { ForensicChart } from '@/lib/forensic/snapshot'
 import { cn } from '@/lib/utils'
-import { grahaCodeOf } from '@/lib/retrieval/address_resolver'
+import { grahaCodeOf } from '@/lib/brahmagyan/grahaIdentity'
 
 export interface RasiChartSVGProps {
   chart: ForensicChart
