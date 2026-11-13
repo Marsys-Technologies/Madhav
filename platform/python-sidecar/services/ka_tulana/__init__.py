@@ -20,7 +20,7 @@ CERTIFICATION_MAPPING = json.loads(r'''
   "kind": "service",
   "carriage": {
     "nature": "computation",
-    "served_call": "platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts:700",
+    "served_call": "platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts:678",
     "served_surface": null,
     "read_table": null
   },
@@ -361,7 +361,8 @@ CERTIFICATION_MAPPING = json.loads(r'''
     "platform/python-sidecar/services/ka_tulana/writer.py": "6f48be0a04e4c60d8a75c95f8ab23e75487f0b5f2438e47b522cccce6f5df8cb",
     "platform/python-sidecar/pipeline/orchestrator/service_health_persistence.py": "fa30b658fff5aa1018fdadcccccfb486eb0b3879ec56e04085f029186f1d56a3",
     "platform/src/lib/retrieval/registry/layers/L3_kala/__tests__/f131_priority_ranking_glossary.test.ts": "75805a1b3c77cde0cf5ff9ab634d8a1befe9d92159d2e3ad9a537f52af917d62",
-    "platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts": "73b4ea74e3b3e57ea3a6a1992df6cfa6842301087472f797f147d448e73c8635",
+    "platform/src/lib/kala/priority_ranking_store.ts": "152fa429a68152e74f7b579e3ae592a4b06b0455143f6c49a198c453f7c48462",
+    "platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts": "7afde2d469d9baac492bc18f70b18c10361160246569e904e36cb097a2d760de",
     "platform/src/lib/retrieval/registry/layers/L3_kala/view_ahead.ts": "8b86d0fea6b3a802dab0dbbd40313e660fae360841c34b0561b7718aac515938",
     "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.test.ts": "af171fd981ca01a3f4f6322968499da6a3cf419abff67307db3eed2afcbcf2e3",
     "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts": "bdbe0a3956093f0ae432b0de0d59e9068fafa38d8d589724915f424a355ed1a0",
@@ -394,6 +395,7 @@ def validate_certification_mapping(root: Path, mapping=None) -> list[str]:
     required_views = {"now", "ahead", "priority", "elect", "story", "ritual", "explain"}
     view_root = "platform/src/lib/retrieval/registry/layers/L3_kala/"
     required_hashes = {view_root + f"view_{name}.ts" for name in required_views} | {
+        "platform/src/lib/kala/priority_ranking_store.ts",
         view_root + "view_common.ts", view_root + "call_service_wrappers.ts",
         view_root + "view_common.test.ts", view_root + "views_registry.integration.test.ts",
         view_root + "__tests__/f131_priority_ranking_glossary.test.ts",

@@ -422,7 +422,7 @@ def test_immutable_849_contract_runs_a_scoped_nonweighted_compatibility_detector
     assert "compatibility" in result["scope"]
 
 
-def test_Mapping_seven_views_hashes_revisions_and_deleted_evidence_refuse():
+def test_Mapping_seven_views_hashes_revisions_and_deleted_evidence_refuse(monkeypatch):
     service = importlib.import_module("services.ka_tulana")
     mapping = getattr(service, "CERTIFICATION_MAPPING", None)
     assert mapping, "K7-4 certification mapping missing"
@@ -445,3 +445,20 @@ def test_Mapping_seven_views_hashes_revisions_and_deleted_evidence_refuse():
         bad = copy.deepcopy(mapping)
         mutate(bad)
         assert validate(root, bad), "invalid certification mapping must refuse the step"
+
+
+    owner = "platform/src/lib/kala/priority_ranking_store.ts"
+    missing_owner = copy.deepcopy(mapping)
+    missing_owner["hashes"].pop(owner)
+    assert validate(root, missing_owner), "moved priority owner must remain pinned"
+
+    owner_path = root / owner
+    original_read_bytes = Path.read_bytes
+
+    def changed_owner_bytes(path):
+        content = original_read_bytes(path)
+        return content + b"\n// synthetic changed priority owner\n" if path == owner_path else content
+
+    with monkeypatch.context() as patch:
+        patch.setattr(Path, "read_bytes", changed_owner_bytes)
+        assert validate(root, mapping), "changed priority owner evidence must refuse"
