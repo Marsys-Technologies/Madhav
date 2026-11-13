@@ -1,7 +1,7 @@
 """Orchestrator writer for the L1 Gaṇita `ga_fact_identity` asset (light): the Fact Identity Index.
 
 `chart_fact_identity` (migration 552) is a pure derived cache: every column is a function of ONE
-`chart_facts` row, parsed by the single deterministic parser `brahmagyan/fact_identity_parser.py`.
+`chart_facts` row, parsed by the single deterministic parser `ga_writers/fact_identity_parser.py`.
 Its `fact_id` is a FOREIGN KEY ... ON DELETE CASCADE to `chart_facts`, so any ga_* delete-then-insert
 of `chart_facts` rows silently empties the index for the replaced facts. Until migration 1333 nothing
 rebuilt it (it was filled only by the hand-run script G-IDX), which is exactly how the canonical
@@ -18,7 +18,7 @@ runs on `ctx.db_conn` and NEVER commits / rolls back / closes it, does not write
 `build_index_for_chart`. Deterministic-first: no LLM, no clock-dependent value in the row content
 (`computed_at` is the DB `now()`).
 
-The corrected G-IDX check (`brahmagyan/fact_identity_check.check_identity_index`) runs INSIDE `run()`
+The corrected G-IDX check (`ga_writers/fact_identity_check.check_identity_index`) runs INSIDE `run()`
 and is FATAL here, the equivalent of the script's `--check`: if any clause FAILS the writer raises, the
 orchestrator rolls the sub-step's savepoint back, and the prior index (and thus the chart's prior
 state) is left untouched. NOT_EVALUATED clauses (only `rows_equal_parsed` in a dry-run, where nothing is
@@ -46,14 +46,14 @@ class GaFactIdentityWriter(WriterBase):
     asset_id = 'ga_fact_identity'
     source_paths = [
         'platform/python-sidecar/pipeline/orchestrator/writers/ga_fact_identity.py',
-        'platform/python-sidecar/brahmagyan/fact_identity_index.py',
-        'platform/python-sidecar/brahmagyan/fact_identity_check.py',
-        'platform/python-sidecar/brahmagyan/fact_identity_parser.py',
+        'platform/python-sidecar/ga_writers/fact_identity_index.py',
+        'platform/python-sidecar/ga_writers/fact_identity_check.py',
+        'platform/python-sidecar/ga_writers/fact_identity_parser.py',
     ]
 
     def run(self, ctx: ContextSpec) -> WriterResult:
-        from brahmagyan.fact_identity_check import check_identity_index
-        from brahmagyan.fact_identity_index import build_index_for_chart
+        from ga_writers.fact_identity_check import check_identity_index
+        from ga_writers.fact_identity_index import build_index_for_chart
 
         t0 = time.time()
         chart_id = str(ctx.config['chart_id'])

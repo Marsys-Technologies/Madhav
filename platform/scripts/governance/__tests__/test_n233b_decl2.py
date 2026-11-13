@@ -238,7 +238,7 @@ def test_ga_fact_identity_declares_single_derivation_and_the_cells_read_the_ceil
 
 
 def test_ga_fact_identity_anchors_every_row_is_one_classify_fact_result_over_one_chart_facts_row():
-    rel = "platform/python-sidecar/brahmagyan/fact_identity_index.py"
+    rel = "platform/python-sidecar/ga_writers/fact_identity_index.py"
     src = (ac.ROOT / rel).read_text(encoding="utf-8")
     lines = src.splitlines()
     assert lines[89].strip() == "kind, payload = classify_fact(fact_category, fact_subject, fact_key)" and DECLS["ga_fact_identity"]["carriage"]["evidence"].endswith("fact_identity_index.py:90")
