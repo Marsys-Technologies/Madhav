@@ -69,7 +69,7 @@ def test_operator_project_and_region_preserve_overlap(script, variable, legacy, 
         assert legacy not in translated
 
 
-def test_pipeline_deployment_commits_canonical_project_and_removes_legacy():
+def test_pipeline_deployment_commits_canonical_project_without_legacy_emission_or_removal():
     workflow = yaml.safe_load((ROOT / ".github/workflows/deploy.yml").read_text())
     steps = workflow["jobs"]["deploy-pipeline-job"]["steps"]
     step = next(row for row in steps if row.get("name") == "Re-point Cloud Run Job at the new image")
@@ -78,10 +78,10 @@ def test_pipeline_deployment_commits_canonical_project_and_removes_legacy():
     legacy = re.findall(r'(?<![A-Z_])GCP_PROJECT=([^,\s\"\n]+)', run)
     assert canonical == ["madhav-astrology"]
     assert legacy == []
-    assert "--remove-env-vars=GCP_PROJECT" in run
+    assert re.search(r"(?<![A-Z_])GCP_PROJECT(?![A-Z_])", run) is None
 
 
-def test_web_deployment_commits_canonical_project_and_removes_legacy():
+def test_web_deployment_commits_canonical_project_without_legacy_emission_or_removal():
     workflow = yaml.safe_load((ROOT / ".github/workflows/deploy.yml").read_text())
     steps = workflow["jobs"]["deploy-web"]["steps"]
     step = next(row for row in steps if "GOOGLE_CLOUD_PROJECT=madhav-astrology" in row.get("with", {}).get("env_vars", ""))
@@ -91,7 +91,7 @@ def test_web_deployment_commits_canonical_project_and_removes_legacy():
     assert canonical == ["madhav-astrology"]
     assert legacy == []
     flags = step["with"]["flags"]
-    assert re.search(r'--remove-env-vars=["\']?\^\|\^GCP_PROJECT\|', flags)
+    assert re.search(r"(?<![A-Z_])GCP_PROJECT(?![A-Z_])", flags) is None
 
 
 def test_nullish_and_shell_translation_keep_distinct_empty_rules():
