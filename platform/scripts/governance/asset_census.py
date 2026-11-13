@@ -18002,7 +18002,12 @@ def _bound_reader_selects(mod: dict, source: str, table: str, bindings):
         # Resolve the actual source import, rather than assuming an import from configuration.
         local = None
         for spec in re.findall(r"\bfrom\s*['\"]([^'\"\n]+)['\"]", mod['cmask']):
-            resolved = ('platform/src/' + spec[2:]) if spec.startswith('@/') else os.path.normpath(str(Path(source_path).parent / spec)) if spec.startswith('.') else ''
+            if spec.startswith('@/'):
+                resolved = 'platform/src/' + spec[2:]
+            elif spec.startswith('.'):
+                resolved = os.path.normpath(str(Path(source_path).parent / spec))
+            else:
+                resolved = ''
             if resolved and (resolved if resolved.endswith('.ts') else resolved + '.ts') == target:
                 candidate = _reader_import(mod, function, spec)
                 if candidate:
