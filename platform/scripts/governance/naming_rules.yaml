@@ -36,6 +36,11 @@ rules:
     severity: "error"
     canonical: "GOOGLE_CLOUD_"
     allowed_exceptions:
+      # Existing platform compatibility aliases at the canonical cloud boundary.
+      # Remove these aliases and their positive fixtures only after R348–354
+      # retires them with operating-cycle and rollback evidence.
+      - GCP_PROJECT
+      - GCP_REGION
       - GOOGLE_APPLICATION_CREDENTIALS
       - GOOGLE_CLIENT_ID
       - GOOGLE_CLIENT_SECRET

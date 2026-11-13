@@ -111,7 +111,7 @@ function reset() {
 
 beforeEach(() => {
   reset()
-  vi.stubEnv('DATABASE_URL', 'postgres://fixture_reader:fixture@127.0.0.1/fixture')
+  vi.stubEnv('DATABASE_URL', "fixture-connection-1-fixture_reader:")
   vi.spyOn(Date, 'now').mockReturnValue(1000)
 })
 
@@ -222,7 +222,7 @@ describe('remedy reference ownership and lifecycle', () => {
       remedy_id: 'fixture-a'
     })
     await vi.waitFor(() => expect(state.instances).toHaveLength(1))
-    vi.stubEnv('DATABASE_URL', 'postgres://fixture_second_role:fixture@127.0.0.1/fixture-second')
+    vi.stubEnv('DATABASE_URL', "fixture-connection-2-fixture_second_role:")
     const second = current.queryMantras.retrieve(plan)
     await vi.waitFor(() => expect(state.instances).toHaveLength(2))
     expect(state.instances[0]).not.toBe(state.instances[1])
