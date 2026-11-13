@@ -1,6 +1,6 @@
 ---
 artifact: SESSION_OPEN_TEMPLATE_v1_0.md
-version: 1.3
+version: 1.3.1
 status: CURRENT
 produced_during: STEP_7_GOVERNANCE_INTEGRITY_IMPLEMENTATION (2026-04-24)
 implements: GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md §F
@@ -22,6 +22,7 @@ consumers:
     the `step_number_or_macro_phase` field to name a CURRENT_STATE row instead of a STEP_LEDGER
     row post-rebuild
 changelog:
+  - v1.3.1 (2026-11-13, MADHAV_CONSOLIDATION): Make the retired Gemini mirror field optional in current handshakes. Preserve historical examples and legacy record compatibility.
   - >-
     v1.3 (2026-11-11, MADHAV_CONSOLIDATION): Record independent current observations for the additional Desktop qualification path.
     Revision spec: briefs/madhav_consolidation/GOVERNANCE_INTEGRITY_PROTOCOL_REVISION_SPEC_v1_1.md.
@@ -199,8 +200,8 @@ session_open:
   # Historical mirror-pair freshness (retired ND.1 compatibility field)
   # ------------------------------------------------------------------
   mirror_pair_freshness_check:
-    # The rows below preserve the Step 7 shape. New handshakes use [] for this
-    # required compatibility field. Freshness and enforcer obligations were retired
+    # The rows below preserve the Step 7 shape. Current handshakes may omit this
+    # optional compatibility field or use []. Freshness and enforcer obligations were retired
     # on 2026-05-27 per root CLAUDE.md §K and GIP §K.
     - pair_id: MP.1
       claude_side: CLAUDE.md
@@ -251,9 +252,10 @@ The handshake is validated by `schema_validator.py` **before** any other action 
 
 1. `mandatory_reading_confirmation` is missing any item from the current mandatory-reading list (CLAUDE.md items + current step brief + any `open` ND.N matrix input).
 2. Any `canonical_artifact_fingerprint_check` row has `match: false` — indicates silent file mutation since last CANONICAL_ARTIFACTS update.
-3. The legacy `mirror_pair_freshness_check` field is missing. Use `[]` for new records. Its former freshness enforcement was retired in the ND.1 close-out.
-4. `declared_scope.must_not_touch` is empty — every session must declare both may-touch and must-not-touch positively.
-5. Any `open` ND.N whose matrix names this step has `acknowledged: false`.
+3. `declared_scope.must_not_touch` is empty — every session must declare both may-touch and must-not-touch positively.
+4. Any `open` ND.N whose matrix names this step has `acknowledged: false`.
+
+The legacy `mirror_pair_freshness_check` field is optional. Historical values remain accepted after the ND.1 mirror retirement.
 
 A session whose handshake fails does **not proceed**. It halts, reports the failing field(s) to the native, and waits for either a corrected handshake or explicit native override.
 

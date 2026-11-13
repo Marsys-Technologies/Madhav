@@ -58,7 +58,9 @@ function makeClient(applied: AppliedRow[] = [], failOn?: string) {
       const q = typeof text === 'string' ? text.trim() : text
       queries.push({ text: q, values })
 
-      if (q === "SELECT current_setting('role') AS role") return { rows: [{ role: 'none' }] }
+      if (q === "SELECT current_setting('role') AS role, current_setting('search_path') AS search_path") {
+        return { rows: [{ role: 'none', search_path: '"$user", public' }] }
+      }
 
       // Simulate tracker creation + the additive sql_identity column
       if (q.includes('CREATE TABLE IF NOT EXISTS _migrations_applied')) {

@@ -60,6 +60,11 @@
     "kala-db-tests-5-0": {
       "cwd": "platform/python-sidecar",
       "engine": "pytest",
+      "path_triggers": [
+        "platform/python-sidecar/pipeline/orchestrator/writers/ka_sangam.py",
+        "platform/python-sidecar/services/ka_sangam/**",
+        "platform/python-sidecar/pipeline/orchestrator/substep_progress.py"
+      ],
       "include": [
         "tests/l3/ka_bhavishya_lekha/test_certification*.py",
         "tests/l3/ka_kshetra/test_g1*.py",
@@ -84,6 +89,11 @@
     "kala-db-tests-8-0": {
       "cwd": "platform/python-sidecar",
       "engine": "pytest",
+      "path_triggers": [
+        "platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts",
+        "platform/src/lib/kala/priority_ranking_store.ts",
+        "platform/python-sidecar/services/ka_tulana/**"
+      ],
       "include": [
         "tests/l3/test_ka_tulana*.py"
       ]

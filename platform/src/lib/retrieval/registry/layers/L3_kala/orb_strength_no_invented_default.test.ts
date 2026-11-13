@@ -25,7 +25,9 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-const RAW = readFileSync(join(__dirname, 'call_service_wrappers.ts'), 'utf8')
+const WRAPPER = readFileSync(join(__dirname, 'call_service_wrappers.ts'), 'utf8')
+// The public capability delegates to this typed store; the executable SQL lives here.
+const RAW = readFileSync(join(__dirname, '../../../../kala/priority_ranking_store.ts'), 'utf8')
 
 /**
  * Strip SQL `--` comments before asserting. The fix's own comment quotes the removed expression
@@ -40,6 +42,11 @@ const SRC = RAW.split('\n')
   .join('\n')
 
 describe('priority_score does not invent an orb_strength (§N.7 item 6)', () => {
+  it('checks the SQL owner used by the priority-ranking capability', () => {
+    expect(WRAPPER).toMatch(/import\s*\{\s*readPriorityRankingRows\s*\}\s*from\s*['"]@\/lib\/kala\/priority_ranking_store['"]/)
+    expect(WRAPPER).toMatch(/const\s+allRows\s*=\s*await\s+readPriorityRankingRows\s*\(/)
+  })
+
   it('no longer substitutes the below-range 0.5 default', () => {
     expect(SRC).not.toMatch(/COALESCE\(\s*a\.orb_strength\s*,\s*0\.5\s*\)/)
   })

@@ -1,6 +1,6 @@
 ---
 artifact: GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md
-version: 1.1
+version: 1.1.1
 status: CURRENT  # flipped DRAFT_PENDING_REDTEAM → CURRENT 2026-04-24 at Step 8 close (verdict PASS_WITH_FIXES per GOVERNANCE_INTEGRITY_REDTEAM_v1_0.md §1); F.1/F.2/F.3 findings are substantive coverage extensions booked to Step 12 per brief §4
 produced_during: STEP_6_GOVERNANCE_INTEGRITY_DESIGN (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -35,6 +35,7 @@ related_artifacts:
   - FILE_REGISTRY_v1_2.md — existing artifact inventory the §D redesign extends
   - LIVING_PROJECT_MAINTENANCE_GUIDE_v1_0.md, MAINTENANCE_SCHEDULE_v1_0.md — long-term hygiene cadences §C Axis 5 co-operates with
 changelog:
+  - v1.1.1 (2026-11-13, MADHAV_CONSOLIDATION): Align current session-open validation with the retired Gemini mirror discipline. The legacy field is optional and historical schemas remain available.
   - >-
     v1.1 (2026-11-11, MADHAV_CONSOLIDATION): Add supported Desktop session-open qualification without changing the existing authority and release gates.
     Revision spec: briefs/madhav_consolidation/GOVERNANCE_INTEGRITY_PROTOCOL_REVISION_SPEC_v1_1.md.
@@ -352,7 +353,7 @@ File path: `00_ARCHITECTURE/SESSION_OPEN_TEMPLATE.md`. Produced by Step 7 as tem
 
 ### F.2 — Mandatory fields
 
-The Gemini mirror rows in this Step 7 schema are historical compatibility examples. Current handshakes retain `mirror_pair_freshness_check: []` as required by the validator and the current session-open template. Root CLAUDE.md §K and §K record the retirement.
+The Gemini mirror rows in this Step 7 schema are historical compatibility examples. Current handshakes may omit `mirror_pair_freshness_check` or retain it as optional legacy data. The validator and current session-open template accept both forms. Root CLAUDE.md §K and §K record the retirement.
 
 Every session, before any substantive tool call, emits a session-open handshake. Fields:
 
@@ -404,7 +405,7 @@ The handshake is validated by `schema_validator.py` (§I) before any other actio
 
 - If `mandatory_reading_confirmation` is missing an item from the current mandatory-reading list, the handshake fails.
 - If any `canonical_artifact_fingerprint_check` row has `match: false`, the handshake fails (indicates silent file mutation since last CANONICAL_ARTIFACTS update).
-- The `mirror_pair_freshness_check` key remains required for compatibility. Current records use `[]`. Historical freshness values carry no enforcer obligation after the retirement recorded in root CLAUDE.md §K and §K.
+- The `mirror_pair_freshness_check` key is optional legacy data. Omitted fields, empty lists and historical freshness values carry no enforcer obligation after the retirement recorded in root CLAUDE.md §K and §K.
 - If `declared_scope.must_not_touch` is empty, the handshake fails (every session must declare both may-touch and must-not-touch positively).
 - Any `open` directive's obligation not acknowledged fails the handshake.
 

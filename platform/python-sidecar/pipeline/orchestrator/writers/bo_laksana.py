@@ -59,7 +59,8 @@ from bodha_writers.formulas import (
     DIGNITY_SCORE as _FML_DIGNITY_SCORE,
     HOUSE_WEIGHT as _FML_HOUSE_WEIGHT,
 )
-from brahmagyan.verification_tiers import DOCUMENTED_APPROXIMATION
+from brahmagyan.verification_tiers import DOCUMENTED_APPROXIMATION, SINGLE
+from brahmagyan.verification_vocab import canonical
 
 logger = logging.getLogger(__name__)
 
@@ -2780,7 +2781,7 @@ def _build_signal_row(
         "cross_system_consensus_count":             None,
         "channel_render_priority_jsonb":            None,
         # ── Provenance ────────────────────────────────────────────────────────
-        "verification_pass_status":                 vpass,
+        "verification_pass_status":                 SINGLE if canonical(vpass) == SINGLE else vpass,
         "verification_method":                      "L1_fact_projection",
         "citation_ref":                             l1_citation_ref,
         "citation_human":                           l1_citation_human,

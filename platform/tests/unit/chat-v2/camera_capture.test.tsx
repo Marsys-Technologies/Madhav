@@ -11,10 +11,13 @@ const harness = vi.hoisted(() => ({
 
 vi.mock('@/components/consume/PartialDataBanner', async () => {
   const { useThreadRuntime } = await import('@assistant-ui/react')
-  return { PartialDataBanner: function ObserveConsultRuntime() {
-    harness.thread = useThreadRuntime()
-    return null
-  } }
+  return {
+    PartialDataBanner: function ObserveConsultRuntime() {
+      harness.thread = useThreadRuntime()
+      return null
+    },
+    useChartDataReadiness: () => ({ status: 'loading' }),
+  }
 })
 vi.mock('@/hooks/useChatPreferences', () => ({
   useChatPreferences: () => ({ stack: 'fixture', style: 'acharya', lelEnabled: false,

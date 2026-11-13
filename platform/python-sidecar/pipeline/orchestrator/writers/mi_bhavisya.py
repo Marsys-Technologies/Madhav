@@ -56,7 +56,7 @@ from datetime import date, datetime
 import psycopg.rows
 
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
-from pipeline.orchestrator.writers.mi_adhilepa import _signal_family_key
+from services.mimamsa.signal_family import signal_family_key as _signal_family_key
 
 logger = logging.getLogger(__name__)
 

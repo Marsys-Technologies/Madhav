@@ -90,6 +90,7 @@ export interface ConsumeChatProps {
    * When omitted, no gate is applied (backwards-compatible default).
    */
   capabilityGateState?: CapabilityGateState
+  buildPreparationHref?: string
 }
 import { EmptyState } from './EmptyState'
 import { MarkdownContent } from '../chat/MarkdownContent'
@@ -121,7 +122,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { SettingsDropdown } from './SettingsDropdown'
 import { useMultiProviderParity } from '@/lib/chat-v2/useMultiProviderParity'
-import { PartialDataBanner } from './PartialDataBanner'
+import { PartialDataBanner, useChartDataReadiness } from './PartialDataBanner'
 import { QuestionSuggester } from './QuestionSuggester'
 
 // R11.B — Look-and-Feel umbrella flag (NEXT_PUBLIC, build-time)
@@ -1348,16 +1349,18 @@ function V2ScrollDiscipline() {
 
 // ─── Thread ───────────────────────────────────────────────────────────────────
 
-function V2Thread({ chartId, chartName, slashEnabled = false, tokensEnabled = false, attachmentError }: {
+function V2Thread({ chartId, chartName, buildPreparationHref, slashEnabled = false, tokensEnabled = false, attachmentError }: {
   chartId: string
   chartName: string
   slashEnabled?: boolean
   tokensEnabled?: boolean
   attachmentError: boolean
+  buildPreparationHref?: string
 }) {
   const [truncatedMsgId, setTruncatedMsgId] = useState<string | null>(null)
   // [PHASE-D-07] Shared readiness state — fetched once, used by banner + suggester.
-  const [readyAssets, setReadyAssets] = useState<string[]>([])
+  const readiness = useChartDataReadiness(chartId)
+  const readyAssets = readiness.status === 'available' ? readiness.data.ready : []
 
   function handleComposerFill(q: string) {
     const textarea = document.querySelector('textarea[data-testid="v2-composer-input"]') as HTMLTextAreaElement | null
@@ -1418,7 +1421,7 @@ function V2Thread({ chartId, chartName, slashEnabled = false, tokensEnabled = fa
       </ThreadPrimitive.Viewport>
 
       {/* [PHASE-D-04] Partial data banner — shown when chart build is incomplete */}
-      <PartialDataBanner chartId={chartId} onReadyAssets={setReadyAssets} />
+      <PartialDataBanner chartId={chartId} readiness={readiness} buildPreparationHref={buildPreparationHref} />
 
       <V2BottomBar />
 
@@ -1511,7 +1514,7 @@ function L1BuildingBanner({ cockpitHref, onDismiss }: { cockpitHref: string; onD
 /**
  * β2: Thread with conversation list sidebar + write-through restore on mount.
  */
-export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEnabled, audienceTier = 'client', reports = [], slashEnabled = false, exportEnabled = false, tokensEnabled = false, initialMessages: initialMessagesProp, capabilityGateState }: ConsumeChatProps) {
+export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEnabled, audienceTier = 'client', reports = [], slashEnabled = false, exportEnabled = false, tokensEnabled = false, initialMessages: initialMessagesProp, capabilityGateState, buildPreparationHref }: ConsumeChatProps) {
   // WS-1-S3-B: L1-building banner dismiss state
   const [l1BannerDismissed, setL1BannerDismissed] = useState(false)
 
@@ -1965,6 +1968,7 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
             chartName={chartName}
             conversationId={activeConversationId}
             initialMessages={initialMessages}
+            buildPreparationHref={buildPreparationHref}
             onQueryId={setLatestQueryId}
             onConversationId={setActiveConversationId}
             onTitle={handleTitleGenerated}
@@ -1990,6 +1994,7 @@ interface V2ChatRuntimeProps {
   chartName: string
   conversationId: string | null
   initialMessages: UIMessage[] | undefined
+  buildPreparationHref?: string
   onConversationId?: (id: string) => void
   onTitle?: () => void
   slashEnabled?: boolean
@@ -2008,7 +2013,7 @@ interface PendingStreamEntry {
   receivedChars: number
 }
 
-function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, onQueryId, onConversationId, onTitle, slashEnabled = false, tokensEnabled = false }: V2ChatRuntimeProps & { onQueryId?: (id: string) => void }) {
+function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, buildPreparationHref, onQueryId, onConversationId, onTitle, slashEnabled = false, tokensEnabled = false }: V2ChatRuntimeProps & { onQueryId?: (id: string) => void }) {
   // B-S7: Citation side panel retired. Citations are inline-only via NumberedCitation.
   const [attachmentError, setAttachmentError] = useState(false)
 
@@ -2079,7 +2084,14 @@ function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, on
           <V2RuntimeTracker />
           <div className="flex h-full overflow-hidden">
             {/* B-S7: side panel retired — citations are inline-only via NumberedCitation */}
-            <V2Thread chartId={chartId} chartName={chartName} slashEnabled={slashEnabled ?? false} tokensEnabled={tokensEnabled ?? false} attachmentError={attachmentError} />
+            <V2Thread
+              chartId={chartId}
+              chartName={chartName}
+              buildPreparationHref={buildPreparationHref}
+              slashEnabled={slashEnabled ?? false}
+              tokensEnabled={tokensEnabled ?? false}
+              attachmentError={attachmentError}
+            />
           </div>
         </AssistantRuntimeProvider>
     </ConversationIdCtx.Provider>

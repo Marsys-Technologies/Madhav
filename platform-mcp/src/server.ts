@@ -158,6 +158,7 @@ import { registerPrashnaAskTool } from './tools/register_prashna_ask.js'
 import { registerPrashnaStatusTool } from './tools/register_prashna_status.js'
 // EL-13 — mcp_server_info: catalog_version/tools_changed_at + tools/list_changed staleness kill
 import { registerServerInfoTool, MCP_SERVER_NAME, MCP_SERVER_VERSION } from './tools/register_server_info.js'
+import { createRequestServedCatalogReader } from './resources/mcp_catalog_version.js'
 import { createHealthHandler } from './lib/deploy_identity.js'
 
 const app = express()
@@ -412,6 +413,8 @@ app.post('/mcp', async (req: Request, res: Response) => {
     version: MCP_SERVER_VERSION,
   })
 
+  const servedCatalog = createRequestServedCatalogReader(server)
+
   // ŚODHANA T4 (MC-024): applied FIRST, before every other gate/registration, so an
   // unknown/misspelled param on ANY tool call (including prashna_ask/prashna_status/
   // mcp_server_info below, which register before the other two gates) is rejected loudly
@@ -460,7 +463,7 @@ app.post('/mcp', async (req: Request, res: Response) => {
   // prashna_ask/prashna_status: catalog-staleness detection must be reachable under every MCP
   // surface profile (full/compact/consult), not just whichever ones the generated
   // MCP_SURFACE_PROFILES manifest happens to list it under.
-  registerServerInfoTool(server)
+  registerServerInfoTool(server, servedCatalog.read)
 
   const profileGate = applyProfileGate(server as unknown as ToolRegisteringServer, mcpProfile)
 
@@ -568,6 +571,7 @@ app.post('/mcp', async (req: Request, res: Response) => {
   // withholding interpretive surfaces until synthesis_gate reads OPEN. Chart-scoped like the other
   // per-chart tools above; principal threaded through for remoteAuthorize's entitlement check.
   registerDossierTool(server, principal)
+  servedCatalog.markRegistrationComplete()
 
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: undefined,

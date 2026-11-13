@@ -232,6 +232,7 @@ describe('retired default build-reaper module', () => {
         const result = spawnSync('/bin/bash', [join(legacyDirectory, 'apply.sh'), ...args], {
           encoding: 'utf8',
           env: {
+            NODE_ENV: 'test',
             PATH: binDirectory,
             TRIPWIRE: marker,
             TF_VAR_gcp_project: 'unqualified-alternate-project',
