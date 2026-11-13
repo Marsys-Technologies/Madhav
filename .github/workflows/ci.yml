@@ -3582,7 +3582,10 @@ jobs:
     # checkout, Python 3.11 with the pip cache, pyyaml + pytest, then the original step's requirements / corpus / env / provenance check.
     # Partition: deterministic and size-balanced by test FILE (never inside one, so module fixtures still build once); every shard
     # verifies the whole 4-way partition against its real full collection before running anything (sidecar_shard.py).
-    if: ${{ !cancelled() && (github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) }}
+    if: >-
+      ${{ !cancelled() && (github.event_name == 'merge_group'
+      || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+      || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) }}
     name: Governance Gates py-sidecar shard ${{ matrix.shard }}/4
     runs-on: ubuntu-24.04
     # One shard measured ~1/4 of the 21.5-24.9 min serial run; 20 min leaves >2x headroom and still surfaces a runner stall.
