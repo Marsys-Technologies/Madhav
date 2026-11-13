@@ -312,7 +312,7 @@ class TestAblateWindowIntensityUnwiredMechanism:
     report the honest, distinct "mechanism_not_wired" label instead, and the
     window's intensity must be returned UNCHANGED (zero contribution)."""
 
-    def test_admitted_toggle_keys_are_unwired_and_wired_set_is_exactly_w30(self):
+    def test_admitted_toggle_keys_and_all_mechanisms_are_unwired(self):
         """Regression guard: the 10 admitted toggle_keys must never SILENTLY become
         wired into engine.py's lambda_v3. Current ratified state (C23 refresh,
         2026-10-02): all 10 ADMITTED_MECHANISM_IDS are present and False; the
@@ -330,7 +330,7 @@ class TestAblateWindowIntensityUnwiredMechanism:
                 "without a deliberate update of this guard"
             )
         wired = {k for k, v in MECHANISM_ENGINE_WIRED.items() if v is True}
-        assert wired == {"w30_nodal_drishti"}, (
+        assert wired == set(), (
             f"the wired subset drifted from the ratified {{'w30_nodal_drishti'}} "
             f"(#2731; N-14 retires it behind the nodal_drishti flag): {wired!r}"
         )
