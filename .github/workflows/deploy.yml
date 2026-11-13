@@ -1600,7 +1600,7 @@ jobs:
             --network-tags=amjis-web-cli-egress
             --vpc-egress=private-ranges-only
             --remove-secrets=WATCHDOG_SECRET
-            --remove-env-vars="^|^GCP_PROJECT|WATCHDOG_LEGACY_FALLBACK_ENABLED|# ── 4.observability (Wave 4) ──────────────────────────────────────────|# Vertex AI region pin for batched embeddings
+            --remove-env-vars="^|^WATCHDOG_LEGACY_FALLBACK_ENABLED|# ── 4.observability (Wave 4) ──────────────────────────────────────────|# Vertex AI region pin for batched embeddings
             (lib/embeddings/embedText.ts).|# Region must match the prod Cloud Run region (asia-south1) to keep|# Vertex calls in-region for both latency + egress cost.|# NOTE: NEXT_PUBLIC_FIREBASE_*
             intentionally absent from runtime env_vars.|# These are NEXT_PUBLIC_ flags baked into the bundle at build time (see|# build-args above). Cloud Run env_vars are never read by Next.js at|#
             runtime — setting them here has zero effect and misleadingly implies|# that rotating them without a full rebuild would take effect.|# Campaign definitions|labels|and non-server receipts
@@ -2543,7 +2543,7 @@ jobs:
             --task-timeout=86400 \
             --memory=8Gi \
             --cpu=2 \
-            --update-env-vars=GOOGLE_CLOUD_PROJECT=madhav-astrology,PUBSUB_TOPIC=cockpit-events,KA_KSHETRA_HASH_SPILL_DIR=/tmp --remove-env-vars=GCP_PROJECT \
+            --update-env-vars=GOOGLE_CLOUD_PROJECT=madhav-astrology,PUBSUB_TOPIC=cockpit-events,KA_KSHETRA_HASH_SPILL_DIR=/tmp \
             --quiet
           GOOGLE_CLOUD_REGION="${{ env.DEPLOY_REGION }}" python3 .github/actions/build-verified-cgm-image/probe_registration.py post-repoint
           # F-185: KA_KSHETRA_HASH_SPILL_DIR was unconfigured, so the writer
