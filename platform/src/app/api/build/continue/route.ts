@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
   const user = await getServerUser()
   if (!user) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 })
 
-  const { chart_id } = await req.json().catch(() => ({}))
+  const { chart_id } = (await req.json().catch(() => ({}))) ?? {}
   if (!chart_id) return NextResponse.json({ error: 'chart_id required' }, { status: 400 })
 
   // V3-E-011: this route checked only "is anyone logged in" and then

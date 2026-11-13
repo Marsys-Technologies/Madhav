@@ -214,5 +214,9 @@ export async function POST(
         .generatePasswordResetLink(req.email, { url: new URL('/setup-account', request.url).href })
         .catch(() => null)
 
-  return NextResponse.json({ ok: true, user_id: uid, reset_link: resetLink })
+  const setupLinkStatus = hasPasswordProvider
+    ? 'not_required'
+    : resetLink ? 'available' : 'unavailable'
+
+  return NextResponse.json({ ok: true, user_id: uid, reset_link: resetLink, setup_link_status: setupLinkStatus })
 }

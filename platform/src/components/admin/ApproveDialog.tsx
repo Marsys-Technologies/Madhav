@@ -33,6 +33,7 @@ function ApproveForm({
   const [submitting, setSubmitting] = useState(false);
   const [approved, setApproved] = useState(false);
   const [resetLink, setResetLink] = useState<string | null>(null);
+  const [setupLinkStatus, setSetupLinkStatus] = useState<"not_required" | "unavailable" | "unknown">("unknown");
   const roleId = useId();
 
   async function handleSubmit(e: React.FormEvent) {
@@ -55,8 +56,11 @@ function ApproveForm({
         setSubmitting(false);
         return;
       }
-      toast.success("Request approved. User account created.");
-      setResetLink(body?.reset_link ?? null);
+      toast.success("Request approved.");
+      setResetLink(typeof body?.reset_link === "string" && body.reset_link.trim() ? body.reset_link : null);
+      setSetupLinkStatus(body?.setup_link_status === "not_required"
+        ? "not_required"
+        : body?.setup_link_status === "unavailable" ? "unavailable" : "unknown");
       setApproved(true);
       setSubmitting(false);
       onApproved();
@@ -85,12 +89,24 @@ function ApproveForm({
               className={adminInput + " break-all font-mono text-xs"}
             />
           </>
-        ) : (
+        ) : setupLinkStatus === "not_required" ? (
+          <p className="text-sm text-brand-gold-cream">
+            Request approved. This account already has a password. The user can
+            sign in with their existing password and choose a username if needed.
+            No account-setup link is required.
+          </p>
+        ) : setupLinkStatus === "unavailable" ? (
           <p role="alert" className="text-sm text-brand-gold-cream">
-            Account created, but the setup link could not be generated. Ask the
+            Request approved, but the setup link could not be generated. Ask the
             approved user to use Account Recovery with their email before
             signing in and choosing a username. No email has been sent
             automatically.
+          </p>
+        ) : (
+          <p role="status" className="text-sm text-brand-gold-cream">
+            Request approved. No account-setup link was returned. If the user
+            already has a password, they can sign in. Otherwise, they can use
+            Account Recovery with their email. No email has been sent automatically.
           </p>
         )}
         <div className="flex justify-end">

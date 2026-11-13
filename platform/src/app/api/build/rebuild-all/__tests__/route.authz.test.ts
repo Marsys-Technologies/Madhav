@@ -127,3 +127,41 @@ describe('POST /api/build/rebuild-all — V3-E-010 cross-tenant build_events wri
     expect(buildEventWrites().length).toBeGreaterThan(0)
   })
 })
+
+
+describe('legacy malformed body compatibility', () => {
+  it.each([
+    ['null', 'null'], ['malformed JSON', '{'], ['array', '[]'], ['string', '"synthetic"'],
+    ['number', '7'], ['boolean', 'false'], ['empty object', '{}'],
+  ])('returns controlled400 for %s before permission or event queries', async (_name, body) => {
+    mockGetServerUser.mockResolvedValue({ uid: VICTIM_UID })
+    const res = await POST(new NextRequest('http://localhost/api/build/rebuild-all', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body,
+    }))
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ error: 'chart_id required' })
+    expect(mockQuery).not.toHaveBeenCalled()
+  })
+
+  it('keeps authentication before even reading an invalid body', async () => {
+    mockGetServerUser.mockResolvedValue(null)
+    const json = vi.fn(() => { throw new Error('body must not be read') })
+    const res = await POST({ json } as unknown as NextRequest)
+    expect(res.status).toBe(401)
+    expect(await res.json()).toEqual({ error: 'unauthenticated' })
+    expect(json).not.toHaveBeenCalled()
+    expect(mockQuery).not.toHaveBeenCalled()
+  })
+
+  it('preserves the exact rebuild-all event SQL and bound owner chart', async () => {
+    setupMocks({ uid: VICTIM_UID, ownerId: VICTIM_UID })
+    const res = await POST(makeReq({ chart_id: VICTIM_CHART }))
+    expect(res.status).toBe(200)
+    expect(mockQuery.mock.calls.filter(([sql]) => /INSERT INTO build_events/.test(sql))).toEqual([[
+      `INSERT INTO build_events (build_id, chart_id, event_type, payload, created_at)
+     VALUES (gen_random_uuid(), $1, 'rebuild_all_requested', '{}', NOW())
+     RETURNING build_id`, [VICTIM_CHART],
+    ]])
+    expect(await res.json()).toEqual({ ok: true, build_id: 'generated-build-id' })
+  })
+})
