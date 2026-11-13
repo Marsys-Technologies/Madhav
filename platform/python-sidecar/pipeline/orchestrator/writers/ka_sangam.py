@@ -12,7 +12,6 @@ admission or a retirement claim.
 
 from services.gochara_kernel.dasha_read import (
     dasha_query, execute_governed_dasha_query)
-import hashlib
 import json
 from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
 from services.kala_core.stored_verification import has_stored_verification
@@ -23,6 +22,12 @@ from datetime import date
 
 import psycopg
 
+from pipeline.orchestrator.substep_progress import (
+    clear_sangam_substeps,
+    load_sangam_completed_substeps,
+    record_sangam_substep,
+    sum_sangam_rows_written,
+)
 from pipeline.orchestrator.writers import WriterBase, WriterResult, SubStep, register
 from services.ka_sangam.engine import (
     mode_a_search,
@@ -40,6 +45,7 @@ from services.ka_sangam.engine import (
     derive_sade_sati_signs,
     derive_sade_sati_severity,
 )
+from services.ka_sangam.plan_identity import plan_fingerprint
 from brahmagyan.nakshatra_vocabulary import nakshatra_index, nakshatra_number  # SS N-548: ONE normaliser for the Moon's stored nakshatra name
 from services.ka_dasha_kala.service import KaDashaKalaService
 from services.ka_gochara.service import KaGocharaService
@@ -49,6 +55,7 @@ from services.kala_core.writer_grain import (
     GRAIN_STEP, attest_inputs, bound_candidate, convergence_generation, grain_steps, predicate_generation,
     refuse_unbound_rewrite)
 from panchang_engine.swiss_backend import records_swiss_backend
+from services.ka_sangam.window_generation import WindowBindings, generate_windows
 
 # ── D-3 T-6: TRIGGER wiring at the ADMITTED weights ───────────────────────────
 # wave/D-3/ADMIT (receipted ACCEPT) found additive=0.2/suppressive=0.2 for
@@ -160,7 +167,7 @@ _LIFETIME_MAX_PREDICATES = 60   # raised from 24: broader lifetime evidence
 # Bump when substep SEMANTICS change (what a given substep_key computes/writes),
 # so any in-flight resume ledger from an older writer is treated as a different
 # build and replanned-all rather than resumed against stale semantics.
-_KA_SANGAM_RESUME_VERSION = 3   # v3: ledger key adds predicate generation + run id (K9-WRITE-SCOPE F4)
+_KA_SANGAM_RESUME_VERSION = 4   # v4: ordered execution inputs identify the positional steps
 _LIFETIME_MAX_ROWS = 40_000     # raised from 13k to match expanded predicate budget
 
 # D-3 FIX-PSEL (MEMO_D-3_1.md): per-signature-class quota reserved out of each
@@ -262,6 +269,10 @@ def _can_carry_mode_d(pred_dict: dict) -> bool:
     return bool(pred_dict.get('signal_id')) and 'SUBSYSTEM' not in (pred_dict.get('signature_class') or '').upper()
 
 
+def _mode_d_carrier_index(predicates: Sequence[dict]) -> int | None:
+    return next((index for index, predicate in enumerate(predicates) if _can_carry_mode_d(predicate)), None)
+
+
 def _resolved_target_longitude(pred_dict: dict) -> float | None:
     """The predicate's target longitude when it is a real finite number, else None (a named blank)."""
     value = (pred_dict.get('transit_trigger_jsonb') or {}).get('target_longitude_deg')
@@ -300,6 +311,62 @@ def _vacuous_label(admitted: int, unresolved: int, windows: int) -> str:
     return f"{SIGNAL_UNRESOLVED}={unresolved} of {admitted}; vacuous=true reason={reason}"
 
 
+class _SangamWindowBindings(WindowBindings):
+    """Resolve the historical module bindings when each domain operation uses them."""
+
+    @property
+    def mode_a_search(self):
+        return mode_a_search
+
+    @property
+    def mode_b_sweep(self):
+        return mode_b_sweep
+
+    @property
+    def mode_c_subsystem_period(self):
+        return mode_c_subsystem_period
+
+    @property
+    def mode_d_av_bindhu(self):
+        return mode_d_av_bindhu
+
+    @property
+    def _date_to_jd(self):
+        return _date_to_jd
+
+    @property
+    def _mode_d_carrier_index(self):
+        return _mode_d_carrier_index
+
+    @property
+    def _resolved_target_longitude(self):
+        return _resolved_target_longitude
+
+    @property
+    def _target_blank_note(self):
+        return _target_blank_note
+
+    @property
+    def apply_trigger_suppression(self):
+        return apply_trigger_suppression
+
+    @property
+    def _SIGN_NAME_TO_IDX(self):
+        return _SIGN_NAME_TO_IDX
+
+    @property
+    def SIGNAL_UNRESOLVED(self):
+        return SIGNAL_UNRESOLVED
+
+    @property
+    def TARGET_UNRESOLVED(self):
+        return TARGET_UNRESOLVED
+
+    @property
+    def logger(self):
+        return logger
+
+
 @records_swiss_backend
 class _LegacyKaSangamWriter(WriterBase):
     """
@@ -319,6 +386,7 @@ class _LegacyKaSangamWriter(WriterBase):
     _windows_written: int = 0
     _final_step_key: 'str | None' = None
     _pred_dicts: Sequence[dict] = ()      # the admitted predicates of the run (set by plan_substeps); () = none planned, so nothing to be vacuous about
+    _planned_near_date: date | None = None
 
     # ── plan ─────────────────────────────────────────────────────────────────
 
@@ -565,6 +633,7 @@ class _LegacyKaSangamWriter(WriterBase):
         # this lives in the writer; the FROZEN orchestrator/WriterBase contract is
         # untouched (the orchestrator still owns the per-substep transaction/savepoint;
         # this method only returns a (possibly shorter) substep list).
+        self._planned_near_date = date.today()
         self._resume_fingerprint = self._compute_build_fingerprint(chart_id)
         self._resume_skipped = 0
         self._reset_pending = False
@@ -585,10 +654,8 @@ class _LegacyKaSangamWriter(WriterBase):
         remaining = [s for s in steps if s.key not in completed]
         self._resume_skipped = len(steps) - len(remaining)
         self._final_step_key = remaining[-1].key if remaining else None
-        with conn.cursor() as cur:       # the windows the resumed (skipped) substeps already committed count toward this run's total
-            cur.execute("SELECT COALESCE(SUM(rows_written), 0) AS n FROM build_substep_progress WHERE chart_id = %s AND asset_id = 'ka_sangam'", (chart_id,))
-            row = cur.fetchone()
-        self._windows_written = int((row['n'] if isinstance(row, dict) else row[0]) or 0)
+        # Include the windows committed by steps that this attempt skips.
+        self._windows_written = sum_sangam_rows_written(conn, chart_id)
         logger.info(
             "ka_sangam: RESUMING build for chart %s — %d/%d substeps already committed, %d remaining",
             chart_id, self._resume_skipped, len(steps), len(remaining),
@@ -621,16 +688,17 @@ class _LegacyKaSangamWriter(WriterBase):
         elif candidate is None:
             refuse_unbound_rewrite(conn, chart_id, 'ka_sangam')
 
+        near_today = date.today() if step.key == 'near' else None
+        if near_today is not None and self._planned_near_date is not None and near_today != self._planned_near_date:
+            raise RuntimeError('ka_sangam: near horizon date changed since planning; replan required')
+
         if self._reset_pending and not dry_run:
             with conn.cursor() as cur:
                 cur.execute("DELETE FROM kala_convergence WHERE chart_id = %s AND generation = %s",
                             (chart_id, self._write_generation()))
-                cur.execute(
-                    "DELETE FROM build_substep_progress WHERE chart_id = %s AND asset_id = 'ka_sangam'",
-                    (chart_id,),
-                )
+                clear_sangam_substeps(cur, chart_id)
         if step.key == 'near':
-            result = self._substep_near(conn, chart_id, dry_run)
+            result = self._substep_near(conn, chart_id, dry_run, today=near_today)
         else:
             idx = int(step.key.split(':', 1)[1])
             result = self._substep_lifetime(conn, chart_id, idx, dry_run)
@@ -641,47 +709,30 @@ class _LegacyKaSangamWriter(WriterBase):
     # ── resumption helpers (migration 436) ────────────────────────────────────
 
     def _compute_build_fingerprint(self, chart_id: str) -> str:
-        """Stable identity of THIS build run's inputs. Two attempts belong to the
-        SAME build — and may resume across a dropped connection — only when they
-        share the run (`build_id`, which the orchestrator keeps across retries of
-        one run), the predicate generation the build reads (the bound K9 candidate, resolved
-        from the DB in plan_substeps; an ordinary rebuild reads head-or-legacy),
-        the writer version, birth year, near-tier reference date and predicate set.
-        Any change replans-all (§N.3). The run id and generation are what stop a
-        SECOND rebuild on the same day, over the same signal set, from matching an
-        earlier run's ledger and skipping every substep (K9-WRITE-SCOPE F4); `today`
-        is included because the near tier is date-relative — a build that
-        legitimately crosses midnight should replan its near tier, not resume it."""
-        sig_ids = sorted(str(p.get('signal_id')) for p in self._pred_dicts if p.get('signal_id'))
-        parts = [
-            f"v={_KA_SANGAM_RESUME_VERSION}",
-            f"chart={chart_id}",
-            f"generation={self._ledger_generation}",
-            f"run={self._ledger_run_id}",
-            f"birth_year={self._birth_year}",
-            f"today={date.today().isoformat()}",
-            f"npreds={len(sig_ids)}",
-            "sigs=" + ",".join(sig_ids),
-        ]
-        return hashlib.sha256("|".join(parts).encode("utf-8")).hexdigest()
+        """Bind persisted positions to the ordered inputs selected for this run."""
+        return plan_fingerprint(
+            version=_KA_SANGAM_RESUME_VERSION,
+            chart_id=chart_id,
+            generation=self._ledger_generation,
+            run_id=self._ledger_run_id,
+            today=self._planned_near_date or date.today(),
+            birth_year=self._birth_year,
+            near=self._pred_dicts,
+            lifetime=self._lt_preds,
+            near_mode_d=_mode_d_carrier_index(self._pred_dicts),
+            lifetime_mode_d=_mode_d_carrier_index(self._lt_preds),
+            native_context=getattr(self, '_native_ctx', None),
+            enrichment_context=getattr(self, '_enrichment_ctx', None),
+            gochara_available=getattr(self, '_gs', None) is not None,
+            muhurta_available=getattr(self, '_muhurta', None) is not None,
+        )
 
     def _load_completed_substeps(self, conn, chart_id: str, fingerprint: str) -> "set[str] | None":
         """Substep keys already committed for the CURRENT build (fingerprint match)
         → caller skips them (resume). Returns None when the ledger is empty (first
         run) OR holds any row from a different fingerprint (a prior/changed build)
         → caller deletes-all and replans fresh."""
-        with conn.cursor() as cur:
-            cur.execute(
-                "SELECT substep_key, build_fingerprint FROM build_substep_progress "
-                "WHERE chart_id = %s AND asset_id = 'ka_sangam'",
-                (chart_id,),
-            )
-            rows = cur.fetchall()
-        if not rows:
-            return None
-        if {r['build_fingerprint'] for r in rows} != {fingerprint}:
-            return None
-        return {r['substep_key'] for r in rows}
+        return load_sangam_completed_substeps(conn, chart_id, fingerprint)
 
     def _record_substep(self, conn, chart_id: str, substep_key: str, rows: int) -> None:
         """Record this substep's completion in the resumption ledger, INSIDE the
@@ -689,21 +740,11 @@ class _LegacyKaSangamWriter(WriterBase):
         atomically with the substep's data rows (durable iff the data is durable,
         rolled back with it on failure). The writer never commits/rolls back/closes;
         the FROZEN orchestrator contract is untouched."""
-        with conn.cursor() as cur:
-            cur.execute(
-                """INSERT INTO build_substep_progress
-                       (chart_id, asset_id, substep_key, build_fingerprint, rows_written, completed_at)
-                   VALUES (%s, 'ka_sangam', %s, %s, %s, now())
-                   ON CONFLICT (chart_id, asset_id, substep_key)
-                   DO UPDATE SET build_fingerprint = EXCLUDED.build_fingerprint,
-                                 rows_written      = EXCLUDED.rows_written,
-                                 completed_at      = EXCLUDED.completed_at""",
-                (chart_id, substep_key, self._resume_fingerprint, rows),
-            )
+        record_sangam_substep(conn, chart_id, substep_key, self._resume_fingerprint, rows)
 
     # ── substep implementations ───────────────────────────────────────────────
 
-    def _substep_near(self, conn, chart_id: str, dry_run: bool) -> WriterResult:
+    def _substep_near(self, conn, chart_id: str, dry_run: bool, *, today: date | None = None) -> WriterResult:
         if not dry_run:
             with conn.cursor() as cur:
                 cur.execute("SET LOCAL statement_timeout = 0")
@@ -718,7 +759,7 @@ class _LegacyKaSangamWriter(WriterBase):
                         (chart_id, self._write_generation()),
                     )
 
-        today        = date.today()
+        today        = today or date.today()
         horizon_end  = date(today.year + _HORIZON_YEARS, today.month, today.day)
         def _keepalive():
             with conn.cursor() as _cur:
@@ -769,7 +810,7 @@ class _LegacyKaSangamWriter(WriterBase):
         # SR-K9-TRIAGE-DUP: Mode D is predicate-agnostic and this tier calls once PER PREDICATE, so the once-per-call guard of 074d69ee8
         # (A3) held for none of them: every lifetime substep wrote the full set again, under its own signal_id (or, with an equal
         # signal_id, under the SAME natural key: contract 670 conjunct (a)). It rides ONE lifetime substep, the first attributable non-SUBSYSTEM one (_can_carry_mode_d).
-        mode_d_idx = next((i for i, p in enumerate(self._lt_preds) if _can_carry_mode_d(p)), None)
+        mode_d_idx = _mode_d_carrier_index(self._lt_preds)
         windows       = self._generate_windows(
             pred_dicts        = [pred],
             mode_d            = (idx == mode_d_idx),
@@ -836,149 +877,24 @@ class _LegacyKaSangamWriter(WriterBase):
         mode_d: whether this call carries the (predicate-agnostic) Mode D set. It rides the first predicate of the
           call that has a signal; the lifetime tier calls once per predicate and passes True for ONE of them only.
         """
-        horizon_start_jd = _date_to_jd(horizon_start)
-        horizon_end_jd   = _date_to_jd(horizon_end)
-        all_windows: list[dict] = []
-        blanks: list[dict] = []
-        self._target_blanks = blanks        # read by the substeps for their notes; one list per call
-        # Mode D is sign-level: it is computed once per call, on the first predicate that can be attributed to a signal and reaches the Mode D step.
-        mode_d_pred = next((p for p in pred_dicts if _can_carry_mode_d(p)), None) if mode_d else None
+        def publish_target_blanks(blanks):
+            self._target_blanks = blanks
 
-        def _mode_d_windows(pred_dict: dict, primary_domain) -> list[dict]:
-            try:
-                windows = mode_d_av_bindhu(
-                    predicate=pred_dict,
-                    horizon_start_jd=horizon_start_jd,
-                    horizon_end_jd=horizon_end_jd,
-                    gochara_service=gochara_service,
-                    enrichment_context=enrichment_context,
-                )
-            except Exception as exc:
-                logger.warning("ka_sangam: Mode D failed for signal %s: %s", pred_dict.get('signal_id'), exc)
-                return []
-            for w in windows:
-                w['primary_domain'] = primary_domain
-            return windows
-
-        for pred_dict in pred_dicts:
-            sig_id    = pred_dict.get('signal_id')
-            sig_class = (pred_dict.get('signature_class') or '').upper()
-            # B4-src: primary domain from MSR signal (carried through plan_substeps)
-            primary_domain = pred_dict.get('primary_domain')
-
-            if not sig_id:
-                blanks.append({'signal_id': None, 'reason': SIGNAL_UNRESOLVED})
-                logger.info("ka_sangam: predicate blank (%s): no signal_id, nothing attributable to compute", SIGNAL_UNRESOLVED)
-                if keepalive:
-                    keepalive()
-                continue
-
-            # Route SUBSYSTEM predicates to Mode C (period-based ingress trigger)
-            if 'SUBSYSTEM' in sig_class:
-                try:
-                    new_windows = mode_c_subsystem_period(
-                        predicate=pred_dict,
-                        horizon_start_jd=horizon_start_jd,
-                        horizon_end_jd=horizon_end_jd,
-                        gochara_service=gochara_service,
-                        moon_sign=native_ctx.moon_sign,
-                        enrichment_context=enrichment_context,
-                    )
-                    for w in new_windows:
-                        w['primary_domain'] = primary_domain
-                    all_windows.extend(new_windows)
-                except Exception as exc:
-                    logger.warning("ka_sangam: Mode C failed for signal %s: %s", sig_id, exc)
-                if keepalive:
-                    keepalive()
-                continue
-
-            # D-3 T-6: target_lon feeds TRIGGER's mechanism_lon/target_lon below —
-            # same longitude mode_a_search/mode_b_sweep already scan against.
-            target_lon = _resolved_target_longitude(pred_dict)
-            if target_lon is None:
-                # Named blank (SR-K9B-TRIAGE): nothing to scan against, nothing invented. services/ka_sangam/engine.py mode_a_search / mode_b_sweep
-                # return no window for a null target on their own; this only stops the float() of None above them. Mode D is sign-level and reads no
-                # target, so it still runs for the first predicate of the call exactly as before.
-                blanks.append({'signal_id': sig_id, 'reason': TARGET_UNRESOLVED})
-                logger.info("ka_sangam: signal %s blank (%s): no target longitude", sig_id, TARGET_UNRESOLVED)
-                if keepalive:
-                    keepalive()
-                if pred_dict is mode_d_pred:
-                    all_windows.extend(_mode_d_windows(pred_dict, primary_domain))
-                    if keepalive:
-                        keepalive()
-                continue
-            moon_sign_idx = _SIGN_NAME_TO_IDX.get(native_ctx.moon_sign)
-            vedha_rules = (enrichment_context.vedha_rules if enrichment_context else None) or None
-
-            try:
-                new_windows_a = mode_a_search(
-                    predicate=pred_dict,
-                    horizon_start_jd=horizon_start_jd,
-                    horizon_end_jd=horizon_end_jd,
-                    dasha_kala_service=dasha_kala_service,
-                    gochara_service=gochara_service,
-                    muhurta_service=muhurta_service,
-                    chart_id=chart_id,
-                    janma_nakshatra_idx=native_ctx.janma_nakshatra_idx,
-                    enrichment_context=enrichment_context,
-                    native_location=native_ctx.location,
-                    moon_sign=native_ctx.moon_sign,  # CR-102 fix (T-6): correct house-from-Moon vedha frame
-                )
-                # D-3 T-6: TRIGGER suppressive term at the ADMITTED 0.2/0.2 weights
-                # (wave/D-3/ADMIT, receipted ACCEPT) — see apply_trigger_suppression docstring.
-                new_windows_a = apply_trigger_suppression(
-                    new_windows_a, chart_id=chart_id, target_lon=target_lon,
-                    gochara_service=gochara_service, vedha_rules=vedha_rules,
-                    moon_sign_idx=moon_sign_idx,
-                )
-                for w in new_windows_a:
-                    w['primary_domain'] = primary_domain
-                all_windows.extend(new_windows_a)
-            except Exception as exc:
-                logger.warning("ka_sangam: Mode A failed for signal %s: %s", sig_id, exc)
-            if keepalive:
-                keepalive()
-            try:
-                new_windows_b = mode_b_sweep(
-                    signal_id=sig_id,
-                    predicate=pred_dict,
-                    horizon_start_jd=horizon_start_jd,
-                    horizon_end_jd=horizon_end_jd,
-                    gochara_service=gochara_service,
-                    janma_nakshatra_idx=native_ctx.janma_nakshatra_idx,
-                    magnitude_threshold=0.3,
-                    enrichment_context=enrichment_context,
-                    muhurta_service=muhurta_service,
-                    native_location=native_ctx.location,
-                    moon_sign=native_ctx.moon_sign,  # CR-102 fix (T-6): correct house-from-Moon vedha frame
-                )
-                new_windows_b = apply_trigger_suppression(
-                    new_windows_b, chart_id=chart_id, target_lon=target_lon,
-                    gochara_service=gochara_service, vedha_rules=vedha_rules,
-                    moon_sign_idx=moon_sign_idx,
-                )
-                for w in new_windows_b:
-                    w['primary_domain'] = primary_domain
-                all_windows.extend(new_windows_b)
-            except Exception as exc:
-                logger.warning("ka_sangam: Mode B failed for signal %s: %s", sig_id, exc)
-            if keepalive:
-                keepalive()
-
-            # O7: Mode D — SAV-bindhu activation windows for strong signs
-            # Only run for the first attributable predicate per horizon call to avoid duplicate windows.
-            # Mode D is sign-level and predicate-agnostic; running it for every predicate
-            # produces N×K duplicate windows with different signal_ids that bypass the dedup
-            # key check (which includes signal_id).
-            if pred_dict is mode_d_pred:
-                all_windows.extend(_mode_d_windows(pred_dict, primary_domain))
-                if keepalive:
-                    keepalive()
-        if blanks:      # the orchestrator does not persist WriterResult.notes (FROZEN contract), so the count is also in the run log
-            logger.info("ka_sangam: %d of %d predicates in this call are blank: %s", len(blanks), len(pred_dicts), _target_blank_note(blanks))
-        return all_windows
+        return generate_windows(
+            pred_dicts=pred_dicts,
+            horizon_start=horizon_start,
+            horizon_end=horizon_end,
+            dasha_kala_service=dasha_kala_service,
+            gochara_service=gochara_service,
+            chart_id=chart_id,
+            native_ctx=native_ctx,
+            keepalive=keepalive,
+            enrichment_context=enrichment_context,
+            muhurta_service=muhurta_service,
+            mode_d=mode_d,
+            bindings=_SangamWindowBindings(),
+            publish_target_blanks=publish_target_blanks,
+        )
 
     def _resolve_native_chart_context(self, conn, chart_id: str, birth_params) -> 'NativeChartContext':
         """CR-87 fix: resolve THIS chart's janma nakshatra, Moon sign, and
