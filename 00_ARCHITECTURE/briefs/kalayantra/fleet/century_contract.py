@@ -17,6 +17,11 @@ the file's bytes at the request's reviewed_commit (executor.century_contract_pro
 
     python3 century_contract.py --write --pack <W3W4 PACK dir>      regenerate the file
     python3 century_contract.py --check [--pack <PACK dir>]         exit 0 only when the committed file equals the generated one
+For the exact authenticated legacy pack missing result_policy, --prior-contract-policy and
+--prior-contract-policy-sha256 name the separate preserved prior contract ratified by
+DELIVERY_PRIORITIES_20261113.md v1.4. Its policy provenance is explicit; it is not a pack declaration.
+The source digest is a prospective requirement, not an observation of an existing image.
+
 Reads only; --write writes only the contract file. No network, no database, no git.
 """
 from __future__ import annotations
@@ -51,6 +56,9 @@ CANCEL = "00_ARCHITECTURE/briefs/kalayantra/fleet/century_cancel.py"
 CAP_MIGRATION = "platform/migrations/1395_ka_gochara_v5_writer_timeout_72000.sql"
 DEPLOY = ".github/workflows/deploy.yml"
 PACK_FILE = "VERIFY_DEFERRAL.json"
+_LEGACY_PACK_SHA256 = "777154deb01cf11f520a80702a02b57b9970dff691cc4c3efe1ec1e5e6add80e"
+_LEGACY_PRIOR_CONTRACT_SHA256 = "a6f74388cc153c654ad958f454071bd3610303a2a4cafeb716cd6c5706ece437"
+_LEGACY_POLICY_DECISION = "DELIVERY_PRIORITIES_20261113.md v1.4: Century legacy input disposition"
 SAFE = re.compile(r"[A-Za-z0-9_.-]{1,64}")
 
 
@@ -116,8 +124,31 @@ def classes(root: Path, shared_args: dict) -> dict:
     return {"selector": shared_args["classes"], "scored": scored, "count": len(scored), "source": f"{REGISTRY} ROW_MEMBERSHIP (value not None)"}
 
 
-def policy(root: Path, pack: Path | None) -> dict:
+def _prior_contract_policy(root: Path, pack_body: bytes, prior_path: Path, prior_sha256: str) -> dict:
+    """Authenticate the separate legacy policy input; never infer a missing pack value."""
+    if hashlib.sha256(pack_body).hexdigest() != _LEGACY_PACK_SHA256:
+        raise ContractError("prior-contract policy is only admitted for the exact authenticated legacy pack")
+    if prior_path.resolve() == (root / REL).resolve():
+        raise ContractError("prior-contract policy input must be separate from the generated output")
+    body = prior_path.read_bytes()
+    if prior_sha256 != _LEGACY_PRIOR_CONTRACT_SHA256 or hashlib.sha256(body).hexdigest() != prior_sha256:
+        raise ContractError("prior-contract policy SHA does not identify the preserved committed contract")
+    prior = json.loads(body)
+    pol = prior.get("policy", {})
+    source = pol.get("source", {})
+    if prior.get("schema") != SCHEMA or source.get("file") != PACK_FILE or source.get("sha256") != _LEGACY_PACK_SHA256:
+        raise ContractError("prior-contract policy does not reference the authenticated legacy pack")
+    if pol.get("result_policy") != "window_qualification/1":
+        raise ContractError("prior-contract policy conflicts with the ratified committed result_policy")
+    return prior
+
+
+def policy(root: Path, pack: Path | None, prior_contract_policy: Path | None = None, prior_contract_policy_sha256: str | None = None) -> dict:
     """The sink policy an unmarked run takes is the `else` arm of the writer's own selection; STRICT = the raise policy (contact_certify.POLICY_RAISE)."""
+    if (prior_contract_policy is None) != (prior_contract_policy_sha256 is None):
+        raise ContractError("prior-contract policy requires both a separate path and its explicit SHA")
+    if prior_contract_policy is not None and pack is None:
+        raise ContractError("prior-contract policy requires its authenticated legacy pack")
     selected = [n.value for n in ast.walk(_tree(WRITER, root)) if isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "policy" for t in n.targets)
                 and isinstance(n.value, ast.IfExp)]
     if len(selected) != 1 or not isinstance(selected[0].orelse, ast.Attribute):
@@ -138,10 +169,29 @@ def policy(root: Path, pack: Path | None) -> dict:
             if args.get(key) not in ("true", "false"):
                 raise ContractError(f"{PACK_FILE} carrier.args.{key} is not 'true' or 'false'")
             out[key] = args[key] == "true"
-        if args.get("result_policy") not in _literal(SHARED, "CENTURY_RESULT_POLICIES", root):
-            raise ContractError(f"{PACK_FILE} carrier.args.result_policy is not one of the named result policies")
-        out["result_policy"] = args["result_policy"]
+        prior = None
+        if prior_contract_policy is not None:
+            if "result_policy" in args:
+                raise ContractError("prior-contract policy cannot override an explicit pack result_policy")
+            prior = _prior_contract_policy(root, body, prior_contract_policy, prior_contract_policy_sha256)
+            out["result_policy"] = prior["policy"]["result_policy"]
+            out["result_policy_source"] = {"kind": "prior_committed_contract", "contract": REL,
+                "sha256": prior_contract_policy_sha256, "pack_sha256": _LEGACY_PACK_SHA256,
+                "decision": _LEGACY_POLICY_DECISION}
+        else:
+            if args.get("result_policy") not in _literal(SHARED, "CENTURY_RESULT_POLICIES", root):
+                raise ContractError(f"{PACK_FILE} carrier.args.result_policy is not one of the named result policies")
+            out["result_policy"] = args["result_policy"]
+        if out["result_policy"] not in _literal(SHARED, "CENTURY_RESULT_POLICIES", root):
+            raise ContractError("prior-contract result_policy is no longer a supported named policy")
         out["source"] = {"file": PACK_FILE, "sha256": hashlib.sha256(body).hexdigest(), "ruling": "SR-W3-SHAPE 3; SR-W34-PREP-RULINGS 1"}
+        if prior is not None:
+            for key in ("final_rules", "defer_in_build_verify"):
+                if prior["policy"].get(key) is not out[key]:
+                    raise ContractError("prior-contract policy flags differ from the authenticated pack")
+            expected_args = launch_args(_load(root / SHARED, "century_prior_policy_shared"), out, horizon(root))
+            if prior.get("launch_args") != expected_args:
+                raise ContractError("prior-contract launch_args differ from the prospective source requirements")
     return out
 
 
@@ -679,7 +729,7 @@ def _load(path: Path, name: str):
 
 def launch_args(shared, pol: dict, hz: dict) -> dict:
     """The request's exact five `args` (F-CHANNEL, SR-W34-PREP-RULINGS 1, OD-1; shared.CENTURY_ARG_KEYS): `classes` all, the two policy booleans as 'true'/'false', the horizon as
-    '<start>,<end>' (the committed horizon, verbatim: SR-HORIZON-PUBLIC) and the numeric-result policy. The three policy values are pack-sourced and stay null without --pack. (I) INTERPRETATION: the launch
+    '<start>,<end>' (the committed horizon, verbatim: SR-HORIZON-PUBLIC) and the numeric-result policy. Policy values come from the pack, except the explicitly pinned legacy prior-contract policy; all stay null without --pack. (I) INTERPRETATION: the launch
     args are derived from the facts the contract already commits, so a request that differs from them in any value is refused by `century_contract_problem`."""
     if set(shared.CENTURY_ARG_KEYS) != {"classes", "final_rules", "defer_in_build_verify", "horizon", "result_policy"}:
         raise ContractError("the century request's argument keys changed; the contract's launch_args generator must be reviewed")
@@ -688,10 +738,10 @@ def launch_args(shared, pol: dict, hz: dict) -> dict:
             "result_policy": pol["result_policy"]}
 
 
-def derive(root: Path = REPO, pack: Path | None = None, with_digest: bool = True) -> dict:
+def derive(root: Path = REPO, pack: Path | None = None, with_digest: bool = True, prior_contract_policy: Path | None = None, prior_contract_policy_sha256: str | None = None) -> dict:
     root = Path(root)
     shared = _load(root / SHARED, "century_contract_shared")
-    pol, hz = policy(root, pack), horizon(root)
+    pol, hz = policy(root, pack, prior_contract_policy, prior_contract_policy_sha256), horizon(root)
     args = launch_args(shared, pol, hz)
     contract = {
         "schema": SCHEMA, "item": shared.CENTURY_ITEM, "rulings": RULINGS,
@@ -733,6 +783,13 @@ def compare(committed: dict, derived: dict, *, with_digest: bool, with_pack: boo
     if not with_pack:
         for key in ("final_rules", "defer_in_build_verify", "result_policy", "source"):
             want["policy"][key] = have.get("policy", {}).get(key)
+        if "result_policy_source" in have.get("policy", {}):
+            provenance = have["policy"]["result_policy_source"]
+            expected = {"kind": "prior_committed_contract", "contract": REL, "sha256": _LEGACY_PRIOR_CONTRACT_SHA256,
+                        "pack_sha256": _LEGACY_PACK_SHA256, "decision": _LEGACY_POLICY_DECISION}
+            if provenance != expected or have["policy"].get("result_policy") != "window_qualification/1":
+                return ["policy.result_policy_source does not identify the ratified prior input"]
+            want["policy"]["result_policy_source"] = provenance
         if have.get("launch_args", {}).get("result_policy") not in _literal(SHARED, "CENTURY_RESULT_POLICIES", REPO):
             return ["launch_args.result_policy is not a named result policy"]
         want["launch_args"]["result_policy"] = have["launch_args"]["result_policy"]
@@ -751,6 +808,9 @@ def main(argv=None) -> int:
     mode.add_argument("--write", action="store_true")
     mode.add_argument("--check", action="store_true")
     ap.add_argument("--pack", type=Path, default=None)
+    ap.add_argument("--prior-contract-policy", type=Path, default=None,
+                    help="separate preserved contract supplying the exact legacy pack's ratified policy")
+    ap.add_argument("--prior-contract-policy-sha256", default=None)
     ap.add_argument("--no-image", action="store_true")
     ap.add_argument("--root", type=Path, default=REPO)
     a = ap.parse_args(argv)
@@ -759,11 +819,11 @@ def main(argv=None) -> int:
         if a.write:
             if a.pack is None or a.no_image:
                 raise ContractError("--write needs --pack and the image digest: a contract with a null fact is not written")
-            body = render(derive(a.root, a.pack, True))
+            body = render(derive(a.root, a.pack, True, a.prior_contract_policy, a.prior_contract_policy_sha256))
             path.write_bytes(body)
             print(json.dumps({"written": REL, "sha256": sha256(body)}, sort_keys=True))
             return 0
-        derived = derive(a.root, a.pack, not a.no_image)
+        derived = derive(a.root, a.pack, not a.no_image, a.prior_contract_policy, a.prior_contract_policy_sha256)
         differing = compare(json.loads(path.read_text(encoding="utf-8")), derived, with_digest=not a.no_image, with_pack=a.pack is not None)
         print(json.dumps({"check": REL, "sha256": sha256(path.read_bytes()), "equal": not differing, "differs_in": differing,
                           "partial": bool(a.no_image or a.pack is None)}, sort_keys=True))
