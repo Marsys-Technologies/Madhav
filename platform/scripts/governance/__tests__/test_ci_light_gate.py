@@ -20,6 +20,7 @@ from _ci_gate_test_support import evaluate
 ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(ROOT / 'platform/scripts/governance'))
 CI = ROOT / '.github/workflows/ci.yml'
+SIDECAR_JOB = 'governance-gates-py-sidecar-shard'
 REQUIRED = {
     'TypeScript (src only)', 'Unit Tests', 'Secret Scan (unit 0b.2)',
     'Governance Gates (drift / schema / edge / native-literal / py-sidecar)',
@@ -42,7 +43,7 @@ def db_jobs(jobs):
 
 
 def heavy_jobs(jobs):
-    return db_jobs(jobs) | {'governance-gates-py-sidecar-shard', 'governance-gates-gochara'} | {n for n in jobs if n.startswith('required-')}
+    return db_jobs(jobs) | {SIDECAR_JOB, 'governance-gates-gochara'} | {n for n in jobs if n.startswith('required-')}
 
 
 # SR-BOLD-08(a): umbrellas that run on EVERY event and earn their verdict in a script (their own oracles below), so they are not
@@ -189,7 +190,7 @@ def test_required_aggregate_propagates_every_heavy_failure_and_unexpected_skip()
             for result in ('failure', 'cancelled', 'skipped'):
                 cases = {**expected, name: {'result': result}}
                 p = subprocess.run(['bash', '-e', '-c', step['run']], env={**env, 'NEEDS_JSON': json.dumps(cases)}, capture_output=True, text=True)
-                allowed = scoped and result == 'skipped'
+                allowed = scoped and result == 'skipped' and not (event == 'merge_group' and name == SIDECAR_JOB)
                 assert (p.returncode == 0) is allowed, (event, name, result, p.stdout, p.stderr)
         # On PRs and the queue a selected DB job must succeed; unselected skips alone are permitted.
         if scoped:
@@ -258,11 +259,11 @@ def _scoped_state(jobs):
     ]
 
 
-def test_merge_queue_selects_exactly_what_a_pull_request_selects():
-    """OWNER-CI-SCOPED-QUEUE-20261017 claim 1: every `if` (job and step) gives the same verdict on merge_group as on a PR.
+def test_merge_queue_preserves_scoped_conditions_and_requires_full_sidecar_coverage():
+    """Protected groups require all four Sidecar shards under the 2026-11-14 coverage correction.
 
-    Oracle is the PR contract itself (D-29 scoped selection, test above); a job or step that still lists
-    merge_group among the full events would run unselected heavy work on the queue and differ here.
+    Existing job and step conditions retain their PR selection contract. The full Sidecar matrix executes
+    on every protected group, including docs-only source changes.
     """
     jobs = workflow()['jobs']
     checked = 0
@@ -274,11 +275,11 @@ def test_merge_queue_selects_exactly_what_a_pull_request_selects():
                         continue
                     pr = evaluate(cond, event='pull_request', docs=docs, **state)
                     mg = evaluate(cond, event='merge_group', docs=docs, **state)
-                    assert pr == mg, (where, state['selected'][:1])
+                    assert mg is (pr or where == SIDECAR_JOB), (where, state['selected'][:1])
                     checked += 1
     assert checked > 100
     heavy_unselected = [n for n in skippable_heavy_jobs(jobs) if evaluate(jobs[n].get('if'), event='merge_group')]
-    assert heavy_unselected == [], f'merge_group runs heavy jobs nothing selected: {heavy_unselected}'
+    assert heavy_unselected == [SIDECAR_JOB], heavy_unselected
 
 
 def test_merge_queue_hands_the_changed_profiles_to_discovery():
@@ -414,8 +415,9 @@ def test_merge_queue_diffs_against_the_group_base_and_every_required_check_repor
     for key in ('typecheck', 'unit-tests', 'secret-scan', 'earned-signal-lint', 'governance-tool-tests', 'governance-gates-static',
                 'full-suite', 'governance-gates'):
         assert evaluate(jobs[key].get('if'), event='merge_group'), key
-    # A skipped heavy job rolls up to a passing aggregate on the queue, as on a PR (aggregate test above).
-    assert not any(evaluate(jobs[n].get('if'), event='merge_group') for n in skippable_heavy_jobs(jobs))
+    # The Sidecar matrix must execute on the queue even when no path-scoped job was selected.
+    selected_heavy = {n for n in skippable_heavy_jobs(jobs) if evaluate(jobs[n].get('if'), event='merge_group')}
+    assert selected_heavy == {SIDECAR_JOB}
 
 
 @pytest.mark.parametrize('changed,expected_profile', [
@@ -614,3 +616,21 @@ def test_source_evidence_runner_preserves_exact_argv_and_fails_closed(monkeypatc
 
     monkeypatch.setattr(ci_changes.subprocess, 'run', timeout)
     assert ci_changes.main(['--run-source-evidence']) == 1
+
+
+@pytest.mark.parametrize('event,ref,full,expected', [
+    ('merge_group', 'refs/heads/gh-readonly-queue/main/pr-3991', False, True),
+    ('push', 'refs/heads/main', False, True),
+    ('push', 'refs/heads/codex/example', False, False),
+    ('workflow_dispatch', 'refs/heads/codex/example', True, True),
+    ('workflow_dispatch', 'refs/heads/codex/example', False, False),
+    ('pull_request', 'refs/pull/3991/merge', False, False),
+])
+@pytest.mark.parametrize('docs', ['false', 'true'])
+def test_full_sidecar_matrix_executes_on_protected_groups_and_full_events(event, ref, full, expected, docs):
+    job = workflow()['jobs'][SIDECAR_JOB]
+    assert evaluate(job['if'], event=event, ref=ref, full=full, docs=docs) is expected
+    assert job['strategy']['matrix']['shard'] == [1, 2, 3, 4]
+    assert job['strategy']['fail-fast'] is False
+    assert not job.get('continue-on-error', False)
+    assert all(not step.get('continue-on-error', False) for step in job['steps'])

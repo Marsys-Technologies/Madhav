@@ -1115,3 +1115,108 @@ def test_loaded_mode_refuses_every_additional_tail_step(verified_pipeline):
     path.write_text(source)
     with pytest.raises(cc.ContractError, match="unexpected Pipeline step after"):
         cc.image(verified_pipeline, False)
+
+
+# The legacy transition fixtures are synthetic; the real authenticated inputs are
+# separately exercised through the normal CLI. Test-only hash pins bind each fixture.
+def _legacy_policy_inputs(tmp_path, monkeypatch):
+    root = tree(tmp_path)
+    shared = root / cc.SHARED
+    shared.write_text(shared.read_text() + "CENTURY_ARG_KEYS = ('classes', 'final_rules', 'defer_in_build_verify', 'horizon', 'result_policy')\n")
+    pack = tmp_path / "legacy-pack"
+    pack.mkdir()
+    pack_body = json.dumps({"carrier": {"args": {"final_rules": "true", "defer_in_build_verify": "true"}}}).encode()
+    (pack / cc.PACK_FILE).write_bytes(pack_body)
+    pack_sha = hashlib.sha256(pack_body).hexdigest()
+    monkeypatch.setattr(cc, "_LEGACY_PACK_SHA256", pack_sha)
+    policy = {"final_rules": True, "defer_in_build_verify": True, "result_policy": "window_qualification/1",
+              "source": {"file": cc.PACK_FILE, "sha256": pack_sha}}
+    hz = cc.horizon(root)
+    prior = {"schema": cc.SCHEMA, "policy": policy,
+             "launch_args": {"classes": "all", "final_rules": "true", "defer_in_build_verify": "true",
+                             "horizon": f"{hz['start']},{hz['end']}", "result_policy": "window_qualification/1"}}
+    path = tmp_path / "preserved-prior.json"
+    body = cc.render(prior)
+    path.write_bytes(body)
+    prior_sha = hashlib.sha256(body).hexdigest()
+    monkeypatch.setattr(cc, "_LEGACY_PRIOR_CONTRACT_SHA256", prior_sha)
+    return root, pack, path, prior_sha
+
+
+def test_legacy_policy_scope_pins_are_the_authenticated_record():
+    assert cc._LEGACY_PACK_SHA256 == "777154deb01cf11f520a80702a02b57b9970dff691cc4c3efe1ec1e5e6add80e"
+    assert cc._LEGACY_PRIOR_CONTRACT_SHA256 == "a6f74388cc153c654ad958f454071bd3610303a2a4cafeb716cd6c5706ece437"
+
+
+def test_legacy_policy_is_explicit_prior_provenance_and_stable(tmp_path, monkeypatch):
+    root, pack, path, prior_sha = _legacy_policy_inputs(tmp_path, monkeypatch)
+    before_pack, before_prior = (pack / cc.PACK_FILE).read_bytes(), path.read_bytes()
+    got = cc.policy(root, pack, path, prior_sha)
+    assert got["result_policy"] == "window_qualification/1"
+    assert got["source"]["sha256"] == hashlib.sha256(before_pack).hexdigest()
+    assert got["result_policy_source"] == {
+        "kind": "prior_committed_contract", "contract": cc.REL, "sha256": prior_sha,
+        "pack_sha256": hashlib.sha256(before_pack).hexdigest(), "decision": cc._LEGACY_POLICY_DECISION,
+    }
+    output = root / cc.REL
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text('{"a_new_generated_output": true}\n')
+    assert cc.policy(root, pack, path, prior_sha) == got
+    assert (pack / cc.PACK_FILE).read_bytes() == before_pack
+    assert path.read_bytes() == before_prior
+
+
+@pytest.mark.parametrize("failure", ["missing_path", "missing_sha", "wrong_sha", "different_pack", "wrong_ref",
+    "unsupported_policy", "conflicting_policy", "flag_mismatch", "launch_mismatch", "self_reference", "explicit_override"])
+def test_legacy_policy_refuses_missing_changed_or_conflicting_inputs(tmp_path, monkeypatch, failure):
+    root, pack, path, prior_sha = _legacy_policy_inputs(tmp_path, monkeypatch)
+    if failure == "missing_path":
+        path = None
+    elif failure == "missing_sha":
+        prior_sha = None
+    elif failure == "wrong_sha":
+        prior_sha = "0" * 64
+    elif failure in ("different_pack", "explicit_override"):
+        body = json.loads((pack / cc.PACK_FILE).read_text())
+        if failure == "explicit_override":
+            body["carrier"]["args"]["result_policy"] = "window_qualification/1"
+        else:
+            body["unrelated_extra"] = True
+        (pack / cc.PACK_FILE).write_bytes(cc.render(body))
+    elif failure == "self_reference":
+        output = root / cc.REL
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_bytes(path.read_bytes())
+        path = output
+    else:
+        prior = json.loads(path.read_text())
+        if failure == "wrong_ref":
+            prior["policy"]["source"]["sha256"] = "0" * 64
+        elif failure == "unsupported_policy":
+            prior["policy"]["result_policy"] = "unknown/1"
+        elif failure == "conflicting_policy":
+            prior["policy"]["result_policy"] = "all_null_candidate/1"
+        elif failure == "flag_mismatch":
+            prior["policy"]["final_rules"] = False
+        else:
+            prior["launch_args"]["classes"] = "different"
+        body = cc.render(prior)
+        path.write_bytes(body)
+        prior_sha = hashlib.sha256(body).hexdigest()
+        monkeypatch.setattr(cc, "_LEGACY_PRIOR_CONTRACT_SHA256", prior_sha)
+    with pytest.raises(cc.ContractError):
+        cc.policy(root, pack, path, prior_sha)
+
+
+def test_legacy_policy_does_not_supply_a_policy_without_its_pack(tmp_path, monkeypatch):
+    root, _, path, prior_sha = _legacy_policy_inputs(tmp_path, monkeypatch)
+    with pytest.raises(cc.ContractError, match="requires its authenticated legacy pack"):
+        cc.policy(root, None, path, prior_sha)
+
+
+def test_legacy_policy_refuses_a_policy_removed_from_the_supported_tuple(tmp_path, monkeypatch):
+    root, pack, path, prior_sha = _legacy_policy_inputs(tmp_path, monkeypatch)
+    shared = root / cc.SHARED
+    shared.write_text(shared.read_text().replace("('all_null_candidate/1', 'window_qualification/1')", "('all_null_candidate/1',)"))
+    with pytest.raises(cc.ContractError, match="no longer a supported"):
+        cc.policy(root, pack, path, prior_sha)

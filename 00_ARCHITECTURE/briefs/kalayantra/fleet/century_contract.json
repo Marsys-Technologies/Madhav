@@ -51,7 +51,7 @@
     "project": "madhav-astrology",
     "region": "asia-south1",
     "repository": "asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline",
-    "writer_source_digest": "562d27ab69fb05a49218384c9ee2f88d8ab66f91400888cff5845a0b70461050"
+    "writer_source_digest": "07310e7e794bc323641961b031a8628cac812b3a8e3b1612d61915954ed18283"
   },
   "item": "J-4e",
   "launch_args": {
@@ -143,6 +143,13 @@
     "defer_in_build_verify": true,
     "final_rules": true,
     "result_policy": "window_qualification/1",
+    "result_policy_source": {
+      "contract": "00_ARCHITECTURE/briefs/kalayantra/fleet/century_contract.json",
+      "decision": "DELIVERY_PRIORITIES_20261113.md v1.4: Century legacy input disposition",
+      "kind": "prior_committed_contract",
+      "pack_sha256": "777154deb01cf11f520a80702a02b57b9970dff691cc4c3efe1ec1e5e6add80e",
+      "sha256": "a6f74388cc153c654ad958f454071bd3610303a2a4cafeb716cd6c5706ece437"
+    },
     "source": {
       "file": "VERIFY_DEFERRAL.json",
       "ruling": "SR-W3-SHAPE 3; SR-W34-PREP-RULINGS 1",

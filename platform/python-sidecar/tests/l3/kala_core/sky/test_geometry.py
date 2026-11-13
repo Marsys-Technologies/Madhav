@@ -30,10 +30,14 @@ def test_nodes_cast_none(node: str) -> None:
         assert aspects(node, 0.0, target, orb_deg=1.0) == ()
 
 
-def test_legacy_node_aspect_table_is_not_the_table() -> None:
-    assert tuple(LEGACY_TABLE["Rahu"]) != drishti_angles("Rahu")
-    assert {b: tuple(v) for b, v in LEGACY_TABLE.items() if b not in ("Rahu", "Ketu")} == {
-        b: drishti_angles(b) for b in LEGACY_TABLE if b not in ("Rahu", "Ketu")}
+def test_grammar_compatibility_table_reexports_the_governed_table():
+    from services.gochara_kernel.convention import SPECIAL_DRISHTI_DEG as governed_table
+
+    assert LEGACY_TABLE is governed_table
+    assert all(tuple(drishti_angles(body)) == tuple(angles)
+               for body, angles in governed_table.items())
+    assert tuple(drishti_angles("Rahu")) == ()
+    assert tuple(drishti_angles("Ketu")) == ()
 
 
 def test_orb_must_be_declared() -> None:
