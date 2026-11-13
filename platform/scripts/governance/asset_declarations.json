@@ -9236,7 +9236,7 @@
     "applies": "D3",
     "nature": "computation",
     "why": "every ingress, station, double-transit and eclipse event re-derived by the Swiss Ephemeris called directly, with an independent completeness count over the horizon",
-    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:741",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:703",
     "per_witness_values": false,
     "spec": {
      "method": "swisseph_sky_events_v1",
@@ -9408,7 +9408,7 @@
       },
       "eclipse_geometry": {
        "value": "swecl_radii_fundamental_plane",
-       "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:435"
+       "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:397"
       },
       "shadow_enlargement": {
        "value": "1_over_0.99",
@@ -9444,7 +9444,7 @@
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bg_sky_calendar; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sky_calendar.ts:125 reads `bg_sky_calendar` (`FROM bg_sky_calendar`). Dens.served=FAIL.",
-    "prose_fields": "stores computed astronomical events (times, longitudes, speeds), body, sign and nakshatra names picked from fixed lists, closed event-type words and fixed provenance strings; composes no narration. Every row is built by _to_insert_dict at platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:718 and inserted at platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:741 (INSERT INTO bg_sky_calendar): the event rows are made by the scan functions (platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:349-600) from the fixed planet and sign lists (platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:207-227) and the name lists of platform/python-sidecar/pipeline/transit_search.py:28-41, and the detail document holds only target_sign, station_type (retrograde or direct, platform/python-sidecar/pipeline/transit_search.py:651) and eclipse_type (a closed label list, platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:453-471) as string leaves. No f-string, join, slice or format touches any written text column."
+    "prose_fields": "stores computed astronomical events (times, longitudes, speeds), body, sign and nakshatra names picked from fixed lists, closed event-type words and fixed provenance strings; composes no narration. Every row is built by _to_insert_dict at platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:680 and inserted at platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:703 (INSERT INTO bg_sky_calendar): the event rows are made by the scan functions (platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:311-562) from the fixed planet and sign lists (platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:207-227) and the name lists of platform/python-sidecar/pipeline/transit_search.py:28-41, and the detail document holds only target_sign, station_type (retrograde or direct, platform/python-sidecar/pipeline/transit_search.py:651) and eclipse_type (a closed label list, platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:415-433) as string leaves. No f-string, join, slice or format touches any written text column."
    },
    "source": {
     "level": "table",
@@ -9466,7 +9466,7 @@
        "Sun",
        "Saturn"
       ],
-      "why": "the partner body of an eclipse (Moon for a solar eclipse, Sun for a lunar one, platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:501, platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:542) or the second planet of a double-transit pair (Saturn, DOUBLE_TRANSIT_PAIRS platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:219-221, platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:589); empty for ingress and station rows"
+      "why": "the partner body of an eclipse (Moon for a solar eclipse, Sun for a lunar one, platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:463, platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:504) or the second planet of a double-transit pair (Saturn, DOUBLE_TRANSIT_PAIRS platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:219-221, platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:551); empty for ingress and station rows"
      },
      {
       "column": "sign",
@@ -9517,7 +9517,7 @@
        "Uttara Bhadrapada",
        "Revati"
       ],
-      "why": "a nakshatra name picked by index from the fixed 27-name list NAKSHATRAS (platform/python-sidecar/pipeline/transit_search.py:33-41 via _sign_nak platform/python-sidecar/pipeline/transit_search.py:107-111); empty for eclipse rows (platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:505, platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:545)"
+      "why": "a nakshatra name picked by index from the fixed 27-name list NAKSHATRAS (platform/python-sidecar/pipeline/transit_search.py:33-41 via _sign_nak platform/python-sidecar/pipeline/transit_search.py:107-111); empty for eclipse rows (platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:467, platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:507)"
      },
      {
       "column": "detail",
@@ -9543,45 +9543,45 @@
        "penumbral",
        "unknown"
       ],
-      "why": "the string leaves of the detail documents: target_sign of an ingress (platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:397), station_type of a station (platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:427, set at platform/python-sidecar/pipeline/transit_search.py:651) and eclipse_type of an eclipse, a label of the fixed tuples platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:453-463 or the fallback word of _decode_eclipse_type (platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:466-471); every other leaf is a number or a boolean"
+      "why": "the string leaves of the detail documents: target_sign of an ingress (platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:359), station_type of a station (platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:389, set at platform/python-sidecar/pipeline/transit_search.py:651) and eclipse_type of an eclipse, a label of the fixed tuples platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:415-425 or the fallback word of _decode_eclipse_type (platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:428-433); every other leaf is a number or a boolean"
      },
      {
       "column": "ayanamsha_key",
       "values": [
        "lahiri"
       ],
-      "why": "the constant AYANAMSHA_KEY (platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:195), bound at platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:731"
+      "why": "the constant AYANAMSHA_KEY (platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:195), bound at platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:693"
      },
      {
       "column": "sampling_method",
       "values": [
        "sky_calendar_ingress_station_eclipse_doubletransit_v1"
       ],
-      "why": "the constant SAMPLING_METHOD_VERSION (platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:190), bound at platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:732"
+      "why": "the constant SAMPLING_METHOD_VERSION (platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:190), bound at platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:694"
      },
      {
       "column": "source_citation",
       "values": [
        "pyswisseph DE441 (Swiss Ephemeris) via pipeline.transit_search + sol_eclipse_when_glob/lun_eclipse_when; Lahiri ayanamsha"
       ],
-      "why": "the constant SOURCE_CITATION, two adjacent string literals joined at compile time (platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:191-194), bound at platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:733; the source declaration is table level, so the column is closed here"
+      "why": "the constant SOURCE_CITATION, two adjacent string literals joined at compile time (platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:191-194), bound at platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:695; the source declaration is table level, so the column is closed here"
      }
     ],
     "identifier_columns": [
      {
       "column": "event_type",
       "why": "event_type is a member of the UNIQUE (event_type, primary_body, secondary_body_key, event_jd) constraint of bg_sky_calendar: one of five event-family words, an identifier not a sentence",
-      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:742"
+      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:704"
      },
      {
       "column": "primary_body",
       "why": "primary_body is a member of the UNIQUE (event_type, primary_body, secondary_body_key, event_jd) constraint of bg_sky_calendar: a graha name of the fixed planet lists, an identifier not a sentence",
-      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:742"
+      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:704"
      },
      {
       "column": "secondary_body_key",
       "why": "secondary_body_key is a member of the UNIQUE (event_type, primary_body, secondary_body_key, event_jd) constraint of bg_sky_calendar: the generated COALESCE of secondary_body, an identifier not a sentence",
-      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:751"
+      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:713"
      }
     ]
    }
@@ -15312,7 +15312,7 @@
     "nature": "single_derivation",
     "per_witness_values": false,
     "why": "every column is a function of ONE chart_facts row, parsed by the single deterministic classifier classify_fact; the in-build check re-counts parsed, identity-free and gap facts with the same classifier, which is an integrity check and not an independent second route; computed once by its writer; verified by integrity checks and internal consistency (the single tier)",
-    "evidence": "platform/python-sidecar/brahmagyan/fact_identity_index.py:90"
+    "evidence": "platform/python-sidecar/ga_writers/fact_identity_index.py:90"
    },
    "prose_fields": [],
    "terminal_by_construction": null,
@@ -15323,7 +15323,7 @@
    "evidence": {
     "kind": "registry kind data: migration 1262 registers ga_fact_identity with asset_type/asset_kind 'data', storage_type postgres_table, has_writer false (platform/migrations/1262_chart_fact_identity_asset_registration.sql:27); migration 1333 (platform/migrations/1333_ga_fact_identity_writer_registration.sql) then sets has_writer true and registers the writer platform/python-sidecar/pipeline/orchestrator/writers/ga_fact_identity.py, which fills chart_fact_identity per chart (delete-then-insert via brahmagyan/fact_identity_index.py) after every ga_* asset that writes chart_facts; the hand-run script platform/python-sidecar/scripts/build_fact_identity_index.py remains as an owner-path audit tool over the same function; it is not a service asset",
     "carriage": "served_surface null (unknown): this declaration states only the asset's kind; no served read of chart_fact_identity was examined, so nothing supports true or false.",
-    "prose_fields": "stores identity columns parsed from the text of one chart_facts row and generates no sentence: the registered writer ga_fact_identity binds build_index_for_chart's rows (INSERT INTO chart_fact_identity, platform/python-sidecar/brahmagyan/fact_identity_index.py:38), every column a closed set of the parser or a pointer shaped by a checked class; no f-string, template or LLM composes prose"
+    "prose_fields": "stores identity columns parsed from the text of one chart_facts row and generates no sentence: the registered writer ga_fact_identity binds build_index_for_chart's rows (INSERT INTO chart_fact_identity, platform/python-sidecar/ga_writers/fact_identity_index.py:38), every column a closed set of the parser or a pointer shaped by a checked class; no f-string, template or LLM composes prose"
    },
    "evidence_kind": "writer",
    "prose_none": {
@@ -15392,7 +15392,7 @@
      {
       "column": "fact_id",
       "why": "fact_id is the primary key of chart_fact_identity and a foreign key to chart_facts.fact_id, copied from the chart_facts row it was parsed from: an identifier, not a sentence",
-      "evidence": "platform/python-sidecar/brahmagyan/fact_identity_index.py:38"
+      "evidence": "platform/python-sidecar/ga_writers/fact_identity_index.py:38"
      }
     ],
     "templated_columns": [
@@ -15408,7 +15408,7 @@
        }
       },
       "why": "varga_id is the f-string D{n} over the integer the varga regex captured (the parser's varga_id=f\"D{n}\")",
-      "evidence": "platform/python-sidecar/brahmagyan/fact_identity_parser.py:319"
+      "evidence": "platform/python-sidecar/ga_writers/fact_identity_parser.py:319"
      },
      {
       "column": "parse_rule",
@@ -15474,7 +15474,7 @@
        }
       },
       "why": "parse_rule is a rule name of the parser, or for a bare graha subject enriched by its key the f-string {subject rule}+{key rule} (or +d_all_floor_key), exactly the three shapes parse_fact_identity returns",
-      "evidence": "platform/python-sidecar/brahmagyan/fact_identity_parser.py:737"
+      "evidence": "platform/python-sidecar/ga_writers/fact_identity_parser.py:737"
      },
      {
       "column": "parsed_from",
@@ -15496,14 +15496,14 @@
        }
       },
       "why": "parsed_from is the fixed f-string fact_subject={subject!r};fact_key={key!r} of fact_identity_index.parsed_from over the chart_facts subject and key: a whitespace-free token, or for a key-parsed nakshatra subject a Title-Case name; any other value (a sentence, lowercase words, a newline) fails",
-      "evidence": "platform/python-sidecar/brahmagyan/fact_identity_index.py:50"
+      "evidence": "platform/python-sidecar/ga_writers/fact_identity_index.py:50"
      }
     ]
    },
    "ldgr_source": {
     "na": "no_classical_claim",
     "why": "the index states no classical rule or cited fact: every column is an identity (graha, house, varga, sign) or provenance pointer parsed from the text of one chart_facts row, and the writer inserts no citation column",
-    "evidence": "platform/python-sidecar/brahmagyan/fact_identity_index.py:38"
+    "evidence": "platform/python-sidecar/ga_writers/fact_identity_index.py:38"
    }
   },
   "ga_medical": {

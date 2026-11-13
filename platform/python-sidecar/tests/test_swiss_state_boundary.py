@@ -138,10 +138,7 @@ EXPECTED_OPERATION_OWNERS = {
         "_require_pinned_ephemeris_runtime",
     ),
     ("pipeline/orchestrator/writers/bg_cohort.py", "compute_synthetic_positions"),
-    (
-        "pipeline/orchestrator/writers/bg_sky_calendar.py",
-        "_require_swiss_file_backend",
-    ),
+    ('brahmagyan/ephemeris_file_contract.py', 'require_swiss_file_backend'),
     ("pipeline/orchestrator/writers/bg_sky_calendar.py", "_scan_lunar_eclipses"),
     ("pipeline/orchestrator/writers/bg_sky_calendar.py", "_scan_solar_eclipses"),
     ("pipeline/orchestrator/writers/bg_sky_calendar.py", "scan_eclipses"),

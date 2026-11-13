@@ -97,7 +97,7 @@ def test_the_ldgr_declaration_is_sound_and_not_beside_a_transcription_or_derivat
 
 
 def test_the_real_writers_insert_carries_no_citation_column():
-    src = (ROOT / "platform/python-sidecar/brahmagyan/fact_identity_index.py").read_text(encoding="utf-8")
+    src = (ROOT / "platform/python-sidecar/ga_writers/fact_identity_index.py").read_text(encoding="utf-8")
     tree = ast.parse(src)
     sql = next(n.value.value for n in tree.body if isinstance(n, ast.Assign) and any(getattr(t, "id", None) == "INSERT_SQL" for t in n.targets))
     cols = [c.strip() for c in sql.split("(", 1)[1].split(")", 1)[0].replace("\n", " ").split(",")]

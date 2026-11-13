@@ -42,7 +42,7 @@ from tests.test_migration_1333_ga_fact_identity_writer import ASSET, BUILDER, RE
 
 _SIDECAR = pathlib.Path(__file__).resolve().parents[1]
 WRITER_FILE = _SIDECAR / "pipeline" / "orchestrator" / "writers" / "ga_fact_identity.py"
-INDEX_FILE = _SIDECAR / "brahmagyan" / "fact_identity_index.py"
+INDEX_FILE = _SIDECAR / "ga_writers" / "fact_identity_index.py"
 CHART_A, CHART_B = m.CHART_A, m.CHART_B
 NEW_BUILD = "d4d4d4d4-d4d4-4d4d-8d4d-d4d4d4d4d4d4"
 
