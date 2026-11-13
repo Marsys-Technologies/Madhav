@@ -6,8 +6,8 @@
 
 set -euo pipefail
 
-PROJECT="${GCP_PROJECT:-${GOOGLE_CLOUD_PROJECT:-madhav-astrology}}"
-REGION="${GCP_REGION:-${GOOGLE_CLOUD_REGION:-asia-south1}}"
+PROJECT="${GOOGLE_CLOUD_PROJECT:-madhav-astrology}"
+REGION="${GOOGLE_CLOUD_REGION:-asia-south1}"
 APP_URL="${APP_URL:-https://madhav.marsys.in}"
 OIDC_AUDIENCE="${WATCHDOG_OIDC_AUDIENCE:-https://amjis-web-938361928218.asia-south1.run.app}"
 SCHEDULER_SERVICE_ACCOUNT="${WATCHDOG_SCHEDULER_SERVICE_ACCOUNT:-amjis-scheduler@${PROJECT}.iam.gserviceaccount.com}"
