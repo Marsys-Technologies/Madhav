@@ -10402,12 +10402,12 @@
    "prose_fields": [],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_engine.ts:67",
+   "read_evidence": "platform/src/lib/brahmagyan/transit_reference_store.ts:63",
    "read_table": "bg_transit_engine",
    "read_kind": null,
    "evidence": {
     "kind": "platform/python-sidecar/pipeline/orchestrator/writers/bg_transit_rules.py: second @register('bg_transit_engine') on the bg_transit_rules class (sub-table seeded by seed_transit_rules()); T0 producer_covered, producer_id bg_transit_rules; registry asset_kind data, has_writer=false",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_engine.ts:67 reads `bg_transit_engine` (`FROM bg_transit_engine`). Dens.served=FAIL.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/brahmagyan/transit_reference_store.ts:63 reads `bg_transit_engine` (`FROM bg_transit_engine`). Dens.served=FAIL.",
     "prose_fields": "[] = no generated narration under the SS definition of 2026-10-01: the sub-table holds one lowercase graha name, three numbers and a citation constant per row. The INSERT (platform/python-sidecar/brahmagyan/l0_transit.py:1077) binds the plain reads of the literal BG_TRANSIT_ENGINE rows (platform/python-sidecar/brahmagyan/l0_transit.py:96), whose citation is the module constant BPHS_CH22 (platform/python-sidecar/brahmagyan/l0_transit.py:35); the registered writer class only calls that seeder (platform/python-sidecar/pipeline/orchestrator/writers/bg_transit_rules.py:29). The one f-string in the seeder module (platform/python-sidecar/brahmagyan/l0_transit.py:970) builds a bg_transit_moorti citation, a table this asset does not own, and no text-building expression reaches this table's INSERT. Scope: this covers bg_transit_engine's own table only. Not claimed: the shared writer also writes bg_transit_moorti, whose rule_notes is chosen by a conditional expression (platform/python-sidecar/brahmagyan/l0_transit.py:964) and whose classical_citation is an f-string (platform/python-sidecar/brahmagyan/l0_transit.py:970); those rows and the bg_transit_rules text belong to the held bg_transit_rules ruling."
    },
    "vocab_alias": {
