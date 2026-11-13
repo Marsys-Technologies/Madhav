@@ -13,7 +13,7 @@
  * Global classical reference — no chart_id needed.
  */
 import type { CapabilityDescriptor } from '../../types'
-import { query } from '@/lib/db/client'
+import { queryTransitEngineReference } from '@/lib/brahmagyan/transit_reference_store'
 
 export const queryTransitEngineCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L0/query_transit_engine',
@@ -56,20 +56,8 @@ export const queryTransitEngineCapability: CapabilityDescriptor = {
     void _ctx
     const graha = args['graha'] ? String(args['graha']) : null
 
-    const filters: string[] = ['1=1']
-    const params: unknown[] = []
-    let p = 1
-    if (graha) { filters.push(`LOWER(graha) = LOWER($${p++})`); params.push(graha) }
-    const where = filters.join(' AND ')
-
-    const sql = `
-      SELECT graha, avg_daily_motion_deg, zodiac_period_days, sign_residence_days, classical_citation
-      FROM bg_transit_engine
-      WHERE ${where}
-      ORDER BY graha`
-
     try {
-      const result = await query<Record<string, unknown>>(sql, params)
+      const result = await queryTransitEngineReference({ graha })
       return {
         content: {
           rows: result.rows,
