@@ -9,6 +9,9 @@ Regression for the ka_yojaka → Kāla/Phala/Mīmāṃsā cascade.
 """
 import sys
 import pathlib
+import copy
+import json
+import re
 
 import pytest
 
@@ -180,3 +183,202 @@ def test_no_failure_runs_everything(monkeypatch):
     assert set(ran) == set(PLAN) and len(ran) == len(PLAN)
     assert ran.index("A") < ran.index("B") < ran.index("C")  # A → B → C chain order
     assert all(state[a] == "complete" for a in PLAN)
+
+
+class _PreflightCursor(FakeCursor):
+    """Inert protocol double for the existing one-statement parent/child transition."""
+    def __init__(self, db, error_type=None):
+        super().__init__({})
+        self.db = db
+        self.error_type = error_type
+        self.statements = []
+
+    def execute(self, sql, params=None):
+        normalized = " ".join(sql.split())
+        self.statements.append((normalized, params))
+        if "FROM build_runs WHERE id" in normalized:
+            row = {"id": "run-1", "chart_id": CHART_ID, "scope": "global", "scope_target": None,
+                   "action": "rebuild", "plan": PLAN, "state": self.db["state"],
+                   "plan_manifest": copy.deepcopy(self.db["manifest"]),
+                   "plan_manifest_digest": self.db["digest"]}
+            if "AS _preflight_manifest_text" in normalized:
+                row["_preflight_manifest_text"] = None if self.db["sql_null"] else json.dumps(self.db["manifest"])
+            self._result = [row]
+            return
+        if "WITH failed_run AS" not in normalized:
+            raise AssertionError("unexpected preflight database operation")
+        if self.error_type is not None:
+            raise self.error_type("synthetic database refusal")
+        assert len(params) == normalized.count("%s")
+        where = normalized.split("WHERE id=%s", 1)[1].split("RETURNING id", 1)[0]
+        if re.search(r"state\s*=\s*'planned'", where):
+            accepted = self.db["state"] == "planned"
+        else:
+            # The current baseline explicitly admits all three states.
+            assert "state IN ('planned', 'running', 'paused')" in where
+            accepted = self.db["state"] in {"planned", "running", "paused"}
+        if "plan_manifest IS NOT DISTINCT FROM %s::jsonb" in where:
+            manifest_index = normalized.split("plan_manifest IS NOT DISTINCT FROM", 1)[0].count("%s")
+            observed_text = params[manifest_index]
+            if observed_text is None:
+                same_manifest = self.db["sql_null"]
+            else:
+                same_manifest = not self.db["sql_null"] and json.loads(observed_text) == self.db["manifest"]
+            accepted = accepted and same_manifest
+        if "plan_manifest_digest IS NOT DISTINCT FROM %s" in where:
+            digest_index = normalized.split("plan_manifest_digest IS NOT DISTINCT FROM", 1)[0].count("%s")
+            accepted = accepted and params[digest_index] == self.db["digest"]
+        if accepted:
+            self.db["state"] = "failed"
+            assert "run_id IN (SELECT id FROM failed_run)" in normalized
+            assert "AND state='queued'" in normalized
+            for name, state in self.db["children"].items():
+                if state == "queued":
+                    self.db["children"][name] = "aborted"
+        self._result = []
+
+
+class _PreflightConn:
+    def __init__(self, db, error_type=None):
+        self.cur = _PreflightCursor(db, error_type)
+        self.autocommit = False
+        self.commits = 0
+        self.rollbacks = 0
+        self.closed = False
+
+    def cursor(self):
+        return self.cur
+
+    def commit(self):
+        self.commits += 1
+
+    def rollback(self):
+        self.rollbacks += 1
+
+    def close(self):
+        self.closed = True
+
+
+def _preflight_db(state="planned", sql_null=False):
+    frozen = _frozen_run_fields()
+    return {"state": state, "manifest": frozen["plan_manifest"],
+            "digest": frozen["plan_manifest_digest"], "sql_null": sql_null,
+            "children": {"A": "queued", "B": "running", "C": "complete"}}
+
+
+def _install_preflight(monkeypatch, db, *, malformed=False, race=None, error_type=None):
+    ran = _install(monkeypatch, {}, set())
+    conn = _PreflightConn(db, error_type)
+    monkeypatch.setattr(runner, "connect", lambda: conn)
+    original_validate = runner.validate_frozen_run_manifest
+
+    def validate(row):
+        assert "_preflight_manifest_text" not in row
+        if malformed:
+            if race is not None:
+                race(db)
+            raise ValueError("synthetic stored manifest invalid")
+        return original_validate(row)
+
+    def wrong_local_code(*args):
+        raise ValueError("synthetic local code digest mismatch")
+
+    def forbidden_admission(*args, **kwargs):
+        raise AssertionError("preflight refusal must precede writer admission")
+
+    monkeypatch.setattr(runner, "_check_writer_registry_gaps", forbidden_admission)
+    monkeypatch.setattr(runner, "claim_runnable_run", forbidden_admission)
+    monkeypatch.setattr(runner, "validate_frozen_run_manifest", validate)
+    monkeypatch.setattr(runner, "_verify_sidecar_code_matches_manifest", wrong_local_code)
+    return conn, ran
+
+
+@pytest.mark.parametrize("state", ["planned", "running", "paused"])
+def test_wrong_local_code_refuses_without_shared_mutation_or_commit(monkeypatch, state):
+    db = _preflight_db(state)
+    before = copy.deepcopy(db)
+    conn, ran = _install_preflight(monkeypatch, db)
+    with pytest.raises(SystemExit) as failure:
+        runner.execute_run("run-1")
+    assert failure.value.code == 1
+    assert db == before
+    assert not any("WITH failed_run AS" in sql for sql, _ in conn.cur.statements)
+    assert conn.commits == 0
+    assert conn.closed
+    assert ran == []
+
+
+@pytest.mark.parametrize("replacement", ["running", "paused", "manifest", "digest"])
+def test_malformed_manifest_failure_cannot_change_a_replaced_or_claimed_run(monkeypatch, replacement):
+    db = _preflight_db()
+
+    def race(row):
+        if replacement in {"running", "paused"}:
+            row["state"] = replacement
+        elif replacement == "manifest":
+            row["manifest"] = {"a_different_observed_manifest": True}
+        else:
+            row["digest"] = "f" * 64
+
+    conn, ran = _install_preflight(monkeypatch, db, malformed=True, race=race)
+    with pytest.raises(SystemExit) as failure:
+        runner.execute_run("run-1")
+    assert failure.value.code == 1
+    assert db["state"] == (replacement if replacement in {"running", "paused"} else "planned")
+    assert db["children"] == {"A": "queued", "B": "running", "C": "complete"}
+    assert conn.closed
+    assert ran == []
+
+
+@pytest.mark.parametrize("started_as_sql_null", [True, False])
+def test_null_representation_change_is_a_different_snapshot(monkeypatch, started_as_sql_null):
+    db = _preflight_db(sql_null=started_as_sql_null)
+    db["manifest"] = None
+    db["digest"] = None
+
+    def race(row):
+        row["sql_null"] = not started_as_sql_null
+
+    conn, _ = _install_preflight(monkeypatch, db, malformed=True, race=race)
+    with pytest.raises(SystemExit):
+        runner.execute_run("run-1")
+    assert db["state"] == "planned"
+    assert db["children"] == {"A": "queued", "B": "running", "C": "complete"}
+    assert conn.closed
+
+
+def test_malformed_unchanged_planned_snapshot_aborts_only_queued_children(monkeypatch):
+    db = _preflight_db()
+    conn, ran = _install_preflight(monkeypatch, db, malformed=True)
+    with pytest.raises(SystemExit) as failure:
+        runner.execute_run("run-1")
+    assert failure.value.code == 1
+    assert db["state"] == "failed"
+    assert db["children"] == {"A": "aborted", "B": "running", "C": "complete"}
+    assert conn.commits == 1
+    assert conn.closed
+    assert ran == []
+
+
+@pytest.mark.parametrize("error_type", [runner.psycopg.errors.InsufficientPrivilege,
+                                       runner.psycopg.errors.ForeignKeyViolation])
+def test_preflight_write_error_rolls_back_and_closes_without_committing(monkeypatch, error_type):
+    db = _preflight_db()
+    before = copy.deepcopy(db)
+    conn, ran = _install_preflight(monkeypatch, db, malformed=True, error_type=error_type)
+    with pytest.raises(error_type):
+        runner.execute_run("run-1")
+    assert db == before
+    assert conn.commits == 0
+    assert conn.rollbacks == 1
+    assert conn.closed
+    assert ran == []
+
+
+def test_load_run_default_row_shape_does_not_expose_internal_snapshot():
+    db = _preflight_db()
+    cur = _PreflightCursor(db)
+    row = runner.load_run(cur, "run-1")
+    assert set(row) == {"id", "chart_id", "scope", "scope_target", "action", "plan", "state",
+                        "plan_manifest", "plan_manifest_digest"}
+    assert "AS _preflight_manifest_text" not in cur.statements[0][0]
