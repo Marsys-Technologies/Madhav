@@ -463,7 +463,7 @@ def test_reader_evidence_battery_runs_but_full_combination_policy_is_unchanged(m
     assert ci_gate.MERGE_GROUP_FULL is True
     assert ci_gate.combination_suites_run("pull_request", [".github/workflows/ci.yml", "platform/scripts/governance/ci_changes.py"])
     assert ci_changes.docs_only(['00_ARCHITECTURE/notes/unpinned-source-check.md'], pinned=frozenset())
-    for path in ('00_ARCHITECTURE/notes/bad\x00.md', '00_ARCHITECTURE/notes/bad\n.md',
+    for path in ('00_ARCHITECTURE/notes/bad\x00.md', '00_ARCHITECTURE/notes/bad' + chr(10) + '.md',
                  '00_ARCHITECTURE/notes/bad\udcff.md', '../bad.md'):
         assert not ci_changes.docs_only([path], pinned=frozenset())
     monkeypatch.setattr(ci_changes, '_pinned', lambda *args: frozenset())
