@@ -32,6 +32,20 @@ export interface JobInvocationResult {
   executionName: string
 }
 
+/** The invocation was refused before a run could be accepted. */
+export class RunSubmissionRejected extends Error {
+  constructor(cause: unknown) {
+    super(cause instanceof Error ? cause.message : String(cause), { cause })
+    this.name = 'RunSubmissionRejected'
+  }
+}
+
+// Jobs.RunJob is non-idempotent and the default SDK has no retry codes. Only
+// these application-level status codes establish that the request was refused.
+// INVALID_ARGUMENT, NOT_FOUND, PERMISSION_DENIED, FAILED_PRECONDITION and
+// UNAUTHENTICATED. Deadline and transport errors can arrive after acceptance.
+const RUN_SUBMISSION_REFUSAL_CODES = new Set([3, 5, 7, 9, 16])
+
 export interface JobTransport {
   runJob(args: {
     jobName: string
@@ -77,7 +91,7 @@ export function readJobInvokerEnv(env: NodeJS.ProcessEnv = process.env): JobInvo
   return out
 }
 
-async function defaultTransport(): Promise<JobTransport> {
+async function defaultTransport(checkInitialFailure = false): Promise<JobTransport> {
   const mod = await loadGcpModule('@google-cloud/run')
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const client = new (mod as any).JobsClient()
@@ -94,6 +108,14 @@ async function defaultTransport(): Promise<JobTransport> {
           ],
         },
       })
+      // A named initial LRO can already carry a terminal error. It does not
+      // establish nonadmission, so an opted-in caller gets no acceptance signal.
+      if (checkInitialFailure && (
+        (op?.done === true && op.error != null) ||
+        (op?.latestResponse?.done === true && op.latestResponse.error != null)
+      )) {
+        return { executionName: '' }
+      }
       const execName: string =
         // op is a LRO; `.name` is the execution resource id once the LRO is created.
         (op?.name as string | undefined) ?? (op?.latestResponse?.name as string | undefined) ?? ''
@@ -135,7 +157,11 @@ export async function invokeBuildJob(
  *      immediate process death within 200ms, rather than resolving blindly.
  * M-6: stderr is piped so Python import errors and tracebacks reach the logs.
  */
-async function invokeRunJobLocally(runId: string, forceExecute = false): Promise<JobInvocationResult> {
+async function invokeRunJobLocally(
+  runId: string,
+  forceExecute = false,
+  reportDefiniteRejection = false,
+): Promise<JobInvocationResult> {
   const { spawn } = await import('child_process')
   const nodePath = await import('path')
   const repoRoot = process.env.MARSYS_REPO_ROOT ?? nodePath.resolve(process.cwd(), '..')
@@ -155,7 +181,9 @@ async function invokeRunJobLocally(runId: string, forceExecute = false): Promise
 
   // Race: error event (immediate ENOENT/EACCES) vs. 200ms grace (process started OK) (H-6)
   await Promise.race([
-    new Promise<void>((_, reject) => proc.once('error', (err) => reject(err))),
+    new Promise<void>((_, reject) => proc.once('error', (err) => {
+      reject(reportDefiniteRejection && proc.pid === undefined ? new RunSubmissionRejected(err) : err)
+    })),
     new Promise<void>((resolve) => setTimeout(resolve, 200)),
   ])
 
@@ -187,19 +215,37 @@ async function invokeRunJobLocally(runId: string, forceExecute = false): Promise
  */
 export async function invokeRunJob(
   runId: string,
-  opts: { env?: JobInvokerEnv; transport?: JobTransport; forceExecute?: boolean } = {},
+  opts: { env?: JobInvokerEnv; transport?: JobTransport; forceExecute?: boolean; reportDefiniteRejection?: boolean } = {},
 ): Promise<JobInvocationResult> {
   if (process.env.BUILD_EXECUTOR === 'local') {
-    return invokeRunJobLocally(runId, opts.forceExecute === true)
+    return invokeRunJobLocally(runId, opts.forceExecute === true, opts.reportDefiniteRejection === true)
   }
-  const env = opts.env ?? readJobInvokerEnv()
-  const transport = opts.transport ?? (await defaultTransport())
-  return transport.runJob({
-    jobName: jobPath(env),
-    containerArgs: ['--run-id', runId],
-    envOverrides: {
-      MARSYS_RUN_ID: runId,
-      ...(opts.forceExecute === true ? { NIRMANA_FORCE_EXECUTE: '1' } : {}),
-    },
-  })
+  let env: JobInvokerEnv
+  let transport: JobTransport
+  try {
+    env = opts.env ?? readJobInvokerEnv()
+    transport = opts.transport ?? (await defaultTransport(opts.reportDefiniteRejection === true))
+  } catch (error) {
+    if (opts.reportDefiniteRejection) throw new RunSubmissionRejected(error)
+    throw error
+  }
+
+  try {
+    return await transport.runJob({
+      jobName: jobPath(env),
+      containerArgs: ['--run-id', runId],
+      envOverrides: {
+        MARSYS_RUN_ID: runId,
+        ...(opts.forceExecute === true ? { NIRMANA_FORCE_EXECUTE: '1' } : {}),
+      },
+    })
+  } catch (error) {
+    if (opts.reportDefiniteRejection && !opts.transport) {
+      const code = (error as { code?: unknown })?.code
+      if (typeof code === 'number' && RUN_SUBMISSION_REFUSAL_CODES.has(code)) {
+        throw new RunSubmissionRejected(error)
+      }
+    }
+    throw error
+  }
 }
