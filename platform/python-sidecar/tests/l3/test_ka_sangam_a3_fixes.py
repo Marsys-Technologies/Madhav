@@ -158,13 +158,43 @@ class TestB4SrcDomainPropagation:
         )
 
     def test_domain_propagated_to_window_in_generate_windows(self):
-        """
-        B4-src PASS-AFTER: _generate_windows must stamp w['primary_domain'] on each window.
-        """
-        src = self._read_writer()
+        """The active writer forwards predicates to the owner that stamps every window."""
+        import ast
+        import inspect
+        import textwrap
+
+        from pipeline.orchestrator.writers import ka_sangam as writer_module
+        from services.ka_sangam import window_generation as window_owner
+
+        wrapper = writer_module.KaSangamWriter._generate_windows
+        assert wrapper is writer_module._LegacyKaSangamWriter._generate_windows
+        assert writer_module.generate_windows is window_owner.generate_windows
+        assert wrapper.__globals__["generate_windows"] is window_owner.generate_windows
+
+        [forwarder] = ast.parse(textwrap.dedent(inspect.getsource(wrapper))).body
+        returns = [node for node in forwarder.body if isinstance(node, ast.Return)]
+        assert len(returns) == 1
+        call = returns[0].value
+        assert isinstance(call, ast.Call) and isinstance(call.func, ast.Name)
+        assert call.func.id == "generate_windows"
+        [predicates] = [kw.value for kw in call.keywords if kw.arg == "pred_dicts"]
+        assert isinstance(predicates, ast.Name) and predicates.id == "pred_dicts"
+
+        src = inspect.getsource(window_owner.generate_windows)
         assert "w['primary_domain'] = primary_domain" in src, (
             "B4-src: _generate_windows must stamp primary_domain onto each window dict"
         )
+        stamps = [
+            node for node in ast.walk(ast.parse(textwrap.dedent(src)))
+            if isinstance(node, ast.Assign) and len(node.targets) == 1
+            and isinstance(node.targets[0], ast.Subscript)
+            and isinstance(node.targets[0].value, ast.Name)
+            and node.targets[0].value.id == "w"
+            and isinstance(node.targets[0].slice, ast.Constant)
+            and node.targets[0].slice.value == "primary_domain"
+            and isinstance(node.value, ast.Name) and node.value.id == "primary_domain"
+        ]
+        assert len(stamps) == 4, "B4-src: all four owner emission paths must stamp primary_domain"
 
     def test_domain_in_insert_values(self):
         """
