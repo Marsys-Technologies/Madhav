@@ -11930,7 +11930,7 @@
       "stable_across_ayanamsha"
      ],
      "why": "fragility_class is a graded one-word label of the cross-ayanamsha comparison: ayanamsha_sensitive when any compared domain disagrees, stable_across_ayanamsha otherwise (it is absent until the post-loop patch)",
-     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_chart_gestalt.py:633"
+     "evidence": "platform/python-sidecar/bodha_writers/chart_gestalt_fragility.py:52"
     }
    ],
    "writer_constant_phrases": [
