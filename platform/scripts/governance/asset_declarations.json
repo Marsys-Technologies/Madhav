@@ -12298,7 +12298,7 @@
      },
      {
       "column": "wildcard_element_ids_jsonb",
-      "why": "signal class values are the union of the six bodha_msr_signals INSERT writers (bo_laksana's 15 owned classes at bo_laksana.py:151 plus sudarshana_agreement, arudha, special_lagna, nakshatra_semantic, vargottama_amplification, dhana_axis), the other leaves are signal id pointers and a constant reach_path label",
+      "why": "signal class values are the union of the six bodha_msr_signals INSERT writers (bo_laksana's 15 owned classes at bo_laksana.py:152 plus sudarshana_agreement, arudha, special_lagna, nakshatra_semantic, vargottama_amplification, dhana_axis), the other leaves are signal id pointers and a constant reach_path label",
       "json_leaf_patterns": [
        {
         "path": "$.wildcard_signals[*].signal_id",
@@ -12341,7 +12341,7 @@
      },
      {
       "column": "all_relevant_ranked_jsonb",
-      "why": "source_l1_asset values are the ga_ ids bo_laksana infers or writes (bo_laksana.py:186-211, :1444, :3013) plus the constants of the five emitters, signal class values are the same 21 as above, the other leaves are signal id pointers",
+      "why": "source_l1_asset values are the ga_ ids bo_laksana infers or writes (bo_laksana.py:187-212, :1444, :3013) plus the constants of the five emitters, signal class values are the same 21 as above, the other leaves are signal id pointers",
       "json_leaf_patterns": [
        {
         "path": "$.ranked_signals[*].signal_id",
@@ -12595,7 +12595,7 @@
     "applies": "D3",
     "nature": "single_derivation",
     "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
-    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3219",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3220",
     "per_witness_values": false
    },
    "prose_fields": [
@@ -12611,7 +12611,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_msr_signals; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:571 reads `bodha_msr_signals` (`FROM bodha_msr_signals m`). Dens.served=PASS. Shared table bodha_msr_signals: served by query_signals.ts with the signal_type_class facet (:448-450 `m.signal_type_class = $n`, applied in the WHERE before the salience cap), so its 15 signal_type_class values (yoga, dosha, sade_sati, panchanga, ...) rows are reachable; the asset's count_sql selects exactly that class filter.",
-    "prose_fields": "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3266 INSERTs into bodha_msr_signals binding the two columns (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3306), executed by _batch_insert (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3463, platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3803). Three emit sites carry both columns. (1) The fact path: _build_signal_row assigns signal_summary_text = _build_summary_text(...) (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:2611) whose body joins category/key/value_text/value_num and every config key (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:796), and signal_headline_text = _build_headline_text(...) (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:2622) whose returns f-string subject/house/varga/key = value (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:830, platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:831); dict at platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:2675, platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:2676. (2) The D9 cross-check: headline and summary f-strings state D1/D9 dignity, classification and valence (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3119, platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3123; dict platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3150, platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3151). (3) The varga-ratification divergence signals: summary joined from f-string clauses, the value_text clause omitted when L1 has none (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:1484) and headline `value_text or f\"{subj}: divergent varga ratification in {dom}\"` (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:1487; verbatim-first, composed fallback). Most rows are a key=value restatement of the L1 fact rather than graded prose; the grading (valence, classification) sits in the D9 cross-check. AST-checked (every dict site resolves to composed text). Served: platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:164 selects signal_summary_text and signal_headline_text in the default projection (DEFAULT_SERVE_COLUMNS; also in MSR_SIGNAL_COLUMNS) via FROM bodha_msr_signals m (platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:571). Shared table: bodha_msr_signals is written by six bo_* writers (bo_laksana_rerank only UPDATEs), so a per-asset Narr check must filter by producing asset: producer_asset_id='bo_laksana' (migration 1036_data_plane_l2_producer_generations.sql (line 299), NOT NULL, CHECK-listed, trigger-maintained) - a column the served query neither selects nor filters, i.e. dark in the default projection and absent from MSR_SIGNAL_COLUMNS; the served equivalent is the signal_type_class facet (platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:499; platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:163 in the default projection) = 'yoga', 'dosha', 'sade_sati', 'panchanga', 'karaka_alignment', 'tradition_specific', 'parivartana', 'configuration', 'varga_pattern', 'annual', 'medical', 'vastu', 'composite_state', 'varga_ratification_divergence', 'bhavat_bhavam_amplifier'. Computed placeholders: body, loc (the fact value, house and varga restated; value_num/value_text formatted), classification, d1_text, d9_text, valence, value_num, value_text; identifier-only: graha, subj, dom, source_l1_asset, str(fact_subject).upper(). MIXED column caveat: the divergence headline (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:1487) is verbatim-first (`value_text or f\"...\"`, its fallback interpolates only identifiers), so it states no computed value of its own; row discriminator signal_type_class='varga_ratification_divergence'. Also: bhavat_bhavam_amplifier.to_msr_row composes class-'bhavat_bhavam_amplifier' text but has no caller, so no such row exists to check. | citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citation_human states the D1 and D9 readings and their cross-check classification (bo_laksana.py), and the derived bhava numbers of the bhavat-bhavam amplifier. Composed at platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3245, platform/python-sidecar/bodha_writers/bhavat_bhavam_amplifier.py:392. AST census of the writer's citation_human sites (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py, platform/python-sidecar/bodha_writers/bhavat_bhavam_amplifier.py): 5 composed, 0 constant, 0 forwarded, 2 other. Column bound at platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3265 (INSERT INTO bodha_msr_signals); served by platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:142."
+    "prose_fields": "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3267 INSERTs into bodha_msr_signals binding the two columns (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3307), executed by _batch_insert (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3464, platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3804). Three emit sites carry both columns. (1) The fact path: _build_signal_row assigns signal_summary_text = _build_summary_text(...) (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:2612) whose body joins category/key/value_text/value_num and every config key (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:797), and signal_headline_text = _build_headline_text(...) (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:2623) whose returns f-string subject/house/varga/key = value (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:831, platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:832); dict at platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:2676, platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:2677. (2) The D9 cross-check: headline and summary f-strings state D1/D9 dignity, classification and valence (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3120, platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3124; dict platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3151, platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3152). (3) The varga-ratification divergence signals: summary joined from f-string clauses, the value_text clause omitted when L1 has none (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:1485) and headline `value_text or f\"{subj}: divergent varga ratification in {dom}\"` (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:1488; verbatim-first, composed fallback). Most rows are a key=value restatement of the L1 fact rather than graded prose; the grading (valence, classification) sits in the D9 cross-check. AST-checked (every dict site resolves to composed text). Served: platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:164 selects signal_summary_text and signal_headline_text in the default projection (DEFAULT_SERVE_COLUMNS; also in MSR_SIGNAL_COLUMNS) via FROM bodha_msr_signals m (platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:571). Shared table: bodha_msr_signals is written by six bo_* writers (bo_laksana_rerank only UPDATEs), so a per-asset Narr check must filter by producing asset: producer_asset_id='bo_laksana' (migration 1036_data_plane_l2_producer_generations.sql (line 299), NOT NULL, CHECK-listed, trigger-maintained) - a column the served query neither selects nor filters, i.e. dark in the default projection and absent from MSR_SIGNAL_COLUMNS; the served equivalent is the signal_type_class facet (platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:499; platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:163 in the default projection) = 'yoga', 'dosha', 'sade_sati', 'panchanga', 'karaka_alignment', 'tradition_specific', 'parivartana', 'configuration', 'varga_pattern', 'annual', 'medical', 'vastu', 'composite_state', 'varga_ratification_divergence', 'bhavat_bhavam_amplifier'. Computed placeholders: body, loc (the fact value, house and varga restated; value_num/value_text formatted), classification, d1_text, d9_text, valence, value_num, value_text; identifier-only: graha, subj, dom, source_l1_asset, str(fact_subject).upper(). MIXED column caveat: the divergence headline (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:1488) is verbatim-first (`value_text or f\"...\"`, its fallback interpolates only identifiers), so it states no computed value of its own; row discriminator signal_type_class='varga_ratification_divergence'. Also: bhavat_bhavam_amplifier.to_msr_row composes class-'bhavat_bhavam_amplifier' text but has no caller, so no such row exists to check. | citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citation_human states the D1 and D9 readings and their cross-check classification (bo_laksana.py), and the derived bhava numbers of the bhavat-bhavam amplifier. Composed at platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3246, platform/python-sidecar/bodha_writers/bhavat_bhavam_amplifier.py:392. AST census of the writer's citation_human sites (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py, platform/python-sidecar/bodha_writers/bhavat_bhavam_amplifier.py): 5 composed, 0 constant, 0 forwarded, 2 other. Column bound at platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3266 (INSERT INTO bodha_msr_signals); served by platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:142."
    },
    "evidence_kind": "writer",
    "source": {
@@ -12694,7 +12694,7 @@
      "citation_human"
     ],
     "why": "bo_laksana projects each L1 chart_facts row (and each chart_vichara divergence row) into one signal: the fact's own leaves are copied into configuration_jsonb and the fact id is cited in constituent_facts_array, which the static writer scan can only read as empty-string fallbacks and dynamic row construction, so the data comparison against L1 reads the forwarding itself (N-189)",
-    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:2383"
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:2384"
    },
    "density_facet": {
     "column": "producer_asset_id",
@@ -12736,7 +12736,7 @@
   "bo_laksana_rerank": {
    "update_only": {
     "why": "the rerank pass only UPDATEs derived columns of the bodha_msr_signals rows bo_laksana already wrote (convergence counts, contradicts array, graph contribution); it never inserts or deletes a signal row",
-    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4098"
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4099"
    },
    "kind": "data",
    "carriage": {
@@ -12744,7 +12744,7 @@
     "applies": "D3",
     "nature": "single_derivation",
     "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
-    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4154",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4155",
     "per_witness_values": false
    },
    "prose_fields": [],
@@ -12756,7 +12756,7 @@
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bodha_msr_signals; census Idem.pattern PARTIAL: the asset's own table(s) are only UPDATEd in place: bodha_ms",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:571 reads `bodha_msr_signals` (`FROM bodha_msr_signals m`). Dens.served=PASS. Shared table bodha_msr_signals: the asset's output is the column graph_node_strength_contribution_jsonb, which query_signals.ts serves only through its projection whitelist (:112, on request), not in the default projection; weakest of the msr reads.",
-    "prose_fields": "[] = the writer composes no string bound to a column (SS ruling 2026-10-01). bo_laksana_rerank is UPDATE-only (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4096 BoLaksanaRerankWriter) and writes six non-text columns: graph_node_strength_contribution_jsonb (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4151 payload of floats, the graha title looked up from _SHORT_TO_LONG, the constant formula_version and the timestamp; UPDATE platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4154), valence and valence_source (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4218, only when new_source == 'ga_vichara_v1'; valence is an enum value mapped through the constant dict _VICHARA_TO_MSR_VALENCE at platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:389), and the SQL-computed counts and array system_convergence_count, cross_system_consensus_count, contradicts_signals_array (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3999, platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4029, platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4037). The only text-building expressions in the class and its helpers are the WriterResult notes f-string (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4229, not stored in a column), numeric arithmetic in _structural_role_from_centrality, and the lookup-key f-string at platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:434 used only as a vichara_lookup.get key. Test guard: AST inventory of those expressions, the payload dict has no composed value, the UPDATE SET columns are exactly the six, and the SQL contains no ||, concat, format, string_agg or replace. Served: platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:571."
+    "prose_fields": "[] = the writer composes no string bound to a column (SS ruling 2026-10-01). bo_laksana_rerank is UPDATE-only (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4097 BoLaksanaRerankWriter) and writes six non-text columns: graph_node_strength_contribution_jsonb (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4152 payload of floats, the graha title looked up from _SHORT_TO_LONG, the constant formula_version and the timestamp; UPDATE platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4155), valence and valence_source (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4219, only when new_source == 'ga_vichara_v1'; valence is an enum value mapped through the constant dict _VICHARA_TO_MSR_VALENCE at platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:390), and the SQL-computed counts and array system_convergence_count, cross_system_consensus_count, contradicts_signals_array (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4000, platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4030, platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4038). The only text-building expressions in the class and its helpers are the WriterResult notes f-string (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4230, not stored in a column), numeric arithmetic in _structural_role_from_centrality, and the lookup-key f-string at platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:435 used only as a vichara_lookup.get key. Test guard: AST inventory of those expressions, the payload dict has no composed value, the UPDATE SET columns are exactly the six, and the SQL contains no ||, concat, format, string_agg or replace. Served: platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:571."
    },
    "evidence_kind": "writer",
    "source": {
@@ -12795,7 +12795,7 @@
        "valence_doctrine_v1",
        "bhavat_bhavam_amplifier_v1"
       ],
-      "why": "valence_source names the resolver or emitter that produced the valence of a bodha_msr_signals row: ga_vichara_v1 and keyword_heuristic_v1 (bo_laksana.py:1551,3198), categorical_deterministic_v1 (bodha_writers/arudha_emitter.py:129, vargottama_dhana_emitter.py:144, nakshatra_semantic_emitter.py:363, sudarshana_emitter.py:387, special_lagna_emitter.py:233), valence_doctrine_v1 (arudha_emitter.py:338, vargottama_dhana_emitter.py:290) and bhavat_bhavam_amplifier_v1 (bodha_writers/bhavat_bhavam_amplifier.py:397)"
+      "why": "valence_source names the resolver or emitter that produced the valence of a bodha_msr_signals row: ga_vichara_v1 and keyword_heuristic_v1 (bo_laksana.py:1552,3199), categorical_deterministic_v1 (bodha_writers/arudha_emitter.py:129, vargottama_dhana_emitter.py:144, nakshatra_semantic_emitter.py:363, sudarshana_emitter.py:387, special_lagna_emitter.py:233), valence_doctrine_v1 (arudha_emitter.py:338, vargottama_dhana_emitter.py:290) and bhavat_bhavam_amplifier_v1 (bodha_writers/bhavat_bhavam_amplifier.py:397)"
      },
      {
       "column": "graph_node_strength_contribution_jsonb",
@@ -12855,7 +12855,7 @@
         "platform/python-sidecar/pyjhora_adapter/positions.py:75",
         "platform/python-sidecar/bodha_writers/arudha_emitter.py:48",
         "platform/python-sidecar/bodha_writers/arudha_emitter.py:278",
-        "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4239",
+        "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4240",
         "platform/python-sidecar/ga_writers/ga_structural_writer.py:223",
         "platform/python-sidecar/ga_writers/ga_structural_writer.py:5511",
         "platform/python-sidecar/ga_writers/ga_structural_writer.py:5528",
@@ -13094,7 +13094,7 @@
         "platform/python-sidecar/ga_writers/ga_structural_writer.py:6315",
         "platform/python-sidecar/ga_writers/ga_structural_writer.py:6453",
         "platform/python-sidecar/ga_writers/ga_vichara_writer.py:613",
-        "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:1503",
+        "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:1504",
         "platform/python-sidecar/ga_writers/ga_positions_writer.py:60"
        ]
       },
@@ -13208,7 +13208,7 @@
       }
      ],
      "why": "configuration_jsonb of the shared bodha_msr_signals forwards every non-null key of the L1 fact_value_jsonb (bo_laksana) plus the satellite emitters' own config keys. Each declared path or group keeps one kind in one spelling family, read from the producing code and graded value by value over the asset's whole scope (a wrong claim reads FAIL and names the value); a declared member that no row holds is reported unread. Identifier paths declare the closed set of constants the producer can write. Paths not declared hold labels, composed identifiers, free text or the nakshatra spelling that is being corrected.",
-     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:2442",
+     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:2443",
      "vocab_keys": [
       {
        "prefix": "$.tally",
@@ -13255,7 +13255,7 @@
       }
      ],
      "why": "epistemic_jsonb.subject_resolution.resolved_graha is the graha that the position-class subject resolver names, re-spelled by _compose_graha_name to the Title graha name (Sun, Mars, Rahu); every other string leaf of epistemic_jsonb is a fixed tier, state or rule label that holds no graha, sign, nakshatra or house term.",
-     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:2498"
+     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:2499"
     }
    ]
   },
