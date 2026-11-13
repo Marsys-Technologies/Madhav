@@ -4,7 +4,7 @@ from __future__ import annotations
 import pytest
 
 from brahmagyan.verification_vocab import is_verified
-from test_msr_single_pass_boundary import WRITERS, load_detector, load_projection
+from .test_msr_single_pass_boundary import WRITERS, load_detector, load_projection
 
 EXPECTED_RANKS = {
     "two_pass_verified": 3, "classical_match": 2, "single_pass": 1, "pass": 2,
