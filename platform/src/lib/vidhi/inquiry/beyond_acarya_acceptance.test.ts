@@ -361,7 +361,7 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     // K9-WRITE-SCOPE (v33): query_convergence_windows now reads only the served generation of kala_convergence (migration 1405); the authored source-query availability review text moves semantic_review_fingerprint, hence capability_content_hash and report_hash; metrics, source_catalog_fingerprint and producer_contract_fingerprint stay fixed.
     // K9 obstruction scope (v34, the successor of main's v33): migration 1406 moves the ka_vighnakara output-digest spec path in the producer census (producer_contract_fingerprint) and the kala_obstruction source-query probe mirrors the served-partition read (semantic_review_fingerprint; now both main's convergence scope text and the obstruction probe), hence capability_content_hash and report_hash; metrics and source_catalog_fingerprint stay fixed.
     // SR-EMPTY-REASON (v35): the PR's edits to query_obstruction_periods.ts and query_convergence_windows.ts shift the line anchors in the kala_obstruction and kala_convergence source-query availability contracts, which moves semantic_review_fingerprint, hence capability_content_hash and report_hash; metrics, source_catalog_fingerprint and producer_contract_fingerprint stay fixed.
-    expect(report.report_hash).toBe('sha256:ba426faad9a93243cedcbcdfeef90e18fdbf1023484fc2f2504f00a4db86420c')
+    expect(report.report_hash).toBe('sha256:a09bdc521a4e26f7bddbf3a57a2dce7970b554926edf020596fa2d9af965ffdb')
   })
 
   it('detects an independently expected concept omitted from the snapshot', () => {
