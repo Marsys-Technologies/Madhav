@@ -28,6 +28,11 @@ Canonical oracle paths (never flagged regardless of content):
   brahmagyan/aspects.py  (the authoritative oracle)
   brahmagyan/parashari_aspects.py  (permitted sibling)
 
+The three named Gochara kernel declarations are recognized only when their
+top-level literal matches the governed no-node angle contract. The runtime and
+the two independent verifier tables retain their own implementations. Changed
+angles, node aspects and additional local tables remain violations.
+
 False-negative boundary (honest — regex scanner, not AST):
   - Dict built via dict() constructor or dict comprehension is NOT caught.
   - A planet dict assigned as a class attribute via __init__ is NOT caught.
@@ -50,6 +55,7 @@ Exit codes: 0 clean, 1 violation(s), 2 invocation error.
 from __future__ import annotations
 
 import argparse
+import ast
 import json
 import re
 import sys
@@ -94,6 +100,19 @@ _RE_NAMED_ASPECT_DICT = re.compile(
     re.MULTILINE,
 )
 _ASPECT_VAR_KEYWORDS = re.compile(r"drishti|aspect|special.*graha|graha.*special", re.IGNORECASE)
+
+# These three declarations implement the separately governed no-node convention.
+# The verifier copies remain independent from the runtime and from each other.
+GOVERNED_DECLARATIONS = {
+    "platform/python-sidecar/services/gochara_kernel/convention.py": "SPECIAL_DRISHTI_DEG",
+    "platform/python-sidecar/services/gochara_kernel/inventory_verifier.py": "_DRISHTI_DEG",
+    "platform/python-sidecar/services/gochara_kernel/window_verifier.py": "_ASPECT_ANGLES",
+}
+GOVERNED_ANGLES = {
+    "sun": (180.0,), "moon": (180.0,), "mercury": (180.0,), "venus": (180.0,),
+    "mars": (90.0, 180.0, 210.0), "jupiter": (120.0, 180.0, 240.0),
+    "saturn": (60.0, 180.0, 270.0), "rahu": (), "ketu": (),
+}
 
 # Pattern B: dict literal where at least 2 graha names appear as string keys
 # AND the values are frozenset/list/float literals (aspect-degree shape)
@@ -150,11 +169,43 @@ def _find_dict_end(text: str, open_brace: int) -> int:
     return len(text)
 
 
-def scan_python_file(text: str) -> List[tuple]:
+def governed_declaration(text: str, file: str) -> tuple[str, int] | None:
+    """Recognize only an exact top-level declaration of the ruled convention."""
+    name = GOVERNED_DECLARATIONS.get(file)
+    if name is None:
+        return None
+    try:
+        module = ast.parse(text)
+        declarations = [
+            node for node in module.body
+            if isinstance(node, (ast.Assign, ast.AnnAssign))
+            and any(isinstance(target, ast.Name) and target.id == name for target in (
+                node.targets if isinstance(node, ast.Assign) else [node.target]
+            ))
+        ]
+        if len(declarations) != 1 or not isinstance(declarations[0].value, ast.Dict):
+            return None
+        literal = declarations[0].value
+        values = ast.literal_eval(literal)
+        if len(literal.keys) != 9 or len(values) != 9:
+            return None
+        normalized = {key.lower(): tuple(value) for key, value in values.items()}
+        if normalized != GOVERNED_ANGLES:
+            return None
+    except (SyntaxError, ValueError, TypeError, AttributeError):
+        return None
+    return name, declarations[0].lineno
+
+
+def scan_python_file(text: str, file: str = "") -> List[tuple]:
     """Return list of (line, kind, snippet) violations."""
     hits = []
+    governed = governed_declaration(text, file)
     for m in _RE_NAMED_ASPECT_DICT.finditer(text):
         varname = m.group("varname")
+        declaration_line = text.count("\n", 0, m.start("varname")) + 1
+        if (varname, declaration_line) == governed:
+            continue
         if not _ASPECT_VAR_KEYWORDS.search(varname):
             continue
         # Found a suspect variable name — grab the dict body
@@ -182,7 +233,7 @@ def scan_repo(root: Path, py_globs: Sequence[str]) -> List[Violation]:
         except OSError:
             continue
         rel = path.relative_to(root).as_posix()
-        for line, kind, snippet in scan_python_file(text):
+        for line, kind, snippet in scan_python_file(text, rel):
             violations.append(Violation(
                 file=rel, line=line, kind=kind, snippet=snippet,
                 message=(
