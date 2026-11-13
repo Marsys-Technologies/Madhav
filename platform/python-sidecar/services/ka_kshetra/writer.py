@@ -95,6 +95,12 @@ from datetime import date, datetime, time, timedelta
 from typing import Any, Iterable, Mapping, Optional
 
 from panchang_engine.swiss_backend import records_swiss_backend
+from pipeline.orchestrator.substep_progress_kshetra import (
+    delete_substep_progress,
+    list_substep_fingerprints,
+    list_substep_keys,
+    upsert_substep_progress,
+)
 from pipeline.orchestrator.writers import SubStep, WriterBase, WriterResult, register
 
 from services.ka_kshetra import (
@@ -2132,10 +2138,9 @@ class KaKshetraWriter(WriterBase):
             return
         prep = measure.prepare_candidate(self._candidate_schedule(), S5.envelope_digest(envelopes))
         with conn.cursor() as cur:
-            cur.execute('SELECT substep_key FROM build_substep_progress '
-                        'WHERE chart_id = %s AND asset_id = %s', (self._chart_id, ASSET_ID))
-            recorded = [r['substep_key'][len(_PREPARATION_KEY):] for r in S4._rows(cur)
-                        if r['substep_key'].startswith(_PREPARATION_KEY)]
+            keys = list_substep_keys(cur, chart_id=self._chart_id, asset_id=ASSET_ID)
+            recorded = [key[len(_PREPARATION_KEY):] for key in keys
+                        if key.startswith(_PREPARATION_KEY)]
         measure.bind_preparation(recorded, prep)
         if not recorded:
             self._record_substep(conn, _PREPARATION_KEY + prep.digest, 0)
@@ -2546,9 +2551,7 @@ class KaKshetraWriter(WriterBase):
                 cur.execute(
                     f'DELETE FROM {table} WHERE chart_id = %s'
                     + (f' AND {predicate}' if predicate else ''), (chart_id,))
-            cur.execute(
-                'DELETE FROM build_substep_progress WHERE chart_id = %s AND asset_id = %s',
-                (chart_id, ASSET_ID))
+            delete_substep_progress(cur, chart_id=chart_id, asset_id=ASSET_ID)
 
     def _fingerprint(self) -> str:
         import hashlib
@@ -2564,30 +2567,21 @@ class KaKshetraWriter(WriterBase):
 
     def _load_completed_substeps(self, conn, chart_id, fingerprint) -> Optional[set[str]]:
         with conn.cursor() as cur:
-            cur.execute(
-                'SELECT substep_key, build_fingerprint FROM build_substep_progress '
-                'WHERE chart_id = %s AND asset_id = %s', (chart_id, ASSET_ID))
-            rows = S4._rows(cur)
+            rows = list_substep_fingerprints(cur, chart_id=chart_id, asset_id=ASSET_ID)
         if not rows:
             return None
-        if {r['build_fingerprint'] for r in rows} != {fingerprint}:
+        if {observed for _, observed in rows} != {fingerprint}:
             if hasattr(self, '_generation'):
                 raise ValueError('G1 candidate inputs changed; open a new candidate')
             return None
-        return {r['substep_key'] for r in rows}
+        return {key for key, _ in rows}
 
     def _record_substep(self, conn, substep_key: str, rows: int) -> None:
         with conn.cursor() as cur:
-            cur.execute(
-                """INSERT INTO build_substep_progress
-                       (chart_id, asset_id, substep_key, build_fingerprint,
-                        rows_written, completed_at)
-                   VALUES (%s,%s,%s,%s,%s, now())
-                   ON CONFLICT (chart_id, asset_id, substep_key) DO UPDATE SET
-                       build_fingerprint = EXCLUDED.build_fingerprint,
-                       rows_written = EXCLUDED.rows_written,
-                       completed_at = EXCLUDED.completed_at""",
-                (self._chart_id, ASSET_ID, substep_key, self._fingerprint(), rows))
+            upsert_substep_progress(
+                cur, chart_id=self._chart_id, asset_id=ASSET_ID, substep_key=substep_key,
+                build_fingerprint=self._fingerprint(), rows_written=rows,
+            )
 
 
 #: (table, extra DELETE predicate) this writer owns and therefore clears on a
