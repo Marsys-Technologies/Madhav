@@ -171,11 +171,7 @@ jobs:
           TMPDIR: ${{ runner.temp }}/source-evidence.noindex
         run: |
           mkdir -p "$TMPDIR"
-          python -m pytest \
-            platform/scripts/governance/__tests__/test_e6_1_declarations.py \
-            platform/scripts/governance/__tests__/test_dens_not_served_committed.py \
-            platform/scripts/governance/__tests__/test_dens_not_served.py \
-            -q --no-header -rs -p no:cacheprovider
+          python platform/scripts/governance/ci_changes.py --run-source-evidence
       - run: npm ci --prefix platform
       - name: Generate and independently verify aggregates
         env:

@@ -16,22 +16,7 @@ classification=$(python3 platform/scripts/governance/ci_changes.py --event pull_
 if [ "$classification" = docs_only=true ]; then
   echo 'Source evidence battery is NOT APPLICABLE for proven unpinned docs only'
 else
-  DATABASE_URL='' PGHOST='' PYTHONDONTWRITEBYTECODE=1 python3 - <<'PYTHON'
-import subprocess
-import sys
-
-subprocess.run(
-    [
-        sys.executable, "-m", "pytest",
-        "platform/scripts/governance/__tests__/test_e6_1_declarations.py",
-        "platform/scripts/governance/__tests__/test_dens_not_served_committed.py",
-        "platform/scripts/governance/__tests__/test_dens_not_served.py",
-        "-q", "--no-header", "-rs", "-p", "no:cacheprovider",
-    ],
-    timeout=180,
-    check=True,
-)
-PYTHON
+  python3 platform/scripts/governance/ci_changes.py --run-source-evidence
 fi
 ```
 

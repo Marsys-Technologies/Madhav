@@ -3,6 +3,7 @@
   python3 ci_changes.py --event pull_request --base HEAD^1 --head HEAD     prints `docs_only=true|false` (always exit 0)
   python3 ci_changes.py --files a.md b/c.py                                 classify a given file list (tests)
   python3 ci_changes.py --list-pinned                                       print the pinned set computed from this checkout
+  python3 ci_changes.py --run-source-evidence                               run the bounded local and hosted source-evidence battery
 
 FAIL-CLOSED: `docs_only=true` is printed ONLY for a pull_request event with a non-empty changed-file list in which EVERY file (old and new
 name of a rename, deleted files included: `--no-renames`) is a documentation file. An error, an empty list, an unreadable diff, a push /
@@ -20,6 +21,7 @@ skips: code, data, config and workflow files; markdown beside code (platform/, s
 from __future__ import annotations
 
 import argparse
+import os
 import posixpath
 import re
 import subprocess
@@ -109,6 +111,23 @@ def changed_files(base: str, head: str) -> list[str] | None:
     return [f for f in out.decode("utf-8", "surrogateescape").split("\0") if f]
 
 
+def run_source_evidence() -> int:
+    """Run the same bounded source tests before local arming and hosted generation."""
+    command = [
+        sys.executable, "-m", "pytest",
+        "platform/scripts/governance/__tests__/test_e6_1_declarations.py",
+        "platform/scripts/governance/__tests__/test_dens_not_served_committed.py",
+        "platform/scripts/governance/__tests__/test_dens_not_served.py",
+        "-q", "--no-header", "-rs", "-p", "no:cacheprovider",
+    ]
+    env = dict(os.environ, DATABASE_URL="", PGHOST="", PYTHONDONTWRITEBYTECODE="1")
+    try:
+        return subprocess.run(command, cwd=HERE.parents[2], env=env, timeout=180).returncode
+    except subprocess.TimeoutExpired:
+        print("Source evidence battery timed out after 180 seconds", file=sys.stderr)
+        return 1
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--event", default="pull_request")
@@ -116,7 +135,10 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--head", default="HEAD")
     ap.add_argument("--files", nargs="*")
     ap.add_argument("--list-pinned", action="store_true")
+    ap.add_argument("--run-source-evidence", action="store_true")
     a = ap.parse_args(argv)
+    if a.run_source_evidence:
+        return run_source_evidence()
     if a.list_pinned:
         pins = _pinned()
         print("\n".join(sorted(pins)))

@@ -439,12 +439,10 @@ def test_source_evidence_preflight_is_fail_closed_and_keeps_existing_context():
     assert step['env']['DATABASE_URL'] == step['env']['PGHOST'] == ''
     assert step['env']['TMPDIR'] == '${{ runner.temp }}/source-evidence.noindex'
     assert 'mkdir -p' in step['run']
-    assert set(re.findall(r'platform/scripts/governance/__tests__/test_[\w]+\.py', step['run'])) == {
-        'platform/scripts/governance/__tests__/test_e6_1_declarations.py',
-        'platform/scripts/governance/__tests__/test_dens_not_served_committed.py',
-        'platform/scripts/governance/__tests__/test_dens_not_served.py',
-    }
-    assert '-p no:cacheprovider' in step['run']
+    assert step['run'].splitlines() == [
+        'mkdir -p "$TMPDIR"',
+        'python platform/scripts/governance/ci_changes.py --run-source-evidence',
+    ]
     assert job['steps'].index(step) < next(i for i, s in enumerate(job['steps']) if s.get('run') == 'npm ci --prefix platform')
 
 
@@ -502,3 +500,54 @@ def test_source_evidence_classification_fail_closed_command(tmp_path, output, ex
     completed = subprocess.run(['bash', '-e', '-c', step['run']], env=env, capture_output=True, text=True)
     assert completed.returncode == 0, completed.stderr
     assert result.read_text() == expected + '\n'
+
+
+def test_source_evidence_workflow_passes_discovery_guard():
+    import ci_discovery
+
+    current = CI.read_text()
+    assert ci_discovery.workflow_problems(current) == []
+    # The previous inline pytest command ran successfully, then prevented generation.
+    steps = workflow()['jobs']['generated-artifacts']['steps']
+    evidence = next(s for s in steps if s.get('name') == 'Source evidence pointers and strict density negatives')
+    paths = [
+        'platform/scripts/governance/__tests__/test_e6_1_declarations.py',
+        'platform/scripts/governance/__tests__/test_dens_not_served_committed.py',
+        'platform/scripts/governance/__tests__/test_dens_not_served.py',
+    ]
+    previous = current.replace(evidence['run'].splitlines()[-1], 'python -m pytest ' + ' '.join(paths), 1)
+    assert ci_discovery.workflow_problems(previous) == [
+        f'generated-artifacts: explicit test path {path}; use a discovery profile or directory'
+        for path in paths
+    ]
+
+
+def test_source_evidence_runner_preserves_exact_argv_and_fails_closed(monkeypatch):
+    import ci_changes
+
+    monkeypatch.setenv('DATABASE_URL', 'unused-synthetic-dsn')
+    monkeypatch.setenv('PGHOST', 'unused-synthetic-host')
+    monkeypatch.setenv('TMPDIR', '/synthetic/source-evidence.noindex')
+
+    def run(command, *, cwd, env, timeout):
+        assert command == [
+            sys.executable, '-m', 'pytest',
+            'platform/scripts/governance/__tests__/test_e6_1_declarations.py',
+            'platform/scripts/governance/__tests__/test_dens_not_served_committed.py',
+            'platform/scripts/governance/__tests__/test_dens_not_served.py',
+            '-q', '--no-header', '-rs', '-p', 'no:cacheprovider',
+        ]
+        assert cwd == ROOT and timeout == 180
+        assert env['DATABASE_URL'] == env['PGHOST'] == ''
+        assert env['PYTHONDONTWRITEBYTECODE'] == '1'
+        assert env['TMPDIR'] == '/synthetic/source-evidence.noindex'
+        return subprocess.CompletedProcess(command, 7)
+
+    monkeypatch.setattr(ci_changes.subprocess, 'run', run)
+    assert ci_changes.main(['--run-source-evidence']) == 7
+
+    def timeout(command, **kwargs):
+        raise subprocess.TimeoutExpired(command, kwargs['timeout'])
+
+    monkeypatch.setattr(ci_changes.subprocess, 'run', timeout)
+    assert ci_changes.main(['--run-source-evidence']) == 1
