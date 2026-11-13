@@ -107,45 +107,23 @@ WRITERS = [
 ]
 
 
-@pytest.mark.parametrize("values,default,expected", [
-    ({}, None, None),
-    ({}, "caller-default", "caller-default"),
-    ({"GCP_PROJECT": "legacy"}, "caller-default", "legacy"),
-    ({"GCP_PROJECT": ""}, "caller-default", ""),
-    ({"GCP_PROJECT": " "}, "caller-default", " "),
-    ({"GOOGLE_CLOUD_PROJECT": "canonical"}, "caller-default", "canonical"),
-    ({"GOOGLE_CLOUD_PROJECT": ""}, "caller-default", ""),
-    ({"GOOGLE_CLOUD_PROJECT": " "}, "caller-default", " "),
-    ({"GCP_PROJECT": "legacy", "GOOGLE_CLOUD_PROJECT": "canonical"}, None, "legacy"),
-    ({"GCP_PROJECT": "", "GOOGLE_CLOUD_PROJECT": "canonical"}, None, ""),
-    ({"GCP_PROJECT": None, "GOOGLE_CLOUD_PROJECT": "canonical"}, None, "canonical"),
-    ({"GCP_PROJECT": None, "GOOGLE_CLOUD_PROJECT": ""}, None, ""),
-    ({"GCP_PROJECT": None}, "caller-default", "caller-default"),
-    ({"GCP_PROJECT": "None"}, None, "None"),
-])
+@pytest.mark.parametrize("values,default,expected", [({}, None, None), ({}, 'caller-default', 'caller-default'), ({'GCP_PROJECT': 'legacy'}, 'caller-default', 'caller-default'), ({'GCP_PROJECT': ''}, 'caller-default', 'caller-default'), ({'GCP_PROJECT': ' '}, 'caller-default', 'caller-default'), ({'GOOGLE_CLOUD_PROJECT': 'canonical'}, 'caller-default', 'canonical'), ({'GOOGLE_CLOUD_PROJECT': ''}, 'caller-default', ''), ({'GOOGLE_CLOUD_PROJECT': ' '}, 'caller-default', ' '), ({'GCP_PROJECT': 'legacy', 'GOOGLE_CLOUD_PROJECT': 'canonical'}, None, 'canonical'), ({'GCP_PROJECT': '', 'GOOGLE_CLOUD_PROJECT': 'canonical'}, None, 'canonical'), ({'GCP_PROJECT': None, 'GOOGLE_CLOUD_PROJECT': 'canonical'}, None, 'canonical'), ({'GCP_PROJECT': None, 'GOOGLE_CLOUD_PROJECT': ''}, None, ''), ({'GCP_PROJECT': None}, 'caller-default', 'caller-default'), ({'GCP_PROJECT': 'None'}, None, None)])
 def test_alias_precedence_and_caller_default(values, default, expected):
     env = Environment(values)
     assert read_google_cloud_project(env, default) == expected
-    expected_keys = ["GCP_PROJECT"]
-    if values.get("GCP_PROJECT") is None:
-        expected_keys.append("GOOGLE_CLOUD_PROJECT")
+    expected_keys = ["GOOGLE_CLOUD_PROJECT"]
     assert [key for key, _ in env.reads] == expected_keys
 
 
 @pytest.mark.parametrize("path", WRITERS)
-@pytest.mark.parametrize("values,expected", [
-    ({}, "madhav-astrology"),
-    ({"GOOGLE_CLOUD_PROJECT": "canonical"}, "canonical"),
-    ({"GCP_PROJECT": "legacy", "GOOGLE_CLOUD_PROJECT": "canonical"}, "legacy"),
-    ({"GCP_PROJECT": "", "GOOGLE_CLOUD_PROJECT": "canonical"}, ""),
-])
+@pytest.mark.parametrize("values,expected", [({}, 'madhav-astrology'), ({'GOOGLE_CLOUD_PROJECT': 'canonical'}, 'canonical'), ({'GCP_PROJECT': 'legacy', 'GOOGLE_CLOUD_PROJECT': 'canonical'}, 'canonical'), ({'GCP_PROJECT': '', 'GOOGLE_CLOUD_PROJECT': 'canonical'}, 'canonical')])
 def test_writer_binding_is_captured_before_lazy_single_client(path, values, expected):
     env = Environment(values)
     clients = Clients()
     scope = load_reader(SIDECAR, path, env, clients, read_google_cloud_project)
     assert clients.calls == clients.imports == []
     assert scope["GCP_PROJECT"] == expected
-    env["GCP_PROJECT"] = "rebound-after-module-load"
+    env["GOOGLE_CLOUD_PROJECT"] = "rebound-after-module-load"
     first = scope["_get_genai_client"]()
     second = scope["_get_genai_client"]()
     assert first is second
@@ -208,12 +186,7 @@ def test_original_pubsub_activation_and_topic_guards(values, expected_clients):
         assert clients.published[0][0][0][0] == "canonical"
 
 
-@pytest.mark.parametrize("values,expected", [
-    ({"GCP_PROJECT": "later-legacy", "GOOGLE_CLOUD_PROJECT": "canonical"}, "later-legacy"),
-    ({"GCP_PROJECT": "", "GOOGLE_CLOUD_PROJECT": "canonical"}, ""),
-    ({"GOOGLE_CLOUD_PROJECT": "later-canonical"}, "later-canonical"),
-    ({}, "madhav-astrology"),
-])
+@pytest.mark.parametrize("values,expected", [({'GCP_PROJECT': 'later-legacy', 'GOOGLE_CLOUD_PROJECT': 'canonical'}, 'canonical'), ({'GCP_PROJECT': '', 'GOOGLE_CLOUD_PROJECT': 'canonical'}, 'canonical'), ({'GOOGLE_CLOUD_PROJECT': 'later-canonical'}, 'later-canonical'), ({}, 'madhav-astrology')])
 def test_pubsub_project_is_read_at_the_original_publish_point(values, expected):
     env = Environment({"GCP_PROJECT": "before-load"})
     clients = Clients()
@@ -241,3 +214,28 @@ def test_existing_image_copies_include_the_pure_pipeline_helper():
     pipeline = (SIDECAR / "Dockerfile.pipeline").read_text()
     assert any(line.startswith("COPY python-sidecar/ ") for line in sidecar.splitlines())
     assert any(line.startswith("COPY platform/python-sidecar/pipeline/ ") for line in pipeline.splitlines())
+
+
+@pytest.mark.parametrize("path", WRITERS)
+@pytest.mark.parametrize("legacy,canonical", [(None,None),("old",None),("",None),(None,"new"),("old","new"),("","new"),("old",""),("",""),(None,"")])
+def test_explicit_translation_preserves_writer_binding(path, legacy, canonical):
+    effective = legacy if legacy is not None else canonical
+    effective = "madhav-astrology" if effective is None else effective
+    clients = Clients()
+    env = Environment({"GOOGLE_CLOUD_PROJECT": effective})
+    scope = load_reader(SIDECAR, path, env, clients, read_google_cloud_project)
+    assert clients.calls == clients.imports == []
+    scope["_get_genai_client"]()
+    assert clients.calls[0]["project"] == effective
+
+
+@pytest.mark.parametrize("legacy,canonical", [(None,None),("old",None),("",None),(None,"new"),("old","new"),("","new"),("old",""),("",""),(None,"")])
+def test_explicit_translation_preserves_publish_binding(legacy, canonical):
+    effective = legacy if legacy is not None else canonical
+    effective = "madhav-astrology" if effective is None else effective
+    clients = Clients()
+    env = Environment({"GOOGLE_CLOUD_PROJECT": effective, "PUBSUB_TOPIC": "synthetic"})
+    scope = load_reader(SIDECAR, "pipeline/orchestrator/events.py", env, clients, read_google_cloud_project)
+    assert clients.calls == clients.imports == []
+    scope["emit_event"]({"type": "synthetic-project-check"})
+    assert clients.published[0][0][0] == (effective, "synthetic")
