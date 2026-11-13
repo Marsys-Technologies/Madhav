@@ -1366,7 +1366,7 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py",
-    3245,
+    3246,
     "f\"Navamsha D9 cross-check: {"
    ],
    [
