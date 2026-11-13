@@ -1,11 +1,73 @@
 from copy import deepcopy
+import ast
 from datetime import date
+from pathlib import Path
 from types import SimpleNamespace
 from uuid import UUID
 
 import pytest
 
 from services.ka_sangam.plan_identity import plan_fingerprint
+
+
+def _sangam_dispatch_source(clock):
+    """Use the real method body with inert connection/windowing seams."""
+    source = Path(__file__).resolve().parents[1] / 'pipeline/orchestrator/writers/ka_sangam.py'
+    tree = ast.parse(source.read_text())
+    legacy, = [node for node in ast.walk(tree) if isinstance(node, ast.ClassDef) and node.name == '_LegacyKaSangamWriter']
+    methods = [node for node in legacy.body if isinstance(node, ast.FunctionDef)]
+    dispatch, = [node for node in methods if node.name == 'run_substep']
+    near, = [node for node in methods if node.name == '_substep_near']
+    module = ast.Module(body=[ast.ImportFrom(module='__future__', names=[ast.alias(name='annotations')], level=0), dispatch], type_ignores=[])
+    namespace = {'date': clock, 'convergence_generation': lambda *_: 'fixture-generation'}
+    exec(compile(ast.fix_missing_locations(module), str(source), 'exec'), namespace)
+    return namespace['run_substep'], near
+
+
+def test_near_dispatch_preserves_the_three_argument_hook():
+    from types import MethodType
+
+    day = date(2026, 11, 11)
+    clock = SimpleNamespace(today=lambda: day)
+    dispatch, near = _sangam_dispatch_source(clock)
+    calls = []
+    result = object()
+    writer = SimpleNamespace(_chart_id='fixture-chart', _candidate=object(), _reset_pending=False, _planned_near_date=day)
+
+    def hook(self, conn, chart_id, dry_run):
+        calls.append((conn, chart_id, dry_run))
+        return result
+
+    writer._substep_near = MethodType(hook, writer)
+    connection = object()
+    assert dispatch(writer, SimpleNamespace(db_conn=connection, dry_run=True), SimpleNamespace(key='near')) is result
+    assert calls == [(connection, 'fixture-chart', True)]
+    assert not near.args.kwonlyargs and len(near.args.args) == 4
+
+
+def test_near_dispatch_refuses_midnight_drift_before_the_hook_or_reset():
+    dispatch, _ = _sangam_dispatch_source(SimpleNamespace(today=lambda: date(2026, 11, 12)))
+    calls = []
+    writer = SimpleNamespace(_chart_id='fixture-chart', _candidate=object(), _reset_pending=True,
+                             _planned_near_date=date(2026, 11, 11), _substep_near=lambda *_: calls.append('hook'))
+    connection = SimpleNamespace(cursor=lambda: calls.append('reset'))
+    with pytest.raises(RuntimeError, match='near horizon date changed since planning; replan required'):
+        dispatch(writer, SimpleNamespace(db_conn=connection, dry_run=False), SimpleNamespace(key='near'))
+    assert calls == []
+
+
+def test_near_horizon_reuses_the_plan_day_and_unplanned_direct_calls_use_the_clock():
+    day = date(2026, 11, 11)
+    calls = []
+    clock = SimpleNamespace(today=lambda: calls.append('clock') or date(2026, 11, 12))
+    _, near = _sangam_dispatch_source(clock)
+    assignment, = [node for node in near.body if isinstance(node, ast.Assign)
+                    and any(isinstance(target, ast.Name) and target.id == 'today' for target in node.targets)]
+    expression = compile(ast.Expression(assignment.value), '<actual-near-day-expression>', 'eval')
+    assert eval(expression, {'date': clock}, {'self': SimpleNamespace(_planned_near_date=day)}) == day
+    assert calls == []
+    assert eval(expression, {'date': clock}, {'self': SimpleNamespace()}) == date(2026, 11, 12)
+    assert calls == ['clock']
 
 
 FIRST = {

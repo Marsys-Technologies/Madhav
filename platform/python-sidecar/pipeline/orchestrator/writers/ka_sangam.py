@@ -698,7 +698,7 @@ class _LegacyKaSangamWriter(WriterBase):
                             (chart_id, self._write_generation()))
                 clear_sangam_substeps(cur, chart_id)
         if step.key == 'near':
-            result = self._substep_near(conn, chart_id, dry_run, today=near_today)
+            result = self._substep_near(conn, chart_id, dry_run)
         else:
             idx = int(step.key.split(':', 1)[1])
             result = self._substep_lifetime(conn, chart_id, idx, dry_run)
@@ -744,7 +744,7 @@ class _LegacyKaSangamWriter(WriterBase):
 
     # ── substep implementations ───────────────────────────────────────────────
 
-    def _substep_near(self, conn, chart_id: str, dry_run: bool, *, today: date | None = None) -> WriterResult:
+    def _substep_near(self, conn, chart_id: str, dry_run: bool) -> WriterResult:
         if not dry_run:
             with conn.cursor() as cur:
                 cur.execute("SET LOCAL statement_timeout = 0")
@@ -759,7 +759,8 @@ class _LegacyKaSangamWriter(WriterBase):
                         (chart_id, self._write_generation()),
                     )
 
-        today        = today or date.today()
+        # run_substep already verified this plan day; direct unplanned calls retain the legacy clock.
+        today        = getattr(self, '_planned_near_date', None) or date.today()
         horizon_end  = date(today.year + _HORIZON_YEARS, today.month, today.day)
         def _keepalive():
             with conn.cursor() as _cur:
