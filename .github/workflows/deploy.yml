@@ -1615,7 +1615,7 @@ jobs:
           # for server-reconstructed evidence and fails those writes closed when
           # its separate secret is absent. NEXT_PUBLIC_FIREBASE_* values stay out
           # of this runtime list because they are baked into the image at build.
-          # Retire the legacy project input explicitly above; retain the canonical project.
+          # Remove the current legacy project key only after the canonical image is qualified.
           env_vars: |
             NODE_ENV=production
             NIRMANA_DEPLOYED_SHA=${{ env.DEPLOY_SHA }}
