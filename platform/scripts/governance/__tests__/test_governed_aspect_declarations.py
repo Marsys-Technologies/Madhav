@@ -81,4 +81,3 @@ def test_duplicate_or_rebound_declaration_is_not_a_governed_role():
 def test_legacy_convention_remains_visible():
     path = "platform/python-sidecar/services/gochara_grammar/primitives.py"
     assert checker.scan_python_file((ROOT / path).read_text(), path)
-
