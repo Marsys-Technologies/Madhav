@@ -369,11 +369,11 @@ NARR_CITES = {
                     (_BG + "l0_ontology.py", 219, 'f"house_{house_num:02d}"'), (_BG + "l0_ontology.py", 979, 'code = f"D{n}"'),
                     (_BG + "l0_ontology.py", 983, 'f"d{n}"'), (_BG + "l0_ontology.py", 1154, 'e.get("description")'),
                     (_L + "L0_brahmagyan/resolve_entity.ts", 65, "synonyms, description, source_citation")],
-    "bo_laksana_rerank": [(_WR + "bo_laksana.py", 389, "_VICHARA_TO_MSR_VALENCE: dict"), (_WR + "bo_laksana.py", 434, 'target_key = f"{varga}_HOUSE_{house_num}"'),
-                          (_WR + "bo_laksana.py", 3999, "_SYNTHESIS_ROLLUP_SQL"), (_WR + "bo_laksana.py", 4029, "_CLEAR_CONTRADICTS_SQL"),
-                          (_WR + "bo_laksana.py", 4037, "_CONTRADICTS_SQL"), (_WR + "bo_laksana.py", 4096, "class BoLaksanaRerankWriter"),
-                          (_WR + "bo_laksana.py", 4151, "payload = _rerank_payload("), (_WR + "bo_laksana.py", 4154, "SET graph_node_strength_contribution_jsonb"),
-                          (_WR + "bo_laksana.py", 4218, "SET valence = %s, valence_source = %s"), (_WR + "bo_laksana.py", 4229, "notes=("),
+    "bo_laksana_rerank": [(_WR + "bo_laksana.py", 390, "_VICHARA_TO_MSR_VALENCE: dict"), (_WR + "bo_laksana.py", 435, 'target_key = f"{varga}_HOUSE_{house_num}"'),
+                          (_WR + "bo_laksana.py", 4000, "_SYNTHESIS_ROLLUP_SQL"), (_WR + "bo_laksana.py", 4030, "_CLEAR_CONTRADICTS_SQL"),
+                          (_WR + "bo_laksana.py", 4038, "_CONTRADICTS_SQL"), (_WR + "bo_laksana.py", 4097, "class BoLaksanaRerankWriter"),
+                          (_WR + "bo_laksana.py", 4152, "payload = _rerank_payload("), (_WR + "bo_laksana.py", 4155, "SET graph_node_strength_contribution_jsonb"),
+                          (_WR + "bo_laksana.py", 4219, "SET valence = %s, valence_source = %s"), (_WR + "bo_laksana.py", 4230, "notes=("),
                           (_L + "L2_bodha/query_signals.ts", 571, "bodha_msr_signals")],
     "ph_phaladesa": [(_WR + "ph_phaladesa.py", 94, "def _build_deterministic_narration"), (_WR + "ph_phaladesa.py", 103, "domain rests on {rec.anchor_count}"),
                      (_WR + "ph_phaladesa.py", 107, "No predictive anchors were derived"), (_WR + "ph_phaladesa.py", 110, "assessed magnitude of effect"),
@@ -1366,7 +1366,7 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py",
-    3245,
+    3246,
     "f\"Navamsha D9 cross-check: {"
    ],
    [

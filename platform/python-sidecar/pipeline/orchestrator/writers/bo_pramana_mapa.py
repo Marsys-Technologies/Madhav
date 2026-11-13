@@ -430,7 +430,7 @@ def count_narration_leaks(conn: Any, chart_id: str) -> dict:
 _VERIFICATION_TIER_RANKS: list[tuple[str, int]] = [
     ("two_pass_verified", 3),
     ("classical_match", 2),
-    ("single_pass", 2),
+    ("single_pass", 1),          # same unverified tier as the canonical "single"
     ("pass", 2),               # legacy lowercase literal (register F-38) — not top tier
     ("documented_approximation", 1),
     ("single", 1),

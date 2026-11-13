@@ -3,7 +3,7 @@
  * it never changes cluster roles or relies on a production schema snapshot.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { Pool, type PoolClient, type PoolConfig } from 'pg'
+import { Pool, type PoolClient, type PoolConfig, type Client } from 'pg'
 import { randomUUID, createHash } from 'node:crypto'
 import { copyFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -56,7 +56,8 @@ describe('protected window fixture connection guard', () => {
 describe.skipIf(!adminDsn && !required)('protected window PostgreSQL regressions', () => {
   let admin: Pool
   let pool: Pool
-  let client: PoolClient
+  // pg returns a Client at runtime; its pooled declaration omits end().
+  let client: PoolClient & Pick<Client, 'end'>
   let dir: string
   let created = false
   const dbname = `kala_ci_window_${randomUUID().replaceAll('-', '')}`
@@ -73,7 +74,7 @@ describe.skipIf(!adminDsn && !required)('protected window PostgreSQL regressions
     await admin.query(`CREATE DATABASE "${dbname}"`)
     created = true
     pool = new Pool({ ...config, database: dbname })
-    client = await pool.connect()
+    client = await pool.connect() as PoolClient & Pick<Client, 'end'>
     expect((await client.query('SELECT current_database() AS db')).rows[0].db).toBe(dbname)
     dir = mkdtempSync(path.join(tmpdir(), 'protected-window-'))
     await client.query(TRACKER_DDL)
@@ -242,6 +243,102 @@ describe.skipIf(!adminDsn && !required)('protected window PostgreSQL regressions
       await client.query(`RESET ROLE;
         ALTER TABLE _migrations_applied OWNER TO postgres;
         ALTER TABLE _migrations_applied DROP COLUMN ledger_actor`)
+    }
+  })
+
+  const settingCases = (['routine', 'protected'] as const).flatMap(mode =>
+    (['none', 'LOCAL', 'SESSION'] as const).flatMap(roleScope =>
+      (['none', 'LOCAL', 'SESSION'] as const).map(pathScope => ({ mode, roleScope, pathScope }))))
+
+  async function sessionState() {
+    return (await client.query(`SELECT pg_catalog.current_setting('role') AS role,
+      pg_catalog.current_setting('search_path') AS search_path, current_user AS actor`)).rows[0]
+  }
+
+  it.each(settingCases)('$mode: restores $roleScope role and $pathScope search_path at COMMIT', async ({ mode, roleScope, pathScope }) => {
+    const suffix = `${mode}_${roleScope}_${pathScope}`.toLowerCase()
+    const schema = `settings_${suffix}`
+    const name = `9001_${suffix}.sql`
+    const selected = mkdtempSync(path.join(dir, 'session-settings-'))
+    const entry = await sessionState()
+    const actor = roleScope === 'none' ? 'postgres' : 'pg_read_all_data'
+    await client.query(`CREATE SCHEMA ${schema} AUTHORIZATION ${actor}`)
+    writeFileSync(path.join(selected, name), `BEGIN;
+      ${roleScope === 'none' ? '' : `SET ${roleScope} ROLE pg_read_all_data;`}
+      ${pathScope === 'none' ? '' : `SET ${pathScope} search_path = pg_catalog, pg_temp;`}
+      CREATE TABLE ${schema}.owned_ddl (id int);
+      COMMIT;`)
+    const options = { kalaProtected: new Set(mode === 'protected' ? [name] : []),
+      ...(mode === 'protected' ? { only: new Set([name]) } : {}) }
+    try {
+      expect(await runMigrations(client, [selected], options)).toEqual([name])
+      // Inspect the actual caller immediately after the runner's COMMIT.
+      expect(await sessionState()).toEqual(entry)
+      expect((await client.query(`SELECT tableowner FROM pg_catalog.pg_tables
+        WHERE schemaname = $1 AND tablename = 'owned_ddl'`, [schema])).rows).toEqual([{ tableowner: actor }])
+      expect((await client.query('SELECT count(*)::int AS n FROM public._migrations_applied WHERE filename = $1', [name])).rows[0].n).toBe(1)
+      expect(await runMigrations(client, [selected], options)).toEqual([])
+      expect(await sessionState()).toEqual(entry)
+    } finally {
+      await client.query('RESET ROLE')
+      await client.query("SELECT pg_catalog.set_config('search_path', $1, false)", [entry.search_path])
+      await client.query(`DROP SCHEMA ${schema} CASCADE`)
+    }
+  })
+
+  it.each(['routine', 'protected'])('%s: restores preexisting SESSION role/path for ledger, rollback, retry and the next file', async mode => {
+    const schema = `caller_settings_${mode}`
+    const selected = mkdtempSync(path.join(dir, 'caller-settings-'))
+    const first = `9002_${mode}_settings.sql`
+    const next = `9003_${mode}_next.sql`
+    const original = await sessionState()
+    await client.query(`CREATE SCHEMA ${schema} AUTHORIZATION pg_write_all_data;
+      ALTER TABLE public._migrations_applied ADD COLUMN settings_actor text DEFAULT current_user;
+      ALTER TABLE public._migrations_applied OWNER TO pg_read_all_data;
+      ALTER TABLE public._migrations_applied ADD CONSTRAINT reject_settings_ledger CHECK (filename <> '${first}');
+      SET SESSION ROLE pg_read_all_data;
+      SET SESSION search_path = public, pg_catalog`)
+    const entry = await sessionState()
+    writeFileSync(path.join(selected, first), `BEGIN;
+      SET SESSION ROLE pg_write_all_data;
+      SET SESSION search_path = pg_catalog, pg_temp;
+      CREATE TABLE ${schema}.first_ddl (id int);
+      COMMIT;`)
+    writeFileSync(path.join(selected, next), `BEGIN;
+      SET LOCAL ROLE pg_write_all_data;
+      SET LOCAL search_path = pg_temp, pg_catalog;
+      CREATE TABLE ${schema}.next_ddl (id int);
+      COMMIT;`)
+    const options = { kalaProtected: new Set(mode === 'protected' ? [first, next] : []),
+      ...(mode === 'protected' ? { only: new Set([first, next]) } : {}) }
+    try {
+      await expect(runMigrations(client, [selected], options)).rejects.toThrow('reject_settings_ledger')
+      expect(await sessionState()).toEqual(entry)
+      expect((await client.query(`SELECT pg_catalog.to_regclass($1) AS first,
+        pg_catalog.to_regclass($2) AS next,
+        (SELECT count(*)::int FROM public._migrations_applied WHERE filename = ANY($3)) AS ledger`,
+      [`${schema}.first_ddl`, `${schema}.next_ddl`, [first, next]])).rows)
+        .toEqual([{ first: null, next: null, ledger: 0 }])
+      await client.query('ALTER TABLE public._migrations_applied DROP CONSTRAINT reject_settings_ledger')
+      expect(await runMigrations(client, [selected], options)).toEqual([first, next])
+      expect(await sessionState()).toEqual(entry)
+      expect((await client.query(`SELECT filename, settings_actor FROM public._migrations_applied
+        WHERE filename = ANY($1) ORDER BY filename`, [[first, next]])).rows)
+        .toEqual([{ filename: first, settings_actor: 'pg_read_all_data' },
+          { filename: next, settings_actor: 'pg_read_all_data' }])
+      expect((await client.query(`SELECT tablename, tableowner FROM pg_catalog.pg_tables
+        WHERE schemaname = $1 ORDER BY tablename`, [schema])).rows)
+        .toEqual([{ tablename: 'first_ddl', tableowner: 'pg_write_all_data' },
+          { tablename: 'next_ddl', tableowner: 'pg_write_all_data' }])
+      expect(await runMigrations(client, [selected], options)).toEqual([])
+      expect(await sessionState()).toEqual(entry)
+    } finally {
+      await client.query('RESET ROLE')
+      await client.query("SELECT pg_catalog.set_config('search_path', $1, false)", [original.search_path])
+      await client.query(`ALTER TABLE public._migrations_applied OWNER TO postgres;
+        ALTER TABLE public._migrations_applied DROP CONSTRAINT IF EXISTS reject_settings_ledger;
+        ALTER TABLE public._migrations_applied DROP COLUMN settings_actor;
+        DROP SCHEMA ${schema} CASCADE`)
     }
   })
 

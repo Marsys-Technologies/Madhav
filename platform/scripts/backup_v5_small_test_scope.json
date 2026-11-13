@@ -1150,7 +1150,22 @@
     "ka_gochara_near_miss_verification"
    ],
    "why": "sealing is not part of the small test (the sliced build is unsealable, writer docstring); these are separate job entry points that no scanned module imports. ka_gochara_near_miss_verification (P06b, migration 1381) is written only by near_miss_verifier.verify_generation(persist=True), whose sole importer is the gochara verification job (verification_job.py, lazy import in the near-miss stage); the ka_gochara_v5 writer's import closure does not reach either module"
-  }
+  },
+    {
+      "name": "sangam_kshetra_substep_progress",
+      "modules": [
+        "platform/python-sidecar/pipeline/orchestrator/substep_progress.py",
+        "platform/python-sidecar/pipeline/orchestrator/substep_progress_kshetra.py"
+      ],
+      "module_names": [
+        "substep_progress",
+        "substep_progress_kshetra"
+      ],
+      "tables": [
+        "build_substep_progress"
+      ],
+      "why": "Sangam clear_sangam_substeps/record_sangam_substep and Kshetra delete_substep_progress/upsert_substep_progress write only this progress table. Neither helper is imported by the SmallTest or Century Gochara run closure; the existing unreached-module import-boundary test enforces that separation."
+    }
  ],
  "dynamic_sites": [
   {

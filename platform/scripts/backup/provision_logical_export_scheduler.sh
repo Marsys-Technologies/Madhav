@@ -25,8 +25,8 @@
 
 set -euo pipefail
 
-PROJECT="${GCP_PROJECT:-madhav-astrology}"
-REGION="${GCP_REGION:-asia-south1}"
+PROJECT="${GCP_PROJECT:-${GOOGLE_CLOUD_PROJECT:-madhav-astrology}}"
+REGION="${GCP_REGION:-${GOOGLE_CLOUD_REGION:-asia-south1}}"
 INSTANCE_CONNECTION_NAME="${INSTANCE_CONNECTION_NAME:-madhav-astrology:asia-south1:amjis-postgres}"
 JOB_NAME="g1e-logical-export"
 SCHEDULER_JOB_NAME="g1e-logical-export-hourly"

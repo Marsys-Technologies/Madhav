@@ -847,8 +847,8 @@ def test_a_malformed_declaration_is_refused(mut):
 # ───────────────────────── the fold into the two Null records, and the rollup ─────────────────────────
 
 NULL = ("Null.schema_default", "Null.blank_rows")
-FB = dict(kind="literal_fallback", where="bo_laksana.py:1428", text="literal fallback `or`: ''", entry="signal_headline_text")
-DYN = "citation_human: bo_laksana.py:3265 named parameter %(citation_human)s: dynamic row construction in the files that build it could also supply the key (bo_laksana.py:2636 a dict comprehension)"
+FB = dict(kind="literal_fallback", where="bo_laksana.py:1429", text="literal fallback `or`: ''", entry="signal_headline_text")
+DYN = "citation_human: bo_laksana.py:3266 named parameter %(citation_human)s: dynamic row construction in the files that build it could also supply the key (bo_laksana.py:2637 a dict comprehension)"
 GOOD = dict(declared=True, v=PASS, table=T, cite_column="constituent_facts_array", chart=CHART, read_scope=f"chart {CHART[:8]}", forms={"chart_facts_row": dict(count=12, at_least=False)},
             composites=dict(count=2, at_least=False), own_fact_rule=ac.FORWARDED_OWN_FACT_RULE, not_compared=["writer-resolved graha / house / target_house"],
             measured="forwarded L1 leaves equal their cited L1 fact on every compared row")

@@ -64,7 +64,6 @@ def desktop():
             "may_touch": list(observation.may_touch),
             "must_not_touch": list(observation.must_not_touch),
         },
-        "mirror_pair_freshness_check": [],
         "native_directive_obligations": [],
         "red_team_due": False,
     }
@@ -186,11 +185,10 @@ def test_desktop_cannot_relax_existing_guards(desktop, key, value, rule, exit_co
     assert [row.rule for row in validate(cli)] == [rule]
 
 
-def test_retired_mirror_rows_remain_compatibility_fields(desktop):
+@pytest.mark.parametrize("legacy_rows", [[], [{"stale": True}]])
+def test_retired_mirror_rows_remain_optional_compatibility_fields(desktop, legacy_rows):
     handshake, observation = desktop
-    handshake["mirror_pair_freshness_check"] = [{"stale": True}]
+    assert "mirror_pair_freshness_check" not in handshake
     assert validate(handshake, observation) == []
-    del handshake["mirror_pair_freshness_check"]
-    assert [row.rule for row in validate(handshake, observation)] == [
-        "handshake_field_missing[mirror_pair_freshness_check]"
-    ]
+    handshake["mirror_pair_freshness_check"] = legacy_rows
+    assert validate(handshake, observation) == []

@@ -117,8 +117,8 @@ PROXY_ABLATION_FRACTION = 0.1
 #                               tara_annotation, but the λ product receives
 #                               1.0; it is never multiplied in. Ablating it
 #                               is therefore an honest zero delta.)
-#   - w30_nodal_drishti: True  (multiplied into raw_lambda; N-14 retires it
-#                               behind flag nodal_drishti ∈ {enabled,removed})
+#   - w30_nodal_drishti: False (N-14: non-scoring historical annotation;
+#                               runtime enabled is retired, no ablation delta)
 #   - w21, w22, w24-w27c: False (admitted modules, not yet wired into lambda_v3)
 #   - w28_bhava_degrees, w29_citation_resolution: False (structural-only,
 #                                                       modifier always 1.0)
@@ -140,7 +140,7 @@ MECHANISM_ENGINE_WIRED: dict[str, bool] = {
     "w27c_sudarshana": False,
     "w28_bhava_degrees": False,
     "w29_citation_resolution": False,
-    "w30_nodal_drishti": True,
+    "w30_nodal_drishti": False,
 }
 
 

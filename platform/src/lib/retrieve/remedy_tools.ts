@@ -35,35 +35,17 @@
 
 import { createHash, randomUUID } from 'crypto'
 import type { RetrievalTool, QueryPlan, ToolBundle, ToolBundleResult } from './types'
-
-// ── DB helper (shared with other retrieval tools) ─────────────────────────────
-
-async function queryDb(sql: string, params: unknown[]): Promise<Record<string, unknown>[]> {
-  // In the MARSYS platform the DB client is accessed via the Supabase admin client
-  // or via a direct pg pool.  We use the global fetch-based approach that is
-  // consistent with the sidecar architecture: POST to the python sidecar endpoint.
-  // If running in the portal (Next.js) context, the pg pool from lib/db/pool is used.
-  // This file is executed server-side only (RetrievalTool.retrieve is async/await).
-  try {
-    const { Pool } = await import('pg')
-    const url = process.env.DATABASE_URL
-    if (!url) throw new Error('DATABASE_URL not set')
-    const pool = new Pool({ connectionString: url, max: 5 })
-    const result = await pool.query(sql, params)
-    await pool.end()
-    return result.rows as Record<string, unknown>[]
-  } catch (err) {
-    throw new Error(`remedy_tools queryDb failed: ${String(err)}`)
-  }
-}
+import {
+  readRemedies,
+  readRemediesForAffliction,
+  readRemediesByCategory,
+  readRemedyById,
+  readTantricRemedies,
+  readRemediesByPlanet,
+  readMantraRemedies,
+} from './remedy_reference_store'
 
 // ── Utility ───────────────────────────────────────────────────────────────────
-
-const LIVE_REMEDY_CONDITION = "scaffold_status = 'live'"
-
-function normalizePlanet(planet: string): string {
-  return planet.trim().toLowerCase()
-}
 
 function makeBundle(
   toolName: string,
@@ -109,35 +91,7 @@ export const queryRemedies: RetrievalTool = {
     const category = params?.category as string | undefined
     const topK = Number(params?.top_k ?? 10)
 
-    const conditions: string[] = [LIVE_REMEDY_CONDITION]
-    const values: unknown[] = []
-
-    if (planet) {
-      values.push(normalizePlanet(planet))
-      conditions.push(`LOWER(planet) = $${values.length}`)
-    }
-    if (domain) {
-      values.push(domain)
-      conditions.push(`domain = $${values.length}`)
-    }
-    if (category) {
-      values.push(category)
-      conditions.push(`category = $${values.length}`)
-    }
-
-    const where = `WHERE ${conditions.join(' AND ')}`
-    values.push(topK)
-    const sql = `
-      SELECT remedy_id, planet, domain, category, deity,
-             prescription_text, mantra_text, mantra_sanskrit, mantra_transliteration,
-             cost_tier, contraindications, source_canonical_id, source_citation,
-             classical_attestation_text, classical_ref
-      FROM brahma_remedy_corpus
-      ${where}
-      ORDER BY confidence DESC NULLS LAST
-      LIMIT $${values.length}
-    `
-    const rows = await queryDb(sql, values)
+    const rows = await readRemedies(planet, domain, category, topK)
     return makeBundle('query_remedies', '1.0.0', params ?? {}, rows, Date.now() - t0)
   },
 }
@@ -162,17 +116,7 @@ export const queryRemediesForChart: RetrievalTool = {
     const topK = Number(params?.top_k ?? 5)
 
     // Match affliction against both planet and domain columns
-    const sql = `
-      SELECT remedy_id, planet, domain, category, deity,
-             prescription_text, mantra_text, mantra_sanskrit, mantra_transliteration,
-             cost_tier, contraindications, source_canonical_id, source_citation,
-             classical_attestation_text
-      FROM brahma_remedy_corpus
-      WHERE ${LIVE_REMEDY_CONDITION} AND (planet ILIKE $1 OR domain ILIKE $1)
-      ORDER BY confidence DESC NULLS LAST, cost_tier ASC
-      LIMIT $2
-    `
-    const rows = await queryDb(sql, [`%${affliction}%`, topK])
+    const rows = await readRemediesForAffliction(affliction, topK)
     return makeBundle('query_remedies_for_chart', '1.0.0', params ?? {}, rows, Date.now() - t0)
   },
 }
@@ -188,15 +132,7 @@ export const listRemediesByCategory: RetrievalTool = {
   async retrieve(_plan: QueryPlan, params?: Record<string, unknown>): Promise<ToolBundle> {
     const t0 = Date.now()
     const category = (params?.category as string | undefined) ?? 'mantras'
-    const sql = `
-      SELECT remedy_id, planet, domain, category, deity,
-             prescription_text, mantra_text, mantra_sanskrit,
-             cost_tier, source_canonical_id, classical_attestation_text
-      FROM brahma_remedy_corpus
-      WHERE ${LIVE_REMEDY_CONDITION} AND category = $1
-      ORDER BY planet, remedy_id
-    `
-    const rows = await queryDb(sql, [category])
+    const rows = await readRemediesByCategory(category)
     return makeBundle('list_remedies_by_category', '1.0.0', params ?? {}, rows, Date.now() - t0)
   },
 }
@@ -212,12 +148,7 @@ export const readRemedy: RetrievalTool = {
   async retrieve(_plan: QueryPlan, params?: Record<string, unknown>): Promise<ToolBundle> {
     const t0 = Date.now()
     const remedyId = (params?.remedy_id as string | undefined) ?? ''
-    const sql = `
-      SELECT *
-      FROM brahma_remedy_corpus
-      WHERE ${LIVE_REMEDY_CONDITION} AND remedy_id = $1
-    `
-    const rows = await queryDb(sql, [remedyId])
+    const rows = await readRemedyById(remedyId)
     return makeBundle('read_remedy', '1.0.0', params ?? {}, rows, Date.now() - t0)
   },
 }
@@ -235,28 +166,7 @@ export const queryTantricRemedies: RetrievalTool = {
     const deity = params?.deity as string | undefined
     const planet = params?.planet as string | undefined
 
-    const conditions: string[] = [LIVE_REMEDY_CONDITION, "category = 'tantric'"]
-    const values: unknown[] = []
-
-    if (deity) {
-      values.push(`%${deity}%`)
-      conditions.push(`deity ILIKE $${values.length}`)
-    }
-    if (planet) {
-      values.push(normalizePlanet(planet))
-      conditions.push(`LOWER(planet) = $${values.length}`)
-    }
-
-    const sql = `
-      SELECT remedy_id, planet, domain, deity,
-             prescription_text, mantra_sanskrit, mantra_transliteration,
-             ingredients_jsonb, timing_rules_jsonb, cost_tier, contraindications,
-             source_canonical_id, source_citation, classical_attestation_text
-      FROM brahma_remedy_corpus
-      WHERE ${conditions.join(' AND ')}
-      ORDER BY planet, remedy_id
-    `
-    const rows = await queryDb(sql, values)
+    const rows = await readTantricRemedies(deity, planet)
     return makeBundle('query_tantric_remedies', '1.0.0', params ?? {}, rows, Date.now() - t0)
   },
 }
@@ -272,15 +182,7 @@ export const queryRemediesByPlanet: RetrievalTool = {
   async retrieve(_plan: QueryPlan, params?: Record<string, unknown>): Promise<ToolBundle> {
     const t0 = Date.now()
     const planet = (params?.planet as string | undefined) ?? 'Saturn'
-    const sql = `
-      SELECT remedy_id, planet, domain, category, deity,
-             prescription_text, mantra_text, mantra_sanskrit, mantra_transliteration,
-             cost_tier, contraindications, source_canonical_id, classical_attestation_text
-      FROM brahma_remedy_corpus
-      WHERE ${LIVE_REMEDY_CONDITION} AND LOWER(planet) = $1
-      ORDER BY category, remedy_id
-    `
-    const rows = await queryDb(sql, [normalizePlanet(planet)])
+    const rows = await readRemediesByPlanet(planet)
     return makeBundle('query_remedies_by_planet', '1.0.0', params ?? {}, rows, Date.now() - t0)
   },
 }
@@ -297,24 +199,7 @@ export const queryMantras: RetrievalTool = {
     const t0 = Date.now()
     const planet = params?.planet as string | undefined
 
-    const conditions: string[] = [LIVE_REMEDY_CONDITION, "category = 'mantras'"]
-    const values: unknown[] = []
-
-    if (planet) {
-      values.push(normalizePlanet(planet))
-      conditions.push(`LOWER(planet) = $${values.length}`)
-    }
-
-    const sql = `
-      SELECT remedy_id, planet, deity,
-             mantra_sanskrit, mantra_transliteration, mantra_text,
-             prescription_text, timing_rules_jsonb,
-             source_canonical_id, classical_attestation_text, classical_ref
-      FROM brahma_remedy_corpus
-      WHERE ${conditions.join(' AND ')}
-      ORDER BY planet, remedy_id
-    `
-    const rows = await queryDb(sql, values)
+    const rows = await readMantraRemedies(planet)
     return makeBundle('query_mantras', '1.0.0', params ?? {}, rows, Date.now() - t0)
   },
 }

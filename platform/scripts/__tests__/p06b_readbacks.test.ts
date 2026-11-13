@@ -37,14 +37,17 @@ describe('P06b per-migration catalogue readbacks', () => {
       fs.writeFileSync(path.join(dir, '1382_test_successor.sql'), 'SELECT 1382;')
       const calls: string[] = []
       // The runner restores the entry role after each migration body (migrate.ts, main's atomic DDL+ledger commit).
-      const client = { query: async (s: string) => {
+      const client = { query: vi.fn(async (s: string) => {
         calls.push(s.trim())
-        return { rows: s.trim() === "SELECT current_setting('role') AS role" ? [{ role: 'none' }] : [] }
-      } }
+        return { rows: s.trim() === "SELECT current_setting('role') AS role, current_setting('search_path') AS search_path" ? [{ role: 'none', search_path: 'pg_catalog, public' }] : [] }
+      }) }
       await runMigrations(client as unknown as PoolClient, [dir], {
         only: new Set([filename, '1382_test_successor.sql']),
         disclosures: new Map(), renumberDisclosures: new Map(),
       })
+      expect(client.query).toHaveBeenCalledWith("SELECT current_setting('role') AS role, current_setting('search_path') AS search_path")
+      expect(client.query).toHaveBeenCalledWith("SELECT pg_catalog.set_config('role', $1, false)", ['none'])
+      expect(client.query).toHaveBeenCalledWith("SELECT pg_catalog.set_config('search_path', $1, false)", ['pg_catalog, public'])
       const readback = calls.findIndex(s => s.includes('BEGIN READ ONLY;'))
       expect(readback).toBeGreaterThan(calls.indexOf('COMMIT'))
       expect(readback).toBeLessThan(calls.indexOf('SELECT 1382;'))

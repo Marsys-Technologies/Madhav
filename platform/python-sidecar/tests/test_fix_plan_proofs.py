@@ -235,13 +235,24 @@ def test_fix5_generate_windows_accepts_enrichment_context():
 
 
 def test_fix5_mode_calls_pass_enrichment_context():
-    """mode_a_search and mode_b_sweep must receive enrichment_context inside _generate_windows."""
-    from pipeline.orchestrator.writers.ka_sangam import KaSangamWriter
+    """The window owner passes the same enrichment context to both mode engines."""
+    import ast
+    from services.ka_sangam.window_generation import generate_windows
 
-    src = inspect.getsource(KaSangamWriter._generate_windows)
-    assert 'enrichment_context' in src, (
-        "_generate_windows does not pass enrichment_context to mode_a_search/mode_b_sweep"
-    )
+    src = inspect.getsource(generate_windows)
+    assert 'enrichment_context' in src, 'window owner does not pass enrichment_context'
+    tree = ast.parse(src)
+    calls = [node for node in ast.walk(tree) if isinstance(node, ast.Call)
+             and isinstance(node.func, ast.Attribute)
+             and isinstance(node.func.value, ast.Name)
+             and node.func.value.id == 'bindings'
+             and node.func.attr in {'mode_a_search', 'mode_b_sweep'}]
+    assert {node.func.attr for node in calls} == {'mode_a_search', 'mode_b_sweep'}
+    assert len(calls) == 2
+    for call in calls:
+        values = [keyword.value for keyword in call.keywords if keyword.arg == 'enrichment_context']
+        assert len(values) == 1 and isinstance(values[0], ast.Name)
+        assert values[0].id == 'enrichment_context'
 
 
 def test_fix5_plan_substeps_builds_enrichment_ctx(monkeypatch):

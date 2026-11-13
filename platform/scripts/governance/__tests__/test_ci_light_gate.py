@@ -418,6 +418,69 @@ def test_merge_queue_diffs_against_the_group_base_and_every_required_check_repor
     assert not any(evaluate(jobs[n].get('if'), event='merge_group') for n in skippable_heavy_jobs(jobs))
 
 
+@pytest.mark.parametrize('changed,expected_profile', [
+    ('platform/python-sidecar/pipeline/orchestrator/writers/ka_sangam.py', 'kala-db-tests-5-0'),
+    ('platform/python-sidecar/services/ka_sangam/window_generation.py', 'kala-db-tests-5-0'),
+    ('platform/python-sidecar/pipeline/orchestrator/substep_progress.py', 'kala-db-tests-5-0'),
+    ('platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts', 'kala-db-tests-8-0'),
+    ('platform/src/lib/kala/priority_ranking_store.ts', 'kala-db-tests-8-0'),
+    ('platform/python-sidecar/services/ka_tulana/__init__.py', 'kala-db-tests-8-0'),
+    ('platform/python-sidecar/services/ka_tulana/ranker.py', 'kala-db-tests-8-0'),
+    ('platform/python-sidecar/services/ka_tulana/writer.py', 'kala-db-tests-8-0'),
+])
+def test_kala_production_owners_select_the_existing_pr_profile(monkeypatch, capsys, changed, expected_profile):
+    import ci_discovery
+    import ci_gate
+    profiles = ci_discovery.profiles()
+    selected_specs = profiles
+    monkeypatch.setattr(ci_discovery, 'profiles', lambda: selected_specs)
+    # Isolate production ownership from discovered test files: this must work
+    # even when the diff does not change any test and no test path contributes.
+    monkeypatch.setattr(ci_discovery, 'discover', lambda root, spec: [])
+    out = _gate_output(monkeypatch, capsys, 'pull_request', [changed])
+    selected_jobs = json.loads(out['db_jobs'])
+    selected_profiles = json.loads(out['db_profiles'])
+    assert selected_profiles == [expected_profile]
+    assert selected_jobs == ['kala-db-tests']
+    assert out['run_combination_suites'] == 'false'
+    job = workflow()['jobs']['kala-db-tests']
+    assert evaluate(job['if'], event='pull_request', selected=selected_jobs)
+    for step in job['steps']:
+        calls = ci_gate.PROFILE_CALL.findall(step.get('run', ''))
+        if calls:
+            assert evaluate(step.get('if'), event='pull_request', profiles=selected_profiles) is (expected_profile in calls)
+
+
+@pytest.mark.parametrize('changed', [
+    'platform/src/app/page.tsx',
+    'platform/python-sidecar/services/ka_muhurta_seva/engine.py',
+    'platform/python-sidecar/pipeline/orchestrator/writers/ka_tulana.py',
+])
+def test_kala_owner_triggers_do_not_select_unrelated_or_unmeasured_facades(monkeypatch, capsys, changed):
+    import ci_discovery
+    profiles = ci_discovery.profiles()
+    selected_specs = profiles
+    monkeypatch.setattr(ci_discovery, 'profiles', lambda: selected_specs)
+    monkeypatch.setattr(ci_discovery, 'discover', lambda root, spec: [])
+    out = _gate_output(monkeypatch, capsys, 'pull_request', [changed])
+    assert out == {'db_jobs': '[]', 'db_profiles': '[]', 'run_combination_suites': 'false'}
+
+
+@pytest.mark.parametrize('profile,discovered', [
+    ('kala-db-tests-5-0', 'tests/l3/ka_sangam/test_jury_shared_preparation.py'),
+    ('kala-db-tests-8-0', 'tests/l3/test_ka_tulana.py'),
+])
+def test_kala_production_triggers_retain_discovered_test_ownership(monkeypatch, capsys, profile, discovered):
+    import ci_discovery
+    profiles = ci_discovery.profiles()
+    selected_specs = profiles
+    monkeypatch.setattr(ci_discovery, 'profiles', lambda: selected_specs)
+    monkeypatch.setattr(ci_discovery, 'discover', lambda root, spec: [discovered] if spec is selected_specs[profile] else [])
+    out = _gate_output(monkeypatch, capsys, 'pull_request', ['platform/python-sidecar/' + discovered])
+    assert json.loads(out['db_jobs']) == ['kala-db-tests']
+    assert json.loads(out['db_profiles']) == [profile]
+
+
 # Source-evidence preflight supplements the protected combination family.
 def test_source_evidence_preflight_is_fail_closed_and_keeps_existing_context():
     job = workflow()['jobs']['generated-artifacts']
