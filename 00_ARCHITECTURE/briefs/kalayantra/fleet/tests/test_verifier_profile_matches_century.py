@@ -106,7 +106,9 @@ def _vl():
 
 
 def _contract(tmp_path, **launch):
-    p = tmp_path / "century_contract.json"; p.write_text(_json.dumps({"launch_args": launch})); return p
+    p = tmp_path / "century_contract.json"
+    p.write_text(_json.dumps({"schema": "ky.century_contract/1", "launch_args": launch}))
+    return p
 
 
 def test_p1_the_execute_args_carry_exactly_the_flags_the_committed_contract_names():
@@ -129,3 +131,19 @@ def test_p3_an_unreadable_or_unclear_profile_refuses_instead_of_defaulting(tmp_p
 def test_p4_a_missing_contract_refuses(tmp_path):
     with _pytest.raises(SystemExit, match="unreadable"):
         _vl().profile_args(tmp_path / "absent.json")
+
+
+def test_profile_accepts_v2_and_refuses_unknown_or_malformed_contracts(tmp_path):
+    from century_contract import SCHEMA_V2, TIMEOUT_LOCATOR, render
+    launcher = _vl()
+    path = tmp_path / "century_contract.json"
+    v2 = {"schema": SCHEMA_V2, "launch_args": {"final_rules": "true"},
+          "image": {"job": "brahma-build-pipeline-job", "writer_source_digest": "a" * 64},
+          "cap": {"writer_timeout_seconds": 72000},
+          "timeout": {"cloud_run_task_timeout_seconds": 86400, "source": TIMEOUT_LOCATOR}}
+    path.write_bytes(render(v2))
+    assert launcher.profile_args(path) == ("--final-rules",)
+    for bad in (dict(v2, schema="ky.century_contract/3"), dict(v2, timeout=None), dict(v2, launch_args=[])):
+        path.write_bytes(render(bad))
+        with _pytest.raises(SystemExit, match="refusing"):
+            launcher.profile_args(path)

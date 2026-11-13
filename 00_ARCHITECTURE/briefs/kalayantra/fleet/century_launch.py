@@ -20,12 +20,12 @@ from __future__ import annotations
 import argparse
 import contextlib
 import io
-import json
 import os
 from pathlib import Path
 import re
 import sys
 
+from century_contract import read_contract, validate_contract
 import smalltest_launch as bridge
 
 # SR-J2D-TEARDOWN-EVIDENCE item 2 (as measuring_launch.py): with Pub/Sub on, events.emit_event publishes asset.substep to the topic and prints
@@ -63,7 +63,14 @@ def resume_preflight(request=None, contract=None):
     req = shared.operation_request() if request is None else request
     if req.get("kind") != "century_resume":
         raise bridge.Refused("executor operation kind does not authorize a century resume")
-    shared.resume_program_problem(req, json.loads((Path(__file__).resolve().parent / "century_contract.json").read_text(encoding="utf-8")) if contract is None else contract)
+    try:
+        if contract is None:
+            contract = read_contract(Path(__file__).with_name("century_contract.json").read_bytes())
+        else:
+            contract = validate_contract(contract)
+    except (OSError, ValueError) as exc:
+        raise bridge.Refused("the Century contract is unreadable or has an unsupported format") from exc
+    shared.resume_program_problem(req, contract)
     return req
 
 

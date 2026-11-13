@@ -23,7 +23,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from test_executor_scheduler_reaper import COMMIT, FLEET, REPO, World
+from test_executor_scheduler_reaper import COMMIT, FLEET, REPO, World, load
 
 spec = importlib.util.spec_from_file_location("century_contract_under_test", FLEET / "century_contract.py")
 cc = importlib.util.module_from_spec(spec)
@@ -54,7 +54,8 @@ class CenturyWorld(World):
             self.shown.append(args[1])
             commit = args[1].split(":", 1)[0]
             blob = self.blobs.get(commit)
-            return SimpleNamespace(returncode=0 if blob is not None else 128, stdout=blob.decode() if blob is not None else "", stderr="")
+            assert kwargs.get("text") is False
+            return SimpleNamespace(returncode=0 if blob is not None else 128, stdout=blob or b"", stderr=b"")
         return super().git(*args, **kwargs)
 
     def request(self, kind="century_dispatch_dryrun", sha=None, args=None, **kw):
@@ -110,9 +111,9 @@ def test_e3_the_contracts_launch_args_must_be_the_requests_args(tmp_path, monkey
     notjson = b"not json\n"
     w2 = CenturyWorld(tmp_path / "b", monkeypatch, blobs={COMMIT: notjson})
     assert "is not JSON" in w2.mod.century_contract_problem(w2.request(sha=hashlib.sha256(notjson).hexdigest()))
-    wrong = contract_body(schema="ky.century_contract/2")
+    wrong = contract_body(schema="ky.century_contract/3")
     w3 = CenturyWorld(tmp_path / "c", monkeypatch, blobs={COMMIT: wrong})
-    assert "is not a ky.century_contract/1" in w3.mod.century_contract_problem(w3.request(sha=hashlib.sha256(wrong).hexdigest()))
+    assert "unsupported schema" in w3.mod.century_contract_problem(w3.request(sha=hashlib.sha256(wrong).hexdigest()))
 
 
 # ───────────────────────────── E4 other kinds are untouched ─────────────────────────────
@@ -279,16 +280,16 @@ def test_o1_output_tables_are_the_shared_absence_tables_proven_by_their_migratio
 
 # ───────────────────────────── L1 the committed file is what the sources generate ─────────────────────────────
 def test_l1_the_committed_contract_is_what_the_repository_sources_generate():
-    committed = json.loads((REPO / PATH).read_text())
-    derived = cc.derive(REPO, None, with_digest=False)
+    committed = cc.read_contract((REPO / PATH).read_bytes())
+    derived = cc.derive(REPO, None, with_digest=False, schema=committed["schema"])
     assert cc.compare(committed, derived, with_digest=False, with_pack=False) == []
     assert (REPO / PATH).read_bytes().endswith(b"\n") and b"\r" not in (REPO / PATH).read_bytes()      # LF bytes: git show and the file hash the same
     assert isinstance(committed["image"]["writer_source_digest"], str) and len(committed["image"]["writer_source_digest"]) == 64
 
 
 def test_l1_a_contract_that_drifted_from_its_sources_is_reported():
-    committed = json.loads((REPO / PATH).read_text())
-    derived = cc.derive(REPO, None, with_digest=False)
+    committed = cc.read_contract((REPO / PATH).read_bytes())
+    derived = cc.derive(REPO, None, with_digest=False, schema=committed["schema"])
     moved = copy.deepcopy(committed)
     moved["horizon"]["end"] = "2085-02-05T00:00:00+00:00"
     assert cc.compare(moved, derived, with_digest=False, with_pack=False) == ["horizon"]
@@ -1115,3 +1116,245 @@ def test_loaded_mode_refuses_every_additional_tail_step(verified_pipeline):
     path.write_text(source)
     with pytest.raises(cc.ContractError, match="unexpected Pipeline step after"):
         cc.image(verified_pipeline, False)
+
+
+def semantic_contract_body():
+    return contract_body(
+        schema=cc.SCHEMA_V2,
+        timeout={"cloud_run_task_timeout_seconds": 86400, "source": cc.TIMEOUT_LOCATOR},
+        cap={"writer_timeout_seconds": 72000},
+        image={"job": "brahma-build-pipeline-job", "writer_source_digest": "a" * 64},
+    )
+
+
+@pytest.mark.parametrize("kind", ["century_dispatch", "century_dispatch_dryrun", "century_resume", "century_resume_dryrun"])
+def test_dual_readers_bind_the_exact_reviewed_blob_args_and_resume_identity(tmp_path, monkeypatch, kind):
+    v1_pin, v2_pin, moved_pin = ("a" * 40, "b" * 40, "c" * 40)
+    v1 = contract_body(image={"writer_source_digest": "a" * 64})
+    v2 = semantic_contract_body()
+    moved = v2.replace(b"\n", b"\r\n")
+    w = CenturyWorld(tmp_path, monkeypatch, blobs={v1_pin: v1, v2_pin: v2, moved_pin: moved})
+    for pin, body in ((v1_pin, v1), (v2_pin, v2), (moved_pin, moved)):
+        sha = hashlib.sha256(body).hexdigest()
+        req = w.request(kind=kind, sha=sha)
+        req.update(reviewed_commit=pin, program_identity={"writer_digest": "a" * 64})
+        assert w.mod.read_contract(body) == cc.read_contract(body)
+        assert w.mod.century_contract_problem(req) is None
+        assert w.shown[-1] == f"{pin}:{PATH}"
+        assert "args differ" in w.mod.century_contract_problem(dict(req, args={"classes": "wrong"}))
+        if "resume" in kind:
+            assert "writer_digest differs" in w.mod.century_contract_problem(
+                dict(req, program_identity={"writer_digest": "b" * 64})
+            )
+    assert "does not equal" in w.mod.century_contract_problem(
+        dict(req, century_contract_sha256=hashlib.sha256(v2).hexdigest())
+    )
+    assert "does not equal" in w.mod.century_contract_problem(dict(req, reviewed_commit=v1_pin))
+
+
+@pytest.mark.parametrize("mutate", [
+    lambda body: body.replace(b"ky.century_contract/2", b"ky.century_contract/3"),
+    lambda body: body.replace(b'{\n', b'{\n  "schema": "ky.century_contract/1",\n', 1),
+    lambda body: body.replace(b"86400,", b"NaN,"),
+    lambda body: body.replace(b"86400,", b"1e400,"),
+    lambda body: body.replace(b'{\n', b'{\n  "fixture": ' + b"[" * 250_000 + b"0" + b"]" * 250_000 + b",\n", 1),
+    lambda body: body.replace(b"86400,", b"86400.0,"),
+    lambda body: body.replace(b"86400,", b"true,"),
+    lambda body: body.replace(b"86400,", b"72000,"),
+    lambda body: body.replace(b"72000\n", b"false\n"),
+    lambda body: body.replace(b"::--task-timeout", b"::--image"),
+    lambda body: body.replace(b'"cloud_run_task_timeout_seconds"', b'"unrelated"'),
+    lambda body: body.replace(b'"timeout": {', b'"timeout": {\n    "observed_timeout_line": 2543,'),
+    lambda body: body.replace(b'{\n', b'{\n  "observed_timeout_line": 2543,\n', 1),
+    lambda body: body.replace(b'"job": "brahma-build-pipeline-job"', b'"job": "synthetic-other"'),
+    lambda body: body.replace(b'"writer_source_digest"', b'"other_digest"'),
+    lambda body: body.replace(b'"launch_args"', b'"other_args"'),
+])
+def test_unknown_or_malformed_formats_refuse_after_exact_sha_in_both_readers(tmp_path, monkeypatch, mutate):
+    good = semantic_contract_body()
+    bad = mutate(good)
+    assert bad != good
+    w = CenturyWorld(tmp_path, monkeypatch, blobs={COMMIT: bad})
+    req = w.request(sha=hashlib.sha256(bad).hexdigest())
+    with pytest.raises(ValueError) as local:
+        cc.read_contract(bad)
+    assert w.mod.century_contract_problem(req) == str(local.value)
+
+
+def test_git_admission_preserves_actual_raw_commit_bytes(tmp_path, monkeypatch):
+    # A disposable local object store, with synthetic bytes only.
+    repo = tmp_path / "fixture.git"
+    subprocess.run(["git", "-c", "init.templateDir=", "init", "--bare", "--object-format=sha1", "-q", str(repo)], check=True)
+
+    def git(*args, body=None):
+        return subprocess.check_output(["git", "-C", str(repo), *args], input=body).decode().strip()
+
+    canonical = semantic_contract_body()
+    raw = canonical.replace(b"\n", b"\r\n")
+    parts = PATH.split("/")
+    ident = git("hash-object", "-w", "--stdin", body=raw)
+    record = f"100644 blob {ident}\t{parts[-1]}\n".encode()
+    for part in reversed(parts[:-1]):
+        ident = git("mktree", body=record)
+        record = f"040000 tree {ident}\t{part}\n".encode()
+    tree = git("mktree", body=record)
+    reviewed = git("-c", "user.name=Synthetic", "-c", "user.email=synthetic@example.invalid",
+                   "commit-tree", tree, body=b"synthetic Century blob\n")
+    module = load(FLEET / "executor.py", "ky_exec_exact_binary_git")
+    monkeypatch.setattr(module, "GIT", repo)
+    assert module.git("show", f"{reviewed}:{PATH}").stdout.encode() == canonical
+    assert module.git("show", f"{reviewed}:{PATH}", text=False).stdout == raw
+    req = {"kind": "century_dispatch_dryrun", "reviewed_commit": reviewed, "args": ARGS,
+           "century_contract_sha256": hashlib.sha256(raw).hexdigest()}
+    assert module.century_contract_problem(req) is None
+    req["century_contract_sha256"] = hashlib.sha256(canonical).hexdigest()
+    assert "does not equal" in module.century_contract_problem(req)
+
+
+@pytest.fixture
+def writable_contract(tmp_path, monkeypatch):
+    root = tree(tmp_path)
+    path = root / cc.REL
+    path.parent.mkdir(parents=True)
+    (root / cc.CANCEL).write_text('SCHEMA = "ky.century_cancel/1"\n')
+    (root / cc.INPUT_VECTOR).parent.mkdir(parents=True, exist_ok=True)
+    (root / cc.INPUT_VECTOR).write_text('STORED_SCOPE = "fixture"\n')
+    with (root / cc.SHARED).open("a") as source:
+        source.write("""CENTURY_ARG_KEYS = {"classes", "final_rules", "defer_in_build_verify", "horizon", "result_policy"}
+CENTURY_ITEM = "J-4e"
+GENERATION = "5.0"
+CENTURY_TRIGGERED_BY = "synthetic"
+ABSENCE_TABLES = (("syn_a", ""),)
+""")
+    pack = tmp_path / "synthetic-pack"
+    pack.mkdir()
+    (pack / cc.PACK_FILE).write_text(json.dumps({"carrier": {"args": {
+        "final_rules": "true", "defer_in_build_verify": "false", "result_policy": "window_qualification/1",
+    }}}))
+    monkeypatch.setattr(cc, "writer_source_digest", lambda source: "a" * 64)
+    options = ["--root", str(root), "--pack", str(pack)]
+    return root, path, pack, options
+
+
+def test_explicit_v2_generator_and_checker_keep_the_diagnostic_outside_the_bytes(writable_contract, capsys):
+    root, path, pack, options = writable_contract
+    assert cc.main(["--write", *options]) == 0
+    v1 = path.read_bytes()
+    assert "observed_timeout_line" not in json.loads(capsys.readouterr().out)
+    assert cc.render(cc.derive(root, pack)) == v1
+    assert cc.main(["--check", *options]) == 0
+    assert "observed_timeout_line" not in json.loads(capsys.readouterr().out)
+
+    stale_v1 = cc.read_contract(v1)
+    stale_v1["timeout"]["source"] = f"{cc.DEPLOY}:999"
+    stale_v1["timeout"]["cloud_run_task_timeout_seconds"] += 1
+    path.write_bytes(cc.render(stale_v1))
+    assert cc.main(["--write", *options]) == 0
+    assert path.read_bytes() == v1
+    capsys.readouterr()
+
+    for malformed in (
+        {"schema": cc.SCHEMA, "timeout": False},
+        dict(cc.read_contract(v1), timeout=False),
+        dict(cc.read_contract(v1), timeout={"cloud_run_task_timeout_seconds": 9000, "source": "bad"}),
+    ):
+        bad = cc.render(malformed)
+        # Historical admission recognizes the schema. Implicit replacement is stricter.
+        assert cc.read_contract(bad) == malformed
+        path.write_bytes(bad)
+        assert cc.main(["--write", *options]) == 2
+        assert capsys.readouterr().err == "century_contract: the existing active v1 contract is malformed\n"
+        assert path.read_bytes() == bad
+
+    path.write_bytes(v1)
+    assert cc.main(["--write", "--schema", cc.SCHEMA_V2, *options]) == 0
+    v2 = path.read_bytes()
+    diagnostic = json.loads(capsys.readouterr().out)
+    assert set(cc.read_contract(v2)["timeout"]) == {"source", "cloud_run_task_timeout_seconds"}
+    assert b"observed_timeout_line" not in v2
+    assert {k for k in json.loads(v1) if json.loads(v1)[k] != json.loads(v2)[k]} == {"schema", "timeout"}
+
+    workflow = root / cc.DEPLOY
+    workflow.write_text("# unrelated synthetic prefix\n" + workflow.read_text())
+    assert cc.main(["--check", *options]) == 0
+    shifted = json.loads(capsys.readouterr().out)
+    assert shifted["sha256"] == diagnostic["sha256"]
+    assert shifted["observed_timeout_line"] == diagnostic["observed_timeout_line"] + 1
+    assert cc.render(cc.derive(root, pack, schema=cc.SCHEMA_V2)) == v2 == path.read_bytes()
+    assert cc.main(["--write", *options]) == 0
+    assert json.loads(capsys.readouterr().out)["observed_timeout_line"] == shifted["observed_timeout_line"]
+    assert path.read_bytes() == v2
+
+    wrong_horizon = cc.read_contract(v2)
+    wrong_horizon["horizon"]["end"] = "2091-03-04T00:00:00+00:00"
+    assert cc.compare(wrong_horizon, cc.derive(root, pack, schema=cc.SCHEMA_V2), with_digest=True, with_pack=True) == ["horizon"]
+
+    path.write_bytes(v1)
+    assert cc.main(["--check", *options]) == 1
+    assert json.loads(capsys.readouterr().out)["differs_in"] == ["timeout"]
+    for bad in (v2.replace(b"ky.century_contract/2", b"ky.century_contract/3"), b"{malformed"):
+        path.write_bytes(bad)
+        assert cc.main(["--check", *options]) == 2
+        assert capsys.readouterr().err
+        for switch in ([], ["--schema", cc.SCHEMA_V2]):
+            assert cc.main(["--write", *switch, *options]) == 2
+            assert capsys.readouterr().err
+            assert path.read_bytes() == bad
+
+
+@pytest.mark.parametrize("field", ["image", "output_tables", "certification", "args"])
+def test_implicit_write_refuses_malformed_nested_v1_without_replacement(writable_contract, capsys, field):
+    _, path, _, options = writable_contract
+    assert cc.main(["--write", *options]) == 0
+    capsys.readouterr()
+    malformed = cc.read_contract(path.read_bytes())
+    if field == "image":
+        malformed["image"]["job"] = None
+    elif field == "output_tables":
+        malformed["output_tables"] = [False]
+    elif field == "certification":
+        malformed["policy"]["certification"]["strict"] = "true"
+    else:
+        malformed["launch_args"]["final_rules"] = True
+    old = cc.render(malformed)
+    path.write_bytes(old)
+    assert cc.read_contract(old) == malformed  # historical read policy is unchanged
+    assert cc.main(["--write", *options]) == 2
+    assert capsys.readouterr().err == "century_contract: the existing active v1 contract is malformed\n"
+    assert path.read_bytes() == old
+
+
+def test_implicit_v1_write_accepts_stale_list_values_lengths_and_nullable_table_fields(writable_contract):
+    _, path, _, options = writable_contract
+    assert cc.main(["--write", *options]) == 0
+    current = path.read_bytes()
+    stale = cc.read_contract(current)
+    stale["rulings"] += ["historic synthetic ruling"]
+    stale["classes"]["scored"] += ["historic_synthetic_class"]
+    stale["classes"]["count"] += 1
+    stale["output_tables"] += [
+        {"object": "historic", "table": "public.historic", "class_column": None, "where": "synthetic predicate"},
+        {"object": "historic2", "table": "public.historic2", "class_column": "event_class", "where": None},
+    ]
+    path.write_bytes(cc.render(stale))
+    assert cc.main(["--write", *options]) == 0
+    assert path.read_bytes() == current
+
+
+def test_verified_repoint_movement_does_not_change_v2_semantic_projection(verified_pipeline):
+    # Preserve the existing parser and compare the entire timeout value before and after moving its physical line.
+    root = verified_pipeline
+    path = root / cc.DEPLOY
+    first = cc._deployment_image(root)
+    first_timeout = cc.task_timeout(root, schema=cc.SCHEMA_V2)
+    path.write_text("# unrelated synthetic prefix\n" + path.read_text())
+    second = cc._deployment_image(root)
+    assert first_timeout == cc.task_timeout(root, schema=cc.SCHEMA_V2)
+    assert first_timeout == {"cloud_run_task_timeout_seconds": 86400, "source": cc.TIMEOUT_LOCATOR}
+    assert first[0] == second[0]
+    assert first[1] == {"cloud_run_task_timeout_seconds": 86400, "source": f"{cc.DEPLOY}:2543"}
+    assert second[1] == {"cloud_run_task_timeout_seconds": 86400, "source": f"{cc.DEPLOY}:2544"}
+    assert cc.TIMEOUT_LOCATOR == (
+        ".github/workflows/deploy.yml::jobs.deploy-pipeline-job::Re-point Cloud Run Job at the new image::"
+        "gcloud run jobs update brahma-build-pipeline-job::--task-timeout"
+    )

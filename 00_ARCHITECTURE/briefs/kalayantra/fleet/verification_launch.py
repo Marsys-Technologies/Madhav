@@ -80,6 +80,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "platform/scripts"))
 
+from century_contract import read_contract
 import cloudrun_readback as readback                      # noqa: E402  PROJECT / REGION / IMAGE_REPO / gcloud_json / registry_digest / default_runner
 import gochara_seal_execution_check as execchk            # noqa: E402  the verifier identity and the job's resources, and the executed-resource task reader
 import gochara_verification_job_contract as vjc           # noqa: E402  the pinned task contract (shared byte for byte with the deploy and seal workflows)
@@ -100,8 +101,10 @@ def profile_args(contract_path: Path = Path(__file__).resolve().parent / "centur
     build ran under), never defaulted: final_rules "true" -> --final-rules; p1_form_b "true" -> --p1-form-b. A missing contract or any value other than
     "true"/"false" refuses at import, so a default can never substitute for the build's profile again."""
     try:
-        launch = json.loads(contract_path.read_text())["launch_args"]
-    except (OSError, ValueError, KeyError, TypeError) as exc:
+        launch = read_contract(contract_path.read_bytes())["launch_args"]
+        if not isinstance(launch, dict):
+            raise ValueError("launch_args must be an object")
+    except (OSError, ValueError, KeyError) as exc:
         raise SystemExit(f"verification_launch: the century contract's launch_args are unreadable ({exc}); refusing to choose a rule profile") from None
     flags = []
     for key, flag in (("final_rules", "--final-rules"), ("p1_form_b", "--p1-form-b")):

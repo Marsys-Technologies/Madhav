@@ -96,6 +96,7 @@ kind that is not on the list, every one of them is signed-only, and `orchestrato
 that is in flight.
 """
 from __future__ import annotations
+import math
 import concurrent.futures as cf, datetime as dt, fcntl, hashlib, json, os, pathlib, re, shutil, signal, subprocess, sys, tempfile, threading, time
 
 KY_ROOT = pathlib.Path(os.environ.get("KY_ROOT", "/Users/Dev/kalayantra"))
@@ -198,8 +199,8 @@ def redact(s: str) -> str:
     return s.replace(key, "[REDACTED]") if key else s
 def log(msg: str) -> None:
     with _lock, (KY_ROOT / "logs" / "executor.log").open("a") as f: f.write(f"{now()} {redact(msg)}\n")
-def git(*args: str, timeout: int = 120) -> subprocess.CompletedProcess:
-    return subprocess.run(["git", "-C", str(GIT), *args], capture_output=True, text=True, timeout=timeout)
+def git(*args: str, timeout: int = 120, text: bool = True) -> subprocess.CompletedProcess:
+    return subprocess.run(["git", "-C", str(GIT), *args], capture_output=True, text=text, timeout=timeout)
 
 
 def sync() -> None:
@@ -853,26 +854,87 @@ def scheduler_backstop_tick(at: dt.datetime | None = None) -> list[str]:
     return fired
 
 
+# Kept in sync with century_contract.py; the deployed executor is a one-file snapshot.
+SCHEMA = "ky.century_contract/1"
+SCHEMA_V2 = "ky.century_contract/2"
+CENTURY_JOB = "brahma-build-pipeline-job"
+TIMEOUT_LOCATOR = (
+    ".github/workflows/deploy.yml::jobs.deploy-pipeline-job::Re-point Cloud Run Job at the new image::"
+    f"gcloud run jobs update {CENTURY_JOB}::--task-timeout"
+)
+
+
+def read_contract(body: bytes) -> dict:
+    """Read known Century formats and refuse ambiguous JSON."""
+    def unique(pairs):
+        result = dict(pairs)
+        if len(result) != len(pairs):
+            raise ValueError("duplicate JSON field")
+        return result
+
+    def reject_constant(_value):
+        raise ValueError("nonfinite JSON number")
+
+    def finite_float(value):
+        number = float(value)
+        if not math.isfinite(number):
+            raise ValueError("nonfinite JSON number")
+        return number
+
+    try:
+        contract = json.loads(body.decode("utf-8"), object_pairs_hook=unique,
+                              parse_constant=reject_constant, parse_float=finite_float)
+    except (ValueError, RecursionError):
+        raise ValueError("the century contract is not JSON") from None
+    return validate_contract(contract)
+
+
+def validate_contract(contract: object) -> dict:
+    if isinstance(contract, dict) and contract.get("schema") == SCHEMA:
+        return contract
+    if not isinstance(contract, dict) or contract.get("schema") != SCHEMA_V2:
+        raise ValueError("the century contract has an unsupported schema")
+
+    timeout, image, cap = (contract.get(key) for key in ("timeout", "image", "cap"))
+    if not (
+        isinstance(timeout, dict) and set(timeout) == {"cloud_run_task_timeout_seconds", "source"}
+        and type(timeout["cloud_run_task_timeout_seconds"]) is int
+        and timeout["source"] == TIMEOUT_LOCATOR
+        and isinstance(cap, dict) and type(cap.get("writer_timeout_seconds")) is int
+        and 0 < cap["writer_timeout_seconds"] < timeout["cloud_run_task_timeout_seconds"]
+        and isinstance(image, dict) and image.get("job") == CENTURY_JOB
+        and isinstance(image.get("writer_source_digest"), str)
+        and re.fullmatch(r"[0-9a-f]{64}", image["writer_source_digest"])
+        and isinstance(contract.get("launch_args"), dict)
+        and "observed_timeout_line" not in contract
+    ):
+        raise ValueError("the century contract has a malformed v2 binding")
+    return contract
+
+
 def century_contract_problem(req: dict) -> str | None:
     """SR-EDGES-PROOF 2 / SR-HORIZON-PUBLIC: a century dispatch and its dry run are bound to the committed launch contract (fleet/century_contract.json: horizon, classes, policy,
     cap, timeout, image binding). The request carries `century_contract_sha256`; it is admitted only when that equals the sha256 of the file's bytes AT the request's reviewed_commit
-    (read with git show, never from a working tree), the file is a ky.century_contract/1, and its launch_args are exactly the request's args. Run at the tail of validate, so again
+    (read with git show, never from a working tree), the file has a supported Century contract format, and its launch_args are exactly the request's args. Run at the tail of validate, so again
     immediately before execution. The pack fill pins the field in its template, so a fill bound to a different contract is refused here, whatever its other fields say."""
     if req.get("kind") not in ("century_dispatch", "century_dispatch_dryrun", "century_resume", "century_resume_dryrun"): return None
     declared, rc = req.get("century_contract_sha256"), str(req.get("reviewed_commit", ""))
     if not (isinstance(declared, str) and HEX64.fullmatch(declared)): return "century_contract_sha256 (64 lowercase hex) is required: a century dispatch binds to the committed century contract"
     if not SHA.match(rc): return "reviewed_commit required to read the century contract"
-    shown = git("show", f"{rc}:00_ARCHITECTURE/briefs/kalayantra/fleet/century_contract.json")
-    if shown.returncode or not getattr(shown, "stdout", ""): return "the century contract is not at the reviewed commit"
-    body = shown.stdout.encode("utf-8")
+    shown = git("show", f"{rc}:00_ARCHITECTURE/briefs/kalayantra/fleet/century_contract.json", text=False)
+    if shown.returncode or not isinstance(shown.stdout, bytes) or not shown.stdout:
+        return "the century contract is not at the reviewed commit"
+    body = shown.stdout
     if digest_bytes(body) != declared: return "century_contract_sha256 does not equal the sha256 of fleet/century_contract.json at the reviewed commit"
-    try: contract = json.loads(body)
-    except ValueError: return "the century contract at the reviewed commit is not JSON"
-    if not isinstance(contract, dict) or contract.get("schema") != "ky.century_contract/1": return "the century contract at the reviewed commit is not a ky.century_contract/1"
+    try:
+        contract = read_contract(body)
+    except ValueError as exc:
+        return str(exc)
     if contract.get("launch_args") != (req.get("args") or {}): return "the request args differ from the century contract's launch_args"
     if req.get("kind") in ("century_resume", "century_resume_dryrun"):      # SR-RESUME-NOW: the program the resume would run is the one the ledger was written by, or it refuses by name (the ledger's side is judged in v5_small_test_shared.resume_evidence)
         identity = req.get("program_identity")
-        if not isinstance(identity, dict) or identity.get("writer_digest") != (contract.get("image") or {}).get("writer_source_digest"):
+        image = contract.get("image")
+        if not isinstance(identity, dict) or not isinstance(image, dict) or identity.get("writer_digest") != image.get("writer_source_digest"):
             return "program_identity.writer_digest differs from the century contract's writer_source_digest at the reviewed commit: a resume continues only the same program"
     return None
 
