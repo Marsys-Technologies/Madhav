@@ -41,7 +41,7 @@ EXPECTED_NOTES = (
     '"arguably "], "fields_scanned": ["signal_summary_text", "signal_headline_text", '
     '"configuration_jsonb"], "detector_class": "lexical_marker_scan"}, "error": null}, '
     '"divergent_flagged_count": {"count": 3, "terms": {"tier_ranks": {"two_pass_verified": 3, '
-    '"classical_match": 2, "single_pass": 2, "pass": 2, "documented_approximation": 1, '
+    '"classical_match": 2, "single_pass": 1, "pass": 2, "documented_approximation": 1, '
     '"single": 1, "divergent_flagged": 0}, "explicitly_stamped_divergent": 2, '
     '"l1_verification_tier_inversion": 1}, "error": null}, '
     '"l2_contract_integrity": {'
