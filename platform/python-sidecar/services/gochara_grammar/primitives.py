@@ -190,21 +190,19 @@ CLASSICAL_SEVEN = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn
 
 # Classical graha drishti (BPHS Ch.26): every graha casts a full (7th-house,
 # 180deg) aspect; Mars/Jupiter/Saturn cast additional special full aspects.
-SPECIAL_DRISHTI_DEG: dict[str, list[float]] = {
-    "Mars": [90.0, 180.0, 210.0],       # 4th, 7th, 8th
-    "Jupiter": [120.0, 180.0, 240.0],   # 5th, 7th, 9th
-    "Saturn": [60.0, 180.0, 270.0],     # 3rd, 7th, 10th
-    # D-S1(c): the "BPHS Ch.26 — same as Jupiter" citation for Rahu/Ketu is
-    # refuted by F-29. These entries are retained ONLY for the legacy arm of
-    # flag `nodal_drishti`; they retire when candidate '4.0' is accepted.
-    "Rahu": [120.0, 180.0, 240.0],      # 5th, 7th, 9th (legacy nodal_drishti arm only — see above)
-    "Ketu": [120.0, 180.0, 240.0],      # 5th, 7th, 9th (legacy nodal_drishti arm only — see above)
-}
+from services.gochara_kernel.convention import SPECIAL_DRISHTI_DEG
 _DEFAULT_DRISHTI_DEG = [180.0]  # every other graha: 7th-house aspect only
 
 
 def _sign_index(sign_name: str) -> int:
     return SIGNS.index(sign_name)
+
+
+def _governed_drishti_degrees(planet: str):
+    # N-14: all normalized node aliases are non-casting, never seventh fallback.
+    if norm_graha(planet) in ("RAHU", "KETU", "RAH_MEAN", "KET_MEAN"):
+        return ()
+    return SPECIAL_DRISHTI_DEG.get(planet, _DEFAULT_DRISHTI_DEG)
 
 
 def _drishti_house_offsets(planet: str) -> list[int]:
@@ -214,7 +212,7 @@ def _drishti_house_offsets(planet: str) -> list[int]:
     degree aspects) becomes [5, 7, 9]. Every SPECIAL_DRISHTI_DEG entry is
     already an exact multiple of 30deg, so this conversion is exact, not an
     approximation."""
-    degs = SPECIAL_DRISHTI_DEG.get(planet, _DEFAULT_DRISHTI_DEG)
+    degs = _governed_drishti_degrees(planet)
     return sorted({int(round(d / 30.0)) + 1 for d in degs})
 
 
@@ -346,7 +344,9 @@ def _drishti_contact_point(
     contact against target.target_longitude_deg via find_aspect_events."""
     sentences: list[ConfigurationSentence] = []
     for planet in (planets or ALL_GRAHAS):
-        aspect_degrees = SPECIAL_DRISHTI_DEG.get(planet, _DEFAULT_DRISHTI_DEG)
+        aspect_degrees = _governed_drishti_degrees(planet)
+        if not aspect_degrees:
+            continue
         events = find_aspect_events(swe, planet, target.target_longitude_deg, aspect_degrees, orb_deg, start_jd, end_jd)
         for ev in events:
             sentences.append(ConfigurationSentence(

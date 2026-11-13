@@ -78,6 +78,9 @@ def test_duplicate_or_rebound_declaration_is_not_a_governed_role():
     assert checker.scan_python_file(text.replace(original, duplicate, 1), path)
 
 
-def test_legacy_convention_remains_visible():
+def test_grammar_consumes_governed_owner_and_rejects_reintroduced_local_table():
     path = "platform/python-sidecar/services/gochara_grammar/primitives.py"
-    assert checker.scan_python_file((ROOT / path).read_text(), path)
+    source = (ROOT / path).read_text()
+    assert not checker.scan_python_file(source, path)
+    _, declaration = table_source("platform/python-sidecar/services/gochara_kernel/convention.py")
+    assert checker.scan_python_file(source + "\n" + ast.unparse(declaration) + "\n", path)

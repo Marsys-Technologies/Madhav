@@ -16,7 +16,7 @@ Section letters (§A–§N) and §N.1–§N.8 numbering are stable anchors cited
 
 ## §A — Project mission
 
-Build an LLM-operated Jyotish instrument that, for the native (Abhisek Mohanty), (1) reads the chart with acharya-grade depth; (2) surfaces patterns and contradictions across layers and systems that no single astrologer could hold in working memory; (3) makes time-indexed, probabilistic, calibrated predictions testable against lived reality and correctable from outcomes — then extends the method beyond this native as a research tool. Bounded by the Ethical Framework in `MACRO_PLAN_v2_0.md` §Ethical Framework: probabilistic, calibrated, auditable outputs for consenting audiences; not a fortune-telling product.
+Build an LLM-operated Jyotish instrument that, for the native (Abhisek Mohanty), (1) reads the chart with acharya-grade depth; (2) surfaces patterns and contradictions across layers and systems that no single astrologer could hold in working memory; (3) makes time-indexed, probabilistic, calibrated predictions testable against lived reality and correctable from outcomes — then extends the method beyond this native as a research tool. Bounded by the Ethical Framework in `00_ARCHITECTURE/MACRO_PLAN_v2_0.md` §Ethical Framework: probabilistic, calibrated, auditable outputs for consenting audiences; not a fortune-telling product.
 
 ## §B — Subject
 
@@ -35,16 +35,16 @@ Abhisek Mohanty, born 1984-02-05, 10:43 IST, Bhubaneswar, Odisha, India.
 | When you are… | Read |
 |---|---|
 | Interpreting the chart or touching doctrine | `00_ARCHITECTURE/PROJECT_ARCHITECTURE_v2_2.md` §B (principles B.1–B.12), §H.4 |
-| Doing a formal session handshake/close | `GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md`, `SESSION_OPEN_TEMPLATE_v1_0.md`, `SESSION_CLOSE_TEMPLATE_v1_0.md`, `ONGOING_HYGIENE_POLICIES_v1_0.md` |
-| Writing/altering any layer writer or the build | `ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md` (+ `BUILD_GUARANTOR_SWARM_CHARTER_v1_0.md`) |
-| Working on L1 / L2 / L3 / L4 / L5 | `L1_GANITA_CLOSURE_v2_0.md` / `L2_BODHA_CAMPAIGN_HANDOFF_v1_0.md` + `MSR_COMPUTED_VALUE_DRIFT_HANDOFF_v1_0.md` + `MSR_UCN_CONTAMINATION_AUDIT_v1_0.md` / `L3_KALA_CLOSE_v1_0.md` / `L4_PHALA_CLOSE_v1_0.md` / `L5_SEAL_AND_SHIP_REPORT_v1_0.md` |
-| Making a cross-campaign decision | `CROSS_CUTTING_DECISION_REGISTER_v1_0.md`, `DISAGREEMENT_REGISTER_v1_0.md` |
-| Creating a branch, worktree or file | `WORKTREE_ISOLATION_PROTOCOL_v1_0.md`, `ROOT_FILE_POLICY.md` |
+| Doing a formal session handshake/close | `00_ARCHITECTURE/GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md`, `00_ARCHITECTURE/SESSION_OPEN_TEMPLATE_v1_0.md`, `00_ARCHITECTURE/SESSION_CLOSE_TEMPLATE_v1_0.md`, `00_ARCHITECTURE/ONGOING_HYGIENE_POLICIES_v1_0.md` |
+| Writing/altering any layer writer or the build | `00_ARCHITECTURE/ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md` (+ `00_ARCHITECTURE/BUILD_GUARANTOR_SWARM_CHARTER_v1_0.md`) |
+| Working on L1 / L2 / L3 / L4 / L5 | `00_ARCHITECTURE/L1_GANITA_CLOSURE_v2_0.md` / `00_ARCHITECTURE/L2_BODHA_CAMPAIGN_HANDOFF_v1_0.md` + `00_ARCHITECTURE/MSR_COMPUTED_VALUE_DRIFT_HANDOFF_v1_0.md` + `00_ARCHITECTURE/MSR_UCN_CONTAMINATION_AUDIT_v1_0.md` / `00_ARCHITECTURE/L3_KALA_CLOSE_v1_0.md` / `00_ARCHITECTURE/L4_PHALA_CLOSE_v1_0.md` / `00_ARCHITECTURE/L5_SEAL_AND_SHIP_REPORT_v1_0.md` |
+| Making a cross-campaign decision | `00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md`, `00_ARCHITECTURE/DISAGREEMENT_REGISTER_v1_0.md` |
+| Creating a branch, worktree or file | `00_ARCHITECTURE/WORKTREE_ISOLATION_PROTOCOL_v1_0.md`, `00_ARCHITECTURE/ROOT_FILE_POLICY.md` |
 | Strategy / phase scoping | `00_ARCHITECTURE/MACRO_PLAN_v2_0.md` (orientation only — never pre-build later phases) |
 
 ## §D — Canonical artifacts
 
-`00_ARCHITECTURE/CAPABILITY_MANIFEST.json` is the single source of truth for canonical paths and versions (`CANONICAL_ARTIFACTS_v1_0.md` is a superseded historical registry). Do not duplicate version numbers here. Core synthesis artifacts (paths checked by `drift_detector.py` — keep these strings): `025_HOLISTIC_SYNTHESIS/MSR_v5_0.md` · `025_HOLISTIC_SYNTHESIS/UCN_v4_0.md` · `025_HOLISTIC_SYNTHESIS/CDLM_v1_1.md` · `025_HOLISTIC_SYNTHESIS/CGM_v9_0.md` · `025_HOLISTIC_SYNTHESIS/RM_v2_0.md` · `00_ARCHITECTURE/PROJECT_ARCHITECTURE_v2_2.md` · `00_ARCHITECTURE/MACRO_PLAN_v2_0.md` · (historical) `00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md`.
+`00_ARCHITECTURE/CAPABILITY_MANIFEST.json` is the single source of truth for canonical paths and versions (`00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md` is a superseded historical registry). Do not duplicate version numbers here. Core synthesis artifacts (paths checked by `platform/scripts/governance/drift_detector.py` — keep these strings): `025_HOLISTIC_SYNTHESIS/MSR_v5_0.md` · `025_HOLISTIC_SYNTHESIS/UCN_v4_0.md` · `025_HOLISTIC_SYNTHESIS/CDLM_v1_1.md` · `025_HOLISTIC_SYNTHESIS/CGM_v9_0.md` · `025_HOLISTIC_SYNTHESIS/RM_v2_0.md` · `00_ARCHITECTURE/PROJECT_ARCHITECTURE_v2_2.md` · `00_ARCHITECTURE/MACRO_PLAN_v2_0.md` · (historical) `00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md`.
 
 ## §E — Layer model
 
@@ -60,15 +60,15 @@ Sessions that do formal governance work emit the SESSION_OPEN handshake and SESS
 
 ## §I — Operating principles
 
-Full list: `PROJECT_ARCHITECTURE_v2_2.md` §B (B.1–B.12). The most-violated:
+Full list: `00_ARCHITECTURE/PROJECT_ARCHITECTURE_v2_2.md` §B (B.1–B.12). The most-violated:
 
 - **B.1 — Facts/interpretation separation.** Facts at L1; derivations at the Bodha boundary with an explicit ledger; interpretation at L2+ only.
 - **B.3 — Derivation ledger.** Every L2+ claim lists the specific L1 fact IDs it consumes. No "as is known classically" without a source.
 - **B.8 — Versioning discipline.** Canonical artifacts carry `version`, `status` and a changelog; registries must not disagree.
 - **B.10 — No fabricated computation.** If a value needs a specialist tool and is not already in L1, mark it `[EXTERNAL_COMPUTATION_REQUIRED]` with an exact spec. Never invent chart values.
-- **B.11 — Whole-chart read.** Interpretive queries route through L2 Bodha synthesis (MSR + CDLM + CGM + RM) first. Carve-out (RS-4): a pinpointed factual lookup satisfies B.11 via its frame check plus a one-line escalation flag when the fact touches an active contradiction, firing yoga or open prediction window (`RETRIEVAL_STRATEGY_v1_0.md` §3.6).
+- **B.11 — Whole-chart read.** Interpretive queries route through L2 Bodha synthesis (MSR + CDLM + CGM + RM) first. Carve-out (RS-4): a pinpointed factual lookup satisfies B.11 via its frame check plus a one-line escalation flag when the fact touches an active contradiction, firing yoga or open prediction window (`00_ARCHITECTURE/RETRIEVAL_STRATEGY_v1_0.md` §3.6).
 - **Scope:** declare what you may and must not touch before editing; respect other campaigns' `must_not_touch`.
-- **Isolation:** never build or commit in the shared checkout — use a worktree and a PR (`WORKTREE_ISOLATION_PROTOCOL_v1_0.md`).
+- **Isolation:** never build or commit in the shared checkout — use a worktree and a PR (`00_ARCHITECTURE/WORKTREE_ISOLATION_PROTOCOL_v1_0.md`).
 
 ## §J — Quality standard
 
@@ -88,7 +88,7 @@ Gemini mirror discipline is retired (2026-05-27). Claude Code and Codex both wor
 
 ## §M — Cadence
 
-Red-team passes are owed at the cadences in `MACRO_PLAN_v2_0.md` §IS.8 (every third session by default; every macro-phase close; yearly for the plan itself); the handshake's `red_team_due` field tracks it.
+Red-team passes are owed at the cadences in `00_ARCHITECTURE/MACRO_PLAN_v2_0.md` §IS.8 (every third session by default; every macro-phase close; yearly for the plan itself); the handshake's `red_team_due` field tracks it.
 
 ## §N — Build standards (durable; inherited by every layer)
 
@@ -98,11 +98,11 @@ External lexicon Brahmagyan · Gaṇita · Bodha · Kāla · Phala · Mīmāṃs
 
 ### §N.2 — FROZEN orchestrator contract
 
-Sealed at `ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md` §2. Every writer: is a `@register('<asset_id>')` `WriterBase` subclass; implements `run(ctx) -> WriterResult` or `plan_substeps(ctx)` + `run_substep(ctx, step)`; runs on `ctx.db_conn` and NEVER commits or closes it (the orchestrator owns transaction + per-substep savepoint); never writes `asset_throughput` (the orchestrator is the sole build-state writer); takes `chart_id` + `birth_params` from `ctx.config`. Native-authorized freeze exceptions are recorded in that file (§7.1, SATYA-DĪPA) and in the campaign plans that granted them. **If a writer seems to need a contract change, STOP and raise it with the native.**
+Sealed at `00_ARCHITECTURE/ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md` §2. Every writer: is a `@register('<asset_id>')` `WriterBase` subclass; implements `run(ctx) -> WriterResult` or `plan_substeps(ctx)` + `run_substep(ctx, step)`; runs on `ctx.db_conn` and NEVER commits or closes it (the orchestrator owns transaction + per-substep savepoint); never writes `asset_throughput` (the orchestrator is the sole build-state writer); takes `chart_id` + `birth_params` from `ctx.config`. Native-authorized freeze exceptions are recorded in that file (§7.1, SATYA-DĪPA) and in the campaign plans that granted them. **If a writer seems to need a contract change, STOP and raise it with the native.**
 
 ### §N.3 — Idempotency per layer
 
-L0: `ON CONFLICT DO NOTHING/UPDATE` on global reference tables. L1+: per-chart **delete-then-insert** scoped to `(chart_id × natural key)` — a rebuild replaces, never accretes (shared helper pattern: `_idempotency.py`).
+L0: `ON CONFLICT DO NOTHING/UPDATE` on global reference tables. L1+: per-chart **delete-then-insert** scoped to `(chart_id × natural key)` — a rebuild replaces, never accretes (shared helper patterns: `platform/python-sidecar/ga_writers/_idempotency.py` and `platform/python-sidecar/bodha_writers/_idempotency.py`).
 
 ### §N.4 — Ratified build principles
 
@@ -111,8 +111,8 @@ L0: `ON CONFLICT DO NOTHING/UPDATE` on global reference tables. L1+: per-chart *
 - **Deterministic-first:** Python over LLM for computation; embeddings are fine; generative LLM curation is not.
 - **No JH-parity oracle:** verify by internal consistency, classical-rule re-derivation and FORENSIC grounding.
 - **Cockpit truth:** each asset needs a correct chart-scoped `count_sql` on `asset_registry` (the stats route reads `count_sql`, not `asset_throughput`).
-- **Surgical migrations, verified:** the deploy-time `migrate.ts` runner is fine, but verify your migration actually applied, and never edit a migration file after it has been applied.
-- **Honest verification tiers:** `single` is a permitted tier for `ga_sensitive` (stored with a warning, not build-fatal). Never emit `two_pass_verified` for a row nothing double-checked. Emit tiers via the named constants in `verification_vocab.py`, never bare string literals.
+- **Surgical migrations, verified:** the deploy-time `platform/scripts/migrate.ts` runner is fine, but verify your migration actually applied, and never edit a migration file after it has been applied.
+- **Honest verification tiers:** `single` is a permitted tier for `ga_sensitive` (stored with a warning, not build-fatal). Never emit `two_pass_verified` for a row nothing double-checked. Emit tiers via the named constants in `platform/python-sidecar/brahmagyan/verification_vocab.py`, never bare string literals.
 
 ### §N.5 — L1 is the authority over L2+
 
@@ -123,14 +123,14 @@ An L2+ signal never restates an L1 computed value as its own truth — it refere
 Every served surface layers rows by verification/confidence density; never flatten them into one undifferentiated list.
 
 1. **Catalog matches are not confirmed findings.** Single-pass catalog rows (e.g. `fire_reason: 'requires_pass'`) are still served (B.10 forbids silent drops) but counted and flagged separately (`catalog_only_rows_in_page`, `judgment_flags: catalog_only_rows_present`), with a pointer to the firings-authoritative surface.
-2. **Budget trims protect the densest layer first.** Sections carrying confirmed findings declare `hardFloor: true` in `response_budget.ts` so their `minKeep` survives the hard-cap pass; label catalogs and secondary corroboration trim first.
+2. **Budget trims protect the densest layer first.** Sections carrying confirmed findings declare `hardFloor: true` in `platform-mcp/src/lib/response_budget.ts` so their `minKeep` survives the hard-cap pass; label catalogs and secondary corroboration trim first.
 3. **A verdict layer is never empty when grounding data exists.** Confirmed rows sort ahead of corroboration; an honest gap is reported in `judgment_flags`, never hidden behind a hollow envelope.
 4. **Density signaling is data, not narration.** `density_contract` on `CapabilityDescriptor` declares `paginated`, `facets` and `empty_reason` discipline machine-readably; a capability that claims it must ship the `empty_reason` behind it.
 
 ### §N.7 — Narration Fidelity Principle
 
 1. Narration is a deterministic restatement of L1-referenced facts: it reads a cited `fact_id`, never re-derives it.
-2. Any selection that reduces a set to one row pins `fact_key` and carries a total `ORDER BY` (or `DISTINCT ON` / `LIMIT 1` equivalent) — enforced by the `check_fact_category_pinning.py` CI guard.
+2. Any selection that reduces a set to one row pins `fact_key` and carries a total `ORDER BY` (or `DISTINCT ON` / `LIMIT 1` equivalent) — enforced by the `platform/scripts/governance/check_fact_category_pinning.py` CI guard.
 3. No wrapper-local constant may shadow an L1-computed value, even if currently correct.
 4. A verification flag must have a real detector behind it, or be null.
 5. Verified fact ≠ verified prose: every narration layer needs its own semantic/golden-value test.
@@ -138,7 +138,7 @@ Every served surface layers rows by verification/confidence density; never flatt
 
 ### §N.8 — Earned-Signal Principle
 
-Every status, grade or PASS must be computed by a detector that measures the specific claim it asserts; a signal without such a detector is null, not green. Audit question: *what code path would have to run — and fail — for this signal to correctly read false?* If none exists, or it checks a proxy, the signal is null. Confirmed instances (detail in `SATYA_DIPA_REPORT_v1_0.md` and ORCHESTRATOR_CONVERGENCE_CLOSE §7.1):
+Every status, grade or PASS must be computed by a detector that measures the specific claim it asserts; a signal without such a detector is null, not green. Audit question: *what code path would have to run — and fail — for this signal to correctly read false?* If none exists, or it checks a proxy, the signal is null. Confirmed instances (detail in `00_ARCHITECTURE/llm_consumption_audit/briefs/satya_dipa/SATYA_DIPA_REPORT_v1_0.md` and ORCHESTRATOR_CONVERGENCE_CLOSE §7.1):
 
 1. Ṣaḍbala selector regression — served the wrong strength column; no test compared served vs. source.
 2. Two `bo_pramana_mapa` flags — could read true without their check ever running.

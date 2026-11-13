@@ -2543,7 +2543,7 @@ jobs:
             --task-timeout=86400 \
             --memory=8Gi \
             --cpu=2 \
-            --update-env-vars=GCP_PROJECT=madhav-astrology,PUBSUB_TOPIC=cockpit-events,KA_KSHETRA_HASH_SPILL_DIR=/tmp \
+            --update-env-vars=GOOGLE_CLOUD_PROJECT=madhav-astrology,GCP_PROJECT=madhav-astrology,PUBSUB_TOPIC=cockpit-events,KA_KSHETRA_HASH_SPILL_DIR=/tmp \
             --quiet
           GOOGLE_CLOUD_REGION="${{ env.DEPLOY_REGION }}" python3 .github/actions/build-verified-cgm-image/probe_registration.py post-repoint
           # F-185: KA_KSHETRA_HASH_SPILL_DIR was unconfigured, so the writer

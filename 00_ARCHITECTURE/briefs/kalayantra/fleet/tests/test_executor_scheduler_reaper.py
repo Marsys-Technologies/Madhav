@@ -201,8 +201,24 @@ def world(tmp_path, monkeypatch):
 # ───────────────────────────── C1 allow-list ─────────────────────────────
 def test_c1_constants_equal_what_the_provisioner_creates(world):
     text = (REPO / "platform/scripts/provision_watchdog_scheduler.sh").read_text()
-    assert re.search(r'PROJECT="\$\{GCP_PROJECT:-([^}]+)\}"', text).group(1) == world.mod.SCHEDULER_PROJECT == reaper.PROJECT
-    assert re.search(r'REGION="\$\{GCP_REGION:-([^}]+)\}"', text).group(1) == world.mod.SCHEDULER_REGION == reaper.REGION
+    bindings = [
+        re.search(r"^PROJECT=.*$", text, re.MULTILINE).group(0),
+        re.search(r"^REGION=.*$", text, re.MULTILINE).group(0),
+    ]
+    resolved = subprocess.run(
+        [
+            "/bin/bash",
+            "-c",
+            "\n".join(bindings) + '\nprintf "%s\\n%s\\n" "$PROJECT" "$REGION"\n',
+        ],
+        env={},
+        text=True,
+        capture_output=True,
+        check=True,
+    ).stdout.splitlines()
+    project, region = resolved
+    assert project == world.mod.SCHEDULER_PROJECT == reaper.PROJECT
+    assert region == world.mod.SCHEDULER_REGION == reaper.REGION
     assert re.search(r"jobs (?:create|update) http (\S+)", text).group(1) == world.mod.SCHEDULER_JOB == reaper.JOB == "watchdog-reaper"
 
 

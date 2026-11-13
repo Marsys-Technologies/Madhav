@@ -1,7 +1,7 @@
 {
   "version": "0.2-draft",
   "frozen_at": "2026-10-03T18:00:00+00:00",
-  "registry_revision": 25,
+  "registry_revision": 30,
   "levels": {
     "bg_class_lifetime_counts": 1,
     "bg_class_priors": 0,
@@ -134,8 +134,8 @@
   "_stamp": {
     "status": "DRAFT",
     "freeze": "J1: the strategist freezes the final lists and the level map at J1 (SS ruling N-97 item 6)",
-    "registry_revision": 25,
-    "registry_fingerprint": "0e78e228d140d04920cb12bcd8b5bd9c8b33ca59ac8f9105853a139b8289d698",
+    "registry_revision": 30,
+    "registry_fingerprint": "b1acb3f678b5c8fbe343b93d96d8f2db24e2d024b15412aa960056b98bc5f23c",
     "registry_stamp_scope": "registry_revision and registry_fingerprint are asset_census.REGISTRY_REVISION and registry_fingerprint(): they hash the CENSUS CRITERIA registry, not the asset_registry dependency graph. They say nothing about whether the DAG moved; the DAG is bound by registry_input_sha256 and dag_sha256.",
     "registry_input": "00_ARCHITECTURE/control/registry_input_draft.json",
     "registry_input_sha256": "24ccaf54eddbde0056729662571a4750f3cbdbc344d02df2d06965c4f50caeea",

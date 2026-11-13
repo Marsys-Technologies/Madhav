@@ -6,4 +6,8 @@ const region = process.env.GOOGLE_CLOUD_REGION;
 const credsPath = process.env.GOOGLE_APPLICATION_CREDENTIALS; // allowed exception
 const aiKey = process.env.GOOGLE_AI_API_KEY; // allowed exception (SDK var)
 
-export { projectId, region, credsPath, aiKey };
+export { projectId, region, credsPath, aiKey, legacyProject, legacyRegion };
+
+// Exact legacy aliases accepted by the canonical cloud configuration boundary.
+const legacyProject = process.env.GCP_PROJECT;
+const legacyRegion = process.env.GCP_REGION;

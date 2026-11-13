@@ -683,7 +683,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
         LIMIT 0`,
     source_refs: [
       'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:2063-2075',
-      'platform/src/lib/tools/classical_text_tools.ts:77-116',
+      'platform/src/lib/brahmagyan/classical_text_reads.ts:67-107',
       'platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:16',
       'platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:39-59',
       'platform/supabase/migrations/610_nirmana_bg_texts_integrity_contract.sql:56-110',
@@ -704,7 +704,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
            LIMIT 0`,
     source_refs: [
       'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1961-2026',
-      'platform/src/lib/tools/classical_text_tools.ts:35-58',
+      'platform/src/lib/brahmagyan/classical_text_reads.ts:25-49',
       'platform/migrations/ws2_l0_texts.sql:42-65',
       'platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:355-385',
       'platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py:660-683',
@@ -3920,7 +3920,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                    (SELECT COUNT(*) FROM full_text_candidates) AS full_text_candidates`,
     source_refs: [
       'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:2167-2188',
-      'platform/src/lib/tools/classical_text_tools.ts:133-157',
+      'platform/src/lib/brahmagyan/classical_text_reads.ts:176-185',
       'platform/src/lib/tools/classical_text_search.ts:72-193',
     ],
   },

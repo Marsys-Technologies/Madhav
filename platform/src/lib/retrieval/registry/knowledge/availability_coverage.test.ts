@@ -694,7 +694,7 @@ describe('first-slice availability coverage', () => {
       contractId: 'source-query:list-classical-texts:v1',
       relation: 'classical_texts t',
       sqlMarkers: ['COUNT(c.chunk_id) AS chunk_count', 'LEFT JOIN classical_text_chunks', 'LEFT JOIN classical_texts_source', 'GROUP BY t.text_id'],
-      handlerRef: 'platform/src/lib/tools/classical_text_tools.ts:77-116',
+      handlerRef: 'platform/src/lib/brahmagyan/classical_text_reads.ts:67-107',
     },
     {
       scuId: 'scu.catalog.resolve_entity',
@@ -710,7 +710,7 @@ describe('first-slice availability coverage', () => {
       contractId: 'source-query:read-chapter:v1',
       relation: 'classical_text_chunks',
       sqlMarkers: ['SELECT chunk_id, verse_ref, content_en, content_sa', 'ORDER BY verse_start, chunk_id'],
-      handlerRef: 'platform/src/lib/tools/classical_text_tools.ts:35-58',
+      handlerRef: 'platform/src/lib/brahmagyan/classical_text_reads.ts:25-49',
     },
     {
       scuId: 'scu.catalog.query_graha_naisargika_friendship',

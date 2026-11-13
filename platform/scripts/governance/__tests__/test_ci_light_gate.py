@@ -20,6 +20,7 @@ from _ci_gate_test_support import evaluate
 ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(ROOT / 'platform/scripts/governance'))
 CI = ROOT / '.github/workflows/ci.yml'
+SIDECAR_JOB = 'governance-gates-py-sidecar-shard'
 REQUIRED = {
     'TypeScript (src only)', 'Unit Tests', 'Secret Scan (unit 0b.2)',
     'Governance Gates (drift / schema / edge / native-literal / py-sidecar)',
@@ -42,7 +43,7 @@ def db_jobs(jobs):
 
 
 def heavy_jobs(jobs):
-    return db_jobs(jobs) | {'governance-gates-py-sidecar-shard', 'governance-gates-gochara'} | {n for n in jobs if n.startswith('required-')}
+    return db_jobs(jobs) | {SIDECAR_JOB, 'governance-gates-gochara'} | {n for n in jobs if n.startswith('required-')}
 
 
 # SR-BOLD-08(a): umbrellas that run on EVERY event and earn their verdict in a script (their own oracles below), so they are not
@@ -189,7 +190,7 @@ def test_required_aggregate_propagates_every_heavy_failure_and_unexpected_skip()
             for result in ('failure', 'cancelled', 'skipped'):
                 cases = {**expected, name: {'result': result}}
                 p = subprocess.run(['bash', '-e', '-c', step['run']], env={**env, 'NEEDS_JSON': json.dumps(cases)}, capture_output=True, text=True)
-                allowed = scoped and result == 'skipped'
+                allowed = scoped and result == 'skipped' and not (event == 'merge_group' and name == SIDECAR_JOB)
                 assert (p.returncode == 0) is allowed, (event, name, result, p.stdout, p.stderr)
         # On PRs and the queue a selected DB job must succeed; unselected skips alone are permitted.
         if scoped:
@@ -258,11 +259,11 @@ def _scoped_state(jobs):
     ]
 
 
-def test_merge_queue_selects_exactly_what_a_pull_request_selects():
-    """OWNER-CI-SCOPED-QUEUE-20261017 claim 1: every `if` (job and step) gives the same verdict on merge_group as on a PR.
+def test_merge_queue_preserves_scoped_conditions_and_requires_full_sidecar_coverage():
+    """Protected groups require all four Sidecar shards under the 2026-11-14 coverage correction.
 
-    Oracle is the PR contract itself (D-29 scoped selection, test above); a job or step that still lists
-    merge_group among the full events would run unselected heavy work on the queue and differ here.
+    Existing job and step conditions retain their PR selection contract. The full Sidecar matrix executes
+    on every protected group, including docs-only source changes.
     """
     jobs = workflow()['jobs']
     checked = 0
@@ -274,11 +275,11 @@ def test_merge_queue_selects_exactly_what_a_pull_request_selects():
                         continue
                     pr = evaluate(cond, event='pull_request', docs=docs, **state)
                     mg = evaluate(cond, event='merge_group', docs=docs, **state)
-                    assert pr == mg, (where, state['selected'][:1])
+                    assert mg is (pr or where == SIDECAR_JOB), (where, state['selected'][:1])
                     checked += 1
     assert checked > 100
     heavy_unselected = [n for n in skippable_heavy_jobs(jobs) if evaluate(jobs[n].get('if'), event='merge_group')]
-    assert heavy_unselected == [], f'merge_group runs heavy jobs nothing selected: {heavy_unselected}'
+    assert heavy_unselected == [SIDECAR_JOB], heavy_unselected
 
 
 def test_merge_queue_hands_the_changed_profiles_to_discovery():
@@ -414,8 +415,9 @@ def test_merge_queue_diffs_against_the_group_base_and_every_required_check_repor
     for key in ('typecheck', 'unit-tests', 'secret-scan', 'earned-signal-lint', 'governance-tool-tests', 'governance-gates-static',
                 'full-suite', 'governance-gates'):
         assert evaluate(jobs[key].get('if'), event='merge_group'), key
-    # A skipped heavy job rolls up to a passing aggregate on the queue, as on a PR (aggregate test above).
-    assert not any(evaluate(jobs[n].get('if'), event='merge_group') for n in skippable_heavy_jobs(jobs))
+    # The Sidecar matrix must execute on the queue even when no path-scoped job was selected.
+    selected_heavy = {n for n in skippable_heavy_jobs(jobs) if evaluate(jobs[n].get('if'), event='merge_group')}
+    assert selected_heavy == {SIDECAR_JOB}
 
 
 @pytest.mark.parametrize('changed,expected_profile', [
@@ -479,3 +481,156 @@ def test_kala_production_triggers_retain_discovered_test_ownership(monkeypatch, 
     out = _gate_output(monkeypatch, capsys, 'pull_request', ['platform/python-sidecar/' + discovered])
     assert json.loads(out['db_jobs']) == ['kala-db-tests']
     assert json.loads(out['db_profiles']) == [profile]
+
+
+# Source-evidence preflight supplements the protected combination family.
+def test_source_evidence_preflight_is_fail_closed_and_keeps_existing_context():
+    job = workflow()['jobs']['generated-artifacts']
+    assert not job.get('needs')
+    assert job['if'] == '${{ !cancelled() }}'
+    step = next(s for s in job['steps'] if s.get('name') == 'Source evidence pointers and strict density negatives')
+    output = 'steps.source-evidence-classification.outputs.docs_only'
+    assert step['if'] == "${{ !cancelled() && " + output + " != 'true' }}"
+    for value in ('false', '', 'malformed'):
+        assert evaluate(step['if'].replace(output, repr(value)), event='pull_request')
+    assert not evaluate(step['if'].replace(output, repr('true')), event='pull_request')
+    cancelled = step['if'].replace('!cancelled()', 'false').replace(output, repr('false'))
+    assert not evaluate(cancelled, event='pull_request')
+    classify = next(s for s in job['steps'] if s.get('id') == 'source-evidence-classification')
+    assert 'python3 platform/scripts/governance/ci_changes.py' in classify['run']
+    assert '--base "$SOURCE_EVIDENCE_BASE_SHA" --head HEAD' in classify['run']
+    assert job['steps'].index(classify) < job['steps'].index(step)
+    assert step['timeout-minutes'] == 3
+    assert step['env']['DATABASE_URL'] == step['env']['PGHOST'] == ''
+    assert step['env']['TMPDIR'] == '${{ runner.temp }}/source-evidence.noindex'
+    assert 'mkdir -p' in step['run']
+    assert step['run'].splitlines() == [
+        'mkdir -p "$TMPDIR"',
+        'python platform/scripts/governance/ci_changes.py --run-source-evidence',
+    ]
+    assert job['steps'].index(step) < next(i for i, s in enumerate(job['steps']) if s.get('run') == 'npm ci --prefix platform')
+
+
+def test_reader_evidence_battery_runs_but_full_combination_policy_is_unchanged(monkeypatch, capsys):
+    import ci_changes
+    import ci_gate
+    for paths in (
+        ['platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts'],
+        ['platform-mcp/src/tools/example.ts'],
+        ['platform/scripts/governance/asset_declarations.json'],
+        ['platform/scripts/governance/asset_census.py'],
+        ['platform/scripts/governance/__tests__/test_dens_not_served.py'],
+        ['unknown/new-input.bin'],
+    ):
+        assert not ci_changes.docs_only(paths, pinned=frozenset())
+    assert not ci_gate.combination_suites_run('pull_request', ['platform/src/reader.ts'])
+    assert ci_gate.combination_suites_run('merge_group', ['platform/src/reader.ts'])
+    assert ci_gate.MERGE_GROUP_FULL is True
+    assert ci_gate.combination_suites_run("pull_request", [".github/workflows/ci.yml", "platform/scripts/governance/ci_changes.py"])
+    assert ci_changes.docs_only(['00_ARCHITECTURE/notes/unpinned-source-check.md'], pinned=frozenset())
+    for path in ('00_ARCHITECTURE/notes/bad\x00.md', '00_ARCHITECTURE/notes/bad' + chr(10) + '.md',
+                 '00_ARCHITECTURE/notes/bad\udcff.md', '../bad.md'):
+        assert not ci_changes.docs_only([path], pinned=frozenset())
+    monkeypatch.setattr(ci_changes, '_pinned', lambda *args: frozenset())
+    for files in (None, []):
+        monkeypatch.setattr(ci_changes, 'changed_files', lambda *args: files)
+        assert ci_changes.main(['--event', 'pull_request']) == 0
+        assert capsys.readouterr().out == 'docs_only=false\n'
+
+
+@pytest.mark.parametrize(('output', 'exit_code', 'expected'), [
+    ('docs_only=true', 0, 'docs_only=true'),
+    ('docs_only=false', 0, 'docs_only=false'),
+    ('', 0, 'docs_only=false'),
+    ('malformed', 0, 'docs_only=false'),
+    ('docs_only=true\nextra', 0, 'docs_only=false'),
+    ('docs_only=true', 1, 'docs_only=false'),
+])
+def test_source_evidence_classification_fail_closed_command(tmp_path, output, exit_code, expected):
+    job = workflow()['jobs']['generated-artifacts']
+    step = next(s for s in job['steps'] if s.get('id') == 'source-evidence-classification')
+    python = tmp_path / 'python3'
+    python.write_text('#!/bin/sh\nprintf "%s" "$CLASSIFICATION_STDOUT"\nexit "$CLASSIFICATION_EXIT"\n')
+    python.chmod(0o755)
+    result = tmp_path / 'classification.txt'
+    env = {
+        **os.environ,
+        'PATH': str(tmp_path) + os.pathsep + os.environ.get('PATH', ''),
+        'GITHUB_EVENT_NAME': 'pull_request',
+        'SOURCE_EVIDENCE_BASE_SHA': '1' * 40,
+        'GITHUB_OUTPUT': str(result),
+        'CLASSIFICATION_STDOUT': output,
+        'CLASSIFICATION_EXIT': str(exit_code),
+    }
+    completed = subprocess.run(['bash', '-e', '-c', step['run']], env=env, capture_output=True, text=True)
+    assert completed.returncode == 0, completed.stderr
+    assert result.read_text() == expected + '\n'
+
+
+def test_source_evidence_workflow_passes_discovery_guard():
+    import ci_discovery
+
+    current = CI.read_text()
+    assert ci_discovery.workflow_problems(current) == []
+    # The previous inline pytest command ran successfully, then prevented generation.
+    steps = workflow()['jobs']['generated-artifacts']['steps']
+    evidence = next(s for s in steps if s.get('name') == 'Source evidence pointers and strict density negatives')
+    paths = [
+        'platform/scripts/governance/__tests__/test_e6_1_declarations.py',
+        'platform/scripts/governance/__tests__/test_dens_not_served_committed.py',
+        'platform/scripts/governance/__tests__/test_dens_not_served.py',
+    ]
+    previous = current.replace(evidence['run'].splitlines()[-1], 'python -m pytest ' + ' '.join(paths), 1)
+    assert ci_discovery.workflow_problems(previous) == [
+        f'generated-artifacts: explicit test path {path}; use a discovery profile or directory'
+        for path in paths
+    ]
+
+
+def test_source_evidence_runner_preserves_exact_argv_and_fails_closed(monkeypatch):
+    import ci_changes
+
+    monkeypatch.setenv('DATABASE_URL', 'unused-synthetic-dsn')
+    monkeypatch.setenv('PGHOST', 'unused-synthetic-host')
+    monkeypatch.setenv('TMPDIR', '/synthetic/source-evidence.noindex')
+
+    def run(command, *, cwd, env, timeout):
+        assert command == [
+            sys.executable, '-m', 'pytest',
+            'platform/scripts/governance/__tests__/test_e6_1_declarations.py',
+            'platform/scripts/governance/__tests__/test_dens_not_served_committed.py',
+            'platform/scripts/governance/__tests__/test_dens_not_served.py',
+            '-q', '--no-header', '-rs', '-p', 'no:cacheprovider',
+        ]
+        assert cwd == ROOT and timeout == 180
+        assert env['DATABASE_URL'] == env['PGHOST'] == ''
+        assert env['PYTHONDONTWRITEBYTECODE'] == '1'
+        assert env['TMPDIR'] == '/synthetic/source-evidence.noindex'
+        return subprocess.CompletedProcess(command, 7)
+
+    monkeypatch.setattr(ci_changes.subprocess, 'run', run)
+    assert ci_changes.main(['--run-source-evidence']) == 7
+
+    def timeout(command, **kwargs):
+        raise subprocess.TimeoutExpired(command, kwargs['timeout'])
+
+    monkeypatch.setattr(ci_changes.subprocess, 'run', timeout)
+    assert ci_changes.main(['--run-source-evidence']) == 1
+
+
+@pytest.mark.parametrize('event,ref,full,expected', [
+    ('merge_group', 'refs/heads/gh-readonly-queue/main/pr-3991', False, True),
+    ('push', 'refs/heads/main', False, True),
+    ('push', 'refs/heads/codex/example', False, False),
+    ('workflow_dispatch', 'refs/heads/codex/example', True, True),
+    ('workflow_dispatch', 'refs/heads/codex/example', False, False),
+    ('pull_request', 'refs/pull/3991/merge', False, False),
+])
+@pytest.mark.parametrize('docs', ['false', 'true'])
+def test_full_sidecar_matrix_executes_on_protected_groups_and_full_events(event, ref, full, expected, docs):
+    job = workflow()['jobs'][SIDECAR_JOB]
+    assert evaluate(job['if'], event=event, ref=ref, full=full, docs=docs) is expected
+    assert job['strategy']['matrix']['shard'] == [1, 2, 3, 4]
+    assert job['strategy']['fail-fast'] is False
+    assert not job.get('continue-on-error', False)
+    assert all(not step.get('continue-on-error', False) for step in job['steps'])

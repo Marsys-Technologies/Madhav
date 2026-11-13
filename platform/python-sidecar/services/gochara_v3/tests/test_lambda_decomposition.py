@@ -80,7 +80,7 @@ _REQUIRED_TERM_BREAKDOWN_KEYS = frozenset({
 })
 
 _EXPECTED_FORMULA_STRING = (
-    "PROMISE × PERMISSION × activity × tara_modifier × w30_modifier × quality_gates"
+    'PROMISE × PERMISSION × activity × tara_modifier × quality_gates'
 )
 
 

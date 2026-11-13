@@ -2,19 +2,6 @@
   "schema_version": "1.0",
   "$comment": "Allowlist for check_fact_category_pinning.py (brief §5 C.7, SUDDHA-VACA Phase C lane:ci-lint). Every entry requires: file (repo-relative POSIX path, must match a Violation.file exactly), EITHER line (int, matched exactly against the violation's line number) OR pattern (a string matched as a regex, falling back to a plain substring match, against the violation's snippet text) — line is preferred when known since it is unambiguous; pattern is for cases where line drift is expected, and justification (a non-empty, specific, human-readable reason — 'pre-existing' alone is not sufficient, say WHY it's safe or why it's out of scope). An entry with neither line nor pattern never matches anything (fails closed, not open). Populated 2026-07-28 during the initial rollout scan against the live repo tree (this worktree, base main, before this wave's other lanes landed) — see the ci-lint lane's session report for the full disposition rationale of every entry. A matching entry covers one finding by default. max_occurrences freezes the observed count when several intentionally share a pattern.",
   "generated_by": "check_fact_category_pinning.py initial-rollout scan, 2026-07-28",
-  "entry_count": 2,
-  "entries": [
-    {
-      "file": "platform/python-sidecar/brahmagyan/bodha/l2_embeddings.py",
-      "line": 142,
-      "pattern": null,
-      "justification": "PRE-EXISTING, not in this wave's scope. `bodha.signals` selected with an explicit `ORDER BY fact_subject` (a total, if not LIMIT-1-paired, order) and consumed as a full iteration, not reduced to one row."
-    },
-    {
-      "file": "platform/python-sidecar/brahmagyan/bodha/l2_lenses_salience.py",
-      "line": 504,
-      "pattern": null,
-      "justification": "PRE-EXISTING, not in this wave's scope. Reviewed: consumed as a full per-subject iteration (domain/confidence per signal), not reduced to one row."
-    }
-  ]
+  "entry_count": 0,
+  "entries": []
 }

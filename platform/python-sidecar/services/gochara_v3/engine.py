@@ -269,23 +269,14 @@ _MOON_CHANNEL_DEFAULT: str = "blended"
 _MOON_CHANNELS: tuple[str, ...] = ("blended", "separate")
 
 # ---------------------------------------------------------------------------
-# N-14 (L3 §4.9): nodal dṛṣṭi removal. Recorded flag `nodal_drishti` (input
-# generation vector; mechanism_register.yaml "PLANNED INPUT-VECTOR FLAGS"),
-# default "enabled".
-#
-# nodal_drishti ∈ {"enabled", "removed"}:
-#   enabled  — legacy: P.drishti_contact emits Rahu/Ketu rows and
-#              w30_modifier participates in the λ product.
-#   removed  — drishti_contact emits NO rows with body ∈ {Rahu, Ketu} (the
-#              nodes stay agents/targets for conjunction, ingress, kakṣyā,
-#              and return — only the dṛṣṭi relation is removed);
-#              w30_modifier leaves the λ product; the removed term is kept
-#              one generation as a labelled NON-SCORING annotation
-#              (term_breakdown.w30_annotation) and the absence is recorded
-#              as a completeness_state on w30_detail.
+# N-14 (L3 §4.9): supported generation vectors use "removed" only.
+# Nodes remain conjunction/ingress/nakshatra/kakshya/return agents and targets.
+# W30 is still computed as a labelled NON-SCORING historical annotation.
+# Runtime "enabled" is retired: exact old source and frozen historical outputs
+# must be used together for replay, never silently reinterpreted by this engine.
 # ---------------------------------------------------------------------------
-_NODAL_DRISHTI_DEFAULT: str = "enabled"
-_NODAL_DRISHTI_MODES: tuple[str, ...] = ("enabled", "removed")
+_NODAL_DRISHTI_DEFAULT: str = "removed"
+_NODAL_DRISHTI_MODES: tuple[str, ...] = ("removed",)
 
 # ---------------------------------------------------------------------------
 # N-15 (L3 §4.10): Sade-Sati to testimony. Recorded flag `sade_sati_mode`
@@ -336,7 +327,7 @@ LAMBDA_V3_FORMULA: str = (
 # kala_gochara_windows row and served by gochara_activation_get /
 # gochara_forecast_get. PARIŚEṢA F-21's reproducer reads exactly this string.
 TERM_BREAKDOWN_FORMULA: str = (
-    "PROMISE × PERMISSION × activity × tara_modifier × w30_modifier × quality_gates"
+    "PROMISE × PERMISSION × activity × tara_modifier × quality_gates"
 )
 
 # ---------------------------------------------------------------------------
@@ -554,6 +545,8 @@ def evaluate_lambda_vector(
 
     Returns a list of IntensityResult, one per JD in jd_vector.
     """
+    if nodal_drishti not in _NODAL_DRISHTI_MODES:
+        raise ValueError("nodal_drishti enabled is retired; use removed or the preserved historical source for replay")
     targets = list(context.resonance_targets)
     results: list[IntensityResult] = []
 
@@ -823,7 +816,7 @@ def _evaluate_single_from_context(
         w30_modifier = 1.0
 
     # 5. Assemble lambda_v3 — bounded [0,1] by construction
-    raw_lambda = promise * permission * activity * tara_modifier * w30_modifier * quality_gates
+    raw_lambda = promise * permission * activity * tara_modifier * quality_gates
 
     # Clamp for floating-point edge cases (should be impossible, but defensive)
     raw_lambda = max(0.0, min(1.0, raw_lambda))
@@ -1711,6 +1704,8 @@ def _gather_sentences_no_db(
     nakshatra_ingress_tara, station_retro_loop, eclipse_degree) are all
     ephemeris-only and fully preserved.
     """
+    if nodal_drishti not in _NODAL_DRISHTI_MODES:
+        raise ValueError("nodal_drishti enabled is retired; use removed or the preserved historical source for replay")
     out: list[ConfigurationSentence] = []
     for target in targets:
         # The 6 ephemeris-only primitives (no conn parameter)

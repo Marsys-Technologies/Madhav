@@ -27,23 +27,7 @@
       "reason": "L2 Bodha operator-CLI module: module-level default chart for its argparse --chart-id; not a request route; the L2 campaign should make --chart-id required (outside PR-S6)"
     },
     {
-      "file": "platform/python-sidecar/brahmagyan/bodha/l2_embeddings.py",
-      "max_hits": 1,
-      "kinds": [
-        "CHART_DEFAULT"
-      ],
-      "reason": "L2 Bodha operator-CLI module: module-level default chart for its argparse --chart-id; not a request route; the L2 campaign should make --chart-id required (outside PR-S6)"
-    },
-    {
       "file": "platform/python-sidecar/brahmagyan/bodha/l2_graph.py",
-      "max_hits": 1,
-      "kinds": [
-        "CHART_DEFAULT"
-      ],
-      "reason": "L2 Bodha operator-CLI module: module-level default chart for its argparse --chart-id; not a request route; the L2 campaign should make --chart-id required (outside PR-S6)"
-    },
-    {
-      "file": "platform/python-sidecar/brahmagyan/bodha/l2_lenses_salience.py",
       "max_hits": 1,
       "kinds": [
         "CHART_DEFAULT"

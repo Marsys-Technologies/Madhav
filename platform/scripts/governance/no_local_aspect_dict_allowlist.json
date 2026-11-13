@@ -1,11 +1,5 @@
 {
   "schema_version": "1.0",
-  "description": "Legacy Gochara grammar pending its governed nodal-convention cutover. The checker recognizes the three exact no-node kernel declarations directly.",
-  "entries": [
-    {
-      "file": "platform/python-sidecar/services/gochara_grammar/primitives.py",
-      "line": 193,
-      "justification": "Retains the pre-existing legacy nodal convention used by the served Gochara grammar. The committed century contract pins this source through the ka_gochara_v5 writer dependency digest. The legacy nodal values and the governed kernel convention are tested independently."
-    }
-  ]
+  "description": "Gochara grammar consumes the governed no-node kernel convention. No local aspect dictionary exceptions remain; the checker recognizes the three exact no-node kernel declarations directly.",
+  "entries": []
 }

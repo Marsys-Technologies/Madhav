@@ -1,5 +1,8 @@
 # 035_DISCOVERY_LAYER — Instructions
 
+Before substantive work, read `../CLAUDE.md` in full and follow its task-specific
+reading sequence and session protocol. This file adds only directory guidance.
+
 Cross-domain discovery registers: patterns, resonances, clusters, contradictions (see `README.md`).
 
 - `REGISTERS/INDEX.json` names the current version of each register; JSON is canonical, `.md` files are human-readable companions (JSON wins on disagreement).

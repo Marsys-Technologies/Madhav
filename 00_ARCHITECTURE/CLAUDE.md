@@ -8,7 +8,10 @@ changelog:
 
 # 00_ARCHITECTURE — Instructions
 
-Governance and planning documents. Root `CLAUDE.md` §C says which ones a task needs; do not pre-read this folder.
+Before substantive work, read `../CLAUDE.md` in full and follow its task-specific
+reading sequence and session protocol. This file adds only directory guidance.
+
+Governance and planning documents. Root `../CLAUDE.md` §C says which ones a task needs; do not pre-read this folder.
 
 - Canonical paths/versions: `CAPABILITY_MANIFEST.json` (authoritative). Blueprint: `PROJECT_ARCHITECTURE_v2_2.md`.
 - Live state: `CURRENT_STATE_v1_0.md` §2 top banners only (the file is ~1 MB).

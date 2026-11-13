@@ -318,13 +318,13 @@ mechanisms:
     mechanism_id: w30_nodal_drishti
     wave: "W3.0"
     lane: nodal_drishti
-    admission_state: legacy_enabled
+    admission_state: structural_only
     description: >-
       Nodal dṛṣṭi — Rāhu and Ketu cast their sign-level aspect on the transited sign.
-      Live in services/gochara_v3/engine.py lambda_v3 today. Ruling N-14 will retire it
-      behind input-vector flag nodal_drishti ∈ {enabled(legacy), removed}; until then it
-      is tracked as legacy_enabled so the wiring-truth detector (N-16) records its
-      production contribution honestly.
+      Under ratified N-14 it is a historical, labelled non-scoring annotation in
+      services/gochara_v3/engine.py. It never participates in the supported lambda
+      product. The prior enabled source and its frozen outputs remain the replay
+      authority; current generation vectors accept removed only.
     classical_citation: >-
       Nodal dṛṣṭi is attested in classical sources as a gochara amplifier, but the specific
       sign-aspect rule used here was not independently verified against the served corpus
@@ -378,7 +378,7 @@ mechanisms:
 # different flag value is a new candidate (input generation vector diff,
 # WP1_CONTRACTS.md §5.3/§4.7), never an in-place refill.
 #
-# nodal_drishti ∈ {enabled(legacy), removed}, default enabled — N-14
+# nodal_drishti ∈ {removed}, default removed — N-14
 # (L3 §4.9) nodal dṛṣṭi removal. Engine constant
 # engine.py::_NODAL_DRISHTI_DEFAULT. When removed: drishti_contact emits no
 # rows with body ∈ {Rahu, Ketu} (nodes stay agents/targets for
@@ -410,10 +410,9 @@ mechanisms:
 #   w21_av_gating, w22_moorti_nirnaya, w23_tara_bala, w24_sade_sati,
 #   w25_kota_chakra, w26_real_eclipses, w27_annual_stack,
 #   w27a_tajaka_year_lord, w27b_tithi_pravesha, w27c_sudarshana
-# structural_only_count: 2
-#   w28_bhava_degrees, w29_citation_resolution
-# legacy_enabled_count: 1
-#   w30_nodal_drishti
+# structural_only_count: 3
+#   w28_bhava_degrees, w29_citation_resolution, w30_nodal_drishti
+# legacy_enabled_count: 0
 # total: 13
 #
 # Fits stored: gochara_v3_calibration (migration 561, W4.4)

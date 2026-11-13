@@ -1,3 +1,11 @@
+# Repository bootstrap
+
+Before any substantive work, read `../CLAUDE.md` in full and follow its
+mandatory-reading sequence and the common session-open protocol. The root
+`../AGENTS.md` is the equivalent bootstrap loader. Then apply the platform
+rules below.
+
+
 <!-- BEGIN:nextjs-agent-rules -->
 # This is NOT the Next.js you know
 

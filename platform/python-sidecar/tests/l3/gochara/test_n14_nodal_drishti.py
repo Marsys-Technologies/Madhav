@@ -113,28 +113,17 @@ def test_gather_emits_no_nodal_drishti_rows_when_removed(monkeypatch):
         monkeypatch.setattr(engine.P, name, lambda *a, **k: [])
     monkeypatch.setattr(engine.P, "drishti_contact", lambda *a, **k: drishti_rows)
     monkeypatch.setattr(engine.P, "gochara_vedha_pair", lambda *a, **k: [])
-    monkeypatch.setattr(
-        engine.SBC, "find_sarvatobhadra_vedha_states", lambda *a, **k: [],
-    )
-    monkeypatch.setattr(
-        engine, "_kakshya_cell_crossing_from_context", lambda *a, **k: [],
-    )
-
-    out_removed = engine._gather_sentences_no_db(
-        None, _Ctx(), ["syn:target"], T_JD - 5.0, T_JD + 5.0,
-        nodal_drishti="removed",
-    )
-    bodies = [(s.primitive, s.transit_planet) for s in out_removed]
-    assert ("drishti_contact", "Rahu") not in bodies
-    assert ("drishti_contact", "Ketu") not in bodies
-    assert ("drishti_contact", "Saturn") in bodies  # non-node rows kept
-
-    out_enabled = engine._gather_sentences_no_db(
+    monkeypatch.setattr(engine.SBC, "find_sarvatobhadra_vedha_states", lambda *a, **k: [])
+    monkeypatch.setattr(engine, "_kakshya_cell_crossing_from_context", lambda *a, **k: [])
+    out = engine._gather_sentences_no_db(
         None, _Ctx(), ["syn:target"], T_JD - 5.0, T_JD + 5.0,
     )
-    bodies_enabled = [(s.primitive, s.transit_planet) for s in out_enabled]
-    assert ("drishti_contact", "Rahu") in bodies_enabled
-    assert ("drishti_contact", "Ketu") in bodies_enabled
+    assert [(s.primitive, s.transit_planet) for s in out] == [("drishti_contact", "Saturn")]
+    with pytest.raises(ValueError):
+        engine._gather_sentences_no_db(
+            None, _Ctx(), ["syn:target"], T_JD - 5.0, T_JD + 5.0,
+            nodal_drishti="enabled",
+        )
 
 
 def test_w30_leaves_lambda_product_when_removed(monkeypatch):
@@ -154,27 +143,25 @@ def test_w30_leaves_lambda_product_when_removed(monkeypatch):
     assert w30_detail["removed_by_ruling"] == "N-14"
 
 
-def test_w30_in_product_when_enabled(monkeypatch):
+def test_retired_runtime_enabled_requires_historical_replay(monkeypatch):
     _patch_eval_path(monkeypatch, [_activity_sentence()])
-    result = engine._evaluate_single_from_context(
-        _Swe(), _Ctx(), T_JD, ["syn:target"],
-    )
-    assert abs(result.raw_lambda - 0.4 * W30_VALUE) < 1e-9
-    assert "w30_annotation" not in result.term_breakdown
-    assert "completeness_state" not in result.x_t_detail["w30_detail"]
+    with pytest.raises(ValueError):
+        engine._evaluate_single_from_context(
+            _Swe(), _Ctx(), T_JD, ["syn:target"], nodal_drishti="enabled",
+        )
 
 
-def test_flag_off_byte_identical(monkeypatch):
+def test_default_is_byte_identical_to_explicit_removed(monkeypatch):
     _patch_eval_path(monkeypatch, [_activity_sentence()])
     r_default = engine._evaluate_single_from_context(
         _Swe(), _Ctx(), T_JD, ["syn:target"],
     )
-    r_enabled = engine._evaluate_single_from_context(
-        _Swe(), _Ctx(), T_JD, ["syn:target"], nodal_drishti="enabled",
+    r_removed = engine._evaluate_single_from_context(
+        _Swe(), _Ctx(), T_JD, ["syn:target"], nodal_drishti="removed",
     )
-    assert r_default.raw_lambda == r_enabled.raw_lambda
-    assert r_default.term_breakdown == r_enabled.term_breakdown
-    assert r_default.x_t_detail["w30_detail"] == r_enabled.x_t_detail["w30_detail"]
+    assert r_default.raw_lambda == r_removed.raw_lambda
+    assert r_default.term_breakdown == r_removed.term_breakdown
+    assert r_default.x_t_detail["w30_detail"] == r_removed.x_t_detail["w30_detail"]
 
 
 def test_invalid_mode_rejected():

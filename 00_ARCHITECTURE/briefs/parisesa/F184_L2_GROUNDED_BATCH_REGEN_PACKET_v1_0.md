@@ -1,12 +1,13 @@
 ---
 canonical_id: F184_L2_GROUNDED_BATCH_REGEN_PACKET
-version: 1.0
+version: 1.1
 status: CURRENT
 campaign: PARIŚEṢA-V4
 finding: F-184
 authored: 2026-08-22
 authored_by: PARIŚEṢA-V4 repair lane (GA-2/GA-3 authority)
 execution_status: NOT EXECUTED — awaiting properly-scoped GA-3 execution
+changelog: "2026-11-13: replace retired standalone-reader reference with immutable historical source and explicit offline confidence review; regeneration authority unchanged."
 ---
 
 # F-184 — regenerate `l2_grounded_batch_{1..6}.py` to carry `caveats`
@@ -73,7 +74,7 @@ corpus**, not a code edit:
    original session (`1a36db65`, `df0569d6`, `c15b7d6d`, `669988b7`,
    `10697361`, `3d48cefd`) each carried a distinct 100-signal batch, reviewed
    as data. A silent regeneration bypasses that review shape.
-3. **`bo_laksana.py` / `l2_lenses_salience.py` and other L2 Bodha writers
+3. **Historical `bo_laksana.py` / `l2_lenses_salience.py` and other L2 Bodha writers
    read committed constants derived from this pass** (e.g.
    `GROUNDED_SALIENCE_BASE = 0.82  # Mean match_confidence from l2-bodha-grounded pass`,
    `GROUNDING_STATUS = "GROUNDED"  # Updated from UNGROUNDED after
@@ -163,8 +164,31 @@ narrower finding candidate if intake wants it.
    `caveats` key to the return dict — a diff on any other field means
    something in the corpus or algorithm drifted since 2026-06-05 and the
    regeneration is not a clean superset).
-3. Re-verify `l2_lenses_salience.py`'s `GROUNDED_SALIENCE_BASE = 0.82` mean
-   still holds against the regenerated `match_confidence` values (§3 point 3).
+3. Re-verify the historical `GROUNDED_SALIENCE_BASE = 0.82` mean against
+   the regenerated `match_confidence` values (§3 point 3). The standalone
+   database seed/read commands are retired; this step does not dispatch them
+   or replace the current chart-scoped MSR producer. The exact historical
+   source remains recoverable at commit
+   `4549125761a23797b302121606bb747b1fd87c19`, path
+   `platform/python-sidecar/brahmagyan/bodha/l2_lenses_salience.py` (and
+   `l2_embeddings.py` beside it). To inspect a historical implementation,
+   use `git show <that-commit>:<that-path>`; do not execute a recovered seed
+   command against a current database. A rollback restores the complete
+   compatible source/generation under the existing recovery procedure,
+   rather than reseeding current tables.
+
+   Export the reviewed regenerated `GROUNDED_SIGNALS` mapping as JSON, then
+   run from `platform/python-sidecar`:
+
+   ```sh
+   python -m brahmagyan.bodha.f184_confidence_review --expected-count 569 < approved-grounded-signals.json
+   ```
+
+   This offline command reports only the input count and arithmetic mean.
+   It rejects incomplete or missing confidence data and makes no automatic
+   tolerance, grounding, or historical-equivalence verdict. The authorized
+   regeneration review must compare the reported mean with the historical
+   value; no real corpus or database access is implied by this command.
 4. Land the six regenerated files as their own reviewed PR(s), following the
    original per-100-signal-batch commit shape if that review granularity is
    still wanted.
