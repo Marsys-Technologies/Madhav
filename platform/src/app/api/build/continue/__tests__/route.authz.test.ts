@@ -131,3 +131,51 @@ describe('POST /api/build/continue — V3-E-011 cross-tenant build-resume write'
     expect(insertCalls()).toHaveLength(1)
   })
 })
+
+
+describe('legacy malformed body compatibility', () => {
+  it.each([
+    ['null', 'null'], ['malformed JSON', '{'], ['array', '[]'], ['string', '"synthetic"'],
+    ['number', '7'], ['boolean', 'false'], ['empty object', '{}'],
+  ])('returns controlled400 for %s before permission or event queries', async (_name, body) => {
+    mockGetServerUser.mockResolvedValue({ uid: VICTIM_UID })
+    const res = await POST(new NextRequest('http://localhost/api/build/continue', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body,
+    }))
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ error: 'chart_id required' })
+    expect(mockQuery).not.toHaveBeenCalled()
+  })
+
+  it('keeps authentication before even reading an invalid body', async () => {
+    mockGetServerUser.mockResolvedValue(null)
+    const json = vi.fn(() => { throw new Error('body must not be read') })
+    const res = await POST({ json } as unknown as NextRequest)
+    expect(res.status).toBe(401)
+    expect(await res.json()).toEqual({ error: 'unauthenticated' })
+    expect(json).not.toHaveBeenCalled()
+    expect(mockQuery).not.toHaveBeenCalled()
+  })
+
+  it('preserves exact latest-build selection and resume event SQL/binds for the owner', async () => {
+    setupMocks({ uid: VICTIM_UID, ownerId: VICTIM_UID })
+    const res = await POST(makeReq(VICTIM_CHART))
+    expect(res.status).toBe(200)
+    expect(selectCalls()).toEqual([[
+      'SELECT id AS build_id FROM builds WHERE chart_id = $1 ORDER BY created_at DESC LIMIT 1', [VICTIM_CHART],
+    ]])
+    expect(insertCalls()).toEqual([[
+      `INSERT INTO build_events (build_id, chart_id, event_type, payload, created_at)
+     VALUES ($1, $2, 'resume_requested', '{}', NOW())`, ['build-1', VICTIM_CHART],
+    ]])
+    expect(await res.json()).toEqual({ ok: true, build_id: 'build-1' })
+  })
+
+  it('keeps authorized missing prior build404 without an event write', async () => {
+    setupMocks({ uid: VICTIM_UID, ownerId: VICTIM_UID, buildId: null })
+    const res = await POST(makeReq(VICTIM_CHART))
+    expect(res.status).toBe(404)
+    expect(await res.json()).toEqual({ error: 'no prior build found' })
+    expect(insertCalls()).toHaveLength(0)
+  })
+})

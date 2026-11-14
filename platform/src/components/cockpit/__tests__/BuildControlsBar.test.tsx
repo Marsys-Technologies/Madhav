@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { BuildControlsBar } from '../BuildControlsBar'
 
 /**
@@ -125,5 +125,68 @@ describe('BuildControlsBar', () => {
     expect(calledUrls).not.toContain('/api/build/rebuild-all')
     expect(calledUrls).not.toContain('/api/build/continue')
     expect(calledUrls).not.toContain('/api/build/stop')
+  })
+})
+
+describe('controlled action feedback', () => {
+  afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks() })
+
+  it.each([
+    ['permission refusal', () => Promise.resolve({ ok: false, json: async () => ({ error: 'PRIVATE_SERVER_DETAIL' }) })],
+    ['service refusal', () => Promise.resolve({ ok: false, json: async () => ({ error: { internal: 'PRIVATE_SERVER_DETAIL' } }) })],
+    ['invalid JSON', () => Promise.resolve({ ok: true, json: async () => { throw new SyntaxError('PRIVATE_SERVER_DETAIL') } })],
+    ['network failure', () => Promise.reject(new Error('PRIVATE_SERVER_DETAIL'))],
+    ['null response', () => Promise.resolve({ ok: true, json: async () => null })],
+    ['missing run ID', () => Promise.resolve({ ok: true, json: async () => ({ data: {} }) })],
+    ['invalid run ID', () => Promise.resolve({ ok: true, json: async () => ({ data: { run_id: 42 } }) })],
+  ])('shows a generic error after settled %s and preserves retry', async (_name, reply) => {
+    const fetch = vi.fn(reply)
+    vi.stubGlobal('fetch', fetch)
+    const onBuildStart = vi.fn()
+    render(<BuildControlsBar chartId="synthetic-chart" onBuildStart={onBuildStart} />)
+    const button = screen.getByRole('button', { name: 'Build Chart' })
+    // Settle the actual event promise; absence of feedback must fail an assertion,
+    // rather than waiting for a response or alert that may never arrive.
+    await act(async () => { fireEvent.click(button); await Promise.resolve(); await Promise.resolve() })
+    expect(button).not.toBeDisabled()
+    expect(screen.getByRole('alert')).toHaveTextContent('Unable to start this build. Please try again.')
+    expect(document.body.textContent).not.toContain('PRIVATE_SERVER_DETAIL')
+    expect(onBuildStart).not.toHaveBeenCalled()
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('clears a failed action message after a successful retry with the exact run ID', async () => {
+    const fetch = vi.fn()
+      .mockResolvedValueOnce({ ok: false, json: async () => ({ error: 'private' }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: { run_id: 'exact-synthetic-run' } }) })
+    vi.stubGlobal('fetch', fetch)
+    const onBuildStart = vi.fn()
+    render(<BuildControlsBar chartId="synthetic-chart" onBuildStart={onBuildStart} />)
+    const button = screen.getByRole('button', { name: 'Build Chart' })
+    await act(async () => { fireEvent.click(button) })
+    expect(screen.getByRole('alert')).toBeTruthy()
+    await act(async () => { fireEvent.click(button) })
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(onBuildStart).toHaveBeenCalledExactlyOnceWith('exact-synthetic-run')
+    expect(fetch).toHaveBeenCalledTimes(2)
+  })
+
+  it('settles a failed stop without changing the known run', async () => {
+    vi.stubGlobal('fetch', mockFetchOnce(403, { error: 'PRIVATE_SERVER_DETAIL' }))
+    const onBuildStart = vi.fn()
+    render(<BuildControlsBar chartId="synthetic-chart" buildId="known-run" buildStatus="running" onBuildStart={onBuildStart} />)
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Stop' })) })
+    expect(screen.getByRole('alert')).toHaveTextContent('Unable to stop this build. Please try again.')
+    expect(onBuildStart).not.toHaveBeenCalled()
+  })
+
+  it('retains a successful stop without an echoed run ID', async () => {
+    vi.stubGlobal('fetch', mockFetchOnce(200, { data: { stop_requested: true } }))
+    const onBuildStart = vi.fn()
+    render(<BuildControlsBar chartId="synthetic-chart" buildId="known-run" buildStatus="running" onBuildStart={onBuildStart} />)
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Stop' })) })
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(onBuildStart).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Stop' })).not.toBeDisabled()
   })
 })

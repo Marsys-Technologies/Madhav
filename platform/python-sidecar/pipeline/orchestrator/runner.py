@@ -203,10 +203,13 @@ def _check_writer_registry_gaps(cur) -> list[str]:
 
 # ── Run-level helpers ─────────────────────────────────────────────────────────
 
-def load_run(cur, run_id: str) -> Optional[dict]:
+def load_run(cur, run_id: str, *, _with_preflight_snapshot: bool = False) -> Optional[dict]:
+    # Only the preclaim path requests this internal identity. Default callers
+    # retain the existing row shape; execute_run removes it before validation.
+    snapshot_column = ", plan_manifest::text AS _preflight_manifest_text" if _with_preflight_snapshot else ""
     cur.execute(
-        """SELECT id, chart_id, scope, scope_target, action, plan, state,
-                  plan_manifest, plan_manifest_digest
+        f"""SELECT id, chart_id, scope, scope_target, action, plan, state,
+                  plan_manifest, plan_manifest_digest{snapshot_column}
            FROM build_runs WHERE id = %s""",
         (run_id,),
     )
@@ -323,20 +326,25 @@ def validate_frozen_run_manifest(run: dict[str, Any]) -> FrozenRunManifest:
     )
 
 
-def _terminalize_preflight_failure(cur, *, run_id: str, message: str) -> None:
-    """Fail an unclaimed run and abort its queued assets in one statement."""
+def _terminalize_preflight_failure(
+    cur, *, run_id: str, message: str,
+    observed_manifest_text: Optional[str], observed_manifest_digest: Optional[str],
+) -> None:
+    """Fail only the same still-planned snapshot; abort children only if that CAS wins."""
     cur.execute(
         """WITH failed_run AS (
                UPDATE build_runs
                   SET state='failed', ended_at=NOW(), last_error=%s
-                WHERE id=%s AND state IN ('planned', 'running', 'paused')
+                WHERE id=%s AND state='planned'
+                  AND plan_manifest IS NOT DISTINCT FROM %s::jsonb
+                  AND plan_manifest_digest IS NOT DISTINCT FROM %s
             RETURNING id
            )
            UPDATE build_run_assets
               SET state='aborted', ended_at=NOW(), error=%s
             WHERE run_id IN (SELECT id FROM failed_run)
               AND state='queued'""",
-        (message, run_id, message),
+        (message, run_id, observed_manifest_text, observed_manifest_digest, message),
     )
 
 
@@ -1177,7 +1185,7 @@ def execute_run(run_id: str) -> None:
     conn.autocommit = False
     cur = conn.cursor()
 
-    run = load_run(cur, run_id)
+    run = load_run(cur, run_id, _with_preflight_snapshot=True)
     if run is None:
         logger.error("[orchestrator] build_run %s not found", run_id)
         conn.close()
@@ -1185,17 +1193,49 @@ def execute_run(run_id: str) -> None:
 
     chart_id: str = run["chart_id"]
     action: str = run["action"]
+    snapshot_known = "_preflight_manifest_text" in run
+    observed_manifest_text = run.pop("_preflight_manifest_text", None)
+    observed_manifest_digest = run.get("plan_manifest_digest")
     try:
         frozen = validate_frozen_run_manifest(run)
-        _verify_sidecar_code_matches_manifest(frozen)
     except ValueError as exc:
-        # A legacy, tampered, or registry-mutated run is unsafe to execute. Mark
-        # it terminal rather than falling back to mutable planning inputs.
+        # Stored corruption may fail only the observed, still-unclaimed row.
+        # A claim, pause, or replacement after our SELECT must survive.
         message = f"frozen manifest validation failed: {exc}"
         logger.error("[orchestrator] run %s %s", run_id, message)
-        _terminalize_preflight_failure(cur, run_id=run_id, message=message[:2000])
-        conn.commit()
+        try:
+            if snapshot_known:
+                _terminalize_preflight_failure(
+                    cur, run_id=run_id, message=message[:2000],
+                    observed_manifest_text=observed_manifest_text,
+                    observed_manifest_digest=observed_manifest_digest,
+                )
+                conn.commit()
+            else:
+                # An incomplete adapter result cannot authorize a mutation.
+                conn.rollback()
+        except BaseException:
+            # Preserve the primary DB/interrupt failure while attempting both
+            # owned cleanup operations; no writer has been admitted yet.
+            for cleanup in (conn.rollback, conn.close):
+                try:
+                    cleanup()
+                except BaseException:
+                    pass
+            raise
         conn.close()
+        sys.exit(1)
+
+    try:
+        _verify_sidecar_code_matches_manifest(frozen)
+    except ValueError as exc:
+        # This caller may have the wrong image. It does not own another
+        # worker's run, or an old compatible pending/paused manifest.
+        logger.error("[orchestrator] run %s sidecar code validation failed: %s", run_id, exc)
+        try:
+            conn.rollback()
+        finally:
+            conn.close()
         sys.exit(1)
 
     plan = frozen.plan

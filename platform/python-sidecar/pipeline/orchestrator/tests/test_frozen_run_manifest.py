@@ -90,7 +90,11 @@ def test_preflight_failure_terminalizes_run_and_queued_assets_atomically():
 
     cur = Cursor()
 
-    _terminalize_preflight_failure(cur, run_id="run-1", message="unsafe manifest")
+    _terminalize_preflight_failure(
+        cur, run_id="run-1", message="unsafe manifest",
+        observed_manifest_text='{"invalid": true}',
+        observed_manifest_digest="observed-digest",
+    )
 
     assert "WITH failed_run AS" in cur.sql
     assert "UPDATE build_runs" in cur.sql
@@ -98,7 +102,14 @@ def test_preflight_failure_terminalizes_run_and_queued_assets_atomically():
     assert "UPDATE build_run_assets" in cur.sql
     assert "state='aborted'" in cur.sql
     assert "state='queued'" in cur.sql
-    assert cur.params == ("unsafe manifest", "run-1", "unsafe manifest")
+    assert "state='planned'" in cur.sql
+    assert "plan_manifest IS NOT DISTINCT FROM %s::jsonb" in cur.sql
+    assert "plan_manifest_digest IS NOT DISTINCT FROM %s" in cur.sql
+    assert "run_id IN (SELECT id FROM failed_run)" in cur.sql
+    assert cur.params == (
+        "unsafe manifest", "run-1", '{"invalid": true}',
+        "observed-digest", "unsafe manifest",
+    )
 
 
 def test_tampered_manifest_is_rejected_before_any_writer_can_run():
