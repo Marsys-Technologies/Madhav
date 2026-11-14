@@ -387,14 +387,55 @@ def test_deliberately_separate_lock_is_not_accepted_as_canonical_scope():
 def test_only_one_shipped_rlock_definition_and_compatibility_export():
     source_root = Path(__file__).resolve().parents[1]
     definitions = []
+    registry_tree = None
     for path in sorted(source_root.rglob("*.py")):
         relative = path.relative_to(source_root)
         if "tests" in relative.parts:
             continue
-        text = path.read_text(encoding="utf-8")
-        if "RLock()" in text:
-            definitions.append(relative.as_posix())
-    assert definitions == ["panchang_engine/swiss_state.py"]
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        parents = {child: node for node in ast.walk(tree) for child in ast.iter_child_nodes(node)}
+        if relative.as_posix() == "pipeline/orchestrator/writers/__init__.py":
+            registry_tree = tree
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            if isinstance(node.func, ast.Name) and node.func.id == "RLock":
+                constructor = "RLock"
+            elif isinstance(node.func, ast.Attribute) and node.func.attr == "RLock":
+                owner = node.func.value
+                constructor = f"{owner.id}.RLock" if isinstance(owner, ast.Name) else None
+            else:
+                continue
+            assignment = parents.get(node)
+            binding = None
+            if (
+                isinstance(assignment, ast.Assign)
+                and assignment in tree.body
+                and assignment.value is node
+                and len(assignment.targets) == 1
+                and isinstance(assignment.targets[0], ast.Name)
+            ):
+                binding = assignment.targets[0].id
+            definitions.append((relative.as_posix(), binding, constructor))
+    # The registry lock is independent of Swiss state, not a file-wide exception.
+    assert definitions == [
+        ("panchang_engine/swiss_state.py", "SWISS_STATE_LOCK", "RLock"),
+        ("pipeline/orchestrator/writers/__init__.py", "_discover_lock", "threading.RLock"),
+    ]
+    assert registry_tree is not None
+    assert any(
+        isinstance(function, ast.FunctionDef)
+        and function.name == "_auto_discover"
+        and any(
+            isinstance(node, ast.With)
+            and any(
+                isinstance(item.context_expr, ast.Name) and item.context_expr.id == "_discover_lock"
+                for item in node.items
+            )
+            for node in ast.walk(function)
+        )
+        for function in registry_tree.body
+    )
     assert EXPORTED_LOCK is SWISS_STATE_LOCK
     assert transit_search._get_planet_pos.__swiss_state_lock__ is SWISS_STATE_LOCK
 
