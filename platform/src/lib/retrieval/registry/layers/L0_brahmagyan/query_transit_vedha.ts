@@ -44,7 +44,7 @@
  * Global classical reference — no chart_id needed.
  */
 import type { CapabilityDescriptor } from '../../types'
-import { query } from '@/lib/db/client'
+import { queryTransitVedhaReference } from '@/lib/brahmagyan/transit_reference_store'
 
 export const queryTransitVedhaCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L0/query_transit_vedha',
@@ -90,22 +90,8 @@ export const queryTransitVedhaCapability: CapabilityDescriptor = {
     const primaryGraha = args['primary_graha'] ? String(args['primary_graha']) : null
     const primaryHouse = args['primary_transit_house'] != null ? Number(args['primary_transit_house']) : null
 
-    const filters: string[] = ['1=1']
-    const params: unknown[] = []
-    let p = 1
-    if (primaryGraha) { filters.push(`LOWER(primary_graha) = LOWER($${p++})`); params.push(primaryGraha) }
-    if (primaryHouse != null && Number.isInteger(primaryHouse)) { filters.push(`primary_transit_house = $${p++}`); params.push(primaryHouse) }
-    const where = filters.join(' AND ')
-
-    const sql = `
-      SELECT primary_graha, primary_transit_house, vedha_graha, vedha_house, vedha_type,
-             classical_note, classical_citation
-      FROM bg_transit_vedha
-      WHERE ${where}
-      ORDER BY primary_graha, primary_transit_house`
-
     try {
-      const result = await query<Record<string, unknown>>(sql, params)
+      const result = await queryTransitVedhaReference({ primaryGraha, primaryHouse })
       return {
         content: {
           rows: result.rows,

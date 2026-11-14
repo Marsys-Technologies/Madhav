@@ -17,7 +17,7 @@
  * Global classical reference — no chart_id needed.
  */
 import type { CapabilityDescriptor } from '../../types'
-import { query } from '@/lib/db/client'
+import { queryTransitAvGatesReference } from '@/lib/brahmagyan/transit_reference_store'
 
 export const queryTransitAvGatesCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L0/query_transit_av_gates',
@@ -57,22 +57,8 @@ export const queryTransitAvGatesCapability: CapabilityDescriptor = {
     const gateKind = args['gate_kind'] ? String(args['gate_kind']) : null
     const graha    = args['graha'] ? String(args['graha']) : null
 
-    const filters: string[] = ['1=1']
-    const params: unknown[] = []
-    let p = 1
-    if (gateKind) { filters.push(`gate_kind = $${p++}`); params.push(gateKind) }
-    if (graha)    { filters.push(`LOWER(graha) = LOWER($${p++})`); params.push(graha) }
-    const where = filters.join(' AND ')
-
-    const sql = `
-      SELECT gate_kind, graha, house_from_moon, kakshya_lord, min_av_score, min_sav_score,
-             effect, classical_citation, rule_notes
-      FROM bg_transit_av_gates
-      WHERE ${where}
-      ORDER BY gate_kind, graha, house_from_moon`
-
     try {
-      const result = await query<Record<string, unknown>>(sql, params)
+      const result = await queryTransitAvGatesReference({ gateKind, graha })
       return {
         content: {
           rows: result.rows,

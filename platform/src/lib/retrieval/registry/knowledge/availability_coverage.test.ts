@@ -902,7 +902,7 @@ describe('first-slice availability coverage', () => {
         'LOWER(moorti_name) = LOWER(NULL::text)',
         'ORDER BY nakshatra_offset',
       ],
-      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_moorti.ts:59-73',
+      handlerRef: 'platform/src/lib/brahmagyan/transit_reference_store.ts:75-90',
     },
     {
       scuId: 'scu.catalog.query_transit_engine',
@@ -914,7 +914,7 @@ describe('first-slice availability coverage', () => {
         'LOWER(graha) = LOWER(NULL::text)',
         'ORDER BY graha',
       ],
-      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_engine.ts:58-75',
+      handlerRef: 'platform/src/lib/brahmagyan/transit_reference_store.ts:54-68',
     },
     {
       scuId: 'scu.catalog.query_transit_av_gates',
@@ -928,7 +928,7 @@ describe('first-slice availability coverage', () => {
         'LOWER(graha) = LOWER(NULL::text)',
         'ORDER BY gate_kind, graha, house_from_moon',
       ],
-      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_av_gates.ts:67-85',
+      handlerRef: 'platform/src/lib/brahmagyan/transit_reference_store.ts:32-48',
     },
     {
       scuId: 'scu.catalog.query_dasha_systems',

@@ -11,14 +11,6 @@
       "reason": "L2 Bodha operator-CLI module: module-level default chart for its argparse --chart-id; not a request route; the L2 campaign should make --chart-id required (outside PR-S6)"
     },
     {
-      "file": "platform/python-sidecar/brahmagyan/bodha/bo_2-7.py",
-      "max_hits": 1,
-      "kinds": [
-        "NAME"
-      ],
-      "reason": "SQL filter on msr_signals.native_id; the MSR is the native's own signal register by design; L2 campaign/owner decision (outside PR-S6)"
-    },
-    {
       "file": "platform/python-sidecar/brahmagyan/bodha/l2_domain_links.py",
       "max_hits": 1,
       "kinds": [

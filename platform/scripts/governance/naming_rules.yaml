@@ -39,8 +39,6 @@ rules:
       # Existing platform compatibility aliases at the canonical cloud boundary.
       # Remove these aliases and their positive fixtures only after R348–354
       # retires them with operating-cycle and rollback evidence.
-      - GCP_PROJECT
-      - GCP_REGION
       - GOOGLE_APPLICATION_CREDENTIALS
       - GOOGLE_CLIENT_ID
       - GOOGLE_CLIENT_SECRET
@@ -149,6 +147,8 @@ global_excludes:
   - "platform/scripts/governance/naming_baseline.json"
   - "platform/scripts/governance/naming_rules.yaml"
   - "platform/scripts/governance/naming_lint.py"
+  # Inert legacy translation/guard vectors; production aliases stay forbidden.
+  - "platform/scripts/governance/__tests__/test_cloud_binding_overlap.py"
   # feature_flags.ts is the DECLARATION site for the suspect identifiers — its
   # legacy entries are the baseline. The lint only fires on NEW occurrences
   # outside this file.

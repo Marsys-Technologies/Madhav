@@ -24,6 +24,8 @@ import time
 from datetime import datetime, timezone
 from typing import Any
 
+from pipeline.cloud_project import read_google_cloud_project
+
 from . import WriterBase, ContextSpec, WriterResult, SubStep, register
 from bodha_writers.data_plane_contracts import l2_producer, stable_semantic_uuid
 
@@ -33,7 +35,7 @@ ENGINE_VERSION   = "bo_samskara_v1.0"
 EMBEDDING_MODEL  = "text-multilingual-embedding-002"
 EMBEDDING_VER    = "002"
 EMBEDDING_DIM    = 768
-GCP_PROJECT      = os.environ.get("GCP_PROJECT", "madhav-astrology")
+GCP_PROJECT      = read_google_cloud_project(os.environ, 'madhav-astrology')
 VERTEX_LOCATION  = os.environ.get("VERTEX_AI_LOCATION", "asia-south1")
 EMBED_BATCH_SIZE = 100
 # Per-call HTTP timeout (ms). google-genai passes timeout=None by default, so one hung
