@@ -18,12 +18,11 @@ Emits 1 row per chart per ayanamsha with:
 
 ANTI-DRIFT: this writer REFERENCES bodha_cdlm_cells — never invents values.
 
-DESIGN FLOOR NOTE: this writer produces exactly 5 rows per chart — one per ayanamsha
-(lahiri_chitrapaksha, raman, krishnamurti, surya_siddhanta_classical, true_chitra).
-target_floor = 5 is the correct expectation for any single-chart build. A count of
-fewer than 5 means at least one ayanamsha had no bodha_cdlm_cells to aggregate (valid
-for sparse charts but worth investigating); a count of more than 5 indicates a
-delete-then-insert idempotency failure.
+COUNT CONTRACT: each populated ayanamsha produces one summary row, one rollup per
+participating domain, and one cluster per relationship class. rows_inserted and
+the registry count_sql count all three tables. Empty ayanamshas produce no rows;
+neither five nor a historical chart's total is a universal minimum. The registry
+floor must be reconciled from a governed build, independently of summary count.
 
 LIGHT writer — one run() call, iterates 5 ayanamshas.
 """
@@ -150,7 +149,8 @@ def _write_aya(conn: Any, chart_id: str, aya: str, build_id: str, now: str) -> i
         """SELECT domain_row, domain_col, computed_linkage_strength,
                   asymmetry_score AS contradiction_density, asymmetric_linkage_flag
            FROM bodha_cdlm_cells
-           WHERE chart_id = %s AND ayanamsha_id = %s AND snapshot_type = %s""",
+           WHERE chart_id = %s AND ayanamsha_id = %s AND snapshot_type = %s
+           ORDER BY domain_row, domain_col, cell_id""",
         [chart_id, aya, SNAPSHOT_TYPE],
     )
 
@@ -201,7 +201,7 @@ def _write_aya(conn: Any, chart_id: str, aya: str, build_id: str, now: str) -> i
     )
 
     # Sort domains by strength
-    sorted_domains = sorted(domain_strength.items(), key=lambda x: x[1], reverse=True)
+    sorted_domains = sorted(domain_strength.items(), key=lambda x: (-x[1], x[0]))
     dominant_3 = [d for d, _ in sorted_domains[:3]]
     weakest_3  = [d for d, _ in sorted_domains[-3:]] if len(sorted_domains) >= 3 else [d for d, _ in sorted_domains]
 
@@ -305,7 +305,7 @@ def _build_rollups(chart_id: str, aya: str, build_id: str,
     rows: list[dict] = []
     for domain, agg in sorted(by_domain.items()):
         n_cells = max(agg["cells"], 1)
-        top3 = sorted(agg["partners"].items(), key=lambda x: x[1], reverse=True)[:3]
+        top3 = sorted(agg["partners"].items(), key=lambda x: (-x[1], x[0]))[:3]
         rows.append({
             "rollup_id": stable_semantic_uuid("cdlm_domain_rollup", {
                 "chart_id": chart_id, "ayanamsha_id": aya,
@@ -379,7 +379,7 @@ def _build_clusters(chart_id: str, aya: str, build_id: str,
             "pattern_marker_type": f"{marker}_linkage_cluster",
             "involved_domains_array": sorted(agg["domains"]),
             "cluster_strength_total": round(agg["strength"], 6),
-            "involved_cells_array": agg["cells"],
+            "involved_cells_array": sorted(agg["cells"]),
             "involved_signals_array": sorted(agg["signals"]),
             "predicted_outcome_class": outcome,
             # SAMĀPTI B-VERIFSTATUS-VOCAB (DVA Ruling 13 step 2): this was the literal
@@ -401,7 +401,8 @@ def _fetch_cells_full(conn: Any, chart_id: str, aya: str) -> list[dict]:
                   computed_linkage_strength, cross_domain_contradiction_flag,
                   domain_relationship_class, shared_signal_ids_array
            FROM bodha_cdlm_cells
-           WHERE chart_id = %s AND ayanamsha_id = %s AND snapshot_type = %s""",
+           WHERE chart_id = %s AND ayanamsha_id = %s AND snapshot_type = %s
+           ORDER BY domain_row, domain_col, cell_id""",
         [chart_id, aya, SNAPSHOT_TYPE],
     )
 
@@ -421,7 +422,7 @@ class BoCdlmSummaryWriter(WriterBase):
         if ctx.dry_run:
             return WriterResult(
                 asset_id=self.asset_id, rows_inserted=0,
-                notes="dry_run — would aggregate bodha_cdlm_cells into 5 summary rows (1 per ayanamsha)",
+                notes="dry_run — would aggregate populated ayanamshas into summaries, domain rollups and pattern clusters",
             )
 
         # Idempotency: delete prior rows for this chart (all three sibling tables).
