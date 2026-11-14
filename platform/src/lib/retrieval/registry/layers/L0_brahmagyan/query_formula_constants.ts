@@ -14,7 +14,7 @@
  * Global reference — no chart_id needed.
  */
 import type { CapabilityDescriptor } from '../../types'
-import { query } from '@/lib/db/client'
+import { queryFormulaConstantsReference } from '@/lib/brahmagyan/constants_reference_store'
 
 export const queryFormulaConstantsCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L0/query_formula_constants',
@@ -61,22 +61,8 @@ export const queryFormulaConstantsCapability: CapabilityDescriptor = {
     const constantId = args['constant_id'] ? String(args['constant_id']) : null
     const cls        = args['class'] ? String(args['class']) : null
 
-    const filters: string[] = ['1=1']
-    const params: unknown[] = []
-    let p = 1
-    if (constantId) { filters.push(`constant_id = $${p++}`); params.push(constantId) }
-    if (cls)        { filters.push(`class = $${p++}`); params.push(cls) }
-    const where = filters.join(' AND ')
-
-    const sql = `
-      SELECT constant_id, value_jsonb, class, consumer_assets, citation_or_ratification,
-             calibratable, bounds, version
-      FROM brahma_formula_constants
-      WHERE ${where}
-      ORDER BY constant_id`
-
     try {
-      const result = await query<Record<string, unknown>>(sql, params)
+      const result = await queryFormulaConstantsReference(constantId, cls)
       return {
         content: {
           rows: result.rows,

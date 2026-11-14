@@ -1135,7 +1135,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
            ORDER BY constant_id
            LIMIT 0`,
     source_refs: [
-      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_formula_constants.ts:64-69',
+      'platform/src/lib/brahmagyan/constants_reference_store.ts:33-37',
       'platform/supabase/migrations/389_brahma_formula_constants.sql:9-27',
     ],
   },
@@ -1153,7 +1153,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
            ORDER BY constant_key
            LIMIT 0`,
     source_refs: [
-      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vichara_constants.ts:55-59',
+      'platform/src/lib/brahmagyan/constants_reference_store.ts:50-53',
       'platform/migrations/435_ga_vichara.sql:83-89',
     ],
   },

@@ -2392,12 +2392,12 @@
    "prose_fields": [],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_formula_constants.ts:74",
+   "read_evidence": "platform/src/lib/brahmagyan/constants_reference_store.ts:35",
    "read_table": "brahma_formula_constants",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) brahma_formula_constants; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_formula_constants.ts:74 reads `brahma_formula_constants` (`FROM brahma_formula_constants`). Dens.served=FAIL.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/brahmagyan/constants_reference_store.ts:35 reads `brahma_formula_constants` (`FROM brahma_formula_constants`). Dens.served=FAIL.",
     "prose_fields": "stores hand-seeded source text and identifiers; generates none. The writer registered at platform/python-sidecar/pipeline/orchestrator/writers/bg_formula_constants.py:22 binds the seed rows of brahma_formula_constants verbatim (first statement platform/python-sidecar/brahmagyan/l0_formula_constants.py:238); its seed module platform/python-sidecar/brahmagyan/l0_formula_constants.py states the data is hand-authored, source-cited and deterministic, with no LLM generation and no live computation"
    },
    "source": {
@@ -2420,7 +2420,7 @@
     {
      "column": "class",
      "why": "class is the constant's verification class: classical rows are cite-and-encode only and never tuned, while engineering and native_judgment rows are calibratable judgments, so the served rows layer by it (a confidence tier the capability selects on every row and takes as a filter)",
-     "evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_formula_constants.ts:72"
+     "evidence": "platform/src/lib/brahmagyan/constants_reference_store.ts:33"
     }
    ],
    "vocab_embedded_text": [

@@ -11,7 +11,7 @@
  * Global reference — no chart_id needed.
  */
 import type { CapabilityDescriptor } from '../../types'
-import { query } from '@/lib/db/client'
+import { queryVicharaConstantsReference } from '@/lib/brahmagyan/constants_reference_store'
 
 export const queryVicharaConstantsCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L0/query_vichara_constants',
@@ -46,20 +46,8 @@ export const queryVicharaConstantsCapability: CapabilityDescriptor = {
     void _ctx
     const constantKey = args['constant_key'] ? String(args['constant_key']) : null
 
-    const filters: string[] = ['1=1']
-    const params: unknown[] = []
-    let p = 1
-    if (constantKey) { filters.push(`constant_key = $${p++}`); params.push(constantKey) }
-    const where = filters.join(' AND ')
-
-    const sql = `
-      SELECT constant_key, value_jsonb, citation, version, updated_at
-      FROM brahma_vichara_constants
-      WHERE ${where}
-      ORDER BY constant_key`
-
     try {
-      const result = await query<Record<string, unknown>>(sql, params)
+      const result = await queryVicharaConstantsReference(constantKey)
       return {
         content: {
           rows: result.rows,

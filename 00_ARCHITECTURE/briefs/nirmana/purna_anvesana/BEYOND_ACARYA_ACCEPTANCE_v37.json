@@ -1,0 +1,83 @@
+{
+  "schema_version": "madhav-purna-anvesana/beyond-acarya-acceptance/v37",
+  "campaign_id": "madhav-purna-anvesana",
+  "packet_id": "CONSTANTS-REFERENCE-OWNER-SOURCE-IDENTITY",
+  "predecessor": {
+    "artifact": "BEYOND_ACARYA_ACCEPTANCE_v36.json",
+    "artifact_hash": "sha256:ca3bd7bd421f492985ebc40381178659dc00ba7f4e80f9ceb55b80ac86d095af",
+    "acceptance_version": "beyond-acarya-source-acceptance-v2",
+    "capability_content_hash": "sha256:f930e73bfb7818c7adac159168b577c3da3fcfc7c4ba372ca95f6f2f89137e37",
+    "report_hash": "sha256:aca80a10c4fef76a834a646446ef683bde35758b4452c2065c75a633a5b35d08"
+  },
+  "preserves_historical_predecessor": true,
+  "acceptance_version": "beyond-acarya-source-acceptance-v2",
+  "corpus_version": "beyond-acarya-inquiry-corpus-v1",
+  "temporal_anchor_date": "2026-09-15",
+  "evaluated_source_revision": "ca1d304163522c1f22c0d8fd2bd29d2221bf3d65",
+  "generated_snapshot": {
+    "path": "platform/src/generated/capability_knowledge.snapshot.json",
+    "generated_at": "2026-10-02T02:18:40.000Z",
+    "snapshot_file_sha256": "sha256:71a73127a3a3ca7754d5f40c59679b4b538b760bc88e7194f5ee18012b71c785",
+    "capability_content_hash": "sha256:b304b653b677736a67e4fa921eafce4bf6ade0c14ccd509a4770ee60b06268e0",
+    "source_catalog_fingerprint": "sha256:22a4e465250e449da99ea19b45c00b7ebd20359c95644995c6cf63266c808e32",
+    "semantic_review_fingerprint": "sha256:cf4c38ac57736bafd0987f605759f2b554d824bdd885da9fcb636ac217f19114",
+    "producer_contract_fingerprint": "sha256:02ad39aea0c40b14036f91724f8592fc881ab03fe582ce83b343f8efb62f9225"
+  },
+  "capability_content_hash": "sha256:b304b653b677736a67e4fa921eafce4bf6ade0c14ccd509a4770ee60b06268e0",
+  "report_hash": "sha256:d6056b5c1df2241fbff16cbd9dc7b5727d22b21eeef7826657691b9b195e3abd",
+  "evidence_kind": "synthetic_source_local",
+  "source_status": "SOURCE_ONLY_NOT_LIVE",
+  "verdict": "PROSPECTIVE_SOURCE_IDENTITY_SUCCESSOR",
+  "metrics": {
+    "novel_combination_suite": {
+      "passed": true,
+      "cases": 5,
+      "expected_novel_capabilities": 13,
+      "missing_novel_capabilities": 0
+    },
+    "omission_rate": {
+      "passed": true,
+      "omitted": 0,
+      "expected": 25,
+      "rate": 0
+    },
+    "route_coverage": {
+      "passed": true,
+      "covered": 34,
+      "expected": 34,
+      "rate": 1
+    },
+    "semantic_edge_coverage": {
+      "passed": true,
+      "covered": 9,
+      "expected": 9,
+      "rate": 1
+    },
+    "long_inquiry_closure": {
+      "passed": true,
+      "completed_cases": 1,
+      "total_cases": 1,
+      "blocked_case_ids": [],
+      "minimum_iterations_observed": 10,
+      "pagination_continuations": 1,
+      "retained_earlier_evidence": true
+    },
+    "abstention_quality": {
+      "passed": true,
+      "passed_cases": 3,
+      "total_cases": 3,
+      "cases": {
+        "missing_required_floor_rejected": true,
+        "capped_material_frontier_blocked": true,
+        "unavailable_channel_abstained": true
+      }
+    }
+  },
+  "claim_ceiling": "SOURCE_SCOPE_COMPLETE_WITH_AUTHORITY_BOUND_REMAINDER",
+  "expert_domain_review": "REQUIRED_BEFORE_EMPIRICAL_ACCEPTANCE",
+  "empirical_answer_quality": "NOT_RUN",
+  "production_validation": "NOT_RUN",
+  "deployed_route_validation": "NOT_RUN",
+  "candidate_validation": "NOT_RUN",
+  "provenance_note": "Prospective source identity successor for the canonical constants reference read owner. The frozen corpus, cases, six metric groups and claim ceilings are preserved. No new empirical or deployed-route measurement is claimed."
+}

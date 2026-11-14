@@ -957,7 +957,7 @@ describe('first-slice availability coverage', () => {
         'class = NULL::text',
         'ORDER BY constant_id',
       ],
-      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_formula_constants.ts:64-69',
+      handlerRef: 'platform/src/lib/brahmagyan/constants_reference_store.ts:33-37',
     },
     {
       scuId: 'scu.catalog.query_vichara_constants',
@@ -969,7 +969,7 @@ describe('first-slice availability coverage', () => {
         'constant_key = NULL::text',
         'ORDER BY constant_key',
       ],
-      handlerRef: 'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vichara_constants.ts:55-59',
+      handlerRef: 'platform/src/lib/brahmagyan/constants_reference_store.ts:50-53',
     },
     {
       scuId: 'scu.catalog.query_remedies_for_chart',
