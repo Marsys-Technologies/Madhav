@@ -761,7 +761,16 @@ def test_real_tree_strict_default_scans_without_exception_and_keeps_the_known_cl
         res = slw.scan_writer_tables(f.stem, REAL_REPO, helpers)
         assert ("tables" in res) != ("not_scanned" in res), (f.name, res)
         (scanned if "tables" in res else flipped)[f.stem] = res
-    assert len(scanned) >= 70
+    # The compatibility facade intentionally rebinds sys.modules. Keep the
+    # strict refusal explicit; it is not a successfully scanned writer.
+    expected_runtime_refusals = {
+        "ga_fact_identity": {
+            "not_scanned": "runtime_rebinding: item assignment on globals()/locals()/vars()/sys.modules"
+        }
+    }
+    for asset, refusal in expected_runtime_refusals.items():
+        assert flipped[asset] == refusal
+    assert len(scanned) + len(expected_runtime_refusals) >= 70
     # the real `_batch_insert(cur, rows, sql)` and `for view in [...]` patterns stay complete
     for asset in ("bo_karanajala", "bo_sangati", "bo_upaya", "mi_darshana", "ga_dashas", "ga_condition", "ga_tajaka", "bo_laksana"):
         assert asset in scanned, (asset, flipped.get(asset))
