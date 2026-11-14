@@ -62,3 +62,20 @@ describe('Turn — interrupted-state caveat matches the ACTUAL cause', () => {
     expect(screen.queryByText(/^Stopped — kept what arrived$/i)).not.toBeInTheDocument()
   })
 })
+
+describe('Turn — saved answer recovery has separate transport provenance', () => {
+  it.each(['checking', 'recovered'] as const)('discloses %s without claiming the live connection succeeded', (status) => {
+    const turn = makeInitialTurnState('recovered', 'Original question')
+    turn.status = status === 'recovered' ? 'settled' : 'reconnecting'
+    turn.transportRecovery = {
+      clientRequestId: 'private-request-id', source: 'saved_answer', status,
+      originalErrorCode: 'NETWORK_HTTP_502', originalError: classifyPariprashnaError('NETWORK_HTTP_502'),
+    }
+    render(<Turn turn={turn} />)
+    expect(screen.getByTestId('pp-saved-answer-recovery')).toHaveTextContent(status === 'recovered'
+      ? 'Connection interrupted; recovered your saved answer.'
+      : 'Connection interrupted. Checking for your saved answer.')
+    expect(screen.queryByText(/Nothing was lost/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/private-request-id|NETWORK_HTTP|SSE|SQL/)).not.toBeInTheDocument()
+  })
+})

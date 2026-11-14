@@ -896,6 +896,99 @@ describe('atomic Pariprashna selected-to-Default fallback preparation', () => {
   })
 })
 
+describe('durable client request claims under the existing user lock', () => {
+  it('serializes concurrent identical requests: one snapshot, second refusal, first binding intact', async () => {
+    let unlock: (() => void) | undefined
+    let lockTail = Promise.resolve()
+    let committed: Record<string, unknown> | undefined
+    let snapshotWrites = 0
+    const trace: Array<{client: number; sql: string}> = []
+    let nextClient = 0
+    globalPool.__pgPool = { connect: async () => {
+      const id = ++nextClient
+      let releaseLock: (() => void) | undefined
+      return { release: vi.fn(), query: async (raw: string, params: unknown[] = []) => {
+        const sql = raw.replace(/\s+/g, ' ').trim(); trace.push({client:id,sql})
+        if (sql.includes('pg_advisory_xact_lock')) {
+          const previous = lockTail
+          lockTail = new Promise<void>(resolve => { releaseLock = resolve })
+          await previous
+        }
+        if (sql === 'COMMIT' || sql === 'ROLLBACK') releaseLock?.()
+        let rows: Record<string, unknown>[] = []
+        if (sql.includes('FROM profiles')) rows=[{id:'alice'}]
+        if (sql.includes('FROM charts')) rows=[{owner_id:'alice'}]
+        if (sql.startsWith('INSERT INTO conversations')) rows=[{id:params[0]}]
+        if (sql.includes('FROM conversations')) rows=[{id:params[1],chart_id:conversationId}]
+        if (sql.includes('FROM ai_turn_routing_snapshots')) rows=committed ? [committed] : []
+        if (sql.includes('FROM ai_user_defaults')) rows=[{kind:'provider_model',connection_id:connectionId,model_id:'model-a'}]
+        if (sql.includes('FROM ai_provider_connections')) rows=[safeConnection]
+        if (sql.includes('FROM ai_connection_models')) rows=[{...testedModel, model_id:'model-a', display_name:'Synthetic',
+          compatible_roles:AI_ROLES, available:true, supports_tools:true, supports_structured_output:true}]
+        if (sql.startsWith('INSERT INTO ai_turn_routing_snapshots')) {
+          snapshotWrites++
+          await new Promise<void>(resolve => { unlock=resolve })
+          committed={id:configurationId,correlation_id:params[1],conversation_id:params[3]}
+          rows=[{id:configurationId}]
+        }
+        return {rows,rowCount:rows.length}
+      } }
+    } } as unknown as Pool
+    const input={userId:'alice',role:'guest',chartId:conversationId,conversationId,isFirstTurn:true,
+      turnId:mcpCorrelationId,source:'pariprashna',selection:{kind:'default'},rejectExistingTurn:true}
+    const first=repository.prepareTurnRouting(input)
+    await vi.waitFor(() => expect(unlock).toBeTypeOf('function'))
+    const second=repository.prepareTurnRouting({...input, conversationId:connectionId})
+    const secondResult=second.catch(error => error)
+    await vi.waitFor(() => expect(trace.some(t => t.client===2 && t.sql.includes('pg_advisory_xact_lock'))).toBe(true))
+    expect(trace.some(t => t.client===2 && t.sql.includes('FROM profiles'))).toBe(false)
+    unlock!()
+    expect((await first).snapshotId).toBe(configurationId)
+    expect(await secondResult).toBeInstanceOf(repository.DuplicateTurnRequestError)
+    expect(snapshotWrites).toBe(1)
+    expect(committed).toMatchObject({conversation_id:conversationId,correlation_id:mcpCorrelationId})
+    expect(trace.filter(t => t.client===2).some(t => /^(INSERT|UPDATE|DELETE)/.test(t.sql))).toBe(false)
+  })
+
+  it.each(['inactive', 'chart-denied', 'SQL-outage'])('fails %s before claim, writes or role resolution', async defect => {
+    respond(sql => {
+      if (sql.includes('FROM profiles')) return defect==='inactive' ? [] : [{id:'alice'}]
+      if (sql.includes('FROM charts')) {
+        if (defect==='SQL-outage') throw new Error('synthetic outage')
+        return [{owner_id:'bob'}]
+      }
+    })
+    await expect(repository.prepareTurnRouting({userId:'alice',role:'guest',chartId:conversationId,
+      conversationId,isFirstTurn:true,turnId:mcpCorrelationId,source:'pariprashna',
+      selection:{kind:'default'},rejectExistingTurn:true})).rejects.toBeDefined()
+    expect(calls().some(c => c.sql.includes('ai_turn_routing_snapshots') || /^(INSERT|UPDATE|DELETE)/.test(c.sql))).toBe(false)
+  })
+
+  it('refuses a claimed request after authority checks and before any conversation or routing write', async () => {
+    respond(sql => {
+      if (sql.includes('FROM profiles')) return [{ id: 'alice' }]
+      if (sql.includes('FROM charts')) return [{ owner_id: 'alice' }]
+      if (sql.includes('FROM ai_turn_routing_snapshots')) return [{ id: configurationId }]
+    })
+    await expect(repository.prepareTurnRouting({ userId: 'alice', role: 'guest',
+      chartId: conversationId, conversationId, isFirstTurn: true,
+      turnId: mcpCorrelationId, source: 'pariprashna', selection: { kind: 'default' },
+      rejectExistingTurn: true,
+    })).rejects.toMatchObject({ name: 'DuplicateTurnRequestError' })
+    const statements = calls()
+    const lock = statements.findIndex(c => c.sql.includes('pg_advisory_xact_lock'))
+    const chart = statements.findIndex(c => c.sql.includes('FROM charts'))
+    const claim = statements.findIndex(c => c.sql.includes('FROM ai_turn_routing_snapshots'))
+    expect(lock).toBeGreaterThan(-1)
+    expect(chart).toBeGreaterThan(lock)
+    expect(claim).toBeGreaterThan(chart)
+    expect(statements[claim].params).toEqual(['alice', mcpCorrelationId])
+    expect(statements.some(c => /^(INSERT|UPDATE|DELETE)/.test(c.sql))).toBe(false)
+    expect(statements.some(c => c.sql.includes('FROM ai_user_defaults'))).toBe(false)
+    expect(statements.at(-1)?.sql).toBe('ROLLBACK')
+  })
+})
+
 describe('immutable history and safe audit', () => {
   const snapshot = { userId: 'alice', correlationId: 'turn', source: 'backend' as const, conversationId: null, selection: { kind: 'default' as const }, resolvedChoice: choice, configurationVersion: null, roles: Object.fromEntries(AI_ROLES.map(r => [r, { ...choice, providerId: 'openai' }])) }
   it('rejects secret-bearing snapshots before touching persistence', async () => {

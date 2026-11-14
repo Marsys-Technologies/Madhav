@@ -112,7 +112,10 @@ export interface ResetThreadAction {
 
 /** Client-only action: expand/collapse handled at component level (not reducer) — no action needed. */
 
-export type ThreadAction = WireEvent | SubmitTurnAction | StopAction | ResetThreadAction | { type: 'RESTORE_THREAD'; turns: TurnState[] }
+export type ThreadAction = WireEvent | SubmitTurnAction | StopAction | ResetThreadAction
+  | { type: 'RESTORE_THREAD'; turns: TurnState[] }
+  | { type: 'DURABLE_RECOVERY_STATUS'; turnId: string; recovery: NonNullable<TurnState['transportRecovery']> }
+  | { type: 'DURABLE_TURN_RECOVERED'; turnId: string; clientRequestId: string; turn: TurnState }
 
 function updateTurn(state: ThreadState, turnId: string, fn: (t: TurnState) => TurnState): ThreadState {
   let touched = false
@@ -153,6 +156,28 @@ function addSeen(turn: TurnState, eventId: string | undefined): Set<string> {
 
 export function threadReducer(state: ThreadState, action: ThreadAction): ThreadState {
   switch (action.type) {
+    case 'DURABLE_RECOVERY_STATUS':
+      return updateTurn(state, action.turnId, (t) => {
+        if (t.status === 'interrupted' || t.status === 'settled') return t
+        if (t.transportRecovery && t.transportRecovery.clientRequestId !== action.recovery.clientRequestId) return t
+        return {
+          ...t, transportRecovery: action.recovery,
+          status: action.recovery.status === 'checking' ? 'reconnecting' : 'errored',
+          error: action.recovery.status === 'checking' ? t.error : action.recovery.originalError,
+          reconnectHollowCaret: false,
+        }
+      })
+
+    case 'DURABLE_TURN_RECOVERED':
+      return updateTurn(state, action.turnId, (t) => {
+        if (t.status !== 'reconnecting' || t.transportRecovery?.status !== 'checking' ||
+            t.transportRecovery.clientRequestId !== action.clientRequestId) return t
+        return {
+          ...action.turn, id: t.id, userText: t.userText, openedAtMs: t.openedAtMs,
+          transportRecovery: { ...t.transportRecovery, status: 'recovered' },
+        }
+      })
+
     case 'RESTORE_THREAD':
       return { turns: action.turns, surfaceStatus: action.turns.length ? 'idle' : 'empty' }
 
@@ -173,7 +198,10 @@ export function threadReducer(state: ThreadState, action: ThreadAction): ThreadS
         const blocks = t.tail
           ? [...t.blocks, { id: t.tail.blockId, kind: t.tail.kind, role: t.tail.role, html: t.tail.text }]
           : t.blocks
-        return { ...t, status: 'interrupted', interruptedReason: 'user_stop', tail: null, blocks }
+        return {
+          ...t, status: 'interrupted', interruptedReason: 'user_stop', tail: null, blocks,
+          ...(t.transportRecovery ? { transportRecovery: { ...t.transportRecovery, status: 'unavailable' as const } } : {}),
+        }
       })
     }
 

@@ -31,6 +31,7 @@ export async function prepareByokTurn(input: {
   requestedSelection: unknown
   questionChars: number
   source?: 'pariprashna' | 'consult'
+  rejectExistingTurn?: boolean
 }): Promise<ByokTurnRuntime> {
   const selection = ConversationAiSelectionSchema.parse(input.requestedSelection)
   const prepared = await prepareTurnRouting({
@@ -42,6 +43,7 @@ export async function prepareByokTurn(input: {
     turnId: input.turnId,
     source: input.source ?? 'pariprashna',
     selection,
+    ...(input.rejectExistingTurn ? { rejectExistingTurn: true } : {}),
   })
   const plan = buildResolvedExecutionPlan({
     source: input.source ?? 'pariprashna',

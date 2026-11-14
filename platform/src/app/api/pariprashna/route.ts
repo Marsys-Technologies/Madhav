@@ -67,6 +67,8 @@ import {
 } from '@/lib/pariprashna/pipeline/safety_gate'
 import { configService } from '@/lib/config'
 import { AiConsoleError } from '@/lib/ai-console/errors'
+import { DuplicateTurnRequestError } from '@/lib/ai-console/repository'
+import { deriveClientRequestTurnId } from '@/lib/pariprashna/request_identity'
 import { authenticateByokUser, prepareByokTurn } from '@/lib/pariprashna/pipeline/byok_preflight'
 import { LEGACY_TURN_RUNTIME, type TurnRuntime } from '@/lib/pariprashna/pipeline/turn_runtime'
 import { runPlanStage } from '@/lib/pariprashna/pipeline/plan_stage'
@@ -97,6 +99,9 @@ async function executeMeteredRequest(request: Request) {
   if (!admission.admitted) return admission.response
   const { user, body, chartId } = admission.value
   let { messages } = admission.value
+  if (body.client_request_id && !byokEnabled) {
+    return Response.json({ code: 'CLIENT_REQUEST_RECOVERY_UNAVAILABLE', error: 'Durable request recovery is unavailable.' }, { status: 503 })
+  }
 
   // Conversation identity is resolvable synchronously (generated for a first
   // turn) so `turn.open` can carry it before any DB round-trip.
@@ -115,7 +120,9 @@ async function executeMeteredRequest(request: Request) {
   // stamp, and an optional planner trace tag — nothing parses its format or
   // requires it to differ from `turnId`, so the safe fix is to derive it
   // directly from `turnId` rather than mint a second random UUID.
-  const turnId = crypto.randomUUID()
+  const turnId = body.client_request_id
+    ? deriveClientRequestTurnId(user.uid, chartId, body.client_request_id)
+    : crypto.randomUUID()
   const identity: TurnIdentity = {
     chartId,
     clientConversationId,
@@ -148,10 +155,14 @@ async function executeMeteredRequest(request: Request) {
         turnId,
         requestedSelection: body.ai_selection,
         questionChars,
+        ...(body.client_request_id ? { rejectExistingTurn: true } : {}),
       })
       params = bindByokTurnParams(body, runtime)
     } catch (error) {
       if (runtime.kind === 'byok') runtime.releaseAdmission()
+      if (error instanceof DuplicateTurnRequestError) {
+        return Response.json({ code: 'CLIENT_REQUEST_ALREADY_CLAIMED', error: error.message }, { status: 409 })
+      }
       const safe = error instanceof AiConsoleError ? error : new AiConsoleError('AI_EXECUTION_FAILED')
       return Response.json(safe.toJSON(), { status: safe.code === 'AI_RATE_LIMITED' ? 429 : 400 })
     }

@@ -50,6 +50,7 @@ import { res } from '@/lib/errors'
 import { getConversation, insertConversationWithId } from '@/lib/conversations'
 import { isCorrectionArchived } from '@/lib/conversations/readOnly'
 import { configService } from '@/lib/config/index'
+import { isClientRequestId } from '@/lib/pariprashna/request_identity'
 import { enforceTurnLimits } from '@/lib/limits'
 import {
   DEFAULT_MODEL_ID,
@@ -89,6 +90,8 @@ export interface RequestBody {
   lel_context_enabled?: boolean
   ai_selection?: unknown
   persona_id?: unknown
+  /** A request nonce, never a caller-selected global turn identity. */
+  client_request_id?: string
 }
 
 /** Pure flag-on binding. It never consults the legacy registry or environment. */
@@ -140,6 +143,13 @@ export async function admitRequest(
     body = await request.json()
   } catch {
     return { admitted: false, response: res.badRequest('Invalid JSON body') }
+  }
+
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return { admitted: false, response: res.badRequest('Invalid request body') }
+  }
+  if (body.client_request_id !== undefined && !isClientRequestId(body.client_request_id)) {
+    return { admitted: false, response: res.badRequest('client_request_id must be a valid UUID') }
   }
 
   const { chartId, messages } = body

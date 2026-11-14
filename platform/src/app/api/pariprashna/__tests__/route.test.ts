@@ -43,11 +43,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 // (V3-E-054, a different already-referred finding) — this file forces it ON
 // only within each test's own scope, never touching the flag's real default.
 const {
-  safetyFlagState, byokFlagState, mockAuthenticateByokUser, mockPrepareByokTurn,
+  safetyFlagState, receiptFlagState, byokFlagState, mockAuthenticateByokUser, mockPrepareByokTurn,
   mockByokSynthStream, mockByokWorkerGenerate, mockByokRelease,
   mockInsertRoleReceipt,
 } = vi.hoisted(() => ({
   safetyFlagState: { on: false },
+  receiptFlagState: { on: false },
   byokFlagState: { on: false },
   mockAuthenticateByokUser: vi.fn(),
   mockPrepareByokTurn: vi.fn(),
@@ -81,6 +82,7 @@ vi.mock('@/lib/config/index', () => ({
     getFlag: vi.fn((k: string) => {
       if (k === 'PARIPRASHNA_ENABLED') return true
       if (k === 'PARIPRASHNA_SAFETY_GATE_ENABLED') return safetyFlagState.on
+      if (k === 'PARIPRASHNA_RECEIPT_EMISSION_ENABLED') return receiptFlagState.on
       if (k === 'AI_CONSOLE_BYOK') return byokFlagState.on
       return false
     }),
@@ -107,7 +109,8 @@ vi.mock('@/lib/auth/authorizeChartAccess', () => ({
 // `safety/db.ts`) has a fake pool/client to run against instead of failing —
 // this is what lets `audit_written` come back `true` in these tests rather
 // than the safety module's own (deliberately non-fatal) fallback path.
-vi.mock('@/lib/db/client', () => ({
+vi.mock('@/lib/db/client', async importOriginal => ({
+  withTransaction: (await importOriginal<typeof import('@/lib/db/client')>()).withTransaction,
   query: vi.fn(async (sql: string, params?: unknown[]) => {
     if (/from charts/i.test(sql)) {
       return { rows: [{ id: (params?.[0] as string) ?? CHART, name: 'Route Test Chart', client_id: 'route-test-uid' }] }
@@ -342,6 +345,7 @@ async function runRoute(question: string): Promise<{ status: number; contentType
 beforeEach(() => {
   safetyFlagState.on = false
   byokFlagState.on = false
+  receiptFlagState.on = false
   mockCallPipelinePlanner.mockReset()
   mockAuthenticateByokUser.mockReset().mockResolvedValue({
     user: { uid: 'route-test-uid' }, profile: { role: 'guest' },
@@ -374,6 +378,136 @@ afterEach(() => {
 })
 
 describe('AI Console BYOK request boundary', () => {
+  it('recovers one original POST after a zero-frame outer 502: pending then its canonical answer, no reexecution', async () => {
+    byokFlagState.on=true; receiptFlagState.on=true
+    const database=await import('@/lib/db/client')
+    const repository=await import('@/lib/ai-console/repository')
+    const {GET}=await import('../resume/route')
+    const {writeTurn}=await import('@/lib/pariprashna/store/writer')
+    const poolGlobal=globalThis as typeof globalThis & {__pgPool?: import('pg').Pool}
+    const previousPool=poolGlobal.__pgPool
+    const originalQuery=vi.mocked(database.query).getMockImplementation()!
+    const originalWrite=vi.mocked(writeTurn).getMockImplementation()!
+    const nonce='20000000-0000-4000-8000-000000000002'
+    const snapshotId='40000000-0000-4000-8000-000000000004'
+    const connection='60000000-0000-4000-8000-000000000006'
+    let snapshot: {id:string;correlation_id:string;conversation_id:string} | undefined
+    let stored: Record<string,unknown> | undefined
+    let snapshotWrites=0
+    const sqlTrace: string[]=[]
+    const transport=async (sql:string, params:unknown[]=[]) => {
+      sql=sql.replace(/\s+/g,' ').trim(); sqlTrace.push(sql)
+      let rows: Record<string,unknown>[]=[]
+      if(sql.includes('FROM profiles')) rows=[{id:'route-test-uid',role:'guest'}]
+      if(sql.includes('FROM charts')) rows=[{owner_id:'route-test-uid'}]
+      if(sql.startsWith('INSERT INTO conversations')) rows=[{id:params[0]}]
+      if(sql.includes('FROM conversations')) rows=[{id:params[1],chart_id:CHART}]
+      if(sql.includes('FROM ai_turn_routing_snapshots')) rows=snapshot ? [snapshot] : []
+      if(sql.includes('FROM ai_user_defaults')) rows=[{kind:'provider_model',connection_id:connection,model_id:'synthetic-model'}]
+      if(sql.includes('FROM ai_provider_connections')) rows=[{id:connection,provider_id:'openai',credential_version:1,
+        credential_validity:'valid',validation_state:'validated'}]
+      if(sql.includes('FROM ai_connection_models')) rows=[{model_id:'synthetic-model',display_name:'Synthetic',
+        compatible_roles:['synthesizer','planner','deep_planner','worker'],available:true,supports_tools:true,supports_structured_output:true}]
+      if(sql.startsWith('INSERT INTO ai_turn_routing_snapshots')) {
+        snapshotWrites++; snapshot={id:snapshotId,correlation_id:String(params[1]),conversation_id:String(params[3])}; rows=[{id:snapshotId}]
+      }
+      if(sql.includes('SELECT m.id FROM conversation_messages')) rows=stored ? [{id:stored.id}] : []
+      if(sql.includes('SELECT m.id, m.role')) rows=stored ? [stored] : []
+      return {rows,rowCount:rows.length}
+    }
+    poolGlobal.__pgPool={connect:async()=>({query:transport,release:vi.fn()})} as unknown as import('pg').Pool
+    vi.mocked(database.query).mockImplementation(async (sql,params) => {
+      if(sql.includes('JOIN conversations c ON') || sql.includes('SELECT m.id FROM conversation_messages') || sql.includes('SELECT m.id, m.role')) {
+        return await transport(sql,params) as never
+      }
+      return originalQuery(sql,params)
+    })
+    vi.mocked(writeTurn).mockImplementation(async (message,parts) => {
+      if(message.role==='assistant') stored={id:message.id,role:message.role,created_at:'2026-11-14T00:00:00.000Z',tagged:false,
+        schema_version:message.schema_version,metadata_json:message.metadata,parts_json:[],canonical_parts:parts.map(p=>({kind:p.kind,body:p.body}))}
+      return {message_id:message.id,parts_written:parts.length}
+    })
+    const baseRuntime=await mockPrepareByokTurn.getMockImplementation()!({})
+    // The fixture adapter forwards only the actual repository contract.
+    mockPrepareByokTurn.mockImplementation(async input => {
+      const prepared=await repository.prepareTurnRouting({userId:input.userId,role:input.role,chartId:input.chartId,
+        conversationId:input.conversationId,isFirstTurn:input.isFirstTurn,turnId:input.turnId,source:'pariprashna',
+        selection:input.requestedSelection,...(input.rejectExistingTurn ? {rejectExistingTurn:true} : {})})
+      return {...baseRuntime,snapshotId:prepared.snapshotId}
+    })
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome([]))
+    let finish: (()=>void) | undefined
+    mockByokSynthStream.mockImplementation(()=>new ReadableStream({start(controller){
+      finish=()=>{controller.enqueue({type:'text_delta',text:'Exact original synthetic answer'});
+        controller.enqueue({type:'finish',finishReason:'stop',retryCount:0,usage:{inputTokens:1,outputTokens:2,totalTokens:3}});controller.close()}
+    }}))
+    try {
+      // One POST is executed. A modeled outer proxy discards its entire wire;
+      // the actual source stream is drained, never cancelled or resubmitted.
+      const sourceResponse=await POST(new Request('http://localhost/api/pariprashna',{method:'POST',
+        headers:{'content-type':'application/json'},body:JSON.stringify({chartId:CHART,client_request_id:nonce,
+          ai_selection:{kind:'default'},messages:[{id:'70000000-0000-4000-8000-000000000007',role:'user',parts:[{type:'text',text:'Synthetic question'}]}]})}))
+      expect(sourceResponse.status).toBe(200)
+      const drained=sourceResponse.text()
+      const outerFailure=new Response(null,{status:502})
+      expect(outerFailure.status).toBe(502); expect(await outerFailure.text()).toBe('')
+      await vi.waitFor(()=>expect(finish).toBeTypeOf('function'))
+      const recover=()=>GET(new Request(`http://localhost/api/pariprashna/resume?chart_id=${CHART}&client_request_id=${nonce}`))
+      const pending=await recover();expect(pending.status).toBe(202)
+      expect(await pending.json()).toMatchObject({status:'pending',turnId:snapshot!.correlation_id,conversationId:snapshot!.conversation_id})
+      finish!(); const originalWire=await drained
+      expect(originalWire).toContain('turn.commit');expect(stored).toBeDefined()
+      const complete=await recover(); expect(complete.status).toBe(200)
+      const result=await complete.json()
+      expect(result).toMatchObject({status:'complete',turnId:snapshot!.correlation_id,conversationId:snapshot!.conversation_id,
+        message:{id:stored!.id,role:'assistant'}})
+      expect(result.message.canonical_parts.map((p:{kind:string;body:{text?:string}})=>p.kind==='text'?p.body.text:'').join('')).toContain('Exact original synthetic answer')
+      expect(result.message.metadata_json.acharya_reading_receipt.turn_id).toBe(snapshot!.correlation_id)
+      expect(mockPrepareByokTurn).toHaveBeenCalledOnce();expect(mockCallPipelinePlanner).toHaveBeenCalledOnce()
+      expect(mockByokSynthStream).toHaveBeenCalledOnce();expect(snapshotWrites).toBe(1)
+      expect(sqlTrace.findIndex(s=>s.includes('pg_advisory_xact_lock'))).toBeLessThan(sqlTrace.findIndex(s=>s.startsWith('INSERT INTO conversations')))
+    } finally {
+      poolGlobal.__pgPool=previousPool
+      vi.mocked(database.query).mockImplementation(originalQuery);vi.mocked(writeTurn).mockImplementation(originalWrite)
+    }
+  })
+
+  it('returns HTTP409 for a claimed nonce before any planner or role execution', async () => {
+    byokFlagState.on=true
+    const {DuplicateTurnRequestError}=await import('@/lib/ai-console/repository')
+    mockPrepareByokTurn.mockRejectedValueOnce(new DuplicateTurnRequestError())
+    const response=await POST(new Request('http://localhost/api/pariprashna',{method:'POST',headers:{'content-type':'application/json'},
+      body:JSON.stringify({chartId:CHART,client_request_id:'20000000-0000-4000-8000-000000000002',ai_selection:{kind:'default'},
+        messages:[{id:'nonce-user',role:'user',parts:[{type:'text',text:'Synthetic'}]}]})}))
+    expect(response.status).toBe(409);expect(await response.json()).toMatchObject({code:'CLIENT_REQUEST_ALREADY_CLAIMED'})
+    expect(mockCallPipelinePlanner).not.toHaveBeenCalled();expect(mockByokSynthStream).not.toHaveBeenCalled()
+    expect(mockByokWorkerGenerate).not.toHaveBeenCalled()
+  })
+
+  it.each([null, '', 'not-a-uuid', 42])('rejects malformed client_request_id %s before preflight or model work', async clientRequestId => {
+    byokFlagState.on = true
+    const response = await POST(new Request('http://localhost/api/pariprashna', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ chartId: CHART, ai_selection: { kind: 'default' }, client_request_id: clientRequestId,
+        messages: [{ id: 'nonce-user', role: 'user', parts: [{ type: 'text', text: 'Synthetic question' }] }] }),
+    }))
+    expect(response.status).toBe(400)
+    expect(JSON.stringify(await response.json())).toContain('client_request_id')
+    expect(mockPrepareByokTurn).not.toHaveBeenCalled()
+    expect(mockCallPipelinePlanner).not.toHaveBeenCalled()
+  })
+
+  it('refuses nonce recovery when SQL routing is disabled before legacy model binding', async () => {
+    const response = await POST(new Request('http://localhost/api/pariprashna', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ chartId: CHART, client_request_id: '20000000-0000-4000-8000-000000000002',
+        messages: [{ role: 'user', parts: [{ type: 'text', text: 'Synthetic question' }] }] }),
+    }))
+    expect(response.status).toBe(503)
+    expect(mockPrepareByokTurn).not.toHaveBeenCalled()
+    expect(mockCallPipelinePlanner).not.toHaveBeenCalled()
+  })
+
   it.each([
     ['owner or chart denial', 'AI_PERMISSION_DENIED', 400],
     ['stale or broken selection', 'AI_CHOICE_BROKEN', 400],

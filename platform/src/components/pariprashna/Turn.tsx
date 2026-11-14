@@ -28,7 +28,7 @@ function TurnImpl({ turn, chartId }: { turn: TurnState; chartId?: string }) {
       <UserBlock text={turn.userText} />
       <div className="my-3.5">
         <WorkingRegion turn={turn} />
-        {(turn.status === 'reconnecting' || turn.status === 'interrupted') && turn.status === 'reconnecting' && (
+        {turn.status === 'reconnecting' && !turn.transportRecovery && (
           <div
             className="flex items-center gap-2.5 mt-2 mb-3.5 px-3.5 py-2.5 rounded"
             style={{ border: '1px solid var(--pp-rule)', background: 'var(--pp-tint)', fontSize: 12.5, color: 'var(--pp-ink-dim)' }}
@@ -41,6 +41,13 @@ function TurnImpl({ turn, chartId }: { turn: TurnState; chartId?: string }) {
             />
             Connection dropped — resuming from where it left off. Nothing was lost.
           </div>
+        )}
+        {turn.transportRecovery && turn.transportRecovery.status !== 'unavailable' && (
+          <p role="status" className="pp-caveat mt-2" data-testid="pp-saved-answer-recovery">
+            {turn.transportRecovery.status === 'recovered'
+              ? 'Connection interrupted; recovered your saved answer.'
+              : 'Connection interrupted. Checking for your saved answer.'}
+          </p>
         )}
         <AnswerRegion turn={turn} chartId={chartId} />
         {turn.status === 'errored' && turn.error && (
