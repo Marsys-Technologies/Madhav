@@ -10117,3 +10117,10 @@ Answers the KĀLA-YANTRA request of 2026-10-16T17:50Z. Measured read-only by Suv
 - Protected16 trusted contexts and all4 actual Sidecar pytest commands remain required in both protected and main. Select Web only; retain Sidecar/MCP/Pipeline, unchanged controlled resources/IAM/environment, all Ready recovery configurations and actual d866/m5nv8 CDLM acceptance.
 - No migrations, new job execution, SSE subscription, research/held-flag activation or paid-resource change. After installed verification, earn actual route and bounded native disconnected-stream UI response; no invented progress.
 - Prioritiesv1.8 5ff3e7e6ed4ff531763244ac815878bb22cb2ccf23ef809fcc0f705c74d0f898; whole dimensions0/6 remain.
+
+
+## L-MADHAV-CONSOLIDATION-3999-MAIN-FAILED-20261114 — spent reservation closed
+
+- Reader source 6ba8448c83f5b58ad806673153142c38cdd70a52 passed normal and all16 protected contexts plus all4 actual Sidecar shards; actual merged main 210005cdc589b06aad8386756e8d6bc42132ff11 then failed Ganga43602605747. Existing migration628 real-PG fixture exceeded its default five-second budget and continued into the following fixture. Actual main failure remains failed; positive generated/Sidecar proofs are preserved without overriding it.
+- Automatic43604629099 skipped every job. Fresh runtime binding/control readback SHA256 b4d4658b300e08534498cb5d8d61bc962ed2cb57b8172e43eb68bb0d16733bc2 matches accepted installation23 and current authorized d866/m5nv8 CDLM baseline. This source attempt earns zero installation credit; scoped installations remain23 and whole dimensions0/6.
+- This reservation is closed. The already-unarmed PR4000 carries the required first-party setup continuation fix and will carry the causally qualified one-path fixture budget/client-cleanup repair. Its fresh normal, protected and main checks remain required, followed by actual automatic Web deployment and installed reader/UI verification. No failed-run rerun, data rebuild, schema/flag/provider/resource change is authorized by this closure.
