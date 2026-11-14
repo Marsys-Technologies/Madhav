@@ -58,10 +58,14 @@ export async function GET(
       FROM build_run_assets bra
       JOIN build_runs br ON br.id = bra.run_id
       JOIN asset_registry ar ON ar.asset_id = bra.asset_id
-      LEFT JOIN asset_throughput at2
-        ON at2.asset_id = bra.asset_id
-        AND at2.chart_id = br.chart_id
-        AND at2.ayanamsha_id IS NULL
+      LEFT JOIN LATERAL (
+        SELECT last_error, rows_written
+        FROM asset_throughput
+        WHERE asset_id = bra.asset_id
+          AND (chart_id = br.chart_id OR chart_id IS NULL)
+        ORDER BY (chart_id IS NOT NULL) DESC
+        LIMIT 1
+      ) at2 ON true
       WHERE bra.run_id = $1
       ORDER BY bra.position
     `, [id])
