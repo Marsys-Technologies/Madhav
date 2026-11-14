@@ -201,6 +201,10 @@ vi.mock('@/lib/pipelines/shared', () => ({
 
 // Import AFTER mocks are registered.
 import { POST } from '../consult/route'
+import { callPipelinePlanner } from '@/lib/pipeline/pipeline_planner'
+vi.mock('fs/promises', async (importOriginal) => ({
+  ...await importOriginal<typeof import('fs/promises')>(), appendFile: vi.fn(async () => {}),
+}))
 
 function makePost(chartId: string, text: string): Request {
   return new Request('http://localhost/api/chat/consult', {
@@ -261,6 +265,36 @@ describe('WP-1.1 / LCA-2 — consult smoke matrix (both charts × 3 question typ
 })
 
 describe('WP-1.1 / LCA-2 — honest error classification', () => {
+  it('reports a selected planner execution fault without blaming the plan or reaching dispatch', async () => {
+    vi.mocked(callPipelinePlanner).mockResolvedValueOnce({ outcome: 'fault', fault_kind: 'execution',
+      retryable: false, reason: 'private diagnostic fixture-secret' })
+    const resp = await POST(makePost(ABHI, 'What is my current dasha period?'))
+    expect(resp.status).toBe(500)
+    const body = await resp.json()
+    expect(body).toEqual({ error: { code: 'PLANNER_EXECUTION_FAILED', retry: false,
+      message: 'The selected AI could not execute the planning request. Check the choice in AI Console and try again.' } })
+    expect(JSON.stringify(body)).not.toMatch(/fixture-secret|private diagnostic|rephrase|valid plan|schema|json/i)
+    expect(dispatchSpy).not.toHaveBeenCalled()
+  })
+
+  it('preserves a genuine invalid-plan response', async () => {
+    vi.mocked(callPipelinePlanner).mockResolvedValueOnce({ outcome: 'fault', retryable: false, reason: 'invalid candidate' })
+    const resp = await POST(makePost(ABHI, 'What is my current dasha period?'))
+    expect(resp.status).toBe(422)
+    expect(await resp.json()).toMatchObject({ error: { code: 'DATA_VALIDATION_FAILED',
+      message: 'Request validation failed.', detail: 'The planner could not produce a valid plan for this request. Please rephrase and try again.' } })
+    expect(dispatchSpy).not.toHaveBeenCalled()
+  })
+
+  it('preserves an existing transient planner response', async () => {
+    vi.mocked(callPipelinePlanner).mockResolvedValueOnce({ outcome: 'fault', retryable: true, reason: 'transient fixture' })
+    const resp = await POST(makePost(ABHI, 'What is my current dasha period?'))
+    expect(resp.status).toBe(503)
+    expect(await resp.json()).toEqual({ error: { code: 'SYSTEM_LLM_ERROR', retry: true,
+      message: 'The planner service is temporarily unavailable. Please retry.' } })
+    expect(dispatchSpy).not.toHaveBeenCalled()
+  })
+
   it('permanent missing-relation error (42P01) → 500 SYSTEM_INTERNAL, NOT 503 retry:true', async () => {
     chartLookupError = { code: '42P01', message: 'relation "reports" does not exist' }
 

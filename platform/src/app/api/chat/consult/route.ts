@@ -646,6 +646,11 @@ async function executeMeteredRequest(request: Request) {
     // sees a clean canonical error envelope (NEVER the raw internal parse error).
     console.error('[consume:v2] planner fault:', plannerOutcome.reason, 'retryable=', plannerOutcome.retryable)
     byokRuntime?.releaseAdmission()
+    if (plannerOutcome.fault_kind === 'execution') {
+      return errorResponse('PLANNER_EXECUTION_FAILED',
+        'The selected AI could not execute the planning request. Check the choice in AI Console and try again.',
+        500, { retry: false })
+    }
     return plannerOutcome.retryable
       // Transient (provider) fault — the same request may succeed on retry.
       ? errorResponse('SYSTEM_LLM_ERROR', 'The planner service is temporarily unavailable. Please retry.', 503, { retry: true })

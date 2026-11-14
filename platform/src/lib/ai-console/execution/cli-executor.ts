@@ -57,7 +57,16 @@ async function generate(execution: ResolvedRoleExecution, definition: CliDefinit
   if (request.abortSignal?.aborted) throw attachSafeExecutionFailureFacts(
     new AiConsoleError('AI_EXECUTION_FAILED', execution.role), { retryCount: 0 })
 
-  const prompt = serializePrompt(request)
+  let transport: { stdin: string; responseSchema?: RoleExecutionRequest['responseSchema'] } = {
+    stdin: serializePrompt(request), responseSchema: request.responseSchema,
+  }
+  if (definition.id === 'codex' && request.responseSchema) {
+    try { transport = selectCodexSchemaTransport(transport.stdin, request.responseSchema) }
+    catch (error) {
+      throw attachSafeExecutionFailureFacts(new AiConsoleError(
+        error instanceof AiConsoleError ? error.code : 'AI_EXECUTION_FAILED', execution.role), { retryCount: 0 })
+    }
+  }
   let retryCount = 0
   onRetryCount?.(retryCount)
   while (true) {
@@ -65,7 +74,7 @@ async function generate(execution: ResolvedRoleExecution, definition: CliDefinit
       const result = await runner.runExecution(execution.cliUserId!, definition.id, {
         modelId: execution.target.kind === 'local_cli' ? execution.target.modelId : null,
         effort: execution.target.effort ?? undefined,
-        stdin: prompt, responseSchema: request.responseSchema, maxOutputTokens: request.maxOutputTokens,
+        ...transport, maxOutputTokens: request.maxOutputTokens,
         signal: request.abortSignal,
       })
       const parsed = validateMachineOutput(definition.execution!.outputFormat, result.stdout)
@@ -150,4 +159,58 @@ function serializePrompt(request: RoleExecutionRequest): string {
     lines.push(`<${message.role}>\n${message.content}\n</${message.role}>`)
   }
   return lines.join('\n\n')
+}
+
+/**
+ * Codex 0.158 sends --output-schema unchanged with strict:true. Only use that
+ * transport for a small proven subset; unknown keywords/references/combinators
+ * choose JSON guidance, never a rewrite of the caller's domain schema. Both
+ * transports still pass through the ORIGINAL schema's AJV validation above.
+ */
+function selectCodexSchemaTransport(stdin: string, originalSchema: NonNullable<RoleExecutionRequest['responseSchema']>): {
+  stdin: string; responseSchema?: RoleExecutionRequest['responseSchema']
+} {
+  let schemaJson: string
+  try { schemaJson = JSON.stringify(originalSchema) }
+  catch { throw new AiConsoleError('AI_EXECUTION_FAILED') }
+  if (typeof schemaJson !== 'string') throw new AiConsoleError('AI_EXECUTION_FAILED')
+  // Guided transport must not evade the runner's schema-file bound.
+  if (Buffer.byteLength(schemaJson, 'utf8') > 64 * 1024) throw new AiConsoleError('AI_CLI_OUTPUT_LIMIT')
+  const native = isCodexStrictSubset(JSON.parse(schemaJson), schemaJson.length)
+  if (!native) {
+    stdin += `\n\n<response_schema>\n${schemaJson}\n</response_schema>\n` +
+      'Return only valid JSON matching the response schema above. Do not include prose or markdown fences.'
+  }
+  if (Buffer.byteLength(stdin, 'utf8') > 256 * 1024) throw new AiConsoleError('AI_CLI_OUTPUT_LIMIT')
+  return native ? { stdin, responseSchema: originalSchema } : { stdin }
+}
+
+function isCodexStrictSubset(schema: unknown, serializedChars: number): boolean {
+  const record = (value: unknown): value is Record<string, unknown> =>
+    typeof value === 'object' && value !== null && !Array.isArray(value)
+  // Conservative size/depth/property guards deliberately stay below the API
+  // limits. Falling outside this subset selects guidance, not schema rejection.
+  if (!record(schema) || schema.type !== 'object' || serializedChars > 15_000) return false
+  let properties = 0
+  const visit = (node: unknown, depth: number): boolean => {
+    if (!record(node) || depth > 5) return false
+    const annotations = ['description', 'title']
+    if (annotations.some(key => node[key] !== undefined && typeof node[key] !== 'string')) return false
+    if (node.type === 'object') {
+      if (Object.keys(node).some(key => !['type', 'properties', 'required', 'additionalProperties', ...annotations].includes(key))
+        || node.additionalProperties !== false || !record(node.properties) || !Array.isArray(node.required)) return false
+      const keys = Object.keys(node.properties)
+      properties += keys.length
+      if (properties > 100 || keys.length === 0 || node.required.length !== keys.length
+        || new Set(node.required).size !== keys.length || !keys.every(key => (node.required as unknown[]).includes(key))) return false
+      return Object.values(node.properties).every(child => visit(child, depth + 1))
+    }
+    if (node.type === 'array') {
+      return Object.keys(node).every(key => ['type', 'items', ...annotations].includes(key))
+        && visit(node.items, depth + 1)
+    }
+    return typeof node.type === 'string' && ['string', 'number', 'integer', 'boolean'].includes(node.type)
+      && Object.keys(node).every(key => ['type', ...annotations].includes(key))
+  }
+  return visit(schema, 1)
 }

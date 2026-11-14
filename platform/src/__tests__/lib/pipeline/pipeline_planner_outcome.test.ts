@@ -66,8 +66,24 @@ vi.mock('@/lib/llm/observability', () => ({
 vi.mock('@/lib/storage', () => ({
   getStorageClient: vi.fn(() => ({})),
 }))
+// Plan-stage fault fixtures must never enter live orientation, persistence or
+// filesystem bookkeeping; the planner and stage logic themselves remain real.
+vi.mock('@/lib/db/client', () => ({ query: vi.fn(() => { throw new Error('Unexpected fixture database access') }) }))
+vi.mock('fs/promises', async (importOriginal) => ({
+  ...await importOriginal<typeof import('fs/promises')>(), appendFile: vi.fn(async () => {}),
+}))
+vi.mock('@/lib/retrieval/orientation', () => ({ buildChartOrientation: vi.fn(async () => null) }))
+vi.mock('@/lib/bundle/manifest_reader', () => ({ loadManifest: vi.fn(async () => ({ fingerprint: 'fixture' })) }))
+vi.mock('@/lib/pariprashna/injection/flag', () => ({ isInjectionContainmentEnabled: () => false }))
+vi.mock('@/lib/pariprashna/honest_controls/flag', () => ({ isHonestControlsEnabled: () => false }))
 
 import { callPipelinePlanner } from '@/lib/pipeline/pipeline_planner'
+import { runPlanStage } from '@/lib/pariprashna/pipeline/plan_stage'
+import { PariprashnaEmitter } from '@/lib/pariprashna/protocol/emitter'
+import type { ByokTurnRuntime } from '@/lib/pariprashna/pipeline/turn_runtime'
+import type { SafetyDecision } from '@/lib/pariprashna/safety'
+import { ErrorEventSchema } from '@/lib/pariprashna/protocol/events'
+import { AiConsoleError } from '@/lib/ai-console/errors'
 // F-23: compared against directly so the metric is proven to be READ from the
 // deterministic classifier rather than restated as a literal.
 import { classifyScope } from '@/lib/vidhi/scope_classifier'
@@ -114,6 +130,75 @@ function fakeExecutor(role: 'planner' | 'deep_planner' | 'worker', outputs: stri
     stream: vi.fn(),
   }
 }
+
+async function stageFault(planner: RoleExecutor) {
+  const deep = fakeExecutor('deep_planner', [])
+  const worker = fakeExecutor('worker', [])
+  const chunks: string[] = []
+  const em = new PariprashnaEmitter({
+    enqueue: (chunk: Uint8Array) => { chunks.push(new TextDecoder().decode(chunk)) },
+    desiredSize: 1, close: vi.fn(), error: vi.fn(),
+  })
+  const result = await runPlanStage({
+    em, request: new Request('https://fixture.invalid/api/pariprashna'),
+    identity: { chartId: '1c826d5a-41cb-4450-b4dc-59d440e5f75a',
+      queryId: 'fixture-query', turnId: 'fixture-turn', conversationId: 'fixture-conversation', isFirstTurn: false },
+    messages: [{ id: 'fixture-user', role: 'user', parts: [{ type: 'text', text: CLASSIFIED_QUERY }] }],
+    params: { selectedStack: 'gpt', modelId: 'fixture-model', modelMeta: { provider: 'fixture', maxOutputTokens: 100 },
+      readingDepth: 'auto', deepDive: false, lengthTier: 'standard', lelContextEnabled: false, style: 'plain' },
+    safetyDecision: {} as SafetyDecision,
+    runtime: { kind: 'byok', executors: { planner, deep_planner: deep, worker } } as unknown as ByokTurnRuntime,
+  })
+  expect(result).toEqual({ halted: true, status: 'error' })
+  expect(deep.generate).not.toHaveBeenCalled()
+  expect(worker.generate).not.toHaveBeenCalled()
+  expect(runAdapter).not.toHaveBeenCalled()
+  const events = chunks.join('').split('\n').filter(line => line.startsWith('data: '))
+    .map(line => JSON.parse(line.slice(6)))
+  const errors = events.filter(event => event.type === 'error')
+  expect(errors).toHaveLength(1)
+  return ErrorEventSchema.parse(errors[0])
+}
+
+describe('selected planner execution faults — real planner to plan-stage wire', () => {
+  it('reports a known unreachable selected executor as execution failure without repair/fallback', async () => {
+    const planner = fakeExecutor('planner', [])
+    vi.mocked(planner.generate).mockRejectedValueOnce(new AiConsoleError('AI_CLI_UNREACHABLE', 'planner'))
+    const event = await stageFault(planner)
+    expect(event).toMatchObject({ code: 'PLANNER_EXECUTION_FAILED', phase: 'plan', retryable: false })
+    expect(event.message).toBe('The selected AI could not execute the planning request. Check the choice in AI Console and try again.')
+    expect(event.message).not.toMatch(/rephrase|valid plan|schema|json/i)
+    expect(planner.generate).toHaveBeenCalledOnce()
+  })
+
+  it('redacts unknown executor error details and does not add attempts', async () => {
+    const planner = fakeExecutor('planner', [])
+    vi.mocked(planner.generate).mockRejectedValueOnce(new Error('private diagnostic fixture-secret provider response'))
+    const event = await stageFault(planner)
+    expect(event.code).toBe('PLANNER_EXECUTION_FAILED')
+    expect(JSON.stringify(event)).not.toMatch(/fixture-secret|private diagnostic|provider response/)
+    expect(planner.generate).toHaveBeenCalledOnce()
+  })
+
+  it.each(['not json', JSON.stringify({ query_class: 42 })])('keeps genuine invalid candidate %s classified as invalid plan', async (candidate) => {
+    const planner = fakeExecutor('planner', [candidate, candidate])
+    const event = await stageFault(planner)
+    expect(event).toMatchObject({ code: 'PLANNER_INVALID_PLAN', retryable: false,
+      message: 'The planner could not produce a valid plan. Please rephrase and try again.' })
+    expect(planner.generate).toHaveBeenCalledTimes(2)
+  })
+
+  it('preserves the existing transient classification when the repair call fails', async () => {
+    const planner = fakeExecutor('planner', [])
+    vi.mocked(planner.generate)
+      .mockRejectedValueOnce(new StructuredOutputValidationError('planner', 'invalid candidate'))
+      .mockRejectedValueOnce(new Error('synthetic repair transport failure'))
+    const event = await stageFault(planner)
+    expect(event).toMatchObject({ code: 'PLANNER_TRANSIENT', retryable: true,
+      message: 'The planner service is temporarily unavailable. Please retry.' })
+    expect(planner.generate).toHaveBeenCalledTimes(2)
+  })
+})
 
 describe('callPipelinePlanner — exact BYOK role injection', () => {
   it('uses Planner for normal scope and never reaches the legacy adapter', async () => {
@@ -199,6 +284,46 @@ describe('callPipelinePlanner — exact BYOK role injection', () => {
         workerExecutor: fakeExecutor('worker', []) })
     expect(outcome.outcome).toBe('fault')
     expect(planner.generate).toHaveBeenCalledOnce()
+  })
+
+  it('types selected execution faults separately from invalid candidate faults', async () => {
+    const planner = fakeExecutor('planner', [])
+    vi.mocked(planner.generate).mockRejectedValueOnce(new AiConsoleError('AI_CLI_UNREACHABLE', 'planner'))
+    const outcome = await callPipelinePlanner(CLASSIFIED_QUERY, [], 'ignored', 'chart-1', undefined,
+      undefined, undefined, undefined, undefined, undefined,
+      { plannerExecutor: planner, deepPlannerExecutor: fakeExecutor('deep_planner', []),
+        workerExecutor: fakeExecutor('worker', []) })
+    expect(outcome).toEqual({ outcome: 'fault', fault_kind: 'execution',
+      reason: 'Selected planner execution failed.', retryable: false })
+    expect(planner.generate).toHaveBeenCalledOnce()
+    expect(runAdapter).not.toHaveBeenCalled()
+  })
+
+  it('keeps a pre-aborted selected execution terminal without calling any executor', async () => {
+    const planner = fakeExecutor('planner', [])
+    const abort = new AbortController()
+    abort.abort()
+    const outcome = await callPipelinePlanner(CLASSIFIED_QUERY, [], 'ignored', 'chart-1', undefined,
+      undefined, undefined, undefined, undefined, undefined,
+      { plannerExecutor: planner, deepPlannerExecutor: fakeExecutor('deep_planner', []),
+        workerExecutor: fakeExecutor('worker', []), abortSignal: abort.signal })
+    expect(outcome).toMatchObject({ outcome: 'fault', retryable: false })
+    expect(outcome).not.toHaveProperty('fault_kind')
+    expect(planner.generate).not.toHaveBeenCalled()
+    expect(runAdapter).not.toHaveBeenCalled()
+  })
+
+  it('does not relabel an executor AbortError as an execution failure', async () => {
+    const planner = fakeExecutor('planner', [])
+    vi.mocked(planner.generate).mockRejectedValueOnce(new DOMException('Aborted', 'AbortError'))
+    const outcome = await callPipelinePlanner(CLASSIFIED_QUERY, [], 'ignored', 'chart-1', undefined,
+      undefined, undefined, undefined, undefined, undefined,
+      { plannerExecutor: planner, deepPlannerExecutor: fakeExecutor('deep_planner', []),
+        workerExecutor: fakeExecutor('worker', []) })
+    expect(outcome).toMatchObject({ outcome: 'fault', retryable: false })
+    expect(outcome).not.toHaveProperty('fault_kind')
+    expect(planner.generate).toHaveBeenCalledOnce()
+    expect(runAdapter).not.toHaveBeenCalled()
   })
 })
 

@@ -253,9 +253,13 @@ export async function runPlanStage(args: {
   }
   if (plannerOutcome.outcome === 'fault') {
     console.error('[pariprashna] planner fault:', plannerOutcome.reason, 'retryable=', plannerOutcome.retryable)
+    const executionFault = plannerOutcome.fault_kind === 'execution'
     em.error({
-      code: plannerOutcome.retryable ? 'PLANNER_TRANSIENT' : 'PLANNER_INVALID_PLAN',
-      message: plannerOutcome.retryable
+      code: executionFault ? 'PLANNER_EXECUTION_FAILED'
+        : plannerOutcome.retryable ? 'PLANNER_TRANSIENT' : 'PLANNER_INVALID_PLAN',
+      message: executionFault
+        ? 'The selected AI could not execute the planning request. Check the choice in AI Console and try again.'
+        : plannerOutcome.retryable
         ? 'The planner service is temporarily unavailable. Please retry.'
         : 'The planner could not produce a valid plan. Please rephrase and try again.',
       retryable: plannerOutcome.retryable,

@@ -91,16 +91,19 @@ import type { CitationGateOutcome } from './validation_stage'
 import { checkConversationWritable, PersistenceRefusedError, persistenceRefusalOf } from '@/lib/conversations/writeGuard'
 
 /**
- * MSR snippet resolver (read-only). Copy of the consult route's helper — this
- * is a retrieval read, NOT the message-write path (that is shared, below).
+ * MSR snippet resolver (read-only). `chartId` must be the server-authorized
+ * turn identity, never a chart named in model prose. This route authorizes one
+ * chart per turn; citation IDs alone cannot widen that scope.
  */
-export async function fetchMsrSnippets(signalIds: string[]): Promise<Map<string, string>> {
-  if (signalIds.length === 0) return new Map()
+export async function fetchMsrSnippets(signalIds: string[], chartId: string): Promise<Map<string, string>> {
+  if (!chartId?.trim()) return new Map()
+  const requestedIds = signalIds.filter((id) => id.trim().length > 0)
+  if (requestedIds.length === 0) return new Map()
   try {
-    const placeholders = signalIds.map((_, i) => `$${i + 1}`).join(', ')
+    const placeholders = requestedIds.map((_, i) => `$${i + 2}`).join(', ')
     const { rows } = await query<{ signal_id: string; name: string; description: string }>(
-      `SELECT signal_id::text, signal_headline_text AS name, signal_summary_text AS description FROM bodha_msr_signals WHERE signal_id::text IN (${placeholders})`,
-      signalIds,
+      `SELECT signal_id::text, signal_headline_text AS name, signal_summary_text AS description FROM bodha_msr_signals WHERE chart_id = $1 AND signal_id::text IN (${placeholders})`,
+      [chartId, ...requestedIds],
     )
     return new Map(
       rows.map((r) => {
@@ -506,7 +509,7 @@ export async function runPersistenceStage(args: {
             citationsFound = detectTurnCitations(accumulatedText)
             snippets =
               citationsFound.length > 0
-                ? await fetchMsrSnippets(citationsFound.map((c) => c.signal_id))
+                ? await fetchMsrSnippets(citationsFound.map((c) => c.signal_id), chartId)
                 : new Map<string, string>()
           }
           const {
@@ -839,7 +842,7 @@ export async function runPersistenceStage(args: {
       contextAssemblyLog: (entry) => {
         void writeContextAssemblyLog(entry)
       },
-      fetchMsrSnippets: (ids) => fetchMsrSnippets(ids),
+      fetchMsrSnippets: (ids) => fetchMsrSnippets(ids, chartId),
       pendingStreamWriter,
       title: {
         generate: (msgs, c) => args.runtime?.kind === 'byok'

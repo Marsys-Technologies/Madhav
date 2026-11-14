@@ -5,8 +5,21 @@
  */
 import { describe, it, expect } from 'vitest'
 import { classifyPariprashnaError } from '../classify'
+import { makeS1LiveAdapter } from '@/components/pariprashna/state/s1LiveAdapter'
 
 describe('classifyPariprashnaError — §7.5 verbatim copy', () => {
+  it('shows selected-AI execution failure through the actual S1 adapter without exposing server details', () => {
+    const adapter = makeS1LiveAdapter('fixture-turn', 'fixture question', 0)
+    const [wire] = adapter.map({ type: 'error', seq: 1, t: 1,
+      code: 'PLANNER_EXECUTION_FAILED', message: 'private diagnostic fixture-secret',
+      retryable: false, phase: 'plan' })
+    expect(wire).toMatchObject({ type: 'error', error: {
+      bandLabel: 'The selected AI could not run',
+      sentence: 'Check the choice in AI Console and try again.', actions: ['retry'],
+    } })
+    expect(JSON.stringify(wire)).not.toMatch(/fixture-secret|private diagnostic|rephrase|valid plan|schema|json/i)
+  })
+
   it('rate_limit', () => {
     const e = classifyPariprashnaError('RATE_LIMIT_429')
     expect(e.kind).toBe('rate_limit')
