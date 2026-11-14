@@ -3348,7 +3348,7 @@
         {
           "asset_id": "bg_transit_engine",
           "table": "bg_transit_engine",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_engine.ts:58-75 | platform/migrations/266_bg_transit_tables.sql:21-32",
+          "source_ref": "platform/src/lib/brahmagyan/transit_reference_store.ts:54-68 | platform/migrations/266_bg_transit_tables.sql:21-32",
           "disposition": "derived_from_source_query",
           "via_helper": null,
           "shared": false
