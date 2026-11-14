@@ -10140,3 +10140,11 @@ Answers the KĀLA-YANTRA request of 2026-10-16T17:50Z. Measured read-only by Suv
 - Root installed proof 4c2eab67e227c9c609347b6b5ff7f7d253cdc2987f373e952d18cd07621e85d7; bounded real route/UI proof edbd768df4e07a46ba8f33a00aa8f11d3a4b2395fb81ec2c2af9ccfbb4a6687c; canonical C-4000-ORIGIN_FIXTURE_AND_READERS-WEB-INSTALLED-ROUTE-UI-20261114.json SHA8e8f082278058a7622e0911f368fe1f7d68ce27c39c8b0ea98f548a4c9cfa1a1. Actual current rund866 singleCDLM/complete70/floor70, native row70/healthy and Cockpit COMPLETE witnessed, SSE blocked before transmission/nativeEventSource preserved. No connected transport or fulljourney claim.
 - Retain Sidecar/MCP/Pipeline exactly, actual m5nv8/d866 recovery unchanged, all Ready recovery metadata and canonical-only project binding preserved. No migration or extra build.
 - Scoped installations24; whole dimensions0/6. Prioritiesv1.8 5ff3e7e6ed4ff531763244ac815878bb22cb2ccf23ef809fcc0f705c74d0f898.
+
+
+## L-MADHAV-CONSOLIDATION-4001-CONSULT14-20261114 — scoped Consult source reserved
+
+- Root reserves reader source 9b5e2272dd738dd04ee7deeec950fd0da0831fd0, tree 780a63c98b0e1dfcd815d39350f380f156f3ad54, base 3f9cfd72ba7a6140162f5a2a1a1bff6606bbf086, exact14 incremental Web paths since actual installed3f9c, installation24. Normal qualification 72a4ace5bcae985b178e89ed28f83422fd98de7a872c1c1608da97bf15a9328b; genuine20/127 generated f2ebfbb2f3f6eba0b0f44a7cfc0fbd5fb080fd306200313e80c12241bc3b2d3a; preflight a86848a7c50c101682579283a137ae78ee65669c3c397e119c96c47d75b17856.
+- Protected16 trusted contexts and all4 actual Sidecar pytest commands remain required in both protected and main. Select Web only; retain Sidecar/MCP/Pipeline, unchanged controlled resources/IAM/environment, all Ready recovery configurations and actual d866/m5nv8 CDLM acceptance.
+- No migrations, new job execution, SSE subscription, research/held-flag activation or paid-resource change. After installed verification, perform the single approved synthetic Consult check; preserve any actual execution failure and honest disconnected transport.
+- Prioritiesv1.8 5ff3e7e6ed4ff531763244ac815878bb22cb2ccf23ef809fcc0f705c74d0f898; whole dimensions0/6 remain.
