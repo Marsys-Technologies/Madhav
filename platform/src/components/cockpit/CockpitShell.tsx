@@ -17,7 +17,6 @@ interface BuildMeta {
   build_id: string
   status: string
   created_at: string
-  ayanamshas: string[]
 }
 
 interface Props {
@@ -100,9 +99,11 @@ function BuildMetaCard({ build, unavailable = false }: { build: BuildMeta | null
         <span className="text-[#8a8070]">Status</span>
         <StatusPill status={build.status} />
       </div>
-      <div className="flex items-center justify-between">
+      <div role="group" aria-label="Ayanamsha count" className="flex items-center justify-between">
         <span className="text-[#8a8070]">Ayanamshas</span>
-        <span className="text-[#c8bfb0] text-xs">{build.ayanamshas?.length ?? 0}</span>
+        <span className="text-[#c8bfb0] text-xs" title="This run does not record an ayanamsha count.">
+          Unavailable
+        </span>
       </div>
     </div>
   )
@@ -114,7 +115,7 @@ export function CockpitShell({ chartId, chartName, birthDate, birthTime, birthPl
   const [activeTab, setActiveTab] = useState<Tab>('graph')
   const serverSnapshotKey = JSON.stringify([
     chartId, latestBuildUnavailable, latestBuild?.build_id ?? null,
-    latestBuild?.status ?? null, latestBuild?.created_at ?? null, latestBuild?.ayanamshas ?? null,
+    latestBuild?.status ?? null, latestBuild?.created_at ?? null,
   ])
   const [runState, setRunState] = useState({
     snapshotKey: serverSnapshotKey, generation: 0, build: latestBuild, requestAcknowledged: false,
@@ -139,7 +140,7 @@ export function CockpitShell({ chartId, chartName, birthDate, birthTime, birthPl
           ...prev, requestAcknowledged: true,
           build: prev.build?.build_id === buildId
             ? prev.build
-            : { build_id: buildId, status: 'pending', created_at: '', ayanamshas: [] },
+            : { build_id: buildId, status: 'pending', created_at: '' },
         }
       })
     }

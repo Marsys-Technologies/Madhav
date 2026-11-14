@@ -1239,7 +1239,37 @@ const PrepareTurnRoutingSchema = z.object({
   turnId: z.string().min(1).regex(/\S/),
   source: z.enum(['pariprashna', 'consult']),
   selection: ConversationAiSelectionSchema,
+  rejectExistingTurn: z.boolean().optional(),
 }).strict()
+
+/** Transport-level duplicate refusal; not an AI execution/SQL error-code enum. */
+export class DuplicateTurnRequestError extends Error {
+  constructor() {
+    super('This request was already submitted. Recover its existing answer instead.')
+    this.name = 'DuplicateTurnRequestError'
+  }
+}
+
+export class RequestSnapshotIntegrityError extends Error {
+  constructor() { super('Stored request binding is inconsistent.'); this.name = 'RequestSnapshotIntegrityError' }
+}
+
+/** Read only after current user/chart authorization; the SQL independently scopes both owners. */
+export async function findPariprashnaRequestSnapshot(userId: string, chartId: string, turnId: string) {
+  const { rows } = await query<{ id: string; correlation_id: string; conversation_id: string }>(
+    `SELECT s.id, s.correlation_id, s.conversation_id, s.created_at
+     FROM ai_turn_routing_snapshots s JOIN conversations c ON c.id=s.conversation_id
+     WHERE s.user_id=$1 AND s.correlation_id=$2 AND s.source='pariprashna'
+       AND c.user_id=$1 AND c.chart_id=$3 AND c.module='consume'`,
+    [userId, turnId, chartId],
+  )
+  if (!rows.length) return null
+  if (rows.length !== 1 || rows[0].correlation_id !== turnId
+    || !uuidSchema.safeParse(rows[0].id).success || !uuidSchema.safeParse(rows[0].conversation_id).success) {
+    throw new RequestSnapshotIntegrityError()
+  }
+  return { snapshotId: rows[0].id, conversationId: rows[0].conversation_id, turnId }
+}
 
 /**
  * One serializable authority decision for a routed turn. The user advisory lock
@@ -1261,6 +1291,15 @@ export async function prepareTurnRouting(input: unknown): Promise<PreparedTurnRo
         WHERE chart_id=$1 AND principal_id=$2 AND permission='view' LIMIT 1 FOR SHARE`,
       [parsed.chartId, parsed.userId])).rows[0]
       if (!grant) throw new AiConsoleError('AI_PERMISSION_DENIED')
+    }
+
+    // The existing user advisory lock serializes this check with the first
+    // snapshot commit. Refuse before conversation/selection/snapshot writes;
+    // never replace, tombstone or reexecute the first binding.
+    if (parsed.rejectExistingTurn) {
+      const claimed = await client.query(`SELECT id FROM ai_turn_routing_snapshots
+        WHERE user_id=$1 AND correlation_id=$2`, [parsed.userId, parsed.turnId])
+      if (claimed.rows.length) throw new DuplicateTurnRequestError()
     }
 
     let authoritativeSelection: z.infer<typeof ConversationAiSelectionSchema>

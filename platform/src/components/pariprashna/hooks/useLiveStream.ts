@@ -6,7 +6,8 @@ import type { ThreadAction } from '../state/reducer'
 import { decodeEvent } from '@/lib/pariprashna/protocol/events'
 import { makeS1LiveAdapter, type S1LiveAdapter } from '../state/s1LiveAdapter'
 import { classifyPariprashnaError } from '@/lib/pariprashna/errors/classify'
-import type { AiSubmissionMode } from '../state/types'
+import type { AiSubmissionMode, TurnState } from '../state/types'
+import { restoreConsultation, type StoredConsultationMessage } from '../history/restore'
 
 let turnSeq = 0
 function nextTurnId(): string {
@@ -34,6 +35,9 @@ interface TurnConnState {
   generation: number
   chartId: string
   serverTurnId: string | null
+  clientRequestId: string | null
+  recovering?: boolean
+  recovery?: NonNullable<TurnState['transportRecovery']>
   lastSeq: number
   lastFrameAtMs: number
   terminal: boolean
@@ -60,9 +64,22 @@ const VISIBILITY_STALL_THRESHOLD_MS = 8_000
 const RECONNECT_MAX_ATTEMPTS = 5
 const RECONNECT_BASE_DELAY_MS = 1_000
 const RECONNECT_MAX_DELAY_MS = 8_000
+const READBACK_MAX_ATTEMPTS = 20
+const READBACK_DEADLINE_MS = 120_000
+const READBACK_REQUEST_TIMEOUT_MS = 10_000
+const READBACK_MAX_DELAY_MS = 10_000
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
+function sleep(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    if (signal.aborted) return resolve()
+    const finish = () => {
+      clearTimeout(timer)
+      signal.removeEventListener('abort', finish)
+      resolve()
+    }
+    const timer = setTimeout(finish, ms)
+    signal.addEventListener('abort', finish, { once: true })
+  })
 }
 
 /**
@@ -92,6 +109,128 @@ export function useLiveStream(chartId: string) {
   const connState = useRef(new Map<string, TurnConnState>())
   const dispatchTyped = dispatch as (a: ThreadAction) => void
 
+  // Durable recovery reads the exact original submission, never starts work.
+  // A pending row is only an admission record, not evidence of a live producer.
+  const recoverSavedAnswer = useCallback(async (turnId: string, cs: TurnConnState, originalErrorCode: string) => {
+    const clientRequestId = cs.clientRequestId
+    if (!clientRequestId || cs.terminal || cs.generation !== generation.current) return
+    const recovery: NonNullable<TurnState['transportRecovery']> = {
+      clientRequestId, source: 'saved_answer', status: 'checking', originalErrorCode,
+      originalError: classifyPariprashnaError(originalErrorCode),
+    }
+    cs.recovering = true
+    cs.recovery = recovery
+    dispatchTyped({ type: 'DURABLE_RECOVERY_STATUS', turnId, recovery })
+    const deadline = Date.now() + READBACK_DEADLINE_MS
+    let expectedTurnId = cs.serverTurnId
+    const initialScope = conversationScopeRef.current
+    let expectedConversationId = initialScope.chartId === cs.chartId ? initialScope.conversationId : null
+    const cancelled = () => cs.terminal || cs.generation !== generation.current || cs.clientRequestId !== clientRequestId
+    const unavailable = () => {
+      if (cancelled()) return
+      cs.terminal = true
+      dispatchTyped({ type: 'DURABLE_RECOVERY_STATUS', turnId, recovery: { ...recovery, status: 'unavailable' } })
+    }
+    try {
+      for (let attempt = 1; attempt <= READBACK_MAX_ATTEMPTS; attempt++) {
+        if (cancelled()) return
+        const remaining = deadline - Date.now()
+        if (remaining <= 0) break
+        let ac = new AbortController()
+        controllers.current.set(turnId, ac)
+        let timedOut = false
+        const timeout = setTimeout(() => {
+          timedOut = true
+          ac.abort()
+        }, Math.min(READBACK_REQUEST_TIMEOUT_MS, remaining))
+        try {
+          try {
+            const response = await fetch(
+              `/api/pariprashna/resume?chart_id=${encodeURIComponent(cs.chartId)}&client_request_id=${encodeURIComponent(clientRequestId)}`,
+              { method: 'GET', cache: 'no-store', signal: ac.signal },
+            )
+            if (cancelled()) {
+              await response.body?.cancel().catch(() => {})
+              return
+            }
+            if (timedOut) throw new Error('readback deadline')
+            if (response.status !== 200 && response.status !== 202) {
+              unavailable()
+              return
+            }
+            let data: {
+              status: string; turnId: string; conversationId: string; message?: StoredConsultationMessage
+            }
+            try {
+              data = await response.json()
+            } catch (err) {
+              if (ac.signal.aborted) throw err
+              unavailable()
+              return
+            }
+            if (cancelled()) return
+            if (timedOut || Date.now() >= deadline) { unavailable(); return }
+            if (!data || typeof data.turnId !== 'string' || !data.turnId ||
+                typeof data.conversationId !== 'string' || !data.conversationId ||
+                (expectedTurnId !== null && data.turnId !== expectedTurnId) ||
+                (expectedConversationId !== null && data.conversationId !== expectedConversationId)) {
+              unavailable()
+              return
+            }
+            expectedTurnId = data.turnId
+            expectedConversationId = data.conversationId
+            if (response.status === 202) {
+              if (data.status !== 'pending') { unavailable(); return }
+            } else {
+              if (data.status !== 'complete' || data.message?.role !== 'assistant' ||
+                  typeof data.message.id !== 'string' || !data.message.id) {
+                unavailable()
+                return
+              }
+              let restored: TurnState[]
+              try {
+                restored = restoreConsultation([data.message])
+              } catch {
+                unavailable()
+                return
+              }
+              if (restored.length !== 1) { unavailable(); return }
+              const scope = conversationScopeRef.current
+              if (scope.chartId !== cs.chartId || (scope.conversationId !== null && scope.conversationId !== data.conversationId)) {
+                unavailable()
+                return
+              }
+              const nextScope = { chartId: cs.chartId, conversationId: data.conversationId }
+              conversationScopeRef.current = nextScope
+              setConversationScope(nextScope)
+              cs.terminal = true
+              dispatchTyped({ type: 'DURABLE_TURN_RECOVERED', turnId, clientRequestId, turn: restored[0] })
+              return
+            }
+          } catch (err) {
+            if (cancelled() || (ac.signal.aborted && !timedOut)) return
+            // Invalid JSON/schema is a failed read, never a pending admission.
+            if (!timedOut && !(err instanceof TypeError)) { unavailable(); return }
+          } finally {
+            clearTimeout(timeout)
+          }
+          if (attempt === READBACK_MAX_ATTEMPTS || Date.now() >= deadline) break
+          if (timedOut) {
+            ac = new AbortController()
+            controllers.current.set(turnId, ac)
+          }
+          const delay = Math.min(RECONNECT_BASE_DELAY_MS * 2 ** (attempt - 1), READBACK_MAX_DELAY_MS, deadline - Date.now())
+          await sleep(delay, ac.signal)
+        } finally {
+          if (controllers.current.get(turnId) === ac) controllers.current.delete(turnId)
+        }
+      }
+      unavailable()
+    } finally {
+      cs.recovering = false
+    }
+  }, [dispatchTyped])
+
   /**
    * Read one SSE body to completion, dispatching every decoded+adapted event
    * and updating this turn's connection bookkeeping as frames arrive. Shared
@@ -106,7 +245,7 @@ export function useLiveStream(chartId: string) {
       let buffer = ''
       for (;;) {
         const { value, done } = await reader.read()
-        if (cs.generation !== generation.current) {
+        if (cs.terminal || cs.generation !== generation.current) {
           await reader.cancel().catch(() => {})
           return
         }
@@ -146,7 +285,10 @@ export function useLiveStream(chartId: string) {
               setConversationScope(nextScope)
             }
           }
-          if (decoded.type === 'turn.close' || decoded.type === 'error') cs.terminal = true
+          if (
+            decoded.type === 'turn.close' || decoded.type === 'error' ||
+            (decoded.type === 'snapshot.apply' && decoded.turn_status !== 'open')
+          ) cs.terminal = true
 
           for (const wire of adapter.map(decoded)) {
             dispatchTyped(wire)
@@ -163,14 +305,19 @@ export function useLiveStream(chartId: string) {
    * thrown network error and a stale-tab `visibilitychange` both land here.
    */
   const reconnectLoop = useCallback(
-    async (turnId: string, cs: TurnConnState): Promise<void> => {
-      if (cs.terminal) return
+    async (turnId: string, cs: TurnConnState, originalErrorCode = 'NETWORK_DISCONNECTED'): Promise<void> => {
+      if (cs.terminal || cs.generation !== generation.current) return
+      if (cs.clientRequestId) {
+        await recoverSavedAnswer(turnId, cs, originalErrorCode)
+        return
+      }
       if (!cs.serverTurnId) {
         // Never even received turn.open — there is nothing server-side to
         // resume from (the server mints turn_id on its own first byte).
         // Canonical §7.5 classifier (P2-G) — folded in place of a hand-built
         // ClassifiedError literal (`bandLabel: 'Something went wrong'`,
         // which was never the §7.5 network copy).
+        cs.terminal = true
         dispatchTyped({
           type: 'error',
           turnId,
@@ -184,7 +331,7 @@ export function useLiveStream(chartId: string) {
       dispatchTyped({ type: 'reconnecting', turnId, eventId: `${turnId}-reconnecting-${cs.lastSeq}` })
 
       for (let attempt = 1; attempt <= RECONNECT_MAX_ATTEMPTS; attempt++) {
-        if (cs.terminal) return
+        if (cs.terminal || cs.generation !== generation.current) return
         const ac = new AbortController()
         controllers.current.set(turnId, ac)
         try {
@@ -196,14 +343,23 @@ export function useLiveStream(chartId: string) {
               signal: ac.signal,
             },
           )
+          if (cs.terminal || cs.generation !== generation.current || ac.signal.aborted) {
+            await resp.body?.cancel().catch(() => {})
+            return
+          }
           if (!resp.ok || !resp.body) throw new Error(`resume failed (${resp.status})`)
 
           dispatchTyped({ type: 'reconnected', turnId, eventId: `${turnId}-reconnected-${cs.lastSeq}` })
           await pumpBody(resp.body, turnId, cs)
-          return // pumpBody returned cleanly (stream ended) — done, whether terminal or not
+          if (cs.terminal || cs.generation !== generation.current) return
+          // A 200 stream can end before a terminal frame (including the
+          // server's bounded tail window). Resume the SAME turn, never POST.
+          throw new Error('resume ended before terminal frame')
         } catch (err) {
+          if (cs.terminal || cs.generation !== generation.current || ac.signal.aborted) return
           if ((err as { name?: string })?.name === 'AbortError') return // stop() or unmount — not a failure
           if (attempt === RECONNECT_MAX_ATTEMPTS) {
+            cs.terminal = true
             dispatchTyped({
               type: 'error',
               turnId,
@@ -213,17 +369,25 @@ export function useLiveStream(chartId: string) {
             return
           }
           const delay = Math.min(RECONNECT_BASE_DELAY_MS * 2 ** (attempt - 1), RECONNECT_MAX_DELAY_MS)
-          await sleep(delay)
+          await sleep(delay, ac.signal)
         } finally {
-          controllers.current.delete(turnId)
+          if (controllers.current.get(turnId) === ac) controllers.current.delete(turnId)
         }
       }
     },
-    [dispatchTyped, pumpBody],
+    [dispatchTyped, pumpBody, recoverSavedAnswer],
   )
 
   const submit = useCallback(
     (userText: string, opts: LiveSubmitOptions = {}) => {
+      for (const [oldId, old] of connState.current) {
+        if (!old.recovering || old.terminal) continue
+        old.terminal = true
+        controllers.current.get(oldId)?.abort()
+        if (old.recovery) dispatchTyped({ type: 'DURABLE_RECOVERY_STATUS', turnId: oldId, recovery: { ...old.recovery, status: 'unavailable' } })
+      }
+      const aiMode = opts.aiMode ?? { kind: 'legacy' as const }
+      const clientRequestId = aiMode.kind === 'byok' ? crypto.randomUUID() : null
       const turnId = nextTurnId()
       const openedAtMs = Date.now()
       dispatchTyped({ type: 'CLIENT_SUBMIT_TURN', turnId, userText })
@@ -233,6 +397,7 @@ export function useLiveStream(chartId: string) {
         generation: generation.current,
         chartId,
         serverTurnId: null,
+        clientRequestId,
         lastSeq: -1,
         lastFrameAtMs: openedAtMs,
         terminal: false,
@@ -245,7 +410,6 @@ export function useLiveStream(chartId: string) {
 
       void (async () => {
         try {
-          const aiMode = opts.aiMode ?? { kind: 'legacy' as const }
           const scope = conversationScopeRef.current
           const scopedConversationId = scope.chartId === chartId ? scope.conversationId : null
           const requestBody = aiMode.kind === 'byok'
@@ -255,6 +419,7 @@ export function useLiveStream(chartId: string) {
                 reading_depth: opts.reading_depth ?? 'auto',
                 persona_id:opts.persona_id,
                 ai_selection: aiMode.selection,
+                client_request_id: clientRequestId,
                 length_tier: opts.length_tier ?? 'standard',
                 messages: [{ id: `${turnId}-user`, role: 'user', parts: [{ type: 'text', text: userText }] }],
               }
@@ -274,7 +439,16 @@ export function useLiveStream(chartId: string) {
             signal: ac.signal,
           })
 
+          if (cs.terminal || cs.generation !== generation.current || ac.signal.aborted) {
+            await resp.body?.cancel().catch(() => {})
+            return
+          }
           if (!resp.ok || !resp.body) {
+            if (clientRequestId && (resp.status >= 500 || resp.ok)) {
+              await reconnectLoop(turnId, cs, resp.ok ? 'NETWORK_EOF' : `NETWORK_HTTP_${resp.status}`)
+              return
+            }
+            cs.terminal = true
             dispatchTyped({
               type: 'error',
               turnId,
@@ -285,9 +459,11 @@ export function useLiveStream(chartId: string) {
           }
 
           await pumpBody(resp.body, turnId, cs)
+          if (!cs.terminal) await reconnectLoop(turnId, cs, 'NETWORK_EOF')
         } catch (err) {
           // AbortError is expected on stop(); everything else is a genuine
           // drop — reconnect via the SAME path a stale-tab return would use.
+          if (cs.terminal || cs.generation !== generation.current || ac.signal.aborted) return
           if ((err as { name?: string })?.name === 'AbortError') return
           await reconnectLoop(turnId, cs)
         } finally {
