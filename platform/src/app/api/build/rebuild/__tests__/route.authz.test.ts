@@ -130,3 +130,86 @@ describe('POST /api/build/rebuild — V3-E-010 cross-tenant build_events write',
     expect(buildEventWrites().length).toBeGreaterThan(0)
   })
 })
+
+
+it('REFUSES foreign-chart build uniformly without an inserted event', async () => {
+  vi.clearAllMocks(); issued.length = 0; setupMocks({ uid: VICTIM_UID, role: 'guest', ownerId: VICTIM_UID })
+  const prior = mockQuery.getMockImplementation()!
+  mockQuery.mockImplementation(async (...args) => {
+    if (/INSERT\s+INTO\s+build_events/i.test(String(args[0]))) return { rows: [], rowCount: 0 }
+    return prior(...args)
+  })
+  const res = await POST(makeReq({ ...REQ_BODY, build_id: '00000000-0000-4000-8000-000000000071' }))
+  expect(res.status).toBe(404)
+  expect(await res.json()).toEqual({ error: 'Not found' })
+  const writes = mockQuery.mock.calls.filter(([sql]) => /INSERT\s+INTO\s+build_events/i.test(String(sql)))
+  expect(writes).toHaveLength(1)
+  expect(String(writes[0][0])).toMatch(/FROM\s+builds\s+AS\s+target_build/i)
+  expect(String(writes[0][0])).toMatch(/target_build\.id\s*=\s*\$1/)
+  expect(String(writes[0][0])).toMatch(/target_build\.chart_id\s*=\s*\$2/)
+  expect(writes[0][1]).toEqual(['00000000-0000-4000-8000-000000000071', VICTIM_CHART, JSON.stringify({ asset_id: REQ_BODY.asset_id })])
+  expect(mockQuery.mock.calls.filter(([sql]) => /^\s*SELECT[^]*FROM\s+builds\b/i.test(String(sql)))).toHaveLength(0)
+})
+
+it('REFUSES missing build uniformly without an inserted event', async () => {
+  vi.clearAllMocks(); issued.length = 0; setupMocks({ uid: VICTIM_UID, role: 'guest', ownerId: VICTIM_UID })
+  const prior = mockQuery.getMockImplementation()!
+  mockQuery.mockImplementation(async (...args) => {
+    if (/INSERT\s+INTO\s+build_events/i.test(String(args[0]))) return { rows: [], rowCount: 0 }
+    return prior(...args)
+  })
+  const res = await POST(makeReq({ ...REQ_BODY, build_id: '00000000-0000-4000-8000-000000000072' }))
+  expect(res.status).toBe(404)
+  expect(await res.json()).toEqual({ error: 'Not found' })
+  const writes = mockQuery.mock.calls.filter(([sql]) => /INSERT\s+INTO\s+build_events/i.test(String(sql)))
+  expect(writes).toHaveLength(1)
+  expect(String(writes[0][0])).toMatch(/FROM\s+builds\s+AS\s+target_build/i)
+  expect(String(writes[0][0])).toMatch(/target_build\.id\s*=\s*\$1/)
+  expect(String(writes[0][0])).toMatch(/target_build\.chart_id\s*=\s*\$2/)
+  expect(writes[0][1]).toEqual(['00000000-0000-4000-8000-000000000072', VICTIM_CHART, JSON.stringify({ asset_id: REQ_BODY.asset_id })])
+  expect(mockQuery.mock.calls.filter(([sql]) => /^\s*SELECT[^]*FROM\s+builds\b/i.test(String(sql)))).toHaveLength(0)
+})
+
+it('REFUSES foreign-chart build for super_admin uniformly without an inserted event', async () => {
+  vi.clearAllMocks(); issued.length = 0; setupMocks({ uid: ADMIN_UID, role: 'super_admin', ownerId: VICTIM_UID })
+  const prior = mockQuery.getMockImplementation()!
+  mockQuery.mockImplementation(async (...args) => {
+    if (/INSERT\s+INTO\s+build_events/i.test(String(args[0]))) return { rows: [], rowCount: 0 }
+    return prior(...args)
+  })
+  const res = await POST(makeReq({ ...REQ_BODY, build_id: '00000000-0000-4000-8000-000000000073' }))
+  expect(res.status).toBe(404)
+  expect(await res.json()).toEqual({ error: 'Not found' })
+  const writes = mockQuery.mock.calls.filter(([sql]) => /INSERT\s+INTO\s+build_events/i.test(String(sql)))
+  expect(writes).toHaveLength(1)
+  expect(String(writes[0][0])).toMatch(/FROM\s+builds\s+AS\s+target_build/i)
+  expect(String(writes[0][0])).toMatch(/target_build\.id\s*=\s*\$1/)
+  expect(String(writes[0][0])).toMatch(/target_build\.chart_id\s*=\s*\$2/)
+  expect(writes[0][1]).toEqual(['00000000-0000-4000-8000-000000000073', VICTIM_CHART, JSON.stringify({ asset_id: REQ_BODY.asset_id })])
+  expect(mockQuery.mock.calls.filter(([sql]) => /^\s*SELECT[^]*FROM\s+builds\b/i.test(String(sql)))).toHaveLength(0)
+})
+
+it('binds the valid owner event atomically to the authorized chart and preserves its payload', async () => {
+  vi.clearAllMocks(); issued.length = 0; setupMocks({ uid: VICTIM_UID, role: 'guest', ownerId: VICTIM_UID })
+  const res = await POST(makeReq(REQ_BODY))
+  expect(res.status).toBe(200)
+  expect(await res.json()).toEqual({ ok: true })
+  const writes = mockQuery.mock.calls.filter(([sql]) => /INSERT\s+INTO\s+build_events/i.test(String(sql)))
+  expect(writes).toHaveLength(1)
+  expect(String(writes[0][0])).toMatch(/SELECT\s+target_build\.id/)
+  expect(String(writes[0][0])).toMatch(/FROM\s+builds\s+AS\s+target_build/i)
+  expect(String(writes[0][0])).toMatch(/target_build\.id\s*=\s*\$1/)
+  expect(String(writes[0][0])).toMatch(/target_build\.chart_id\s*=\s*\$2/)
+  expect(writes[0][1]).toEqual([REQ_BODY.build_id, VICTIM_CHART, JSON.stringify({ asset_id: REQ_BODY.asset_id })])
+})
+
+it('preserves the original persistence error identity instead of reporting success', async () => {
+  vi.clearAllMocks(); issued.length = 0; setupMocks({ uid: VICTIM_UID, role: 'guest', ownerId: VICTIM_UID })
+  const failure = new Error('synthetic persistence failure')
+  const prior = mockQuery.getMockImplementation()!
+  mockQuery.mockImplementation(async (...args) => {
+    if (/INSERT\s+INTO\s+build_events/i.test(String(args[0]))) throw failure
+    return prior(...args)
+  })
+  await expect(POST(makeReq(REQ_BODY))).rejects.toBe(failure)
+})

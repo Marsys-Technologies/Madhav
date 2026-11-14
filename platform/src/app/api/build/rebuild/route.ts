@@ -28,11 +28,16 @@ export async function POST(req: NextRequest) {
   const denied = await requireChartPermission({ uid: user.uid, chartId: chart_id, access: 'write' })
   if (denied) return denied
 
-  await query(
+  const inserted = await query(
     `INSERT INTO build_events (build_id, chart_id, event_type, payload, created_at)
-     VALUES ($1, $2, 'rebuild_requested', $3::jsonb, NOW())`,
+     SELECT target_build.id, $2, 'rebuild_requested', $3::jsonb, NOW()
+       FROM builds AS target_build
+      WHERE target_build.id = $1 AND target_build.chart_id = $2`,
     [build_id, chart_id, JSON.stringify({ asset_id })],
   )
+  if (inserted.rowCount !== 1) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
 
   return NextResponse.json({ ok: true })
 }
