@@ -172,3 +172,178 @@ def test_unreviewed_baseline_refuses_without_retiring_history(db, drift):
         with db.transaction():
             db.execute(MIGRATION.read_text())
     assert db.execute("SELECT * FROM asset_output_digest_specs").fetchall() == before
+
+
+FLOOR_MIGRATION = PLATFORM / "supabase/migrations/1417_bo_cdlm_summary_achieved_floor.sql"
+ACHIEVED_BUILD = UUID("8a5ef75c-7b57-437c-acb9-0cf08a7b6d6f")
+CDLM_CODE = "63d1f579b801538512901674f56277d1f31b47c8fbffb2de1c4442131ce4439f"
+ACHIEVED_MANIFEST = json.loads(r'''{
+  "scope": "asset",
+  "waves": [
+    [
+      "bo_cdlm_summary"
+    ]
+  ],
+  "action": "rebuild",
+  "assets": [
+    {
+      "scope": "per_chart",
+      "asset_id": "bo_cdlm_summary",
+      "depends_on": [
+        "bo_sangati"
+      ],
+      "has_cowriters": false,
+      "expected_code_digest": "63d1f579b801538512901674f56277d1f31b47c8fbffb2de1c4442131ce4439f",
+      "natural_key_partition": "bodha_cdlm_chart_summary (chart_id, ayanamsha_id, snapshot_type); bodha_cdlm_domain_rollups (chart_id, ayanamsha_id, snapshot_type, domain); bodha_cdlm_pattern_clusters (chart_id, ayanamsha_id, snapshot_type, pattern_marker_type) -- BoCdlmSummaryWriter owns all three chart-replaced static_natal outputs. Canonical cell fetch order, strength-desc/domain-asc ties and sorted cluster members qualify full-table receipts. Dynamic hooks remain NULL; no temporal data or verification is fabricated. Execution IDs/build/time are excluded from the digest. Scope remains canonical chart 482012f1-710e-4a25-994a-93821f5871aa, as in 986. Prior summary-only spec and receipts remain historical evidence."
+    }
+  ],
+  "version": "nirmana-run-manifest/v1",
+  "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+  "scope_target": "bo_cdlm_summary"
+}''')
+
+
+def _persist_fixture_receipt(conn, build_id):
+    from pipeline.orchestrator.provenance import (
+        build_receipt, canonical_digest, persist_successful_receipt,
+    )
+    output, spec = _digest(conn)
+    partition = conn.execute("SELECT natural_key_partition FROM asset_registry WHERE asset_id='bo_cdlm_summary'").fetchone()["natural_key_partition"]
+    # Open toy upstream metadata, not a claim about private chart calculations.
+    upstream = canonical_digest({"fixture": "eleven toy positive links per aya"})
+    receipt = build_receipt(
+        asset_id="bo_cdlm_summary", chart_id=CHART, code_digest=CDLM_CODE,
+        config={"chart_id": CHART}, upstream_digest=upstream,
+        upstream_receipts=[{"asset_id": "bo_sangati", "output_digest": upstream}],
+        partition_declaration=partition, has_cowriters=False,
+        output_digest=output, output_digest_spec_sha256=spec,
+    )
+    with conn.cursor() as cur:
+        assert persist_successful_receipt(cur, receipt, str(build_id)) == ("fresh", [])
+    conn.execute("""INSERT INTO asset_throughput
+      VALUES ('bo_cdlm_summary',%s,'lit',70,%s,%s,NULL)
+      ON CONFLICT (asset_id,chart_id) DO UPDATE SET
+      rows_written=EXCLUDED.rows_written,built_against_writer_hash=EXCLUDED.built_against_writer_hash,
+      built_against_upstream_hash=EXCLUDED.built_against_upstream_hash""", [CHART, CDLM_CODE, upstream])
+
+
+def _prepare_floor_fixture(conn):
+    from pipeline.orchestrator.provenance import canonical_digest
+    assert canonical_digest(ACHIEVED_MANIFEST) == "f6ac1ea8c170c8aeb2908addd38943e8720496ad26ce470f13288dd84e41ff91"
+    conn.execute("CREATE TABLE charts(id uuid PRIMARY KEY)")
+    conn.execute("INSERT INTO charts VALUES (%s),(%s)", [CHART, UUID(int=2)])
+    conn.execute("""CREATE TABLE build_runs(
+      id uuid PRIMARY KEY,chart_id uuid,state text,scope text,scope_target text,
+      action text,plan jsonb,plan_manifest jsonb,plan_manifest_digest text,
+      created_at timestamptz,ended_at timestamptz)""")
+    for build_id, age in [(UUID(int=1), "1 day"), (ACHIEVED_BUILD, "0 days")]:
+        manifest = json.loads(json.dumps(ACHIEVED_MANIFEST))
+        if build_id == UUID(int=1):
+            manifest["assets"][0]["natural_key_partition"] = conn.execute(
+                "SELECT natural_key_partition FROM asset_registry WHERE asset_id='bo_cdlm_summary'"
+            ).fetchone()["natural_key_partition"]
+        conn.execute("""INSERT INTO build_runs VALUES
+          (%s,%s,'completed','asset','bo_cdlm_summary','rebuild',
+           '["bo_cdlm_summary"]',%s::jsonb,%s,now()-%s::interval,now()-%s::interval)""",
+          [build_id, CHART, json.dumps(manifest), canonical_digest(manifest), age, age])
+    conn.execute("""CREATE TABLE asset_throughput(
+      asset_id text,chart_id uuid,state text,rows_written bigint,
+      built_against_writer_hash text,built_against_upstream_hash text,last_error text,
+      PRIMARY KEY(asset_id,chart_id))""")
+    # Use the real receipt/freshness schema and the already installed real596 trigger.
+    conn.execute("DROP TABLE asset_freshness")
+    ddl596 = (PLATFORM / "supabase/migrations/596_nirmana_provenance_receipts.sql").read_text()
+    for table in ("asset_provenance_receipts", "asset_freshness"):
+        match = re.search(rf"CREATE TABLE IF NOT EXISTS {table} \(.*?\n\);", ddl596, re.S)
+        assert match
+        conn.execute(match.group())
+    ddl598 = (PLATFORM / "supabase/migrations/598_nirmana_output_digest_specs.sql").read_text()
+    start = ddl598.index("ALTER TABLE asset_provenance_receipts")
+    end = ddl598.index("-- These component lists")
+    conn.execute(ddl598[start:end])
+    # Eleven positive pairs involve twelve domains, giving literal5+60+5=70.
+    # Seed inputs only; outputs and fresh receipts come from the actual methods.
+    _inputs(conn, range(4))
+    conn.execute("UPDATE bodha_cdlm_cells SET domain_relationship_class='positive_strong'")
+    for aya_index, aya in enumerate(CANONICAL_AYAS):
+        for index in range(7):
+            conn.execute("""INSERT INTO bodha_cdlm_cells
+              SELECT (jsonb_populate_record(NULL::bodha_cdlm_cells,
+                to_jsonb(seed)||jsonb_build_object('cell_id',%s::uuid,'domain_col',%s::text))).*
+              FROM (SELECT * FROM bodha_cdlm_cells WHERE ayanamsha_id=%s
+                    ORDER BY cell_id LIMIT 1) seed""",
+              [UUID(int=1000 + aya_index * 7 + index), f"toy_domain_{index}", aya])
+    assert _run(conn, 1).rows_inserted == 70
+    _persist_fixture_receipt(conn, UUID(int=1))
+    conn.execute(MIGRATION.read_text())
+    assert _run(conn, ACHIEVED_BUILD.int).rows_inserted == 70
+    _persist_fixture_receipt(conn, ACHIEVED_BUILD)
+    # An adversarial old-partition fresh row on another chart demonstrates the
+    # global asset impact of596. The production counterpart is already stale.
+    conn.execute("""INSERT INTO asset_freshness
+      (asset_id,chart_id,partition_key,freshness_state,reasons,receipt_version)
+      SELECT asset_id,%s,partition_key,'fresh','[]',receipt_version
+      FROM asset_freshness WHERE md5(partition_key)='8351098ab26c97e304038150ea7baf17'""",
+      [UUID(int=2)])
+    conn.execute("INSERT INTO asset_registry(asset_id,target_floor) VALUES ('toy_unrelated',1)")
+    conn.execute("""INSERT INTO asset_freshness
+      (asset_id,chart_id,partition_key,freshness_state,reasons,receipt_version)
+      VALUES ('toy_unrelated',%s,'toy','fresh','[]','toy')""", [CHART])
+
+
+def test_floor_records_real_achieved_count_and_preserves_receipts(db):
+    _prepare_floor_fixture(db)
+    before = db.execute("SELECT * FROM asset_provenance_receipts ORDER BY partition_key").fetchall()
+    data_before = _digest(db)
+    db.execute(FLOOR_MIGRATION.read_text())
+    assert db.execute("SELECT target_floor FROM asset_registry WHERE asset_id='bo_cdlm_summary'").fetchone()["target_floor"] == 70
+    assert db.execute("SELECT * FROM asset_provenance_receipts ORDER BY partition_key").fetchall() == before
+    assert _digest(db) == data_before
+    affected = db.execute("SELECT freshness_state,reasons FROM asset_freshness WHERE asset_id='bo_cdlm_summary'").fetchall()
+    assert len(affected) == 3
+    assert all(row == {"freshness_state": "stale", "reasons": ["registry_changed"]} for row in affected)
+    assert db.execute("SELECT freshness_state FROM asset_freshness WHERE asset_id='toy_unrelated'").fetchone()["freshness_state"] == "fresh"
+    # Replaying the forward statement does not manufacture freshness.
+    db.execute(FLOOR_MIGRATION.read_text())
+    assert all(row["freshness_state"] == "stale" for row in db.execute("SELECT freshness_state FROM asset_freshness WHERE asset_id='bo_cdlm_summary'"))
+    # Only an actual writer run plus normal successful-receipt persistence recovers.
+    recovered_build = UUID(int=3)
+    db.execute("INSERT INTO build_runs(id) VALUES (%s)", [recovered_build])
+    assert _run(db, recovered_build.int).rows_inserted == 70
+    _persist_fixture_receipt(db, recovered_build)
+    assert _digest(db) == data_before
+    current = db.execute("""SELECT freshness_state,reasons FROM asset_freshness
+      WHERE asset_id='bo_cdlm_summary' AND chart_id=%s
+      AND md5(partition_key)='92288d671a134367e47f9e02f87cecdd'""", [CHART]).fetchone()
+    assert current == {"freshness_state": "fresh", "reasons": []}
+    assert db.execute("SELECT * FROM asset_provenance_receipts WHERE build_id=%s", [UUID(int=1)]).fetchone() in before
+    assert db.execute("SELECT count(*) n FROM asset_freshness WHERE asset_id='bo_cdlm_summary' AND freshness_state='stale'").fetchone()["n"] == 2
+
+
+@pytest.mark.parametrize("drift", [
+    "UPDATE asset_registry SET target_floor=7 WHERE asset_id='bo_cdlm_summary'",
+    "UPDATE asset_registry SET count_sql='SELECT 0' WHERE asset_id='bo_cdlm_summary'",
+    "UPDATE asset_registry SET natural_key_partition='unreviewed' WHERE asset_id='bo_cdlm_summary'",
+    "UPDATE asset_provenance_receipts SET receipt_state='unknown'",
+    "UPDATE asset_provenance_receipts SET code_digest=repeat('0',64)",
+    "UPDATE asset_freshness SET freshness_state='stale' WHERE asset_id='bo_cdlm_summary'",
+    "UPDATE asset_throughput SET rows_written=69",
+    "UPDATE build_runs SET state='failed' WHERE id='8a5ef75c-7b57-437c-acb9-0cf08a7b6d6f'",
+    "UPDATE build_runs SET plan='[\"bo_cdlm_summary\",\"bo_sangati\"]' WHERE id='8a5ef75c-7b57-437c-acb9-0cf08a7b6d6f'",
+    "DELETE FROM bodha_cdlm_domain_rollups WHERE domain='wealth'",
+    "UPDATE asset_output_digest_specs SET retired_at=now() WHERE retired_at IS NULL",
+    "UPDATE build_runs SET plan_manifest=jsonb_set(plan_manifest,'{assets,0,expected_code_digest}','\"wrong-writer\"')",
+    "UPDATE bodha_cdlm_chart_summary SET build_id='00000000-0000-0000-0000-000000000001'",
+    "UPDATE asset_throughput SET built_against_upstream_hash=repeat('0',64)",
+    "ALTER TABLE asset_registry DISABLE TRIGGER nirmana_registry_receipt_invalidation",
+])
+def test_floor_refuses_unqualified_inputs_without_changing_floor_or_receipts(db, drift):
+    _prepare_floor_fixture(db)
+    db.execute(drift)
+    floor = db.execute("SELECT target_floor FROM asset_registry WHERE asset_id='bo_cdlm_summary'").fetchone()["target_floor"]
+    receipts = db.execute("SELECT * FROM asset_provenance_receipts ORDER BY partition_key").fetchall()
+    with pytest.raises(psycopg.errors.RaiseException):
+        with db.transaction():
+            db.execute(FLOOR_MIGRATION.read_text())
+    assert db.execute("SELECT target_floor FROM asset_registry WHERE asset_id='bo_cdlm_summary'").fetchone()["target_floor"] == floor
+    assert db.execute("SELECT * FROM asset_provenance_receipts ORDER BY partition_key").fetchall() == receipts

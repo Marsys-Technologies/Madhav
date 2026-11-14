@@ -18485,6 +18485,10 @@ SERVED_READER_BINDINGS = (
      'platform/src/lib/brahmagyan/transit_reference_store.ts', 'queryTransitMoortiReference'),
     ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_vedha.ts', 'queryTransitVedhaCapability',
      'platform/src/lib/brahmagyan/transit_reference_store.ts', 'queryTransitVedhaReference'),
+    ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_formula_constants.ts', 'queryFormulaConstantsCapability',
+     'platform/src/lib/brahmagyan/constants_reference_store.ts', 'queryFormulaConstantsReference'),
+    ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vichara_constants.ts', 'queryVicharaConstantsCapability',
+     'platform/src/lib/brahmagyan/constants_reference_store.ts', 'queryVicharaConstantsReference'),
 )
 DENS_OUTSIDE_ROOTS = ("platform/src", "platform-mcp/src")
 # `retrieval/registry/knowledge/` holds read-only availability PROBES that mirror a handler's own source query (already read in
