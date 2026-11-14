@@ -42,14 +42,14 @@ def _fake_swe():
 
 def _patched_writer_env(monkeypatch, cursor_cls, day=date(2026, 8, 26)):
     from brahmagyan import l0_ephemeris
-    from pipeline.orchestrator.writers import bg_sky_calendar
+    from brahmagyan import ephemeris_file_contract
 
     monkeypatch.setitem(sys.modules, "swisseph", _fake_swe())
     monkeypatch.setattr(l0_ephemeris, "BUILD_START", day)
     monkeypatch.setattr(l0_ephemeris, "BUILD_END", day)
     monkeypatch.setattr(l0_ephemeris, "_resolve_ephe_path", lambda: "/verified/se1")
-    monkeypatch.setattr(bg_sky_calendar, "_require_swiss_file_backend", lambda *_a: None)
-    monkeypatch.setattr(bg_sky_calendar, "_require_pinned_ephemeris_files", lambda *_a: None)
+    monkeypatch.setattr(ephemeris_file_contract, "require_swiss_file_backend", lambda *_a: None)
+    monkeypatch.setattr(ephemeris_file_contract, "require_pinned_ephemeris_files", lambda *_a: None)
 
     class Conn:
         @contextmanager
