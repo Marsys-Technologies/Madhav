@@ -1615,6 +1615,7 @@ jobs:
           # for server-reconstructed evidence and fails those writes closed when
           # its separate secret is absent. NEXT_PUBLIC_FIREBASE_* values stay out
           # of this runtime list because they are baked into the image at build.
+          # Retire the legacy project input explicitly above; retain the canonical project.
           env_vars: |
             NODE_ENV=production
             NIRMANA_DEPLOYED_SHA=${{ env.DEPLOY_SHA }}
@@ -1624,7 +1625,6 @@ jobs:
             DB_INQUIRY_USER=amjis_inquiry_serve
             NIRMANA_CAMPAIGN_CONTROL_DB_USER=nirmana_campaign_control_writer
             NIRMANA_EVIDENCE_INGRESS_DB_USER=nirmana_evidence_ingress_writer
-            GCP_PROJECT=madhav-astrology
             GOOGLE_CLOUD_PROJECT=madhav-astrology
             GCS_BUCKET_CHAT_ATTACHMENTS=madhav-astrology-chat-attachments
             GCS_BUCKET_CHART_DOCUMENTS=madhav-astrology-chart-documents
@@ -2543,7 +2543,7 @@ jobs:
             --task-timeout=86400 \
             --memory=8Gi \
             --cpu=2 \
-            --update-env-vars=GOOGLE_CLOUD_PROJECT=madhav-astrology,GCP_PROJECT=madhav-astrology,PUBSUB_TOPIC=cockpit-events,KA_KSHETRA_HASH_SPILL_DIR=/tmp \
+            --update-env-vars=GOOGLE_CLOUD_PROJECT=madhav-astrology,PUBSUB_TOPIC=cockpit-events,KA_KSHETRA_HASH_SPILL_DIR=/tmp \
             --quiet
           GOOGLE_CLOUD_REGION="${{ env.DEPLOY_REGION }}" python3 .github/actions/build-verified-cgm-image/probe_registration.py post-repoint
           # F-185: KA_KSHETRA_HASH_SPILL_DIR was unconfigured, so the writer

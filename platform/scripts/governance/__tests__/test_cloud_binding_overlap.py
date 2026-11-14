@@ -26,10 +26,10 @@ def assignment(script: str, variable: str) -> str:
 def resolve(expression: str, env: dict[str, str]) -> str:
     # Only the exact reviewed parameter expansions reach this inert Bash process.
     assert expression in {
+        '"${GOOGLE_CLOUD_PROJECT:-madhav-astrology}"',
+        '"${GOOGLE_CLOUD_REGION:-asia-south1}"',
         '"${GCP_PROJECT:-${GOOGLE_CLOUD_PROJECT:-madhav-astrology}}"',
         '"${GCP_REGION:-${GOOGLE_CLOUD_REGION:-asia-south1}}"',
-        '"${GCP_PROJECT:-madhav-astrology}"',
-        '"${GCP_REGION:-asia-south1}"',
     }
     result = subprocess.run(
         ["/bin/bash", "--noprofile", "--norc", "-c", f'VALUE={expression}; printf "%s" "$VALUE"'],
@@ -56,27 +56,48 @@ def test_operator_project_and_region_preserve_overlap(script, variable, legacy, 
         ({legacy: ""}, default),
         ({canonical: ""}, default),
     )
+    assert legacy not in expression
     for env, expected in cases:
         before = dict(env)
-        assert resolve(expression, env) == expected
+        assert resolve(expression, env) == (env.get(canonical) or default)
         assert env == before
+        translated = dict(env)
+        translated.pop(legacy, None)
+        effective = env.get(legacy) or env.get(canonical) or default
+        translated[canonical] = effective
+        assert resolve(expression, translated) == expected
+        assert legacy not in translated
 
 
-def test_pipeline_deployment_binds_both_project_names_to_same_existing_value():
+def test_pipeline_deployment_commits_canonical_project_without_legacy_emission_or_removal():
     workflow = yaml.safe_load((ROOT / ".github/workflows/deploy.yml").read_text())
     steps = workflow["jobs"]["deploy-pipeline-job"]["steps"]
     step = next(row for row in steps if row.get("name") == "Re-point Cloud Run Job at the new image")
     run = step["run"]
-    canonical = re.findall(r"(?<![A-Z_])GOOGLE_CLOUD_PROJECT=([^,\s\"\n]+)", run)
-    legacy = re.findall(r"(?<![A-Z_])GCP_PROJECT=([^,\s\"\n]+)", run)
-    assert len(canonical) == len(legacy) == 1
-    assert canonical == legacy == ["madhav-astrology"]
+    canonical = re.findall(r'(?<![A-Z_])GOOGLE_CLOUD_PROJECT=([^,\s\"\n]+)', run)
+    legacy = re.findall(r'(?<![A-Z_])GCP_PROJECT=([^,\s\"\n]+)', run)
+    assert canonical == ["madhav-astrology"]
+    assert legacy == []
+    assert re.search(r"(?<![A-Z_])GCP_PROJECT(?![A-Z_])", run) is None
 
 
-def test_web_deployment_binds_both_project_names_to_same_existing_value():
+def test_web_deployment_commits_canonical_project_without_legacy_emission_or_removal():
     workflow = yaml.safe_load((ROOT / ".github/workflows/deploy.yml").read_text())
     steps = workflow["jobs"]["deploy-web"]["steps"]
-    values = next(row["with"]["env_vars"] for row in steps if "env_vars" in row.get("with", {}) and "GCP_PROJECT=madhav-astrology" in row["with"]["env_vars"])
+    step = next(row for row in steps if "GOOGLE_CLOUD_PROJECT=madhav-astrology" in row.get("with", {}).get("env_vars", ""))
+    values = step["with"]["env_vars"]
     canonical = [row.partition("=")[2] for row in values.splitlines() if row.startswith("GOOGLE_CLOUD_PROJECT=")]
-    legacy = [row.partition("=")[2] for row in values.splitlines() if row.startswith("GCP_PROJECT=")]
-    assert canonical == legacy == ["madhav-astrology"]
+    legacy = [row for row in values.splitlines() if row.startswith("GCP_PROJECT=")]
+    assert canonical == ["madhav-astrology"]
+    assert legacy == []
+    flags = step["with"]["flags"]
+    assert re.search(r"(?<![A-Z_])GCP_PROJECT(?![A-Z_])", flags) is None
+
+
+def test_nullish_and_shell_translation_keep_distinct_empty_rules():
+    legacy, canonical = "", "new"
+    nullish_effective = legacy if legacy is not None else canonical
+    shell_effective = legacy or canonical
+    assert nullish_effective == ""
+    assert shell_effective == "new"
+    assert nullish_effective != shell_effective
