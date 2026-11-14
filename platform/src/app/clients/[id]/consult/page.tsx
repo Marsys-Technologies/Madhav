@@ -121,7 +121,7 @@ export default async function ConsultPage({
     Promise.resolve({ rows: [] as unknown[] }),
     listConversations({ chartId: id, userId: access.user.uid, module: 'consume' }),
     query<{ layer_key: string; status: string }>(
-      `SELECT layer_key, status FROM pyramid_layers WHERE chart_id = $1`,
+      `SELECT layer AS layer_key, status FROM pyramid_layers WHERE chart_id = $1`,
       [id],
     ).catch(() => ({ rows: [] as { layer_key: string; status: string }[] })),
   ])

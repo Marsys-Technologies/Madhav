@@ -37,6 +37,11 @@ function mockRoleThenColumnProbe(columnPresent: boolean) {
       return Promise.resolve({ rows: columnPresent ? [{ present: 1 }] : [], rowCount: columnPresent ? 1 : 0 })
     }
     if (/FROM build_run_assets bra/.test(s)) {
+      // The deployed asset_throughput grain is (asset_id, chart_id), including
+      // one global row. Naming an ayanamsha column is a real Postgres error.
+      if (/\bat2\.ayanamsha_id\b/.test(s)) {
+        return Promise.reject(new Error('column at2.ayanamsha_id does not exist'))
+      }
       // R-1 precedent (blocked_by_asset_id_degradation.test.ts): Postgres throws
       // when a SELECT names a column that does not exist. Reproduce that here so
       // this test would catch a regression to an unconditional select.
