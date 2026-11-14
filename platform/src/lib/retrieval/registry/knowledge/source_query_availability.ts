@@ -1056,7 +1056,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
            ORDER BY nakshatra_offset
            LIMIT 0`,
     source_refs: [
-      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_moorti.ts:59-73',
+      'platform/src/lib/brahmagyan/transit_reference_store.ts:75-90',
       'platform/supabase/migrations/401_bg_transit_moorti.sql:10-20',
     ],
   },
@@ -1074,7 +1074,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
            ORDER BY graha
            LIMIT 0`,
     source_refs: [
-      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_engine.ts:58-75',
+      'platform/src/lib/brahmagyan/transit_reference_store.ts:54-68',
       'platform/migrations/266_bg_transit_tables.sql:21-32',
     ],
   },
@@ -1094,7 +1094,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
            ORDER BY gate_kind, graha, house_from_moon
            LIMIT 0`,
     source_refs: [
-      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_av_gates.ts:67-85',
+      'platform/src/lib/brahmagyan/transit_reference_store.ts:32-48',
       'platform/supabase/migrations/397_bg_transit_av_gates.sql:10-38',
     ],
   },
@@ -1527,8 +1527,8 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
            ORDER BY primary_graha, primary_transit_house
            LIMIT 0`,
     source_refs: [
-      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_vedha.ts:81-112',
-      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_vedha.ts:107-112',
+      'platform/src/lib/brahmagyan/transit_reference_store.ts:9-25',
+      'platform/src/lib/brahmagyan/transit_reference_store.ts:17-24',
     ],
   },
   {

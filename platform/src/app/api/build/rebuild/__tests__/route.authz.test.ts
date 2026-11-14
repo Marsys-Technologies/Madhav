@@ -1,22 +1,8 @@
 /**
- * Regression test for V3-E-010 (EDIR_V3_REGISTER) — cross-tenant write on
- * POST /api/build/rebuild.
- *
- * Same root-cause family as B-001/B-007/B-008: a caller-supplied `chart_id`
- * was trusted after only "is anyone logged in" — never checked against actual
- * chart ownership/grants. Before the fix this route checked only
- * `getServerUser() !== null` and then INSERTed a `build_events` row for the
- * caller-supplied `chart_id`:
- *
- *     INSERT INTO build_events (build_id, chart_id, event_type, payload, created_at)
- *     VALUES ($1, $2, 'rebuild_requested', $3::jsonb, NOW())
- *
- * That is a cross-tenant WRITE: any authenticated user (default role `guest`)
- * could enqueue a single-asset rebuild event against ANY chart_id, regardless
- * of ownership. Gate level is 'write' (permission === 'all'), matching the
- * sibling rebuild-all fix and the B-008 precedents (POST /api/cockpit/runs,
- * /api/cockpit/refresh): a `chart_grants` 'view' grantee may read a chart, not
- * trigger a rebuild against it.
+ * The retired legacy POST keeps its original session/write guards and input
+ * refusals. Authorized valid requests must disclose retirement, never append
+ * old events, inspect legacy build identity, or start a canonical run.
+ * Original V3-E-010/V3-E-011 cross-tenant regressions remain covered below.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
@@ -35,11 +21,9 @@ const VICTIM_CHART = '482012f1-710e-4a25-994a-93821f5871aa'
 const VICTIM_UID = 'victim-uid'
 const ATTACKER_UID = 'attacker-uid'
 const ADMIN_UID = 'admin-uid'
+const VALID_BODY = { asset_id: 'ka_kshetra', build_id: 'legacy-build-1', chart_id: VICTIM_CHART }
 
-/** Every SQL statement the route issued, so we can assert on the write itself. */
-let issued: string[] = []
-
-function makeReq(body: object): NextRequest {
+function makeReq(body: unknown = VALID_BODY): NextRequest {
   return new NextRequest('http://localhost/api/build/rebuild', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -52,13 +36,11 @@ function setupMocks(opts: {
   role?: string
   ownerId?: string | null
   grantPermission?: string | null
+  legacyFailure?: Error
 }) {
-  const { uid, role = 'guest', ownerId = VICTIM_UID, grantPermission = null } = opts
+  const { uid, role = 'guest', ownerId = VICTIM_UID, grantPermission = null, legacyFailure } = opts
   mockGetServerUser.mockResolvedValue({ uid })
-  issued = []
-
   mockQuery.mockImplementation((sql: string) => {
-    issued.push(sql)
     if (/FROM profiles/.test(sql)) return Promise.resolve({ rows: [{ role }], rowCount: 1 })
     if (/FROM chart_grants/.test(sql)) {
       return Promise.resolve({
@@ -67,66 +49,137 @@ function setupMocks(opts: {
       })
     }
     if (/owner_id[\s\S]*FROM charts/.test(sql)) {
-      return Promise.resolve({ rows: [{ owner_id: ownerId }], rowCount: 1 })
+      return Promise.resolve({
+        rows: ownerId !== null ? [{ owner_id: ownerId }] : [],
+        rowCount: ownerId !== null ? 1 : 0,
+      })
     }
-    if (/INSERT INTO build_events/.test(sql)) {
-      return Promise.resolve({ rows: [], rowCount: 1 })
+    // Keep the pre-retirement fake success available for the old-source causal
+    // run. A tombstone must never reach either legacy database operation.
+    if (/\bbuilds\b|\bbuild_events\b/.test(sql)) {
+      if (legacyFailure) throw legacyFailure
+      return Promise.resolve({ rows: [{ build_id: 'legacy-build-1' }], rowCount: 1 })
     }
-    return Promise.resolve({ rows: [], rowCount: 0 })
+    throw new Error('Unexpected query outside chart permission checks')
   })
 }
 
-const buildEventWrites = () => issued.filter(q => /INSERT INTO build_events/i.test(q))
+function expectPermissionReadsOnly() {
+  for (const [sql] of mockQuery.mock.calls) {
+    expect(sql).toMatch(/^\s*SELECT\b/i)
+    expect(sql).toMatch(/\bFROM\s+(profiles|charts|chart_grants)\b/i)
+    expect(sql).not.toMatch(/\b(builds|build_events|build_runs|build_run_assets)\b/i)
+  }
+}
 
-const REQ_BODY = { asset_id: 'ka_kshetra', build_id: 'some-build-id', chart_id: VICTIM_CHART }
+async function expectGone(res: Response) {
+  expect(res.status).toBe(410)
+  const body = await res.json()
+  expect(body.code).toBe('ENDPOINT_GONE')
+  expect(body.error).toContain('/api/cockpit/runs')
+  expect(body.ok).toBeUndefined()
+  expect(body.build_id).toBeUndefined()
+  expectPermissionReadsOnly()
+}
 
 beforeEach(() => {
   vi.clearAllMocks()
 })
 
-describe('POST /api/build/rebuild — V3-E-010 cross-tenant build_events write', () => {
-  it('DENIES a non-owner guest — and writes NO build_events row', async () => {
-    setupMocks({ uid: ATTACKER_UID, role: 'guest', ownerId: VICTIM_UID })
-    const res = await POST(makeReq(REQ_BODY))
+describe('POST /api/build/rebuild — authorized retirement without operation effects', () => {
+  it('DENIES a non-owner guest before revealing the tombstone', async () => {
+    setupMocks({ uid: ATTACKER_UID, ownerId: VICTIM_UID })
+    const res = await POST(makeReq())
     expect(res.status).toBe(403)
-    expect(buildEventWrites()).toHaveLength(0)
+    expect(await res.json()).toEqual({ error: 'Forbidden', code: 'FORBIDDEN_CHART' })
+    expectPermissionReadsOnly()
   })
 
-  it('DENIES a chart_grants view-grantee — a read grant is not a rebuild grant', async () => {
-    setupMocks({ uid: ATTACKER_UID, role: 'guest', ownerId: VICTIM_UID, grantPermission: 'view' })
-    const res = await POST(makeReq(REQ_BODY))
+  it('DENIES a chart_grants view-grantee; read access is not write access', async () => {
+    setupMocks({ uid: ATTACKER_UID, ownerId: VICTIM_UID, grantPermission: 'view' })
+    const res = await POST(makeReq())
     expect(res.status).toBe(403)
-    expect(buildEventWrites()).toHaveLength(0)
+    expectPermissionReadsOnly()
   })
 
-  it('DENIES when the chart does not exist', async () => {
-    setupMocks({ uid: ATTACKER_UID, role: 'guest', ownerId: null })
-    const res = await POST(makeReq(REQ_BODY))
+  it('DENIES a missing chart with the same response as a foreign chart', async () => {
+    setupMocks({ uid: ATTACKER_UID, ownerId: null })
+    const res = await POST(makeReq())
     expect(res.status).toBe(403)
-    expect(buildEventWrites()).toHaveLength(0)
+    expect(await res.json()).toEqual({ error: 'Forbidden', code: 'FORBIDDEN_CHART' })
+    expectPermissionReadsOnly()
   })
 
-  it('DENIES an unauthenticated caller', async () => {
-    mockGetServerUser.mockResolvedValue(null)
-    issued = []
-    const res = await POST(makeReq(REQ_BODY))
-    expect(res.status).toBe(401)
-    expect(buildEventWrites()).toHaveLength(0)
+  it('DENIES an unknown role instead of treating it as super_admin', async () => {
+    setupMocks({ uid: ATTACKER_UID, role: 'ADMIN', ownerId: VICTIM_UID })
+    const res = await POST(makeReq())
+    expect(res.status).toBe(403)
+    expectPermissionReadsOnly()
   })
 
-  it('ALLOWS the owner — the legitimate single-asset rebuild path must keep working', async () => {
-    setupMocks({ uid: VICTIM_UID, role: 'guest', ownerId: VICTIM_UID })
-    const res = await POST(makeReq(REQ_BODY))
-    expect(res.status).toBe(200)
-    const body = await res.json()
-    expect(body.ok).toBe(true)
-    expect(buildEventWrites().length).toBeGreaterThan(0)
+  it('returns410 to the authorized owner without a legacy read or write', async () => {
+    setupMocks({ uid: VICTIM_UID, ownerId: VICTIM_UID })
+    await expectGone(await POST(makeReq()))
   })
 
-  it('ALLOWS super_admin on a chart they do not own', async () => {
+  it('returns410 to super_admin without creating a replacement run', async () => {
     setupMocks({ uid: ADMIN_UID, role: 'super_admin', ownerId: VICTIM_UID })
-    const res = await POST(makeReq(REQ_BODY))
-    expect(res.status).toBe(200)
-    expect(buildEventWrites().length).toBeGreaterThan(0)
+    await expectGone(await POST(makeReq()))
+  })
+
+  it('returns410 even when the installed legacy schema cannot accept old SQL', async () => {
+    setupMocks({ uid: VICTIM_UID, legacyFailure: new Error('synthetic missing legacy schema') })
+    await expectGone(await POST(makeReq()))
+  })
+
+  it('does not swallow a failure of the retained permission lookup', async () => {
+    mockGetServerUser.mockResolvedValue({ uid: VICTIM_UID })
+    const failure = new Error('synthetic permission read failed')
+    mockQuery.mockRejectedValue(failure)
+    await expect(POST(makeReq())).rejects.toBe(failure)
+  })
+
+  it.each(['foreign-build', 'missing-build'])('does not inspect the supplied legacy build identity: %s', async (buildId) => {
+    setupMocks({ uid: VICTIM_UID, ownerId: VICTIM_UID })
+    const res = await POST(makeReq({ ...VALID_BODY, build_id: buildId }))
+    await expectGone(res)
+  })
+
+  it.each([
+    { build_id: 'legacy-build-1', chart_id: VICTIM_CHART },
+    { asset_id: 'ka_kshetra', chart_id: VICTIM_CHART },
+    { asset_id: 'ka_kshetra', build_id: 'legacy-build-1' },
+  ])('preserves400 when a required legacy input is missing: %j', async (body) => {
+    mockGetServerUser.mockResolvedValue({ uid: VICTIM_UID })
+    const res = await POST(makeReq(body))
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ error: 'asset_id, build_id, chart_id required' })
+    expect(mockQuery).not.toHaveBeenCalled()
+  })
+
+})
+
+describe('legacy authentication and malformed-body compatibility', () => {
+  it.each([
+    ['null', 'null'], ['malformed JSON', '{'], ['array', '[]'], ['string', '"synthetic"'],
+    ['number', '7'], ['boolean', 'false'], ['empty object', '{}'],
+  ])('returns controlled400 for %s before any permission query', async (_name, body) => {
+    mockGetServerUser.mockResolvedValue({ uid: VICTIM_UID })
+    const res = await POST(new NextRequest('http://localhost/api/build/rebuild', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body,
+    }))
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ error: 'asset_id, build_id, chart_id required' })
+    expect(mockQuery).not.toHaveBeenCalled()
+  })
+
+  it('keeps session authentication before reading an invalid body', async () => {
+    mockGetServerUser.mockResolvedValue(null)
+    const json = vi.fn(() => { throw new Error('body must not be read') })
+    const res = await POST({ json } as unknown as NextRequest)
+    expect(res.status).toBe(401)
+    expect(await res.json()).toEqual({ error: 'unauthenticated' })
+    expect(json).not.toHaveBeenCalled()
+    expect(mockQuery).not.toHaveBeenCalled()
   })
 })

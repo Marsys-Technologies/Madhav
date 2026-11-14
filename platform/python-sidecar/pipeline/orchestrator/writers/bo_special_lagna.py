@@ -40,19 +40,12 @@ CANONICAL_AYANAMSHAS = [
 
 BO_SPECIAL_LAGNA_OWNED_SIGNAL_TYPE_CLASSES: list[str] = ["special_lagna"]
 
-_TIER_CHART_DEFINING = 2.0
-_TIER_MAJOR = 0.8
-_TIER_SUPPORTING = 0.3
-
-
-def _signature_tier(computed_salience: float) -> str:
-    if computed_salience >= _TIER_CHART_DEFINING:
-        return "chart_defining"
-    if computed_salience >= _TIER_MAJOR:
-        return "major"
-    if computed_salience >= _TIER_SUPPORTING:
-        return "supporting"
-    return "background"
+from bodha_writers.signature_tier import (
+    _TIER_CHART_DEFINING as _TIER_CHART_DEFINING,
+    _TIER_MAJOR as _TIER_MAJOR,
+    _TIER_SUPPORTING as _TIER_SUPPORTING,
+    _signature_tier as _signature_tier,
+)
 
 
 def assign_deterministic_signal_ids(conn: Any, rows: list[dict]) -> int:

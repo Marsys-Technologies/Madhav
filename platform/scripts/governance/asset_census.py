@@ -17945,8 +17945,125 @@ def _helper_credits(mod: dict, sels, cobjs) -> set:
     return out
 
 
+
+def _reader_body(blank: str, open_paren: int):
+    """The supported named function/method body; unknown signature syntax earns no edge."""
+    depth = 1
+    for end in range(open_paren + 1, len(blank)):
+        depth += (blank[end] == '(') - (blank[end] == ')')
+        if depth == 0:
+            break
+    else:
+        return None
+    brace = blank.find('{', end + 1)
+    if brace < 0 or not re.fullmatch(r"\s*(?::[\w$<>,.\[\]\s]+)?\s*", blank[end + 1:brace]):
+        return None
+    lo, hi = _enclosing_object(blank, brace + 1)
+    return (lo, hi) if lo == brace and hi > lo and blank[hi - 1] == '}' else None
+
+
+def _reader_import(mod: dict, exported: str, specifier: str):
+    """One active named import, including an explicit alias; comments/strings are not imports."""
+    found = []
+    for m in re.finditer(r"(?m)^[ \t]*(?P<kw>import)\s*\{([^{}]+)\}\s*from\s*(['\"])([^'\"\n]+)\3", mod['cmask']):
+        if mod['blank'][m.start('kw'):m.start('kw') + 6] != 'import':
+            continue
+        parts = [re.fullmatch(r'\s*([\w$]+)(?:\s+as\s+([\w$]+))?\s*', x) for x in m.group(2).split(',') if x.strip()]
+        if not parts or not all(parts):
+            continue
+        for part in parts:
+            if part.group(1) == exported and m.group(4) == specifier:
+                found.append(part.group(2) or part.group(1))
+    return found[0] if len(found) == 1 else None
+
+
+def _bound_reader_selects(mod: dict, source: str, table: str, bindings):
+    """Explicit one-hop imported reads, resolved to an actual serving handler and reader SQL.
+
+    The configuration names symbols, never tables or counts. Unsupported/ambiguous syntax
+    has no imported credit; the existing local-helper and outside probes remain authoritative.
+    """
+    rows = [b for b in bindings or () if isinstance(b, (tuple, list)) and len(b) == 4
+            and all(type(x) is str for x in b) and b[0] == source]
+    for source_path, entry, target, function in rows:
+        if sum(b[1] == entry for b in rows) != 1 or mod['desynced']:
+            continue
+        if not all(re.fullmatch(r'[A-Za-z_$][\w$]*', x) for x in (entry, function)):
+            continue
+        if not target.startswith(('platform/src/', 'platform-mcp/src/')) or '..' in Path(target).parts or not target.endswith('.ts'):
+            continue
+        target_file = ROOT / target
+        try:
+            ancestors = [ROOT.joinpath(*Path(target).parts[:n]) for n in range(1, len(Path(target).parts) + 1)]
+            if not target_file.is_file() or any(path.is_symlink() for path in ancestors) or not target_file.resolve().is_relative_to(ROOT.resolve()):
+                continue
+        except (OSError, ValueError, AttributeError):
+            continue
+        # Resolve the actual source import, rather than assuming an import from configuration.
+        local = None
+        for spec in re.findall(r"\bfrom\s*['\"]([^'\"\n]+)['\"]", mod['cmask']):
+            if spec.startswith('@/'):
+                resolved = 'platform/src/' + spec[2:]
+            elif spec.startswith('.'):
+                resolved = os.path.normpath(str(Path(source_path).parent / spec))
+            else:
+                resolved = ''
+            if resolved and (resolved if resolved.endswith('.ts') else resolved + '.ts') == target:
+                candidate = _reader_import(mod, function, spec)
+                if candidate:
+                    local = candidate if local is None else ''
+        if not local or len(re.findall(r'(?<![\w$])' + re.escape(local) + r'(?![\w$])', mod['blank'])) != 2:
+            continue
+        exports = list(re.finditer(r'(?m)^[ \t]*export\s+const\s+' + re.escape(entry) + r'\b(?:\s*:[\w$<>.,\[\]\s]+)?\s*=\s*\{', mod['blank']))
+        if len(exports) != 1:
+            continue
+        start = exports[0].end() - 1
+        scope = _enclosing_object(mod['blank'], start + 1)
+        handlers = [m for m in re.finditer(r'\b(?:async\s+)?handler\s*\(', mod['blank'][scope[0]:scope[1]])
+                    if _enclosing_object(mod['blank'], scope[0] + m.start()) == scope]
+        if len(handlers) != 1:
+            continue
+        handler = _reader_body(mod['blank'], scope[0] + handlers[0].end() - 1)
+        calls = list(re.finditer(r'(?<![\w$.])' + re.escape(local) + r'\s*\(', mod['blank']))
+        if not handler or len(calls) != 1 or not handler[0] < calls[0].start() < handler[1]:
+            continue
+        call = calls[0].start()
+        block = _enclosing_object(mod['blank'], call)
+        prefix = mod['blank'][handler[0] + 1:block[0]]
+        # Current supported shape: the handler awaits its reader in a top-level try.
+        if not re.search(r'\btry\s*$', mod['blank'][:block[0]]) or _enclosing_object(mod['blank'], block[0]) != handler:
+            continue
+        if re.search(r'\b(?:return|throw|if|for|while|switch|function|class)\b|=>', prefix):
+            continue
+        if not re.search(r'\bconst\s+[\w$]+\s*=\s*await\s*$', mod['blank'][block[0] + 1:call]):
+            continue
+        key, _words = _dens_words(target_file)
+        reader = _dens_module(target_file, key)
+        if reader['desynced']:
+            continue
+        functions = list(re.finditer(r'(?m)^[ \t]*export\s+(?:async\s+)?function\s+' + re.escape(function) + r'\s*\(', reader['blank']))
+        if len(functions) != 1 or len(re.findall(r'(?<![\w$])' + re.escape(function) + r'(?![\w$])', reader['blank'])) != 1:
+            continue
+        body = _reader_body(reader['blank'], functions[0].end() - 1)
+        if not body or re.search(r'\b(?:function|class)\b|=>', reader['blank'][body[0] + 1:body[1]]):
+            continue
+        query = _reader_import(reader, 'query', '@/lib/db/client')
+        if not query or re.search(r'\b(?:const|let|var|function|class)\s+' + re.escape(query) + r'\b|\b' + re.escape(query) + r'\s*=', reader['blank']):
+            continue
+        returns = list(re.finditer(r'\breturn\s+' + re.escape(query) + r'(?:\s*<[\w$<>,.\s]+>)?\s*\(\s*([\w$]+)\s*,', reader['blank'][body[0]:body[1]]))
+        if len(returns) != 1 or _enclosing_object(reader['blank'], body[0] + returns[0].start()) != body:
+            continue
+        sql_name = returns[0].group(1)
+        if len(re.findall(r'\bconst\s+' + re.escape(sql_name) + r'\s*=', reader['blank'][body[0]:body[1]])) != 1:
+            continue
+        lits = [text for _pos, text in reader['spans']]
+        for li, _match, alias, select in _served_selects(table, lits, strict=True):
+            pos = reader['spans'][li][0]
+            if body[0] < pos < body[1] and _enclosing_object(reader['blank'], pos) == body and reader['txt'][pos - 1] in "'\"`" and re.search(r'\bconst\s+' + re.escape(sql_name) + r'\s*=\s*$', reader['blank'][body[0]:pos - 1]):
+                yield target, reader, li, alias, select, call
+
 def capability_scan(caps_dirs, tables: list[str], shared=(), columns: dict | None = None, outside_roots=(), service: bool = False,
-                    tier_declared: dict | None = None, facets: dict | None = None, outside_exclude=None, table_tokens=()) -> dict:
+                    tier_declared: dict | None = None, facets: dict | None = None, outside_exclude=None, table_tokens=(), reader_bindings=()) -> dict:
     """E6.1 (d): the Dens scanner, repaired (N-22 ruling principle 4). Structural: it reads source, not behaviour.
 
     SCOPE. `caps_dirs` (one path or several; `measure()` passes `CAPS_ROOTS`, R23's serving roots) are read
@@ -18019,6 +18136,7 @@ def capability_scan(caps_dirs, tables: list[str], shared=(), columns: dict | Non
     facet_bound_ok: list[str] = []      # SS N-211 (E3 i): modules whose bind-parameter facet filter was credited (the entry documents the input)
     dyn_resolved: list[str] = []
     served = 0
+    delegated_reads: set[tuple[str, str, int]] = set()
     reach_at: list[tuple[str, int, str]] = []    # SS N-212 (H1): (repo path, line, line digest) of each non-label code occurrence of the asset's tokens (roots AND the outside probe)
     reach_dynamic: list[str] = []                 # ... in a module that also selects FROM a run-time table name (the declared reach cannot exclude a select there)
     served_at: list[tuple[str, int, int]] = []      # SS N-211: (repo path, first line, last line) of each counted served select (the evidence a dens_not_served declaration is checked against)
@@ -18138,6 +18256,17 @@ def capability_scan(caps_dirs, tables: list[str], shared=(), columns: dict | Non
                         served += 1
                         _l0 = mod["txt"].count("\n", 0, pos) + 1
                         served_at.append((repo_rel, _l0, _l0 + mod["spans"][li][1].count("\n")))
+            for t in ref_toks + [x for x in code_sh if has(x)]:
+                for target, reader, li, alias, sel, call in _bound_reader_selects(mod, repo_rel, t, reader_bindings):
+                    pos = reader['spans'][li][0]
+                    st = _select_tier_resolved(reader, sel, alias, t, columns.get(t.lower()) or columns.get(t), (tier_declared or {}).get(t.lower(), ())) if sel is not None else (TIER_UNKNOWN, [])
+                    sels.append((_decl_of(mod, call), call, st[0], st[1]))
+                    if sel is not None and t in ref_toks:
+                        real_reads.add(call)
+                    served += 1
+                    line = reader['txt'].count('\n', 0, pos) + 1
+                    served_at.append((target, line, line + reader['spans'][li][1].count('\n')))
+                    delegated_reads.add((target, t, pos))
             if not sels and not _module_reaches(kinds):
                 # every occurrence is a label (a provenance string, prose, a type name, an import path, a label-keyed value, a map key) and no
                 # strict served select of the asset's table is in the module: it names the asset, it does not read it. Such a module never
@@ -18211,7 +18340,7 @@ def capability_scan(caps_dirs, tables: list[str], shared=(), columns: dict | Non
                     for _off, _k in _ref_occurrences(mod, _t, service):
                         if _k != LABEL:
                             reach_at.append(_reach_entry(rel, mod["txt"], _off))
-                if any(next(_served_selects(t, lits), None) for t in present):
+                if any((rel, t, mod['spans'][li][0]) not in delegated_reads for t in present for li, _m, _a, _s in _served_selects(t, lits)):
                     outside.append(rel)
                     continue
                 # No served select was read. That is a finding only for a file the scanner read RELIABLY (R51 / §N.8):
@@ -18345,6 +18474,18 @@ CAPS_ROOT = "platform/src/lib/retrieval/registry/layers"
 # kala_field_skill). The registry layers alone called ga_prashna_judgment "dark" while
 # `tools/register_p1_synthesis.ts` serves it. Every root is scanned; a missing one leaves R23 unmeasured.
 CAPS_ROOTS = (CAPS_ROOT, "platform-mcp/src/tools", "platform-mcp/src/lib")
+
+# Exact one-hop serving exports; SQL/tier credit is always derived from the reader.
+SERVED_READER_BINDINGS = (
+    ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_av_gates.ts', 'queryTransitAvGatesCapability',
+     'platform/src/lib/brahmagyan/transit_reference_store.ts', 'queryTransitAvGatesReference'),
+    ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_engine.ts', 'queryTransitEngineCapability',
+     'platform/src/lib/brahmagyan/transit_reference_store.ts', 'queryTransitEngineReference'),
+    ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_moorti.ts', 'queryTransitMoortiCapability',
+     'platform/src/lib/brahmagyan/transit_reference_store.ts', 'queryTransitMoortiReference'),
+    ('platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_vedha.ts', 'queryTransitVedhaCapability',
+     'platform/src/lib/brahmagyan/transit_reference_store.ts', 'queryTransitVedhaReference'),
+)
 DENS_OUTSIDE_ROOTS = ("platform/src", "platform-mcp/src")
 # `retrieval/registry/knowledge/` holds read-only availability PROBES that mirror a handler's own source query (already read in
 # CAPS_ROOTS) and the catalogue metadata naming every asset; it serves no rows, so it is not a served surface.
@@ -23548,7 +23689,7 @@ def measure(layer_key: str, assets=None) -> dict:
         _df = ({tbl.lower(): dict(column=_sd["density_facet"]["column"], values=list(_sd["density_facet"]["values"]), input=_sd["density_facet"].get("input"), served_by=_sd["density_facet"].get("served_by"))}
                if (tbl and not _df_bad and isinstance(_sd.get("density_facet"), dict)) else None)
         cap = capability_scan(CAPS_ROOTS, dtoks, shared=dens_shared, columns=cat["cols"],
-                              outside_roots=DENS_OUTSIDE_ROOTS, service=(r.get("asset_kind") == "service"), tier_declared=_dt, facets=_df)
+                              outside_roots=DENS_OUTSIDE_ROOTS, service=(r.get("asset_kind") == "service"), tier_declared=_dt, facets=_df, reader_bindings=SERVED_READER_BINDINGS)
         _ua_bad = uniform_authority_measure_problem(_sd, tbl, _target_columns_fact(tbl, cat) if tbl else None, aid, owned=ctables,
                                                     owned_columns={t_: _target_columns_fact(t_, cat) for t_ in ctables} if ctables else None)
         m["Dens.served"] = _grade_dens(cap, tbl or aid, uniform_authority=(isinstance(_sd, dict) and _sd.get("uniform_authority") is not None and not _ua_bad))
@@ -23569,7 +23710,7 @@ def measure(layer_key: str, assets=None) -> dict:
             _cap_strict = cap
             if not isinstance(_ob, str):         # none / reads: the STRICT probe (no knowledge/ carve-out, table names passed to calls) over the same roots
                 _cap_strict = capability_scan(CAPS_ROOTS, dtoks, shared=dens_shared, columns=cat["cols"], outside_roots=DENS_OUTSIDE_ROOTS, service=(r.get("asset_kind") == "service"),
-                                              tier_declared=_dt, facets=_df, outside_exclude=DENS_STRICT_EXCLUDE, table_tokens=[t_ for t_ in ([tbl] if tbl else []) + list(ctables) if t_])
+                                              tier_declared=_dt, facets=_df, outside_exclude=DENS_STRICT_EXCLUDE, table_tokens=[t_ for t_ in ([tbl] if tbl else []) + list(ctables) if t_], reader_bindings=SERVED_READER_BINDINGS)
             _dns = dens_not_served_record(aid, _sd, tbl or None, _cap_strict, table_shared=bool(tbl and tbl in dens_shared),
                                           owner_row=reg_all.get(_ob) if isinstance(_ob, str) else None,
                                           owner_entry=(declarations or {}).get(_ob) if isinstance(_ob, str) and isinstance(declarations, dict) else None,

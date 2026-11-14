@@ -137,9 +137,9 @@ from pipeline.orchestrator.writers import (
     WriterResult,
     register,
 )
-from pipeline.orchestrator.writers.bg_sky_calendar import (
-    _require_pinned_ephemeris_files,
-    _require_swiss_file_backend,
+from brahmagyan.ephemeris_file_contract import (
+    require_pinned_ephemeris_files as _require_pinned_ephemeris_files,
+    require_swiss_file_backend as _require_swiss_file_backend,
 )
 
 logger = logging.getLogger(__name__)

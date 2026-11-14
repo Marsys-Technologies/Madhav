@@ -93,7 +93,7 @@ import urllib.error
 import urllib.request
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Set, Tuple
+from typing import Iterable, Dict, List, Optional, Sequence, Set, Tuple
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parent.parent.parent  # platform/scripts/governance -> repo root
@@ -167,30 +167,149 @@ _ARRAY_BLOCK_RE = re.compile(
     r"export const (OPEN_CRS|LOGGED_CRS|CLOSED_CRS)\s*=\s*\[(?P<body>.*?)\]\s*as const;",
     re.DOTALL,
 )
-_QUOTED_ID_RE = re.compile(r"'([A-Za-z][A-Za-z0-9]*-[A-Za-z0-9]+)'")
+_QUOTED_ID_RE = re.compile('([\'"])([A-Za-z][A-Za-z0-9]*-[A-Za-z0-9]+)\\1')
+
+
+def _ts_lexical_views(body: str) -> Tuple[str, str, Set[int]]:
+    """Separate literal values from active code, including template interpolations.
+
+    This is lexical evidence, with no TypeScript export/execution proof. Bare
+    slash spans are opaque regex only at explicit expression-prefix delimiters.
+    Operand-following or ambiguous slash refuses; arithmetic is not parsed.
+    """
+    line_terminators = "\r\n\u2028\u2029"
+    comments = list(body)
+    code = list(body)
+    active: Set[int] = set()
+
+    def mask(output: List[str], start: int, end: int) -> None:
+        output[start:end] = [" " if char not in line_terminators else char for char in body[start:end]]
+
+    def quoted(start: int, quote: str) -> int:
+        i = start + 1
+        while i < len(body):
+            if body[i] == "\\":
+                i += 2
+            elif body[i] == quote:
+                mask(code, start, i + 1)
+                active.add(start)
+                return i + 1
+            else:
+                i += 1
+        raise ValueError("unterminated reconciliation source string")
+
+    def regex_literal(start: int) -> int:
+        i = start + 1
+        character_class = False
+        while i < len(body) and body[i] not in line_terminators:
+            if body[i] == "\\":
+                i += 2
+                continue
+            if body[i] == "[":
+                character_class = True
+            elif body[i] == "]":
+                character_class = False
+            elif body[i] == "/" and not character_class:
+                i += 1
+                while i < len(body) and body[i].isalpha():
+                    i += 1
+                mask(code, start, i)
+                return i
+            i += 1
+        raise ValueError("unsupported reconciliation source slash")
+
+    def template(start: int, depth: int) -> int:
+        i = start + 1
+        mask(code, start, i)
+        while i < len(body):
+            if body[i] == "\\":
+                mask(code, i, min(i + 2, len(body)))
+                i += 2
+            elif body[i] == chr(96):
+                mask(code, i, i + 1)
+                return i + 1
+            elif body.startswith(chr(36) + "{", i):
+                mask(code, i, i + 2)
+                end = scan(i + 2, True, depth + 1)
+                mask(code, end, end + 1)
+                i = end + 1
+            else:
+                mask(code, i, i + 1)
+                i += 1
+        raise ValueError("unterminated reconciliation source template")
+
+    def scan(start: int, closing_brace: bool, depth: int) -> int:
+        if depth > 64:
+            raise ValueError("unsupported reconciliation source nesting")
+        braces = 0
+        # Do not infer regex from slash delimiters alone: division can contain
+        # syntactically active object/property evidence between two slashes.
+        # Strings/templates/regex are expression operands even when masked.
+        previous = "start"
+        regex_prefixes = {"start", "=", "(", "[", "{", ":", ",", ";"}
+        i = start
+        while i < len(body):
+            if body.startswith("//", i):
+                endings = [body.find(char, i) for char in line_terminators]
+                end = min((end for end in endings if end >= 0), default=len(body))
+                mask(comments, i, end)
+                mask(code, i, end)
+                i = end
+            elif body.startswith("/*", i):
+                end = body.find("*/", i + 2)
+                end = len(body) if end == -1 else end + 2
+                mask(comments, i, end)
+                mask(code, i, end)
+                i = end
+            elif body[i] in ("'", '"'):
+                i = quoted(i, body[i])
+                previous = "operand"
+            elif body[i] == chr(96):
+                i = template(i, depth)
+                previous = "operand"
+            elif body[i] == "/":
+                if previous not in regex_prefixes:
+                    raise ValueError("unsupported reconciliation source slash context")
+                i = regex_literal(i)
+                previous = "operand"
+            elif body[i] == "}" and closing_brace and braces == 0:
+                return i
+            else:
+                if body[i] == "{":
+                    braces += 1
+                elif body[i] == "}":
+                    braces -= 1
+                if not body[i].isspace():
+                    previous = body[i] if body[i] in regex_prefixes else "operand"
+                active.add(i)
+                i += 1
+        if closing_brace:
+            raise ValueError("unterminated reconciliation source interpolation")
+        return i
+
+    scan(0, False, 0)
+    return "".join(comments), "".join(code), active
 
 
 def _strip_ts_comments_but_keep_strings(body: str) -> str:
-    """Remove `// ...` line comments (which may themselves reference CR-ids in prose, e.g.
-    "CR-54 and CR-59 were in this list") without touching quoted string literals, so only real
-    array *entries* are left for `_QUOTED_ID_RE` to find. A line-oriented strip is sufficient here
-    — this file has no multi-line `/* */` comments and no `//` occurring inside a string literal."""
-    out_lines = []
-    for line in body.splitlines():
-        idx = line.find("//")
-        out_lines.append(line[:idx] if idx != -1 else line)
-    return "\n".join(out_lines)
+    """Preserve literal values, source offsets and line numbers."""
+    return _ts_lexical_views(body)[0]
+
+
+def _active_ts_matches(pattern: re.Pattern, body: str) -> Iterable[re.Match]:
+    text, _, active = _ts_lexical_views(body)
+    return (match for match in pattern.finditer(text) if match.start() in active)
 
 
 def parse_cr_status_ts(path: Path, rel: str) -> Optional[CrStatusFile]:
     if not path.exists():
         return None
-    text = path.read_text(encoding="utf-8", errors="replace")
+    text, code, _ = _ts_lexical_views(path.read_text(encoding="utf-8", errors="replace"))
     lists: Dict[str, Set[str]] = {"OPEN_CRS": set(), "LOGGED_CRS": set(), "CLOSED_CRS": set()}
-    for m in _ARRAY_BLOCK_RE.finditer(text):
+    for m in _ARRAY_BLOCK_RE.finditer(code):
         name = m.group(1)
-        body = _strip_ts_comments_but_keep_strings(m.group("body"))
-        lists[name] |= set(_QUOTED_ID_RE.findall(body))
+        body = text[m.start("body"):m.end("body")]
+        lists[name] |= {item.group(2) for item in _active_ts_matches(_QUOTED_ID_RE, body)}
 
     all_ids = list(lists["OPEN_CRS"]) + list(lists["LOGGED_CRS"]) + list(lists["CLOSED_CRS"])
     seen: Set[str] = set()
@@ -213,28 +332,32 @@ def parse_cr_status_ts(path: Path, rel: str) -> Optional[CrStatusFile]:
 # registry_data.ts known_gap parsing
 # ---------------------------------------------------------------------------
 
-_PRIMITIVE_ID_RE = re.compile(r"primitive_id:\s*'([^']+)'")
-_KNOWN_GAP_RE = re.compile(r"known_gap:\s*(null|'([^']+)')")
+_PRIMITIVE_ID_RE = re.compile(
+    r"""(?<![A-Za-z0-9_$])(?:primitive_id|'primitive_id'|"primitive_id")\s*:\s*(?P<quote>['"])(?P<primitive>[^'"\r\n]+)(?P=quote)"""
+)
+_KNOWN_GAP_RE = re.compile(
+    r"""(?<![A-Za-z0-9_$])(?:known_gap|'known_gap'|"known_gap")\s*:\s*(?:null\b|(?P<quote>['"])(?P<cr_id>[^'"\r\n]+)(?P=quote))"""
+)
 
 
 def parse_known_gap_citations(path: Path, rel: str) -> List[KnownGapCitation]:
     if not path.exists():
         return []
-    text = path.read_text(encoding="utf-8", errors="replace")
+    text, _, active = _ts_lexical_views(path.read_text(encoding="utf-8", errors="replace"))
     # Split into per-primitive blocks on primitive_id occurrences so a known_gap always resolves
     # to the primitive it actually belongs to (not merely "the nearest one in the file").
-    markers = [(m.start(), m.group(1)) for m in _PRIMITIVE_ID_RE.finditer(text)]
+    markers = [(m.start(), m.group("primitive")) for m in _PRIMITIVE_ID_RE.finditer(text) if m.start() in active]
     citations: List[KnownGapCitation] = []
     for idx, (start, primitive_id) in enumerate(markers):
         end = markers[idx + 1][0] if idx + 1 < len(markers) else len(text)
-        block = text[start:end]
-        gm = _KNOWN_GAP_RE.search(block)
+        gm = next((match for match in _KNOWN_GAP_RE.finditer(text, start, end)
+                   if match.start() in active), None)
         if not gm:
             continue
-        cr_id = gm.group(2)
+        cr_id = gm.group("cr_id")
         if not cr_id:
             continue
-        line = text.count("\n", 0, start + gm.start()) + 1
+        line = text.count("\n", 0, gm.start()) + 1
         citations.append(KnownGapCitation(file=rel, line=line, primitive_id=primitive_id, cr_id=cr_id))
     return citations
 
@@ -604,10 +727,13 @@ def mcp_call(url: str, key: str, tool: str, args: Dict[str, str], timeout: float
     try:
         parsed = json.loads(json_text)
     except json.JSONDecodeError:
-        return {"ok": status < 400, "status": status, "error": "unparseable body", "raw": body_text[:500]}
+        return {"ok": False, "status": status}
 
-    result = parsed.get("result") if isinstance(parsed, dict) else None
-    rpc_error = parsed.get("error") if isinstance(parsed, dict) else None
+    if (not isinstance(parsed, dict) or parsed.get("jsonrpc") != "2.0"
+            or type(parsed.get("id")) is not int or parsed["id"] != 1):
+        return {"ok": False, "status": status}
+    result = parsed.get("result")
+    rpc_error = parsed.get("error")
     content = None
     if isinstance(result, dict):
         struct = result.get("structuredContent")
@@ -617,14 +743,15 @@ def mcp_call(url: str, key: str, tool: str, args: Dict[str, str], timeout: float
             texts = result.get("content")
             if isinstance(texts, list) and texts and isinstance(texts[0], dict):
                 text_val = texts[0].get("text")
-                if isinstance(text_val, str) and not text_val.startswith("[large payload"):
+                if texts[0].get("type") == "text" and isinstance(text_val, str) and text_val.strip() and not text_val.startswith("[large payload"):
                     try:
                         content = json.loads(text_val)
                     except json.JSONDecodeError:
-                        content = text_val
+                        pass
     is_error = bool(isinstance(result, dict) and result.get("isError"))
     return {
-        "ok": status < 400 and rpc_error is None and not is_error,
+        "ok": (200 <= status < 300 and isinstance(result, dict)
+               and rpc_error is None and not is_error and isinstance(content, (dict, list))),
         "status": status,
         "error": rpc_error,
         "isError": is_error,
@@ -677,18 +804,44 @@ def heuristic_compare(evidence_text: str, live_content) -> str:
 
 
 def run_static_pass(root: Path, extra_registers: Sequence[str]) -> Tuple[List[Divergence], List[RegisterRow], List[CrStatusFile], List[KnownGapCitation]]:
-    cr_status_files = [
-        f for f in (parse_cr_status_ts(root / p, p) for p in CR_STATUS_PATHS) if f is not None
+    required_inputs = [
+        *CR_STATUS_PATHS, *REGISTRY_DATA_PATHS, *DEFAULT_TABLE_REGISTERS,
+        ELEVATION_REGISTER_PATH, *extra_registers,
     ]
+    for source in required_inputs:
+        path = root / source
+        if not path.is_file():
+            raise ValueError("missing reconciliation input")
+        text = path.read_text(encoding="utf-8")
+        if not text.strip():
+            raise ValueError("empty reconciliation input")
+        if source in CR_STATUS_PATHS:
+            blocks = _ARRAY_BLOCK_RE.finditer(_ts_lexical_views(text)[1])
+            if {block.group(1) for block in blocks} != {"OPEN_CRS", "LOGGED_CRS", "CLOSED_CRS"}:
+                raise ValueError("incomplete reconciliation status blocks")
+        if source in REGISTRY_DATA_PATHS and not next(_active_ts_matches(_PRIMITIVE_ID_RE, text), None):
+            raise ValueError("no parsed reconciliation registry primitives")
+
+    cr_status_files = []
+    for source in CR_STATUS_PATHS:
+        status = parse_cr_status_ts(root / source, source)
+        if status is None:
+            raise ValueError("missing reconciliation status input")
+        cr_status_files.append(status)
     known_gaps: List[KnownGapCitation] = []
     for p in REGISTRY_DATA_PATHS:
         known_gaps.extend(parse_known_gap_citations(root / p, p))
 
     register_rows: List[RegisterRow] = []
-    for p in list(DEFAULT_TABLE_REGISTERS) + list(extra_registers):
-        register_rows.extend(parse_pipe_table_registers(root / p, p))
-    register_rows.extend(parse_elevation_register(root / ELEVATION_REGISTER_PATH, ELEVATION_REGISTER_PATH))
-
+    for source in [*DEFAULT_TABLE_REGISTERS, *extra_registers]:
+        rows = parse_pipe_table_registers(root / source, source)
+        if not rows:
+            raise ValueError("no parsed rows in a reconciliation table register")
+        register_rows.extend(rows)
+    elevation_rows = parse_elevation_register(root / ELEVATION_REGISTER_PATH, ELEVATION_REGISTER_PATH)
+    if not elevation_rows:
+        raise ValueError("no parsed rows in the reconciliation elevation register")
+    register_rows.extend(elevation_rows)
     divergences = cross_reference(cr_status_files, known_gaps, register_rows)
     return divergences, register_rows, cr_status_files, known_gaps
 
@@ -737,7 +890,7 @@ def run_live_pass(
                     "tool": tool,
                     "args": call_args,
                     "verdict": "LIVE_PROBE_FAILED",
-                    "detail": {"status": live.get("status"), "error": live.get("error")},
+                    "detail": {"status": live.get("status")},
                 }
             )
             continue
@@ -904,44 +1057,56 @@ def main(argv: List[str]) -> int:
     ap.add_argument("--live", action="store_true", help="Also attempt live MCP probes (needs network + MCP_CANARY_KEY).")
     ap.add_argument("--live-all-open", action="store_true", help="With --live, probe every open-classified row, not just divergent ones.")
     ap.add_argument("--mcp-url", default=os.environ.get("MCP_CANARY_URL", DEFAULT_MCP_URL))
+    ap.add_argument("--advisory", action="store_true",
+                    help="Treat completed reconciliation differences as advisory")
     args = ap.parse_args(argv)
 
     if args.self_test:
         return run_self_test()
 
-    root = Path(args.root).resolve()
-    divergences, register_rows, cr_status_files, known_gaps = run_static_pass(root, args.register)
-
+    divergences = []
+    register_rows = []
     live_results = None
-    if args.live:
+    operational_error = None
+    try:
+        root = Path(args.root).resolve()
+        divergences, register_rows, _, _ = run_static_pass(root, args.register)
+    except (OSError, ValueError):
+        operational_error = "static_inputs_unavailable_or_unparseable"
+
+    if args.live and operational_error is None:
         mcp_key = os.environ.get("MCP_CANARY_KEY", "")
-        if not mcp_key:
-            print(
-                "check_reconciliation_cadence: --live requires MCP_CANARY_KEY to be set in the "
-                "environment (this script never guesses or falls back silently for a live network "
-                "credential). Exiting.",
-                file=sys.stderr,
+        if not mcp_key.strip():
+            operational_error = "live_key_missing"
+        else:
+            live_results = run_live_pass(
+                divergences, register_rows, args.live_all_open, args.mcp_url, mcp_key,
             )
-            return 2
-        live_results = run_live_pass(divergences, register_rows, args.live_all_open, args.mcp_url, mcp_key)
+            if not live_results:
+                operational_error = "no_eligible_live_probe"
+            elif any(result["verdict"] in {"COULD_NOT_CHECK", "LIVE_PROBE_FAILED"} for result in live_results):
+                operational_error = "live_probe_incomplete"
 
     if args.json:
         payload = {
             "register_rows_scanned": len(register_rows),
-            "divergences": [d.__dict__ for d in divergences],
+            "divergences": [divergence.__dict__ for divergence in divergences],
             "live_results": live_results,
-            "pass": len(divergences) == 0,
+            "pass": operational_error is None and not divergences,
         }
+        if operational_error:
+            payload["execution_error"] = operational_error
         out_text = json.dumps(payload, indent=2)
-        print(out_text)
     else:
         out_text = render_report(divergences, register_rows, live_results)
-        print(out_text)
-
+        if operational_error:
+            out_text += f"\nExecution incomplete: {operational_error}\n"
+    print(out_text)
     if args.out:
         Path(args.out).write_text(out_text, encoding="utf-8")
-
-    return 1 if divergences else 0
+    if operational_error:
+        return 2
+    return 1 if divergences and not args.advisory else 0
 
 
 if __name__ == "__main__":

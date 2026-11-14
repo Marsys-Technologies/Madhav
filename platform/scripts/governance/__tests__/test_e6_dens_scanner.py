@@ -330,7 +330,8 @@ def real():
             d = FX["layers"][L]
             for r in d["assets"]:
                 cap = ac.capability_scan(ac.CAPS_ROOTS, r["tokens"], shared=frozenset(d["shared"]), columns=d["columns"],
-                                         outside_roots=ac.DENS_OUTSIDE_ROOTS, service=(r.get("asset_kind") == "service"))
+                                         outside_roots=ac.DENS_OUTSIDE_ROOTS, service=(r.get("asset_kind") == "service"),
+                                         reader_bindings=ac.SERVED_READER_BINDINGS)
                 out[r["asset_id"]] = (L, ac._grade_dens(cap, r["target_table"] or r["asset_id"]), cap)
     finally:
         pathlib.Path.read_text = rd

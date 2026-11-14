@@ -1,11 +1,10 @@
 /**
- * POST /api/build/rebuild-all
- * Enqueues a full chart rebuild.
- * [PHASE-C-07]
+ * Retired legacy POST interface. Current builds use the Cockpit run contract.
+ * Keep session/input/write-permission refusals before disclosing retirement;
+ * never translate a legacy build identity into a new run or dispatch a job.
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
-import { query } from '@/lib/db/client'
 import { requireChartPermission } from '@/lib/auth/requireChartPermission'
 
 export const dynamic = 'force-dynamic'
@@ -25,12 +24,11 @@ export async function POST(req: NextRequest) {
   const denied = await requireChartPermission({ uid: user.uid, chartId: chart_id, access: 'write' })
   if (denied) return denied
 
-  const { rows } = await query<{ build_id: string }>(
-    `INSERT INTO build_events (build_id, chart_id, event_type, payload, created_at)
-     VALUES (gen_random_uuid(), $1, 'rebuild_all_requested', '{}', NOW())
-     RETURNING build_id`,
-    [chart_id],
+  return NextResponse.json(
+    {
+      error: 'Decommissioned. Use the current Cockpit controls and POST /api/cockpit/runs for a new global rebuild.',
+      code: 'ENDPOINT_GONE',
+    },
+    { status: 410 },
   )
-
-  return NextResponse.json({ ok: true, build_id: rows[0]?.build_id })
 }

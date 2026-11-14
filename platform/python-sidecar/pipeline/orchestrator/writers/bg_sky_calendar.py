@@ -197,11 +197,11 @@ AYANAMSHA_KEY = "lahiri"
 # Immutable Swiss Ephemeris corpus downloaded by Dockerfile.pipeline and the
 # sidecar Dockerfile.  Filename checks alone cannot distinguish a changed
 # ephemeris corpus that would move persisted event keys.
-EPHEMERIS_FILE_SHA256: dict[str, str] = {
-    "sepl_18.se1": "ca1393ceab3a44fbc895887cf789c68819ae6a1cbc9b22225872dbe4ccd99a66",
-    "semo_18.se1": "1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7",
-    "seas_18.se1": "a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2",
-}
+from brahmagyan.ephemeris_file_contract import (
+    EPHEMERIS_FILE_SHA256,
+    require_swiss_file_backend as _require_swiss_file_backend,
+    require_pinned_ephemeris_files,
+)
 
 # The 9 grahas tracked for ingress events.
 INGRESS_PLANETS: tuple[str, ...] = (
@@ -227,31 +227,7 @@ SIGN_NAMES = (
 )
 
 
-@serialized_swiss_state
-def _require_swiss_file_backend(swe: Any, ephe_path: str) -> None:
-    """Configure the exact file-backed ephemeris contract or fail closed.
 
-    ``swe.set_ephe_path`` does not fail when files are missing: ``calc_ut``
-    silently substitutes Moshier and exposes the substitution only in its
-    return flags.  A writer that persisted those rows with the DE441/Swiss-file
-    citation would manufacture provenance, so a real position probe is part of
-    the write precondition.
-    """
-    swe.set_ephe_path(ephe_path)
-    swe.set_sid_mode(swe.SIDM_LAHIRI)
-    probe_jd = swe.julday(2000, 1, 1, 0.0)
-    _position, retflag = swe.calc_ut(
-        probe_jd,
-        swe.SUN,
-        swe.FLG_SWIEPH | swe.FLG_SIDEREAL | swe.FLG_SPEED,
-    )
-    file_backed = bool(retflag & swe.FLG_SWIEPH)
-    moshier = bool(retflag & swe.FLG_MOSEPH)
-    if not file_backed or moshier:
-        raise RuntimeError(
-            "Swiss Ephemeris file backend was not active for bg_sky_calendar; "
-            "refusing the silent Moshier analytic fallback"
-        )
 
 
 def _require_reproducible_write_runtime() -> None:
@@ -275,24 +251,10 @@ def _require_reproducible_write_runtime() -> None:
 
 
 def _require_pinned_ephemeris_files(ephe_path: str) -> None:
-    """Verify the exact ephemeris bytes whose provenance the rows claim."""
-    import hashlib
-    from pathlib import Path
-
-    root = Path(ephe_path)
-    for filename, expected_digest in EPHEMERIS_FILE_SHA256.items():
-        path = root / filename
-        try:
-            actual_digest = hashlib.sha256(path.read_bytes()).hexdigest()
-        except OSError as exc:
-            raise RuntimeError(
-                f"Swiss Ephemeris file is unavailable for digest verification: {path}"
-            ) from exc
-        if actual_digest != expected_digest:
-            raise RuntimeError(
-                "Swiss Ephemeris file digest mismatch for "
-                f"{filename}: expected {expected_digest}, observed {actual_digest}"
-            )
+    """Preserve the legacy module's mutable pin-map entry point."""
+    require_pinned_ephemeris_files(
+        ephe_path, expected_digests=EPHEMERIS_FILE_SHA256,
+    )
 
 
 def compute_horizon(today: date | None = None) -> tuple[date, date]:

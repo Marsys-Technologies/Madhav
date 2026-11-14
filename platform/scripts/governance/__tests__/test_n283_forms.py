@@ -206,7 +206,7 @@ def test_the_declaration_is_sound_and_covers_every_text_column_of_the_table():
 def test_the_closed_sets_equal_the_parsers_own_literals():
     import ast
     import brahmagyan.fact_identity_parser as P
-    src = (ac.ROOT / "platform/python-sidecar/brahmagyan/fact_identity_parser.py").read_text(encoding="utf-8")
+    src = (ac.ROOT / "platform/python-sidecar/ga_writers/fact_identity_parser.py").read_text(encoding="utf-8")
     ek, pr = set(), set()
     for n in ast.walk(ast.parse(src)):
         if isinstance(n, ast.Call):
