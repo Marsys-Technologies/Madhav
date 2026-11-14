@@ -17,7 +17,7 @@
  * Global classical reference — no chart_id needed.
  */
 import type { CapabilityDescriptor } from '../../types'
-import { query } from '@/lib/db/client'
+import { queryTransitMoortiReference } from '@/lib/brahmagyan/transit_reference_store'
 
 export const queryTransitMoortiCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L0/query_transit_moorti',
@@ -56,21 +56,8 @@ export const queryTransitMoortiCapability: CapabilityDescriptor = {
     const nakshatraOffset = args['nakshatra_offset'] != null ? Number(args['nakshatra_offset']) : null
     const moortiName      = args['moorti_name'] ? String(args['moorti_name']) : null
 
-    const filters: string[] = ['1=1']
-    const params: unknown[] = []
-    let p = 1
-    if (nakshatraOffset != null && Number.isInteger(nakshatraOffset)) { filters.push(`nakshatra_offset = $${p++}`); params.push(nakshatraOffset) }
-    if (moortiName) { filters.push(`LOWER(moorti_name) = LOWER($${p++})`); params.push(moortiName) }
-    const where = filters.join(' AND ')
-
-    const sql = `
-      SELECT nakshatra_offset, moorti_name, quality_tier, phala_brief, classical_citation, rule_notes
-      FROM bg_transit_moorti
-      WHERE ${where}
-      ORDER BY nakshatra_offset`
-
     try {
-      const result = await query<Record<string, unknown>>(sql, params)
+      const result = await queryTransitMoortiReference({ nakshatraOffset, moortiName })
       return {
         content: {
           rows: result.rows,

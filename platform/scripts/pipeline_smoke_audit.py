@@ -52,11 +52,9 @@ from typing import Any
 CANONICAL_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 
 def read_google_cloud_project(env: Mapping[str, str | None]) -> str:
-    """Resolve the project while preserving legacy-first overlap and empty values."""
-    project = env.get("GCP_PROJECT")
-    if project is None:
-        project = env.get("GOOGLE_CLOUD_PROJECT")
-    return "madhav-astrology" if project is None else project
+    """Resolve the canonical project, preserving empty values and caller defaults."""
+    project = env.get("GOOGLE_CLOUD_PROJECT")
+    return 'madhav-astrology' if project is None else project
 
 
 # ── Colours ───────────────────────────────────────────────────────────────────

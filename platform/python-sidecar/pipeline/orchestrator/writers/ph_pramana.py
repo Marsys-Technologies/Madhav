@@ -19,7 +19,7 @@ from datetime import date
 
 import psycopg
 
-from brahmagyan.phala.life_events_scope import fetch_chart_life_events
+from services.phala.life_events_scope import fetch_chart_life_events
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 from services.ph_pramana.engine import (
     AnchorForPramana,

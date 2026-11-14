@@ -140,7 +140,7 @@ def _load_chart_training_events(conn, chart_id: str) -> list[TrainingEvent]:
     empty log). Events whose per-chart mahadasha lord can't be
     determined from this chart's chart_dashas are skipped (never fabricated)."""
     import psycopg
-    from brahmagyan.phala.life_events_scope import fetch_chart_life_events
+    from services.phala.life_events_scope import fetch_chart_life_events
     # (imported here, not at module top: the asset declarations pin line numbers of this file)
     try:
         rows = fetch_chart_life_events(  # SAVEPOINT-wrapped: a failed read never aborts the build transaction
