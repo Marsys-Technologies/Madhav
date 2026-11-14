@@ -21,6 +21,7 @@ import { render, screen } from '@testing-library/react'
 import React from 'react'
 
 vi.mock('server-only', () => ({}))
+vi.mock('@/lib/db/client', () => ({ query: vi.fn() }))
 
 import {
   STALE_PRICING_THRESHOLD_DAYS,
@@ -294,5 +295,166 @@ describe('§C — PricingDiffPanel render', () => {
     expect(
       screen.getByTestId('pricing-diff-chip-openai').textContent,
     ).toContain('OK')
+  })
+})
+
+describe('webhook transport outcome', () => {
+  const now = new Date('2026-06-01T12:00:00.000Z')
+  const lastUpdate = '2026-04-01T12:00:00.000Z'
+  const webhook = 'https://hook.example/transport'
+  const staleRow = {
+    provider: 'fixture',
+    last_pricing_update: lastUpdate,
+    pricing_age_days: 61,
+    is_pricing_stale: true,
+    avg_7d_variance_pct: 7,
+    has_systematic_variance: true,
+    status: 'both',
+  } as const
+  let fetchMock: ReturnType<typeof vi.fn>
+
+  function staleQuery() {
+    return makeQuery({
+      freshness: [{ provider: staleRow.provider, last_pricing_update: lastUpdate }],
+      variance: [{ provider: staleRow.provider, avg_abs_variance_pct: 7 }],
+    })
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(now)
+    vi.stubEnv('OBSERVATORY_ALERT_WEBHOOK_URL', webhook)
+    fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.unstubAllEnvs()
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it.each([
+    [200, 'http_accepted'],
+    [202, 'http_accepted'],
+    [204, 'http_accepted'],
+    [503, 'http_error'],
+  ])('preserves the trigger and reports HTTP %i as %s', async (status, expected) => {
+    const response = new Response(null, { status })
+    const readBody = vi.spyOn(response, 'text')
+    const readJson = vi.spyOn(response, 'json')
+    fetchMock.mockResolvedValueOnce(response)
+    const queryFn = staleQuery()
+
+    expect(await checkPricingHealth(queryFn)).toEqual({
+      checked_at: now.toISOString(),
+      providers: [{ ...staleRow, alert_fired: true, alert_webhook_result: expected }],
+      stale_count: 1,
+      variance_alert_count: 1,
+      all_healthy: false,
+    })
+    expect(queryFn.mock.calls).toEqual([
+      ['SELECT provider, MAX(effective_from)::text AS last_pricing_update FROM llm_pricing_versions GROUP BY provider'],
+      ["SELECT provider, AVG(ABS(variance_pct)) AS avg_abs_variance_pct FROM llm_cost_reconciliation WHERE reconciliation_date >= (NOW() - INTERVAL '7 days')::date   AND variance_pct IS NOT NULL GROUP BY provider"],
+    ])
+    expect(fetchMock.mock.calls).toEqual([[
+      webhook,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider: staleRow.provider,
+          status: 'both',
+          detail: { ...staleRow, alert_fired: false },
+        }),
+        signal: expect.any(AbortSignal),
+      },
+    ]])
+    expect(readBody).not.toHaveBeenCalled()
+    expect(readJson).not.toHaveBeenCalled()
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it('reports healthy as not attempted even when a webhook is configured', async () => {
+    const result = await checkPricingHealth(makeQuery({
+      freshness: [{ provider: 'fixture', last_pricing_update: now.toISOString() }],
+      variance: [],
+    }))
+    expect(result.providers[0]).toMatchObject({
+      alert_fired: false, alert_webhook_result: 'not_attempted',
+    })
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it('reports an unhealthy trigger without a configured webhook', async () => {
+    vi.stubEnv('OBSERVATORY_ALERT_WEBHOOK_URL', '')
+    const result = await checkPricingHealth(staleQuery())
+    expect(result.providers[0]).toMatchObject({
+      alert_fired: true, alert_webhook_result: 'not_configured',
+    })
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it('reports an unknown outcome when the response is lost, with no retry', async () => {
+    fetchMock.mockRejectedValueOnce(new TypeError('response lost'))
+    const result = await checkPricingHealth(staleQuery())
+    expect(result.providers[0]).toMatchObject({
+      alert_fired: true, alert_webhook_result: 'unknown',
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it('aborts after 5 seconds and reports an unknown outcome without retry', async () => {
+    let signal: AbortSignal | undefined
+    fetchMock.mockImplementationOnce((_target: string, init: RequestInit) => {
+      signal = init.signal ?? undefined
+      return new Promise<Response>((_resolve, reject) => {
+        signal?.addEventListener('abort', () => reject(new Error('timeout')), { once: true })
+      })
+    })
+    const pending = checkPricingHealth(staleQuery())
+    await vi.advanceTimersByTimeAsync(4_999)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(signal?.aborted).toBe(false)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(signal?.aborted).toBe(true)
+    expect((await pending).providers[0]).toMatchObject({
+      alert_fired: true, alert_webhook_result: 'unknown',
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it('contains an unexpected alert setup failure', async () => {
+    vi.spyOn(console, 'warn').mockImplementationOnce(() => { throw new Error('alert setup failed') })
+    const result = await checkPricingHealth(staleQuery())
+    expect(result.providers[0]).toMatchObject({
+      alert_fired: true, alert_webhook_result: 'unknown',
+    })
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it('shows the same panel state with or without transport metadata', () => {
+    const legacy: PricingDiffResult = {
+      checked_at: now.toISOString(),
+      providers: [{ ...staleRow, alert_fired: true }],
+      stale_count: 1,
+      variance_alert_count: 1,
+      all_healthy: false,
+    }
+    const reported: PricingDiffResult = {
+      ...legacy, providers: [{ ...staleRow, alert_fired: true, alert_webhook_result: 'http_accepted' }],
+    }
+    const { container, rerender } = render(React.createElement(PricingDiffPanel, { initialResult: legacy }))
+    const before = container.innerHTML
+    rerender(React.createElement(PricingDiffPanel, { key: 'reported', initialResult: reported }))
+    expect(container.innerHTML).toBe(before)
+    expect(screen.getByTestId('pricing-diff-chip-fixture')).toHaveTextContent('Stale + variance')
   })
 })
