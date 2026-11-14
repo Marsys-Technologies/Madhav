@@ -34,6 +34,13 @@ export type PricingHealthStatus =
   | 'systematic_variance'
   | 'both'
 
+export type PricingWebhookResult =
+  | 'not_attempted'
+  | 'not_configured'
+  | 'http_accepted'
+  | 'http_error'
+  | 'unknown'
+
 export interface ProviderPricingHealth {
   provider: string
   last_pricing_update: string | null
@@ -43,6 +50,8 @@ export interface ProviderPricingHealth {
   has_systematic_variance: boolean
   status: PricingHealthStatus
   alert_fired: boolean
+  /** HTTP 2xx indicates transport acceptance only. */
+  alert_webhook_result?: PricingWebhookResult
 }
 
 export interface PricingDiffResult {
@@ -88,7 +97,7 @@ async function dispatchPricingAlert(
   provider: string,
   status: PricingHealthStatus,
   detail: ProviderPricingHealth,
-): Promise<void> {
+): Promise<PricingWebhookResult> {
   console.warn(
     `[PricingDiffAlert] provider=${provider} status=${status} ` +
       `pricing_age_days=${
@@ -99,21 +108,23 @@ async function dispatchPricingAlert(
       `avg_7d_variance_pct=${detail.avg_7d_variance_pct ?? 'null'}`,
   )
   const target = process.env.OBSERVATORY_ALERT_WEBHOOK_URL
-  if (!target) return
+  if (!target) return 'not_configured'
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), WEBHOOK_TIMEOUT_MS)
   try {
-    await fetch(target, {
+    const response = await fetch(target, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ provider, status, detail }),
       signal: controller.signal,
     })
+    return response.ok ? 'http_accepted' : 'http_error'
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.warn(
       `[PricingDiffAlert] webhook dispatch failed for provider=${provider}: ${message}`,
     )
+    return 'unknown'
   } finally {
     clearTimeout(timeout)
   }
@@ -183,16 +194,18 @@ export async function checkPricingHealth(
       alert_fired: false,
     }
 
+    let webhookResult: PricingWebhookResult = 'not_attempted'
     if (status !== 'ok') {
+      webhookResult = 'unknown'
       try {
-        await dispatchPricingAlert(provider, status, health)
+        webhookResult = await dispatchPricingAlert(provider, status, health)
       } catch {
-        // dispatchPricingAlert already swallows internally; this is defence
-        // in depth so checkPricingHealth never throws from alerting.
+        // Keep health reporting available if alerting itself fails.
       }
       health.alert_fired = true
     }
 
+    health.alert_webhook_result = webhookResult
     providers.push(health)
   }
 
