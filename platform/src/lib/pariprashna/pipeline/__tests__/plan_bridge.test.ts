@@ -179,7 +179,7 @@ describe('getPlanBridgeCoverage — live, honest measurement', () => {
 // has no failure mode of its own; comparing its output to itself (the defect
 // an independent adversarial review found in a prior version of this file's
 // module comment) can never go red. The REAL detector is here: an explicit,
-// literal enumeration of the 13 `live_tool` names known uncovered as of this
+// literal enumeration of the 12 `live_tool` names known uncovered as of this
 // writing, asserted with `toEqual` (order- and count-sensitive) against the
 // live computation. `toEqual` on two arrays fails if EITHER side has an entry
 // the other lacks, so this catches a name silently:
@@ -208,7 +208,6 @@ const KNOWN_UNCOVERED_LIVE_TOOLS_BASELINE: readonly string[] = [
   'dossier',
   'ganita_ayurdaya_get',
   'ganita_condition_get',
-  'ganita_kp_cusps_get',
   'ganita_structural_get',
   // NIRMANA L0 F-D21/F-D23 (2026-09-07, #2122): from_moon_view's live_tool was repointed from
   // the inert ganita_chart_facts_get(reference_point:'moon') call to the real consumer,
@@ -235,7 +234,7 @@ describe('getPlanBridgeCoverage — pinned-baseline detector (§N.8: a real code
     },
   )
 
-  it('uncovered_live_tools matches the pinned 13-name baseline exactly — fails loudly if a name is added OR removed', () => {
+  it('uncovered_live_tools matches the pinned 12-name baseline exactly — fails loudly if a name is added OR removed', () => {
     const c = getPlanBridgeCoverage()
     // Sanity: the baseline itself must be sorted/deduped the same way the live
     // value is, or this assertion would be comparing apples to a typo.
@@ -244,7 +243,7 @@ describe('getPlanBridgeCoverage — pinned-baseline detector (§N.8: a real code
     expect(c.uncovered_live_tools).toEqual(KNOWN_UNCOVERED_LIVE_TOOLS_BASELINE)
   })
 
-  it('covered_live_tools count matches the baseline-implied count (29 of 42)', () => {
+  it('covered_live_tools count matches the baseline-implied count (30 of 42)', () => {
     const c = getPlanBridgeCoverage()
     expect(c.total_distinct_live_tools - KNOWN_UNCOVERED_LIVE_TOOLS_BASELINE.length).toBe(c.covered_live_tools)
     // NIRMANA L1 W3 F-E10 (2026-09-05): the registry legitimately grew a new distinct
@@ -261,7 +260,11 @@ describe('getPlanBridgeCoverage — pinned-baseline detector (§N.8: a real code
     // K7-1a / KYD-123: seven exact public-name compatibility descriptors now
     // resolve through the unchanged bridge. This measures name binding only;
     // absent authenticated web adapters still refuse honestly in the L3 tests.
-    expect(c.covered_live_tools).toBe(29)
+    // 2026-11-15: ganita_kp_cusps_get now aliases the existing registered
+    // L1/get_kp_cusps handler, with its frame/build fence qualified in the
+    // adapter tests. Uncovered 13->12, covered 29->30; the registry stays42.
+    // This is name binding, not per-primitive content or full-floor proof.
+    expect(c.covered_live_tools).toBe(30)
     expect(c.total_distinct_live_tools).toBe(42)
   })
 })

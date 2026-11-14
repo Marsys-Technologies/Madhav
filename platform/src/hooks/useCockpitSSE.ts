@@ -32,6 +32,11 @@ export type CockpitEvent =
 const MAX_RECONNECT_ATTEMPTS = 50  // was: process.env.NODE_ENV === 'development' ? 5 : Infinity
 const MIN_RECONNECT_INTERVAL_MS = 1000
 
+/** A proxy/native retry reuses this identity; a deliberate reconnect gets a new one. */
+export function cockpitStreamUrl(chartId: string): string {
+  return `/api/cockpit/sse?chart_id=${encodeURIComponent(chartId)}&session_id=${crypto.randomUUID()}&session_started_at=${Date.now()}`
+}
+
 export function useCockpitSSE(
   chartId: string,
   onEvent: (e: CockpitEvent) => void,
@@ -47,109 +52,105 @@ export function useCockpitSSE(
 
   useEffect(() => {
     let es: EventSource | null = null
-    let retryDelay = 1000     // start at 1s
+    let retryDelay = 1000
     let aborted = false
     let heartbeatTimeout: ReturnType<typeof setTimeout> | null = null
+    let reconnectTimeout: ReturnType<typeof setTimeout> | null = null
     let attemptCount = 0
     let lastAttemptAt = 0
     let hasConnectedOnce = false
 
-    function resetHeartbeat() {
-      if (heartbeatTimeout) clearTimeout(heartbeatTimeout)
-      heartbeatTimeout = setTimeout(() => {
-        // No event in 60s — assume dead, reconnect
-        if (!aborted) { es?.close(); connect() }
-      }, 60_000)
+    function clearHeartbeat() {
+      if (heartbeatTimeout !== null) clearTimeout(heartbeatTimeout)
+      heartbeatTimeout = null
     }
 
-    /** Shared handler — called from both named addEventListener callbacks and
-     *  the onmessage fallback so that servers that omit event: lines still work.
-     *  Resets backoff counters on ANY successful message, not just 'hello'. */
-    function handleEvent(type: string, payload: unknown) {
-      // Reset backoff on any successful message
-      attemptCount = 0
-      retryDelay = 1000
-      resetHeartbeat()
-      if (type === 'hello') {
-        // M-3: On reconnect (not first connect), call onReconnect so the consumer
-        // can fetch current DB state to reconcile any events missed during the gap.
-        if (hasConnectedOnce) {
-          try { onReconnectRef.current?.() } catch { /* ignore */ }
-        }
-        hasConnectedOnce = true
-        return  // hello is connection bookkeeping, not a CockpitEvent
-      }
-      try {
-        onEventRef.current(payload as CockpitEvent)
-      } catch { /* ignore */ }
+    function scheduleReconnect(source: EventSource) {
+      // A closed source can still dispatch queued callbacks. It does not own
+      // a replacement source or its timers.
+      if (aborted || es !== source) return
+      es = null
+      clearHeartbeat()
+      source.close()
+      if (reconnectTimeout !== null) return
+      reconnectTimeout = setTimeout(() => {
+        reconnectTimeout = null
+        connect()
+      }, retryDelay)
+      retryDelay = Math.min(retryDelay * 2, 30_000)
+    }
+
+    function resetHeartbeat(source: EventSource) {
+      clearHeartbeat()
+      heartbeatTimeout = setTimeout(() => scheduleReconnect(source), 60_000)
     }
 
     function connect() {
-      if (aborted) return
-
+      if (aborted || es !== null || reconnectTimeout !== null) return
       if (attemptCount >= MAX_RECONNECT_ATTEMPTS) {
         console.warn('[useCockpitSSE] max reconnect attempts reached; giving up')
         return
       }
-
       const sinceLastAttempt = Date.now() - lastAttemptAt
       if (sinceLastAttempt < MIN_RECONNECT_INTERVAL_MS) {
-        setTimeout(connect, MIN_RECONNECT_INTERVAL_MS - sinceLastAttempt)
+        reconnectTimeout = setTimeout(() => {
+          reconnectTimeout = null
+          connect()
+        }, MIN_RECONNECT_INTERVAL_MS - sinceLastAttempt)
         return
       }
-
       attemptCount += 1
       lastAttemptAt = Date.now()
+      const source = new EventSource(cockpitStreamUrl(chartId), { withCredentials: true })
+      es = source
+      let greeted = false
 
-      es = new EventSource(`/api/cockpit/sse?chart_id=${encodeURIComponent(chartId)}`, { withCredentials: true })
+      function handleEvent(type: string, payload: unknown) {
+        if (aborted || es !== source) return
+        attemptCount = 0
+        retryDelay = 1000
+        resetHeartbeat(source)
+        // Named heartbeats reach EventSource listeners; SSE comments do not.
+        if (type === 'heartbeat') return
+        if (type === 'hello') {
+          if (greeted) return
+          greeted = true
+          if (hasConnectedOnce) {
+            try { onReconnectRef.current?.() } catch { /* consumer owns reconciliation */ }
+          }
+          hasConnectedOnce = true
+          return
+        }
+        try { onEventRef.current(payload as CockpitEvent) } catch { /* consumer owns handling */ }
+      }
 
-      // Named-event listeners (primary path — server sends event: <type> lines)
-      es.addEventListener('hello', () => {
-        handleEvent('hello', null)
-      })
-
-      es.addEventListener('asset.state_change', (e) => {
-        try { handleEvent('asset.state_change', JSON.parse((e as MessageEvent).data)) } catch { /* ignore */ }
-      })
-      es.addEventListener('asset.progress', (e) => {
-        try { handleEvent('asset.progress', JSON.parse((e as MessageEvent).data)) } catch { /* ignore */ }
-      })
-      es.addEventListener('edge.first_signal', (e) => {
-        try { handleEvent('edge.first_signal', JSON.parse((e as MessageEvent).data)) } catch { /* ignore */ }
-      })
-      es.addEventListener('asset.substep', (e) => {
-        try { handleEvent('asset.substep', JSON.parse((e as MessageEvent).data)) } catch { /* ignore */ }
-      })
-      es.addEventListener('run.state_change', (e) => {
-        try { handleEvent('run.state_change', JSON.parse((e as MessageEvent).data)) } catch { /* ignore */ }
-      })
-
-      // Fallback: onmessage fires for unnamed frames (no event: line).
-      // Routes by the payload's type field so servers that omit event: still work.
-      es.onmessage = (e) => {
+      source.addEventListener('hello', () => handleEvent('hello', null))
+      source.addEventListener('heartbeat', () => handleEvent('heartbeat', null))
+      for (const type of ['asset.state_change', 'asset.progress', 'edge.first_signal', 'asset.substep', 'run.state_change']) {
+        source.addEventListener(type, (e) => {
+          try { handleEvent(type, JSON.parse((e as MessageEvent).data)) } catch { /* malformed frame */ }
+        })
+      }
+      source.onmessage = (e) => {
         try {
           const payload = JSON.parse(e.data) as { type?: string }
           if (payload?.type) handleEvent(payload.type, payload)
-        } catch { /* ignore malformed */ }
+        } catch { /* malformed frame */ }
       }
-
-      es.onerror = () => {
-        es?.close()
-        if (!aborted) {
-          setTimeout(() => { connect() }, retryDelay)
-          retryDelay = Math.min(retryDelay * 2, 30_000)  // backoff, cap 30s
-        }
-      }
-
-      resetHeartbeat()
+      // Close native EventSource retries; the one owned timer controls reconnect.
+      source.onerror = () => scheduleReconnect(source)
+      resetHeartbeat(source)
     }
 
     connect()
-
     return () => {
       aborted = true
-      if (heartbeatTimeout) clearTimeout(heartbeatTimeout)
-      es?.close()
+      clearHeartbeat()
+      if (reconnectTimeout !== null) clearTimeout(reconnectTimeout)
+      reconnectTimeout = null
+      const source = es
+      es = null
+      source?.close()
     }
   }, [chartId])
 }

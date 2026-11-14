@@ -9,20 +9,18 @@
  * ── The honesty problem this file exists to NOT paper over ───────────────────────────────────
  *
  * `compileContract` emits floor items whose `live_tool` is an MCP-connector tool name. The web
- * consult path executes retrieval-REGISTRY tool names, and `LIVE_TOOL_TO_RETRIEVAL`
- * (compiled_floor_adapter.ts) maps only a SMALL subset (4 live_tools today). Every other floor
- * primitive has NO web-executable equivalent — the MCP↔web namespace gap. This wiring reports
- * that reality faithfully:
+ * consult path executes retrieval-REGISTRY tool names. `resolveLiveTool` uses the hand map
+ * and generated bridge in compiled_floor_adapter.ts; the receipt uses that SAME resolver as
+ * floor execution. Only primitives unresolved by both layers are namespace gaps:
  *   - a primitive whose retrieval tool actually returned rows  → served (source = retrieval tool)
  *   - a primitive whose retrieval tool ran but returned 0 rows → empty (route_empty)
  *   - a primitive whose retrieval tool errored                 → empty (route_error)
  *   - a primitive with a `known_gap` CR that was not served    → dark (cites its CR — emitter)
  *   - a primitive with NO web-executable tool (namespace gap)  → empty (web_namespace_gap: …)
  *
- * The last bucket is the dominant reality today: most floor items are `web_namespace_gap` empties
- * or `known_gap` darks, because only 4 of ~23 distinct MCP tool names map to web-executable
- * retrieval tools. The receipt's top-level `channel_note` surfaces that count so a reader can
- * never mistake a small `served` set for "the floor was fully honored on web".
+ * The receipt's top-level `channel_note` surfaces the actual unresolved count so a reader can
+ * never mistake a small `served` set for "the floor was fully honored on web". A resolved tool
+ * still needs an execution outcome with returned rows before its floor item is served.
  */
 
 import { compileContract, defaultRegistry } from '@/lib/vidhi/compiler'
@@ -35,7 +33,7 @@ import type { CompiledFloorItem } from '@/lib/vidhi/types'
 import type { ScopeTuple as ClassifierScopeTuple } from '@/lib/vidhi/scope_classifier'
 import {
   classifierTupleToCompilerTuple,
-  LIVE_TOOL_TO_RETRIEVAL,
+  resolveLiveTool,
 } from './compiled_floor_adapter'
 
 /** Per-retrieval-tool execution outcome the consult route observed (from its toolEventLog). */
@@ -118,7 +116,7 @@ export function buildWebCompletenessReceipt(
   }
 
   for (const item of uniqueItems) {
-    const retrievalName = LIVE_TOOL_TO_RETRIEVAL[item.live_tool]
+    const retrievalName = resolveLiveTool(item.live_tool)
     if (!retrievalName) {
       // No web-executable equivalent — the namespace gap. Report an honest empty observation.
       // (The emitter promotes this to `dark` when the primitive ALSO has a known_gap CR — a

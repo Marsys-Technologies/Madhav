@@ -36,7 +36,7 @@ const ATTACKER_UID = 'attacker-uid'
 const ADMIN_UID = 'admin-uid'
 
 function makeReq(chartId: string): NextRequest {
-  return new NextRequest(`http://localhost/api/cockpit/sse?chart_id=${chartId}`)
+  return new NextRequest(`http://localhost/api/cockpit/sse?chart_id=${chartId}&session_id=11111111-1111-4111-8111-111111111111&session_started_at=${Date.now()}`)
 }
 
 /** SQL-shape-dispatching mock, mirroring the runs/route.authz.test.ts precedent. */

@@ -1,4 +1,7 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+const db = vi.hoisted(() => ({ query: vi.fn() }))
+vi.mock('@/lib/db/client', () => ({ query: db.query }))
 // Bootstrap the full L0–L5 registry (side-effect import) so getToolByName() reflects
 // the real, fully-populated registry — the same import consult/route.ts's path makes.
 import '@/lib/retrieval/registry/catalog'
@@ -16,6 +19,10 @@ import type { ScopeTuple as ClassifierScopeTuple } from '@/lib/vidhi/scope_class
 import { QueryClassEnum, type PipelinePlan, type QueryClass } from '@/lib/pipeline/types'
 import { getToolByName } from '@/lib/retrieval/registry/tool_name_bridge'
 import { VIDHI_PRIMITIVES } from '@/lib/vidhi/registry_data'
+import { getKpCuspsCapability } from '@/lib/retrieval/registry/layers/L1_ganita/get_kp_cusps'
+
+beforeEach(() => { db.query.mockReset().mockResolvedValue({ rows: [], rowCount: 0 }) })
+afterEach(() => { vi.restoreAllMocks() })
 
 const CHART = '482012f1-710e-4a25-994a-93821f5871aa'
 
@@ -409,5 +416,56 @@ describe('end-to-end floor adoption parity (route sequence)', () => {
     expect(authorized).toContain('marsys://tool/L2/query_signals')
     expect(authorized).toContain('vector_search')
     expect(authorized).toContain('query_dasha_periods')
+  })
+})
+
+
+describe('KP floor alias dispatches the existing capability without changing its contracts', () => {
+  const chartId = '00000000-0000-4000-8000-000000000029'
+  const buildId = '00000000-0000-4000-8000-000000000030'
+  const uri = 'marsys://tool/L1/get_kp_cusps'
+  function tool() {
+    const resolved = resolveLiveTool('ganita_kp_cusps_get')
+    expect(resolved).toBe(uri)
+    return getToolByName(resolved!)!
+  }
+
+  it('adopts the KP floor item with chart context injected only by the existing bridge', () => {
+    const compiled = compileFloorForPlan(tuple({ depth: 'standard' }), chartId)
+    expect(compiled.mappedPrimitives).toContain('kp_cusp_sublord_read')
+    expect(compiled.unmappedPrimitives).not.toContain('kp_cusp_sublord_read')
+    expect(compiled.toolCalls.find(t => t.tool_name === uri)?.params).toEqual({})
+  })
+
+  it.each([undefined, 'LAHIRI', 'all', 'krishnamurti'])('call-through handler retains one KP frame for explicit input %s', async ayanamsha => {
+    const spy = vi.spyOn(getKpCuspsCapability, 'handler')
+    const params = { build_id: [buildId], include_graha_kp_lords: true, ...(ayanamsha === undefined ? {} : { ayanamsha_id: ayanamsha }) }
+    await tool().retrieve({ chart_id: chartId }, params)
+    expect(spy).toHaveBeenCalledTimes(1)
+    const received = spy.mock.calls[0]![0] as Record<string, unknown>
+    expect(received).toMatchObject({ chart_id: chartId, build_id: [buildId], include_graha_kp_lords: true })
+    expect(received).not.toHaveProperty('ayanamsha_injected')
+    if (ayanamsha === undefined) expect(received).not.toHaveProperty('ayanamsha_id')
+    if (ayanamsha === 'LAHIRI') expect(received.ayanamsha_id).toBe('lahiri_chitrapaksha')
+    if (ayanamsha === 'all') {
+      expect(received).not.toHaveProperty('ayanamsha_id')
+      expect(received.ayanamsha_scope).toBe('all')
+    }
+    expect(db.query).toHaveBeenCalledTimes(1)
+    expect(db.query.mock.calls[0]![0]).toContain('AND build_id = ANY($4::uuid[])')
+    expect(db.query.mock.calls[0]![1]).toEqual([chartId, 'krishnamurti', expect.arrayContaining(['graha_kp_lords']), [buildId]])
+    const result = await spy.mock.results[0]!.value
+    expect(result).toMatchObject({ content: { kp_frame_ayanamsha_id: 'krishnamurti', kp_frame_label: 'KP frame (Krishnamurti ayanamsha)' } })
+  })
+
+  it('preserves the explicit-empty build fence and never queries facts', async () => {
+    await expect(tool().retrieve({ chart_id: chartId }, { build_id: [] })).rejects.toThrow(/error result/)
+    expect(db.query).not.toHaveBeenCalled()
+  })
+
+  it('preserves missing-chart and invalid-ayanamsha guards without a fact query', async () => {
+    await expect(tool().retrieve({}, {})).rejects.toThrow(/chart_id is required/)
+    await expect(tool().retrieve({ chart_id: chartId }, { ayanamsha_id: 'fixture_unknown' })).rejects.toThrow()
+    expect(db.query).not.toHaveBeenCalled()
   })
 })

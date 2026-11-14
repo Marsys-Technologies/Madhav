@@ -25,7 +25,7 @@ class MockEventSource {
   addEventListener(type: string, listener: (event: MessageEvent) => void) {
     this.listeners[type] = [...(this.listeners[type] ?? []), listener]
   }
-  close() {}
+  close = vi.fn()
   emit(type: string) { this.listeners[type]?.forEach((listener) => listener(new MessageEvent(type))) }
 }
 vi.stubGlobal('EventSource', MockEventSource)
@@ -575,6 +575,33 @@ describe('NirmanaElevationTracker', () => {
 
     await act(async () => { await vi.advanceTimersByTimeAsync(2_000) })
     expect(fetchMock.mock.calls.length).toBe(callsAfterMount + 1)
+  })
+
+  it('uses fresh bounded sessions on reconnect, ignores stale callbacks and cancels teardown retries', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(snapshotV2()))
+    vi.stubGlobal('fetch', fetchMock)
+    const { unmount } = render(<NirmanaElevationTracker />)
+    await screen.findByText('Praśna Rules')
+    const old = MockEventSource.instances[0]
+    const oldUrl = new URL(old.url, 'https://example.test')
+    expect(oldUrl.searchParams.get('session_id')).toMatch(/^[a-f0-9-]{36}$/)
+    expect(Number(oldUrl.searchParams.get('session_started_at'))).toBeGreaterThan(0)
+    vi.useFakeTimers()
+    act(() => { old.onerror?.(); old.onerror?.() })
+    await act(async () => { await vi.advanceTimersByTimeAsync(1000) })
+    expect(MockEventSource.instances).toHaveLength(2)
+    const current = MockEventSource.instances[1]
+    expect(Object.keys(current.listeners)).toEqual(expect.arrayContaining(['run.state_change', 'asset.progress', 'asset.state_change', 'nirmana.asset_frozen', 'nirmana.definition_superseded', 'nirmana.evidence_accepted']))
+    expect(current.url).not.toBe(old.url)
+    const calls = fetchMock.mock.calls.length
+    act(() => { old.onerror?.(); old.emit('nirmana.evidence_accepted'); current.emit('heartbeat') })
+    await act(async () => { await vi.advanceTimersByTimeAsync(2000) })
+    expect(current.close).not.toHaveBeenCalled()
+    expect(fetchMock).toHaveBeenCalledTimes(calls)
+    act(() => current.onerror?.())
+    unmount()
+    await act(async () => { await vi.advanceTimersByTimeAsync(30_000) })
+    expect(MockEventSource.instances).toHaveLength(2)
   })
 
   it('debounces a nirmana.evidence_accepted SSE event into exactly one additional snapshot refetch', async () => {
