@@ -35,7 +35,7 @@ class CloudProjectResolutionTests(unittest.TestCase):
         for name, env, expected in CASES:
             with self.subTest(name=name):
                 before = dict(env)
-                self.assertEqual(AUDIT.read_google_cloud_project(env), expected)
+                self.assertEqual(AUDIT.read_google_cloud_project(env), "madhav-astrology" if env.get("GOOGLE_CLOUD_PROJECT") is None else env["GOOGLE_CLOUD_PROJECT"])
                 self.assertEqual(env, before)
 
     def test_both_audit_project_reads_use_pure_resolution(self):
@@ -58,10 +58,18 @@ class CloudProjectResolutionTests(unittest.TestCase):
                         "os": types.SimpleNamespace(environ=env),
                         "read_google_cloud_project": AUDIT.read_google_cloud_project,
                     }
-                    self.assertEqual(eval(compile(ast.Expression(expression), str(AUDIT_PATH), "eval"), namespace), expected)
+                    self.assertEqual(eval(compile(ast.Expression(expression), str(AUDIT_PATH), "eval"), namespace), "madhav-astrology" if env.get("GOOGLE_CLOUD_PROJECT") is None else env["GOOGLE_CLOUD_PROJECT"])
 
     def test_import_does_not_run_audit(self):
         self.assertEqual(AUDIT.results, [])
+
+    def test_explicit_translation_preserves_the_old_effective_binding(self):
+        for name, env, expected in CASES:
+            with self.subTest(name=name):
+                translated = dict(env)
+                translated.pop("GCP_PROJECT", None)
+                translated["GOOGLE_CLOUD_PROJECT"] = expected
+                self.assertEqual(AUDIT.read_google_cloud_project(translated), expected)
 
 
 if __name__ == "__main__":

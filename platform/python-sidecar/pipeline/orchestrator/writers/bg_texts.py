@@ -24,6 +24,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from pipeline.cloud_project import read_google_cloud_project
+
 from pipeline.orchestrator.writers import register, WriterBase, ContextSpec, WriterResult
 from brahmagyan.l0_texts import TEXTS, TEXTS as _CANONICAL_TEXTS  # alias: the legacy-row convergence reads the committed seed, whatever a test patches into TEXTS
 
@@ -58,7 +60,7 @@ ACCEPTED_CHUNK_COUNTS_BY_TEXT: dict[str, int] = {
     "yavana_jataka": 1298,
 }
 
-GCP_PROJECT = os.environ.get("GCP_PROJECT", "madhav-astrology")
+GCP_PROJECT = read_google_cloud_project(os.environ, 'madhav-astrology')
 VERTEX_LOCATION = os.environ.get("VERTEX_AI_LOCATION", "asia-south1")
 
 # sarvartha_chintamani: image-only PDF → use the reviewed GCS snapshot of the

@@ -36,6 +36,8 @@ import socket
 import sys
 import uuid
 
+from pipeline.cloud_project import read_google_cloud_project
+
 logger = logging.getLogger(__name__)
 
 
@@ -210,7 +212,7 @@ def _pubsub_publish(event: dict) -> None:
     try:
         from google.cloud import pubsub_v1
 
-        project = os.environ.get("GCP_PROJECT", "madhav-astrology")
+        project = read_google_cloud_project(os.environ, 'madhav-astrology')
         topic_id = os.environ.get("PUBSUB_TOPIC", "cockpit-events")
 
         publisher = pubsub_v1.PublisherClient()
