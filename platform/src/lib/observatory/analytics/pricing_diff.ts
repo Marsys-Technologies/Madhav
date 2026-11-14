@@ -14,6 +14,8 @@
 // Discipline:
 //   - Both checks run in SQL with bound parameters; one query per check, both
 //     grouped by provider.
+//   - collectPricingHealth only reads and classifies; checkPricingHealth is the
+//     explicit command that collects then alerts each unhealthy provider.
 //   - Alert dispatch is direct (no budget rule framework round-trip): if
 //     OBSERVATORY_ALERT_WEBHOOK_URL is set, POST with a 5s timeout; otherwise
 //     console.warn. Webhook failures are swallowed (never throw) — the
@@ -130,7 +132,7 @@ async function dispatchPricingAlert(
   }
 }
 
-export async function checkPricingHealth(
+export async function collectPricingHealth(
   queryFn: QueryFn = query as QueryFn,
 ): Promise<PricingDiffResult> {
   const checkedAt = new Date()
@@ -192,20 +194,8 @@ export async function checkPricingHealth(
       has_systematic_variance: hasVariance,
       status,
       alert_fired: false,
+      alert_webhook_result: 'not_attempted',
     }
-
-    let webhookResult: PricingWebhookResult = 'not_attempted'
-    if (status !== 'ok') {
-      webhookResult = 'unknown'
-      try {
-        webhookResult = await dispatchPricingAlert(provider, status, health)
-      } catch {
-        // Keep health reporting available if alerting itself fails.
-      }
-      health.alert_fired = true
-    }
-
-    health.alert_webhook_result = webhookResult
     providers.push(health)
   }
 
@@ -223,4 +213,25 @@ export async function checkPricingHealth(
     variance_alert_count: varianceAlertCount,
     all_healthy: providers.every((p) => p.status === 'ok'),
   }
+}
+
+export async function checkPricingHealth(
+  queryFn: QueryFn = query as QueryFn,
+): Promise<PricingDiffResult> {
+  const result = await collectPricingHealth(queryFn)
+  for (const health of result.providers) {
+    if (health.status === 'ok') continue
+    // Preserve the legacy pre-dispatch detail: alert_fired=false and no
+    // transport metadata in the outbound payload.
+    const { alert_webhook_result: _webhookResult, ...detail } = health
+    let webhookResult: PricingWebhookResult = 'unknown'
+    try {
+      webhookResult = await dispatchPricingAlert(health.provider, health.status, detail)
+    } catch {
+      // Keep health reporting available if alerting itself fails.
+    }
+    health.alert_fired = true
+    health.alert_webhook_result = webhookResult
+  }
+  return result
 }

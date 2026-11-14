@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactElement } from 'react'
+import { render, screen, within } from '@testing-library/react'
 
 const { query, resolveAccess, redirect } = vi.hoisted(() => ({
   query: vi.fn(), resolveAccess: vi.fn(),
@@ -8,14 +9,15 @@ const { query, resolveAccess, redirect } = vi.hoisted(() => ({
 vi.mock('@/lib/db/client', () => ({ query }))
 vi.mock('@/lib/auth/chart-page-guard', () => ({ resolveChartPageAccess: resolveAccess }))
 vi.mock('next/navigation', () => ({ redirect }))
-vi.mock('@/components/cockpit/CockpitShell', () => ({ CockpitShell: () => null }))
+vi.mock('@/components/cockpit/LiveBuildGraph', () => ({ LiveBuildGraph: () => null }))
+vi.mock('@/components/cockpit/AssetTable', () => ({ AssetTable: () => null }))
 import Page from '../page'
 
 const chartId = 'synthetic-chart'
 const chart = { id: chartId, name: 'Synthetic', birth_date: '2000-01-01', birth_time: '00:00', birth_place: 'Synthetic', created_at: '2026-01-01T00:00:00Z' }
-const run = { build_id: 'synthetic-run', status: 'paused', created_at: '2026-01-01T01:00:00Z', ayanamshas: [] }
+const run = { build_id: 'synthetic-run', status: 'paused', created_at: '2026-01-01T01:00:00Z' }
 const chartSql = 'SELECT id, name, birth_date, birth_time::text AS birth_time, birth_place, created_at FROM charts WHERE id=$1'
-const runSql = `SELECT id AS build_id, state AS status, created_at, '{}'::text[] AS ayanamshas
+const runSql = `SELECT id AS build_id, state AS status, created_at
        FROM build_runs WHERE chart_id=$1 ORDER BY created_at DESC LIMIT 1`
 const input = () => ({ params: Promise.resolve({ id: chartId }) })
 const propsOf = (element: ReactElement) => element.props as { chartId: string; chartName: string; birthDate: string; birthTime: string; birthPlace: string; latestBuild: unknown; latestBuildUnavailable?: boolean }
@@ -79,5 +81,23 @@ describe('saved cockpit latest run read boundary', () => {
     resolveAccess.mockRejectedValue(new Error('GUARD_FAILURE'))
     await expect(Page(input())).rejects.toThrow('GUARD_FAILURE')
     expect(query).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['missing', undefined],
+    ['null', null],
+    ['unqualified legacy array', ['synthetic-frame']],
+    ['malformed legacy value', { count: 70 }],
+  ])('renders the ayanamsha count as unavailable for %s metadata', async (_label, ayanamshas) => {
+    query.mockImplementation((sql: string) => Promise.resolve({ rows: sql === chartSql ? [chart] : [{ ...run, ayanamshas }] }))
+    render(await Page(input()))
+
+    const counter = screen.getByLabelText('Ayanamsha count')
+    expect(within(counter).getByText('Ayanamshas')).toBeTruthy()
+    expect(within(counter).getByText('Unavailable')).toBeTruthy()
+    expect(counter.textContent).not.toMatch(/\b(?:0|5|70)\b/)
+    expect(screen.getAllByText('PAUSED')).toHaveLength(2)
+    expect(screen.getByRole('button', { name: 'Stop' })).toBeTruthy()
+    expect(query.mock.calls).toEqual([[chartSql, [chartId]], [runSql, [chartId]]])
   })
 })
