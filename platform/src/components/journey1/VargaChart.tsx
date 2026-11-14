@@ -6,14 +6,20 @@ const VARGAS = ["D1 · Rāśi", "D9 · Navāṃśa", "D10 · Daśāṃśa"];
 export function VargaChart({
   charts,
   ayanamsha,
+  availability = [true, true, true],
 }: {
   charts: [ForensicChart, ForensicChart, ForensicChart];
   ayanamsha: string;
+  availability?: readonly [boolean, boolean, boolean];
 }) {
   const [selected, setSelected] = useState(0);
   return (
     <div className="j1-chart-box" data-testid="varga-chart">
-      <NorthIndianChart chart={charts[selected]} name={VARGAS[selected]} />
+      {availability[selected] ? (
+        <NorthIndianChart chart={charts[selected]} name={VARGAS[selected]} />
+      ) : (
+        <div className="j1-note" role="status">{VARGAS[selected]} is temporarily unavailable.</div>
+      )}
       <div className="j1-chart-slider">
         <label htmlFor="varga-slider" className="j1-note">
           {VARGAS[selected]} <span style={{ float: "right" }}>{ayanamsha}</span>

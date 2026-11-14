@@ -25,6 +25,23 @@ interface Props {
 
 type Action = 'build' | 'rebuild' | 'stop'
 
+function actionError(action: Action): string {
+  return action === 'stop'
+    ? 'Unable to stop this build. Please try again.'
+    : 'Unable to start this build. Please try again.'
+}
+
+function actionResult(body: unknown, ok: boolean, action: Action): { run_id?: string; error?: string } {
+  if (!ok || !body || typeof body !== 'object' || Array.isArray(body)) {
+    return { error: actionError(action) }
+  }
+  const data = (body as { data?: { run_id?: unknown } }).data
+  const runId = data?.run_id
+  if (typeof runId === 'string' && runId.trim()) return { run_id: runId }
+  // A successful stop may acknowledge the request without echoing the run ID.
+  return action === 'stop' ? {} : { error: actionError(action) }
+}
+
 async function postBuildAction(
   action: Action,
   chartId: string,
@@ -33,7 +50,7 @@ async function postBuildAction(
   if (action === 'stop') {
     const res = await fetch(`/api/cockpit/runs/${buildId ?? ''}/stop`, { method: 'POST' })
     const body = await res.json()
-    return res.ok ? { run_id: body.data?.run_id } : { error: body.error ?? 'stop failed' }
+    return actionResult(body, res.ok, action)
   }
   const res = await fetch('/api/cockpit/runs', {
     method: 'POST',
@@ -41,17 +58,22 @@ async function postBuildAction(
     body: JSON.stringify({ chart_id: chartId, scope: 'global', action }),
   })
   const body = await res.json()
-  return res.ok ? { run_id: body.data?.run_id } : { error: body.error ?? 'build dispatch failed' }
+  return actionResult(body, res.ok, action)
 }
 
 export function BuildControlsBar({ chartId, buildId, buildStatus, onBuildStart }: Props) {
   const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const execute = useCallback(async (action: Action) => {
     setBusy(true)
+    setError(null)
     try {
       const result = await postBuildAction(action, chartId, buildId)
-      if (result.run_id) onBuildStart(result.run_id)
+      if (result.error) setError(result.error)
+      else if (result.run_id) onBuildStart(result.run_id)
+    } catch {
+      setError(actionError(action))
     } finally {
       setBusy(false)
     }
@@ -63,7 +85,8 @@ export function BuildControlsBar({ chartId, buildId, buildStatus, onBuildStart }
   const hasNoBuild = !buildStatus
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
+      {error && <p role="alert" className="w-full text-sm text-[var(--danger)]">{error}</p>}
       {isRunning ? (
         <>
           {/* Running state: stop button + breathing pill already shown in top bar */}

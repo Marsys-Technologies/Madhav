@@ -6,7 +6,7 @@
  * snapshot), permission-aware capability deck, reviewed service summaries without recent conversations.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render } from '@testing-library/react'
+import { cleanup, fireEvent, render } from '@testing-library/react'
 
 vi.mock('server-only', () => ({}))
 
@@ -301,5 +301,68 @@ describe('clients/[id] workspace — composition', () => {
     const { doc } = await renderPage()
     expect(doc.body.textContent).toMatch(/Venus/)
     expect(doc.body.textContent).toMatch(/Gajakesari Yoga/)
+  })
+})
+
+
+describe('workspace independent lookup degradation', () => {
+  const completed = () => ({
+    ...EMPTY_SUMMARY,
+    d1: { ...EMPTY_SUMMARY.d1, isEmpty: false, lagnaSign: 'Aries', lagnaDegreeDms: '1°' },
+    currentDasha: { md: 'Sun', ad: 'Moon', adEnd: '2026-12-01' },
+    confirmedYogas: [{ id: 'synthetic-yoga', name: 'Synthetic completed yoga' }],
+    flags: [],
+  })
+  it('readiness failure preserves independently completed chart, periods and yoga data', async () => {
+    setAccess('view')
+    mockReadinessMap.mockRejectedValue(new Error('SYNTHETIC_PRIVATE_LOOKUP_ERROR'))
+    mockWorkspaceSummary.mockResolvedValue(completed())
+    const { html, doc } = await renderPage()
+    expect(html).toContain('Chart preparation status is temporarily unavailable.')
+    expect(html).toContain('Lagna · Aries 1°')
+    expect(html).toContain('Sun mahādaśā · Moon antardaśā')
+    expect(html).toContain('Synthetic completed yoga')
+    expect(html).not.toContain('SYNTHETIC_PRIVATE_LOOKUP_ERROR')
+    expect(html).not.toContain('No computed data yet')
+    expect(byTestId(doc, 'build-room-card')).toBeNull()
+  })
+  it('position lookup failure is unavailable rather than not computed', async () => {
+    setAccess('all')
+    mockWorkspaceSummary.mockResolvedValue({ ...EMPTY_SUMMARY, flags: ['positions_unresolved'] })
+    const { html, doc } = await renderPage()
+    expect(html).toContain('Lagna temporarily unavailable')
+    expect(byTestId(doc, 'varga-chart')?.textContent).toContain('D1 · Rāśi is temporarily unavailable.')
+    expect(byTestId(doc, 'varga-chart')?.querySelector('svg')).toBeNull()
+    expect(html).not.toContain('Lagna not yet computed')
+  })
+  it('dasha lookup failure is unavailable while successful chart data stays visible', async () => {
+    setAccess('all')
+    mockWorkspaceSummary.mockResolvedValue({ ...completed(), currentDasha: null, flags: ['dasha_unresolved'] })
+    const { html } = await renderPage()
+    expect(html).toContain('Daśā temporarily unavailable')
+    expect(html).toContain('Lagna · Aries 1°')
+    expect(html).toContain('Synthetic completed yoga')
+  })
+  it('failed divisional lookup does not hide completed D1 and is explicit when D9 is selected', async () => {
+    setAccess('all')
+    mockWorkspaceSummary.mockResolvedValue(completed())
+    mockQuery.mockImplementation(async (sql: string) => {
+      if (sql.includes('FROM charts')) return { rows: [CHART_ROW] }
+      if (sql.includes('FROM chart_divisionals')) throw new Error('SYNTHETIC_PRIVATE_DIVISIONAL_ERROR')
+      return { rows: [] }
+    })
+    const { html, doc } = await renderPage()
+    expect(html).toContain('Lagna · Aries 1°')
+    fireEvent.change(doc.querySelector('#varga-slider')!, { target: { value: '1' } })
+    expect(byTestId(doc, 'varga-chart')?.textContent).toContain('D9 · Navāṃśa is temporarily unavailable.')
+    expect(doc.body.textContent).not.toContain('SYNTHETIC_PRIVATE_DIVISIONAL_ERROR')
+  })
+  it('successful empty lookups retain not-computed and none-confirmed wording', async () => {
+    setAccess('all')
+    const { html, doc } = await renderPage()
+    expect(html).toContain('Lagna not yet computed')
+    expect(byTestId(doc, 'varga-chart')?.textContent).toContain('Not yet computed')
+    expect(html).toContain('None confirmed yet')
+    expect(html).not.toContain('temporarily unavailable')
   })
 })

@@ -30,6 +30,7 @@ export default async function CockpitPage({
 
   // Latest build — `builds` was retired; graceful null if table absent
   let latestBuild: { build_id: string; status: string; created_at: string; ayanamshas: string[] } | null = null
+  let latestBuildUnavailable = false
   try {
     const { rows: buildRows } = await query<{
       build_id: string
@@ -43,7 +44,7 @@ export default async function CockpitPage({
     )
     latestBuild = buildRows[0] ?? null
   } catch {
-    // build_runs unavailable — CockpitShell degrades gracefully with latestBuild=null
+    latestBuildUnavailable = true
   }
 
   return (
@@ -54,6 +55,7 @@ export default async function CockpitPage({
       birthTime={chart.birth_time}
       birthPlace={chart.birth_place}
       latestBuild={latestBuild}
+      latestBuildUnavailable={latestBuildUnavailable}
     />
   )
 }

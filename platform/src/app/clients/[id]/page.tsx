@@ -35,11 +35,11 @@ export default async function ClientPage({
   if (!chart) redirect("/dashboard");
   const frame = journey1Frame(chart.ayanamsa);
   const [readinessMap, summary, extra] = await Promise.all([
-    getChartReadinessMap([id]),
+    getChartReadinessMap([id]).catch(() => null),
     getChartWorkspaceSummary(id, frame),
     getJourney1ChartData(id, frame),
   ]);
-  const readiness = readinessMap.get(id) ?? emptyChartReadiness();
+  const readiness = readinessMap === null ? null : readinessMap.get(id) ?? emptyChartReadiness();
   const isSuperAdmin = access.role === "super_admin";
   return (
     <div className={`j1 j1-container ${styles.folio}`} data-permission={access.permission}>
@@ -49,6 +49,11 @@ export default async function ClientPage({
       <section className="j1-chart-hero" aria-label="Chart identity">
         <VargaChart
           charts={[summary.d1, extra.d9, extra.d10]}
+          availability={[
+            !summary.flags.includes("positions_unresolved"),
+            !extra.flags.includes("divisionals_unavailable"),
+            !extra.flags.includes("divisionals_unavailable"),
+          ]}
           ayanamsha={journey1FrameLabel(frame)}
         />
         <div className="j1-chart-info">
@@ -61,7 +66,9 @@ export default async function ClientPage({
           </p>
           <p>
             {summary.d1.isEmpty
-              ? "Lagna not yet computed"
+              ? summary.flags.includes("positions_unresolved")
+                ? "Lagna temporarily unavailable"
+                : "Lagna not yet computed"
               : `Lagna · ${summary.d1.lagnaSign} ${summary.d1.lagnaDegreeDms}`}
           </p>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
@@ -83,11 +90,15 @@ export default async function ClientPage({
         </div>
       </section>
       <ChartNav chartId={id} canBuild={access.canBuild} />
-      <ChartReadinessBand
-        readiness={readiness}
-        chartId={id}
-        canBuild={access.canBuild}
-      />
+      {readiness ? (
+        <ChartReadinessBand
+          readiness={readiness}
+          chartId={id}
+          canBuild={access.canBuild}
+        />
+      ) : (
+        <p className="j1-note" role="status">Chart preparation status is temporarily unavailable.</p>
+      )}
       <div className="j1-summary-grid" style={{ marginTop: 24 }}>
         <section className="j1-panel">
           <PageTitle name="review" as="h2" compact />
@@ -111,7 +122,9 @@ export default async function ClientPage({
               <dd>
                 {summary.currentDasha
                   ? `${summary.currentDasha.md} mahādaśā · ${summary.currentDasha.ad} antardaśā`
-                  : "Not yet computed"}
+                  : summary.flags.includes("dasha_unresolved")
+                    ? "Daśā temporarily unavailable"
+                    : "Not yet computed"}
               </dd>
               {summary.currentDasha && (
                 <dd className="j1-note">
@@ -141,11 +154,13 @@ export default async function ClientPage({
         </section>
         <section className="j1-panel">
           <PageTitle name="preparation" as="h2" compact />
-          <p>{readiness.label}</p>
+          <p>{readiness?.label ?? "Chart preparation status is temporarily unavailable."}</p>
           <p className="j1-note">
-            {readiness.lastActivity
-              ? `Last activity ${formatDate(readiness.lastActivity)}`
-              : "No computed data yet"}
+            {readiness === null
+              ? "Try again later."
+              : readiness.lastActivity
+                ? `Last activity ${formatDate(readiness.lastActivity)}`
+                : "No computed data yet"}
           </p>
           {access.canBuild && (
             <Link href={`/clients/${id}/nirmana`} data-testid="build-room-card">

@@ -107,7 +107,7 @@ describe('POST /api/admin/access-requests/[id]/approve', () => {
     expect(response.status).toBe(200)
     expect(mocks.createUser).toHaveBeenCalledWith({ email: 'ann@x.com', emailVerified: false, displayName: 'Ann Lee' })
     expect(sqlCalls('INSERT INTO profiles')[0][1]).toEqual(['new-uid', 'Ann Lee', null, 'ann@x.com', 'admin-1'])
-    expect(await response.json()).toEqual({ ok: true, user_id: 'new-uid', reset_link: 'https://reset.example/link' })
+    expect(await response.json()).toEqual({ ok: true, user_id: 'new-uid', reset_link: 'https://reset.example/link', setup_link_status: 'available' })
   })
 
   it('an ACTIVE profile for the email -> 409, nothing changed', async () => {
@@ -134,4 +134,51 @@ describe('POST /api/admin/access-requests/[id]/approve', () => {
     expect(sqlCalls('UPDATE')).toHaveLength(0)
     expect(sqlCalls('INSERT')).toHaveLength(0)
   })
+})
+
+
+describe('approval account setup availability metadata', () => {
+  it('reports not_required for an already configured password provider, without generating a link', async () => {
+    mocks.getUserByEmail.mockResolvedValue({ uid: 'synthetic-existing', providerData: [{ providerId: 'password' }] })
+    profileRows = [{ id: 'synthetic-existing', status: 'pending' }]
+    const response = await call()
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({ ok: true, reset_link: null, setup_link_status: 'not_required' })
+    expect(mocks.resetLink).not.toHaveBeenCalled()
+    expect(mocks.createUser).not.toHaveBeenCalled()
+    expect(mocks.audit).toHaveBeenCalledTimes(1)
+  })
+  it('reports available while preserving the exact generated link', async () => {
+    mocks.getUserByEmail.mockResolvedValue({ uid: 'synthetic-existing', providerData: [] })
+    const response = await call()
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({ ok: true, reset_link: 'https://reset.example/link', setup_link_status: 'available' })
+    expect(mocks.resetLink).toHaveBeenCalledTimes(1)
+    expect(mocks.createUser).not.toHaveBeenCalled()
+    expect(mocks.audit).toHaveBeenCalledTimes(1)
+  })
+  it('reports unavailable after link-generation failure, without undoing approval or exposing the error', async () => {
+    mocks.getUserByEmail.mockResolvedValue({ uid: 'synthetic-existing', providerData: [] })
+    mocks.resetLink.mockRejectedValue(new Error('SYNTHETIC_PRIVATE_LINK_ERROR'))
+    const response = await call()
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body).toMatchObject({ ok: true, reset_link: null, setup_link_status: 'unavailable' })
+    expect(JSON.stringify(body)).not.toContain('SYNTHETIC_PRIVATE_LINK_ERROR')
+    expect(sqlCalls('UPDATE access_requests')).toHaveLength(1)
+    expect(mocks.audit).toHaveBeenCalledTimes(1)
+    expect(mocks.deleteUser).not.toHaveBeenCalled()
+  })
+})
+
+
+it.each([401, 403])('refuses actor status %s before any account, profile, audit or link action', async status => {
+  const { NextResponse } = await import('next/server')
+  mocks.admin.mockResolvedValue(NextResponse.json({ error: 'Synthetic refusal' }, { status }))
+  expect((await call()).status).toBe(status)
+  expect(mocks.query).not.toHaveBeenCalled()
+  expect(mocks.getUserByEmail).not.toHaveBeenCalled()
+  expect(mocks.createUser).not.toHaveBeenCalled()
+  expect(mocks.resetLink).not.toHaveBeenCalled()
+  expect(mocks.audit).not.toHaveBeenCalled()
 })
