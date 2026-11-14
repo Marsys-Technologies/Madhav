@@ -3,7 +3,7 @@
  * (a Firebase account, usually with a PENDING profile). Before, the route called
  * createUser() unconditionally, which fails with auth/email-already-exists.
  */
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
   admin: vi.fn(),
@@ -181,4 +181,75 @@ it.each([401, 403])('refuses actor status %s before any account, profile, audit 
   expect(mocks.createUser).not.toHaveBeenCalled()
   expect(mocks.resetLink).not.toHaveBeenCalled()
   expect(mocks.audit).not.toHaveBeenCalled()
+})
+
+
+afterEach(() => vi.unstubAllEnvs())
+
+describe('approval setup continuation behind the first-party gateway', () => {
+  const proxyCall = () => POST(new Request('http://0.0.0.0:3000/api/admin/access-requests/req-1/approve', {
+    method: 'POST', body: '{}', headers: { origin: 'http://localhost:3100', 'x-forwarded-host': 'untrusted.example' },
+  }), ctx)
+
+  it('C9 internal-request/new-user case uses configured browser origin and preserves approval/audit', async () => {
+    vi.stubEnv('APP_URL', 'http://localhost:3100')
+    mocks.getUserByEmail.mockRejectedValue(notFound())
+    mocks.createUser.mockResolvedValue({ uid: 'new-uid', providerData: [] })
+    const response = await proxyCall()
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({ ok: true, user_id: 'new-uid', setup_link_status: 'available' })
+    expect(mocks.resetLink).toHaveBeenCalledWith('ann@x.com', { url: 'http://localhost:3100/setup-account' })
+    expect(sqlCalls('INSERT INTO profiles')[0][1]).toEqual(['new-uid', 'Ann Lee', null, 'ann@x.com', 'admin-1'])
+    expect(sqlCalls('UPDATE access_requests')[0][1]).toEqual(['admin-1', 'new-uid', 'req-1'])
+    expect(mocks.audit).toHaveBeenCalledWith('admin-1', 'approve_user', 'new-uid', { access_request_id: 'req-1', path: 'new_user' })
+  })
+
+  it('uses a configured HTTPS origin and ignores forwarded-host input', async () => {
+    vi.stubEnv('APP_URL', 'https://portal.example')
+    mocks.getUserByEmail.mockResolvedValue({ uid: 'u-ann', providerData: [] })
+    expect((await proxyCall()).status).toBe(200)
+    expect(mocks.resetLink).toHaveBeenCalledWith('ann@x.com', { url: 'https://portal.example/setup-account' })
+  })
+
+  it.each(['', 'not-a-url', 'file:///fixture', 'ftp://portal.example', 'http://0.0.0.0:3000', 'http://[::]:3000', 'https://fixture-user:fixture-pass@portal.example'])(
+    'invalid configured origin %s keeps approval honest and generates no link', async appUrl => {
+      vi.stubEnv('APP_URL', appUrl)
+      mocks.getUserByEmail.mockResolvedValue({ uid: 'u-ann', providerData: [] })
+      const response = await proxyCall()
+      expect(response.status).toBe(200)
+      expect(await response.json()).toMatchObject({ ok: true, reset_link: null, setup_link_status: 'unavailable' })
+      expect(mocks.resetLink).not.toHaveBeenCalled()
+      expect(sqlCalls('UPDATE access_requests')).toHaveLength(1)
+      expect(mocks.audit).toHaveBeenCalledTimes(1)
+      expect(mocks.deleteUser).not.toHaveBeenCalled()
+    },
+  )
+
+  it('an unconfigured internal bind address is unavailable rather than an apparently usable continuation', async () => {
+    vi.stubEnv('APP_URL', undefined)
+    mocks.getUserByEmail.mockResolvedValue({ uid: 'u-ann', providerData: [] })
+    const response = await proxyCall()
+    expect(await response.json()).toMatchObject({ ok: true, reset_link: null, setup_link_status: 'unavailable' })
+    expect(mocks.resetLink).not.toHaveBeenCalled()
+    expect(mocks.audit).toHaveBeenCalledTimes(1)
+  })
+
+  it.each(['http://localhost', 'https://portal.example'])('preserves direct-origin compatibility without APP_URL: %s', async origin => {
+    vi.stubEnv('APP_URL', undefined)
+    mocks.getUserByEmail.mockResolvedValue({ uid: 'u-ann', providerData: [] })
+    const response = await POST(new Request(origin + '/api/admin/access-requests/req-1/approve', { method: 'POST', body: '{}' }), ctx)
+    expect(response.status).toBe(200)
+    expect(mocks.resetLink).toHaveBeenCalledWith('ann@x.com', { url: origin + '/setup-account' })
+  })
+
+  it('an existing password remains not_required even when the configured setup origin is invalid', async () => {
+    vi.stubEnv('APP_URL', 'not-a-url')
+    mocks.getUserByEmail.mockResolvedValue({ uid: 'u-ann', providerData: [{ providerId: 'password' }] })
+    profileRows = [{ id: 'u-ann', status: 'pending' }]
+    const response = await proxyCall()
+    expect(await response.json()).toMatchObject({ ok: true, reset_link: null, setup_link_status: 'not_required' })
+    expect(mocks.resetLink).not.toHaveBeenCalled()
+    expect(mocks.audit).toHaveBeenCalledTimes(1)
+    expect(sqlCalls('UPDATE access_requests')).toHaveLength(1)
+  })
 })

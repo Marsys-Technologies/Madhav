@@ -13,3 +13,16 @@ export function isAllowedRequestOrigin(request: Request): boolean {
     return false
   }
 }
+
+/** Account setup uses the configured first-party URL behind a gateway. */
+export function accountSetupContinueUrl(request: Request): string | null {
+  try {
+    const app = new URL(process.env.APP_URL ?? request.url)
+    if ((app.protocol !== 'https:' && app.protocol !== 'http:') ||
+        app.username || app.password ||
+        app.hostname === '0.0.0.0' || app.hostname === '[::]') return null
+    return new URL('/setup-account', app.origin).href
+  } catch {
+    return null
+  }
+}

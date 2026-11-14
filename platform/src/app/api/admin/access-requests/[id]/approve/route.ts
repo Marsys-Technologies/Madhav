@@ -5,6 +5,7 @@ import { query } from '@/lib/db/client'
 import { validateUsername } from '@/lib/auth/username'
 import { res } from '@/lib/errors'
 import { writeAuditLog } from '@/lib/admin/audit'
+import { accountSetupContinueUrl } from '@/lib/auth/request-origin'
 
 interface ApproveBody {
   username?: string
@@ -208,11 +209,10 @@ export async function POST(
   })
 
   // 6. Generate a password-reset link — only for someone who has no password yet.
-  const resetLink = hasPasswordProvider
-    ? null
-    : await adminAuth
-        .generatePasswordResetLink(req.email, { url: new URL('/setup-account', request.url).href })
-        .catch(() => null)
+  const continueUrl = hasPasswordProvider ? null : accountSetupContinueUrl(request)
+  const resetLink = continueUrl
+    ? await adminAuth.generatePasswordResetLink(req.email, { url: continueUrl }).catch(() => null)
+    : null
 
   const setupLinkStatus = hasPasswordProvider
     ? 'not_required'

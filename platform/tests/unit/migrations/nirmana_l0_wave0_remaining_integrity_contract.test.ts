@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { execFileSync } from 'node:child_process'
 import { Client } from 'pg'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, onTestFinished } from 'vitest'
 
 import { ASSETS } from '../../../scripts/seed/asset_registry_seed'
 
@@ -148,7 +148,15 @@ describe('migration 628 — remaining L0 wave-0 integrity contracts', () => {
 
 describe.skipIf(!TEST_DATABASE_URL)('migration 628 — real PostgreSQL behavior', () => {
   async function connectPrepared(): Promise<Client> {
-    const client = new Client({ connectionString: TEST_DATABASE_URL })
+    const client = new Client({
+      connectionString: TEST_DATABASE_URL,
+      connectionTimeoutMillis: 10_000,
+      statement_timeout: 10_000,
+      query_timeout: 11_000,
+    })
+    // Register before setup: a Vitest timeout must close the connection before
+    // the following test rebuilds the shared disposable fixture tables.
+    onTestFinished(() => client.end(), 12_000)
     await client.connect()
     await client.query(`
       CREATE EXTENSION IF NOT EXISTS pgcrypto;
@@ -362,7 +370,7 @@ describe.skipIf(!TEST_DATABASE_URL)('migration 628 — real PostgreSQL behavior'
     } finally {
       await client.end()
     }
-  })
+  }, 30_000)
 
   it('rejects all nearby registry states and makes an invalid legacy family read false', async () => {
     const client = await connectPrepared()
@@ -406,7 +414,7 @@ describe.skipIf(!TEST_DATABASE_URL)('migration 628 — real PostgreSQL behavior'
     } finally {
       await client.end()
     }
-  })
+  }, 30_000)
 
   it('rejects a v2 family deficit even when the overall v2 population remains at its floor', async () => {
     const client = await connectPrepared()
@@ -432,5 +440,5 @@ describe.skipIf(!TEST_DATABASE_URL)('migration 628 — real PostgreSQL behavior'
     } finally {
       await client.end()
     }
-  })
+  }, 30_000)
 })
