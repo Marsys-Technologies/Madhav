@@ -10148,3 +10148,12 @@ Answers the KĀLA-YANTRA request of 2026-10-16T17:50Z. Measured read-only by Suv
 - Protected16 trusted contexts and all4 actual Sidecar pytest commands remain required in both protected and main. Select Web only; retain Sidecar/MCP/Pipeline, unchanged controlled resources/IAM/environment, all Ready recovery configurations and actual d866/m5nv8 CDLM acceptance.
 - No migrations, new job execution, SSE subscription, research/held-flag activation or paid-resource change. After installed verification, perform the single approved synthetic Consult check; preserve any actual execution failure and honest disconnected transport.
 - Prioritiesv1.8 5ff3e7e6ed4ff531763244ac815878bb22cb2ccf23ef809fcc0f705c74d0f898; whole dimensions0/6 remain.
+
+
+## L-MADHAV-CONSOLIDATION-4001-INSTALLED-20261114 — source and canonical saved-answer readback verified; original wire failure open
+
+- Actual protected16/all4 Sidecar, main5/all4 Sidecar and normal automatic Web-only rollout passed. Main 9ae9bd8204fcb25e6dff1aaf89257c208a411e4b; source 9b5e2272dd738dd04ee7deeec950fd0da0831fd0, tree 780a63c98b0e1dfcd815d39350f380f156f3ad54. Installed proof 21139e2f12ad2975e853d8f059793d8e3edbbd8cf4adef0ffe2f9d01cb6484ce; canonical C-4001-CONSULT14-WEB-INSTALLED-CANONICAL-READBACK-WIRE-FAILURE-20261114.json SHA9d47d9985b2ab5610dfb2da731c5fd0f6cefa237087f9b04e0fa0ef93cc38a77.
+- One approved synthetic career turn: planner/synthesizer/two worker invocations succeeded without retry/fallback, normalized text2187/citations3 persisted. Existing owner-auth canonical consultation GET returned200 with exact original turn/receipt. Purpose conversation labelled/archived and owned browser tabs closed. Smoke 863c6aa9e58d09079e0f62f5c353c340e8025bbae25c0faa8ca95e8c122c3efe; canonical-readback 83c50ddc560de5e9faa62c8bcd58017a9b7e4ce6d9a24feedf6d5204867c0857.
+- ORIGINAL browser POST HTTP502/0events at60.348s remains FAILED/OPEN transport delivery, backend200 at119.283s. Saved-answer recovery is separate, not retroactive wire PASS; next qualified source owns the observed delivery repair. No full P7/default-Consult/science/completed-chart claim.
+- Sidecar/MCP/Pipeline, actual d866/m5nv8 recovery and canonical-only project binding remain retained; no migration, new data build, model retry or resource activation.
+- Genuine scoped source installations25; whole dimensions0/6. Prioritiesv1.8 5ff3e7e6ed4ff531763244ac815878bb22cb2ccf23ef809fcc0f705c74d0f898.
