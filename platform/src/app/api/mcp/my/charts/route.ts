@@ -22,8 +22,7 @@
 
 import 'server-only'
 import { NextResponse } from 'next/server'
-import { getEntitledCharts } from '@/lib/auth/getEntitledCharts'
-import { query } from '@/lib/db/client'
+import { getEntitledChartsForPrincipal } from '@/lib/auth/getEntitledCharts.server'
 import { validateServiceToken } from '@/lib/mcp/service_token'
 
 export async function GET(request: Request) {
@@ -41,7 +40,7 @@ export async function GET(request: Request) {
   const role: 'guest' | 'super_admin' =
     roleHeader === 'super_admin' ? 'super_admin' : 'guest'
 
-  const charts = await getEntitledCharts(uid, role, { query })
+  const charts = await getEntitledChartsForPrincipal(uid, role)
 
   return NextResponse.json({
     charts: charts.map((c, index) => ({

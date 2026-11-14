@@ -95,9 +95,9 @@ class BgEphemerisWriter(WriterBase):
                 "bg_ephemeris requires the pinned Swiss Ephemeris .se1 corpus; "
                 "refusing the analytic fallback"
             )
-        from pipeline.orchestrator.writers.bg_sky_calendar import (
-            _require_pinned_ephemeris_files,
-            _require_swiss_file_backend,
+        from brahmagyan.ephemeris_file_contract import (
+            require_pinned_ephemeris_files as _require_pinned_ephemeris_files,
+            require_swiss_file_backend as _require_swiss_file_backend,
         )
         _require_swiss_file_backend(swe, ephe_path)
         _require_pinned_ephemeris_files(ephe_path)

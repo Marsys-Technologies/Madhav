@@ -8,7 +8,7 @@
 //   §B  POST /api/admin/observatory/analytics/pricing-diff/run (1):
 //       200 returns identical PricingDiffResult shape
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { NextResponse } from 'next/server'
 
 vi.mock('server-only', () => ({}))
@@ -126,5 +126,82 @@ describe('§B — POST /api/admin/observatory/analytics/pricing-diff/run', () =>
     expect(body.all_healthy).toBe(false)
 
     warnSpy.mockRestore()
+  })
+})
+
+describe('pricing diff transport metadata on existing routes', () => {
+  const fetchMock = vi.fn()
+  const requireSuperAdmin = vi.fn()
+  const webhook = 'https://hook.example/route'
+
+  beforeEach(() => {
+    vi.resetModules()
+    queryMock.mockReset()
+    fetchMock.mockReset()
+    requireSuperAdmin.mockReset()
+    vi.stubEnv('MARSYS_FLAG_OBSERVATORY_ENABLED', 'true')
+    vi.stubEnv('OBSERVATORY_ALERT_WEBHOOK_URL', webhook)
+    vi.stubGlobal('fetch', fetchMock)
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.doMock('@/lib/auth/access-control', () => ({ requireSuperAdmin }))
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  async function handlers() {
+    const { GET } = await import('@/app/api/admin/observatory/analytics/pricing-diff/route')
+    const { POST } = await import('@/app/api/admin/observatory/analytics/pricing-diff/run/route')
+    return { GET, POST }
+  }
+
+  it('returns matching metadata and keeps one attempt per GET or POST', async () => {
+    requireSuperAdmin.mockResolvedValue({
+      user: { uid: 'admin-1' },
+      profile: { id: 'admin-1', role: 'super_admin', status: 'active' },
+    })
+    for (let i = 0; i < 3; i += 1) {
+      queryMock
+        .mockResolvedValueOnce({ rows: [{ provider: 'fixture', last_pricing_update: '2000-01-01' }] })
+        .mockResolvedValueOnce({ rows: [] })
+      fetchMock.mockResolvedValueOnce(new Response(null, { status: 503 }))
+    }
+    const { GET, POST } = await handlers()
+    for (const [index, handler] of [GET, GET, POST].entries()) {
+      const response = await handler()
+      expect(response.status).toBe(200)
+      const body = await response.json()
+      expect(body.providers).toEqual([expect.objectContaining({
+        provider: 'fixture', alert_fired: true, alert_webhook_result: 'http_error',
+      })])
+      expect(fetchMock).toHaveBeenCalledTimes(index + 1)
+      expect(queryMock).toHaveBeenCalledTimes((index + 1) * 2)
+    }
+    expect(requireSuperAdmin).toHaveBeenCalledTimes(3)
+  })
+
+  it.each([401, 403])('refuses both routes with status %i before queries or delivery', async (status) => {
+    requireSuperAdmin.mockImplementation(async () => NextResponse.json(
+      { error: { code: 'AUTH_FIXTURE' } }, { status },
+    ))
+    const { GET, POST } = await handlers()
+    expect((await GET()).status).toBe(status)
+    expect((await POST()).status).toBe(status)
+    expect(requireSuperAdmin).toHaveBeenCalledTimes(2)
+    expect(queryMock).not.toHaveBeenCalled()
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('refuses both routes before auth when the feature is disabled', async () => {
+    vi.stubEnv('MARSYS_FLAG_OBSERVATORY_ENABLED', 'false')
+    const { GET, POST } = await handlers()
+    expect((await GET()).status).toBe(403)
+    expect((await POST()).status).toBe(403)
+    expect(requireSuperAdmin).not.toHaveBeenCalled()
+    expect(queryMock).not.toHaveBeenCalled()
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 })

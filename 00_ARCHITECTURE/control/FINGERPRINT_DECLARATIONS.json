@@ -1732,7 +1732,7 @@
       "event_datetime_utc"
      ],
      "write_evidence": [
-      "platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:741"
+      "platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py:703"
      ],
      "horizon_date_column": "event_datetime_utc",
      "notes": "Rolling forward horizon (today + FORWARD_HORIZON_YEARS=10 at run time, upsert without delete) and a Linux/x86_64-only DB-writing runtime (bg_sky_calendar.py:129,268-269). secondary_body_key is a generated column (COALESCE(secondary_body, ''))."
