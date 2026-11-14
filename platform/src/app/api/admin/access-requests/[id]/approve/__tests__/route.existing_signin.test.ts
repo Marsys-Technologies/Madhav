@@ -8,6 +8,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({
   admin: vi.fn(),
   query: vi.fn(),
+  transaction: vi.fn(),
+  transactionQuery: vi.fn(),
   getUserByEmail: vi.fn(),
   createUser: vi.fn(),
   deleteUser: vi.fn(),
@@ -24,7 +26,7 @@ vi.mock('@/lib/firebase/server', () => ({
     generatePasswordResetLink: mocks.resetLink,
   },
 }))
-vi.mock('@/lib/db/client', () => ({ query: mocks.query }))
+vi.mock('@/lib/db/client', () => ({ query: mocks.query, withTransaction: mocks.transaction }))
 vi.mock('@/lib/admin/audit', () => ({ writeAuditLog: mocks.audit }))
 
 import { POST } from '../route'
@@ -34,7 +36,7 @@ const call = (body: unknown = {}) =>
   POST(new Request('http://localhost/api/admin/access-requests/req-1/approve', { method: 'POST', body: JSON.stringify(body) }), ctx)
 
 let profileRows: { id: string; status: string }[]
-const sqlCalls = (needle: string) => mocks.query.mock.calls.filter(([sql]) => String(sql).includes(needle))
+const sqlCalls = (needle: string) => [...mocks.query.mock.calls, ...mocks.transactionQuery.mock.calls].filter(([sql]) => String(sql).includes(needle))
 const notFound = () => Object.assign(new Error('no user'), { code: 'auth/user-not-found' })
 
 beforeEach(() => {
@@ -42,12 +44,15 @@ beforeEach(() => {
   profileRows = []
   mocks.admin.mockResolvedValue({ user: { uid: 'admin-1' }, profile: { role: 'super_admin', status: 'active' } })
   mocks.resetLink.mockResolvedValue('https://reset.example/link')
+  mocks.transactionQuery.mockImplementation((...args: unknown[]) => mocks.query.getMockImplementation()!(...args))
+  mocks.transaction.mockImplementation(async (work: (client: { query: typeof mocks.query }) => Promise<unknown>) =>
+    work({ query: mocks.transactionQuery }))
   mocks.query.mockImplementation(async (sql: string) => {
     if (sql.includes('FROM access_requests')) {
       return { rows: [{ id: 'req-1', full_name: 'Ann Lee', email: 'ann@x.com', status: 'pending' }] }
     }
     if (sql.includes('FROM profiles WHERE lower(email)')) return { rows: profileRows }
-    return { rows: [] }
+    return { rows: [], rowCount: 1 }
   })
 })
 
@@ -251,5 +256,130 @@ describe('approval setup continuation behind the first-party gateway', () => {
     expect(mocks.resetLink).not.toHaveBeenCalled()
     expect(mocks.audit).toHaveBeenCalledTimes(1)
     expect(sqlCalls('UPDATE access_requests')).toHaveLength(1)
+  })
+})
+
+describe('approval SQL atomicity and provider compensation', () => {
+  const existing = { uid: 'u-ann', providerData: [{ providerId: 'password' }] }
+
+  it('borrows one client for both writes and audits only after commit', async () => {
+    mocks.getUserByEmail.mockResolvedValue(existing)
+    profileRows = [{ id: existing.uid, status: 'pending' }]
+    const order: string[] = []
+    mocks.transaction.mockImplementation(async work => {
+      order.push('begin')
+      const result = await work({ query: mocks.transactionQuery })
+      order.push('commit')
+      return result
+    })
+    mocks.audit.mockImplementation(async () => { order.push('audit') })
+    expect((await call()).status).toBe(200)
+    expect(mocks.transaction).toHaveBeenCalledTimes(1)
+    expect(mocks.query.mock.calls.some(([sql]) => /^(UPDATE|INSERT)/.test(String(sql)))).toBe(false)
+    expect(mocks.transactionQuery.mock.calls.filter(([sql]) => String(sql).startsWith('UPDATE'))).toHaveLength(2)
+    expect(order).toEqual(['begin', 'commit', 'audit'])
+  })
+
+  it('rejects the failed request write, then permits one deliberate same-UID retry', async () => {
+    mocks.getUserByEmail.mockResolvedValue(existing)
+    profileRows = [{ id: existing.uid, status: 'pending' }]
+    mocks.transactionQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 })
+      .mockRejectedValueOnce(new Error('FIXTURE_ONLY_REQUEST_WRITE_FAILURE'))
+    expect((await call()).status).toBe(500)
+    expect(mocks.transaction).toHaveBeenCalledTimes(1)
+    expect(mocks.audit).not.toHaveBeenCalled()
+    expect(mocks.deleteUser).not.toHaveBeenCalled()
+    expect(mocks.resetLink).not.toHaveBeenCalled()
+    expect((await call()).status).toBe(200)
+    expect(mocks.transaction).toHaveBeenCalledTimes(2)
+    expect(mocks.audit).toHaveBeenCalledTimes(1)
+    expect(mocks.createUser).not.toHaveBeenCalled()
+    expect(mocks.deleteUser).not.toHaveBeenCalled()
+  })
+
+  it('refuses a request that ceased to be pending without a successful transaction', async () => {
+    mocks.getUserByEmail.mockResolvedValue(existing)
+    profileRows = [{ id: existing.uid, status: 'pending' }]
+    mocks.transactionQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })
+    expect((await call()).status).toBe(409)
+    expect(mocks.audit).not.toHaveBeenCalled()
+    expect(mocks.deleteUser).not.toHaveBeenCalled()
+  })
+
+  it('refuses a profile that became active before its transactional write', async () => {
+    mocks.getUserByEmail.mockResolvedValue(existing)
+    profileRows = [{ id: existing.uid, status: 'pending' }]
+    mocks.transactionQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 })
+    expect((await call()).status).toBe(409)
+    expect(mocks.transactionQuery).toHaveBeenCalledTimes(1)
+    expect(mocks.audit).not.toHaveBeenCalled()
+    expect(mocks.deleteUser).not.toHaveBeenCalled()
+  })
+
+  it.each([false, true])('profile SQL failure compensates only an owned new UID: new=%s', async isNew => {
+    if (isNew) {
+      mocks.getUserByEmail.mockRejectedValue(notFound())
+      mocks.createUser.mockResolvedValue({ uid: 'new-uid', providerData: [] })
+      mocks.deleteUser.mockResolvedValue(undefined)
+    } else {
+      mocks.getUserByEmail.mockResolvedValue(existing)
+      profileRows = [{ id: existing.uid, status: 'pending' }]
+    }
+    mocks.transactionQuery.mockRejectedValueOnce(new Error('FIXTURE_ONLY_PROFILE_WRITE_FAILURE'))
+    expect((await call()).status).toBe(500)
+    expect(mocks.deleteUser).toHaveBeenCalledTimes(isNew ? 1 : 0)
+    if (isNew) expect(mocks.deleteUser).toHaveBeenCalledWith('new-uid')
+    expect(mocks.audit).not.toHaveBeenCalled()
+  })
+
+  it('retains a created UID after request-write failure and reuses it on retry', async () => {
+    mocks.getUserByEmail.mockRejectedValueOnce(notFound())
+      .mockResolvedValue({ uid: 'new-uid', providerData: [] })
+    mocks.createUser.mockResolvedValue({ uid: 'new-uid', providerData: [] })
+    mocks.transactionQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 })
+      .mockRejectedValueOnce(new Error('FIXTURE_ONLY_REQUEST_WRITE_FAILURE'))
+    expect((await call()).status).toBe(500)
+    expect(mocks.deleteUser).not.toHaveBeenCalled()
+    expect(mocks.audit).not.toHaveBeenCalled()
+    const retry = await call()
+    expect(retry.status).toBe(200)
+    expect(await retry.json()).toMatchObject({ user_id: 'new-uid' })
+    expect(mocks.createUser).toHaveBeenCalledTimes(1)
+    expect(mocks.audit).toHaveBeenCalledTimes(1)
+  })
+
+  it('never deletes a possibly committed account or retries an ambiguous COMMIT failure', async () => {
+    mocks.getUserByEmail.mockRejectedValue(notFound())
+    mocks.createUser.mockResolvedValue({ uid: 'new-uid', providerData: [] })
+    mocks.transaction.mockImplementation(async work => {
+      await work({ query: mocks.transactionQuery })
+      throw new Error('FIXTURE_ONLY_AMBIGUOUS_COMMIT')
+    })
+    expect((await call()).status).toBe(500)
+    expect(mocks.transaction).toHaveBeenCalledTimes(1)
+    expect(mocks.createUser).toHaveBeenCalledTimes(1)
+    expect(mocks.deleteUser).not.toHaveBeenCalled()
+    expect(mocks.audit).not.toHaveBeenCalled()
+    expect(mocks.resetLink).not.toHaveBeenCalled()
+  })
+
+  it('keeps the actual audit helper best-effort after the transaction', async () => {
+    mocks.getUserByEmail.mockResolvedValue(existing)
+    profileRows = [{ id: existing.uid, status: 'pending' }]
+    const actual = await vi.importActual<typeof import('@/lib/admin/audit')>('@/lib/admin/audit')
+    mocks.audit.mockImplementation(actual.writeAuditLog)
+    const base = mocks.query.getMockImplementation()!
+    mocks.query.mockImplementation(async (...args: unknown[]) => {
+      if (String(args[0]).includes('INSERT INTO admin_audit_log')) throw new Error('FIXTURE_ONLY_AUDIT_UNAVAILABLE')
+      return base(...args)
+    })
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      expect((await call()).status).toBe(200)
+      expect(mocks.transaction).toHaveBeenCalledTimes(1)
+      expect(mocks.audit).toHaveBeenCalledTimes(1)
+      expect(log).toHaveBeenCalledWith('[admin/audit] Failed to write audit log entry', expect.any(Object))
+    } finally { log.mockRestore() }
   })
 })
