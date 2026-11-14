@@ -181,6 +181,8 @@ export const LIVE_TOOL_TO_RETRIEVAL: Readonly<Record<string, string>> = {
   ganita_dasha_lord_capability_get: 'marsys://tool/L1/get_dasha_lord_capability',
   ganita_sensitive_degrees_get: 'marsys://tool/L1/get_sensitive_degrees',
   ganita_strength_get: 'marsys://tool/L1/get_strength', // shadbala / graha strength
+  // Same capability as the MCP face; its handler owns the KP frame and build fence.
+  ganita_kp_cusps_get: 'marsys://tool/L1/get_kp_cusps',
   ganita_nakshatra_get: 'marsys://tool/L1/get_tara_chandra_bala', // MCP handler calls this exact URI (register_p1_ganita.ts §6)
   ref_doshas_get: 'marsys://tool/L0/query_dosha_catalog',
   bodha_signals_get: 'marsys://tool/L2/query_signals', // same cap msr_sql/query_msr_aggregate already resolve to

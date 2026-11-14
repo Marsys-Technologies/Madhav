@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { AlertTriangle, CloudOff, ShieldCheck } from 'lucide-react'
+import { cockpitStreamUrl } from '@/hooks/useCockpitSSE'
 import {
   NirmanaElevationSnapshotSchema,
   type NirmanaElevationSnapshot,
@@ -254,8 +255,8 @@ export function NirmanaElevationTracker({
   // cockpit SSE bus so an accepted capsule/supersession (see
   // cockpit-events.ts's publishCockpitEvent) refreshes the snapshot within
   // seconds instead of waiting for the next poll tick. Bursts of events are
-  // debounced into a single refetch; EventSource retries its own connection
-  // on error, so onerror is a deliberate no-op here.
+  // debounced into a single refetch. Reconnects explicitly obtain a fresh bounded
+  // session; a native retry must not keep reusing an expired session URL.
   useEffect(() => {
     let debounceTimer: ReturnType<typeof setTimeout> | null = null
     const scheduleRefetch = () => {
@@ -263,18 +264,43 @@ export function NirmanaElevationTracker({
       debounceTimer = setTimeout(() => { void refresh() }, SSE_REFETCH_DEBOUNCE_MS)
     }
 
-    const source = new EventSource(`/api/cockpit/sse?chart_id=${CANONICAL_CHART_ID}`)
-    for (const type of RELEVANT_SSE_EVENT_TYPES) {
-      source.addEventListener(type, scheduleRefetch)
+    let source: EventSource | null = null
+    let retryTimer: ReturnType<typeof setTimeout> | null = null
+    let stopped = false
+    let attempts = 0
+    let retryDelay = 1000
+    const connect = () => {
+      if (stopped || source || attempts >= 50) return
+      attempts += 1
+      const current = new EventSource(cockpitStreamUrl(CANONICAL_CHART_ID))
+      source = current
+      for (const type of RELEVANT_SSE_EVENT_TYPES) {
+        current.addEventListener(type, () => {
+          if (!stopped && source === current) scheduleRefetch()
+        })
+      }
+      const markAlive = () => {
+        if (!stopped && source === current) { attempts = 0; retryDelay = 1000 }
+      }
+      current.addEventListener('hello', markAlive)
+      current.addEventListener('heartbeat', markAlive)
+      current.onerror = () => {
+        if (stopped || source !== current) return
+        source = null
+        current.close()
+        retryTimer = setTimeout(() => { retryTimer = null; connect() }, retryDelay)
+        retryDelay = Math.min(retryDelay * 2, 30_000)
+      }
     }
-    source.onerror = () => {
-      // EventSource retries on its own; no action needed beyond letting the
-      // existing poll (Effect 2, unchanged) remain the freshness fallback.
-    }
+    connect()
 
     return () => {
+      stopped = true
       if (debounceTimer) clearTimeout(debounceTimer)
-      source.close()
+      if (retryTimer !== null) clearTimeout(retryTimer)
+      const current = source
+      source = null
+      current?.close()
     }
   }, [refresh])
 
