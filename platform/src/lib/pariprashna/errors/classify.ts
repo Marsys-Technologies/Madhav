@@ -241,6 +241,17 @@ export function classifyPariprashnaError(
   code: string,
   opts: ClassifyErrorOptions = {}
 ): PariprashnaClassifiedError {
+  // The live adapter intentionally ignores the server message. Keep this fixed
+  // execution-fault copy specific without exposing upstream diagnostic text or
+  // changing the existing UI taxonomy/actions for an execution failure.
+  if (code.toUpperCase() === 'PLANNER_EXECUTION_FAILED') {
+    return {
+      kind: 'unknown',
+      bandLabel: 'The selected AI could not run',
+      sentence: 'Check the choice in AI Console and try again.',
+      actions: ['retry'],
+    }
+  }
   const kind = classifyKind(code)
   return { kind, ...copyFor(kind, opts) }
 }

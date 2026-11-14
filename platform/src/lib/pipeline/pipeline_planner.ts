@@ -502,7 +502,12 @@ export async function callPipelinePlanner(
       if (isStructuredOutputValidationError(error)) {
         interaction = { finalText: error.candidateText(), usage: { inputTokens: 0, outputTokens: 0 } }
       } else {
-      return { outcome: 'fault', reason: 'Selected planner execution failed.', retryable: false }
+        // Cancellation keeps its existing terminal handling. Other executor
+        // failures produced no candidate, so they cannot establish an invalid plan.
+        if (byok?.abortSignal?.aborted || (error instanceof Error && error.name === 'AbortError')) {
+          return { outcome: 'fault', reason: 'Selected planner execution failed.', retryable: false }
+        }
+        return { outcome: 'fault', fault_kind: 'execution', reason: 'Selected planner execution failed.', retryable: false }
       }
     }
   }

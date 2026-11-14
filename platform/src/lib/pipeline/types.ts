@@ -557,6 +557,8 @@ export interface ClarificationRequest {
  */
 export interface PlannerFaultResult {
   outcome: 'fault'
+  /** Selected executor failed without a candidate; absent preserves legacy fault mapping. */
+  fault_kind?: 'execution'
   reason: string
   retryable: boolean
 }
