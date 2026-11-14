@@ -26,6 +26,7 @@ vi.mock('@/lib/db/client', () => ({ query: vi.fn() }))
 import {
   STALE_PRICING_THRESHOLD_DAYS,
   SYSTEMATIC_VARIANCE_THRESHOLD_PCT,
+  collectPricingHealth,
   checkPricingHealth,
   type PricingDiffResult,
 } from '@/lib/observatory/analytics/pricing_diff'
@@ -195,6 +196,7 @@ describe('§B — alert dispatch resilience', () => {
   beforeEach(() => {
     warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     originalFetch = globalThis.fetch
+    delete process.env.OBSERVATORY_ALERT_WEBHOOK_URL
   })
 
   afterEach(() => {
@@ -334,6 +336,76 @@ describe('webhook transport outcome', () => {
     vi.unstubAllEnvs()
     vi.unstubAllGlobals()
     vi.restoreAllMocks()
+  })
+
+  it('collects repeated unhealthy snapshots without alerting or changing SQL', async () => {
+    for (let i = 0; i < 2; i += 1) {
+      const queryFn = staleQuery()
+      expect(await collectPricingHealth(queryFn)).toEqual({
+        checked_at: now.toISOString(),
+        providers: [{ ...staleRow, alert_fired: false, alert_webhook_result: 'not_attempted' }],
+        stale_count: 1,
+        variance_alert_count: 1,
+        all_healthy: false,
+      })
+      expect(queryFn.mock.calls).toEqual([
+        ['SELECT provider, MAX(effective_from)::text AS last_pricing_update FROM llm_pricing_versions GROUP BY provider'],
+        ["SELECT provider, AVG(ABS(variance_pct)) AS avg_abs_variance_pct FROM llm_cost_reconciliation WHERE reconciliation_date >= (NOW() - INTERVAL '7 days')::date   AND variance_pct IS NOT NULL GROUP BY provider"],
+      ])
+    }
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(console.warn).not.toHaveBeenCalled()
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it('preserves strict thresholds, sorted provider union, and missing or invalid pricing', async () => {
+    const result = await collectPricingHealth(makeQuery({
+      freshness: [
+        { provider: 'z-boundary', last_pricing_update: '2026-05-02T12:00:00.000Z' },
+        { provider: 'a-invalid', last_pricing_update: 'invalid' },
+        { provider: 'c-freshness-only', last_pricing_update: now.toISOString() },
+      ],
+      variance: [
+        { provider: 'b-variance-only', avg_abs_variance_pct: 6 },
+        { provider: 'z-boundary', avg_abs_variance_pct: 5 },
+      ],
+    }))
+    expect(result.providers.map((p) => p.provider)).toEqual([
+      'a-invalid', 'b-variance-only', 'c-freshness-only', 'z-boundary',
+    ])
+    expect(result.providers[0]).toMatchObject({
+      pricing_age_days: Number.MAX_SAFE_INTEGER, status: 'stale_pricing', avg_7d_variance_pct: null,
+    })
+    expect(result.providers[1]).toMatchObject({
+      last_pricing_update: null, pricing_age_days: Number.MAX_SAFE_INTEGER, status: 'both',
+    })
+    expect(result.providers[2]).toMatchObject({ status: 'ok', avg_7d_variance_pct: null })
+    expect(result.providers[3]).toMatchObject({ pricing_age_days: 30, avg_7d_variance_pct: 5, status: 'ok' })
+    expect(result.stale_count).toBe(2)
+    expect(result.variance_alert_count).toBe(1)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('dispatches once per unhealthy provider per command, including after a failure', async () => {
+    fetchMock.mockRejectedValueOnce(new TypeError('response lost'))
+    fetchMock.mockResolvedValue(new Response(null, { status: 202 }))
+    for (let i = 0; i < 2; i += 1) {
+      const result = await checkPricingHealth(makeQuery({
+        freshness: [
+          { provider: 'a-unhealthy', last_pricing_update: lastUpdate },
+          { provider: 'healthy', last_pricing_update: now.toISOString() },
+        ],
+        variance: [{ provider: 'b-unhealthy', avg_abs_variance_pct: 7 }],
+      }))
+      expect(result.providers.map((p) => p.alert_fired)).toEqual([true, true, false])
+      expect(result.providers[0].alert_webhook_result).toBe(i === 0 ? 'unknown' : 'http_accepted')
+      expect(result.providers[1].alert_webhook_result).toBe('http_accepted')
+      expect(fetchMock).toHaveBeenCalledTimes((i + 1) * 2)
+    }
+    expect(fetchMock.mock.calls.map(([, init]) => JSON.parse(String(init.body)).provider)).toEqual([
+      'a-unhealthy', 'b-unhealthy', 'a-unhealthy', 'b-unhealthy',
+    ])
+    expect(vi.getTimerCount()).toBe(0)
   })
 
   it.each([

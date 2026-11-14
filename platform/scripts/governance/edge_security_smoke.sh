@@ -11,7 +11,8 @@
 #   2. infra/iam/ has 4 distinct least-priv SAs; deploy.yml has --service-account=
 #      per service.
 #   3. platform-mcp/src/client.ts uses Bearer + google-auth-library.
-#   4. infra/scheduler/ has 2 jobs (MV-refresh + reaper) with cadence specs.
+#   4. infra/scheduler/ retains the 10m reaper; the obsolete generic MV-refresh
+#      resource/output and target URI stay absent from the source contract.
 #   5. platform/cloudbuild*.yaml removed; deploy.yml is sole orchestrator;
 #      MCP image refs point at Artifact Registry not gcr.io for the deploy path.
 
@@ -89,10 +90,14 @@ check "client.ts sends Authorization: Bearer" grep -q "Authorization.*Bearer" pl
 check "iam_bearer.test.ts exists" test -f platform-mcp/src/__tests__/iam_bearer.test.ts
 
 echo
-echo "[4] infra/scheduler — MV-refresh + reaper jobs"
+echo "[4] infra/scheduler — reaper retained; generic MV-refresh interface retired"
 check "infra/scheduler/main.tf exists" test -f infra/scheduler/main.tf
-check "scheduler: mv_refresh job exists"      grep -q 'resource "google_cloud_scheduler_job" "mv_refresh"' infra/scheduler/main.tf
-check "scheduler: mv_refresh cadence is 6h"   grep -q 'schedule *= *"0 \*/6 \* \* \*"' infra/scheduler/main.tf
+# Source retirement only; live job/state retirement requires separate custody.
+# Require grep's no-match status (1), so read errors cannot pass absence checks.
+check "scheduler: generic MV refresh resource and output are retired" sh -c \
+  'grep -Eq "resource[[:space:]]+\"google_cloud_scheduler_job\"[[:space:]]+\"mv_refresh\"|google_cloud_scheduler_job[.]mv_refresh[.]|amjis-mv-refresh" infra/scheduler/*.tf; test "$?" -eq 1'
+check "scheduler: obsolete MV refresh URI is absent" sh -c \
+  'grep -Fq "/api/cron/refresh_materialized_views" infra/scheduler/*.tf; test "$?" -eq 1'
 check "scheduler: reaper job exists"          grep -q 'resource "google_cloud_scheduler_job" "pending_stream_reaper"' infra/scheduler/main.tf
 check "scheduler: reaper cadence is 10m"      grep -q 'schedule *= *"\*/10 \* \* \* \*"' infra/scheduler/main.tf
 
