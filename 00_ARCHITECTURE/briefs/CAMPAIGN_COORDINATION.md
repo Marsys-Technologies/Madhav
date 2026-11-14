@@ -10173,3 +10173,11 @@ Answers the KĀLA-YANTRA request of 2026-10-16T17:50Z. Measured read-only by Suv
 - Root installed proof 74d7e9105a170c011f32ebb8629087eaa804f0d832f040c7bad4d5fe1701ee65; bounded real route/UI proof 77e0839c9ebeada263cc0b325c39af46a0bbc2586569ce14198c772694b0bff7; canonical C-4002-COUNTER-CLEANUP11-WEB-INSTALLED-ROUTE-UI-20261115.json SHA92737ccbeae7d0bda347956454dbd49392b3314f115f7fdf05e981bdb679f2a1. Actual current rund866 singleCDLM/complete70/floor70, native row70/healthy, Cockpit COMPLETE and explicit Ayanamshas Unavailable witnessed, SSE blocked before transmission/nativeEventSource preserved. No connected transport or fulljourney claim.
 - Retain Sidecar/MCP/Pipeline exactly, actual m5nv8/d866 recovery unchanged, all Ready recovery metadata and canonical-only project binding preserved. No migration or extra build.
 - Scoped installations26; whole dimensions0/6. Prioritiesv1.8 5ff3e7e6ed4ff531763244ac815878bb22cb2ccf23ef809fcc0f705c74d0f898.
+
+
+## L-MADHAV-CONSOLIDATION-4003-DURABLE_RECOVERY18-20261115 — durable original-answer recovery source reserved
+
+- Root reserves reader source 1adce7f61d2cb3f0970360d320e8f9c3e313e179, tree 93b979c21a706dfe8a8191d7827755a97ebd643a, base 051ddcafe8c67d3165d168978aa3d459c36c62b7, exact18 incremental Web paths since actual installed051d, installation26. Normal qualification 681293754ed36425c46ec98024dff81b14f2826758f0fa195a16482825653a05; genuine20/127 generated 4a74ec3b0b2eaa9cc847cd07aa8bfd4f07d02500f36b221b069f4d9cc36e51e1; preflight cc0e47c9db1f295f552fae361ba8d9d6cd374d9ae1daa55832bdb60c26e6420e.
+- Protected16 trusted contexts and all4 actual Sidecar pytest commands remain required in both protected and main. Select Web only; retain Sidecar/MCP/Pipeline, unchanged controlled resources/IAM/environment, all Ready recovery configurations and actual d866/m5nv8 CDLM acceptance.
+- No migrations, new data-job execution, Cockpit SSE subscription, research/held-flag activation or paid-resource change. After installed verification, perform the single approved normal synthetic question through the actual native UI; preserve any actual execution failure and honest disconnected transport.
+- Prioritiesv1.8 5ff3e7e6ed4ff531763244ac815878bb22cb2ccf23ef809fcc0f705c74d0f898; whole dimensions0/6 remain.
