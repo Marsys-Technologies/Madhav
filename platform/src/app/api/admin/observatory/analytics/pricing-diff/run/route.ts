@@ -1,9 +1,8 @@
 // POST /api/admin/observatory/analytics/pricing-diff/run
 //
-// Scheduled-run endpoint: explicitly triggers the pricing diff check. Same
-// behaviour as GET (alert dispatch is part of checkPricingHealth) — exposed
-// as POST so Cloud Scheduler / native scripts can invoke it without semantic
-// confusion about side-effects on a read endpoint.
+// Scheduled-run endpoint: explicitly collects pricing health and dispatches
+// alerts for unhealthy providers. GET only collects; command effects belong
+// to this POST endpoint (checkPricingHealth).
 //
 // Phase O — O.4 Analytics. Authored by USTAD_S4_4_PRICING_DIFF.
 

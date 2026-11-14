@@ -29,16 +29,17 @@ export default async function CockpitPage({
   if (!chart) redirect('/dashboard')
 
   // Latest build — `builds` was retired; graceful null if table absent
-  let latestBuild: { build_id: string; status: string; created_at: string; ayanamshas: string[] } | null = null
+  // Current run metadata has no governed ayanamsha selection/count. Keep this
+  // projection to observed run fields; the Shell discloses the count as unavailable.
+  let latestBuild: { build_id: string; status: string; created_at: string } | null = null
   let latestBuildUnavailable = false
   try {
     const { rows: buildRows } = await query<{
       build_id: string
       status: string
       created_at: string
-      ayanamshas: string[]
     }>(
-      `SELECT id AS build_id, state AS status, created_at, '{}'::text[] AS ayanamshas
+      `SELECT id AS build_id, state AS status, created_at
        FROM build_runs WHERE chart_id=$1 ORDER BY created_at DESC LIMIT 1`,
       [id],
     )

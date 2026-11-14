@@ -45,6 +45,20 @@ describe('prepareByokTurn', () => {
     m.createFallbackExecutor.mockImplementation((selected) => selected)
   })
 
+  it('passes strict claim refusal before admission or executor construction and leaves old calls unchanged', async () => {
+    const input={userId:USER,role:'guest' as const,chartId:CHART,conversationId:CONVERSATION,
+      isFirstTurn:true,turnId:TURN,requestedSelection:selection,questionChars:12}
+    await prepareByokTurn(input)
+    expect(m.prepare.mock.calls[0][0]).not.toHaveProperty('rejectExistingTurn')
+    vi.clearAllMocks()
+    const duplicate=new Error('claimed')
+    m.prepare.mockRejectedValueOnce(duplicate)
+    await expect(prepareByokTurn({...input,rejectExistingTurn:true})).rejects.toBe(duplicate)
+    expect(m.prepare).toHaveBeenCalledWith(expect.objectContaining({rejectExistingTurn:true}))
+    expect(m.admit).not.toHaveBeenCalled(); expect(m.build).not.toHaveBeenCalled()
+    expect(m.createExecutor).not.toHaveBeenCalled()
+  })
+
   it('wraps every distinct selected role with its atomically snapshotted Default role', async () => {
     const explicit = { kind: 'explicit' as const, choice: {
       kind: 'local_cli' as const, cliId: 'gemini_antigravity' as const, modelId: null,

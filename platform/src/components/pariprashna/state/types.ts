@@ -219,6 +219,14 @@ export interface TailBlock {
 }
 
 export interface TurnState {
+  /** Saved-answer readback does not turn the original failed transport into a pass. */
+  transportRecovery?: {
+    clientRequestId: string
+    source: 'saved_answer'
+    status: 'checking' | 'recovered' | 'unavailable'
+    originalErrorCode: string
+    originalError: ClassifiedError
+  }
   /** Server-minted durable assistant message identity; never inferred from client turn ids. */
   persistedMessageId?: string
 

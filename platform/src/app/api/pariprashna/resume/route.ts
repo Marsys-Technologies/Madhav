@@ -53,6 +53,9 @@ import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
 import { res } from '@/lib/errors'
 import { configService } from '@/lib/config/index'
+import { consultationAccess, recoverConsultationTurn, StoredTurnIntegrityError, uuidLike } from '@/lib/conversations/consultation'
+import { findPariprashnaRequestSnapshot, RequestSnapshotIntegrityError } from '@/lib/ai-console/repository'
+import { deriveClientRequestTurnId, isClientRequestId } from '@/lib/pariprashna/request_identity'
 import { PariprashnaEmitter, writeRawEvent } from '@/lib/pariprashna/protocol/emitter'
 import {
   getTurnMeta,
@@ -73,6 +76,26 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+/** SQL-only exact-turn readback. This branch never replays, resumes or executes a model. */
+async function recoverClientRequest(userId: string, chartId: string, nonce: string): Promise<Response> {
+  try {
+    const access = await consultationAccess(chartId);
+    if (!access || access.user.uid !== userId) return res.forbidden();
+    const turnId = deriveClientRequestTurnId(userId, chartId, nonce);
+    const binding = await findPariprashnaRequestSnapshot(userId, chartId, turnId);
+    if (!binding) return res.notFound('No such submitted request.');
+    const { snapshotId, conversationId } = binding;
+    const message = await recoverConsultationTurn({ turnId, conversationId, chartId, snapshotId });
+    return message
+      ? Response.json({ status: 'complete', turnId, conversationId, message })
+      : Response.json({ status: 'pending', turnId, conversationId }, { status: 202 });
+  } catch (error) {
+    return error instanceof StoredTurnIntegrityError || error instanceof RequestSnapshotIntegrityError
+      ? res.internal('Stored request identity or reader data is inconsistent.')
+      : res.dbError();
+  }
+}
+
 export async function GET(request: Request): Promise<Response> {
   const user = await getServerUser()
   if (!user) return res.unauthenticated()
@@ -82,6 +105,18 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   const url = new URL(request.url)
+  const nonceMode = url.searchParams.has('chart_id') || url.searchParams.has('client_request_id');
+  if (nonceMode) {
+    const chartId = url.searchParams.get('chart_id');
+    const nonce = url.searchParams.get('client_request_id');
+    if (url.searchParams.has('turn_id') || !chartId || !uuidLike.test(chartId) || !isClientRequestId(nonce)
+      || url.searchParams.getAll('chart_id').length !== 1 || url.searchParams.getAll('client_request_id').length !== 1) {
+      return res.badRequest('Use chart_id and client_request_id UUIDs without turn_id.');
+    }
+    const response = await recoverClientRequest(user.uid, chartId, nonce);
+    response.headers.set('cache-control', 'private, no-store');
+    return response;
+  }
   const turnId = url.searchParams.get('turn_id')
   if (!turnId) return res.badRequest('turn_id is required')
 

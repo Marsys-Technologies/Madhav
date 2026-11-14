@@ -4,6 +4,7 @@ import { resolveChartPageAccess } from "@/lib/auth/chart-page-guard";
 import { AcharyaReadingReceiptSchema } from "@/lib/pariprashna/receipt/schema";
 import { validateAcharyaReadingReceipt } from "@/lib/pariprashna/receipt/validate";
 import { getConversation } from "@/lib/conversations";
+import { isCanonicalSchemaVersionSupported, parsePartContent } from "@/lib/pariprashna/store/schema";
 
 export const uuidLike =
   /^[a-f\d]{8}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{12}$/i;
@@ -61,7 +62,91 @@ export async function consultationHistory(chartId: string, userId: string) {
   return rows;
 }
 
-export async function consultationMessages(id: string) {
+export class StoredTurnIntegrityError extends Error {
+  constructor() { super("Stored turn identity or reader data is inconsistent."); this.name = "StoredTurnIntegrityError"; }
+}
+
+export interface StoredTurnIdentity {
+  turnId: string;
+  conversationId: string;
+  chartId: string;
+  snapshotId: string;
+}
+
+interface ConsultationMessageRow {
+  id: string;
+  role: string;
+  created_at: string;
+  parts_json: unknown;
+  metadata_json: Record<string, unknown> | null;
+  schema_version: number | null;
+  tagged: boolean;
+  canonical_parts: unknown;
+}
+
+/** The existing stored-reader shape, narrowed for an exact recovered assistant. */
+export interface SafeStoredAssistantMessage {
+  id: string;
+  role: 'assistant';
+  created_at: string;
+  tagged: boolean;
+  schema_version: number | null;
+  parts_json: Array<{ type: 'text'; text: string }>;
+  metadata_json: { acharya_reading_receipt: import('@/lib/pariprashna/receipt/schema').AcharyaReadingReceipt };
+  canonical_parts: Array<{ kind: 'text' | 'citation' | 'prediction_candidate'; body: unknown }>;
+}
+
+function sameUuid(value: unknown, expected: string): boolean {
+  return typeof value === 'string' && uuidLike.test(value) && value.toLowerCase() === expected.toLowerCase();
+}
+
+/** Check RAW identities before reducing any metadata or parts. Never spread a raw row. */
+export function safeStoredMessage(row: ConsultationMessageRow, expected: StoredTurnIdentity): SafeStoredAssistantMessage {
+  const parsed = AcharyaReadingReceiptSchema.safeParse(row.metadata_json?.acharya_reading_receipt);
+  const custom = row.metadata_json?.custom;
+  if (row.role !== 'assistant' || !parsed.success || !validateAcharyaReadingReceipt(parsed.data).ok
+    || parsed.data.turn_id !== expected.turnId
+    || !sameUuid(parsed.data.conversation_id, expected.conversationId)
+    || !sameUuid(parsed.data.chart_id, expected.chartId)
+    || !custom || typeof custom !== 'object' || Array.isArray(custom)) throw new StoredTurnIntegrityError();
+  const identity = custom as Record<string, unknown>;
+  if (identity.queryId !== expected.turnId
+    || !sameUuid(identity.conversationId, expected.conversationId)
+    || !sameUuid(identity.ai_routing_snapshot_id, expected.snapshotId)
+    || (row.schema_version != null && !isCanonicalSchemaVersionSupported(row.schema_version))) throw new StoredTurnIntegrityError();
+
+  const canonical: SafeStoredAssistantMessage['canonical_parts'] = [];
+  if (!Array.isArray(row.canonical_parts)) throw new StoredTurnIntegrityError();
+  try {
+    for (const part of row.canonical_parts) {
+      if (!part || typeof part !== 'object') throw new StoredTurnIntegrityError();
+      const { kind, body } = part as { kind?: unknown; body?: unknown };
+      if (kind !== 'text' && kind !== 'citation' && kind !== 'prediction_candidate') continue;
+      const validated = parsePartContent(kind, body);
+      canonical.push({ kind, body: validated.body });
+    }
+  } catch { throw new StoredTurnIntegrityError(); }
+  const legacy: SafeStoredAssistantMessage['parts_json'] = [];
+  // Canonical prose wins; do not ship a second, possibly stale legacy answer.
+  if (!canonical.some(p => p.kind === 'text')) {
+    for (const part of Array.isArray(row.parts_json) ? row.parts_json : []) {
+      if (part && typeof part === 'object' && part.type === 'text' && typeof part.text === 'string') {
+        legacy.push({ type: 'text', text: part.text });
+      }
+    }
+  }
+  if (!canonical.some(p => p.kind === 'text' && (p.body as { text: string }).text.trim())
+    && !legacy.some(p => p.text.trim())) throw new StoredTurnIntegrityError();
+  return {
+    id: row.id, role: 'assistant', created_at: row.created_at, tagged: row.tagged,
+    schema_version: row.schema_version, parts_json: legacy, canonical_parts: canonical,
+    metadata_json: { acharya_reading_receipt: parsed.data },
+  };
+}
+
+export function consultationMessages(id: string, exact: { messageId: string; recoveryIdentity: StoredTurnIdentity }): Promise<SafeStoredAssistantMessage[]>;
+export function consultationMessages(id: string, exact?: { messageId: string }): Promise<ConsultationMessageRow[]>;
+export async function consultationMessages(id: string, exact?: { messageId: string; recoveryIdentity?: StoredTurnIdentity }) {
   const { rows } = await query<{
     id: string;
     role: string;
@@ -78,11 +163,15 @@ export async function consultationMessages(id: string) {
            COALESCE((SELECT jsonb_agg(jsonb_build_object('kind',p.kind,'body',p.body)
                                       ORDER BY p.seq)
                        FROM message_parts p WHERE p.message_id=m.id AND p.kind IN ('text','citation','prediction_candidate')), '[]'::jsonb) AS canonical_parts
-      FROM conversation_messages m WHERE m.conversation_id=$1
+      FROM conversation_messages m WHERE m.conversation_id=$1${exact ? ' AND m.id=$2' : ''}
       ORDER BY m.created_at, CASE m.role WHEN 'user' THEN 0 ELSE 1 END, m.id`,
-    [id],
+    exact ? [id, exact.messageId] : [id],
   );
   return rows.map((row) => {
+    if (exact?.recoveryIdentity) {
+      if (row.id !== exact.messageId || !sameUuid(id, exact.recoveryIdentity.conversationId)) throw new StoredTurnIntegrityError();
+      return safeStoredMessage(row, exact.recoveryIdentity);
+    }
     const parsed = AcharyaReadingReceiptSchema.safeParse(
       row.metadata_json?.acharya_reading_receipt,
     );
@@ -94,6 +183,21 @@ export async function consultationMessages(id: string) {
           : {},
     };
   });
+}
+
+/** Exact canonical assistant lookup; never replace it with the latest or a whole history read. */
+export async function recoverConsultationTurn(expected: StoredTurnIdentity): Promise<SafeStoredAssistantMessage | null> {
+  const { rows } = await query<{ id: string }>(
+    `SELECT m.id FROM conversation_messages m
+     WHERE m.conversation_id=$1 AND m.role='assistant'
+       AND m.metadata_json #>> '{acharya_reading_receipt,turn_id}'=$2
+     LIMIT 2`, [expected.conversationId, expected.turnId],
+  );
+  if (!rows.length) return null;
+  if (rows.length !== 1 || !uuidLike.test(rows[0].id)) throw new StoredTurnIntegrityError();
+  const messages = await consultationMessages(expected.conversationId, { messageId: rows[0].id, recoveryIdentity: expected });
+  if (messages.length !== 1) throw new StoredTurnIntegrityError();
+  return messages[0];
 }
 
 export async function setConsultationTag(
