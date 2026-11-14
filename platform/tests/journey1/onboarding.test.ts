@@ -12,7 +12,12 @@ const mocks = vi.hoisted(() => ({
   cookie: vi.fn(),
 }));
 vi.mock("server-only", () => ({}));
-vi.mock("@/lib/db/client", () => ({ query: mocks.query }));
+vi.mock("@/lib/db/client", () => ({
+  query: mocks.query,
+  withTransaction: async (
+    work: (client: { query: typeof mocks.query }) => Promise<unknown>,
+  ) => work({ query: mocks.query }),
+}));
 vi.mock("@/lib/auth/access-control", () => ({
   requireSuperAdmin: mocks.requireAdmin,
 }));
@@ -66,6 +71,7 @@ describe("approval followed by username choice", () => {
   });
   it("approves without assigning a username and supplies the account-setup continuation", async () => {
     mocks.query.mockImplementation(async (sql: string) => ({
+      rowCount: sql.startsWith("INSERT") || sql.startsWith("UPDATE") ? 1 : 0,
       rows: sql.includes("FROM access_requests")
         ? [
             {

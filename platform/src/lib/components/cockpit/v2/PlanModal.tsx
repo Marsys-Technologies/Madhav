@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { motion } from 'framer-motion'
-import type { BuildAction, BuildScope } from '@/lib/build/plan'
+import type { BlockerEntry, BuildAction, BuildScope } from '@/lib/build/plan'
 import { MiniDAG } from './MiniDAG'
 import { DUR, EASE } from './motion'
 import { useMounted } from '@/hooks/useMounted'
@@ -12,7 +12,8 @@ interface PlanData {
   plan: string[]
   plan_waves: string[][]
   status: 'ok' | 'blocked'
-  blockers: { asset_id: string; required_by: string[] }[]
+  blocked?: boolean
+  blockers: (BlockerEntry | string)[]
   includes_upstream_count: number
   estimated_seconds: number | null
 }
@@ -79,12 +80,15 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
         })
         const body = await r.json()
         if (!r.ok) throw new Error(body.error ?? 'Failed to resolve plan')
-        const rawData = body.data
-        if (rawData.status === 'blocked') {
+        const rawData = body.data as PlanData
+        if (rawData.status === 'blocked' || rawData.blocked === true) {
           throw new Error(
             rawData.blockers?.length
               ? 'Build blocked — upstream assets must be rebuilt first: ' +
-                rawData.blockers.map((b: { asset_id: string }) => b.asset_id).join(', ')
+                rawData.blockers.map(b => typeof b === 'string'
+                  ? b
+                  : `${b.dep_asset_id} is ${b.dep_state}${b.required_by.length ? `; required by ${b.required_by.join(', ')}` : ''}`
+                ).join('\n')
               : 'Build blocked by upstream dependencies'
           )
         }

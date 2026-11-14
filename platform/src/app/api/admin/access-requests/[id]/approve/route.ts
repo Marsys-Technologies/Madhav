@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/auth/access-control'
 import { adminAuth } from '@/lib/firebase/server'
-import { query } from '@/lib/db/client'
+import { query, withTransaction } from '@/lib/db/client'
+import type { PoolClient } from 'pg'
 import { validateUsername } from '@/lib/auth/username'
 import { res } from '@/lib/errors'
 import { writeAuditLog } from '@/lib/admin/audit'
@@ -19,20 +20,24 @@ interface RequestRow {
   status: 'pending' | 'approved' | 'rejected'
 }
 
+class ApprovalConflict extends Error {}
+
 async function insertApprovedProfile(
+  client: Pick<PoolClient, 'query'>,
   uid: string,
   req: RequestRow,
   username: string | null,
   role: 'super_admin' | 'guest',
   approverUid: string,
 ) {
-  await query(
+  const inserted = await client.query(
     'INSERT INTO profiles (id, role, status, name, username, email, approved_at, approved_by) VALUES ($1,\'guest\',\'active\',$2,$3,$4,now(),$5) ON CONFLICT (id) DO NOTHING',
     [uid, req.full_name, username, req.email, approverUid]
   )
+  if (inserted.rowCount !== 1) throw new ApprovalConflict('A profile for this account already exists.')
   // Override role if super_admin was requested
   if (role === 'super_admin') {
-    await query('UPDATE profiles SET role=$1 WHERE id=$2', ['super_admin', uid])
+    await client.query('UPDATE profiles SET role=$1 WHERE id=$2', ['super_admin', uid])
   }
 }
 
@@ -133,74 +138,87 @@ export async function POST(
   let uid: string
   let approvalPath: 'pending_profile' | 'firebase_user_only' | 'new_user'
   let hasPasswordProvider = false
+  let createdAuthUser = false
 
   if (pendingProfile && existingFirebase) {
-    // (a) The person already signed in and is waiting: approve that profile.
     uid = pendingProfile.id
     approvalPath = 'pending_profile'
     hasPasswordProvider = existingFirebase.providerData.some((p) => p.providerId === 'password')
-    try {
-      const sets = ['status=\'active\'', 'approved_at=now()', 'approved_by=$1', 'updated_at=now()']
-      const values: unknown[] = [auth.user.uid]
-      if (username) {
-        values.push(username)
-        sets.push(`username=$${values.length}`)
-      }
-      if (role === 'super_admin') sets.push('role=\'super_admin\'')
-      values.push(uid)
-      await query(`UPDATE profiles SET ${sets.join(', ')} WHERE id=$${values.length}`, values)
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Could not approve profile.'
-      return res.internal(message)
-    }
   } else if (existingFirebase) {
-    // (b) A Firebase account without a profile: create the profile, already approved.
     uid = existingFirebase.uid
     approvalPath = 'firebase_user_only'
     hasPasswordProvider = existingFirebase.providerData.some((p) => p.providerId === 'password')
-    try {
-      await insertApprovedProfile(uid, req, username, role, auth.user.uid)
-    } catch (err) {
-      if ((err as { code?: string } | null)?.code === '23505') {
-        return res.conflict('Username or email is already in use.')
-      }
-      const message = err instanceof Error ? err.message : 'Could not create profile.'
-      return res.internal(message)
-    }
   } else {
-    // (c) Neither exists. Create the Firebase user. Random password — they set their own via the reset link.
-    let firebaseUser: FirebaseUser
+    // Provider creation is outside the SQL transaction, whose callback never retries.
     try {
-      firebaseUser = await adminAuth.createUser({
+      const firebaseUser = await adminAuth.createUser({
         email: req.email,
         emailVerified: false,
         displayName: req.full_name,
       })
+      uid = firebaseUser.uid
+      createdAuthUser = true
+      approvalPath = 'new_user'
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Could not create user account.'
       return res.internal(message)
     }
-
-    // 4. Insert profile row. On conflict, roll back the Firebase user.
-    uid = firebaseUser.uid
-    approvalPath = 'new_user'
-    try {
-      await insertApprovedProfile(uid, req, username, role, auth.user.uid)
-    } catch (err) {
-      await adminAuth.deleteUser(uid).catch(() => {})
-      const message = err instanceof Error ? err.message : 'Could not create profile.'
-      return res.internal(message)
-    }
   }
 
-  // 5. Mark the request approved.
+  // Both SQL mutations commit together. In particular, a request-update timeout
+  // must not leave an active profile that the normal active-account guard refuses.
+  let profileWriteFailed = false
+  let requestWriteFailed = false
   try {
-    await query(
-      'UPDATE access_requests SET status=\'approved\', reviewed_at=now(), reviewed_by=$1, approved_user_id=$2 WHERE id=$3',
-      [auth.user.uid, uid, id]
-    )
-  } catch {
-    return res.internal('failed to mark request approved')
+    await withTransaction(async (client) => {
+      try {
+        if (approvalPath === 'pending_profile') {
+          const sets = ['status=\'active\'', 'approved_at=now()', 'approved_by=$1', 'updated_at=now()']
+          const values: unknown[] = [auth.user.uid]
+          if (username) {
+            values.push(username)
+            sets.push(`username=$${values.length}`)
+          }
+          if (role === 'super_admin') sets.push('role=\'super_admin\'')
+          values.push(uid)
+          const updated = await client.query(
+            `UPDATE profiles SET ${sets.join(', ')} WHERE id=$${values.length} AND status='pending'`, values,
+          )
+          if (updated.rowCount !== 1) throw new ApprovalConflict('A profile for this email exists but cannot be approved from here.')
+        } else {
+          await insertApprovedProfile(client, uid, req, username, role, auth.user.uid)
+        }
+      } catch (err) {
+        // Only a rejected profile statement, before COMMIT was attempted, can
+        // compensate an Auth user created by this invocation. Never an existing UID.
+        profileWriteFailed = !(err instanceof ApprovalConflict)
+        throw err
+      }
+
+      try {
+        const updated = await client.query(
+          'UPDATE access_requests SET status=\'approved\', reviewed_at=now(), reviewed_by=$1, approved_user_id=$2 WHERE id=$3 AND status=\'pending\'',
+          [auth.user.uid, uid, id],
+        )
+        if (updated.rowCount !== 1) throw new ApprovalConflict('Request is not pending.')
+      } catch (err) {
+        requestWriteFailed = true
+        throw err
+      }
+    })
+  } catch (err) {
+    if (createdAuthUser && profileWriteFailed) await adminAuth.deleteUser(uid).catch(() => {})
+    if (err instanceof ApprovalConflict) return res.conflict(err.message)
+    if (requestWriteFailed) return res.internal('failed to mark request approved')
+    if (profileWriteFailed) {
+      if (approvalPath === 'firebase_user_only' && (err as { code?: string } | null)?.code === '23505') {
+        return res.conflict('Username or email is already in use.')
+      }
+      const message = err instanceof Error ? err.message : 'Could not approve profile.'
+      return res.internal(message)
+    }
+    // A COMMIT failure can be ambiguous: do not delete the Auth user or replay.
+    return res.internal('Could not complete approval.')
   }
 
   await writeAuditLog(auth.user.uid, 'approve_user', uid, {
