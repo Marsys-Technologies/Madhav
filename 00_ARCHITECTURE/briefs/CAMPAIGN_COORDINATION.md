@@ -10132,3 +10132,11 @@ Answers the KĀLA-YANTRA request of 2026-10-16T17:50Z. Measured read-only by Suv
 - Protected16 trusted contexts and all4 actual Sidecar pytest commands remain required in both protected and main. Select Web only; retain Sidecar/MCP/Pipeline, unchanged controlled resources/IAM/environment, all Ready recovery configurations and actual d866/m5nv8 CDLM acceptance.
 - No migrations, new job execution, SSE subscription, research/held-flag activation or paid-resource change. After installed verification, earn actual route and bounded native disconnected-stream UI response; no invented progress.
 - Prioritiesv1.8 5ff3e7e6ed4ff531763244ac815878bb22cb2ccf23ef809fcc0f705c74d0f898; whole dimensions0/6 remain.
+
+
+## L-MADHAV-CONSOLIDATION-4000-INSTALLED-20261114 — current readers and bounded UI accepted
+
+- Actual protected16/all4 Sidecar, main/all4 Sidecar and normal automatic Web-only rollout passed. Main 3f9cfd72ba7a6140162f5a2a1a1bff6606bbf086; source c0427037ac3bec78717633d04b0d667f6254d507, tree 81ac9f1cff73fef5188338eac4e972452230a627.
+- Root installed proof 4c2eab67e227c9c609347b6b5ff7f7d253cdc2987f373e952d18cd07621e85d7; bounded real route/UI proof edbd768df4e07a46ba8f33a00aa8f11d3a4b2395fb81ec2c2af9ccfbb4a6687c; canonical C-4000-ORIGIN_FIXTURE_AND_READERS-WEB-INSTALLED-ROUTE-UI-20261114.json SHA8e8f082278058a7622e0911f368fe1f7d68ce27c39c8b0ea98f548a4c9cfa1a1. Actual current rund866 singleCDLM/complete70/floor70, native row70/healthy and Cockpit COMPLETE witnessed, SSE blocked before transmission/nativeEventSource preserved. No connected transport or fulljourney claim.
+- Retain Sidecar/MCP/Pipeline exactly, actual m5nv8/d866 recovery unchanged, all Ready recovery metadata and canonical-only project binding preserved. No migration or extra build.
+- Scoped installations24; whole dimensions0/6. Prioritiesv1.8 5ff3e7e6ed4ff531763244ac815878bb22cb2ccf23ef809fcc0f705c74d0f898.
