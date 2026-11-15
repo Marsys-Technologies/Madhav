@@ -65,7 +65,6 @@ vi.mock('@/app/panchang/components/PanchangClientView', () => ({
 }))
 vi.mock('@/components/profile/ChartHero', () => ({ ChartHero: () => null }))
 vi.mock('@/components/profile/ProfileSideRail', () => ({ ProfileSideRail: () => null }))
-vi.mock('@/components/build/JourneyStrip', () => ({ JourneyStrip: () => null }))
 vi.mock('@/components/profile/RoomCard', () => ({
   RoomCard: ({ title, cta, children }: { title: string; cta: { href: string; label: string }; children?: React.ReactNode }) => (
     <div data-testid="room-card" data-title={title}>
