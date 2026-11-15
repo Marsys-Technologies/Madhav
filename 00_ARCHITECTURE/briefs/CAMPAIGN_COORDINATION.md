@@ -60,6 +60,7 @@ cutover wave (its W6), UTKARṢA yields otherwise.
 
 | # | campaign | purpose | started (IST) | expiry (IST) | status |
 |---|---|---|---|---|---|
+| L-MADHAV-D2-RUN-ASSETS-OWNER-20261115 | Madhav consolidation | Sole Lead: exact6path private Build run-assets read port, retained Identity seam and scoped tests; no runtime operation | 2026-11-15 11:20 IST | 2026-11-15 14:20 IST | ACTIVE |
 | L-MADHAV-FINAL-DOCUMENT-RECONCILIATION-20261115 | Madhav consolidation | Head L: one actual final documentary reconciliation; six exact document paths; no runtime/source operation | 2026-11-15 10:15 IST | 2026-11-15 10:35 IST | RELEASED |
 | L-MADHAV-SR095-FINAL-20261115 | Madhav consolidation | ONE current-final SR095 Web traffic-only recovery; Head L operator, Audit output observer | 2026-11-15 08:19 IST | 2026-11-15 08:39 IST | RELEASED |
 | L-MADHAV-CONSOLIDATION-CLASSICAL-BUILD-MCP-20261112 | Madhav consolidation | Exact #3958 protected queue and normal Web plus MCP rollout under SR082 | 2026-11-12 00:34 IST | 2026-11-12 03:15 IST | ACTIVE |
@@ -10282,3 +10283,10 @@ Answers the KĀLA-YANTRA request of 2026-10-16T17:50Z. Measured read-only by Suv
 
 - Source e2d595b1300ba174e7b1aa0256b9d7ce2d49c5c5; four owning records and inventory written, SESSION_LOG payload prepared, result SHA 3afb4b24f0d72ec15eb62b6314c56a10e383b9b933ffd2787bc032a7b2798667. One actual dated open/independent qualification; original campaign startup remains unlocated. Existing checks and preserved MEDIUM/LOW residuals only. CURRENT_STATE unchanged and public GCS upload unattempted under the two explicit narrow recorded overrides.
 - Lease released for final close validation and atomic SESSION_LOG append; actual validation and append remain separately evidenced, not presumed by this release. Live stream/provider lifetime and whole-campaign acceptance remain unearned where indicated by existing records. No new runtime/resource/account/model/build/traffic operation.
+
+
+## L-MADHAV-D2-RUN-ASSETS-OWNER-20261115 — D2 exact supported mixed-boundary repair
+
+- Root/Strategy ratified the specific existing route profiles/Build SQL mixed boundary. Exact source base e2d595b1300ba174e7b1aa0256b9d7ce2d49c5c5; no earlier formal close is reopened.
+- Scope: platform/src/app/api/cockpit/runs/[id]/assets/route.ts, platform/src/lib/build/runAssets.ts, platform/src/lib/build/__tests__/runAssets.test.ts, platform/src/app/api/cockpit/runs/[id]/assets/__tests__/route.owner-contract.test.ts, platform/tests/governance/run_assets_boundary.ts, platform/tests/governance/run_assets_boundary.test.ts. Move Build read only; retain exact SQL, optional-column probe, chart/global precedence, id bind, auth-before-params/data, maxDuration and response/error ordering. Exact retained local Identity profile-read seam is explicitly enforced, no new account/role/RLS/grant operation.
+- Current physical source/index is mixed and unowned changes stay intact. Existing current worktree reused; candidate route is a virtual immutable-source override; new owned files are independently tracked and removed after their source blobs/tests are safely retained. No reset/checkout/stage of shared index, new copy/worktree, provider/DB/browser/model/job/stream/traffic action. Normal protected source-to-installed pipeline remains required after independent source qualification.
