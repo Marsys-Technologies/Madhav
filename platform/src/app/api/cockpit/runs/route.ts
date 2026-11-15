@@ -20,6 +20,7 @@ import {
 import { invalidateAssets, InvalidationError } from '@/lib/build/assetInvalidation'
 import { dispatchPreparedRun } from '@/lib/build/runDispatch'
 import { readBuildRunHistory } from '@/lib/build/runHistory'
+import { readRequestedAssetScope, readBodhaRunPreconditions, resetClearedRunAssetState, markClearedRunDownstreamStale, readClearedRunAssetMarker } from '@/lib/build/runRequestData'
 
 async function requireUser() {
   const user = await getServerUser()
@@ -127,10 +128,7 @@ export async function POST(req: NextRequest) {
   // Authorization: global/L0 assets are singletons — scope='asset' on a global asset
   // is invalid for everyone (L0 must be built at scope='global' or scope='layer'+'brahmagyan')
   if (scope === 'asset' && scope_target) {
-    const { rows: assetRows } = await query<{ scope: string }>(
-      'SELECT scope FROM asset_registry WHERE asset_id=$1',
-      [scope_target]
-    )
+    const { rows: assetRows } = await readRequestedAssetScope(scope_target)
     if (assetRows[0]?.scope === 'global') {
       if (!isSuperAdmin) {
         return NextResponse.json({ error: 'Only super_admin can build global assets', code: 'FORBIDDEN_L0' }, { status: 403 })
@@ -290,19 +288,7 @@ export async function POST(req: NextRequest) {
   if (plan.some((id: string) => id.startsWith('bo_'))) {
     const planBuildsL1 = plan.includes('ga_positions') && plan.includes('ga_structural')
 
-    const [chartFactsRes, gaStructuralRes, remedyCorpusRes] = await Promise.all([
-      query<{ count: string }>(
-        'SELECT count(*)::text AS count FROM chart_facts WHERE chart_id=$1',
-        [chart_id]
-      ),
-      query<{ state: string }>(
-        `SELECT state FROM asset_throughput WHERE chart_id=$1 AND asset_id='ga_structural'`,
-        [chart_id]
-      ),
-      query<{ count: string }>(
-        'SELECT count(*)::text AS count FROM brahma_remedy_corpus'
-      ),
-    ])
+    const [chartFactsRes, gaStructuralRes, remedyCorpusRes] = await readBodhaRunPreconditions(chart_id)
 
     const missingPreconditions: string[] = []
     if (!planBuildsL1) {
@@ -356,14 +342,7 @@ export async function POST(req: NextRequest) {
 
       // A rolled-back or preserved clear cannot reset the selected asset.
       if (clearedAssetIds.length > 0) {
-        await client.query(
-          `UPDATE asset_throughput
-           SET state='dormant', last_built_at=NULL, rows_written=NULL,
-               built_against_upstream_hash=NULL, built_against_writer_hash=NULL,
-               last_error=NULL
-           WHERE chart_id=$1 AND asset_id = ANY($2::text[])`,
-          [chart_id, clearedAssetIds]
-        )
+        await resetClearedRunAssetState(client, chart_id, clearedAssetIds)
       }
 
       // Traverse the full registry from successful clears, then exclude every
@@ -372,11 +351,7 @@ export async function POST(req: NextRequest) {
       for (const id of clearAssetIds) downstreamSet.delete(id)
       const downstreamAssets = Array.from(downstreamSet)
       if (downstreamAssets.length > 0) {
-        await client.query(
-          `UPDATE asset_throughput SET state='stale'
-           WHERE chart_id=$1 AND asset_id = ANY($2::text[]) AND state IN ('lit','building','error')`,
-          [chart_id, downstreamAssets]
-        )
+        await markClearedRunDownstreamStale(client, chart_id, downstreamAssets)
       }
 
       // Insert build_run and its queued assets within the same transaction
@@ -483,13 +458,7 @@ export async function POST(req: NextRequest) {
   // check itself fails, force (forcing a never-built asset costs nothing).
   if (!forceExecute && requestedServiceProbes.length === 0 && plan.length > 0) {
     try {
-      const marked = await query<{ asset_id: string }>(
-        `SELECT asset_id FROM asset_throughput
-          WHERE chart_id=$1 AND asset_id = ANY($2::text[])
-            AND state='dormant' AND last_built_at IS NULL
-          LIMIT 1`,
-        [chart_id, plan],
-      )
+      const marked = await readClearedRunAssetMarker(chart_id, plan)
       forceExecute = (marked?.rows?.length ?? 0) > 0
     } catch {
       forceExecute = true
