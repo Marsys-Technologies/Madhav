@@ -1,4 +1,4 @@
-import { join, resolve } from 'node:path'
+import { join, relative, resolve } from 'node:path'
 
 import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
@@ -13,13 +13,26 @@ const closedAdapters = [
   'src/app/api/build/data-readiness/route.ts',
 ]
 
+// Framework page/layout entry points are Portal adapters. Discover the class so
+// a future entry cannot silently bypass this already-ratified DB boundary.
+function pageLayoutAdapters(root: string, readDirectory = ts.sys.readDirectory) {
+  return readDirectory(join(root, 'src/app'), ['.ts', '.tsx', '.js', '.jsx'])
+    .map((file) => relative(root, file).replaceAll('\\', '/'))
+    .filter((file) => /(?:^|\/)(?:page|layout)\.[jt]sx?$/.test(file))
+    .sort()
+}
+
+function enrolledAdapters(pageLayouts: readonly string[]) {
+  return [...new Set([...closedAdapters, ...pageLayouts])]
+}
+
 describe('database capability stays inside its owner', () => {
   it('keeps the scoped adapters free of raw database imports and SQL', () => {
     const config = ts.readConfigFile(join(platformRoot, 'tsconfig.json'), ts.sys.readFile)
     expect(config.error).toBeUndefined()
     const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, platformRoot)
     expect(parsed.errors).toEqual([])
-    const files = closedAdapters.map((file) => join(platformRoot, file))
+    const files = enrolledAdapters(pageLayoutAdapters(platformRoot)).map((file) => join(platformRoot, file))
     const program = ts.createProgram(files, { ...parsed.options, noLib: true, types: [] })
     for (const file of files) {
       const adapter = program.getSourceFile(file)
@@ -27,12 +40,16 @@ describe('database capability stays inside its owner', () => {
       expect(inspectDbAdapter(program, adapter, platformRoot), file).toEqual([])
     }
     expect(inspectMigrationHealthPort(program, platformRoot)).toEqual([])
-  })
+  }, 60_000)
 })
 
-function fixture(source: string) {
+function fixture(
+  source: string,
+  adapterPath = 'src/app/route.ts',
+  enrollment?: (pageLayouts: readonly string[]) => readonly string[],
+) {
   const root = '/boundary-fixture'
-  const adapter = `${root}/src/app/route.ts`
+  const adapter = join(root, adapterPath)
   const files = new Map(Object.entries({
     [adapter]: source,
     [`${root}/src/lib/db/client.ts`]: 'export const query = () => 1; export type Row = number',
@@ -44,6 +61,7 @@ function fixture(source: string) {
     [`${root}/src/lib/type-barrel.ts`]: 'export type { query } from "./db/client"',
     [`${root}/src/lib/storage/index.ts`]: 'export function getStorageClient() { return {} }; export type StorageClient = object',
   }))
+  if (enrollment && !enrollment(pageLayoutAdapters(root, () => [...files.keys()])).includes(adapterPath)) return []
   const { program, host } = fixtureProgram(root, files)
   const adapterSource = program.getSourceFile(adapter)
   if (!adapterSource) throw new Error('Fixture adapter missing')
@@ -52,6 +70,7 @@ function fixture(source: string) {
 
 function fixtureProgram(root: string, files: Map<string, string>) {
   const compilerOptions: ts.CompilerOptions = {
+    allowJs: true,
     module: ts.ModuleKind.ESNext,
     moduleResolution: ts.ModuleResolutionKind.Bundler,
     paths: { '@/*': [`${root}/src/*`] },
@@ -121,6 +140,39 @@ describe('boundary detector fixtures', () => {
       'export const result: Row = summary()',
     ].join('\n'))).toEqual([])
   })
+})
+
+
+// These controls use the same enrollment function as the real source assertion,
+// the actual newly-consolidated caller text, and the existing compiler fixture.
+describe('page/layout DB boundary enrollment', () => {
+  const tracker = 'src/app/admin/tracker/page.tsx'
+  const cleanTracker = ts.sys.readFile(join(platformRoot, tracker))
+  if (!cleanTracker) throw new Error('Consolidated Tracker adapter missing')
+
+  it.each([
+    ['import { query as escaped } from "@/lib/db/client"', 'raw database import'],
+    ['import { twice as escaped } from "@/lib/second"', 'raw database import'],
+    ['const escaped = "SELECT name FROM things"', 'adapter SQL'],
+    ['const escaped = "./runtime-target"; void import(escaped)', 'unresolved module load'],
+  ])('enforces the newly enrolled Tracker against %s', (mutation, kind) => {
+    const source = cleanTracker + '\n' + mutation
+    // The old four-entry enrollment misses this real path even with the same
+    // parser: adding enrollment, rather than detector changes, catches it.
+    expect(fixture(source, tracker, () => closedAdapters)).toEqual([])
+    expect(fixture(source, tracker, enrolledAdapters)).toContainEqual(expect.objectContaining({ kind }))
+  })
+
+  it('allows a named owner port while the owner retains its own DB implementation', () => {
+    expect(fixture(cleanTracker + '\nimport { summary } from "@/lib/owner"; void summary', tracker, enrolledAdapters)).toEqual([])
+  })
+
+  it.each(['src/app/future/page.ts', 'src/app/future/layout.jsx'])(
+    'automatically enrolls a future framework entry at %s', (file) => {
+      expect(fixture('const sql = "SELECT name FROM things"', file, enrolledAdapters))
+        .toEqual([expect.objectContaining({ kind: 'adapter SQL' })])
+    },
+  )
 })
 
 function migrationPortFixture(overrides: Record<string, string> = {}) {
