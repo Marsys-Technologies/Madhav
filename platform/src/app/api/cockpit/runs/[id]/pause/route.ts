@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
+import { requestBuildRunPause } from '@/lib/build/runControlData'
 
 export const maxDuration = 8
 
@@ -22,13 +23,7 @@ export async function POST(
   const { id } = await params
 
   try {
-    const result = await query<{ id: string; state: string }>(
-      `UPDATE build_runs
-       SET pause_requested_at = NOW()
-       WHERE id=$1 AND state = 'running'
-       RETURNING id, state`,
-      [id]
-    )
+    const result = await requestBuildRunPause(id)
 
     if (result.rows.length === 0) {
       return NextResponse.json({ error: 'Run not found or not in running state' }, { status: 404 })

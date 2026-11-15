@@ -1,5 +1,5 @@
+import { readCockpitChartIdentity } from '@/lib/charts/pageIdentity'
 import { redirect } from 'next/navigation'
-import { query } from '@/lib/db/client'
 import { readCockpitLatestBuild } from '@/lib/build/cockpitLatestBuild'
 import { resolveChartPageAccess } from '@/lib/auth/chart-page-guard'
 import { CockpitShell } from '@/components/cockpit/CockpitShell'
@@ -15,17 +15,7 @@ export default async function CockpitPage({
   if (!access.canBuild) redirect(`/clients/${id}`)
 
   // Chart meta
-  const { rows: chartRows } = await query<{
-    id: string
-    name: string
-    birth_date: string
-    birth_time: string
-    birth_place: string
-    created_at: string
-  }>(
-    'SELECT id, name, birth_date, birth_time::text AS birth_time, birth_place, created_at FROM charts WHERE id=$1',
-    [id],
-  )
+  const { rows: chartRows } = await readCockpitChartIdentity(id)
   const chart = chartRows[0]
   if (!chart) redirect('/dashboard')
 

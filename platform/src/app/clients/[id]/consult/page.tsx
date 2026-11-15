@@ -1,5 +1,5 @@
+import { readConsultChartIdentity } from '@/lib/charts/pageIdentity'
 import { FEATURE_FLAGS } from '@/lib/config/feature_flags'
-import { query } from '@/lib/db/client'
 import { readChartPyramidLayers, legacyL1AvailabilityFromPyramid } from '@/lib/build/pyramidLayers'
 import { redirect } from 'next/navigation'
 import { ConsumeChat } from '@/components/consume/ConsumeChat'
@@ -100,10 +100,7 @@ export default async function ConsultPage({
   if (!access) redirect('/login')
   if (access.permission === 'deny') redirect('/dashboard')
 
-  const chartResult = await query<{ name: string; birth_date: string; birth_place: string; client_id: string }>(
-    'SELECT name, birth_date, birth_place, client_id FROM charts WHERE id=$1',
-    [id]
-  )
+  const chartResult = await readConsultChartIdentity(id)
   const chart = chartResult.rows[0] ?? null
   if (!chart) redirect('/dashboard')
 

@@ -1,7 +1,7 @@
+import { readChartPageName } from '@/lib/charts/pageIdentity'
 import { Suspense } from 'react'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { query } from '@/lib/db/client'
 import { resolveChartPageAccess } from '@/lib/auth/chart-page-guard'
 import { todayISTKey } from '@/lib/build/derive'
 import { ChartNav } from '@/components/journey1/ChartNav'
@@ -18,7 +18,7 @@ export default async function ChartPanchangPage({
   if (!access) redirect('/login')
   if (access.permission === 'deny') redirect('/dashboard')
 
-  const { rows: [chart] } = await query<{ name: string | null }>('SELECT name FROM charts WHERE id=$1', [id])
+  const { rows: [chart] } = await readChartPageName(id)
   if (!chart) redirect('/dashboard')
 
   return (

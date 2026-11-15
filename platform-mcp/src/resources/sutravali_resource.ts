@@ -5,8 +5,8 @@
  *   marsys://resource/sutravali/all-by-planet/{planet}
  *   marsys://resource/sutravali/all-by-house/{n}
  *
- * Both read from sutravali_rules via Python sidecar SQL endpoints.
- * ZERO LLM — SQL-only via /api/brahma/sutravali/by_planet and /by_house.
+ * Both read from sutravali_rules via the canonical service-admitted capability RPC.
+ * ZERO LLM — SQL-only; canonical timeout/cache policy, at most 500 rows.
  *
  * BRAHMA L0 Stream D — Sūtravali Pattern Extraction (2026-06-07)
  */
@@ -14,19 +14,24 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js'
 
-const PLATFORM_URL = (process.env['PLATFORM_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')
-const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
+import type { Principal } from '../types.js'
+import { callRegistryCapability } from '../lib/registry_capability.js'
 
-// ── Helper ─────────────────────────────────────────────────────────────────────
-
-async function fetchSidecarJson(path: string): Promise<unknown[] | null> {
+// Keep successful-empty distinct from transport, capability and malformed-result failures.
+async function fetchRules(
+  capabilityUri: string,
+  args: Record<string, unknown>,
+  principal: Principal,
+): Promise<Record<string, unknown>[] | null> {
   try {
-    const resp = await fetch(`${PLATFORM_URL}${path}`, {
-      headers: { 'x-mcp-internal-token': MCP_INTERNAL_TOKEN },
-      signal: AbortSignal.timeout(8000),
-    })
-    if (!resp.ok) return null
-    return (await resp.json()) as unknown[]
+    const result = await callRegistryCapability(capabilityUri, args, undefined, principal) as
+      { is_error?: boolean; content?: { rules?: unknown } } | null
+    const rules = result?.content?.rules
+    if (result?.is_error !== false || !Array.isArray(rules) ||
+        !rules.every(rule => rule !== null && typeof rule === 'object' && !Array.isArray(rule))) {
+      return null
+    }
+    return rules as Record<string, unknown>[]
   } catch {
     return null
   }
@@ -64,7 +69,7 @@ function rulesToMarkdown(
   return lines.join('\n')
 }
 
-export function registerSutravaliResources(server: McpServer): void {
+export function registerSutravaliResources(server: McpServer, principal: Principal): void {
   // Resource 1: all rules by planet
   const planetTemplate = new ResourceTemplate(
     'marsys://resource/sutravali/all-by-planet/{planet}',
@@ -76,13 +81,15 @@ export function registerSutravaliResources(server: McpServer): void {
     planetTemplate,
     async (uri, { planet }) => {
       const p = Array.isArray(planet) ? planet[0] : planet
-      const rules = await fetchSidecarJson(
-        `/api/brahma/sutravali/by_planet/${encodeURIComponent(p ?? '')}`,
+      const rules = await fetchRules(
+        'marsys://tool/L0/query_sutravali_rules_for_planet',
+        { planet: p ?? '', limit: 500 },
+        principal,
       )
 
       const content = rules
-        ? rulesToMarkdown(`Planet: ${p}`, rules as Record<string, unknown>[])
-        : `# Sūtravali Rules — Planet: ${p}\n\nNo data available (sidecar unreachable or no rules found).`
+        ? rulesToMarkdown(`Planet: ${p}`, rules)
+        : `# Sūtravali Rules — Planet: ${p}\n\nNo data available (capability query unavailable).`
 
       return {
         contents: [{
@@ -105,13 +112,15 @@ export function registerSutravaliResources(server: McpServer): void {
     houseTemplate,
     async (uri, { n }) => {
       const houseNum = Array.isArray(n) ? n[0] : n
-      const rules = await fetchSidecarJson(
-        `/api/brahma/sutravali/by_house/${encodeURIComponent(houseNum ?? '')}`,
-      )
+      // Match the legacy house proxy's parseInt spelling and 1..12 guard.
+      const house = parseInt(houseNum ?? '', 10)
+      const rules = Number.isFinite(house) && house >= 1 && house <= 12
+        ? await fetchRules('marsys://tool/L0/query_sutravali_rules', { house, limit: 500 }, principal)
+        : null
 
       const content = rules
-        ? rulesToMarkdown(`House: ${houseNum}`, rules as Record<string, unknown>[])
-        : `# Sūtravali Rules — House: ${houseNum}\n\nNo data available (sidecar unreachable or no rules found).`
+        ? rulesToMarkdown(`House: ${houseNum}`, rules)
+        : `# Sūtravali Rules — House: ${houseNum}\n\nNo data available (capability query unavailable).`
 
       return {
         contents: [{

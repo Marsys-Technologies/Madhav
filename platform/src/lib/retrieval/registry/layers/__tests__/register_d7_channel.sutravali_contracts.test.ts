@@ -21,7 +21,7 @@ describe('Sutravali registry source-query contracts', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     const response = await capability('marsys://tool/L0/query_sutravali_rules').handler({
-      planet: 'Saturn', house: 10, sign: 'Capricorn', antecedent_pattern: 'retrograde', limit: 250,
+      planet: 'Saturn', house: 10, sign: 'Capricorn', antecedent_pattern: 'retrograde', limit: 999,
     })
 
     expect(fetchMock).toHaveBeenCalledOnce()
@@ -29,16 +29,36 @@ describe('Sutravali registry source-query contracts', () => {
     expect(url).toContain('/api/brahma/sutravali/query_rules')
     expect(init.method).toBe('POST')
     expect(JSON.parse(String(init.body))).toEqual({
-      planet: 'Saturn', house: 10, sign: 'Capricorn', antecedent_pattern: 'retrograde', limit: 200,
+      planet: 'Saturn', house: 10, sign: 'Capricorn', antecedent_pattern: 'retrograde', limit: 500,
     })
     expect(response).toEqual({
       content: {
         rules: [{ rule_id: 'rule-1', text_id: 'bphs' }],
         returned_count: 1,
-        filters: { planet: 'Saturn', house: 10, sign: 'Capricorn', antecedent_pattern: 'retrograde', limit: 200 },
+        filters: { planet: 'Saturn', house: 10, sign: 'Capricorn', antecedent_pattern: 'retrograde', limit: 500 },
       },
       is_error: false,
     })
+  })
+
+  it.each([undefined, 20, 200, 250, 500, 999])('keeps the flexible default and extends only the ceiling for %s', async (requested) => {
+    const rows = Array.from({ length: requested === 999 ? 500 : 0 }, (_, i) => ({ rule_id: `fixture-${i}` }))
+    const fetchMock = successfulFetch(rows)
+    vi.stubGlobal('fetch', fetchMock)
+    const flexible = capability('marsys://tool/L0/query_sutravali_rules')
+    const response = await flexible.handler(requested === undefined ? {} : { limit: requested })
+    const limit = requested === undefined ? 20 : Math.min(requested, 500)
+    const [, init] = (fetchMock.mock.calls as unknown as [string, RequestInit][])[0]!
+    expect(JSON.parse(String(init.body))).toEqual({ limit })
+    expect(response).toEqual({ content: { rules: rows, returned_count: rows.length, filters: { limit } }, is_error: false })
+    expect(flexible.input_schema?.limit?.description).toContain('default: 20, max: 500')
+  })
+
+  it('keeps the independent planet default at 50', async () => {
+    const fetchMock = successfulFetch([])
+    vi.stubGlobal('fetch', fetchMock)
+    await capability('marsys://tool/L0/query_sutravali_rules_for_planet').handler({ planet: 'Saturn' })
+    expect(String((fetchMock.mock.calls as unknown as [string, RequestInit][])[0]![0])).toContain('planet=Saturn&limit=50')
   })
 
   it('requires text_id before querying and retains deterministic limit/offset pagination on the text route', async () => {

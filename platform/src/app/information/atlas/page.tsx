@@ -1,5 +1,5 @@
-import { query } from '@/lib/db/client'
-import { AtlasView, type AtlasAsset } from '@/components/build/AtlasView'
+import { readAtlasAssets } from '@/lib/build/atlasPageData'
+import { AtlasView } from '@/components/build/AtlasView'
 import { requireSuperAdminPage } from '@/lib/auth/super-admin-page-guard'
 
 export const dynamic = 'force-dynamic'
@@ -11,28 +11,7 @@ export default async function AtlasPage() {
   // clear_tables), and the layout guard alone can be skipped by a crafted RSC
   // request (SS N-373).
   await requireSuperAdminPage()
-  const result = await query<AtlasAsset>(`
-    SELECT
-      asset_id, layer, sort_order, sanskrit_name, english_name,
-      english_description, storage_type, target_table, count_sql,
-      size_sql, target_floor, expected_volume_formula,
-      expected_volume_inputs, volume_explanation, depends_on,
-      scope, is_active, estimated_seconds, created_at,
-      asset_type, layer_name, layer_index, provides_apis, health_probe,
-      catalog_status, clear_tables
-    FROM asset_registry
-    ORDER BY
-      CASE layer
-        WHEN 'brahmagyan' THEN 0
-        WHEN 'ganita'     THEN 1
-        WHEN 'bodha'      THEN 2
-        WHEN 'kala'       THEN 3
-        WHEN 'phala'      THEN 4
-        WHEN 'mimamsa'    THEN 5
-        ELSE 99
-      END,
-      sort_order
-  `)
+  const result = await readAtlasAssets()
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-6">

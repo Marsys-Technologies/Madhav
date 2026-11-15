@@ -1,5 +1,6 @@
+import { readDashboardProfile } from '@/lib/auth/pageIdentity'
+import { readAdminDashboardCharts, readLegacyGuestDashboardCharts } from '@/lib/roster/pageIdentity'
 import { getServerUser } from '@/lib/firebase/server'
-import { query } from '@/lib/db/client'
 import { ClientRoster } from '@/components/dashboard/ClientRoster'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
@@ -29,10 +30,7 @@ export default async function DashboardPage() {
   const user = await getServerUser()
   if (!user) redirect('/login')
 
-  const profileResult = await query(
-    'SELECT id, role, name, username, email, status FROM profiles WHERE id=$1',
-    [user.uid]
-  )
+  const profileResult = await readDashboardProfile(user.uid)
   const profile = (profileResult.rows[0] ?? null) as { id: string; role: string } | null
 
   // Resolve role — legacy 'client' is treated as 'guest' until migration 082 fully applies.
@@ -40,24 +38,15 @@ export default async function DashboardPage() {
     profile?.role === 'super_admin' ? 'super_admin' : 'guest'
   const canCreateChart = role === 'super_admin'
 
+  // Identity legacy listing contract: client_id remains included alongside owner/grants.
   // Fetch the roster:
   //   super_admin → every chart in the system.
   //   guest       → owned (owner_id) ∪ granted (chart_grants) charts.
   // Always returns; no auto-redirect on the "single chart" guest case
   // (per Unit 3.consult_nav scope: "stop auto-redirecting a single-chart guest").
   const chartsResult = role === 'super_admin'
-    ? await query('SELECT * FROM charts ORDER BY created_at DESC', [])
-    : await query(
-        `SELECT c.* FROM charts c
-         WHERE c.owner_id = $1
-            OR c.client_id = $1
-            OR EXISTS (
-              SELECT 1 FROM chart_grants g
-              WHERE g.chart_id = c.id AND g.principal_id = $1
-            )
-         ORDER BY c.created_at DESC`,
-        [user.uid]
-      )
+    ? await readAdminDashboardCharts()
+    : await readLegacyGuestDashboardCharts(user.uid)
   const charts = chartsResult.rows as unknown as Chart[]
 
   const chartIds = charts.map((c) => c.id)

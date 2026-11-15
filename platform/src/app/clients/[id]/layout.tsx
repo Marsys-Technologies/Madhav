@@ -1,6 +1,7 @@
+import { readChartTitleName, readChartPageName } from '@/lib/charts/pageIdentity'
+import { readAdminSwitcherCharts, readLegacyGuestSwitcherCharts } from '@/lib/roster/pageIdentity'
 import type { Metadata } from 'next'
 import { headers } from 'next/headers'
-import { query } from '@/lib/db/client'
 import { redirect } from 'next/navigation'
 import { JourneyShell } from '@/components/journey1/JourneyShell'
 import { AppShell } from '@/components/shared/AppShell'
@@ -27,7 +28,7 @@ export async function generateMetadata({
   if (!access || access.permission === 'deny') {
     return { title: 'Chart — MARSYS-JIS' }
   }
-  const result = await query<{ name: string }>('SELECT name FROM charts WHERE id=$1', [id])
+  const result = await readChartTitleName(id)
   const name = result.rows[0]?.name
   return { title: name ? `${name} — MARSYS-JIS` : 'Chart — MARSYS-JIS' }
 }
@@ -53,30 +54,17 @@ export default async function ClientLayout({
   // from the user's perspective; the chart simply does not exist for them).
   if (access.permission === 'deny') redirect('/dashboard')
 
-  const chartResult = await query<{ name: string | null }>(
-    'SELECT name FROM charts WHERE id=$1',
-    [id]
-  )
+  const chartResult = await readChartPageName(id)
   const chart = chartResult.rows[0] ?? null
   if (!chart) redirect('/dashboard')
 
   // For the switcher dropdown: list every chart the principal can see.
   const switcherCharts = access.role === 'super_admin'
     ? (
-        await query<{ id: string; name: string | null }>(
-          'SELECT id, name FROM charts ORDER BY name NULLS LAST, created_at DESC LIMIT 100',
-          []
-        )
+        await readAdminSwitcherCharts()
       ).rows
     : (
-        await query<{ id: string; name: string | null }>(
-          `SELECT c.id, c.name FROM charts c
-           WHERE c.owner_id = $1
-              OR c.client_id = $1
-              OR EXISTS (SELECT 1 FROM chart_grants g WHERE g.chart_id = c.id AND g.principal_id = $1)
-           ORDER BY c.name NULLS LAST, c.created_at DESC LIMIT 100`,
-          [access.user.uid]
-        )
+        await readLegacyGuestSwitcherCharts(access.user.uid)
       ).rows
 
   return (

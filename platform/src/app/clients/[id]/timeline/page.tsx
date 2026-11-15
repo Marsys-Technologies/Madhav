@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
-import { query } from '@/lib/db/client'
-import type { LELEvent } from '@/lib/lel/parser'
+import { readChartTitleName } from '@/lib/charts/pageIdentity'
+import { readTimelineEvents } from '@/lib/mimamsa/timelinePageData'
 import { TimelineView } from '@/components/timeline/TimelineView'
 import { ChartNav } from '@/components/journey1/ChartNav'
 import { ZoneRoot } from '@/components/shared/ZoneRoot'
@@ -24,28 +24,12 @@ export default async function TimelinePage({
   if (!access) redirect('/login')
   if (access.permission === 'deny') redirect('/dashboard')
 
-  const chartResult = await query<{ name: string }>('SELECT name FROM charts WHERE id=$1', [id])
+  const chartResult = await readChartTitleName(id)
   if (!chartResult.rows[0]) redirect('/dashboard')
 
   if ((await searchParams)?.tab === 'predictions') redirect(`/clients/${id}/samiksha`)
 
-  const { rows: events } = await query<LELEvent>(
-    `SELECT event_id AS id,
-            CASE date_confidence
-              WHEN 'year_only' THEN to_char(event_date, 'YYYY')
-              WHEN 'month_known' THEN to_char(event_date, 'YYYY-MM')
-              ELSE to_char(event_date, 'YYYY-MM-DD')
-            END AS date,
-            category, description AS body,
-            jsonb_strip_nulls(jsonb_build_object(
-              'maha_lord', chart_state->>'dasha_md',
-              'antar_lord', chart_state->>'dasha_ad'
-            )) AS chart_state
-       FROM life_events
-      WHERE chart_id = $1
-      ORDER BY event_date DESC, event_id ASC`,
-    [id],
-  )
+  const { rows: events } = await readTimelineEvents(id)
 
   const canLogEvent = access.role === 'super_admin' && !((await requireSuperAdmin()) instanceof NextResponse)
 

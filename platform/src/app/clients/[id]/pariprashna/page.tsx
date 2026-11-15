@@ -1,5 +1,5 @@
+import { readConsultationChartPin } from '@/lib/charts/pageIdentity'
 import { redirect } from 'next/navigation'
-import { query } from '@/lib/db/client'
 import { resolveChartPageAccess } from '@/lib/auth/chart-page-guard'
 import { emptyChartReadiness, getChartReadinessMap } from '@/lib/charts/readiness'
 import { configService } from '@/lib/config/index'
@@ -49,10 +49,7 @@ export default async function PariprashnaPage({ params }: { params: Promise<{ id
   if (access.permission === 'deny') redirect('/dashboard')
 
   const [chartResult, readinessMap] = await Promise.all([
-    query<{ name: string; birth_date: string; birth_time: string; birth_place: string }>(
-      'SELECT name, birth_date, birth_time, birth_place FROM charts WHERE id=$1',
-      [id],
-    ),
+    readConsultationChartPin(id),
     getChartReadinessMap([id]),
   ])
   const chart = chartResult.rows[0] ?? null

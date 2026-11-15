@@ -4,7 +4,7 @@
  * id `lahiri_chitrapaksha` (they used to default to the short 'lahiri', which matches zero chart_facts
  * rows), normalise aliases through the PR-1 helper, and reject unknown ids / "all" with HTTP 400.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 const { queryMock, buildChartDataMock, buildSignalsMock, runMock, userMock } = vi.hoisted(() => ({
   queryMock: vi.fn(),
@@ -148,5 +148,131 @@ describe('chart_data_adapter.buildChartData: the KP sub-lord read is pinned to t
     const chart = await real.buildChartData(CHART)
     expect(chart.kpSubLords).toBeUndefined()
     expect(chart.kpSubLordsFrame).toBeUndefined()
+  })
+})
+
+
+// Command characterization: runs the real route (and, after extraction, the real coordinator).
+const DOMAINS = ['CAREER', 'HEALTH', 'RELATIONSHIP', 'SPIRITUAL', 'PSYCHOLOGICAL']
+const SCHOOLS = ['parashari', 'jaimini', 'tajika', 'kp', 'nadi', 'bnn', 'yogini']
+const events: string[] = []
+function resultFor(domain: string) {
+  return {
+    schoolResults: SCHOOLS.map((school, i) => ({
+      school, domain, domainScore: i === 6 ? null : i + 0.5,
+      direction: i < 4 ? 'positive' : 'neutral', schoolVerdict: `verdict-${school}`,
+      ...(i === 0 ? { topSignals: [{ signalId: 'fixture-signal' }], pendingFlags: ['fixture-pending'] } : {}),
+    })),
+    convergence: { schoolsAgreeing: 4, schoolsTotal: 6, meanDomainScore: 3,
+      stdDomainScore: 0.75, direction: 'mixed', perSchoolScores: { parashari: 0.5 } },
+    weightedMeanScore: 2.75,
+  }
+}
+function commandSetup() {
+  vi.useFakeTimers()
+  vi.setSystemTime(new Date('2026-11-15T23:59:59.999Z'))
+  events.length = 0
+  buildChartDataMock.mockImplementation(async (...args) => {
+    events.push(`chart:${args.join(':')}`)
+    return { chartId: CHART, chartType: 'natal' }
+  })
+  buildSignalsMock.mockImplementation(async (_chart, school, domain) => {
+    events.push(`signal:${school}:${domain}`)
+    return [{ signalId: `${school}:${domain}`, score: 2, weight: 1 }]
+  })
+  queryMock.mockImplementation(async (sql: string) => {
+    events.push(sql.trim().split(/\s+/).slice(0, 3).join(' '))
+    return /FROM profiles/.test(sql) ? { rows: [{ role: 'super_admin' }] } : { rows: [] }
+  })
+  runMock.mockImplementation(async (_chart, domain) => {
+    events.push(`run:${domain}`)
+    return resultFor(domain)
+  })
+}
+afterEach(() => vi.useRealTimers())
+
+describe('POST school consensus command characterization', () => {
+  it('prefetches every school/domain before three deletes, then persists domains sequentially with exact wire counts', async () => {
+    commandSetup()
+    const response = await POST(req({ chart_id: CHART, ayanamsha_id: 'KP' }))
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ ok: true, chart_id: CHART, domains: 5, analysis_rows: 30, convergence_rows: 5, disagreement_rows: 5 })
+    expect(events.slice(0, 37)).toEqual([
+      'SELECT role FROM', `chart:${CHART}:krishnamurti`,
+      ...SCHOOLS.flatMap(school => DOMAINS.map(domain => `signal:${school}:${domain}`)),
+    ])
+    expect(events.slice(37, 40)).toEqual(['DELETE FROM school_analysis_runs', 'DELETE FROM convergence_scores', 'DELETE FROM school_disagreements'])
+    expect(events.slice(40)).toEqual(DOMAINS.flatMap(domain => [
+      `run:${domain}`, ...Array(6).fill('INSERT INTO school_analysis_runs'),
+      'INSERT INTO convergence_scores', 'INSERT INTO school_disagreements',
+    ]))
+    for (const [chart, domain, options] of runMock.mock.calls) {
+      expect(chart).toEqual({ chartId: CHART, chartType: 'natal' })
+      expect(options).toEqual({ includeNarratives: true, liveSignals: Object.fromEntries(SCHOOLS.map(school => [school, [{ signalId: `${school}:${domain}`, score: 2, weight: 1 }]])) })
+    }
+    const writes = queryMock.mock.calls.filter(c => /INSERT INTO school_analysis_runs/.test(c[0]))
+    expect(writes[0]![1]).toEqual([CHART, '2026-11-15', 'parashari', 'natal', 'CAREER', 0.5, 'positive', '[{"signalId":"fixture-signal"}]', 'verdict-parashari', ['fixture-pending'], 0.5 * 0.20, 0.20])
+    expect(writes[1]![1][7]).toBe('[]')
+    expect(writes[1]![1][9]).toEqual([])
+    expect(writes.every(c => c[1][2] !== 'yogini')).toBe(true)
+    expect(queryMock.mock.calls.filter(c => /INSERT INTO convergence_scores/.test(c[0]))[0]![1]).toEqual([CHART, 'CAREER', 4, 6, 3, 0.75, 2.75, 'mixed', '{"parashari":0.5}', '{}', null])
+    expect(queryMock.mock.calls.filter(c => /INSERT INTO school_disagreements/.test(c[0]))[0]![1]).toEqual([CHART, `DIS.SCH.${CHART.slice(0, 8)}.CAREER.001`, 'CAREER', ['parashari','jaimini','tajika','kp'], ['nadi','bnn'], [], 'method_divergence', '4/7 schools positive; 2/7 negative. Context-dependent on dasha timing.', 'context_dependent', ''])
+    expect(queryMock.mock.calls.slice(1, 4).map(c => c[1])).toEqual([[CHART], [CHART], [CHART]])
+  })
+  it('fails a late signal read before deleting any old state or running engines', async () => {
+    commandSetup()
+    const failure = new Error('signal-unavailable')
+    buildSignalsMock.mockImplementation(async (_chart, school, domain) => {
+      if (school === 'yogini' && domain === 'PSYCHOLOGICAL') throw failure
+      return []
+    })
+    await expect(POST(req({ chart_id: CHART }))).rejects.toBe(failure)
+    expect(buildSignalsMock).toHaveBeenCalledTimes(35)
+    expect(queryMock.mock.calls).toHaveLength(1)
+    expect(runMock).not.toHaveBeenCalled()
+  })
+  it('propagates insert failure with prior writes intact and no later domain execution', async () => {
+    commandSetup()
+    const accepted: unknown[][] = []
+    const failure = new Error('insert-failed')
+    queryMock.mockImplementation(async (sql, binds) => {
+      if (/INSERT INTO convergence_scores/.test(sql) && binds[1] === 'HEALTH') throw failure
+      accepted.push([sql, binds])
+      return /FROM profiles/.test(sql) ? { rows: [{ role: 'super_admin' }] } : { rows: [] }
+    })
+    await expect(POST(req({ chart_id: CHART }))).rejects.toBe(failure)
+    expect(runMock.mock.calls.map(c => c[1])).toEqual(['CAREER', 'HEALTH'])
+    expect(accepted.filter(c => /INSERT INTO school_analysis_runs/.test(String(c[0])))).toHaveLength(12)
+    expect(accepted.filter(c => /INSERT INTO convergence_scores/.test(String(c[0])))).toHaveLength(1)
+    expect(accepted.filter(c => /INSERT INTO school_disagreements/.test(String(c[0])))).toHaveLength(1)
+    expect(accepted.some(c => /BEGIN|ROLLBACK|COMMIT/.test(String(c[0])))).toBe(false)
+  })
+  it('unauthenticated input is forbidden before parsing body or querying role', async () => {
+    commandSetup()
+    userMock.mockResolvedValue(null)
+    const json = vi.fn().mockRejectedValue(new Error('must-not-parse'))
+    const response = await POST({ json } as never)
+    expect(response.status).toBe(403)
+    expect(await response.json()).toEqual({ error: 'Forbidden' })
+    expect(json).not.toHaveBeenCalled()
+    expect(queryMock).not.toHaveBeenCalled()
+    expect(buildChartDataMock).not.toHaveBeenCalled()
+  })
+  it('role query keeps exact SQL/binds and rejects a missing role before parsing', async () => {
+    queryMock.mockResolvedValue({ rows: [] })
+    const json = vi.fn()
+    expect((await POST({ json } as never)).status).toBe(403)
+    expect(queryMock).toHaveBeenCalledExactlyOnceWith('SELECT role FROM profiles WHERE id = $1', ['admin'])
+    expect(json).not.toHaveBeenCalled()
+  })
+  it.each([null, {}, { chart_id: '' }, { chart_id: false }])('missing chart %j is rejected before any command', async body => {
+    expect((await POST(req(body))).status).toBe(400)
+    expect(buildChartDataMock).not.toHaveBeenCalled()
+  })
+  it('malformed JSON follows the original chart-id-required response', async () => {
+    const response = await POST({ json: () => Promise.reject(new SyntaxError('bad-json')) } as never)
+    expect(response.status).toBe(400)
+    expect(await response.json()).toEqual({ error: 'chart_id required' })
+    expect(buildChartDataMock).not.toHaveBeenCalled()
   })
 })

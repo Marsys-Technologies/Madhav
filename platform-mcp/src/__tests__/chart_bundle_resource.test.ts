@@ -1,153 +1,136 @@
-/**
- * INF11-S1: chart_bundle_resource + multi_ayanamsha_resource tests
- * [BUILD-ORCH-J-03]
- */
-
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-
-// Mock fetch globally
-const mockFetch = vi.fn()
-vi.stubGlobal('fetch', mockFetch)
-
+/** Retirement compatibility contracts; synthetic URIs only, no live chart reads. */
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { Client } from '@modelcontextprotocol/sdk/client/index.js'
+import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
+import http from 'node:http'
+import https from 'node:https'
 import { registerChartBundleResource } from '../resources/chart_bundle_resource.js'
 import { registerMultiAyanamshaResource } from '../resources/multi_ayanamsha_resource.js'
 
-type ResourceHandler = (uri: { href: string; pathname: string }, params: Record<string, string>) => Promise<{ contents: { text: string }[] }>
+type Handler = (uri: URL) => Promise<{ contents: Array<{ uri: string; mimeType: string; text: string }> }>
+type Metadata = { title: string; description: string; mimeType: string }
 
 function makeMockServer() {
-  const handlers = new Map<string, ResourceHandler>()
+  const entries = new Map<string, { template: ResourceTemplate; metadata: Metadata; handler: Handler }>()
   return {
-    resource: vi.fn((_name: string, _template: unknown, handler: ResourceHandler) => {
-      handlers.set(_name, handler)
+    resource: vi.fn((name: string, template: ResourceTemplate, metadata: Metadata, handler: Handler) => {
+      entries.set(name, { template, metadata, handler })
     }),
-    getHandler(name: string): ResourceHandler {
-      const handler = handlers.get(name)
-      if (!handler) throw new Error(`Resource handler not registered: ${name}`)
-      return handler
+    entry(name: string) {
+      const entry = entries.get(name)
+      if (!entry) throw new Error(`Missing registration: ${name}`)
+      return entry
     },
   }
 }
 
 const CHART_ID = 'cccccccc-0000-0000-0000-000000000001'
+const cases = [
+  { name: 'chart-bundle', register: registerChartBundleResource, title: 'Legacy Chart Bundle' },
+  { name: 'multi-ayanamsha', register: registerMultiAyanamshaResource, title: 'Legacy Multi-Ayanamsha Status' },
+] as const
 
-const MOCK_BUNDLE = {
-  chart_id: CHART_ID,
-  ayanamshas_requested: ['lahiri', 'true_chitra'],
-  ayanamshas_found: ['lahiri', 'true_chitra'],
-  birth_panchanga: { tithi: 'Shukla Tritiya', vara: 'Ravivara', moon_nakshatra: 'Rohini' },
-  active_yogas: [{ yoga_name: 'Gajakesari', strength: 0.9 }],
-  ayanamsha_slices: [{
-    ayanamsha_id: 'lahiri',
-    planets: [{ planet: 'Sun', sign: 'Capricorn', house: 12, nakshatra: 'Uttara Ashadha' }],
-    houses: [{ house: 1, sign: 'Aquarius' }],
-    dasha_chain: [{ level: 'maha', lord: 'Mercury', start_date: '2023-01-01', end_date: '2040-01-01' }],
-  }],
-  cross_ayanamsha: [{ ayanamsha_1: 'lahiri', ayanamsha_2: 'raman', divergence_score: 0.15 }],
-  token_estimate: 1200,
-}
-
-describe('registerChartBundleResource', () => {
-  let server: ReturnType<typeof makeMockServer>
-
-  beforeEach(() => {
-    server = makeMockServer()
-    vi.clearAllMocks()
-  })
-
-  it('registers resource named chart-bundle', () => {
-    registerChartBundleResource(server as never)
-    expect(server.resource).toHaveBeenCalledWith('chart-bundle', expect.anything(), expect.any(Function))
-  })
-
-  it('returns markdown with panchanga data when bundle available', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => MOCK_BUNDLE,
-    })
-
-    registerChartBundleResource(server as never)
-    const handler = server.getHandler('chart-bundle')
-    const uri = { href: `marsys://chart-bundle/${CHART_ID}`, pathname: `/${CHART_ID}` }
-    const result = await handler(uri, {})
-
-    const text = result.contents[0].text
-    expect(text).toContain('Shukla Tritiya')
-    expect(text).toContain('Ravivara')
-    expect(text).toContain('Gajakesari')
-    expect(text).toContain('Mercury')
-  })
-
-  it('returns fallback message when API fails', async () => {
-    mockFetch.mockRejectedValueOnce(new Error('network error'))
-
-    registerChartBundleResource(server as never)
-    const handler = server.getHandler('chart-bundle')
-    const uri = { href: `marsys://chart-bundle/${CHART_ID}`, pathname: `/${CHART_ID}` }
-    const result = await handler(uri, {})
-
-    const text = result.contents[0].text
-    expect(text).toContain('Bundle data not yet loaded')
-  })
-
-  it('returns fallback when API returns non-ok status', async () => {
-    mockFetch.mockResolvedValueOnce({ ok: false, status: 404 })
-
-    registerChartBundleResource(server as never)
-    const handler = server.getHandler('chart-bundle')
-    const uri = { href: `marsys://chart-bundle/${CHART_ID}`, pathname: `/${CHART_ID}` }
-    const result = await handler(uri, {})
-
-    const text = result.contents[0].text
-    expect(text).toContain('Bundle data not yet loaded')
-  })
+beforeEach(() => {
+  vi.stubGlobal('fetch', vi.fn(() => { throw new Error('Retired resource attempted backend/model/build HTTP') }))
+  vi.spyOn(http, 'request').mockImplementation(() => { throw new Error('Unexpected HTTP request') })
+  vi.spyOn(https, 'request').mockImplementation(() => { throw new Error('Unexpected HTTPS request') })
+  vi.stubEnv('PLATFORM_URL', 'https://must-not-call.invalid')
+  vi.stubEnv('MCP_INTERNAL_TOKEN', 'synthetic-unused-token')
 })
 
-const MOCK_STATUS = {
-  ayanamsha_status: [
-    { ayanamsha_id: 'lahiri', latest_build_id: 'b1', status: 'complete', finished_at: '2026-05-30T04:00:00Z', engine_version: 'v1', is_latest_engine: true, steps_complete: 14, steps_total: 14 },
-    { ayanamsha_id: 'raman', latest_build_id: null, status: 'not_built', finished_at: null, engine_version: null, is_latest_engine: false, steps_complete: 0, steps_total: 0 },
-  ],
-}
+afterEach(() => {
+  expect(fetch).not.toHaveBeenCalled()
+  expect(http.request).not.toHaveBeenCalled()
+  expect(https.request).not.toHaveBeenCalled()
+  vi.restoreAllMocks()
+  vi.unstubAllGlobals()
+  vi.unstubAllEnvs()
+})
 
-describe('registerMultiAyanamshaResource', () => {
-  let server: ReturnType<typeof makeMockServer>
-
-  beforeEach(() => {
-    server = makeMockServer()
-    vi.clearAllMocks()
+describe.each(cases)('$name retirement notice', ({ name, register, title }) => {
+  it('retains its registered name, exact template and Markdown MIME with retired discovery metadata', () => {
+    const server = makeMockServer()
+    register(server as never)
+    const { template, metadata } = server.entry(name)
+    expect(server.resource).toHaveBeenCalledTimes(1)
+    expect(template.uriTemplate.toString()).toBe(`marsys://${name}/{chart_id}`)
+    expect(template.listCallback).toBeUndefined()
+    expect(metadata).toMatchObject({ title: `${title} (retired)`, mimeType: 'text/markdown' })
+    expect(metadata.description).toMatch(/retired/i)
+    expect(metadata.description).toContain('Compatibility notice only')
   })
 
-  it('registers resource named multi-ayanamsha', () => {
-    registerMultiAyanamshaResource(server as never)
-    expect(server.resource).toHaveBeenCalledWith('multi-ayanamsha', expect.anything(), expect.any(Function))
+  it('returns one explicit no-data compatibility notice at the original requested URI', async () => {
+    const server = makeMockServer()
+    register(server as never)
+    const uri = new URL(`marsys://${name}/${CHART_ID}`)
+    const { contents } = await server.entry(name).handler(uri)
+    expect(contents).toHaveLength(1)
+    expect(contents[0]).toMatchObject({ uri: uri.href, mimeType: 'text/markdown' })
+    const text = contents[0].text
+    expect(text).toContain(`# ${title} — retired`)
+    expect(text).toContain('retired and unavailable')
+    expect(text).toContain('compatibility notice only')
+    expect(text).toContain('does not retrieve chart data')
+    expect(text).not.toMatch(/not_built|trigger a build|build first|no ayanamshas built|all 5 ayanamshas are built|consensus is partially available|Bundle data not yet loaded/i)
+    expect(text).not.toContain('| Ayanamsha |')
+    expect(text).not.toContain('divergence_score=')
   })
 
-  it('returns markdown table with build status', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => MOCK_STATUS,
-    })
-
-    registerMultiAyanamshaResource(server as never)
-    const handler = server.getHandler('multi-ayanamsha')
-    const uri = { href: `marsys://multi-ayanamsha/${CHART_ID}`, pathname: `/${CHART_ID}` }
-    const result = await handler(uri, {})
-
-    const text = result.contents[0].text
-    expect(text).toContain('lahiri')
-    expect(text).toContain('complete')
-    expect(text).toContain('not_built')
+  it('gives the same static notice for different chart identifiers without measuring their state', async () => {
+    const server = makeMockServer()
+    register(server as never)
+    const handler = server.entry(name).handler
+    const first = await handler(new URL(`marsys://${name}/${CHART_ID}`))
+    const secondUri = new URL(`marsys://${name}/cccccccc-0000-0000-0000-000000000002`)
+    const second = await handler(secondUri)
+    expect(second.contents[0].uri).toBe(secondUri.href)
+    expect(second.contents[0].text).toBe(first.contents[0].text)
   })
 
-  it('returns fallback when status fetch fails', async () => {
-    mockFetch.mockRejectedValueOnce(new Error('timeout'))
+  it('keeps narrower guidance separate from the withdrawn legacy contract', async () => {
+    const server = makeMockServer()
+    register(server as never)
+    const { contents } = await server.entry(name).handler(new URL(`marsys://${name}/${CHART_ID}`))
+    const text = contents[0].text
+    expect(text).toContain('## Limited alternatives')
+    expect(text).toContain('`chart_snapshot`')
+    if (name === 'chart-bundle') {
+      expect(text).toContain('`marsys://chart-snapshot/{chart_id}`')
+      expect(text).toContain('`query_chart_facts`')
+      expect(text).toContain('current Panchang')
+      expect(text).toContain('do not reproduce the retired five-frame bundle')
+      expect(text).toContain('birth Panchanga')
+      expect(text).toContain('numeric cross-ayanamsha divergence')
+    } else {
+      expect(text).toContain('chart-level readiness UI')
+      expect(text).toContain('separately labelled identity fact cross-check')
+      expect(text).toContain('does not measure per-ayanamsha build progress or consensus')
+      expect(text).toContain('do not reproduce the retired status or consensus contract')
+    }
+  })
 
-    registerMultiAyanamshaResource(server as never)
-    const handler = server.getHandler('multi-ayanamsha')
-    const uri = { href: `marsys://multi-ayanamsha/${CHART_ID}`, pathname: `/${CHART_ID}` }
-    const result = await handler(uri, {})
-
-    const text = result.contents[0].text
-    expect(text).toContain('Trigger a build first')
+  it('lists the retired metadata and dispatches the unchanged URI through the actual SDK in memory', async () => {
+    const server = new McpServer({ name: 'retirement-fixture', version: '1.0.0' })
+    const client = new Client({ name: 'retirement-fixture-client', version: '1.0.0' })
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
+    register(server)
+    try {
+      await server.connect(serverTransport)
+      await client.connect(clientTransport)
+      const listed = await client.listResourceTemplates()
+      expect(listed.resourceTemplates).toEqual([
+        expect.objectContaining({ name, uriTemplate: `marsys://${name}/{chart_id}`, title: `${title} (retired)`, mimeType: 'text/markdown', description: expect.stringContaining('Compatibility notice only') }),
+      ])
+      const uri = `marsys://${name}/${CHART_ID}`
+      const result = await client.readResource({ uri })
+      expect(result.contents).toEqual([
+        expect.objectContaining({ uri, mimeType: 'text/markdown', text: expect.stringContaining('retired and unavailable') }),
+      ])
+    } finally {
+      await client.close()
+      await server.close()
+    }
   })
 })

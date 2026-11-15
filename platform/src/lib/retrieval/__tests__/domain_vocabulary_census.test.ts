@@ -128,8 +128,9 @@ const INTENTIONAL_EXCLUSIONS = new Map<string, string>([
     "Same M9 schools subsystem as lib/schools/types.ts::Domain above (same reasoning).",
   ],
   [
-    'route.ts::ALL_DOMAINS',
-    "app/api/build/school-consensus/route.ts — same M9 schools subsystem as " +
+    'consensusCommand.ts::ALL_DOMAINS',
+    "lib/schools/consensusCommand.ts — exact unchanged five-domain selector moved from " +
+    "app/api/build/school-consensus/route.ts; same M9 schools subsystem as " +
     "lib/schools/types.ts::Domain above (this is the file where the live CHECK-violation risk " +
     "was found; see that exclusion's note).",
   ],

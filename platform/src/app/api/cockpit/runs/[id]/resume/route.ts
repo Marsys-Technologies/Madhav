@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
+import { claimPausedBuildRun, readBuildRunResumeState, restorePausedBuildRunAfterDispatchFailure } from '@/lib/build/runControlData'
 import { invokeRunJob } from '@/lib/build/jobInvoker'
 
 export const maxDuration = 8
@@ -26,22 +27,10 @@ export async function POST(
     // Claim first. The Cloud Run invocation is intentionally outside the SQL
     // statement, but only the request that atomically moved paused -> planned may
     // dispatch it. The runner itself owns planned -> running after its lock.
-    const result = await query<{ id: string; action?: string }>(
-      `UPDATE build_runs
-       SET state = 'planned', pause_requested_at = NULL
-       WHERE id=$1 AND state = 'paused'
-         AND plan_manifest IS NOT NULL AND plan_manifest_digest IS NOT NULL
-       RETURNING id, action`,
-      [id]
-    )
+    const result = await claimPausedBuildRun(id)
 
     if (result.rows.length === 0) {
-      const { rows } = await query<{ state: string; has_manifest: boolean }>(
-        `SELECT state,
-                (plan_manifest IS NOT NULL AND plan_manifest_digest IS NOT NULL) AS has_manifest
-           FROM build_runs WHERE id=$1`,
-        [id]
-      )
+      const { rows } = await readBuildRunResumeState(id)
       if (rows[0]?.state === 'paused' && !rows[0].has_manifest) {
         return NextResponse.json({
           error: 'This paused run predates immutable manifests and cannot be resumed safely',
@@ -61,12 +50,7 @@ export async function POST(
       // Do not strand a paused run as planned when the dispatch did not happen.
       // The state predicate prevents an unusually fast runner from being moved
       // backwards after it has already claimed the work.
-      await query(
-        `UPDATE build_runs
-         SET state = 'paused', pause_requested_at = NOW(), last_error = $1
-         WHERE id=$2 AND state = 'planned'`,
-        [detail, id]
-      )
+      await restorePausedBuildRunAfterDispatchFailure(detail, id)
       console.error('[cockpit/runs/resume] job dispatch failed:', detail)
       return NextResponse.json(
         { error: 'Failed to dispatch resumed build job', detail, run_id: id, code: 'JOB_DISPATCH_FAILED' },

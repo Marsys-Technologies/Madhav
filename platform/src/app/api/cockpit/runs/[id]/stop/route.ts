@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
+import { requestBuildRunStop } from '@/lib/build/runControlData'
 
 export const maxDuration = 8
 
@@ -22,14 +23,7 @@ export async function POST(
   const { id } = await params
 
   try {
-    const result = await query<{ id: string }>(
-      `UPDATE build_runs
-       SET stop_requested_at = NOW(),
-           state = CASE WHEN state = 'planned' THEN 'stopped' ELSE state END
-       WHERE id=$1 AND state IN ('planned','running','paused')
-       RETURNING id`,
-      [id]
-    )
+    const result = await requestBuildRunStop(id)
 
     if (result.rows.length === 0) {
       return NextResponse.json({ error: 'Run not found or already completed/stopped' }, { status: 404 })

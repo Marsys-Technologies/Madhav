@@ -1,11 +1,11 @@
+import { readEditableChartIdentity } from '@/lib/charts/pageIdentity'
 import { redirect } from 'next/navigation'
 import { resolveChartPageAccess } from '@/lib/auth/chart-page-guard'
 import { EditClientForm } from '@/components/clients/EditClientForm'
 import { SharingPanel } from '@/components/sharing/SharingPanel'
 import { PageTitle } from '@/components/journey1/Titles'
-import { query } from '@/lib/db/client'
 import { getAyanamshaEditPolicy } from '@/lib/charts/ayanamshaEditPolicy'
-import { normalizeStoredChart, resolveTimezoneOffsetMinutes, type StoredChartRow } from '@/lib/charts/updateChart'
+import { normalizeStoredChart, resolveTimezoneOffsetMinutes } from '@/lib/charts/updateChart'
 import '@/components/profile/jataka-workspace.css'
 
 /**
@@ -22,13 +22,7 @@ export default async function EditPage({ params }: { params: Promise<{ id: strin
   if (!access) redirect('/login')
   if (!access.canBuild) redirect(`/clients/${id}`)
 
-  const chartResult = await query<StoredChartRow & { id: string }>(
-    `SELECT id, name, preferred_name, subject_name,
-            birth_date::text AS birth_date, birth_time::text AS birth_time, birth_place,
-            birth_lat::float8 AS birth_lat, birth_lng::float8 AS birth_lng, timezone_id, ayanamsa
-       FROM charts WHERE id = $1`,
-    [id],
-  )
+  const chartResult = await readEditableChartIdentity(id)
   const row = chartResult.rows[0] ?? null
   if (!row) redirect('/dashboard')
 

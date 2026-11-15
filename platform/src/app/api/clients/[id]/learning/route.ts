@@ -24,8 +24,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
 import { requireChartPermission } from '@/lib/auth/requireChartPermission'
-import * as fs from 'fs'
-import * as path from 'path'
+import { appendNativeLifeEvent } from '@/lib/mimamsa/nativeLifeEventAppend'
 
 export const dynamic = 'force-dynamic'
 
@@ -104,78 +103,9 @@ async function triggerResync(chartId: string, predictionId: string) {
 
 // ── Step 2: lel_entry — structured LEL intake → markdown append + resync ─────
 
-const LEL_MARKDOWN_PATH = path.resolve(
-  process.cwd(),
-  '..', '01_FACTS_LAYER', 'LIFE_EVENT_LOG_v1_2.md',
-)
-
-async function handleLelEntry(chartId: string, uid: string, body: unknown) {
-  const { event_id, category, subcategory, magnitude, date, notes } = body as {
-    event_id: string
-    category: string
-    subcategory?: string
-    magnitude: string
-    date: string
-    notes?: string
-  }
-  if (!event_id || !category || !magnitude || !date) {
-    return NextResponse.json({ error: 'event_id, category, magnitude, date required' }, { status: 400 })
-  }
-  const validMag = ['rupture', 'major', 'significant', 'moderate', 'minor', 'trivial']
-  if (!validMag.includes(magnitude)) {
-    return NextResponse.json({ error: 'invalid magnitude' }, { status: 400 })
-  }
-
-  // Build YAML block (governed append — preserves LEL as source-of-truth)
-  const yamlBlock = [
-    ``,
-    `\`\`\`yaml`,
-    `${event_id}:`,
-    `  date: "${date}"`,
-    `  category: "${category}"`,
-    subcategory ? `  subcategory: "${subcategory}"` : null,
-    `  magnitude: "${magnitude}"`,
-    `  disclosure_timing: "prospective"`,
-    notes ? `  notes: "${notes.replace(/"/g, "'")}"` : null,
-    `  shaped_predictor: false`,
-    `\`\`\``,
-    ``,
-  ].filter(Boolean).join('\n')
-
-  try {
-    if (!fs.existsSync(LEL_MARKDOWN_PATH)) {
-      return NextResponse.json({ error: 'LEL markdown not found at expected path' }, { status: 500 })
-    }
-    fs.appendFileSync(LEL_MARKDOWN_PATH, yamlBlock, 'utf-8')
-  } catch (err) {
-    return NextResponse.json({ error: `LEL append failed: ${String(err)}` }, { status: 500 })
-  }
-
-  // Signal mi_jivanaghatana provenance resync (best-effort async)
-  void triggerProvenanceResync(chartId)
-
-  return NextResponse.json({
-    ok: true,
-    event_id,
-    appended_to: 'LIFE_EVENT_LOG_v1_2.md',
-    next: 'mi_jivanaghatana resync triggered',
-  })
-}
-
-async function triggerProvenanceResync(chartId: string) {
-  try {
-    const sidecarUrl = (process.env['PYTHON_SIDECAR_URL'] ?? 'http://localhost:8001').replace(/\/$/, '')
-    await fetch(`${sidecarUrl}/mimamsa/provenance-resync`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Api-Key': process.env['PYTHON_SIDECAR_API_KEY'] ?? '',
-      },
-      body: JSON.stringify({ chart_id: chartId }),
-    })
-  } catch {
-    // best-effort
-  }
+async function handleLelEntry(chartId: string, body: unknown) {
+  const result = appendNativeLifeEvent(chartId, body)
+  return NextResponse.json(result.body, { status: result.status })
 }
 
 // ── Step 3: schedule_followup — Loop B prashna follow-up ────────────────────
@@ -328,7 +258,7 @@ export async function POST(
   const action = (body as { action?: string }).action
   switch (action) {
     case 'adjudicate':      return handleAdjudicate(chartId, user.uid, body)
-    case 'lel_entry':       return handleLelEntry(chartId, user.uid, body)
+    case 'lel_entry':       return handleLelEntry(chartId, body)
     case 'schedule_followup': return handleScheduleFollowup(chartId, body)
     case 'cosign':          return handleCosign(chartId, user.uid, body)
     case 'resonance':       return handleResonance(chartId, user.uid, body)
