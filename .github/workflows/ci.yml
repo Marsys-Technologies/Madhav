@@ -3275,7 +3275,7 @@ jobs:
           node-version: '22'
 
       - name: Install Python dependencies
-        run: pip install pyyaml pytest
+        run: pip install pyyaml pytest 'jsonschema>=4.22.0,<5'
 
       - name: Shard partition is complete and disjoint
         run: python platform/scripts/governance/ci_shard.py --count 5 --verify
