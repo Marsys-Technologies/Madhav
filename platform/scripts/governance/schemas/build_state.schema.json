@@ -17,7 +17,6 @@
     "next_session",
     "native_directives",
     "canonical_artifacts",
-    "mirror_pairs",
     "recent_sessions",
     "disagreement_register",
     "red_team_passes",
@@ -64,7 +63,7 @@
         "title": { "type": "string" },
         "status": {
           "type": "string",
-          "enum": ["active", "paused_governance_rebuild", "paused_native_hold", "closed"]
+          "enum": ["incoming", "active", "paused_governance_rebuild", "paused_native_hold", "closed"]
         },
         "macro_arc": {
           "type": "array",
@@ -248,6 +247,7 @@
       }
     },
     "mirror_pairs": {
+      "description": "Optional historical mirror data; current serializers omit this retired field. Retained entries must still satisfy the legacy contract.",
       "type": "array",
       "items": {
         "type": "object",
