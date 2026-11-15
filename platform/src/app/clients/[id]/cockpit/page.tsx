@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { query } from '@/lib/db/client'
+import { readCockpitLatestBuild } from '@/lib/build/cockpitLatestBuild'
 import { resolveChartPageAccess } from '@/lib/auth/chart-page-guard'
 import { CockpitShell } from '@/components/cockpit/CockpitShell'
 
@@ -31,22 +32,7 @@ export default async function CockpitPage({
   // Latest build — `builds` was retired; graceful null if table absent
   // Current run metadata has no governed ayanamsha selection/count. Keep this
   // projection to observed run fields; the Shell discloses the count as unavailable.
-  let latestBuild: { build_id: string; status: string; created_at: string } | null = null
-  let latestBuildUnavailable = false
-  try {
-    const { rows: buildRows } = await query<{
-      build_id: string
-      status: string
-      created_at: string
-    }>(
-      `SELECT id AS build_id, state AS status, created_at
-       FROM build_runs WHERE chart_id=$1 ORDER BY created_at DESC LIMIT 1`,
-      [id],
-    )
-    latestBuild = buildRows[0] ?? null
-  } catch {
-    latestBuildUnavailable = true
-  }
+  const { latestBuild, latestBuildUnavailable } = await readCockpitLatestBuild(id)
 
   return (
     <CockpitShell

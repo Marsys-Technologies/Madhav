@@ -8,26 +8,8 @@ import {
 import type { UIMessage } from 'ai'
 import { clarificationPart, judgmentFlagsPart } from '@/lib/streams/data_parts'
 
-/** Fetch signal headline + summary from bodha_msr_signals for a list of signal IDs.
- *  Returns a map signal_id → snippet string. Missing IDs get empty string. */
-async function fetchMsrSnippets(signalIds: string[]): Promise<Map<string, string>> {
-  if (signalIds.length === 0) return new Map()
-  try {
-    const placeholders = signalIds.map((_, i) => `$${i + 1}`).join(', ')
-    const { rows } = await query<{ signal_id: string; name: string; description: string }>(
-      `SELECT signal_id::text, signal_headline_text AS name, signal_summary_text AS description FROM bodha_msr_signals WHERE signal_id::text IN (${placeholders})`,
-      signalIds,
-    )
-    return new Map(rows.map(r => {
-      const full = r.name
-        ? (r.description ? `${r.name} — ${r.description}` : r.name)
-        : (r.description ?? '')
-      return [r.signal_id, full.length > 295 ? full.slice(0, 294) + '…' : full]
-    }))
-  } catch {
-    return new Map()
-  }
-}
+import { fetchMsrSnippets } from '@/lib/bodha/msrSignalSnippets'
+import { readLegacyConsultReadinessNote } from '@/lib/build/legacyConsultReadinessNote'
 import { NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
@@ -1188,49 +1170,9 @@ async function executeMeteredRequest(request: Request) {
     ? await compressHistory(convertedHistory, finalConversationId)
     : convertedHistory
 
-  // [PHASE-D-06] Data-readiness context injection.
-  // Queries build_checkpoints to determine which chart data assets are ready.
-  // Injects a NOTE into the system prompt so the model avoids hallucinating
-  // data for unbuilt domains. Non-fatal — synthesis proceeds on any error.
-  let dataReadinessNote: string | undefined
-  try {
-    const latestBuildRes = await query<{ build_id: string }>(
-      `SELECT build_id FROM build_events WHERE chart_id = $1 ORDER BY emitted_at DESC LIMIT 1`,
-      [chartId],
-    )
-    const latestBuildId = latestBuildRes.rows[0]?.build_id
-    if (latestBuildId) {
-      const checkpointsRes = await query<{ asset_id: string; status: string }>(
-        `SELECT DISTINCT ON (asset_id) asset_id, status
-           FROM build_checkpoints
-          WHERE build_id = $1
-          ORDER BY asset_id, completed_at DESC NULLS LAST`,
-        [latestBuildId],
-      )
-      if (checkpointsRes.rows.length > 0) {
-        const readyAssets = checkpointsRes.rows
-          .filter(r => r.status === 'success')
-          .map(r => r.asset_id)
-        const missingAssets = checkpointsRes.rows
-          .filter(r => r.status !== 'success')
-          .map(r => r.asset_id)
-        const total = checkpointsRes.rows.length
-        if (missingAssets.length > 0) {
-          dataReadinessNote = [
-            `NOTE: Chart data partially built.`,
-            `Assets ready: [${readyAssets.join(', ')}].`,
-            `Assets not yet built: [${missingAssets.join(', ')}].`,
-            `Do NOT hallucinate data for unbuilt assets — say "data not yet available" for those domains.`,
-            `(${readyAssets.length} of ${total} assets complete)`,
-          ].join(' ')
-        } else {
-          dataReadinessNote = `NOTE: All ${total} chart assets fully built. All data domains available.`
-        }
-      }
-    }
-  } catch {
-    // Non-fatal: readiness check failure does not block synthesis
-  }
+  // [PHASE-D-06] Legacy observed-checkpoint context; not canonical chart readiness.
+  // Non-fatal: synthesis proceeds if the existing two-query read fails.
+  const dataReadinessNote = await readLegacyConsultReadinessNote(chartId)
 
   /**
    * B.11 FLOOR CONTRACT (binding for all adapter dispatch paths):
