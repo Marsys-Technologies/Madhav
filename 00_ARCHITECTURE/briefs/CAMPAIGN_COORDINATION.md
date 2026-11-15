@@ -60,7 +60,7 @@ cutover wave (its W6), UTKARṢA yields otherwise.
 
 | # | campaign | purpose | started (IST) | expiry (IST) | status |
 |---|---|---|---|---|---|
-| L-MADHAV-SR095-FINAL-20261115 | Madhav consolidation | ONE current-final SR095 Web traffic-only recovery; Head L operator, Audit output observer | 2026-11-15 08:19 IST | 2026-11-15 08:39 IST | ACTIVE |
+| L-MADHAV-SR095-FINAL-20261115 | Madhav consolidation | ONE current-final SR095 Web traffic-only recovery; Head L operator, Audit output observer | 2026-11-15 08:19 IST | 2026-11-15 08:39 IST | RELEASED |
 | L-MADHAV-CONSOLIDATION-CLASSICAL-BUILD-MCP-20261112 | Madhav consolidation | Exact #3958 protected queue and normal Web plus MCP rollout under SR082 | 2026-11-12 00:34 IST | 2026-11-12 03:15 IST | ACTIVE |
 | L-MADHAV-CONSOLIDATION-PASSIVE-READ-OWNERS-R17-20261111 | Madhav consolidation | Exact #3972 causal 12-path protected queue and ordinary Web rollout under SR079 | 2026-11-11 23:10 IST | 2026-11-12 01:45 IST | RELEASED 2026-11-12 00:29 IST — exact Web rollout 43078712461 verified at 100 percent |
 | L-MADHAV-CONSOLIDATION-PASSIVE-READ-OWNERS-PG16-20261111 | Madhav consolidation | Exact #3972 causal 11-path protected queue and ordinary Web rollout under SR077 | 2026-11-11 22:30 IST | 2026-11-12 01:15 IST | RELEASED 2026-11-11 22:57 IST — exact group removed after R17 timeout, no merge or rollout |
@@ -10246,3 +10246,8 @@ Answers the KĀLA-YANTRA request of 2026-10-16T17:50Z. Measured read-only by Suv
 - Window 2026-11-15T02:49:00+00:00 through 2026-11-15T03:09:00+00:00; outbound no later than 2026-11-15T02:52:00+00:00. Operator Head L; independent output observer 01a1c631-45aa-7572-a98e-ba9186e09a8d, fresh acknowledgment 7abc3c8cc2bd852b4ce1d03847033d34a68c14f860814f6cf1da85ac112dd3e7.
 - Final amjis-web-probe-fd823d6f1252-43663941261-1 / sha256:0c4d293b0de0c6ae6fe91c88b6449b00290c5cd6822369f5e9ed5ae8a23631dd; outbound amjis-web-probe-d48a5d8ded13-43657601547-1 / sha256:c2ed6404f67c5129e17326e7c3da79d4b6bbcc28b1a3ffc40cbcddf0403e397f. Source fd823d6f1252e110fdb5ed42a9daf911fae70fe1; installed 523f2087f82ebfc470224d815e5f236f82a517a6ba3137da005c0b9ccc82340f; canonical bb33ba6d5db66946b623275cea2b00d275334e9e57c4231550722557323a8347. Read-only pair 50d0ec6007dea4fb03f813ac23b6852fd8f2f87fb0be8b0284be079370d719c3; signed d866 baseline 48ea0afa9695a8a9138c08fe7d91e288d30f0facc7743760c8d990a475234a04.
 - Workorder 3627763b6a8b907933abf90a01599896bf35d525ec8e896ab177ccec24626af4; one explicit named100% allocation perleg, zero tags, fresh etags, original120s/480s/305s controls/ledger/return rules. No revision/config/IAM/capacity/data/model/SSE/paid-test action. Preserve fixed siblings and m5; exact final return required.
+
+
+## L-MADHAV-SR095-FINAL-20261115-CLOSED — actual result and final return
+
+- Outcome RETURN_READ_FAILED_FINAL_STATE_RECONCILED_WITHIN_LIMITS; primary result 868c8b3c532373a49344c9eb5451c88a798c6623dffa402a2026d9b71651cb3a. Final amjis-web-probe-fd823d6f1252-43663941261-1 / sha256:0c4d293b0de0c6ae6fe91c88b6449b00290c5cd6822369f5e9ed5ae8a23631dd restored and verified100%; no tags. Actual timings, unsigned/signed controls, fresh ledger and retained sibling/Pipeline metadata are in the immutable result. No paid stream/model/build action.
