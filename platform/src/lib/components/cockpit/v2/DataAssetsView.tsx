@@ -163,7 +163,16 @@ export function DataAssetsView({ chartId, onAssetsReady, header, refreshKey, cle
     }
   }, [refreshRun, refetchLive])
 
-  useCockpitSSE(chartId, handleSSEEvent)
+  const handleReconnect = useCallback(() => {
+    // A terminal event can fall between sessions. Yield obsolete live overlays
+    // to polled truth and reconcile through the normal cached read paths.
+    setSseOverlay(new Map())
+    setSubstepOverlay(new Map())
+    refetchStats()
+    refreshRun()
+  }, [refetchStats, refreshRun])
+
+  useCockpitSSE(chartId, handleSSEEvent, handleReconnect)
 
   const handleNodeClick = useCallback((assetId: string) => {
     const asset = assets.find(a => a.asset_id === assetId)
