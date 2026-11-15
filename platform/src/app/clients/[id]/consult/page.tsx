@@ -1,5 +1,6 @@
 import { FEATURE_FLAGS } from '@/lib/config/feature_flags'
 import { query } from '@/lib/db/client'
+import { readChartPyramidLayers, legacyL1AvailabilityFromPyramid } from '@/lib/build/pyramidLayers'
 import { redirect } from 'next/navigation'
 import { ConsumeChat } from '@/components/consume/ConsumeChat'
 import { listConversations } from '@/lib/conversations'
@@ -120,10 +121,7 @@ export default async function ConsultPage({
   const [reportsResult, conversations, pyramidResult] = await Promise.all([
     Promise.resolve({ rows: [] as unknown[] }),
     listConversations({ chartId: id, userId: access.user.uid, module: 'consume' }),
-    query<{ layer_key: string; status: string }>(
-      `SELECT layer AS layer_key, status FROM pyramid_layers WHERE chart_id = $1`,
-      [id],
-    ).catch(() => ({ rows: [] as { layer_key: string; status: string }[] })),
+    readChartPyramidLayers(id).catch(() => ({ rows: [] as { layer_key: string; status: string }[] })),
   ])
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const reports = reportsResult.rows as any[]
@@ -144,18 +142,10 @@ export default async function ConsultPage({
 
   // WS-1-S3-B: Derive capability gate state from pyramid layers.
   const cockpitHref = `/clients/${id}/nirmana`
-  const pyramidRows = pyramidResult.rows
-  const l1Row = pyramidRows.find((r) => r.layer_key === 'L1')
-  const isL1Built = l1Row?.status === 'built' || l1Row?.status === 'complete'
-  const isL1Building = l1Row?.status === 'building' || l1Row?.status === 'in_progress'
-
-  const capabilityGateState: CapabilityGateState = pyramidRows.length === 0
-    ? { state: 'no-build', cockpitHref }
-    : isL1Built
-      ? { state: 'ready', capabilities: [] } // capabilities populated client-side if needed
-      : isL1Building
-        ? { state: 'l1-building', cockpitHref }
-        : { state: 'no-build', cockpitHref } // layers exist but L1 not started
+  const l1Availability = legacyL1AvailabilityFromPyramid(pyramidResult.rows)
+  const capabilityGateState: CapabilityGateState = l1Availability === 'ready'
+    ? { state: 'ready', capabilities: [] } // capabilities populated client-side if needed
+    : { state: l1Availability, cockpitHref }
 
   return (
     <div data-testid="consult-page-root" data-permission={access.permission}>

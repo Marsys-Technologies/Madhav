@@ -3,3 +3,5 @@ platform/python-sidecar/brahmagyan/mimamsa/bigquery_export_preview.jsonl
 # Keep the historical Bodha scaffold commands available from source.
 platform/python-sidecar/brahmagyan/bodha/l2_embeddings.py
 platform/python-sidecar/brahmagyan/bodha/l2_lenses_salience.py
+/.clone/platform-mcp/src/kala_timeline_impl.ts
+/.clone/platform-mcp/src/__tests__/kala_timeline.test.ts

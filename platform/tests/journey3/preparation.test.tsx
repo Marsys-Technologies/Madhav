@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { CockpitShell } from '@/lib/components/cockpit/v2/CockpitShell'
 import { DataAssetsView } from '@/lib/components/cockpit/v2/DataAssetsView'
 import type { ActiveRun } from '@/hooks/useActiveRun'
+import type { AssetRow as RegistryAssetRow } from '@/hooks/useAssetRegistry'
 import { AssetRow } from '@/lib/components/cockpit/v2/AssetRow'
 import { LayerPanel } from '@/lib/components/cockpit/v2/LayerPanel'
 import { preparationLayerState } from '@/lib/components/cockpit/v2/PreparationReadiness'
@@ -108,7 +109,7 @@ describe('Journey 3 scoped confirmation', () => {
 })
 
 const pane = vi.hoisted(() => ({
-  assets: [] as (typeof DATA_ASSET)[],
+  assets: [] as RegistryAssetRow[],
   run: null as ActiveRun | null,
   stats: new Map<string, ReturnType<typeof statOf>>(),
   lastFetched: new Date('2026-01-01T00:00:00Z'),
