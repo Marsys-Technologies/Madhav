@@ -30,20 +30,19 @@ test.describe('/clients/[id]/build — R3b Build mode', () => {
     ])
   })
 
-  // ── Three-pane layout ──────────────────────────────────────────────────────
+  test('redirects the legacy chart build URL to Chart Preparation and shows readiness', async ({ page }) => {
+    const legacy = new URL(`/clients/${CHART_ID}/build`, BASE_URL)
+    const preparation = new URL(`/clients/${CHART_ID}/nirmana`, BASE_URL)
+    const response = await page.goto(legacy.href)
 
-  test('renders three-pane layout: sidebar | chat area | right pane', async ({ page }) => {
-    await page.goto(`${BASE_URL}/clients/${CHART_ID}/build`)
-
-    // Left pane — ConversationSidebar: "New conversation" button is a reliable anchor
-    await expect(page.getByText('New conversation')).toBeVisible()
-
-    // Center pane — Composer textarea (placeholder when no messages yet)
-    const composer = page.getByRole('textbox')
-    await expect(composer).toBeVisible()
-
-    // Right pane — BuildRightPane renders a "Pyramid layers" toggle button
-    await expect(page.getByRole('button', { name: /Pyramid layers/i })).toBeVisible()
+    expect(response?.status()).toBe(200)
+    const redirect = await response?.request().redirectedFrom()?.response()
+    expect(redirect?.status()).toBe(308)
+    await expect(page).toHaveURL(preparation.href)
+    const root = page.getByTestId('build-page-root')
+    await expect(root).toBeVisible()
+    await expect(root.getByRole('heading', { name: /Chart Preparation/ })).toBeVisible()
+    await expect(root.getByRole('complementary', { name: 'What you can ask now' })).toBeVisible()
   })
 
   // ── Send a message ─────────────────────────────────────────────────────────

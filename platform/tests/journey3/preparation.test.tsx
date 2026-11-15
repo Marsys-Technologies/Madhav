@@ -1,6 +1,9 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, within, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { CockpitShell } from '@/lib/components/cockpit/v2/CockpitShell'
+import { DataAssetsView } from '@/lib/components/cockpit/v2/DataAssetsView'
+import type { ActiveRun } from '@/hooks/useActiveRun'
 import { AssetRow } from '@/lib/components/cockpit/v2/AssetRow'
 import { LayerPanel } from '@/lib/components/cockpit/v2/LayerPanel'
 import { preparationLayerState } from '@/lib/components/cockpit/v2/PreparationReadiness'
@@ -101,5 +104,108 @@ describe('Journey 3 scoped confirmation', () => {
     await waitFor(() => expect(requests).toHaveBeenCalledTimes(2))
     expect(requests.mock.calls[1][0]).toBe('/api/cockpit/runs')
     expect(JSON.parse(requests.mock.calls[1][1].body)).toEqual({ chart_id: 'fictional-chart', scope: 'asset', scope_target: DATA_ASSET.asset_id, action: 'rebuild' })
+  })
+})
+
+const pane = vi.hoisted(() => ({
+  assets: [] as (typeof DATA_ASSET)[],
+  run: null as ActiveRun | null,
+  stats: new Map<string, ReturnType<typeof statOf>>(),
+  lastFetched: new Date('2026-01-01T00:00:00Z'),
+  refetchRegistry: vi.fn(),
+  refetchStats: vi.fn(),
+  refetchLive: vi.fn(),
+  refreshRun: vi.fn(),
+  subscribe: vi.fn(),
+  graph: vi.fn(),
+}))
+
+vi.mock('@/hooks/useAssetRegistry', () => ({ useAssetRegistry: () => ({
+  assets: pane.assets, isLoading: false, error: null, refetch: pane.refetchRegistry,
+}) }))
+vi.mock('@/hooks/useAssetStats', () => ({ useAssetStats: () => ({
+  stats: pane.stats, lastFetched: pane.lastFetched, error: null,
+  refetch: pane.refetchStats, refetchLive: pane.refetchLive,
+}) }))
+vi.mock('@/hooks/useActiveRun', () => ({ useActiveRun: () => ({ run: pane.run, refresh: pane.refreshRun }) }))
+vi.mock('@/hooks/useCockpitSSE', () => ({ useCockpitSSE: pane.subscribe }))
+vi.mock('@/hooks/useChartContext', () => ({ useChartContext: () => ({
+  chartName: 'Fictional chart', birthDate: null, birthTime: null, birthPlace: null,
+}) }))
+vi.mock('next/dynamic', () => ({ default: () => pane.graph }))
+
+describe('Journey 3 preparation disclosure', () => {
+  const requests = vi.fn(() => { throw new Error('Unexpected request from read-only preparation fixture') })
+  const ganita = (state: 'expanded' | 'collapsed') => screen.getByRole('button', { name: `Gaṇita layer, ${state}` })
+  const bodha = (state: 'expanded' | 'collapsed') => screen.getByRole('button', { name: `Bodha layer, ${state}` })
+  const view = () => render(<DataAssetsView chartId="fictional-chart" variant="preparation"
+    activeRun={pane.run} refreshRun={pane.refreshRun} />)
+
+  beforeEach(() => {
+    pane.assets = [DATA_ASSET]
+    pane.run = null
+    pane.stats = new Map([[DATA_ASSET.asset_id, statOf({ state: 'lit' })]])
+    vi.stubGlobal('fetch', requests)
+    vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() })))
+  })
+
+  afterEach(() => {
+    expect(requests).not.toHaveBeenCalled()
+    expect(pane.refreshRun).not.toHaveBeenCalled()
+    expect(pane.graph).not.toHaveBeenCalled()
+  })
+
+  it('reports an empty registry and exposes no asset actions', () => {
+    pane.assets = []
+    pane.stats = new Map()
+    view()
+    expect(screen.getByText('No preparation assets are available.')).toBeTruthy()
+    const readiness = screen.getByRole('complementary', { name: 'What you can ask now' })
+    expect(within(readiness).getByText('Gaṇita · Status unavailable')).toBeTruthy()
+    expect(screen.queryByRole('button')).toBeNull()
+  })
+
+  it('starts idle layers collapsed and auto-expands only the active run layer', () => {
+    pane.assets = [downstream, DATA_ASSET]
+    const idle = view()
+    expect(ganita('collapsed').getAttribute('aria-expanded')).toBe('false')
+    expect(screen.queryByText('Planet positions')).toBeNull()
+    idle.unmount()
+
+    pane.run = { id: 'fictional-run', scope: 'layer', scope_target: 'ganita', action: 'rebuild',
+      state: 'running', plan: [DATA_ASSET.asset_id], current_asset_id: DATA_ASSET.asset_id,
+      created_at: '2026-01-01T00:00:00Z', started_at: null, pause_requested_at: null, stop_requested_at: null }
+    view()
+    expect(ganita('expanded').getAttribute('aria-expanded')).toBe('true')
+    expect(screen.getByText('Planet positions')).toBeTruthy()
+    expect(bodha('collapsed').getAttribute('aria-expanded')).toBe('false')
+    expect(screen.queryByText('House themes')).toBeNull()
+  })
+
+  it('opens the named idle layer and shows its real asset row on first click', async () => {
+    view()
+    await userEvent.setup().click(ganita('collapsed'))
+    expect(ganita('expanded').getAttribute('aria-expanded')).toBe('true')
+    expect(screen.getByText('Planet positions')).toBeTruthy()
+  })
+
+  it('closes the same idle layer and removes its asset row on second click', async () => {
+    view()
+    const user = userEvent.setup()
+    await user.click(ganita('collapsed'))
+    expect(screen.getByText('Planet positions')).toBeTruthy()
+    await user.click(ganita('expanded'))
+    expect(ganita('collapsed').getAttribute('aria-expanded')).toBe('false')
+    await waitFor(() => expect(screen.queryByText('Planet positions')).toBeNull())
+  })
+
+  it('renders the preparation toolbar, canonical layers and separate readiness in document order', () => {
+    pane.assets = [downstream, DATA_ASSET]
+    render(<CockpitShell chartId="fictional-chart" variant="preparation" />)
+    const nodes = [screen.getByText('Live chart preparation'), ganita('collapsed'), bodha('collapsed'),
+      screen.getByRole('complementary', { name: 'What you can ask now' })]
+    for (let index = 1; index < nodes.length; index++) {
+      expect(nodes[index - 1].compareDocumentPosition(nodes[index]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    }
   })
 })
