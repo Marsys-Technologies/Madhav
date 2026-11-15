@@ -10251,3 +10251,12 @@ Answers the KĀLA-YANTRA request of 2026-10-16T17:50Z. Measured read-only by Suv
 ## L-MADHAV-SR095-FINAL-20261115-CLOSED — actual result and final return
 
 - Outcome RETURN_READ_FAILED_FINAL_STATE_RECONCILED_WITHIN_LIMITS; primary result 868c8b3c532373a49344c9eb5451c88a798c6623dffa402a2026d9b71651cb3a. Final amjis-web-probe-fd823d6f1252-43663941261-1 / sha256:0c4d293b0de0c6ae6fe91c88b6449b00290c5cd6822369f5e9ed5ae8a23631dd restored and verified100%; no tags. Actual timings, unsigned/signed controls, fresh ledger and retained sibling/Pipeline metadata are in the immutable result. No paid stream/model/build action.
+
+
+## L-MADHAV-CONSOLIDATION-4007-BUILDSTATE_SCHEMA3-20261115 — build-state contract alignment reserved
+
+- Root reserves 09c2e4f922121e9d813fe4b538ebd30be64e1024, tree 81d09afff8693245a9243e362639f8b2c96dc594, base fd823d6f1252e110fdb5ed42a9daf911fae70fe1, exact3 paths. Actual source-derived5 ordinary workflows, all3 no-push builds and genuine20/127 qualification 0261c18abec1048615b38a413b035cef032a726088ef2fd65785d9e7b6d8c03f/e51c1564318a0d020bfe5d6bc5e39e9ad0fd61b3b45ed629160dd2d3dab555a8; preflight 4201ac1b5c362f377d8d9e12f0513b414060864b50c190664f13efb0160a330e.
+- Current serializer output no longer requires retired mirror data; explicit incoming enum and all active/historical validation retained. Nine focused tests/70subtests in clean declaredCI environment; existing governance job declares jsonschema. No skip or selector workaround.
+- Required16 trusted App15368 contexts and all4 actual Sidecar pytest commands in protected and main remain required. Existing selector selects Web; retain fixedSidecar/MCP/Pipeline/controls/IAM/recoveries/d866/m5. All11 prior Consult/SR095 contract inputs unchanged.
+- Actual30 recovery result868c and timing9dca preserve originalreturnConnectionError, independently qualified exactfinalrestoration, missing supplementalmonotonic timestamp and releasedleasee76. No repeat to erase observations or extra source/runtime acceptance inferred.
+- FormalDesktop admission stayspending; paid UI test remains unapproved. No migration/job/flag/account/config/resource/model action. Prioritiesv1.8 5ff3e7e6ed4ff531763244ac815878bb22cb2ccf23ef809fcc0f705c74d0f898; whole dimensions0/6.
