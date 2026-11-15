@@ -19,6 +19,7 @@ import {
 } from '@/lib/build/runPreparation'
 import { invalidateAssets, InvalidationError } from '@/lib/build/assetInvalidation'
 import { dispatchPreparedRun } from '@/lib/build/runDispatch'
+import { readBuildRunHistory } from '@/lib/build/runHistory'
 
 async function requireUser() {
   const user = await getServerUser()
@@ -534,23 +535,7 @@ export async function GET(req: NextRequest) {
   if (denied) return denied
 
   try {
-    const { rows } = await query<{
-      id: string
-      scope: string
-      scope_target: string | null
-      action: string
-      state: string
-      created_at: string
-      ended_at: string | null
-      last_error: string | null
-    }>(
-      `SELECT id, scope, scope_target, action, state, created_at, ended_at, last_error
-         FROM build_runs
-        WHERE chart_id = $1
-        ORDER BY created_at DESC
-        LIMIT 20`,
-      [chart_id]
-    )
+    const rows = await readBuildRunHistory(chart_id)
     return NextResponse.json({ data: rows })
   } catch (err) {
     console.error('[cockpit/runs GET]', err)
