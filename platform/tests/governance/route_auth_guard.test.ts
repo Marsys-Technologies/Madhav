@@ -110,7 +110,7 @@ export const ALLOWLIST: Record<string, ListedRoute> = {
   },
   'chat/consume/continue': {
     methods: ['GET', 'POST'],
-    reason: '308 redirect alias to /api/chat/consult/continue; the target verifies the session',
+    reason: 'POST remains a 308 alias to the session-verifying continuation target; GET is explicitly unavailable with 410 and no data access',
     stub: { status: 308 },
   },
   'chat/consume/regenerate': {
@@ -451,7 +451,7 @@ describe('route auth guard: trusted wrapper helpers still really verify', () => 
 // ── Pages / layouts that load data server-side ────────────────────────────────
 
 /** A server module that imports one of these (or calls fetch) loads data on the server. */
-const DATA_IMPORT_RE = /\bfrom\s+['"]@\/lib\/(?:db|metering|build)(?:\/[^'"]*)?['"]/
+const DATA_IMPORT_RE = /\bfrom\s+['"]@\/lib\/(?:(?:db|metering|build)(?:\/[^'"]*)?|(?:charts|auth|roster)\/pageIdentity|mimamsa\/timelinePageData|kala\/panchangPageData)['"]/
 const PAGE_GUARDS = [...RECOGNISED_VERIFICATION_CALLS, 'readAccountProfile', 'requireAdminPage', ...Object.keys(PAGE_GUARD_DEFINITIONS)]
 
 export function pageLoadsDataWithoutOwnGuard(source: string): { loadsData: boolean; guarded: boolean } {
@@ -730,6 +730,17 @@ describe('detector proven on REAL code: neutering the recognised calls un-guards
     // ... and real handlers that S1 fixed (previously pending) and a long-guarded sibling read true.
     expect(HANDLERS.find((h) => h.dir === 'icr/confirm' && h.method === 'POST')?.guarded).toBe(true)
     expect(HANDLERS.find((h) => h.dir === 'admin/users' && h.method === 'GET')?.guarded).toBe(true)
+  })
+
+  it.each(['charts/pageIdentity', 'auth/pageIdentity', 'roster/pageIdentity', 'mimamsa/timelinePageData', 'kala/panchangPageData'])('page detector retains private owner %s as server data loading', owner => {
+    const dataImport = `import { readData } from '@/lib/${owner}'`
+    expect(pageLoadsDataWithoutOwnGuard(`${dataImport}
+export default async function Page() { return readData() }`)).toEqual({ loadsData: true, guarded: false })
+    expect(pageLoadsDataWithoutOwnGuard(`${dataImport}
+// await getServerUser()
+export default async function Page() { return readData() }`)).toEqual({ loadsData: true, guarded: false })
+    expect(pageLoadsDataWithoutOwnGuard(`${dataImport}
+export default async function Page() { await getServerUser(); return readData() }`)).toEqual({ loadsData: true, guarded: true })
   })
 
   it('page detector: synthetic unguarded data-loading page reads false; guarded and client pages read true', () => {

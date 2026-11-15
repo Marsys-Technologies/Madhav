@@ -350,7 +350,7 @@ const querySutravaliRulesTool: CapabilityDescriptor = {
     },
     limit: {
       type: 'number',
-      description: 'Maximum rows to return (default: 20, max: 200).',
+      description: 'Maximum rows to return (default: 20, max: 500).',
     },
   },
 
@@ -374,7 +374,7 @@ const querySutravaliRulesTool: CapabilityDescriptor = {
     try {
       const sidecarUrl = (process.env.PYTHON_SIDECAR_URL ?? 'http://localhost:8000').replace(/\/$/, '')
       const sidecarKey = process.env.PYTHON_SIDECAR_API_KEY ?? ''
-      const limit = Math.min(Number(args['limit'] ?? 20), 200)
+      const limit = Math.min(Number(args['limit'] ?? 20), 500)
 
       const body: Record<string, unknown> = { limit }
       if (typeof args['planet'] === 'string') body['planet'] = args['planet']

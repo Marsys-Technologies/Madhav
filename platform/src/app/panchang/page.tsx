@@ -15,7 +15,7 @@
 import { Suspense } from 'react'
 import { format } from 'date-fns'
 import { PanchangClientView } from './components/PanchangClientView'
-import { mapSidecarResponse } from '@/lib/panchang/sidecar_mapper'
+import { readPanchangPageData } from '@/lib/kala/panchangPageData'
 import { requireActiveUserPage } from '@/lib/auth/active-user-page-guard'
 import type { SearchParams } from 'next/dist/server/request/search-params'
 
@@ -26,32 +26,6 @@ const DEFAULT_TZ = 330 // IST +05:30
 
 interface PanchangPageProps {
   searchParams: Promise<SearchParams>
-}
-
-/** Call the Python sidecar directly for SSR — avoids the full QueryPlan overhead */
-async function fetchPanchangSSR(
-  date: string,
-  lat: number,
-  lon: number,
-  tzOffsetMinutes: number,
-): Promise<Record<string, unknown> | null> {
-  const sidecarUrl = process.env.PYTHON_SIDECAR_URL
-  if (!sidecarUrl) return null
-
-  const sidecarKey = process.env.PYTHON_SIDECAR_API_KEY ?? ''
-  const res = await fetch(`${sidecarUrl}/api/compute/panchanga`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': sidecarKey,
-    },
-    body: JSON.stringify({ date, lat, lon, tz_offset_minutes: tzOffsetMinutes }),
-    // Next.js 16: opt out of data cache for dynamic page (re-fetch each request)
-    cache: 'no-store',
-  })
-
-  if (!res.ok) return null
-  return await res.json() as Record<string, unknown>
 }
 
 export default async function PanchangPage({ searchParams }: PanchangPageProps) {
@@ -74,23 +48,7 @@ export default async function PanchangPage({ searchParams }: PanchangPageProps) 
   const resolvedLat = isNaN(latParam) ? DEFAULT_LAT : latParam
   const resolvedLon = isNaN(lonParam) ? DEFAULT_LON : lonParam
 
-  // SSR: fetch panchang from sidecar
-  let initialData = null
-  try {
-    const raw = await fetchPanchangSSR(date, resolvedLat, resolvedLon, DEFAULT_TZ)
-    if (raw) {
-      // Sidecar returns { ok: true, panchang: {...}, cache_hit: bool }
-      const panchangDict = (raw['panchang'] ?? raw) as Record<string, unknown>
-      panchangDict['date'] = date
-      panchangDict['lat'] = resolvedLat
-      panchangDict['lon'] = resolvedLon
-      panchangDict['tz_offset_minutes'] = DEFAULT_TZ
-      initialData = mapSidecarResponse(panchangDict)
-    }
-  } catch (err) {
-    // SSR fetch failed — page still renders; client will retry via usePanchangDay
-    console.error('[PanchangPage] SSR sidecar fetch failed:', err)
-  }
+  const initialData = await readPanchangPageData(date, resolvedLat, resolvedLon, DEFAULT_TZ)
 
   return (
     <div className="relative min-h-full overflow-hidden">

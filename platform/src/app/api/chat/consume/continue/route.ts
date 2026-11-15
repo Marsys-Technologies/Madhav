@@ -1,7 +1,8 @@
 /**
  * Deprecation alias — unit 0a.1 (consume → consult rename).
  *
- * 308 Permanent Redirect to /api/chat/consult/continue.
+ * POST: 308 Permanent Redirect to /api/chat/consult/continue.
+ * GET: explicitly unavailable; continuation requires POST.
  */
 const TARGET = '/api/chat/consult/continue'
 
@@ -14,8 +15,14 @@ function redirect(request: Request): Response {
   })
 }
 
-export async function GET(request: Request) {
-  return redirect(request)
+export async function GET(_request: Request) {
+  return Response.json(
+    {
+      error: 'GET continuation is unavailable. Use POST /api/chat/consult/continue.',
+      code: 'ENDPOINT_GONE',
+    },
+    { status: 410 },
+  )
 }
 
 export async function POST(request: Request) {

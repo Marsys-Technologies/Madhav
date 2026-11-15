@@ -146,7 +146,8 @@ describe('Consult delegates its Build read', () => {
     const page = readFileSync(new URL('../../../app/clients/[id]/consult/page.tsx', import.meta.url), 'utf8')
     expect(layerReadBoundary(page)).toEqual({ ownerCalls: 1, inlineLayerReads: [] })
     expect(l1AvailabilityBoundary(page)).toEqual({ delegated: true, inlineDerivations: [] })
-    expect(page).toContain('SELECT name, birth_date, birth_place, client_id FROM charts WHERE id=$1')
+    expect(page).toContain('await readConsultChartIdentity(id)')
+    expect(readFileSync(new URL('../../charts/pageIdentity.ts', import.meta.url), 'utf8')).toContain("'SELECT name, birth_date, birth_place, client_id FROM charts WHERE id=$1', [id]")
     expect(readFileSync(new URL('../pyramidLayers.ts', import.meta.url), 'utf8')).toMatch(/^import 'server-only'/)
   })
 

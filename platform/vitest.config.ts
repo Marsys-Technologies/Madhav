@@ -145,7 +145,6 @@ const SHARED_EXCLUDE = [
       'src/components/cockpit/__tests__/AssetTable.test.tsx',
       'src/components/cockpit/__tests__/LiveBuildGraph.test.tsx',
       // Group N — ayanamsha API / chart pages (re-enable: chart build pipeline restored)
-      'src/app/api/charts/__tests__/ayanamsha_status.test.ts',
       'src/app/api/conversations/__tests__/active_ayanamshas.test.ts',
       'src/app/clients/__tests__/chart_pages.test.tsx',
       // Group O — asset naming — RE-ENABLED: L0 Phase α registered 12 assets (2026-06-08)

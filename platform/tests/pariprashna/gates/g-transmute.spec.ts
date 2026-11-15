@@ -32,11 +32,9 @@
  * simulating a stray re-render/reflow of settled content.
  */
 import { test, expect, type Page } from '@playwright/test'
-import { gotoHarness, mainRunViolate } from './_helpers'
+import { gotoHarness, mainRunViolate, waitForStreamDone } from './_helpers'
 
 async function progressCheckpoints(page: Page): Promise<void> {
-  const seenSnapshots = new Map<string, string>() // block_id -> normalized frozen snapshot at first sight
-
   for (const target of [25, 50, 75, 100]) {
     await page.waitForFunction(
       (t) => Number(document.body.dataset.progress ?? '0') >= t || document.body.dataset.done === 'true',
@@ -44,45 +42,36 @@ async function progressCheckpoints(page: Page): Promise<void> {
       { timeout: 15_000 },
     )
 
+    // Compare against the actual commit-time snapshot, even if a fast stream
+    // completes before this first sample. Reading both in one browser task
+    // also prevents later commits from interleaving with the comparison.
     const current = await page.evaluate(() => {
-      const out: Record<string, string> = {}
-      document.querySelectorAll('#settled .block[data-committed="true"]').forEach((el) => {
-        const id = (el as HTMLElement).dataset.blockId!
-        out[id] = el.innerHTML
-      })
-      return out
-    })
-
-    for (const [blockId, liveHtml] of Object.entries(current)) {
-      const normalizedLive = await page.evaluate((html) => {
+      function normalize(html: string): string {
         const div = document.createElement('div')
         div.innerHTML = html
-        // Replace the WHOLE seam element (attributes, class, children —
-        // not just its text) with a plain placeholder text node. citation_anchor.set
-        // resolving after commit is the one sanctioned mutation in the
-        // protocol: a pending seam marker (`<span class="seam-pending">`)
-        // legitimately becomes a citation-chip wrapper (`<span
-        // class="seam"><button class="citation-chip">...`). Clearing only
-        // textContent left the class/structure change visible and caused a
-        // false-positive transmutation failure the first time this ran.
+        // Citation-anchor resolution is the existing protocol exception.
         div.querySelectorAll('[data-anchor-id]').forEach((el) => {
           el.replaceWith(document.createTextNode('[[seam]]'))
         })
         return div.innerHTML
-      }, liveHtml)
-
-      const prior = seenSnapshots.get(blockId)
-      if (prior === undefined) {
-        seenSnapshots.set(blockId, normalizedLive)
-      } else {
-        expect(
-          normalizedLive,
-          `block ${blockId} mutated after commit between progress checkpoints (checkpoint ${target}%)`,
-        ).toBe(prior)
       }
-    }
+      const out: Record<string, { live: string; committed: string | null }> = {}
+      document.querySelectorAll<HTMLElement>('#settled .block[data-committed="true"]').forEach((el) => {
+        out[el.dataset.blockId!] = {
+          live: normalize(el.innerHTML),
+          committed: el.dataset.committedHtml === undefined ? null : normalize(el.dataset.committedHtml),
+        }
+      })
+      return out
+    })
 
-    if (target === 100) break
+    for (const [blockId, snapshot] of Object.entries(current)) {
+      expect(snapshot.committed, `block ${blockId} has no commit-time snapshot`).not.toBeNull()
+      expect(
+        snapshot.live,
+        `block ${blockId} mutated after commit (checkpoint ${target}%)`,
+      ).toBe(snapshot.committed)
+    }
   }
 }
 
@@ -98,6 +87,12 @@ test.describe('G-TRANSMUTE — committed blocks never change shape after commit'
 
   test('RED PROOF: seeded transmute violation is detected (a committed block mutates post-commit)', async ({ page }) => {
     await gotoHarness(page, 'adaptive-3-pass', 'transmute')
+    await expect(progressCheckpoints(page)).rejects.toThrow(/mutated after commit/)
+  })
+
+  test('RED PROOF: catches a mutation before the first progress sample', async ({ page }) => {
+    await gotoHarness(page, 'adaptive-3-pass', 'transmute')
+    await waitForStreamDone(page)
     await expect(progressCheckpoints(page)).rejects.toThrow(/mutated after commit/)
   })
 })

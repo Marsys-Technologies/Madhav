@@ -1,5 +1,5 @@
+import { readChartPageName } from '@/lib/charts/pageIdentity'
 import { redirect } from 'next/navigation'
-import { query } from '@/lib/db/client'
 import { resolveChartPageAccess } from '@/lib/auth/chart-page-guard'
 import { configService } from '@/lib/config/index'
 import { getReviewData } from '@/lib/pariprashna/samiksha/review'
@@ -33,7 +33,7 @@ export default async function SamiksaPage({ params }: { params: Promise<{ id: st
   if (!access) redirect('/login')
   if (access.permission === 'deny') redirect('/dashboard')
 
-  const chartResult = await query<{ name: string | null }>('SELECT name FROM charts WHERE id=$1', [id])
+  const chartResult = await readChartPageName(id)
   const chart = chartResult.rows[0] ?? null
   if (!chart) redirect('/dashboard')
 

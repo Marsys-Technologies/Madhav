@@ -1,8 +1,9 @@
+import { readPageProfileRole } from '@/lib/auth/pageIdentity'
+import { readConsultChartIdentity } from '@/lib/charts/pageIdentity'
 import { FEATURE_FLAGS } from '@/lib/config/feature_flags'
 import { getServerUser } from '@/lib/firebase/server'
 import { resolveChartPageAccess } from '@/lib/auth/chart-page-guard'
 import { requireChartPermission } from '@/lib/auth/requireChartPermission'
-import { query } from '@/lib/db/client'
 import { redirect, notFound } from 'next/navigation'
 import { ConsumeChat } from '@/components/consume/ConsumeChat'
 import {
@@ -36,11 +37,8 @@ export default async function ConsultConversationPage({
   }
 
   const [profileResult, chartResult] = await Promise.all([
-    query<{ role: string }>('SELECT role FROM profiles WHERE id=$1', [user.uid]),
-    query<{ name: string; birth_date: string; birth_place: string; client_id: string }>(
-      'SELECT name, birth_date, birth_place, client_id FROM charts WHERE id=$1',
-      [id]
-    ),
+    readPageProfileRole(user.uid),
+    readConsultChartIdentity(id),
   ])
 
   const profile = profileResult.rows[0] ?? null

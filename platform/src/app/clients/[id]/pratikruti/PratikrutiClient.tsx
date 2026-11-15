@@ -43,13 +43,19 @@ type CoSignAction = 'approved' | 'revoked'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-async function postLearning(chartId: string, body: object) {
+async function postLearning(chartId: string, body: object, readErrorMessage = false) {
   const res = await fetch(`/api/clients/${chartId}/learning`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  if (!res.ok) {
+    if (readErrorMessage) {
+      const payload: { error?: unknown } | null = await res.json().catch(() => null)
+      if (typeof payload?.error === 'string') throw new Error(payload.error)
+    }
+    throw new Error(`HTTP ${res.status}`)
+  }
   return res.json()
 }
 
@@ -131,6 +137,7 @@ function LelIntakeForm({ chartId }: { chartId: string }) {
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState({
     event_id: '',
     category: 'career',
@@ -144,6 +151,7 @@ function LelIntakeForm({ chartId }: { chartId: string }) {
     e.preventDefault()
     if (!form.event_id.match(/^EVT\..+/) || !form.date) return
     setBusy(true)
+    setError(null)
     try {
       await postLearning(chartId, {
         action: 'lel_entry',
@@ -153,9 +161,10 @@ function LelIntakeForm({ chartId }: { chartId: string }) {
         magnitude: form.magnitude,
         date: form.date,
         notes: form.notes || undefined,
-      })
+      }, true)
       setDone(true)
-    } catch {
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Life event could not be appended.')
       setBusy(false)
     }
   }
@@ -163,7 +172,7 @@ function LelIntakeForm({ chartId }: { chartId: string }) {
   if (done) {
     return (
       <div className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
-        Life event appended to LEL — provenance resync triggered.
+        Life event appended to LEL. Provenance resync completion is unconfirmed.
       </div>
     )
   }
@@ -179,6 +188,7 @@ function LelIntakeForm({ chartId }: { chartId: string }) {
           {open ? 'Collapse ↑' : 'Expand ↓'}
         </button>
       </div>
+      {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
       {open && (
         <form onSubmit={submit} className="space-y-3">
           <div className="grid grid-cols-2 gap-3">

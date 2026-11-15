@@ -1,8 +1,8 @@
 // GET /api/admin/observatory/analytics/anomaly
 //
 // Phase O — O.4 Analytics — anomaly detection. Authored by USTAD_S4_6.
-// Read-only health check that runs the same z-score sweep as the nightly
-// /run endpoint. Optional query params: lookback_days, z_threshold.
+// Runs the same z-score sweep as the nightly /run endpoint and may dispatch
+// configured notifications. Optional query params: lookback_days, z_threshold.
 
 import { NextResponse } from 'next/server'
 import { res } from '@/lib/errors'

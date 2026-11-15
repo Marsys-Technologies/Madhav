@@ -64,12 +64,12 @@ export function registerResources(server: McpServer, principal: Principal): void
   //    output forms, known disagreements, and tool routing by school.
   registerSchoolConventions(server)
 
-  // 6. chart-bundle: Layer-1 bundle per chart (planet positions, house cusps, dasha, yogas)
+  // 6. chart-bundle: retired/unavailable compatibility notice at the original URI.
   //    Dynamic resource template marsys://chart-bundle/{chart_id}.
   //    INF11-S1 [BUILD-ORCH-J-03]
   registerChartBundleResource(server)
 
-  // 7. multi-ayanamsha: cross-ayanamsha build status + guidance per chart.
+  // 7. multi-ayanamsha: retired/unavailable compatibility notice at the original URI.
   //    Dynamic resource template marsys://multi-ayanamsha/{chart_id}.
   //    INF11-S1 [BUILD-ORCH-J-03]
   registerMultiAyanamshaResource(server)
@@ -84,7 +84,7 @@ export function registerResources(server: McpServer, principal: Principal): void
   //      marsys://resource/sutravali/all-by-planet/{planet}
   //      marsys://resource/sutravali/all-by-house/{n}
   //    BRAHMA L0 Stream D (2026-06-07)
-  registerSutravaliResources(server)
+  registerSutravaliResources(server, principal)
 
   // 10. chart catalog: entitled chart list + per-chart metadata resource
   //     marsys://chart/{chart_id} — list returns only the caller's entitled charts;

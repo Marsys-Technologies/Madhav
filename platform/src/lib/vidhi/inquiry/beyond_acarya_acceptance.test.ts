@@ -361,7 +361,8 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     // K9-WRITE-SCOPE (v33): query_convergence_windows now reads only the served generation of kala_convergence (migration 1405); the authored source-query availability review text moves semantic_review_fingerprint, hence capability_content_hash and report_hash; metrics, source_catalog_fingerprint and producer_contract_fingerprint stay fixed.
     // K9 obstruction scope (v34, the successor of main's v33): migration 1406 moves the ka_vighnakara output-digest spec path in the producer census (producer_contract_fingerprint) and the kala_obstruction source-query probe mirrors the served-partition read (semantic_review_fingerprint; now both main's convergence scope text and the obstruction probe), hence capability_content_hash and report_hash; metrics and source_catalog_fingerprint stay fixed.
     // SR-EMPTY-REASON (v35): the PR's edits to query_obstruction_periods.ts and query_convergence_windows.ts shift the line anchors in the kala_obstruction and kala_convergence source-query availability contracts, which moves semantic_review_fingerprint, hence capability_content_hash and report_hash; metrics, source_catalog_fingerprint and producer_contract_fingerprint stay fixed.
-    expect(report.report_hash).toBe('sha256:d6056b5c1df2241fbff16cbd9dc7b5727d22b21eeef7826657691b9b195e3abd')
+    // v38: reviewed flexible Sutravali limit200to500 changes catalog/content identities only; historical artifacts remain immutable.
+    expect(report.report_hash).toBe('sha256:1122ff6a9acaa7e284fac13219b4f2a275b9cbcfe8f36dc88c0d6c1734f403e6')
   })
 
   it('detects an independently expected concept omitted from the snapshot', () => {
@@ -1219,11 +1220,30 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     }
   })
 
-  it('pins the prospective v37 source-identity successor to the current executable report without new live acceptance', () => {
-    const historicalV36 = {"artifact_hash":"sha256:ca3bd7bd421f492985ebc40381178659dc00ba7f4e80f9ceb55b80ac86d095af","capability_content_hash":"sha256:f930e73bfb7818c7adac159168b577c3da3fcfc7c4ba372ca95f6f2f89137e37","report_hash":"sha256:aca80a10c4fef76a834a646446ef683bde35758b4452c2065c75a633a5b35d08"}
+  it('preserves the historical v37 source-successor artifact and its original source-only claims', () => {
+    const bytes = readFileSync(new URL('../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v37.json', import.meta.url))
+    const artifact = JSON.parse(bytes.toString('utf8')) as Record<string, unknown>
+    const report = evaluateBeyondAcaryaAcceptance(snapshot, BEYOND_ACARYA_ACCEPTANCE_CASES)
+    expect('sha256:' + createHash('sha256').update(bytes).digest('hex')).toBe('sha256:4834d39ca7e23a13298e77b71d913075cfd55e36a7dde8d48c23dd46e6946ef3')
+    expect(artifact).toMatchObject({
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v37',
+      preserves_historical_predecessor: true,
+      predecessor: { artifact: 'BEYOND_ACARYA_ACCEPTANCE_v36.json', artifact_hash: 'sha256:ca3bd7bd421f492985ebc40381178659dc00ba7f4e80f9ceb55b80ac86d095af' },
+      capability_content_hash: 'sha256:b304b653b677736a67e4fa921eafce4bf6ade0c14ccd509a4770ee60b06268e0',
+      report_hash: 'sha256:d6056b5c1df2241fbff16cbd9dc7b5727d22b21eeef7826657691b9b195e3abd',
+      generated_snapshot: { snapshot_file_sha256: 'sha256:71a73127a3a3ca7754d5f40c59679b4b538b760bc88e7194f5ee18012b71c785', source_catalog_fingerprint: 'sha256:22a4e465250e449da99ea19b45c00b7ebd20359c95644995c6cf63266c808e32', semantic_review_fingerprint: 'sha256:cf4c38ac57736bafd0987f605759f2b554d824bdd885da9fcb636ac217f19114', producer_contract_fingerprint: 'sha256:02ad39aea0c40b14036f91724f8592fc881ab03fe582ce83b343f8efb62f9225' },
+      evaluated_source_revision: 'ca1d304163522c1f22c0d8fd2bd29d2221bf3d65',
+      source_status: 'SOURCE_ONLY_NOT_LIVE', verdict: 'PROSPECTIVE_SOURCE_IDENTITY_SUCCESSOR', candidate_validation: 'NOT_RUN', deployed_route_validation: 'NOT_RUN',
+    })
+    expect(artifact.metrics).toEqual(report.metrics)
+    for (const key of ['acceptance_version', 'corpus_version', 'evidence_kind', 'claim_ceiling', 'expert_domain_review', 'empirical_answer_quality', 'production_validation'] as const) expect(artifact[key]).toEqual(report[key])
+  })
+
+  it('pins the prospective v38 source-identity successor to the current executable report without new live acceptance', () => {
+    const historicalV37 = {"artifact_hash":"sha256:4834d39ca7e23a13298e77b71d913075cfd55e36a7dde8d48c23dd46e6946ef3","capability_content_hash":"sha256:b304b653b677736a67e4fa921eafce4bf6ade0c14ccd509a4770ee60b06268e0","report_hash":"sha256:d6056b5c1df2241fbff16cbd9dc7b5727d22b21eeef7826657691b9b195e3abd"}
 
     const artifact = JSON.parse(readFileSync(new URL(
-      '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v37.json',
+      '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v38.json',
       import.meta.url,
     ), 'utf8')) as Record<string, unknown>
     const report = evaluateBeyondAcaryaAcceptance(snapshot, BEYOND_ACARYA_ACCEPTANCE_CASES)
@@ -1231,24 +1251,28 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     const snapshotFileSha256 = `sha256:${createHash('sha256').update(snapshotBytes).digest('hex')}`
 
     const predecessor = JSON.parse(readFileSync(new URL(
-      '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v36.json',
+      '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v37.json',
       import.meta.url,
     ), 'utf8'))
+    expect(report.report_hash).toBe('sha256:1122ff6a9acaa7e284fac13219b4f2a275b9cbcfe8f36dc88c0d6c1734f403e6')
+    expect(snapshot.content_hash).toBe('sha256:7caca304fe661de2d7a9e056618dc89cadf0842f1f8aa908d525bad9120d16c3')
+    expect(snapshot.source_catalog_fingerprint).toBe('sha256:b3c52dbc6284b5a9bf47298d8d8311698acddb906766cb48ea06d55815a1e3d2')
+    expect(snapshotFileSha256).toBe('sha256:c44bc1af4054b2a7b26c128cf5eaa84e1f4ac4c3a6ca418956ab2ca052c35be3')
     expect(artifact.metrics).toEqual(report.metrics)
     expect(artifact.metrics).toEqual(predecessor.metrics)
-    // Only the constants source-reference ownership changes; the catalog and producer contract remain unchanged.
-    expect(snapshot.source_catalog_fingerprint).toBe(predecessor.generated_snapshot.source_catalog_fingerprint)
-    expect(snapshot.semantic_review_fingerprint).not.toBe(predecessor.generated_snapshot.semantic_review_fingerprint)
+    // The intentional flexible Sutravali cap changes catalog identity; semantic and producer contracts remain unchanged.
+    expect(snapshot.source_catalog_fingerprint).not.toBe(predecessor.generated_snapshot.source_catalog_fingerprint)
+    expect(snapshot.semantic_review_fingerprint).toBe(predecessor.generated_snapshot.semantic_review_fingerprint)
     expect(snapshot.producer_contract_fingerprint).toBe(predecessor.generated_snapshot.producer_contract_fingerprint)
 
     expect(artifact).toMatchObject({
-      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v37',
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v38',
       predecessor: {
-        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v36.json',
-        artifact_hash: historicalV36.artifact_hash,
+        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v37.json',
+        artifact_hash: historicalV37.artifact_hash,
         acceptance_version: 'beyond-acarya-source-acceptance-v2',
-        capability_content_hash: historicalV36.capability_content_hash,
-        report_hash: historicalV36.report_hash,
+        capability_content_hash: historicalV37.capability_content_hash,
+        report_hash: historicalV37.report_hash,
       },
       preserves_historical_predecessor: true,
       acceptance_version: report.acceptance_version,
@@ -1292,7 +1316,7 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
         semantic_review_fingerprint: snapshot.semantic_review_fingerprint,
         producer_contract_fingerprint: snapshot.producer_contract_fingerprint,
       },
-      evaluated_source_revision: 'ca1d304163522c1f22c0d8fd2bd29d2221bf3d65',
+      evaluated_source_revision: 'd82b52482e5c5a966a8757640eae139ff261ea79',
     })
   })
 })
