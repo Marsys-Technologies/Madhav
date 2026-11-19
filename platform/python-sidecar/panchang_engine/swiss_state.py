@@ -1,8 +1,11 @@
 """Shared process boundary for Swiss Ephemeris mutable global state.
 
-Swiss Ephemeris stores sidereal mode and ephemeris path in process-global C
-state. Every in-process L0 service must hold this re-entrant lock across mode
-selection and all dependent calculations, not merely around ``set_sid_mode``.
+Swiss Ephemeris stores sidereal mode and ephemeris path in C state whose scope
+is platform-dependent: process-global on macOS, but PER-THREAD on Linux (C26)
+— a fresh Linux thread that has not called ``set_sid_mode`` computes in the
+library default ayanamsha. Every in-process L0 service must hold this
+re-entrant lock across mode selection and all dependent calculations, not
+merely around ``set_sid_mode`` (the lock serializes; it sets no mode).
 """
 from __future__ import annotations
 
