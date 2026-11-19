@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
+import Image from "next/image";
 import styles from "./EntryShell.module.css";
 import { Signature } from "./Signature";
 import { PageTitle, TitleToggle, type PageName } from "./Titles";
@@ -31,15 +32,22 @@ const NAKSHATRAS = [
   "UBh",
   "Rev",
 ];
-const GRAHAS = [
-  "Moon",
-  "Mars",
-  "Mercury",
-  "Jupiter",
-  "Venus",
-  "Saturn",
-  "Rahu",
-  "Ketu",
+const GRAHAS: ReadonlyArray<{
+  name: string;
+  diameter: number;
+  duration: number;
+  elapsed: number;
+  size: number;
+  reverse?: boolean;
+}> = [
+  { name: "Moon", diameter: 150, duration: 110, elapsed: 0, size: 11 },
+  { name: "Mercury", diameter: 230, duration: 150, elapsed: 40, size: 7, reverse: true },
+  { name: "Venus", diameter: 310, duration: 190, elapsed: 90, size: 10 },
+  { name: "Mars", diameter: 390, duration: 240, elapsed: 20, size: 8, reverse: true },
+  { name: "Jupiter", diameter: 480, duration: 300, elapsed: 150, size: 13 },
+  { name: "Saturn", diameter: 580, duration: 380, elapsed: 260, size: 10 },
+  { name: "Rahu", diameter: 680, duration: 460, elapsed: 0, size: 9, reverse: true },
+  { name: "Ketu", diameter: 680, duration: 460, elapsed: 230, size: 9, reverse: true },
 ];
 export function EntryShell({
   name,
@@ -49,7 +57,7 @@ export function EntryShell({
   children: ReactNode;
 }) {
   return (
-    <main className={`j1 j1-entry ${styles.folio}`}>
+    <main className={`j1 j1-entry ${styles.folio}`} data-entry-page={name}>
       <div className="j1-cosmos" aria-hidden="true">
         {Array.from({ length: 26 }, (_, i) => (
           <i
@@ -58,7 +66,8 @@ export function EntryShell({
             style={{
               left: `${((i * 9301 + 49297) % 233280) / 2332.8}%`,
               top: `${(((i + 3) * 7919 + 104729) % 233280) / 2332.8}%`,
-              animationDelay: `-${i % 6}s`,
+              animationDuration: `${3 + (i % 5)}s`,
+              animationDelay: `-${((i * 17) % 60) / 10}s`,
             }}
           />
         ))}
@@ -78,30 +87,38 @@ export function EntryShell({
               <i key={i} style={{ transform: `rotate(${i * 30}deg)` }} />
             ))}
           </div>
-          {GRAHAS.map((g, i) => (
-            <div
-              key={g}
-              data-graha={g}
-              className={`j1-orbit j1-orbit-${i}`}
-              style={
-                {
-                  "--orbit-size": `${340 + i * 125}px`,
-                  "--orbit-time": `${85 + i * 43}s`,
-                  "--orbit-delay": `-${i * 18}s`,
-                } as CSSProperties
-              }
-            >
-              <i />
-            </div>
-          ))}
-          {/* Supplied master medallion serves as Sūrya; never recoloured or rotated. */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          {GRAHAS.map(({ name, diameter, duration, elapsed, size, reverse }) => {
+            const orbit = Math.round(diameter * 1.45);
+            const turn = reverse ? -360 : 360;
+            return (
+              <div
+                key={name}
+                data-graha={name}
+                className="j1-orbit"
+                style={
+                  {
+                    "--orbit-size": `clamp(${Math.round(orbit * 0.42)}px, ${(orbit / 9).toFixed(2)}vmin, ${orbit}px)`,
+                    "--orbit-time": `${duration}s`,
+                    "--orbit-turn": `${turn}deg`,
+                    "--orbit-start": `${((elapsed / duration) * turn).toFixed(2)}deg`,
+                    "--graha-size": `${size}px`,
+                  } as CSSProperties
+                }
+              >
+                <i />
+              </div>
+            );
+          })}
+          <div className="j1-corona" />
+          {/* The supplied master medallion serves as Sūrya. */}
+          <Image
             className="j1-sun"
-            src="/brand/marsys-logo-256.png"
+            src="/brand/logo.png"
             alt=""
-            width="128"
-            height="128"
+            width={128}
+            height={128}
+            sizes="(max-width: 767px) 84px, 128px"
+            loading="eager"
           />
         </div>
         <i className="j1-comet" />

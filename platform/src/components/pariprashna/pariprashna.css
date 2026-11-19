@@ -854,36 +854,36 @@
   flex-shrink: 0;
 }
 
-/* Folio applies to live consultation chrome and the History panel only. */
+/* The shared warm wash is scoped to Consultation. Legacy Consume geometry
+   and host behaviour are independent of this presentation. */
 .pp-consultation[data-folio-chrome] {
-  --folio-paper: #f5efe2;
-  --folio-panel: #fcf8ee;
-  --folio-ink: #242920;
-  --folio-muted: #52584a;
-  --folio-action: #2e563e;
-  --folio-control: #716d5e;
-  --folio-selected: #e6eadb;
+  background: var(--folio-wash), var(--folio-canvas);
 }
 
+.pp-consultation[data-folio-chrome] .pp-workspace-panel {
+  background-image: var(--folio-panel-wash);
+}
 .pp-consultation[data-folio-chrome] .pp-page-header,
 .pp-consultation[data-folio-chrome] .pp-panel-left .pp-workspace-panel {
   --pp-ink: var(--folio-ink);
   --pp-ink-dim: var(--folio-muted);
   --pp-gold: var(--folio-action);
-  --pp-rule: var(--folio-control);
+  --pp-rule: var(--folio-boundary);
   --pp-tint-2: var(--folio-selected);
   color: var(--pp-ink);
-  color-scheme: light;
+  color-scheme: dark;
 }
 
 .pp-consultation[data-folio-chrome] .pp-page-header {
-  background: var(--folio-paper);
+  background: var(--folio-panel-wash), var(--folio-panel);
+  border: 1px solid var(--folio-divider);
   border-radius: 12px;
+  padding-inline: clamp(12px, 2.5vw, 22px);
 }
 
 .pp-consultation[data-folio-chrome] .pp-page-header .j1-title > span {
-  color: var(--pp-ink);
-  font-family: Georgia, serif;
+  color: var(--folio-action);
+  font-family: var(--folio-font-heading);
 }
 
 .pp-consultation[data-folio-chrome] .pp-page-header .j1-title > small {
@@ -898,8 +898,8 @@
 .pp-consultation[data-folio-chrome] .pp-page-header .pp-icon-button,
 .pp-consultation[data-folio-chrome] .pp-panel-left .pp-workspace-panel,
 .pp-consultation[data-folio-chrome] .pp-panel-left .pp-history-filter select {
-  background: var(--folio-panel);
-  border-color: var(--folio-control);
+  background-color: var(--folio-panel);
+  border-color: var(--folio-boundary);
 }
 
 .pp-consultation[data-folio-chrome] .pp-panel-left .pp-history-search input::placeholder {

@@ -1,13 +1,14 @@
 "use client";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import type { PageName } from "@/components/journey1/Titles";
 const root = "/account/ai-cockpit";
 const items = [
-  ["AI Cockpit", ""],
-  ["AI Console", "/console"],
-  ["AI Personas", "/personas"],
-  ["My Observatory", "/observatory"],
-  ["Consumption", "/consumption"],
+  ["AI Cockpit", "", "aiCockpit"],
+  ["AI Console", "/console", "aiConsole"],
+  ["AI Personas", "/personas", "personas"],
+  ["My Observatory", "/observatory", "myObservatory"],
+  ["Consumption", "/consumption", "consumption"],
 ] as const;
 const activityFilters = [
   "from",
@@ -19,9 +20,8 @@ const activityFilters = [
   "connectionId",
   "aggregation",
 ];
-export function CockpitNav({ consoleEnabled }: { consoleEnabled: boolean }) {
-  const path = usePathname(),
-    search = useSearchParams();
+export function CockpitNav({ active, consoleEnabled }: { active: PageName; consoleEnabled: boolean }) {
+  const search = useSearchParams();
   const scope = new URLSearchParams();
   for (const key of activityFilters) {
     const value = search.get(key);
@@ -29,7 +29,7 @@ export function CockpitNav({ consoleEnabled }: { consoleEnabled: boolean }) {
   }
   return (
     <nav aria-label="AI Cockpit sections" className="j5-tabs">
-      {items.filter(([, suffix]) => consoleEnabled || suffix !== "/console").map(([label, suffix]) => {
+      {items.filter(([, suffix]) => consoleEnabled || suffix !== "/console").map(([label, suffix, name]) => {
         const href = root + suffix;
         const query =
           ["/observatory", "/consumption"].includes(suffix) && scope.size
@@ -39,7 +39,7 @@ export function CockpitNav({ consoleEnabled }: { consoleEnabled: boolean }) {
           <Link
             key={href}
             href={href + query}
-            aria-current={path === href ? "page" : undefined}
+            aria-current={active === name ? "page" : undefined}
           >
             {label}
           </Link>

@@ -1,9 +1,12 @@
 .folio {
-  background: var(--folio-canvas);
+  background: var(--folio-wash), var(--folio-canvas);
   color: var(--folio-ink);
 }
 
-.heading,
+.folio > :global(.j1-container) {
+  padding-block-start: clamp(28px, 4vw, 62px);
+}
+
 .folio [data-roster-empty] {
   background: var(--folio-panel);
   border: 1px solid var(--folio-divider);
@@ -14,25 +17,62 @@
 .heading {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  gap: 12px 16px;
-  margin-block-end: 24px;
-  background: var(--folio-canvas);
+  gap: 1rem;
+  margin-block-end: clamp(26px, 3.5vw, 40px);
 }
 
-.heading :global(.j1-title) > span,
+.heading > :global(.j1-title) > span {
+  font-size: clamp(42px, 5.7vw, 78px);
+  line-height: 0.98;
+  letter-spacing: 0.015em;
+}
+
+.heading > :global(.j1-title) > small {
+  margin-block-start: 4px;
+  font-size: 1.125rem;
+}
+
+.folio .heading > a,
+.folio .heading > a:hover {
+  min-height: 48px;
+  padding: 7px 17px;
+  gap: 9px;
+  border-color: #d2a23c;
+  border-radius: 8px;
+  background: linear-gradient(155deg, #f0d185, #d3a54a);
+  color: var(--folio-on-action);
+  box-shadow: inset 0 1px 0 #fff1c16b;
+}
+
+.folio .heading > a:hover {
+  background: linear-gradient(155deg, #f9e1a8, #dfb35b);
+}
+
+.folio .heading > a > :global(.j1-title) {
+  gap: 0;
+}
+
+.folio .heading > a > :global(.j1-title) > :is(span, small) {
+  color: inherit;
+}
+
+.folio .heading > a > :global(.j1-title) > span {
+  font-size: 1.125rem;
+}
+
+.folio .heading > a > :global(.j1-title) > small {
+  font-size: 0.75rem;
+  line-height: 1.2;
+}
+
 .folio [data-roster-empty] h2 {
   color: var(--folio-ink);
   font-family: var(--folio-font-heading);
 }
 
-.heading > :global(.j1-title) > span {
-  font-size: clamp(1.5rem, 3vw, 2rem);
-  line-height: 1.2;
-}
-
-.heading :global(.j1-title) > small,
+.heading > :global(.j1-title) > small,
 .folio [data-roster-empty] p {
   color: var(--folio-muted);
 }
@@ -41,32 +81,100 @@
   min-height: 16rem;
 }
 
-.folio [data-roster-empty] > svg {
-  display: none;
-}
-
-.folio .heading > a,
-.folio [data-roster-empty] a {
-  background: var(--folio-action);
-  border-color: var(--folio-action);
-  box-shadow: none;
-  color: var(--folio-on-action);
-}
-
-.folio .heading > a :global(.j1-title) > :is(span, small) {
-  color: inherit;
-}
-
 .folio .heading > a:focus-visible,
 .folio [data-roster-empty] a:focus-visible {
   outline: 3px solid var(--folio-action);
   outline-offset: 4px;
 }
 
+.folio [data-roster-content] {
+  display: grid;
+  gap: clamp(18px, 2.4vw, 28px);
+}
 
-.folio .heading > a:global(.j1-btn):hover,
-.folio [data-roster-empty] a:global(.j1-btn):hover {
-  color: var(--folio-on-action);
+.folio [data-roster-stats] {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(8.5rem, 100%), 1fr));
+  gap: 1px;
+  overflow: hidden;
+  margin: 0;
+  border: 1px solid var(--folio-divider);
+  border-radius: 12px;
+  background: var(--folio-divider);
+}
+
+.folio [data-roster-stats] > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column-reverse;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 10px clamp(12px, 2.4vw, 26px) 14px;
+  background: linear-gradient(160deg, #191208, var(--folio-panel) 85%);
+}
+
+.folio [data-roster-stats] dt {
+  color: var(--folio-muted);
+  font-size: 0.875rem;
+  line-height: 1.25;
+}
+
+.folio [data-roster-stats] dd {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  margin: 0;
+  color: var(--folio-action);
+  font-family: var(--folio-font-heading);
+  font-size: clamp(27px, 3vw, 39px);
+  line-height: 1;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+.folio [data-roster-stats] button {
+  margin-inline-start: -8px;
+  padding-inline: 8px;
+  text-align: start;
+}
+
+.folio [data-roster-stats] button:hover {
+  color: var(--folio-ink);
+}
+
+.folio [data-roster-filters] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  padding-block-end: clamp(16px, 2.1vw, 23px);
+  border-block-end: 1px solid var(--folio-divider);
+}
+
+.folio [data-roster-search] {
+  position: relative;
+  flex: 1 1 15rem;
+  min-width: 0;
+}
+
+.folio [data-roster-search] svg {
+  position: absolute;
+  inset-inline-start: 12px;
+  inset-block-start: 50%;
+  color: var(--folio-muted);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.folio [data-roster-search] input {
+  padding-inline-start: 37px;
+}
+
+.folio [data-roster-build] {
+  padding-inline: 6px;
+}
+
+.folio [data-roster-layout] {
+  margin-inline-start: auto;
 }
 
 .folio [data-roster-filters] :is(input, select) {
@@ -77,6 +185,116 @@
   outline-color: var(--folio-focus);
 }
 
+.folio [data-roster-count] {
+  margin: 0;
+  color: var(--folio-muted);
+}
+
+.folio [data-roster-grid] {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(17rem, 100%), 1fr));
+  gap: clamp(14px, 2vw, 22px);
+}
+
+.folio [data-roster-card] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: 1fr auto;
+  align-items: start;
+  min-height: 150px;
+  min-width: 0;
+  gap: 4px 14px;
+  padding: clamp(16px, 2vw, 24px);
+  border: 1px solid var(--folio-divider);
+  border-radius: 12px;
+  background: linear-gradient(140deg, #18110a, var(--folio-panel) 68%);
+  transition: border-color 160ms ease;
+}
+
+.folio [data-roster-card]:is(:hover, :focus-visible) {
+  border-color: var(--folio-boundary);
+}
+
+.folio [data-roster-card] > svg {
+  color: var(--folio-action);
+}
+
+.folio [data-roster-card] > :last-child {
+  grid-column: 1 / -1;
+}
+
+.folio [data-roster-card] [role="progressbar"] + p {
+  margin-block-start: 6px;
+  font-size: 0.8125rem;
+}
+
+.folio [data-roster-card-identity] {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.folio [data-roster-card-identity] h2 {
+  margin: 0;
+  color: var(--folio-ink);
+  font-family: var(--folio-font-heading);
+  font-size: clamp(24px, 2.45vw, 32px);
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.folio [data-roster-card-identity] p {
+  margin: 4px 0 0;
+  color: var(--folio-muted);
+  font-size: 0.9375rem;
+}
+
+.folio [data-roster-table] {
+  border-radius: 12px;
+}
+
+.folio [data-roster-table] :is(th, td) {
+  padding-inline: clamp(12px, 1.8vw, 24px);
+}
+
+.folio [data-roster-table] th {
+  font-size: 0.8125rem;
+}
+
+.folio [data-roster-table] th button {
+  min-height: 40px;
+}
+
+.folio [data-roster-table] td:first-child a {
+  font-size: 1.25rem;
+}
+
 .folio [data-roster-table] a:hover {
   color: var(--folio-action);
+}
+
+@media (max-width: 560px) {
+  .heading {
+    align-items: center;
+  }
+
+  .heading > :global(.j1-title) > span {
+    font-size: clamp(35px, 9.5vw, 48px);
+  }
+
+  .folio [data-roster-stats] {
+    grid-template-columns: repeat(auto-fit, minmax(min(5.5rem, 100%), 1fr));
+  }
+
+  .folio [data-roster-search] {
+    flex-basis: 100%;
+  }
+
+  .folio [data-roster-filters] > select {
+    flex: 1 1 7rem;
+    min-width: 0;
+  }
+
+  .folio [data-roster-build] {
+    flex: 1 1 10rem;
+  }
 }

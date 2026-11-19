@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback } from 'react'
+import { Search } from 'lucide-react'
 import type { FilterState } from '@/lib/roster/types'
 
 export type ViewMode = 'grid' | 'table'
@@ -30,22 +31,24 @@ export function RosterFilters({
   )
 
   return (
-    <div data-roster-filters className="flex flex-wrap items-center gap-2">
-      {/* Search */}
-      <input
-        aria-label="Search charts"
-        value={filters.q}
-        onChange={(e) => onFilterChange({ q: e.target.value })}
-        placeholder="Search name or place…"
-        className={`${filterControl} w-full sm:max-w-xs`}
-      />
+    <div data-roster-filters role="group" aria-label="Chart filters and layout">
+      <div data-roster-search>
+        <Search aria-hidden="true" focusable="false" size={17} />
+        <input
+          aria-label="Search charts"
+          value={filters.q}
+          onChange={(e) => onFilterChange({ q: e.target.value })}
+          placeholder="Search name or place…"
+          className={`${filterControl} w-full`}
+        />
+      </div>
 
       {/* Birth place */}
       <select
         aria-label="Filter by birth place"
         value={filters.place}
         onChange={(e) => onFilterChange({ place: e.target.value })}
-        className={`${filterControl} sm:max-w-64`}
+        className={`${filterControl} max-w-full sm:max-w-64`}
       >
         <option value="">All places</option>
         {places.map((p) => (
@@ -66,7 +69,7 @@ export function RosterFilters({
       </select>
 
       {/* Build % max slider */}
-      <label className="flex min-h-11 items-center gap-2 text-[var(--folio-muted)] text-sm">
+      <label data-roster-build className="flex min-h-11 items-center gap-2 text-[var(--folio-muted)] text-sm">
         <span className="whitespace-nowrap">Build ≤ {filters.buildMax}%</span>
         <input
           type="range"
@@ -92,18 +95,17 @@ export function RosterFilters({
         <option value={sinceDate(90)}>Last 90 days</option>
       </select>
 
-      {/* Spacer */}
-      <span className="flex-1" />
-
       {/* Grid / Table toggle */}
       <div
         role="group"
         aria-label="View mode"
-        className="flex items-center rounded-lg border border-[var(--folio-boundary)] bg-[var(--folio-panel)] p-1 text-sm"
+        data-roster-layout
+        className="flex items-center rounded-lg border border-[var(--folio-boundary)] bg-[var(--folio-panel)] p-0.5 text-sm"
       >
         {(['grid', 'table'] as ViewMode[]).map((v) => (
           <button
             key={v}
+            type="button"
             onClick={() => onViewChange(v)}
             aria-pressed={view === v}
             className={`inline-flex min-h-11 items-center justify-center rounded-md px-3 font-medium capitalize focus-visible:outline-2 focus-visible:outline-[var(--folio-focus)] ${

@@ -34,7 +34,7 @@ export function PersonaManager() {
   }
   return (
     <div className="j5-stack">
-      <div className="j5-actions">
+      <div className="j5-panel j5-persona-toolbar">
         <p className="j1-note">
           Saved instructions and response styles. One default is shared with
           Preferences.
@@ -91,7 +91,7 @@ export function PersonaManager() {
           </button>
         </section>
       )}
-      <div className="j5-stack">
+      <div className="j5-persona-grid">
         {personas.map((persona) => (
           <PersonaCard
             key={persona.id}

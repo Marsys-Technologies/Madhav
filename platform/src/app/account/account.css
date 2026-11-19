@@ -6,7 +6,7 @@
   max-width: 1120px;
   margin: 0 auto;
   min-width: 0;
-  padding: var(--space-3) clamp(var(--space-4), 3vw, var(--space-8)) var(--space-12);
+  padding: var(--space-2) clamp(var(--space-4), 3vw, var(--space-8)) var(--space-12);
   background: var(--folio-canvas);
   color: var(--folio-ink);
   font: 1rem/1.55 var(--folio-font-body);
@@ -61,7 +61,7 @@
 .j5-panel {
   background: var(--folio-panel);
   border: 1px solid var(--folio-divider);
-  border-radius: var(--radius-lg);
+  border-radius: 14px;
   padding: var(--space-6);
   min-width: 0;
   overflow-wrap: anywhere;
@@ -70,7 +70,7 @@
   font-family: var(--folio-font-heading);
   font-size: clamp(1.35rem, 2.5vw, 1.75rem);
   line-height: 1.2;
-  color: var(--folio-ink);
+  color: var(--folio-action);
   margin: 0 0 8px;
 }
 .j5-grid {
@@ -139,9 +139,7 @@
   margin-left: 12px;
 }
 .j5-account .j1-title:not(:where(.pp-root *, .zone-ink *)) > span {
-  color: var(--folio-ink);
-  font: 600 clamp(1.5rem, 3vw, 2rem)/1.2 var(--folio-font-heading);
-  font-variant: normal;
+  color: var(--folio-action);
   overflow-wrap: anywhere;
 }
 .j5-account .j1-title:not(:where(.pp-root *, .zone-ink *)) > small,
@@ -160,7 +158,7 @@
   border: 1px solid var(--folio-boundary);
   background: var(--folio-panel);
   color: var(--folio-ink);
-  color-scheme: light;
+  color-scheme: dark;
   font: inherit;
 }
 .j5-account :is(.j5-panel, .j5-persona-form) :is(input, textarea)::placeholder {
@@ -416,5 +414,231 @@
   .j5-metrics,
   .j5-filter-fields {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Personal account and usage pages share one backdrop and keep admin panels separate. */
+.j1-content:has(> .j5-personal) {
+  background: var(--folio-wash), var(--folio-canvas);
+}
+
+.j5-personal {
+  padding-block: clamp(1rem, 3vw, 2.25rem) 3rem;
+  background: transparent;
+  color-scheme: dark;
+}
+
+.j5-personal .j5-heading > .j5-eyebrow {
+  margin: 0 0 0.25rem;
+}
+
+.j5-personal .j5-heading > .j1-title > span {
+  font-size: clamp(2.25rem, 5vw, 3.5rem);
+}
+
+.j5-personal .j5-heading > .j1-title > small {
+  font-size: 1.05rem;
+}
+
+.j5-personal .j5-tabs {
+  gap: 0.25rem 0.5rem;
+  padding-block-end: 0.375rem;
+  margin-block: 1.375rem 1.5rem;
+}
+
+.j5-personal .j5-tabs a {
+  border-radius: 0.5rem;
+  color: var(--folio-muted);
+  white-space: normal;
+}
+
+.j5-personal .j5-tabs a[aria-current="page"] {
+  color: var(--folio-action);
+}
+
+.j5-personal .j5-panel:not([role="alert"]) {
+  background: var(--folio-panel-wash), var(--folio-panel);
+}
+
+.j5-personal .j5-identity {
+  padding-block: clamp(1.125rem, 3vw, 1.875rem);
+}
+
+.j5-personal .j5-avatar {
+  background: var(--folio-selected);
+}
+
+.j5-personal .j5-destination {
+  min-height: 100%;
+  padding: clamp(1rem, 2vw, 1.375rem);
+  text-decoration: none;
+}
+
+.j5-personal .j5-destination-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  color: var(--folio-action);
+}
+
+.j5-personal .j5-destination-label .j5-eyebrow {
+  margin: 0 0 0.5rem;
+  color: var(--folio-muted);
+  font-size: 0.75rem;
+}
+
+.j5-personal .j5-destination-label svg {
+  flex: none;
+}
+
+.j5-personal .j5-cockpit-grid {
+  margin-top: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.j5-personal :is(.j5-cockpit-note, .j5-card-summary) {
+  margin-top: 1rem;
+}
+
+.j5-personal .j5-card-summary {
+  padding-top: 0.625rem;
+  border-top: 1px solid var(--folio-divider);
+}
+
+.j5-personal .j5-panel.j1-form {
+  gap: clamp(0.75rem, 2vw, 1rem);
+}
+
+.j5-personal .j5-panel.j1-form .j1-field span {
+  font-weight: 600;
+}
+
+.j5-personal .j1-field input[readonly] {
+  background: var(--folio-selected);
+  color: var(--folio-muted);
+}
+
+.j5-personal .j5-panel :is(p, li):not(.j5-eyebrow, .j5-metric) {
+  text-wrap: pretty;
+}
+
+.j5-personal .j5-steps {
+  list-style: decimal;
+  row-gap: 0.25rem;
+}
+
+.j5-personal .j5-setting {
+  gap: 0.375rem 1rem;
+}
+
+.j5-personal .j5-setting select {
+  min-inline-size: min(100%, 10rem);
+}
+
+.j5-personal .j5-persona-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1.25rem;
+}
+
+.j5-personal .j5-persona-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.j5-personal .j5-persona-card h3 {
+  overflow-wrap: anywhere;
+}
+
+.j5-personal .j5-persona-card .j5-actions {
+  margin-top: 0;
+}
+
+.j5-personal .j5-activity {
+  min-width: 0;
+  gap: 1rem;
+}
+
+.j5-personal .j5-activity > .j1-note:first-child {
+  padding-inline-start: 0.875rem;
+  border-inline-start: 2px solid var(--folio-boundary);
+}
+
+.j5-personal .j5-metric-panel {
+  padding: clamp(0.875rem, 2.5vw, 1.375rem);
+}
+
+.j5-personal .j5-metric-panel .j5-eyebrow {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.j5-personal .j5-metric-panel .j5-metric {
+  margin-block: 0.25rem;
+}
+
+.j5-personal .j5-cost-metrics {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.j5-personal .j5-consumption {
+  min-width: 0;
+}
+
+.j5-personal .j5-consumption :where(section) {
+  min-width: 0;
+}
+
+.j5-personal .pp-root:has(.aic-page) {
+  --pp-panel: var(--folio-panel);
+  --pp-rule: var(--folio-divider);
+  --pp-rule-strong: var(--folio-boundary);
+  background: transparent;
+}
+
+.j5-personal .aic-header {
+  margin-bottom: 1.25rem;
+}
+
+.j5-personal .aic-group {
+  background-image: var(--folio-panel-wash);
+}
+
+@media (max-width: 600px) {
+  .j5-personal .j5-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .j5-personal .j5-tabs a {
+    font-size: 0.9375rem;
+    overflow-wrap: anywhere;
+  }
+
+  .j5-personal .j5-cockpit-grid,
+  .j5-personal .j5-persona-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .j5-personal .j5-setting select {
+    inline-size: 100%;
+  }
+
+  .j5-personal .j5-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.625rem;
+  }
+
+  .j5-personal .aic-default-summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .j5-personal .aic-default-summary > small {
+    grid-column: auto;
   }
 }

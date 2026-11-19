@@ -1,29 +1,29 @@
 @media screen {
   .header {
-    --jw-ink: #242920;
-    --jw-ink-dim: #52584a;
-    --jw-gold-dim: #52584a;
+    --jw-ink: var(--folio-ink);
+    --jw-ink-dim: var(--folio-muted);
+    --jw-gold-dim: var(--folio-muted);
     color: var(--jw-ink);
-    background: #f5efe2;
+    background: var(--folio-panel-wash), var(--folio-panel);
     padding: clamp(16px, 4vw, 24px);
     border-radius: 12px;
     overflow-wrap: anywhere;
   }
 
   .header .snapshot {
-    background: #fcf8ee;
-    border-color: #a5a18e;
+    background: var(--folio-panel);
+    border-color: var(--folio-divider);
   }
 
   .header .returnLink,
   .header .returnLink:hover {
-    color: #2e563e;
+    color: var(--folio-action);
     text-decoration: underline;
     text-underline-offset: 0.18em;
   }
 
   .header .returnLink:focus-visible {
-    outline: 3px solid #2e563e;
+    outline: 3px solid var(--folio-action);
     outline-offset: 4px;
     box-shadow: none;
   }

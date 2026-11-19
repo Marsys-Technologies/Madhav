@@ -158,7 +158,7 @@ function YogaRow({
     <div
       className={`flex items-center justify-between px-5 py-3 ${!isLast ? 'border-b border-[rgba(212,175,55,0.06)]' : ''}`}
       style={{ background: bgTint }}
-      role="row"
+      role="group"
       aria-label={`${meta.display}: ${window}`}
     >
       {/* Left: icon + name + Sanskrit */}

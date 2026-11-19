@@ -130,7 +130,7 @@
   color: #1a1206;
   font-weight: 600;
 }
-.j1 a.j1-btn:hover {
+.j1 a.j1-btn:not(.j1-btn-secondary):hover {
   color: #1a1206;
 }
 .j1-btn-secondary {
@@ -289,80 +289,110 @@
 .j1-universe {
   position: absolute;
   left: 50%;
-  top: 170px;
+  top: var(--entry-sun-top, var(--entry-default-sun-top, 170px));
+}
+.j1-corona {
+  position: absolute;
+  width: clamp(193px, 51.11vmin, 460px);
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(210, 162, 60, 0.24),
+    rgba(168, 124, 42, 0.08) 40%,
+    transparent 70%
+  );
+  opacity: 0.65;
+  animation: j1-corona 10s ease-in-out infinite;
 }
 .j1-sun {
   max-width: none;
   position: absolute;
-  left: -64px;
-  top: -64px;
-  width: 128px;
-  height: 128px;
+  width: var(--entry-sun-size, var(--entry-default-sun-size, 128px));
+  height: auto;
+  translate: -50% -50%;
 }
 .j1-orbit {
+  --orbit-line: solid;
+  --orbit-ring: rgba(168, 124, 42, 0.26);
+  --graha-fill: radial-gradient(circle at 40% 35%, #fff, #e8e2d2 60%, #a39880);
+  --graha-rim: #d2a23c;
+  --graha-glow: rgba(236, 197, 106, 0.35);
   position: absolute;
   left: calc(var(--orbit-size) / -2);
   top: calc(var(--orbit-size) / -2);
   width: var(--orbit-size);
   height: var(--orbit-size);
-  border: 1px solid rgba(138, 94, 18, 0.17);
+  border: 1px var(--orbit-line) var(--orbit-ring);
   border-radius: 50%;
-  animation: j1-orbit var(--orbit-time) linear infinite;
-  animation-delay: var(--orbit-delay);
+  transform: rotate(var(--orbit-start));
+  animation: j1-graha-orbit var(--orbit-time) linear infinite;
 }
 .j1-orbit i {
   position: absolute;
   left: 50%;
   top: 0;
-  width: 12px;
-  height: 12px;
-  margin: -6px;
+  width: calc(var(--graha-size) * var(--entry-jewel-scale, 1.1));
+  aspect-ratio: 1;
+  translate: -50% -50%;
   border-radius: 50%;
-  background: #ab9369;
-  box-shadow: 0 0 16px rgba(210, 162, 60, 0.16);
+  background: var(--graha-fill);
+  box-shadow: 0 0 0 1px var(--graha-rim), 0 0 14px var(--graha-glow);
 }
-.j1-orbit-1 i {
-  background: #8e503b;
+.j1-orbit[data-graha="Mercury"] {
+  --orbit-line: dashed;
+  --orbit-ring: rgba(168, 124, 42, 0.22);
+  --graha-fill: radial-gradient(circle at 40% 35%, #9fe0c8, #2f7d66 65%, #1a4a3c);
+  --graha-rim: #a87c2a;
+  --graha-glow: rgba(79, 154, 152, 0.35);
 }
-.j1-orbit-2 i {
-  background: #557b63;
-  width: 9px;
-  height: 9px;
+.j1-orbit[data-graha="Venus"] {
+  --orbit-ring: rgba(168, 124, 42, 0.20);
+  --graha-fill: radial-gradient(circle at 40% 35%, #fff6e0, #f0d9a6 60%, #a87c2a);
 }
-.j1-orbit-3 i {
-  background: #d3b47e;
-  width: 19px;
-  height: 19px;
+.j1-orbit[data-graha="Mars"] {
+  --orbit-line: dashed;
+  --orbit-ring: rgba(168, 124, 42, 0.18);
+  --graha-fill: radial-gradient(circle at 40% 35%, #e8a090, #b5565e 65%, #5a2328);
+  --graha-rim: #a87c2a;
+  --graha-glow: rgba(181, 86, 94, 0.35);
 }
-.j1-orbit-4 i {
-  background: #e5d4a2;
+.j1-orbit[data-graha="Jupiter"] {
+  --orbit-ring: rgba(168, 124, 42, 0.16);
+  --graha-fill: radial-gradient(circle at 40% 35%, #ffe9a8, #d2a23c 60%, #6e4e0f);
+  --graha-rim: #ecc56a;
 }
-.j1-orbit-5 i {
-  background: #747065;
-  width: 16px;
-  height: 16px;
-  border: 3px double #b09b78;
+.j1-orbit[data-graha="Saturn"] {
+  --orbit-line: dashed;
+  --orbit-ring: rgba(168, 124, 42, 0.14);
+  --graha-fill: radial-gradient(circle at 40% 35%, #8fa3c8, #5b7fb5 65%, #1e2a44);
+  --graha-rim: #a87c2a;
+  --graha-glow: rgba(91, 127, 181, 0.3);
 }
-.j1-orbit-6,
-.j1-orbit-7 {
-  border-style: dashed;
-  animation-direction: reverse;
+.j1-orbit[data-graha="Rahu"] {
+  --orbit-ring: rgba(138, 94, 18, 0.16);
+  --graha-fill: radial-gradient(circle at 40% 35%, #6b5a8e, #2a1f3f 65%, #0a0806);
+  --graha-rim: #6e4e0f;
+  --graha-glow: rgba(154, 132, 188, 0.25);
 }
-.j1-orbit-6 i {
-  background: #647183;
-}
-.j1-orbit-7 i {
-  background: #a89c93;
+.j1-orbit[data-graha="Ketu"] {
+  --orbit-ring: transparent;
+  --graha-fill: radial-gradient(circle at 40% 35%, #8e6b5a, #3f2a1f 65%, #0a0806);
+  --graha-rim: #6e4e0f;
+  --graha-glow: rgba(188, 140, 120, 0.22);
 }
 .j1-nakshatras,
 .j1-rashis {
+  --wheel-diameter: clamp(638px, 168.89vmin, 1520px);
+  --wheel-edge: calc(var(--wheel-diameter) / -2);
   position: absolute;
-  border: 1px solid rgba(138, 94, 18, 0.25);
+  border: 1px solid rgba(138, 94, 18, 0.35);
   border-radius: 50%;
-  width: 1520px;
-  height: 1520px;
-  left: -760px;
-  top: -760px;
+  width: var(--wheel-diameter);
+  aspect-ratio: 1;
+  left: var(--wheel-edge);
+  top: var(--wheel-edge);
   animation: j1-orbit 900s linear infinite reverse;
 }
 .j1-nakshatras > span {
@@ -374,21 +404,27 @@
 }
 .j1-nakshatras b {
   position: absolute;
-  top: -745px;
+  top: calc(var(--wheel-edge) + 18px);
   left: -30px;
   width: 60px;
   text-align: center;
-  color: #a39880;
-  font-size: 13px;
-  font-weight: 400;
+  color: rgba(196, 186, 160, 0.7);
+  font: 400 clamp(11px, 1.45vmin, 13px) / 1.2 var(--font-cormorant), Georgia, serif;
+  letter-spacing: 0.08em;
+}
+.j1-nakshatras > span::before {
+  content: "";
+  position: absolute;
+  top: var(--wheel-edge);
+  width: 1px;
+  height: 14px;
+  background: rgba(210, 162, 60, 0.5);
 }
 .j1-rashis {
-  width: 1280px;
-  height: 1280px;
-  left: -640px;
-  top: -640px;
+  --wheel-diameter: clamp(538px, 142.22vmin, 1280px);
   border-style: dashed;
   animation-duration: 1400s;
+  animation-direction: normal;
 }
 .j1-rashis i {
   position: absolute;
@@ -397,29 +433,39 @@
   height: 0;
   width: 0;
 }
-.j1-rashis i:before {
+.j1-rashis i::before {
   content: "";
   position: absolute;
-  top: -640px;
+  top: var(--wheel-edge);
   width: 2px;
   height: 22px;
   background: #8a5e12;
 }
 .j1-star {
   position: absolute;
-  width: 2px;
-  height: 2px;
+  width: 1.4px;
+  aspect-ratio: 1;
   border-radius: 50%;
+  background: #f3eee2;
+  opacity: 0.5;
+  animation: j1-twinkle ease-in-out infinite;
+}
+.j1-star:nth-child(4n + 1) {
   background: #ecc56a;
-  opacity: 0.4;
-  animation: j1-twinkle 6s infinite;
+}
+.j1-star:nth-child(5n + 1) {
+  width: 2.2px;
 }
 .j1-comet {
   position: absolute;
+  left: 0;
+  top: 0;
   width: 180px;
   height: 2px;
-  background: linear-gradient(90deg, transparent, #ecc56a);
-  animation: j1-comet 28s linear infinite;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, rgba(236, 197, 106, 0.65) 85%, #f6dc8c);
+  box-shadow: 0 0 12px rgba(236, 197, 106, 0.4);
+  animation: j1-comet 28s cubic-bezier(0.3, 0.1, 0.6, 1) infinite;
   animation-delay: 4s;
   opacity: 0;
 }
@@ -428,9 +474,27 @@
     transform: rotate(360deg);
   }
 }
-@keyframes j1-twinkle {
+@keyframes j1-graha-orbit {
+  to {
+    transform: rotate(calc(var(--orbit-start) + var(--orbit-turn)));
+  }
+}
+@keyframes j1-corona {
+  0%, 100% {
+    scale: 1;
+    opacity: 0.5;
+  }
   50% {
+    scale: 1.06;
     opacity: 0.8;
+  }
+}
+@keyframes j1-twinkle {
+  0%, 100% {
+    opacity: 0.15;
+  }
+  50% {
+    opacity: 0.9;
   }
 }
 @keyframes j1-comet {
@@ -489,7 +553,7 @@
   flex-shrink: 0;
 }
 .j1-rail .j1-title {
-  visibility: hidden;
+  display: none;
 }
 .j1-rail .j1-title > span {
   font: 600 1rem/1.2 var(--folio-font-body);
@@ -504,7 +568,7 @@
   text-underline-offset: 0.18em;
 }
 .j1-rail[data-open="true"] .j1-title {
-  visibility: visible;
+  display: flex;
 }
 .j1-shell-body {
   min-width: 0;
@@ -533,7 +597,7 @@
   display: inline-flex;
   align-items: center;
   padding-inline: var(--space-1);
-  font: 500 1.75rem/1 var(--folio-font-heading);
+  flex-shrink: 0;
 }
 .j1 .folio-nav-surface .j1-icon {
   background: var(--folio-panel);
@@ -551,6 +615,10 @@
   flex: 1;
   min-width: 0;
   overflow: auto;
+  background: var(--folio-wash), var(--folio-canvas);
+}
+.j1-content > .j1.j1-container {
+  background: transparent;
 }
 .j1-mobile-menu {
   display: none;
@@ -568,7 +636,7 @@
   margin-bottom: 28px;
 }
 .j1-panel {
-  background: #0d0b08;
+  background: var(--folio-panel-wash), var(--folio-panel);
   border: 1px solid #302718;
   border-radius: 12px;
   padding: 24px;
@@ -624,29 +692,26 @@
   color: #ecc56a;
 }
 .j1-chart-tabs {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--space-2);
-  padding-block: var(--space-3);
-  margin-block: var(--space-3);
+  padding-block: var(--space-5);
+  margin-block: var(--space-4);
   border-block: 1px solid var(--folio-divider);
 }
 .j1-chart-tabs a {
   min-width: 0;
-  min-height: var(--folio-target);
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--folio-divider);
-  border-radius: var(--radius-md);
-  background: var(--folio-panel);
+  min-height: 52px;
+  padding: 8px 16px;
+  border: 1px solid transparent;
+  border-radius: 6px;
 }
 .j1-chart-tabs a .j1-title > span,
 .j1-chart-tabs a .j1-title > small {
-  font-family: var(--folio-font-body);
   overflow-wrap: anywhere;
 }
 .j1-chart-tabs a .j1-title > span {
-  color: var(--folio-ink);
-  font-size: 0.9375rem;
+  color: var(--folio-action);
   line-height: 1.3;
 }
 .j1-chart-tabs a .j1-title > small {
@@ -720,39 +785,13 @@
   .j1-entry-column {
     padding-top: 164px;
   }
-  .j1-sun {
-    width: 84px;
-    height: 84px;
-    left: -42px;
-    top: -42px;
+  .j1-cosmos {
+    --entry-default-sun-top: 96px;
+    --entry-default-sun-size: 84px;
+    --entry-jewel-scale: 0.8;
   }
-  .j1-universe {
-    top: 96px;
-  }
-  .j1-orbit {
-    width: calc(var(--orbit-size) * 0.45);
-    height: calc(var(--orbit-size) * 0.45);
-    left: calc(var(--orbit-size) * -0.225);
-    top: calc(var(--orbit-size) * -0.225);
-  }
-  .j1-nakshatras {
-    width: 684px;
-    height: 684px;
-    left: -342px;
-    top: -342px;
-  }
-  .j1-nakshatras b {
-    top: -330px;
-    font-size: 11px;
-  }
-  .j1-rashis {
-    width: 576px;
-    height: 576px;
-    left: -288px;
-    top: -288px;
-  }
-  .j1-rashis i:before {
-    top: -288px;
+  .j1-star:nth-child(n + 17) {
+    display: none;
   }
   .j1-entry-card {
     padding: 22px;
@@ -793,6 +832,9 @@
   }
   .j1-chart-info h2 {
     font-size: 32px;
+  }
+  .j1-chart-tabs a {
+    flex: 1 1 8rem;
   }
   .j1-summary-grid {
     grid-template-columns: 1fr;

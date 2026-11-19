@@ -1,19 +1,9 @@
-.folio {
-  --folio-paper: #f5efe2;
-  --folio-panel: #fcf8ee;
-  --folio-ink: #242920;
-  --folio-muted: #52584a;
-  --folio-action: #2e563e;
-  --folio-control: #716d5e;
-}
-
 .folio a.rosterReturn,
 .folio a.rosterReturn:hover {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
   padding-inline: 12px;
-  background: var(--folio-paper);
   color: var(--folio-action);
   border-radius: 6px;
   text-decoration: underline;
@@ -21,22 +11,8 @@
 }
 
 .folio :global(.j1-chart-info) {
-  gap: 16px;
-  padding: clamp(16px, 3vw, 24px);
-  border-radius: 12px;
-  background: var(--folio-panel);
   color: var(--folio-ink);
   overflow-wrap: anywhere;
-}
-
-.folio :global(.j1-chart-info) > :global(.j1-title) > span,
-.folio :global(.j1-chart-info) > h2 {
-  font-family: Georgia, serif;
-  color: var(--folio-ink);
-}
-
-.folio :global(.j1-chart-info) > h2 {
-  font-size: clamp(1.5rem, 4vw, 2rem);
 }
 
 .folio :global(.j1-chart-info) > :global(.j1-title) > small,
@@ -44,21 +20,13 @@
   color: var(--folio-muted);
 }
 
-.folio a.consultAction,
-.folio a.consultAction:global(.j1-btn):hover {
-  background: var(--folio-action);
-  border-color: var(--folio-action);
-  color: #fffaf0;
+.folio :global(.j1-chart-info) button:global(.jw-control) {
+  border-color: var(--folio-boundary);
+  color: var(--folio-action);
 }
 
 .folio .consultAction :global(.j1-title) > :is(span, small) {
   color: inherit;
-}
-
-.folio :global(.j1-chart-info) button:global(.jw-control) {
-  background: var(--folio-paper);
-  border-color: var(--folio-control);
-  color: var(--folio-action);
 }
 
 .folio .rosterReturn:focus-visible {
@@ -74,11 +42,11 @@
 
 .almanacHeader {
   margin: 0 auto 16px;
-  max-inline-size: 56rem;
   padding: clamp(16px, 4vw, 24px);
+  border: 1px solid var(--folio-divider);
   border-radius: 12px;
-  background: var(--folio-panel, #fcf8ee);
-  color: var(--folio-ink, #242920);
+  background: var(--folio-panel-wash), var(--folio-panel);
+  color: var(--folio-ink);
   font-family: var(--folio-font-body, system-ui, sans-serif);
   overflow-wrap: anywhere;
 }
@@ -89,13 +57,13 @@
 }
 
 .almanacHeader p {
-  color: var(--folio-muted, #52584a);
+  color: var(--folio-muted);
 }
 
 .almanacLinks {
   display: flex;
   flex-wrap: wrap;
-  column-gap: 16px;
+  gap: 0 16px;
   margin-block-start: 8px;
 }
 
@@ -103,12 +71,256 @@
   display: inline-flex;
   align-items: center;
   min-block-size: 44px;
-  color: var(--folio-action, #2e563e);
+  color: var(--folio-action);
   text-decoration: underline;
   text-underline-offset: 0.18em;
 }
 
 .almanacLinks a:focus-visible {
-  outline: 3px solid var(--folio-focus, #2e563e);
+  outline: 3px solid var(--folio-focus);
   outline-offset: 4px;
+}
+
+.warmWorkspace {
+  min-block-size: 100%;
+  min-inline-size: 0;
+  color-scheme: dark;
+  color: var(--folio-ink);
+  background: var(--folio-wash), var(--folio-canvas);
+}
+
+.chartHero {
+  align-items: center;
+  gap: clamp(18px, 5vw, 76px);
+  padding: clamp(16px, 3.8vw, 44px);
+  border: 1px solid var(--folio-divider);
+  border-radius: 16px;
+  background: var(--folio-panel-wash), var(--folio-panel);
+}
+
+.chartHero :global(.j1-chart-box) {
+  min-inline-size: 0;
+}
+
+.chartHero :global(.j1-chart-info) {
+  max-inline-size: 43rem;
+}
+
+.chartHero :global(.j1-chart-info) > h2 {
+  color: var(--folio-ink);
+  font-size: clamp(2rem, 4.6vw, 3.85rem);
+  line-height: 1.02;
+}
+
+.chartActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+}
+
+.chartSummaries {
+  margin-block: clamp(16px, 3vw, 28px);
+}
+
+.chartSummaries > section {
+  min-inline-size: 0;
+  padding: clamp(16px, 3vw, 26px);
+  background: var(--folio-panel-wash), var(--folio-panel);
+  overflow-wrap: anywhere;
+}
+
+.chartSummaries dl {
+  display: grid;
+  gap: 12px;
+}
+
+.chartSummaries dt {
+  color: var(--folio-muted);
+  font-size: 0.95rem;
+}
+
+.chartSummaries a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 44px;
+  margin-block-start: 8px;
+  color: var(--folio-action);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+.chartForm {
+  padding-block-end: clamp(24px, 5vw, 56px);
+}
+
+/* The original chart forms use an inline matte background. Let the workspace
+   backdrop show through while retaining the input and existing error colours. */
+.chartForm :global(.j1-chart-form) {
+  background: transparent !important;
+}
+
+.chartForm :global([data-testid="form-title"]) + div,
+.chartForm :global(.jw-panel),
+.accessPanel {
+  background-image: var(--folio-panel-wash);
+}
+
+.chartForm :global([data-testid="form-title"]) > a {
+  min-inline-size: 44px;
+  min-block-size: 44px;
+}
+
+.accessPanel {
+  margin: 0 auto;
+  inline-size: min(calc(100% - 32px), 42rem);
+  overflow-wrap: anywhere;
+  scroll-margin-block-start: 16px;
+}
+
+.accessPanel > h2 {
+  margin-block-end: 16px;
+}
+
+.breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  color: var(--folio-muted);
+  overflow-wrap: anywhere;
+}
+
+.breadcrumb a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 44px;
+  color: var(--folio-action);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+.preparationHeader {
+  margin-block: 16px 24px;
+}
+
+.preparationHeader p {
+  margin-block-start: 8px;
+  max-inline-size: 65ch;
+}
+
+/* CockpitShell owns this inline background for legacy cockpit routes. */
+.preparation :global(.chart-preparation) {
+  --on-dark-faint: var(--folio-muted);
+  background: transparent !important;
+}
+
+.preparation :global(.preparation-toolbar),
+.preparation :global(.preparation-readiness) {
+  padding: clamp(14px, 2.5vw, 22px);
+  border: 1px solid var(--folio-divider);
+  border-radius: 12px;
+  background: var(--folio-panel-wash), var(--folio-panel);
+  overflow-wrap: anywhere;
+}
+
+.preparation :global(.preparation-layer) > div > div:first-child {
+  background: var(--folio-panel-wash), var(--folio-panel) !important;
+}
+
+.preparation :global(.preparation-actions) {
+  row-gap: 8px;
+}
+
+.almanacHeader :global(.j1-title) > span {
+  color: var(--folio-action);
+}
+
+.almanacHeader :global(.j1-title) > small {
+  color: var(--folio-muted);
+}
+
+.almanac {
+  color: var(--folio-ink);
+}
+
+.almanac :global([data-almanac-controls]),
+.almanac :global([data-almanac-surface]) {
+  background-image: var(--folio-panel-wash);
+}
+
+.almanac :global([data-almanac-controls]) {
+  border: 1px solid var(--folio-divider);
+  border-radius: 12px;
+  background-color: var(--folio-panel);
+}
+
+.almanac :global([data-almanac-controls]) :is(button, select, input) {
+  min-block-size: 44px;
+  max-inline-size: 100%;
+}
+
+.almanac :global([data-almanac-controls]) :is(button, select, input):focus-visible {
+  outline: 2px solid var(--folio-focus);
+  outline-offset: 2px;
+}
+
+.lifeEvents > div > header {
+  padding: clamp(16px, 3vw, 28px);
+  border: 1px solid var(--folio-divider);
+  border-radius: 14px;
+  background: var(--folio-panel-wash), var(--folio-panel);
+}
+
+.lifeEvents > div > header h1 {
+  color: var(--folio-action);
+  font: 600 clamp(2rem, 4.2vw, 3rem)/1.06 var(--folio-font-heading);
+}
+
+.lifeEvents ol > li > div:last-child {
+  border-color: var(--folio-divider);
+  background-image: var(--folio-panel-wash);
+}
+
+@media (max-width: 600px) {
+  .chartHero {
+    padding: 14px;
+  }
+
+  .chartActions > a {
+    min-inline-size: 0;
+  }
+
+  .lifeEvents > div > header {
+    padding: 14px;
+  }
+
+  .almanac :global([data-almanac-angas]) {
+    padding-inline: 0;
+  }
+
+  .almanac :global([data-almanac-anga]) {
+    align-items: flex-start;
+    padding: 12px;
+  }
+
+  .almanac :global([data-almanac-anga]) > div:first-child {
+    display: grid;
+    gap: 2px;
+  }
+
+  .almanac :global([data-almanac-anga]) > div:first-child > span {
+    inline-size: auto;
+    text-align: start;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (forced-colors: active) {
+  .chartHero,
+  .almanacHeader,
+  .lifeEvents > div > header {
+    border-color: CanvasText;
+  }
 }

@@ -15,6 +15,7 @@ import {
   X,
   LogOut,
 } from "lucide-react";
+import { Signature } from "./Signature";
 import { PageTitle, TitleToggle, PAGE_NAMES, type PageName } from "./Titles";
 import { AccountPreferencesProvider, useAccountPreferences } from '@/components/account/AccountPreferencesProvider';
 const PIN_KEY = "madhav.pref.global-nav-pinned";
@@ -223,7 +224,7 @@ function JourneyShellBody({
               <Menu size={20} />
             </button>
             <Link href="/dashboard" aria-label="Madhav — Birth Charts" className="j1-shell-wordmark folio-nav-control">
-              Madhav
+              <Signature />
             </Link>
           </div>
           <div className="j1-topbar-actions">

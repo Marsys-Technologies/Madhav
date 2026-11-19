@@ -1,10 +1,8 @@
 import { notFound } from 'next/navigation'
-import Link from 'next/link'
 import type { Metadata } from 'next'
 import { requireActiveUserPage } from '@/lib/auth/active-user-page-guard'
 import { readSharedConversationView } from '@/lib/share/sharedConversationView'
-import { SharedConversation } from './SharedConversation'
-import styles from './folio.module.css'
+import { renderSharedReading } from './renderSharedReading'
 
 export const dynamic = 'force-dynamic'
 
@@ -43,32 +41,9 @@ export default async function SharedConversationPage({
   const view = await readSharedConversationView({ slug, verifiedViewerUid: viewer.user.uid })
   if (!view) notFound()
 
-  return (
-    <div className="mx-auto flex min-h-[100dvh] max-w-3xl flex-col px-4 py-6 print:max-w-none print:px-0 print:py-0">
-      {/* X-S9: @media print — inline style ensures ≥12pt body text in print context */}
-      <style>{`@media print { body { font-size: 12pt; } }`}</style>
-
-      <header className={`mb-6 border-b border-border pb-4 print:border-b-0 print:mb-4 ${styles.header}`}>
-        {/* "Shared conversation" label is UI chrome — hidden in print */}
-        <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground print:hidden">
-          Shared conversation
-        </p>
-        <h1 className="mt-1 font-heading text-2xl font-semibold text-foreground print:text-black print:mt-0">
-          {view.title ?? 'Untitled chat'}
-        </h1>
-        {view.optionalChartName && (
-          <p className="mt-1 text-sm text-muted-foreground print:text-gray-600">{view.optionalChartName}</p>
-        )}
-      </header>
-      <main className={`flex-1 print:text-black ${styles.transcript}`}>
-        <SharedConversation messages={view.visibleMessages} />
-      </main>
-      {/* Footer is navigation chrome — hidden in print */}
-      <footer className="mt-8 border-t border-border pt-4 text-center text-xs text-muted-foreground print:hidden">
-        <Link href="/" className={`hover:text-foreground ${styles.homeLink}`}>
-          MARSYS-JIS
-        </Link>
-      </footer>
-    </div>
-  )
+  return renderSharedReading({
+    title: view.title,
+    optionalChartName: view.optionalChartName,
+    visibleMessages: view.visibleMessages,
+  })
 }

@@ -9,7 +9,6 @@ import { AuditLogPanel } from './AuditLogPanel'
 import { ChartsTab } from './ChartsTab'
 import { AiAccessTab } from './AiAccessTab'
 import { ADMIN_BLOCKS } from './AdminNavigation'
-import folio from './folio-context.module.css'
 import { PageTitle, type PageName } from '@/components/journey1/Titles'
 import type { AdminAccessRequest, AdminUser } from './types'
 import type { AuditLogEntry } from '@/app/api/admin/audit-log/route'
@@ -22,6 +21,15 @@ const BASE_TABS: { id: Tab; label: string }[] = [
   { id: 'charts',  label: 'Charts' },
   { id: 'audit',   label: 'Audit Log' },
 ]
+
+const TAB_DESCRIPTION: Record<Tab, string> = {
+  overview: 'Manage people and access, review portal activity, and inspect system evidence.',
+  pending: 'Review requests for access to Madhav.',
+  users: 'Find a user and manage their account, role, and access.',
+  charts: 'Review chart access for each guest.',
+  'ai-access': 'Review product grants and host availability for each user.',
+  audit: 'Review recorded administrative actions.',
+}
 
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url)
@@ -60,25 +68,18 @@ export function AdminClient({ currentUserId }: { currentUserId: string }) {
 
   const pendingCount = (requestsQuery.data?.requests ?? []).filter(r => r.status === 'pending').length
   const showRequestRecovery = requestsQuery.isError || (requestsQuery.isPending && requestsQuery.isFetched)
-  const portalHeader = activeTab === 'overview' || activeTab === 'pending'
 
   return (
     <div className="space-y-6">
-      <div className={portalHeader ? folio.context : undefined}>
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <PageTitle name={title} />
-            {portalHeader && (
-              <p className={folio.scope}>
-                {activeTab === 'overview' ? 'Portal scope · administration overview' : 'Portal scope'}
-              </p>
-            )}
-            <p className="mt-1 text-sm text-muted-foreground">
-              Portal administration in four blocks. Your account, preferences, personas and AI defaults stay under My Account.
-            </p>
-          </div>
-        </div>
-      </div>
+      <header className="j6-heading">
+        <PageTitle name={title} />
+        {(activeTab === 'overview' || activeTab === 'pending') && (
+          <p className="j5-eyebrow">
+            {activeTab === 'overview' ? 'Portal scope · administration overview' : 'Portal scope'}
+          </p>
+        )}
+        <p>{TAB_DESCRIPTION[activeTab]}</p>
+      </header>
 
       {activeTab === 'overview' && <>
         <div className="j6-blocks">{ADMIN_BLOCKS.map(block => <Link className="j5-panel" key={block.href} href={block.href}><h2>{block.label}</h2><p className="j1-note">{block.description}</p></Link>)}</div>

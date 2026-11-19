@@ -103,7 +103,7 @@ export function AiAccessTab({
         </p>
       </header>
 
-      <div className="flex min-h-[480px] flex-col md:flex-row">
+      <div className="flex flex-col md:min-h-[480px] md:flex-row">
         <div className="shrink-0 border-b border-[rgba(var(--brand-gold-rgb),0.12)] bg-[rgba(0,0,0,0.2)] md:w-64 md:border-b-0 md:border-r">
           <div className="border-b border-[rgba(var(--brand-gold-rgb),0.08)] px-4 py-3">
             <span className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Users</span>
@@ -181,10 +181,10 @@ export function AiAccessTab({
                     return (
                       <div
                         key={grant.cliId}
-                        className="flex min-h-16 items-center justify-between gap-4 rounded-lg border border-[rgba(var(--brand-gold-rgb),0.12)] px-4 py-3"
+                        className="flex min-h-16 items-center justify-between gap-4 rounded-lg border border-[var(--folio-divider)] bg-[var(--folio-panel)] [background-image:var(--folio-panel-wash)] px-4 py-3"
                       >
                         <div className="min-w-0">
-                          <div className="font-serif text-sm text-brand-gold-cream">{grant.productName}</div>
+                          <div className="break-words font-serif text-base text-brand-gold-cream">{grant.productName}</div>
                           <div id={statusId} className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px]">
                             <span className={grant.granted ? 'text-emerald-300' : 'text-muted-foreground'}>
                               {grant.granted ? 'Granted' : 'Not granted'}

@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { getServerUserWithProfile } from '@/lib/auth/access-control'
 import { JourneyShell } from '@/components/journey1/JourneyShell'
 import { NewClientForm } from '@/components/clients/NewClientForm'
+import styles from '../[id]/folio.module.css'
 
 // Force server-side render on every request so Next never bakes a stale static
 // document for this route after a deploy. /clients/new is an authenticated
@@ -16,5 +17,5 @@ export default async function NewClientPage() {
   const ctx=await getServerUserWithProfile()
   if(!ctx||ctx.profile.status!=='active')redirect('/login')
   if(ctx.profile.role!=='super_admin')redirect('/dashboard')
-  return <JourneyShell user={ctx.user} role={ctx.profile.role}><NewClientForm /></JourneyShell>
+  return <JourneyShell user={ctx.user} role={ctx.profile.role}><div className={`${styles.warmWorkspace} ${styles.chartForm}`}><NewClientForm /></div></JourneyShell>
 }

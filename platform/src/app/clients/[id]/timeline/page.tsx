@@ -7,6 +7,7 @@ import { ZoneRoot } from '@/components/shared/ZoneRoot'
 import { resolveChartPageAccess } from '@/lib/auth/chart-page-guard'
 import { requireSuperAdmin } from '@/lib/auth/access-control'
 import { NextResponse } from 'next/server'
+import styles from '../folio.module.css'
 
 // V3-E-019: converged off the retired inline `chart.client_id !== user.uid`
 // model onto resolveChartPageAccess — see the sibling layout for the full
@@ -34,7 +35,7 @@ export default async function TimelinePage({
   const canLogEvent = access.role === 'super_admin' && !((await requireSuperAdmin()) instanceof NextResponse)
 
   return (
-    <ZoneRoot zone="vellum" className="flex min-h-full flex-col">
+    <ZoneRoot zone="ink" className={`${styles.warmWorkspace} ${styles.lifeEvents} j1-container`}>
       <ChartNav chartId={id} canBuild={access.canBuild} active="events" />
       <TimelineView key={id} events={events} chartId={id} canLogEvent={canLogEvent} />
     </ZoneRoot>

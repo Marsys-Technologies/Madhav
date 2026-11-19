@@ -6,12 +6,14 @@ import { getFlag } from "@/lib/config";
 export function AccountHeading({
   name,
   cockpit = false,
+  consoleEnabled = getFlag("AI_CONSOLE_BYOK"),
 }: {
   name: PageName;
   cockpit?: boolean;
+  consoleEnabled?: boolean;
 }) {
   return (
-    <>
+    <header className="j5-heading">
       <Link className="j5-back" href={cockpit ? "/account" : "/dashboard"}>
         {cockpit ? "← Back to My Account" : "← Back to Birth Charts"}
       </Link>
@@ -19,7 +21,7 @@ export function AccountHeading({
         {cockpit ? "My Account · AI Cockpit" : "Personal"}
       </p>
       <PageTitle name={name} />
-      {cockpit ? <CockpitNav consoleEnabled={getFlag("AI_CONSOLE_BYOK")} /> : <AccountNav />}
-    </>
+      {cockpit ? <CockpitNav active={name} consoleEnabled={consoleEnabled} /> : <AccountNav active={name} />}
+    </header>
   );
 }

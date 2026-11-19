@@ -87,15 +87,15 @@ export default async function DashboardPage() {
         <ChartCreatedToast />
       </Suspense>
       <div className="j1-container">
-        <div className={styles.heading}>
+        <header className={styles.heading}>
           <PageTitle name="charts"/>
           {canCreateChart && (
             <Link href="/clients/new" aria-label="Nava Jātaka (new chart)" className="j1-btn j1-btn-secondary" data-testid="new-client-link">
-              <span className="text-base leading-none">+</span>
+              <span aria-hidden="true" className="leading-none">+</span>
               <PageTitle name="new" as="span" compact/>
             </Link>
           )}
-        </div>
+        </header>
         <Suspense>
           <ClientRoster charts={chartsWithMeta} stats={stats} canCreateChart={canCreateChart} />
         </Suspense>

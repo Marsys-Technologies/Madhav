@@ -119,14 +119,13 @@ export default function LoginPage() {
 
   return (
     <EntryShell name="login">
-      <form onSubmit={handleSubmit} className="j1-form j1-sign-in-form" aria-busy={submitting}>
-        <div>
-          <h2 className={styles.heading}>
-            Welcome back
-          </h2>
-          <p className="j1-note">The instrument is ready.</p>
-        </div>
-        <div className="j1-tabs" aria-label="Sign in with">
+      <form
+        onSubmit={handleSubmit}
+        className={`j1-form j1-sign-in-form ${styles.signInForm}`}
+        aria-label="Sign in"
+        aria-busy={submitting}
+      >
+        <div className="j1-tabs" role="group" aria-label="Sign in with">
           {(["username", "email"] as const).map((key) => (
             <button
               key={key}

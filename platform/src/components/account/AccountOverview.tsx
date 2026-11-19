@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ArrowUpRight } from "lucide-react";
 import type { AccountProfile } from "@/lib/account/profile";
 import { AccountHeading } from "./AccountHeading";
 const destinations = [
@@ -56,7 +57,10 @@ export function AccountOverview({ profile }: { profile: AccountProfile }) {
             key={suffix}
             href={"/account/" + suffix}
           >
-            <p className="j5-eyebrow">{sa}</p>
+            <div className="j5-destination-label">
+              <p className="j5-eyebrow">{sa}</p>
+              <ArrowUpRight size={17} aria-hidden="true" />
+            </div>
             <h2>{en}</h2>
             <p className="j1-note">{description}</p>
           </Link>

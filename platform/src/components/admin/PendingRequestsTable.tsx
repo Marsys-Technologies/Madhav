@@ -82,31 +82,31 @@ export function PendingRequestsTable({
         </p>
       ) : (
         <div className={folio.directoryResults} role="region" aria-label="Access request results" tabIndex={0}>
-          <table className="w-full">
-            <thead>
-              <tr>
-                <th className={adminTableTh}>Requested</th>
-                <th className={adminTableTh}>Name</th>
-                <th className={adminTableTh}>Email</th>
-                <th className={adminTableTh}>Reason</th>
-                <th className={adminTableTh}>Status</th>
-                <th className={adminTableTh}></th>
+          <table role="table" className="j6-data w-full">
+            <thead role="rowgroup">
+              <tr role="row">
+                <th role="columnheader" scope="col" className={adminTableTh}>Requested</th>
+                <th role="columnheader" scope="col" className={adminTableTh}>Name</th>
+                <th role="columnheader" scope="col" className={adminTableTh}>Email</th>
+                <th role="columnheader" scope="col" className={adminTableTh}>Reason</th>
+                <th role="columnheader" scope="col" className={adminTableTh}>Status</th>
+                <th role="columnheader" scope="col" className={adminTableTh}></th>
               </tr>
             </thead>
-            <tbody>
+            <tbody role="rowgroup">
               {requests.map((r) => (
-                <tr key={r.id} className={adminTableRow}>
-                  <td className={adminTableTd + ' whitespace-nowrap text-muted-foreground'}>
+                <tr role="row" key={r.id} className={adminTableRow}>
+                  <td role="cell" data-label="Requested" className={adminTableTd + ' whitespace-nowrap text-muted-foreground'}>
                     {formatRelative(r.requested_at)}
                   </td>
-                  <td className={adminTableTd}>{r.full_name}</td>
-                  <td className={adminTableTd + ' text-brand-gold'}>{r.email}</td>
-                  <td className={adminTableTd + ' max-w-[200px] text-muted-foreground'}>
+                  <td role="cell" data-label="Name" className={adminTableTd}>{r.full_name}</td>
+                  <td role="cell" data-label="Email" className={adminTableTd + ' text-brand-gold'}>{r.email}</td>
+                  <td role="cell" data-label="Reason" className={adminTableTd + ' max-w-[200px] text-muted-foreground'}>
                     <span title={r.reason ?? ''} className="line-clamp-1">
                       {r.reason || '—'}
                     </span>
                   </td>
-                  <td className={adminTableTd}>
+                  <td role="cell" data-label="Status" className={adminTableTd}>
                     <div className="flex flex-col gap-1">
                       <RequestStatusBadge status={r.status} />
                       {r.status === 'approved' && r.approved_user_id && (
@@ -116,7 +116,7 @@ export function PendingRequestsTable({
                       )}
                     </div>
                   </td>
-                  <td className={adminTableTd + ' whitespace-nowrap text-right'}>
+                  <td role="cell" data-label="Actions" className={adminTableTd + ' whitespace-nowrap text-right'}>
                     {r.status === 'pending' && (
                       <div className="flex justify-end gap-2">
                         <button onClick={() => setApproving(r)} className={adminPrimaryBtn}>

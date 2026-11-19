@@ -1,22 +1,17 @@
 .keys {
   min-width: 0;
-  padding: clamp(12px, 3vw, 24px);
-  border: 1px solid var(--folio-divider);
-  border-radius: 12px;
-  background: var(--folio-canvas);
   color: var(--folio-ink);
   font-family: var(--folio-font-body);
 }
 
-.keys :global(.j1-title) > span { color: var(--folio-ink); font-family: var(--folio-font-heading); }
 .keys :global(.j1-title) > small,
 .keys :global(.text-muted-foreground) { color: var(--folio-muted); }
 
 .createForm,
 .results {
   border: 1px solid var(--folio-divider);
-  border-radius: 8px;
-  background: var(--folio-panel);
+  border-radius: 12px;
+  background: var(--folio-panel-wash), var(--folio-panel);
 }
 
 .createForm { padding: 16px; }
@@ -40,7 +35,11 @@
   font-weight: 600;
 }
 
-.primary { background: var(--folio-action); color: var(--folio-on-action); font-size: .875rem; }
+.primary {
+  background: linear-gradient(155deg, #f0d185, #d3a54a);
+  color: var(--folio-on-action);
+  font-size: 0.875rem;
+}
 .primary:disabled { opacity: .65; }
 .dangerAction { border: 1px solid var(--folio-error); color: var(--folio-error); }
 

@@ -166,10 +166,10 @@ describe('PlanetaryGrid', () => {
   })
 
   it('handles null planets gracefully — renders all 9 card slots with empty state', () => {
-    const { container } = render(<PlanetaryGrid planets={null} />)
-    // 9 GrahaCards should still render (showing dash)
-    const cards = container.querySelectorAll('[role="row"]')
-    expect(cards.length).toBe(9)
+    const { getAllByRole } = render(<PlanetaryGrid planets={null} />)
+    const cards = getAllByRole('group', { name: /^(Sun|Moon|Mars|Mercury|Jupiter|Venus|Saturn|Rahu|Ketu)$/ })
+    expect(cards).toHaveLength(9)
+    expect(cards.every((card) => card.textContent?.includes('—'))).toBe(true)
   })
 
   it('handles array-shaped planet data (defensive)', () => {

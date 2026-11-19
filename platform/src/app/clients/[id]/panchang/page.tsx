@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import { resolveChartPageAccess } from '@/lib/auth/chart-page-guard'
 import { todayISTKey } from '@/lib/build/derive'
 import { ChartNav } from '@/components/journey1/ChartNav'
+import { PageTitle } from '@/components/journey1/Titles'
 import { PanchangClientView } from '@/app/panchang/components/PanchangClientView'
 import styles from '../folio.module.css'
 
@@ -22,10 +23,10 @@ export default async function ChartPanchangPage({
   if (!chart) redirect('/dashboard')
 
   return (
-    <div data-testid="chart-panchang-root" data-permission={access.permission} data-chart-id={id}>
+    <div className={`${styles.warmWorkspace} ${styles.almanac} j1-container`} data-testid="chart-panchang-root" data-permission={access.permission} data-chart-id={id}>
       <ChartNav chartId={id} canBuild={access.canBuild} active="almanac" />
       <header className={styles.almanacHeader}>
-        <h1>Personal Almanac</h1>
+        <PageTitle name="almanac" />
         <p>Chart context: <strong>{chart.name ?? 'this chart'}</strong></p>
         <p>Daily timing for the selected location, in India Standard Time (UTC+05:30).</p>
         <div className={styles.almanacLinks}>

@@ -30,7 +30,7 @@ function getFetchColor() {
 function formatCostCell(label: string, cost: number | null) {
   return (
     <div className="flex flex-col items-center">
-      <span className="text-[9px] text-zinc-500 uppercase tracking-wide">{label}</span>
+      <span className="text-[9px] text-[var(--folio-muted)] uppercase tracking-wide">{label}</span>
       <span className="text-xs text-zinc-300 font-mono">
         {cost !== null ? `$${cost.toFixed(4)}` : '—'}
       </span>
@@ -100,7 +100,7 @@ export function TimingRibbon({ trace, onSelectStep }: TimingRibbonProps) {
         {formatCostCell('fetch', null)}
         {formatCostCell('synthesis', null)}
         <div className="flex flex-col items-center">
-          <span className="text-[9px] text-zinc-500 uppercase tracking-wide">total</span>
+          <span className="text-[9px] text-[var(--folio-muted)] uppercase tracking-wide">total</span>
           <span className="text-xs text-[#d4af37] font-mono font-semibold">
             {totalCost !== null ? `$${totalCost.toFixed(4)}` : '—'}
           </span>

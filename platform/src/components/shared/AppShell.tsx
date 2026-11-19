@@ -30,7 +30,7 @@ export function AppShell({ children, user, profile, breadcrumb = [] }: AppShellP
           segments={breadcrumb}
           mobileNav={<MobileNavSheet user={user} profile={profile} />}
         />
-        <main id="main-content" tabIndex={-1} className="page-ascend min-w-0 flex-1 overflow-auto motion-reduce:animate-none">{children}</main>
+        <main id="main-content" tabIndex={-1} className="folio-page-surface page-ascend min-w-0 flex-1 overflow-auto motion-reduce:animate-none">{children}</main>
       </div>
     </div>
   )

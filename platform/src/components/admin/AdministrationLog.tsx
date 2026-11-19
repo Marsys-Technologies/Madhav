@@ -16,8 +16,11 @@ export function AdministrationLog() {
     if (!response.ok) throw Error('Administration log is unavailable.')
     return await response.json() as {entries:AuditLogEntry[];nextCursor:string|null;coverage:string}
   }})
-  return <div className="j6-evidence"><PageTitle name="administrationLog" />
-    <p className="j1-note">Portal scope · administrative and AI configuration actions, newest first.</p>
+  return <div className="j6-evidence">
+    <header className="j6-heading">
+      <PageTitle name="administrationLog" />
+      <p>Portal scope · administrative and AI configuration actions, newest first.</p>
+    </header>
     <div className="j6-scope"><label>Record source<select value={source} onChange={event => {setSource(event.target.value);setCursor('')}}><option value="all">All sources</option><option value="administration">Administration</option><option value="ai_configuration">AI configuration</option></select></label>
       <label>Exact action<input maxLength={128} value={action} onChange={event => {setAction(event.target.value);setCursor('')}} placeholder="All actions" /></label></div>
     {state.isPending && <p role="status">Loading records…</p>}

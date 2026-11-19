@@ -1,0 +1,159 @@
+.atlas {
+  --background: var(--folio-canvas);
+  --foreground: var(--folio-ink);
+  --card: var(--folio-panel);
+  --muted: var(--folio-selected);
+  --muted-foreground: var(--folio-muted);
+  --border: var(--folio-divider);
+  width: min(100%, 80rem);
+  min-width: 0;
+  min-height: 100%;
+  margin-inline: auto;
+  padding: clamp(1rem, 4vw, 3rem);
+  background: var(--folio-wash), var(--folio-canvas);
+  color: var(--folio-ink);
+  color-scheme: dark;
+  font: 1rem/1.5 var(--folio-font-body);
+}
+
+.heading {
+  margin-bottom: clamp(1.25rem, 3vw, 2rem);
+  padding-block-end: 1.25rem;
+  border-bottom: 1px solid var(--folio-divider);
+}
+
+.heading :global(.j1-title) > span {
+  color: var(--folio-action);
+  font-size: clamp(2.25rem, 5vw, 3.5rem);
+}
+
+.heading p,
+.catalogHeading p {
+  margin-top: 0.5rem;
+  color: var(--folio-muted);
+}
+
+.section {
+  min-width: 0;
+  padding: clamp(1rem, 2.5vw, 1.5rem);
+  border: 1px solid var(--folio-divider);
+  border-radius: 0.875rem;
+  background: var(--folio-panel-wash), var(--folio-panel);
+}
+
+.section h2,
+.catalogHeading h2 {
+  margin: 0 0 0.75rem;
+  color: var(--folio-action);
+  font: 600 clamp(1.5rem, 3vw, 2rem)/1.12 var(--folio-font-heading);
+}
+
+.guide,
+.referenceGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.guide,
+.layers,
+.redirects {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.destination {
+  display: grid;
+  min-height: var(--folio-target);
+  height: 100%;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-content: start;
+  gap: 0.25rem 0.75rem;
+  padding: 0.875rem;
+  border: 1px solid var(--folio-divider);
+  border-radius: 0.625rem;
+  color: var(--folio-action);
+  overflow-wrap: anywhere;
+}
+
+.destination > span {
+  font: 600 1.3rem/1.2 var(--folio-font-heading);
+}
+
+.destination > p {
+  grid-column: 1 / -1;
+  color: var(--folio-muted);
+}
+
+.destination:hover {
+  border-color: var(--folio-boundary);
+  background-color: var(--folio-selected);
+}
+
+.referenceGrid {
+  margin-block: 1rem clamp(1.5rem, 4vw, 3rem);
+}
+
+.layers > div,
+.redirects > li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.25rem 1rem;
+  padding-block: 0.625rem;
+  border-bottom: 1px solid var(--folio-divider);
+}
+
+.layers > div:last-child,
+.redirects > li:last-child {
+  border-bottom: 0;
+}
+
+.layers dt {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.layers dt i {
+  flex: 0 0 0.5rem;
+  block-size: 0.5rem;
+  border-radius: 50%;
+}
+
+.layers dd,
+.redirects span {
+  color: var(--folio-muted);
+}
+
+.redirects a {
+  min-height: var(--folio-target);
+  display: inline-flex;
+  align-items: center;
+  color: var(--folio-action);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.catalogHeading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.25rem;
+}
+
+.atlas :is(a, button, select, [role="region"]):focus-visible {
+  outline: 2px solid var(--folio-focus);
+  outline-offset: 3px;
+}
+
+@media (max-width: 600px) {
+  .guide,
+  .referenceGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

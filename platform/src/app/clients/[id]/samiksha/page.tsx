@@ -7,6 +7,7 @@ import { countBadge } from '@/lib/pariprashna/samiksha/badge'
 import { SamiksaReview } from '@/components/pariprashna/samiksha/SamiksaReview'
 import { ChartNav } from '@/components/journey1/ChartNav'
 import type { ReviewViewModel, ReviewActions } from '@/components/pariprashna/samiksha/types'
+import styles from '../folio.module.css'
 import {
   confirmCandidateAction,
   editCandidateAction,
@@ -76,9 +77,9 @@ export default async function SamiksaPage({ params }: { params: Promise<{ id: st
   }
 
   return (
-    <>
+    <div className={`${styles.warmWorkspace} j1-container`}>
       <ChartNav chartId={id} canBuild={access.canBuild} active="review" />
       <SamiksaReview vm={vm} actions={access.permission === 'all' ? actions : null} />
-    </>
+    </div>
   )
 }
