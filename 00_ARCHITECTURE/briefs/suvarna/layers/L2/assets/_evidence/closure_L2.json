@@ -1,0 +1,1188 @@
+{
+ "bo_anveshana": {
+  "census": [
+   3,
+   21
+  ],
+  "post": [
+   3,
+   21
+  ],
+  "direct": [
+   "bo_chart_gestalt",
+   "bo_pramana_mapa",
+   "ph_nimitta"
+  ],
+  "trans": [
+   "bo_chart_gestalt",
+   "bo_pramana_mapa",
+   "bo_samvada",
+   "mi_abhilekha",
+   "mi_adhilepa",
+   "mi_bhavisya",
+   "mi_darshana",
+   "mi_gunanaka",
+   "mi_pariksha",
+   "mi_pramana",
+   "mi_sambandha",
+   "mi_seva",
+   "ph_muhurta",
+   "ph_nimitta",
+   "ph_phaladesa",
+   "ph_pramana",
+   "ph_pratikara",
+   "ph_rectification",
+   "ph_sankrama",
+   "ph_sodhana",
+   "ph_suddha_sodhana"
+  ],
+  "deps": [
+   "bo_sangati",
+   "bo_karanajala",
+   "bo_samskara",
+   "bo_drishti",
+   "bo_bimba",
+   "bo_laksana"
+  ]
+ },
+ "bo_arudha": {
+  "census": [
+   6,
+   48
+  ],
+  "post": [
+   6,
+   48
+  ],
+  "direct": [
+   "bo_bimba",
+   "bo_grounding",
+   "bo_karanajala",
+   "bo_laksana_rerank",
+   "bo_samskara",
+   "bo_sangati"
+  ],
+  "trans": [
+   "bo_anveshana",
+   "bo_bimba",
+   "bo_cdlm_summary",
+   "bo_cgm_motifs",
+   "bo_cgm_paths",
+   "bo_chart_gestalt",
+   "bo_drishti",
+   "bo_grounding",
+   "bo_karanajala",
+   "bo_laksana_rerank",
+   "bo_pramana_mapa",
+   "bo_pratijna",
+   "bo_samskara",
+   "bo_samvada",
+   "bo_sangati",
+   "bo_upaya",
+   "bo_yantra_mechanism",
+   "ka_avadhi",
+   "ka_bhavishya_lekha",
+   "ka_jivana_parva",
+   "ka_kala_darshana",
+   "ka_kalasutra",
+   "ka_kshetra",
+   "ka_sangam",
+   "ka_taranga",
+   "ka_tulana",
+   "ka_vighnakara",
+   "ka_yojaka",
+   "mi_abhilekha",
+   "mi_adhilepa",
+   "mi_bhara",
+   "mi_bhavisya",
+   "mi_darshana",
+   "mi_gunanaka",
+   "mi_pariksha",
+   "mi_pramana",
+   "mi_sambandha",
+   "mi_sankalpa",
+   "mi_seva",
+   "ph_muhurta",
+   "ph_nimitta",
+   "ph_phaladesa",
+   "ph_pramana",
+   "ph_pratikara",
+   "ph_rectification",
+   "ph_sankrama",
+   "ph_sodhana",
+   "ph_suddha_sodhana"
+  ],
+  "deps": [
+   "ga_structural",
+   "ga_positions"
+  ]
+ },
+ "bo_bimba": {
+  "census": [
+   8,
+   45
+  ],
+  "post": [
+   10,
+   45
+  ],
+  "direct": [
+   "bo_anveshana",
+   "bo_cgm_motifs",
+   "bo_cgm_paths",
+   "bo_chart_gestalt",
+   "bo_karanajala",
+   "bo_laksana_rerank",
+   "bo_pramana_mapa",
+   "bo_yantra_mechanism",
+   "ka_yojaka",
+   "ph_nimitta"
+  ],
+  "trans": [
+   "bo_anveshana",
+   "bo_cdlm_summary",
+   "bo_cgm_motifs",
+   "bo_cgm_paths",
+   "bo_chart_gestalt",
+   "bo_drishti",
+   "bo_karanajala",
+   "bo_laksana_rerank",
+   "bo_pramana_mapa",
+   "bo_pratijna",
+   "bo_samvada",
+   "bo_sangati",
+   "bo_upaya",
+   "bo_yantra_mechanism",
+   "ka_avadhi",
+   "ka_bhavishya_lekha",
+   "ka_jivana_parva",
+   "ka_kala_darshana",
+   "ka_kalasutra",
+   "ka_kshetra",
+   "ka_sangam",
+   "ka_taranga",
+   "ka_tulana",
+   "ka_vighnakara",
+   "ka_yojaka",
+   "mi_abhilekha",
+   "mi_adhilepa",
+   "mi_bhara",
+   "mi_bhavisya",
+   "mi_darshana",
+   "mi_gunanaka",
+   "mi_pariksha",
+   "mi_pramana",
+   "mi_sambandha",
+   "mi_sankalpa",
+   "mi_seva",
+   "ph_muhurta",
+   "ph_nimitta",
+   "ph_phaladesa",
+   "ph_pramana",
+   "ph_pratikara",
+   "ph_rectification",
+   "ph_sankrama",
+   "ph_sodhana",
+   "ph_suddha_sodhana"
+  ],
+  "deps": [
+   "bo_laksana",
+   "bo_sudarshana",
+   "bo_nakshatra_semantic",
+   "bo_arudha",
+   "bo_special_lagna",
+   "bo_vargottama_dhana"
+  ]
+ },
+ "bo_cdlm_summary": {
+  "census": [
+   0,
+   0
+  ],
+  "post": [
+   0,
+   0
+  ],
+  "direct": [],
+  "trans": [],
+  "deps": [
+   "bo_sangati"
+  ]
+ },
+ "bo_cgm_motifs": {
+  "census": [
+   2,
+   19
+  ],
+  "post": [
+   2,
+   19
+  ],
+  "direct": [
+   "bo_upaya",
+   "bo_yantra_mechanism"
+  ],
+  "trans": [
+   "bo_pramana_mapa",
+   "bo_samvada",
+   "bo_upaya",
+   "bo_yantra_mechanism",
+   "ka_kshetra",
+   "mi_abhilekha",
+   "mi_adhilepa",
+   "mi_bhara",
+   "mi_bhavisya",
+   "mi_darshana",
+   "mi_gunanaka",
+   "mi_pariksha",
+   "mi_pramana",
+   "mi_sambandha",
+   "mi_sankalpa",
+   "mi_seva",
+   "ph_phaladesa",
+   "ph_pramana",
+   "ph_pratikara"
+  ],
+  "deps": [
+   "bo_bimba",
+   "bo_karanajala"
+  ]
+ },
+ "bo_cgm_paths": {
+  "census": [
+   3,
+   20
+  ],
+  "post": [
+   3,
+   20
+  ],
+  "direct": [
+   "bo_chart_gestalt",
+   "bo_yantra_mechanism",
+   "ph_nimitta"
+  ],
+  "trans": [
+   "bo_chart_gestalt",
+   "bo_yantra_mechanism",
+   "mi_abhilekha",
+   "mi_adhilepa",
+   "mi_bhavisya",
+   "mi_darshana",
+   "mi_gunanaka",
+   "mi_pariksha",
+   "mi_pramana",
+   "mi_sambandha",
+   "mi_seva",
+   "ph_muhurta",
+   "ph_nimitta",
+   "ph_phaladesa",
+   "ph_pramana",
+   "ph_pratikara",
+   "ph_rectification",
+   "ph_sankrama",
+   "ph_sodhana",
+   "ph_suddha_sodhana"
+  ],
+  "deps": [
+   "bo_bimba",
+   "bo_karanajala"
+  ]
+ },
+ "bo_chart_gestalt": {
+  "census": [
+   0,
+   0
+  ],
+  "post": [
+   0,
+   0
+  ],
+  "direct": [],
+  "trans": [],
+  "deps": [
+   "bo_laksana",
+   "bo_sangati",
+   "bo_bimba",
+   "bo_cgm_paths",
+   "bo_anveshana"
+  ]
+ },
+ "bo_drishti": {
+  "census": [
+   2,
+   22
+  ],
+  "post": [
+   2,
+   22
+  ],
+  "direct": [
+   "bo_anveshana",
+   "bo_pramana_mapa"
+  ],
+  "trans": [
+   "bo_anveshana",
+   "bo_chart_gestalt",
+   "bo_pramana_mapa",
+   "bo_samvada",
+   "mi_abhilekha",
+   "mi_adhilepa",
+   "mi_bhavisya",
+   "mi_darshana",
+   "mi_gunanaka",
+   "mi_pariksha",
+   "mi_pramana",
+   "mi_sambandha",
+   "mi_seva",
+   "ph_muhurta",
+   "ph_nimitta",
+   "ph_phaladesa",
+   "ph_pramana",
+   "ph_pratikara",
+   "ph_rectification",
+   "ph_sankrama",
+   "ph_sodhana",
+   "ph_suddha_sodhana"
+  ],
+  "deps": [
+   "bo_laksana",
+   "bo_sangati",
+   "bo_karanajala"
+  ]
+ },
+ "bo_grounding": {
+  "census": [
+   0,
+   0
+  ],
+  "post": [
+   0,
+   0
+  ],
+  "direct": [],
+  "trans": [],
+  "deps": [
+   "ga_yoga",
+   "bo_laksana",
+   "bo_sudarshana",
+   "bo_nakshatra_semantic",
+   "bo_arudha",
+   "bo_special_lagna",
+   "bo_vargottama_dhana"
+  ]
+ },
+ "bo_karanajala": {
+  "census": [
+   10,
+   44
+  ],
+  "post": [
+   10,
+   44
+  ],
+  "direct": [
+   "bo_anveshana",
+   "bo_cgm_motifs",
+   "bo_cgm_paths",
+   "bo_drishti",
+   "bo_laksana_rerank",
+   "bo_pramana_mapa",
+   "bo_samvada",
+   "bo_sangati",
+   "bo_yantra_mechanism",
+   "ph_nimitta"
+  ],
+  "trans": [
+   "bo_anveshana",
+   "bo_cdlm_summary",
+   "bo_cgm_motifs",
+   "bo_cgm_paths",
+   "bo_chart_gestalt",
+   "bo_drishti",
+   "bo_laksana_rerank",
+   "bo_pramana_mapa",
+   "bo_pratijna",
+   "bo_samvada",
+   "bo_sangati",
+   "bo_upaya",
+   "bo_yantra_mechanism",
+   "ka_avadhi",
+   "ka_bhavishya_lekha",
+   "ka_jivana_parva",
+   "ka_kala_darshana",
+   "ka_kalasutra",
+   "ka_kshetra",
+   "ka_sangam",
+   "ka_taranga",
+   "ka_tulana",
+   "ka_vighnakara",
+   "ka_yojaka",
+   "mi_abhilekha",
+   "mi_adhilepa",
+   "mi_bhara",
+   "mi_bhavisya",
+   "mi_darshana",
+   "mi_gunanaka",
+   "mi_pariksha",
+   "mi_pramana",
+   "mi_sambandha",
+   "mi_sankalpa",
+   "mi_seva",
+   "ph_muhurta",
+   "ph_nimitta",
+   "ph_phaladesa",
+   "ph_pramana",
+   "ph_pratikara",
+   "ph_rectification",
+   "ph_sankrama",
+   "ph_sodhana",
+   "ph_suddha_sodhana"
+  ],
+  "deps": [
+   "bo_laksana",
+   "bo_bimba",
+   "ga_positions",
+   "bo_sudarshana",
+   "bo_nakshatra_semantic",
+   "bo_arudha",
+   "bo_special_lagna",
+   "bo_vargottama_dhana",
+   "ga_vichara"
+  ]
+ },
+ "bo_laksana": {
+  "census": [
+   22,
+   48
+  ],
+  "post": [
+   24,
+   48
+  ],
+  "direct": [
+   "bo_anveshana",
+   "bo_bimba",
+   "bo_chart_gestalt",
+   "bo_drishti",
+   "bo_grounding",
+   "bo_karanajala",
+   "bo_laksana_rerank",
+   "bo_pramana_mapa",
+   "bo_pratijna",
+   "bo_samskara",
+   "bo_samvada",
+   "bo_sangati",
+   "bo_upaya",
+   "ka_bhavishya_lekha",
+   "ka_kalasutra",
+   "ka_sangam",
+   "ka_yojaka",
+   "mi_adhilepa",
+   "mi_bhavisya",
+   "mi_darshana",
+   "mi_pariksha",
+   "ph_nimitta",
+   "ph_phaladesa",
+   "ph_sodhana"
+  ],
+  "trans": [
+   "bo_anveshana",
+   "bo_bimba",
+   "bo_cdlm_summary",
+   "bo_cgm_motifs",
+   "bo_cgm_paths",
+   "bo_chart_gestalt",
+   "bo_drishti",
+   "bo_grounding",
+   "bo_karanajala",
+   "bo_laksana_rerank",
+   "bo_pramana_mapa",
+   "bo_pratijna",
+   "bo_samskara",
+   "bo_samvada",
+   "bo_sangati",
+   "bo_upaya",
+   "bo_yantra_mechanism",
+   "ka_avadhi",
+   "ka_bhavishya_lekha",
+   "ka_jivana_parva",
+   "ka_kala_darshana",
+   "ka_kalasutra",
+   "ka_kshetra",
+   "ka_sangam",
+   "ka_taranga",
+   "ka_tulana",
+   "ka_vighnakara",
+   "ka_yojaka",
+   "mi_abhilekha",
+   "mi_adhilepa",
+   "mi_bhara",
+   "mi_bhavisya",
+   "mi_darshana",
+   "mi_gunanaka",
+   "mi_pariksha",
+   "mi_pramana",
+   "mi_sambandha",
+   "mi_sankalpa",
+   "mi_seva",
+   "ph_muhurta",
+   "ph_nimitta",
+   "ph_phaladesa",
+   "ph_pramana",
+   "ph_pratikara",
+   "ph_rectification",
+   "ph_sankrama",
+   "ph_sodhana",
+   "ph_suddha_sodhana"
+  ],
+  "deps": [
+   "bg_rules",
+   "ga_positions",
+   "ga_strength",
+   "ga_sensitive",
+   "ga_panchanga",
+   "ga_sade_sati",
+   "ga_structural",
+   "ga_nakshatra",
+   "ga_condition",
+   "ga_vargas",
+   "ga_vichara"
+  ]
+ },
+ "bo_laksana_rerank": {
+  "census": [
+   1,
+   40
+  ],
+  "post": [
+   1,
+   40
+  ],
+  "direct": [
+   "bo_sangati"
+  ],
+  "trans": [
+   "bo_anveshana",
+   "bo_cdlm_summary",
+   "bo_chart_gestalt",
+   "bo_drishti",
+   "bo_pramana_mapa",
+   "bo_pratijna",
+   "bo_samvada",
+   "bo_sangati",
+   "bo_upaya",
+   "ka_avadhi",
+   "ka_bhavishya_lekha",
+   "ka_jivana_parva",
+   "ka_kala_darshana",
+   "ka_kalasutra",
+   "ka_kshetra",
+   "ka_sangam",
+   "ka_taranga",
+   "ka_tulana",
+   "ka_vighnakara",
+   "ka_yojaka",
+   "mi_abhilekha",
+   "mi_adhilepa",
+   "mi_bhara",
+   "mi_bhavisya",
+   "mi_darshana",
+   "mi_gunanaka",
+   "mi_pariksha",
+   "mi_pramana",
+   "mi_sambandha",
+   "mi_sankalpa",
+   "mi_seva",
+   "ph_muhurta",
+   "ph_nimitta",
+   "ph_phaladesa",
+   "ph_pramana",
+   "ph_pratikara",
+   "ph_rectification",
+   "ph_sankrama",
+   "ph_sodhana",
+   "ph_suddha_sodhana"
+  ],
+  "deps": [
+   "bo_laksana",
+   "bo_karanajala",
+   "bo_sudarshana",
+   "bo_nakshatra_semantic",
+   "bo_arudha",
+   "bo_special_lagna",
+   "bo_vargottama_dhana",
+   "bo_bimba",
+   "ga_vichara"
+  ]
+ },
+ "bo_nakshatra_semantic": {
+  "census": [
+   6,
+   48
+  ],
+  "post": [
+   6,
+   48
+  ],
+  "direct": [
+   "bo_bimba",
+   "bo_grounding",
+   "bo_karanajala",
+   "bo_laksana_rerank",
+   "bo_samskara",
+   "bo_sangati"
+  ],
+  "trans": [
+   "bo_anveshana",
+   "bo_bimba",
+   "bo_cdlm_summary",
+   "bo_cgm_motifs",
+   "bo_cgm_paths",
+   "bo_chart_gestalt",
+   "bo_drishti",
+   "bo_grounding",
+   "bo_karanajala",
+   "bo_laksana_rerank",
+   "bo_pramana_mapa",
+   "bo_pratijna",
+   "bo_samskara",
+   "bo_samvada",
+   "bo_sangati",
+   "bo_upaya",
+   "bo_yantra_mechanism",
+   "ka_avadhi",
+   "ka_bhavishya_lekha",
+   "ka_jivana_parva",
+   "ka_kala_darshana",
+   "ka_kalasutra",
+   "ka_kshetra",
+   "ka_sangam",
+   "ka_taranga",
+   "ka_tulana",
+   "ka_vighnakara",
+   "ka_yojaka",
+   "mi_abhilekha",
+   "mi_adhilepa",
+   "mi_bhara",
+   "mi_bhavisya",
+   "mi_darshana",
+   "mi_gunanaka",
+   "mi_pariksha",
+   "mi_pramana",
+   "mi_sambandha",
+   "mi_sankalpa",
+   "mi_seva",
+   "ph_muhurta",
+   "ph_nimitta",
+   "ph_phaladesa",
+   "ph_pramana",
+   "ph_pratikara",
+   "ph_rectification",
+   "ph_sankrama",
+   "ph_sodhana",
+   "ph_suddha_sodhana"
+  ],
+  "deps": [
+   "ga_positions",
+   "ga_nakshatra"
+  ]
+ },
+ "bo_pramana_mapa": {
+  "census": [
+   1,
+   1
+  ],
+  "post": [
+   1,
+   1
+  ],
+  "direct": [
+   "bo_samvada"
+  ],
+  "trans": [
+   "bo_samvada"
+  ],
+  "deps": [
+   "bo_upaya",
+   "bo_drishti",
+   "bo_anveshana",
+   "bo_laksana",
+   "bo_sangati",
+   "bo_bimba",
+   "bo_karanajala",
+   "bo_samskara"
+  ]
+ },
+ "bo_pratijna": {
+  "census": [
+   5,
+   31
+  ],
+  "post": [
+   5,
+   31
+  ],
+  "direct": [
+   "ka_avadhi",
+   "ka_kshetra",
+   "ka_taranga",
+   "ka_yojaka",
+   "mi_darshana"
+  ],
+  "trans": [
+   "ka_avadhi",
+   "ka_bhavishya_lekha",
+   "ka_jivana_parva",
+   "ka_kala_darshana",
+   "ka_kalasutra",
+   "ka_kshetra",
+   "ka_sangam",
+   "ka_taranga",
+   "ka_tulana",
+   "ka_vighnakara",
+   "ka_yojaka",
+   "mi_abhilekha",
+   "mi_adhilepa",
+   "mi_bhara",
+   "mi_bhavisya",
+   "mi_darshana",
+   "mi_gunanaka",
+   "mi_pariksha",
+   "mi_pramana",
+   "mi_sambandha",
+   "mi_sankalpa",
+   "mi_seva",
+   "ph_muhurta",
+   "ph_nimitta",
+   "ph_phaladesa",
+   "ph_pramana",
+   "ph_pratikara",
+   "ph_rectification",
+   "ph_sankrama",
+   "ph_sodhana",
+   "ph_suddha_sodhana"
+  ],
+  "deps": [
+   "bo_laksana",
+   "bo_sangati",
+   "ga_vargas"
+  ]
+ },
+ "bo_samskara": {
+  "census": [
+   3,
+   22
+  ],
+  "post": [
+   3,
+   22
+  ],
+  "direct": [
+   "bo_anveshana",
+   "bo_pramana_mapa",
+   "ph_nimitta"
+  ],
+  "trans": [
+   "bo_anveshana",
+   "bo_chart_gestalt",
+   "bo_pramana_mapa",
+   "bo_samvada",
+   "mi_abhilekha",
+   "mi_adhilepa",
+   "mi_bhavisya",
+   "mi_darshana",
+   "mi_gunanaka",
+   "mi_pariksha",
+   "mi_pramana",
+   "mi_sambandha",
+   "mi_seva",
+   "ph_muhurta",
+   "ph_nimitta",
+   "ph_phaladesa",
+   "ph_pramana",
+   "ph_pratikara",
+   "ph_rectification",
+   "ph_sankrama",
+   "ph_sodhana",
+   "ph_suddha_sodhana"
+  ],
+  "deps": [
+   "bo_arudha",
+   "bo_laksana",
+   "bo_nakshatra_semantic",
+   "bo_special_lagna",
+   "bo_sudarshana",
+   "bo_vargottama_dhana"
+  ]
+ },
+ "bo_samvada": {
+  "census": [
+   0,
+   0
+  ],
+  "post": [
+   0,
+   0
+  ],
+  "direct": [],
+  "trans": [],
+  "deps": [
+   "bo_laksana",
+   "bo_karanajala",
+   "bo_upaya",
+   "bo_sangati",
+   "bo_pramana_mapa"
+  ]
+ },
+ "bo_sangati": {
+  "census": [
+   12,
+   39
+  ],
+  "post": [
+   13,
+   39
+  ],
+  "direct": [
+   "bo_anveshana",
+   "bo_cdlm_summary",
+   "bo_chart_gestalt",
+   "bo_drishti",
+   "bo_pramana_mapa",
+   "bo_pratijna",
+   "bo_samvada",
+   "bo_upaya",
+   "ka_kshetra",
+   "ka_yojaka",
+   "mi_darshana",
+   "ph_nimitta",
+   "ph_sankrama"
+  ],
+  "trans": [
+   "bo_anveshana",
+   "bo_cdlm_summary",
+   "bo_chart_gestalt",
+   "bo_drishti",
+   "bo_pramana_mapa",
+   "bo_pratijna",
+   "bo_samvada",
+   "bo_upaya",
+   "ka_avadhi",
+   "ka_bhavishya_lekha",
+   "ka_jivana_parva",
+   "ka_kala_darshana",
+   "ka_kalasutra",
+   "ka_kshetra",
+   "ka_sangam",
+   "ka_taranga",
+   "ka_tulana",
+   "ka_vighnakara",
+   "ka_yojaka",
+   "mi_abhilekha",
+   "mi_adhilepa",
+   "mi_bhara",
+   "mi_bhavisya",
+   "mi_darshana",
+   "mi_gunanaka",
+   "mi_pariksha",
+   "mi_pramana",
+   "mi_sambandha",
+   "mi_sankalpa",
+   "mi_seva",
+   "ph_muhurta",
+   "ph_nimitta",
+   "ph_phaladesa",
+   "ph_pramana",
+   "ph_pratikara",
+   "ph_rectification",
+   "ph_sankrama",
+   "ph_sodhana",
+   "ph_suddha_sodhana"
+  ],
+  "deps": [
+   "bo_laksana",
+   "bo_karanajala",
+   "bo_sudarshana",
+   "bo_nakshatra_semantic",
+   "bo_arudha",
+   "bo_special_lagna",
+   "bo_vargottama_dhana",
+   "bo_laksana_rerank"
+  ]
+ },
+ "bo_special_lagna": {
+  "census": [
+   6,
+   48
+  ],
+  "post": [
+   6,
+   48
+  ],
+  "direct": [
+   "bo_bimba",
+   "bo_grounding",
+   "bo_karanajala",
+   "bo_laksana_rerank",
+   "bo_samskara",
+   "bo_sangati"
+  ],
+  "trans": [
+   "bo_anveshana",
+   "bo_bimba",
+   "bo_cdlm_summary",
+   "bo_cgm_motifs",
+   "bo_cgm_paths",
+   "bo_chart_gestalt",
+   "bo_drishti",
+   "bo_grounding",
+   "bo_karanajala",
+   "bo_laksana_rerank",
+   "bo_pramana_mapa",
+   "bo_pratijna",
+   "bo_samskara",
+   "bo_samvada",
+   "bo_sangati",
+   "bo_upaya",
+   "bo_yantra_mechanism",
+   "ka_avadhi",
+   "ka_bhavishya_lekha",
+   "ka_jivana_parva",
+   "ka_kala_darshana",
+   "ka_kalasutra",
+   "ka_kshetra",
+   "ka_sangam",
+   "ka_taranga",
+   "ka_tulana",
+   "ka_vighnakara",
+   "ka_yojaka",
+   "mi_abhilekha",
+   "mi_adhilepa",
+   "mi_bhara",
+   "mi_bhavisya",
+   "mi_darshana",
+   "mi_gunanaka",
+   "mi_pariksha",
+   "mi_pramana",
+   "mi_sambandha",
+   "mi_sankalpa",
+   "mi_seva",
+   "ph_muhurta",
+   "ph_nimitta",
+   "ph_phaladesa",
+   "ph_pramana",
+   "ph_pratikara",
+   "ph_rectification",
+   "ph_sankrama",
+   "ph_sodhana",
+   "ph_suddha_sodhana"
+  ],
+  "deps": [
+   "ga_sensitive"
+  ]
+ },
+ "bo_sudarshana": {
+  "census": [
+   6,
+   48
+  ],
+  "post": [
+   6,
+   48
+  ],
+  "direct": [
+   "bo_bimba",
+   "bo_grounding",
+   "bo_karanajala",
+   "bo_laksana_rerank",
+   "bo_samskara",
+   "bo_sangati"
+  ],
+  "trans": [
+   "bo_anveshana",
+   "bo_bimba",
+   "bo_cdlm_summary",
+   "bo_cgm_motifs",
+   "bo_cgm_paths",
+   "bo_chart_gestalt",
+   "bo_drishti",
+   "bo_grounding",
+   "bo_karanajala",
+   "bo_laksana_rerank",
+   "bo_pramana_mapa",
+   "bo_pratijna",
+   "bo_samskara",
+   "bo_samvada",
+   "bo_sangati",
+   "bo_upaya",
+   "bo_yantra_mechanism",
+   "ka_avadhi",
+   "ka_bhavishya_lekha",
+   "ka_jivana_parva",
+   "ka_kala_darshana",
+   "ka_kalasutra",
+   "ka_kshetra",
+   "ka_sangam",
+   "ka_taranga",
+   "ka_tulana",
+   "ka_vighnakara",
+   "ka_yojaka",
+   "mi_abhilekha",
+   "mi_adhilepa",
+   "mi_bhara",
+   "mi_bhavisya",
+   "mi_darshana",
+   "mi_gunanaka",
+   "mi_pariksha",
+   "mi_pramana",
+   "mi_sambandha",
+   "mi_sankalpa",
+   "mi_seva",
+   "ph_muhurta",
+   "ph_nimitta",
+   "ph_phaladesa",
+   "ph_pramana",
+   "ph_pratikara",
+   "ph_rectification",
+   "ph_sankrama",
+   "ph_sodhana",
+   "ph_suddha_sodhana"
+  ],
+  "deps": [
+   "ga_positions"
+  ]
+ },
+ "bo_upaya": {
+  "census": [
+   4,
+   17
+  ],
+  "post": [
+   4,
+   17
+  ],
+  "direct": [
+   "bo_pramana_mapa",
+   "bo_samvada",
+   "ka_kshetra",
+   "ph_pratikara"
+  ],
+  "trans": [
+   "bo_pramana_mapa",
+   "bo_samvada",
+   "ka_kshetra",
+   "mi_abhilekha",
+   "mi_adhilepa",
+   "mi_bhara",
+   "mi_bhavisya",
+   "mi_darshana",
+   "mi_gunanaka",
+   "mi_pariksha",
+   "mi_pramana",
+   "mi_sambandha",
+   "mi_sankalpa",
+   "mi_seva",
+   "ph_phaladesa",
+   "ph_pramana",
+   "ph_pratikara"
+  ],
+  "deps": [
+   "bo_laksana",
+   "bo_sangati",
+   "ga_structural",
+   "ga_dashas",
+   "bo_cgm_motifs"
+  ]
+ },
+ "bo_vargottama_dhana": {
+  "census": [
+   6,
+   48
+  ],
+  "post": [
+   6,
+   48
+  ],
+  "direct": [
+   "bo_bimba",
+   "bo_grounding",
+   "bo_karanajala",
+   "bo_laksana_rerank",
+   "bo_samskara",
+   "bo_sangati"
+  ],
+  "trans": [
+   "bo_anveshana",
+   "bo_bimba",
+   "bo_cdlm_summary",
+   "bo_cgm_motifs",
+   "bo_cgm_paths",
+   "bo_chart_gestalt",
+   "bo_drishti",
+   "bo_grounding",
+   "bo_karanajala",
+   "bo_laksana_rerank",
+   "bo_pramana_mapa",
+   "bo_pratijna",
+   "bo_samskara",
+   "bo_samvada",
+   "bo_sangati",
+   "bo_upaya",
+   "bo_yantra_mechanism",
+   "ka_avadhi",
+   "ka_bhavishya_lekha",
+   "ka_jivana_parva",
+   "ka_kala_darshana",
+   "ka_kalasutra",
+   "ka_kshetra",
+   "ka_sangam",
+   "ka_taranga",
+   "ka_tulana",
+   "ka_vighnakara",
+   "ka_yojaka",
+   "mi_abhilekha",
+   "mi_adhilepa",
+   "mi_bhara",
+   "mi_bhavisya",
+   "mi_darshana",
+   "mi_gunanaka",
+   "mi_pariksha",
+   "mi_pramana",
+   "mi_sambandha",
+   "mi_sankalpa",
+   "mi_seva",
+   "ph_muhurta",
+   "ph_nimitta",
+   "ph_phaladesa",
+   "ph_pramana",
+   "ph_pratikara",
+   "ph_rectification",
+   "ph_sankrama",
+   "ph_sodhana",
+   "ph_suddha_sodhana"
+  ],
+  "deps": [
+   "ga_vargas",
+   "ga_positions"
+  ]
+ },
+ "bo_yantra_mechanism": {
+  "census": [
+   0,
+   0
+  ],
+  "post": [
+   0,
+   0
+  ],
+  "direct": [],
+  "trans": [],
+  "deps": [
+   "bo_karanajala",
+   "bo_cgm_motifs",
+   "bo_cgm_paths",
+   "bo_bimba"
+  ]
+ }
+}
