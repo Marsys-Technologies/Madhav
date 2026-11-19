@@ -1,0 +1,272 @@
+{
+ "asset_id": "mi_gunanaka",
+ "collected_utc": "2026-10-03T12:30:18.869823Z",
+ "chart": "482012f1-710e-4a25-994a-93821f5871aa",
+ "registry": {
+  "rung": "R5",
+  "layer": "mimamsa",
+  "scope": "per_chart",
+  "domain": "chart",
+  "asset_id": "mi_gunanaka",
+  "size_sql": "SELECT pg_total_relation_size('mimamsa_multipliers')",
+  "count_sql": "SELECT (SELECT COUNT(*) FROM mimamsa_multipliers WHERE chart_id = $1) + (SELECT COUNT(*) FROM mimamsa_calibration_snapshot WHERE chart_id = $1) AS count",
+  "dead_flag": null,
+  "is_active": true,
+  "asset_kind": "data",
+  "asset_type": "data",
+  "created_at": "2026-06-05T21:58:21.358976+00:00",
+  "depends_on": [
+   "mi_pramana",
+   "mi_kula",
+   "bg_formula_constants"
+  ],
+  "has_writer": true,
+  "layer_name": "M\u012bm\u0101\u1e43s\u0101",
+  "sort_order": 5,
+  "layer_index": "L5",
+  "clear_tables": null,
+  "english_name": "Multipliers",
+  "has_substeps": false,
+  "health_probe": null,
+  "storage_type": "postgres_table",
+  "target_floor": 0,
+  "target_table": "mimamsa_multipliers",
+  "provides_apis": null,
+  "sanskrit_name": "Gu\u1e47\u0101naka",
+  "superseded_by": null,
+  "catalog_status": "CURRENT",
+  "service_health": null,
+  "last_invoked_at": null,
+  "selftest_detail": null,
+  "data_disposition": null,
+  "last_selftest_at": null,
+  "estimated_seconds": 1,
+  "volume_explanation": "One row per multiplier type \u2014 small, stable catalog; grows only when new signal categories are added",
+  "english_description": "Empirical multiplier weights learned from calibration outcomes",
+  "integrity_check_sql": "\nSELECT\n  NOT EXISTS (\n    SELECT 1\n    FROM mimamsa_multipliers m\n    LEFT JOIN mimamsa_signal_families f\n      ON f.family_id = m.target_ref AND f.is_active AND f.default_state <> 'CONTROL_ONLY'\n    GROUP BY m.chart_id\n    HAVING count(DISTINCT m.target_ref) <> count(*)\n        OR count(DISTINCT m.weight_id) <> count(*)\n        OR count(*) FILTER (WHERE f.family_id IS NULL) > 0\n        OR count(DISTINCT m.target_ref) <> (SELECT count(*) FROM mimamsa_signal_families f2\n                                             WHERE f2.is_active AND f2.default_state <> 'CONTROL_ONLY')\n        OR count(*) FILTER (WHERE m.weight_id <> m.mechanism || ':' || m.target_ref) > 0\n        OR count(*) FILTER (WHERE m.applied_multiplier <= 0 OR m.raw_multiplier <= 0 OR m.n_observations < 0) > 0\n        OR count(*) FILTER (WHERE m.evidence_factor <> round(m.raw_multiplier / 2, 4)) > 0\n        OR count(*) FILTER (WHERE m.divergence_from_classical\n                                  <> round(abs(m.applied_multiplier - f.prior_weight) / f.prior_weight, 4)) > 0\n        OR count(*) FILTER (WHERE m.n_observations = 0\n                              AND NOT (m.promotion_status = 'prior_only'\n                                       AND m.applied_multiplier = f.prior_weight\n                                       AND m.held_out_validity = 'insufficient_n'\n                                       AND NOT m.gate_passed AND NOT m.confidence_high)) > 0\n        OR count(*) FILTER (WHERE m.promotion_status = 'promoted'\n                              AND NOT (m.n_observations > 0 AND m.gate_passed AND m.confidence_high\n                                       AND m.neg_control_clear AND m.held_out_validity = 'pass')) > 0\n        OR count(*) FILTER (WHERE m.promotion_status NOT IN ('prior_only','promoted','held','demoted')\n                              OR m.kill_switch_state NOT IN ('active','tripped')\n                              OR m.audit_trail IS NULL\n                              OR btrim(coalesce(m.weight_formula_version, '')) = '') > 0\n  )\n  AND NOT EXISTS (\n    SELECT 1\n    FROM mimamsa_calibration_snapshot s\n    LEFT JOIN charts c ON c.id = s.chart_id\n    GROUP BY s.chart_id\n    HAVING count(DISTINCT s.snapshot_id) <> count(*)\n        OR count(*) FILTER (WHERE c.id IS NULL) > 0\n        OR count(*) FILTER (WHERE s.snapshot_id NOT LIKE 'snap_' || left(s.chart_id::text, 8) || '\\_%') > 0\n        OR count(*) FILTER (WHERE s.two_key_complete <> (s.acharya_pratinidhi_key IS NOT NULL)) > 0\n        OR count(*) FILTER (WHERE s.publication_status = 'published' AND NOT s.two_key_complete) > 0\n        OR count(*) FILTER (WHERE s.publication_status NOT IN ('proposed','published','withdrawn')\n                              OR s.cells_jsonb IS NULL\n                              OR btrim(coalesce(s.proposing_executor, '')) = ''\n                              OR btrim(coalesce(s.formula_version, '')) = '') > 0\n  )\n",
+  "natural_key_partition": null,
+  "rebuild_on_probe_fail": false,
+  "expected_volume_inputs": {
+   "partition": "chart_id",
+   "derivation": "one multiplier row per active non-control signal family, per chart",
+   "chart_scoped": true,
+   "source_table": "mimamsa_signal_families",
+   "observed_2026_09_05": {
+    "total": 18,
+    "families": 9,
+    "charts_built": 2,
+    "rows_per_chart": 9
+   }
+  },
+  "writer_timeout_seconds": 10800,
+  "expected_volume_formula": "COUNT(mimamsa_signal_families WHERE is_active AND default_state <> 'CONTROL_ONLY')"
+ },
+ "throughput": {
+  "state": "error",
+  "history": [],
+  "asset_id": "mi_gunanaka",
+  "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+  "last_error": "BLOCKED: upstream dependency(ies) mi_pramana did not complete in this run; skipped to avoid building on incomplete data",
+  "rows_written": 9,
+  "expected_rows": null,
+  "last_built_at": "2026-08-21T02:36:53.690124+00:00",
+  "rows_per_second": null,
+  "duration_seconds": null,
+  "last_measured_at": null,
+  "measurement_count": 0,
+  "last_measured_build_id": null,
+  "built_against_writer_hash": "unknown",
+  "built_against_upstream_hash": "eadf4612ecef6882"
+ },
+ "runs_summary": [
+  {
+   "n": 9,
+   "last": "2026-07-13T21:13:41.719555+00:00",
+   "state": "aborted",
+   "disposition": null
+  },
+  {
+   "n": 35,
+   "last": "2026-08-13T01:16:30.660879+00:00",
+   "state": "complete",
+   "disposition": null
+  },
+  {
+   "n": 28,
+   "last": "2026-08-21T02:36:53.690124+00:00",
+   "state": "error",
+   "disposition": "blocked_dependency"
+  },
+  {
+   "n": 19,
+   "last": null,
+   "state": "queued",
+   "disposition": null
+  }
+ ],
+ "last_runs": [
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "cbd6ea44-3c09-4ce5-9b21-d22fb0eeccf6",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-08-13T01:16:30.660879+00:00",
+   "started_at": "2026-08-13T01:16:30.54318+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "51eaa05c-7604-42cc-a3db-e7fa6d9c3f7c",
+   "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+   "ended_at": "2026-08-12T17:12:00.657519+00:00",
+   "started_at": "2026-08-12T17:11:58.657496+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "global",
+   "state": "complete",
+   "run_id": "9fc3e49d-8c24-4be7-80f0-29c8cff726e8",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-08-07T23:48:37.62193+00:00",
+   "started_at": "2026-08-07T23:48:35.286939+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "global",
+   "state": "complete",
+   "run_id": "a17e9167-03c0-4664-998b-ed52f8d1f481",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-08-07T21:00:11.662119+00:00",
+   "started_at": "2026-08-07T21:00:09.757179+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "d33b44ce-5e42-4e90-9e54-6f7445652931",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-08-07T19:00:54.624646+00:00",
+   "started_at": "2026-08-07T19:00:52.71975+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "5940f325-63b5-48ce-b9de-3472a5746af4",
+   "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+   "ended_at": "2026-07-28T10:59:15.806927+00:00",
+   "started_at": "2026-07-28T10:59:14.421587+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "08b895f3-b3dc-4d75-b672-6bca077e28a0",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-07-28T10:19:36.214156+00:00",
+   "started_at": "2026-07-28T10:19:35.181667+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "0faf6c66-8dad-4bcf-8478-fd92f3171b66",
+   "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+   "ended_at": "2026-07-28T05:02:14.19762+00:00",
+   "started_at": "2026-07-28T05:02:12.402486+00:00",
+   "disposition": null,
+   "output_changed": null
+  }
+ ],
+ "last_runs_canonical": [
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "cbd6ea44-3c09-4ce5-9b21-d22fb0eeccf6",
+   "ended_at": "2026-08-13T01:16:30.660879+00:00",
+   "started_at": "2026-08-13T01:16:30.54318+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "9fc3e49d-8c24-4be7-80f0-29c8cff726e8",
+   "ended_at": "2026-08-07T23:48:37.62193+00:00",
+   "started_at": "2026-08-07T23:48:35.286939+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "a17e9167-03c0-4664-998b-ed52f8d1f481",
+   "ended_at": "2026-08-07T21:00:11.662119+00:00",
+   "started_at": "2026-08-07T21:00:09.757179+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "d33b44ce-5e42-4e90-9e54-6f7445652931",
+   "ended_at": "2026-08-07T19:00:54.624646+00:00",
+   "started_at": "2026-08-07T19:00:52.71975+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "08b895f3-b3dc-4d75-b672-6bca077e28a0",
+   "ended_at": "2026-07-28T10:19:36.214156+00:00",
+   "started_at": "2026-07-28T10:19:35.181667+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "ed26e2d3-6dfa-43a4-936e-a815f7fc5309",
+   "ended_at": "2026-07-28T03:31:17.971869+00:00",
+   "started_at": "2026-07-28T03:31:16.126941+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "7b364f83-07ce-4bd0-9024-92f01fc8ec59",
+   "ended_at": "2026-07-27T06:15:03.869917+00:00",
+   "started_at": "2026-07-27T06:15:03.781739+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "42720d15-f943-42af-8b76-e4f97f3bfd3f",
+   "ended_at": "2026-07-24T11:12:22.214664+00:00",
+   "started_at": "2026-07-24T11:12:21.945084+00:00",
+   "disposition": null,
+   "output_changed": null
+  }
+ ],
+ "live_count": "count\n13\n(1 row)"
+}

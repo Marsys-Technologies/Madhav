@@ -1,0 +1,265 @@
+{
+ "asset_id": "mi_seva",
+ "collected_utc": "2026-10-03T12:30:45.281945Z",
+ "chart": "482012f1-710e-4a25-994a-93821f5871aa",
+ "registry": {
+  "rung": "R5",
+  "layer": "mimamsa",
+  "scope": "per_chart",
+  "domain": "chart",
+  "asset_id": "mi_seva",
+  "size_sql": "SELECT pg_total_relation_size('mimamsa_preferences')",
+  "count_sql": "SELECT count(*) FROM mimamsa_preferences",
+  "dead_flag": null,
+  "is_active": true,
+  "asset_kind": "service",
+  "asset_type": "service",
+  "created_at": "2026-06-26T19:09:00.917607+00:00",
+  "depends_on": [
+   "mi_adhilepa"
+  ],
+  "has_writer": true,
+  "layer_name": "M\u012bm\u0101\u1e43s\u0101",
+  "sort_order": 11,
+  "layer_index": "L5",
+  "clear_tables": null,
+  "english_name": "Serve-time apply",
+  "has_substeps": false,
+  "health_probe": null,
+  "storage_type": "service",
+  "target_floor": 0,
+  "target_table": "mimamsa_preferences",
+  "provides_apis": null,
+  "sanskrit_name": "Sev\u0101",
+  "superseded_by": null,
+  "catalog_status": "DRAFT",
+  "service_health": null,
+  "last_invoked_at": null,
+  "selftest_detail": null,
+  "data_disposition": null,
+  "last_selftest_at": null,
+  "estimated_seconds": 1,
+  "volume_explanation": "Preference table rows per user \u00d7 channel; service has no build-time data volume",
+  "english_description": "Serve-time contribution-control gateway for L5 (effective-value resolution under a learning_influence toggle, lel_citation gate, contribution_state metadata). catalog_status=DRAFT is INTENTIONAL, not stale: the service does not exist. platform/python-sidecar/services/mi_seva/ is absent; the registered writer only loops information_schema.tables; and grep for learning_influence / lel_citation / saved_state / contribution_state across platform/src + platform-mcp/src returns zero non-generated hits, while the overlay this gateway is designed to GOVERN is already read directly by compute_spine_bundle and query_calibration. mimamsa_preferences being empty is correct; the gateway being absent is the immaturity. Re-verify the resolver exists before flipping to CURRENT. (L5-W1 batch D; deferred register, plan \u00a77.3.)",
+  "integrity_check_sql": "\nSELECT NOT EXISTS (\n  SELECT 1 FROM mimamsa_preferences p\n   WHERE btrim(coalesce(p.user_id, '')) = ''\n      OR btrim(coalesce(p.channel_id, '')) = ''\n      OR btrim(coalesce(p.saved_state, '')) = ''\n      OR p.updated_at IS NULL\n      OR p.updated_at > now()\n)\nAND (SELECT count(DISTINCT (user_id, channel_id)) = count(*) FROM mimamsa_preferences)\n",
+  "natural_key_partition": null,
+  "rebuild_on_probe_fail": false,
+  "expected_volume_inputs": {
+   "kind": "per_user_ui_state",
+   "note": "zero today because the serve-time resolver does not exist. See this asset's english_description.",
+   "floor": 0,
+   "chart_scoped": false,
+   "registry_scope_mismatch": "registered per_chart, but mimamsa_preferences has NO chart_id column (user_id, channel_id, saved_state, updated_at) -- recorded rather than worked around; this is why the asset's integrity check is whole-table shaped"
+  },
+  "writer_timeout_seconds": 10800,
+  "expected_volume_formula": "EXOGENOUS(per-user serve-time preference rows, floor 0)"
+ },
+ "throughput": {
+  "state": "stale",
+  "history": [],
+  "asset_id": "mi_seva",
+  "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+  "last_error": null,
+  "rows_written": 0,
+  "expected_rows": null,
+  "last_built_at": "2026-08-13T01:17:19.31703+00:00",
+  "rows_per_second": null,
+  "duration_seconds": null,
+  "last_measured_at": null,
+  "measurement_count": 0,
+  "last_measured_build_id": null,
+  "built_against_writer_hash": "unknown",
+  "built_against_upstream_hash": "9efe218db234ed7d"
+ },
+ "runs_summary": [
+  {
+   "n": 10,
+   "last": "2026-07-13T21:13:41.719555+00:00",
+   "state": "aborted",
+   "disposition": null
+  },
+  {
+   "n": 33,
+   "last": "2026-08-13T01:17:19.31703+00:00",
+   "state": "complete",
+   "disposition": null
+  },
+  {
+   "n": 28,
+   "last": "2026-08-12T23:44:41.405887+00:00",
+   "state": "error",
+   "disposition": "blocked_dependency"
+  },
+  {
+   "n": 20,
+   "last": null,
+   "state": "queued",
+   "disposition": null
+  }
+ ],
+ "last_runs": [
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "cbd6ea44-3c09-4ce5-9b21-d22fb0eeccf6",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-08-13T01:17:19.31703+00:00",
+   "started_at": "2026-08-13T01:17:18.592534+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "51eaa05c-7604-42cc-a3db-e7fa6d9c3f7c",
+   "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+   "ended_at": "2026-08-12T17:12:32.641922+00:00",
+   "started_at": "2026-08-12T17:12:31.076429+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "global",
+   "state": "complete",
+   "run_id": "9fc3e49d-8c24-4be7-80f0-29c8cff726e8",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-08-07T23:49:06.017144+00:00",
+   "started_at": "2026-08-07T23:49:04.642044+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "5940f325-63b5-48ce-b9de-3472a5746af4",
+   "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+   "ended_at": "2026-07-28T10:59:41.126692+00:00",
+   "started_at": "2026-07-28T10:59:40.093068+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "8141e71d-44bc-4744-af31-b4c41e1bb7ec",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-07-28T10:34:01.286596+00:00",
+   "started_at": "2026-07-28T10:34:00.13203+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "0faf6c66-8dad-4bcf-8478-fd92f3171b66",
+   "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+   "ended_at": "2026-07-28T05:02:48.958662+00:00",
+   "started_at": "2026-07-28T05:02:47.473638+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "ed26e2d3-6dfa-43a4-936e-a815f7fc5309",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-07-28T03:31:48.891746+00:00",
+   "started_at": "2026-07-28T03:31:47.621835+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "layer",
+   "state": "complete",
+   "run_id": "7b364f83-07ce-4bd0-9024-92f01fc8ec59",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-07-27T06:15:12.769737+00:00",
+   "started_at": "2026-07-27T06:15:12.683398+00:00",
+   "disposition": null,
+   "output_changed": null
+  }
+ ],
+ "last_runs_canonical": [
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "cbd6ea44-3c09-4ce5-9b21-d22fb0eeccf6",
+   "ended_at": "2026-08-13T01:17:19.31703+00:00",
+   "started_at": "2026-08-13T01:17:18.592534+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "9fc3e49d-8c24-4be7-80f0-29c8cff726e8",
+   "ended_at": "2026-08-07T23:49:06.017144+00:00",
+   "started_at": "2026-08-07T23:49:04.642044+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "8141e71d-44bc-4744-af31-b4c41e1bb7ec",
+   "ended_at": "2026-07-28T10:34:01.286596+00:00",
+   "started_at": "2026-07-28T10:34:00.13203+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "ed26e2d3-6dfa-43a4-936e-a815f7fc5309",
+   "ended_at": "2026-07-28T03:31:48.891746+00:00",
+   "started_at": "2026-07-28T03:31:47.621835+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "7b364f83-07ce-4bd0-9024-92f01fc8ec59",
+   "ended_at": "2026-07-27T06:15:12.769737+00:00",
+   "started_at": "2026-07-27T06:15:12.683398+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "42720d15-f943-42af-8b76-e4f97f3bfd3f",
+   "ended_at": "2026-07-24T11:13:05.681097+00:00",
+   "started_at": "2026-07-24T11:13:05.414487+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "17d69e59-50f2-4c47-ab81-602516b9211d",
+   "ended_at": "2026-07-18T14:18:42.634715+00:00",
+   "started_at": "2026-07-18T14:18:42.557386+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "818faf3a-aba2-4507-8f23-354276e5ec9d",
+   "ended_at": "2026-07-18T06:42:02.421526+00:00",
+   "started_at": "2026-07-18T06:42:02.322889+00:00",
+   "disposition": null,
+   "output_changed": null
+  }
+ ],
+ "live_count": "count\n0\n(1 row)"
+}

@@ -1,0 +1,2904 @@
+{
+ "le_basic": {
+  "sql": "select count(*) n, min(recorded_at) rec_min, max(recorded_at) rec_max, count(*) filter (where recorded_at <= '2000-01-01') at_sentinel, count(*) filter (where recorded_at > '2026-08-13 01:16:29+00') after_emission, count(*) filter (where outcome_observed is true) outcome_true, count(*) filter (where outcome_observed is null) outcome_null, count(*) filter (where pool_consent) consent, count(distinct event_id) ids from life_events where chart_id='482012f1-710e-4a25-994a-93821f5871aa'",
+  "rows": [
+   {
+    "n": "63",
+    "rec_min": "2000-01-01 00:00:00+00",
+    "rec_max": "2026-08-08 00:16:51.509337+00",
+    "at_sentinel": "57",
+    "after_emission": "0",
+    "outcome_true": "62",
+    "outcome_null": "1",
+    "consent": "0",
+    "ids": "63"
+   }
+  ]
+ },
+ "le_by_chart": {
+  "sql": "select chart_id::text, count(*) from life_events group by 1 order by 2 desc",
+  "rows": [
+   {
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+    "count": "63"
+   }
+  ]
+ },
+ "le_dates": {
+  "sql": "select count(*) filter (where event_date is null) nodate, max(event_date) latest_event_date, count(*) filter (where event_date > current_date) future from life_events where chart_id='482012f1-710e-4a25-994a-93821f5871aa'",
+  "rows": [
+   {
+    "nodate": "0",
+    "latest_event_date": "2026-04-17",
+    "future": "0"
+   }
+  ]
+ },
+ "le_recorded_hist": {
+  "sql": "select date_trunc('month', recorded_at)::date m, count(*) from life_events where chart_id='482012f1-710e-4a25-994a-93821f5871aa' group by 1 order by 1",
+  "rows": [
+   {
+    "m": "2000-01-01",
+    "count": "57"
+   },
+   {
+    "m": "2026-07-01",
+    "count": "5"
+   },
+   {
+    "m": "2026-08-01",
+    "count": "1"
+   }
+  ]
+ },
+ "le_missing_cols": {
+  "sql": "select count(*) from information_schema.columns where table_name='life_events' and column_name in ('shaped_predictor','shaped_predictor_refs','disclosure_timing','disclosure_type','disclosure_date','event_magnitude','magnitude','subcategory','attestation_source','event_class')",
+  "rows": [
+   {
+    "count": "0"
+   }
+  ]
+ },
+ "prov": {
+  "sql": "select count(*) n, count(*) filter (where admissible_clean) clean, count(*) filter (where held_out) held, count(*) filter (where held_out and admissible_clean) held_clean, count(distinct admissibility_reason) reasons, min(admissibility_reason) reason, count(*) filter (where event_class_id is not null) cls, count(*) filter (where event_magnitude is not null) mag from mimamsa_event_provenance where chart_id='482012f1-710e-4a25-994a-93821f5871aa'",
+  "rows": [
+   {
+    "n": "63",
+    "clean": "63",
+    "held": "13",
+    "held_clean": "13",
+    "reasons": "1",
+    "reason": "clean: not a predictor, not post-hoc undated, has event_date",
+    "cls": "0",
+    "mag": "0"
+   }
+  ]
+ },
+ "prov_heldout_chrono": {
+  "sql": "select e.held_out, count(*) n, max(e.event_date) latest_event_date, count(*) filter (where e.event_date < (select max(x.event_date) from mimamsa_event_provenance x where x.chart_id=e.chart_id and not x.held_out)) earlier_than_latest_training from mimamsa_event_provenance e where chart_id='482012f1-710e-4a25-994a-93821f5871aa' group by 1",
+  "rows": [
+   {
+    "held_out": "f",
+    "n": "50",
+    "latest_event_date": "2026-04-17",
+    "earlier_than_latest_training": "49"
+   },
+   {
+    "held_out": "t",
+    "n": "13",
+    "latest_event_date": "2025-07-01",
+    "earlier_than_latest_training": "13"
+   }
+  ]
+ },
+ "prov_vs_le_ids": {
+  "sql": "select (select count(*) from mimamsa_event_provenance p where p.chart_id='482012f1-710e-4a25-994a-93821f5871aa') prov, (select count(*) from life_events l where l.chart_id='482012f1-710e-4a25-994a-93821f5871aa') le, (select count(*) from mimamsa_event_provenance p where p.chart_id='482012f1-710e-4a25-994a-93821f5871aa' and not exists (select 1 from life_events l where l.chart_id=p.chart_id and l.event_id=p.event_id)) prov_without_le, (select count(*) from life_events l where l.chart_id='482012f1-710e-4a25-994a-93821f5871aa' and not exists (select 1 from mimamsa_event_provenance p where p.chart_id=l.chart_id and p.event_id=l.event_id)) le_without_prov",
+  "rows": [
+   {
+    "prov": "63",
+    "le": "63",
+    "prov_without_le": "0",
+    "le_without_prov": "0"
+   }
+  ]
+ },
+ "prov_domain": {
+  "sql": "select domain_primary, count(*) from mimamsa_event_provenance where chart_id='482012f1-710e-4a25-994a-93821f5871aa' group by 1 order by 2 desc",
+  "rows": [
+   {
+    "domain_primary": "career",
+    "count": "11"
+   },
+   {
+    "domain_primary": "education",
+    "count": "10"
+   },
+   {
+    "domain_primary": "spiritual",
+    "count": "10"
+   },
+   {
+    "domain_primary": "relationship",
+    "count": "7"
+   },
+   {
+    "domain_primary": "health",
+    "count": "6"
+   },
+   {
+    "domain_primary": "family",
+    "count": "3"
+   },
+   {
+    "domain_primary": "residential+travel",
+    "count": "3"
+   },
+   {
+    "domain_primary": "loss",
+    "count": "3"
+   },
+   {
+    "domain_primary": "psychological",
+    "count": "3"
+   },
+   {
+    "domain_primary": "creative",
+    "count": "2"
+   },
+   {
+    "domain_primary": "other",
+    "count": "2"
+   },
+   {
+    "domain_primary": "finance",
+    "count": "2"
+   },
+   {
+    "domain_primary": "travel",
+    "count": "1"
+   }
+  ]
+ },
+ "fam": {
+  "sql": "select family_id, evidence_tier, calibration_status, default_state, prior_weight, is_active from mimamsa_signal_families order by 1",
+  "rows": [
+   {
+    "family_id": "fam_anchor",
+    "evidence_tier": "MARSYS_DERIVED_CITED",
+    "calibration_status": "prior_only",
+    "default_state": "ON",
+    "prior_weight": "0.95",
+    "is_active": "t"
+   },
+   {
+    "family_id": "fam_ashtakavarga",
+    "evidence_tier": "CLASSICAL_CITED",
+    "calibration_status": "prior_only",
+    "default_state": "ON",
+    "prior_weight": "0.95",
+    "is_active": "t"
+   },
+   {
+    "family_id": "fam_convergence",
+    "evidence_tier": "CLASSICAL_CITED",
+    "calibration_status": "prior_only",
+    "default_state": "ON",
+    "prior_weight": "1.2",
+    "is_active": "t"
+   },
+   {
+    "family_id": "fam_dasha_period",
+    "evidence_tier": "CLASSICAL_CITED",
+    "calibration_status": "prior_only",
+    "default_state": "ON",
+    "prior_weight": "1.15",
+    "is_active": "t"
+   },
+   {
+    "family_id": "fam_divisional",
+    "evidence_tier": "CLASSICAL_CITED",
+    "calibration_status": "prior_only",
+    "default_state": "ON",
+    "prior_weight": "0.95",
+    "is_active": "t"
+   },
+   {
+    "family_id": "fam_graha_natal",
+    "evidence_tier": "CLASSICAL_CITED",
+    "calibration_status": "prior_only",
+    "default_state": "ON",
+    "prior_weight": "1.1",
+    "is_active": "t"
+   },
+   {
+    "family_id": "fam_msr_signal",
+    "evidence_tier": "MARSYS_DERIVED_CITED",
+    "calibration_status": "prior_only",
+    "default_state": "ON",
+    "prior_weight": "1.4",
+    "is_active": "t"
+   },
+   {
+    "family_id": "fam_null_control",
+    "evidence_tier": "NEGATIVE_CONTROL",
+    "calibration_status": "prior_only",
+    "default_state": "CONTROL_ONLY",
+    "prior_weight": "0",
+    "is_active": "t"
+   },
+   {
+    "family_id": "fam_shuffled_birth",
+    "evidence_tier": "NEGATIVE_CONTROL",
+    "calibration_status": "prior_only",
+    "default_state": "CONTROL_ONLY",
+    "prior_weight": "0",
+    "is_active": "t"
+   },
+   {
+    "family_id": "fam_transit",
+    "evidence_tier": "CLASSICAL_CITED",
+    "calibration_status": "prior_only",
+    "default_state": "ON",
+    "prior_weight": "0.95",
+    "is_active": "t"
+   },
+   {
+    "family_id": "fam_yoga",
+    "evidence_tier": "CLASSICAL_CITED",
+    "calibration_status": "prior_only",
+    "default_state": "ON",
+    "prior_weight": "1.4",
+    "is_active": "t"
+   }
+  ]
+ },
+ "ctrl": {
+  "sql": "select control_id, expected_score, tolerance from mimamsa_negative_controls order by 1",
+  "rows": [
+   {
+    "control_id": "neg_antiphase",
+    "expected_score": "near_zero",
+    "tolerance": "0.08"
+   },
+   {
+    "control_id": "neg_future_leak",
+    "expected_score": "chance",
+    "tolerance": "0.1"
+   },
+   {
+    "control_id": "neg_random_uniform",
+    "expected_score": "near_zero",
+    "tolerance": "0.05"
+   },
+   {
+    "control_id": "neg_shuffled_birth",
+    "expected_score": "near_zero",
+    "tolerance": "0.05"
+   }
+  ]
+ },
+ "priors": {
+  "sql": "select signal_type_class, source_subsystem, class_prior, prior_version from brahma_class_priors where prior_version='1.0' and signal_tradition='*' and fact_kind='*' order by 1,2",
+  "rows": [
+   {
+    "signal_type_class": "*",
+    "source_subsystem": "dasha",
+    "class_prior": "1.1",
+    "prior_version": "1.0"
+   },
+   {
+    "signal_type_class": "*",
+    "source_subsystem": "medical",
+    "class_prior": "0.9",
+    "prior_version": "1.0"
+   },
+   {
+    "signal_type_class": "*",
+    "source_subsystem": "nakshatra",
+    "class_prior": "1.05",
+    "prior_version": "1.0"
+   },
+   {
+    "signal_type_class": "*",
+    "source_subsystem": "panchanga",
+    "class_prior": "0.9",
+    "prior_version": "1.0"
+   },
+   {
+    "signal_type_class": "*",
+    "source_subsystem": "sade_sati",
+    "class_prior": "1.05",
+    "prior_version": "1.0"
+   },
+   {
+    "signal_type_class": "*",
+    "source_subsystem": "sensitive",
+    "class_prior": "1",
+    "prior_version": "1.0"
+   },
+   {
+    "signal_type_class": "*",
+    "source_subsystem": "strength_ashtakavarga",
+    "class_prior": "0.95",
+    "prior_version": "1.0"
+   },
+   {
+    "signal_type_class": "*",
+    "source_subsystem": "structural",
+    "class_prior": "1",
+    "prior_version": "1.0"
+   },
+   {
+    "signal_type_class": "*",
+    "source_subsystem": "tajaka",
+    "class_prior": "0.85",
+    "prior_version": "1.0"
+   },
+   {
+    "signal_type_class": "*",
+    "source_subsystem": "varga",
+    "class_prior": "1",
+    "prior_version": "1.0"
+   },
+   {
+    "signal_type_class": "*",
+    "source_subsystem": "vastu",
+    "class_prior": "0.7",
+    "prior_version": "1.0"
+   },
+   {
+    "signal_type_class": "*",
+    "source_subsystem": "yoga",
+    "class_prior": "1.15",
+    "prior_version": "1.0"
+   },
+   {
+    "signal_type_class": "absence",
+    "source_subsystem": "*",
+    "class_prior": "0.8",
+    "prior_version": "1.0"
+   },
+   {
+    "signal_type_class": "annual",
+    "source_subsystem": "*",
+    "class_prior": "0.85",
+    "prior_version": "1.0"
+   },
+   {
+    "signal_type_class": "arudha",
+    "source_subsystem": "*",
+    "class_prior": "1.1",
+    "prior_version": "1.0"
+   },
+   {
+    "signal_type_class": "bhavat_bhavam_amplifier",
+    "source_subsystem": "*",
+    "class_prior": "0.85",
+    "prior_version": "1.0"
+   },
+   {
+    "signal_type_class": "birth_moment",
+    "source_subsystem": "*",
+    "class_prior": "1.05",
+    "prior_version": "1.0"
+   },
+   {
+    "signal_type_class": "composite_state",
+    "source_subsystem": "*",
+    "class_prior": "1.2",
+    "prior_version": "1.0"
+   },
+   {
+    "signal_type_class": "configuration",
+    "source_subsystem": "*",
+    "class_prior": "1.4",
+    "prior_version": "1.0"
+   },
+   {
+    "signal_type_class": "dasha_period",
+    "source_subsystem": "*",
+    "class_prior": "1.15",
+    "prior_version": "1.0"
+   },
+   {
+    "signal_type_class": "dhana_axis",
+    "source_subsystem": "*",
+    "class_prior": "1.05",
+    "prior_version": "1.0"
+   },
+   {
+    "signal_type_class": "karaka_alignment",
+    "source_subsystem": "*",
+    "class_prior": "1.05",
+    "prior_version": "1.0"
+   },
+   {
+    "signal_type_class": "magnitude",
+    "source_subsystem": "*",
+    "class_prior": "1",
+    "prior_version": "1.0"
+   },
+   {
+    "signal_type_class": "medical",
+    "source_subsystem": "*",
+    "class_prior": "0.9",
+    "prior_version": "1.0"
+   },
+   {
+    "signal_type_class": "nakshatra_semantic",
+    "source_subsystem": "*",
+    "class_prior": "1",
+    "prior_version": "1.0"
+   },
+   {
+    "signal_type_class": "parivartana",
+    "source_subsystem": "*",
+    "class_prior": "1.2",
+    "prior_version": "1.0"
+   },
+   {
+    "signal_type_class": "position",
+    "source_subsystem": "*",
+    "class_prior": "1.1",
+    "prior_version": "1.0"
+   },
+   {
+    "signal_type_class": "prashna",
+    "source_subsystem": "*",
+    "class_prior": "1",
+    "prior_version": "1.0"
+   },
+   {
+    "signal_type_class": "relationship",
+    "source_subsystem": "*",
+    "class_prior": "1.2",
+    "prior_version": "1.0"
+   },
+   {
+    "signal_type_class": "special_lagna",
+    "source_subsystem": "*",
+    "class_prior": "0.9",
+    "prior_version": "1.0"
+   },
+   {
+    "signal_type_class": "sudarshana_agreement",
+    "source_subsystem": "*",
+    "class_prior": "1.15",
+    "prior_version": "1.0"
+   },
+   {
+    "signal_type_class": "time_window",
+    "source_subsystem": "*",
+    "class_prior": "0.95",
+    "prior_version": "1.0"
+   },
+   {
+    "signal_type_class": "varga_pattern",
+    "source_subsystem": "*",
+    "class_prior": "0.95",
+    "prior_version": "1.0"
+   },
+   {
+    "signal_type_class": "vargottama_amplification",
+    "source_subsystem": "*",
+    "class_prior": "1.15",
+    "prior_version": "1.0"
+   },
+   {
+    "signal_type_class": "vastu",
+    "source_subsystem": "*",
+    "class_prior": "0.7",
+    "prior_version": "1.0"
+   },
+   {
+    "signal_type_class": "yoga",
+    "source_subsystem": "*",
+    "class_prior": "1.4",
+    "prior_version": "1.0"
+   }
+  ]
+ },
+ "pred_summary": {
+  "sql": "select count(*) n, count(distinct prediction_id) pid, min(emitted_at) e_min, max(emitted_at) e_max, count(*) filter (where lifecycle_status='pending') pending, count(*) filter (where chart_context_stale_at is not null) stale from mimamsa_predictions where chart_id='482012f1-710e-4a25-994a-93821f5871aa'",
+  "rows": [
+   {
+    "n": "139",
+    "pid": "139",
+    "e_min": "2026-08-13 01:16:29.658705+00",
+    "e_max": "2026-08-13 01:16:29.658705+00",
+    "pending": "139",
+    "stale": "0"
+   }
+  ]
+ },
+ "pred_window": {
+  "sql": "select count(*) filter (where upper(observation_window) <= emitted_at::date) window_ended_before_emit, count(*) filter (where lower(observation_window) <= emitted_at::date and upper(observation_window) > emitted_at::date) straddles_emission, count(*) filter (where lower(observation_window) > emitted_at::date) fully_future, min(lower(observation_window)) w_min, max(upper(observation_window)) w_max from mimamsa_predictions where chart_id='482012f1-710e-4a25-994a-93821f5871aa'",
+  "rows": [
+   {
+    "window_ended_before_emit": "12",
+    "straddles_emission": "8",
+    "fully_future": "119",
+    "w_min": "1990-03-20",
+    "w_max": "2052-05-18"
+   }
+  ]
+ },
+ "pred_live_anchor": {
+  "sql": "select count(*) preds, count(*) filter (where exists (select 1 from phala_anchors a where a.chart_id=p.chart_id and a.anchor_id::text=p.source_pramana_id)) with_live_anchor from mimamsa_predictions p where chart_id='482012f1-710e-4a25-994a-93821f5871aa'",
+  "rows": [
+   {
+    "preds": "139",
+    "with_live_anchor": "4"
+   }
+  ]
+ },
+ "pred_driving_live": {
+  "sql": "with d as (select p.prediction_id, (x->>'signal_id') sid from mimamsa_predictions p, jsonb_array_elements(p.driving_signals) x where p.chart_id='482012f1-710e-4a25-994a-93821f5871aa') select count(*) refs, count(distinct sid) distinct_sids, count(*) filter (where exists (select 1 from bodha_msr_signals s where s.chart_id='482012f1-710e-4a25-994a-93821f5871aa' and s.signal_id::text=d.sid)) resolving from d",
+  "rows": {
+   "error": "ERROR:  canceling statement due to statement timeout"
+  }
+ },
+ "pred_bundle_hash": {
+  "sql": "select count(*) n, count(distinct frozen_bundle_hash) h, count(*) filter (where bundle_formula_version is null) nov from mimamsa_predictions where chart_id='482012f1-710e-4a25-994a-93821f5871aa'",
+  "rows": [
+   {
+    "n": "139",
+    "h": "139",
+    "nov": "0"
+   }
+  ]
+ },
+ "pred_conf_gen": {
+  "sql": "select count(*) filter (where confidence_band='[0.4,0.7)') default_band, count(distinct confidence_band::text) distinct_bands from mimamsa_predictions where chart_id='482012f1-710e-4a25-994a-93821f5871aa'",
+  "rows": [
+   {
+    "default_band": "0",
+    "distinct_bands": "10"
+   }
+  ]
+ },
+ "pred_cols_missing": {
+  "sql": "select column_name from information_schema.columns where table_name='mimamsa_predictions' order by ordinal_position",
+  "rows": [
+   {
+    "column_name": "chart_id"
+   },
+   {
+    "column_name": "prediction_id"
+   },
+   {
+    "column_name": "source_pramana_id"
+   },
+   {
+    "column_name": "outcome_claim"
+   },
+   {
+    "column_name": "domain"
+   },
+   {
+    "column_name": "observation_window"
+   },
+   {
+    "column_name": "eval_date"
+   },
+   {
+    "column_name": "confidence_band"
+   },
+   {
+    "column_name": "magnitude_expected"
+   },
+   {
+    "column_name": "falsifier_jsonb"
+   },
+   {
+    "column_name": "base_rate"
+   },
+   {
+    "column_name": "emitted_at"
+   },
+   {
+    "column_name": "lifecycle_status"
+   },
+   {
+    "column_name": "driving_signals"
+   },
+   {
+    "column_name": "frozen_bundle_hash"
+   },
+   {
+    "column_name": "bundle_formula_version"
+   },
+   {
+    "column_name": "created_at"
+   },
+   {
+    "column_name": "contact_id"
+   },
+   {
+    "column_name": "chart_context_stale_at"
+   },
+   {
+    "column_name": "chart_context_stale_reason"
+   },
+   {
+    "column_name": "chart_context_superseded_by_run_id"
+   }
+  ]
+ },
+ "mset": {
+  "sql": "select count(*), count(distinct channel_id), min(source), max(source) from mimamsa_manifestation_sets where chart_id='482012f1-710e-4a25-994a-93821f5871aa'",
+  "rows": [
+   {
+    "count": "7",
+    "min": "phala_anchors",
+    "max": "phala_anchors"
+   }
+  ]
+ },
+ "mset_channels": {
+  "sql": "select channel_id, count(*) from mimamsa_manifestation_sets where chart_id='482012f1-710e-4a25-994a-93821f5871aa' group by 1 order by 2 desc",
+  "rows": [
+   {
+    "channel_id": "ch_transition_verbal",
+    "count": "50"
+   },
+   {
+    "channel_id": "ch_career_verbal",
+    "count": "29"
+   },
+   {
+    "channel_id": "ch_wealth_verbal",
+    "count": "26"
+   },
+   {
+    "channel_id": "ch_relationship_verbal",
+    "count": "18"
+   },
+   {
+    "channel_id": "ch_spirituality_verbal",
+    "count": "6"
+   },
+   {
+    "channel_id": "ch_character_verbal",
+    "count": "5"
+   },
+   {
+    "channel_id": "ch_health_verbal",
+    "count": "5"
+   }
+  ]
+ },
+ "cal_summary": {
+  "sql": "select count(*) n, count(distinct prediction_id) preds, count(distinct event_id) events, min(scored_at) s_min, max(scored_at) s_max, count(*) filter (where leakage_status='clean') clean_lk, count(*) filter (where base_rate is not null) base_nn, count(distinct base_rate) base_d, count(*) filter (where manifestation_channel is not null) chan_nn from mimamsa_calibration where chart_id='482012f1-710e-4a25-994a-93821f5871aa'",
+  "rows": [
+   {
+    "n": "57",
+    "preds": "13",
+    "events": "24",
+    "s_min": "2026-08-13 01:16:30.152142+00",
+    "s_max": "2026-08-13 01:16:30.152142+00",
+    "clean_lk": "57",
+    "base_nn": "57",
+    "base_d": "1",
+    "chan_nn": "0"
+   }
+  ]
+ },
+ "cal_retro": {
+  "sql": "select count(*) joined, count(*) filter (where e.event_date < p.emitted_at::date) event_date_before_emit, count(*) filter (where l.recorded_at < p.emitted_at) recorded_before_emit, count(*) filter (where e.event_date >= p.emitted_at::date) event_date_on_or_after_emit from mimamsa_calibration c join mimamsa_predictions p on p.chart_id=c.chart_id and p.prediction_id=c.prediction_id join mimamsa_event_provenance e on e.chart_id=c.chart_id and e.event_id=c.event_id left join life_events l on l.chart_id=e.chart_id and l.event_id=e.event_id where c.chart_id='482012f1-710e-4a25-994a-93821f5871aa'",
+  "rows": [
+   {
+    "joined": "53",
+    "event_date_before_emit": "53",
+    "recorded_before_emit": "53",
+    "event_date_on_or_after_emit": "0"
+   }
+  ]
+ },
+ "cal_domain_pair": {
+  "sql": "select p.domain pred_domain, e.domain_primary ev_domain, count(*) n from mimamsa_calibration c join mimamsa_predictions p on p.chart_id=c.chart_id and p.prediction_id=c.prediction_id join mimamsa_event_provenance e on e.chart_id=c.chart_id and e.event_id=c.event_id where c.chart_id='482012f1-710e-4a25-994a-93821f5871aa' group by 1,2 order by 3 desc",
+  "rows": [
+   {
+    "pred_domain": "relationship",
+    "ev_domain": "career",
+    "n": "10"
+   },
+   {
+    "pred_domain": "relationship",
+    "ev_domain": "relationship",
+    "n": "8"
+   },
+   {
+    "pred_domain": "relationship",
+    "ev_domain": "spiritual",
+    "n": "7"
+   },
+   {
+    "pred_domain": "relationship",
+    "ev_domain": "health",
+    "n": "5"
+   },
+   {
+    "pred_domain": "relationship",
+    "ev_domain": "psychological",
+    "n": "4"
+   },
+   {
+    "pred_domain": "career",
+    "ev_domain": "spiritual",
+    "n": "3"
+   },
+   {
+    "pred_domain": "relationship",
+    "ev_domain": "education",
+    "n": "3"
+   },
+   {
+    "pred_domain": "transition",
+    "ev_domain": "career",
+    "n": "2"
+   },
+   {
+    "pred_domain": "career",
+    "ev_domain": "career",
+    "n": "2"
+   },
+   {
+    "pred_domain": "career",
+    "ev_domain": "other",
+    "n": "1"
+   },
+   {
+    "pred_domain": "relationship",
+    "ev_domain": "finance",
+    "n": "1"
+   },
+   {
+    "pred_domain": "career",
+    "ev_domain": "relationship",
+    "n": "1"
+   },
+   {
+    "pred_domain": "transition",
+    "ev_domain": "relationship",
+    "n": "1"
+   },
+   {
+    "pred_domain": "relationship",
+    "ev_domain": "other",
+    "n": "1"
+   },
+   {
+    "pred_domain": "relationship",
+    "ev_domain": "creative",
+    "n": "1"
+   },
+   {
+    "pred_domain": "transition",
+    "ev_domain": "spiritual",
+    "n": "1"
+   },
+   {
+    "pred_domain": "career",
+    "ev_domain": "finance",
+    "n": "1"
+   },
+   {
+    "pred_domain": "transition",
+    "ev_domain": "other",
+    "n": "1"
+   }
+  ]
+ },
+ "cal_verdict": {
+  "sql": "select composite_verdict, count(*), min(composite_score), max(composite_score), round(avg(score_timing)::numeric,3) t, min(score_magnitude) magmin, max(score_magnitude) magmax, min(score_falsifier) fmin, max(score_falsifier) fmax from mimamsa_calibration where chart_id='482012f1-710e-4a25-994a-93821f5871aa' group by 1 order by 1",
+  "rows": [
+   {
+    "composite_verdict": "CONFIRMED",
+    "count": "2",
+    "min": "0.6789",
+    "max": "0.6813",
+    "t": "0.374",
+    "magmin": "0.5",
+    "magmax": "0.5",
+    "fmin": "1",
+    "fmax": "1"
+   },
+   {
+    "composite_verdict": "PARTIAL",
+    "count": "23",
+    "min": "0.3655",
+    "max": "0.6262",
+    "t": "0.569",
+    "magmin": "0.5",
+    "magmax": "0.5",
+    "fmin": "1",
+    "fmax": "1"
+   },
+   {
+    "composite_verdict": "REFUTED",
+    "count": "7",
+    "min": "0.2785",
+    "max": "0.3142",
+    "t": "0.065",
+    "magmin": "0.5",
+    "magmax": "0.5",
+    "fmin": "1",
+    "fmax": "1"
+   },
+   {
+    "composite_verdict": "UNRESOLVED",
+    "count": "25",
+    "min": "0.3295",
+    "max": "0.841",
+    "t": "0.582",
+    "magmin": "0.5",
+    "magmax": "0.5",
+    "fmin": "1",
+    "fmax": "1"
+   }
+  ]
+ },
+ "cal_orphan_event": {
+  "sql": "select count(*) from mimamsa_calibration c where c.chart_id='482012f1-710e-4a25-994a-93821f5871aa' and not exists (select 1 from mimamsa_event_provenance e where e.chart_id=c.chart_id and e.event_id=c.event_id)",
+  "rows": [
+   {
+    "count": "4"
+   }
+  ]
+ },
+ "rel": {
+  "sql": "select stratum_key, n, observed_rate, held_out_validity, evidence_grade, ece, ci_low from mimamsa_reliability where chart_id='482012f1-710e-4a25-994a-93821f5871aa' order by 1",
+  "rows": [
+   {
+    "stratum_key": "domain_all",
+    "n": "[0.2,0.3)",
+    "observed_rate": "4",
+    "held_out_validity": "0",
+    "evidence_grade": "insufficient_n",
+    "ece": "prior_only",
+    "ci_low": ""
+   },
+   {
+    "stratum_key": "domain_all",
+    "n": "[0.3,0.4)",
+    "observed_rate": "13",
+    "held_out_validity": "0",
+    "evidence_grade": "pass",
+    "ece": "empirical",
+    "ci_low": ""
+   },
+   {
+    "stratum_key": "domain_all",
+    "n": "[0.4,0.5)",
+    "observed_rate": "12",
+    "held_out_validity": "0",
+    "evidence_grade": "pass",
+    "ece": "empirical",
+    "ci_low": ""
+   },
+   {
+    "stratum_key": "domain_all",
+    "n": "[0.5,0.6)",
+    "observed_rate": "18",
+    "held_out_validity": "0",
+    "evidence_grade": "pass",
+    "ece": "empirical",
+    "ci_low": ""
+   },
+   {
+    "stratum_key": "domain_all",
+    "n": "[0.6,0.7)",
+    "observed_rate": "7",
+    "held_out_validity": "0.285714285714286",
+    "evidence_grade": "pass",
+    "ece": "empirical",
+    "ci_low": ""
+   },
+   {
+    "stratum_key": "domain_all",
+    "n": "[0.8,0.9)",
+    "observed_rate": "3",
+    "held_out_validity": "0",
+    "evidence_grade": "insufficient_n",
+    "ece": "prior_only",
+    "ci_low": ""
+   }
+  ]
+ },
+ "mult": {
+  "sql": "select weight_id, target_ref, n_observations, held_out_validity, promotion_status, gate_passed, confidence_high, neg_control_clear, kill_switch_state, raw_multiplier, applied_multiplier, divergence_from_classical from mimamsa_multipliers where chart_id='482012f1-710e-4a25-994a-93821f5871aa' order by 1",
+  "rows": [
+   {
+    "weight_id": "LL1:fam_anchor",
+    "target_ref": "fam_anchor",
+    "n_observations": "0",
+    "held_out_validity": "insufficient_n",
+    "promotion_status": "prior_only",
+    "gate_passed": "f",
+    "confidence_high": "f",
+    "neg_control_clear": "t",
+    "kill_switch_state": "active",
+    "raw_multiplier": "0.95",
+    "applied_multiplier": "0.95",
+    "divergence_from_classical": "0"
+   },
+   {
+    "weight_id": "LL1:fam_ashtakavarga",
+    "target_ref": "fam_ashtakavarga",
+    "n_observations": "0",
+    "held_out_validity": "insufficient_n",
+    "promotion_status": "prior_only",
+    "gate_passed": "f",
+    "confidence_high": "f",
+    "neg_control_clear": "t",
+    "kill_switch_state": "active",
+    "raw_multiplier": "0.95",
+    "applied_multiplier": "0.95",
+    "divergence_from_classical": "0"
+   },
+   {
+    "weight_id": "LL1:fam_convergence",
+    "target_ref": "fam_convergence",
+    "n_observations": "0",
+    "held_out_validity": "insufficient_n",
+    "promotion_status": "prior_only",
+    "gate_passed": "f",
+    "confidence_high": "f",
+    "neg_control_clear": "t",
+    "kill_switch_state": "active",
+    "raw_multiplier": "1.2",
+    "applied_multiplier": "1.2",
+    "divergence_from_classical": "0"
+   },
+   {
+    "weight_id": "LL1:fam_dasha_period",
+    "target_ref": "fam_dasha_period",
+    "n_observations": "0",
+    "held_out_validity": "insufficient_n",
+    "promotion_status": "prior_only",
+    "gate_passed": "f",
+    "confidence_high": "f",
+    "neg_control_clear": "t",
+    "kill_switch_state": "active",
+    "raw_multiplier": "1.15",
+    "applied_multiplier": "1.15",
+    "divergence_from_classical": "0"
+   },
+   {
+    "weight_id": "LL1:fam_divisional",
+    "target_ref": "fam_divisional",
+    "n_observations": "0",
+    "held_out_validity": "insufficient_n",
+    "promotion_status": "prior_only",
+    "gate_passed": "f",
+    "confidence_high": "f",
+    "neg_control_clear": "t",
+    "kill_switch_state": "active",
+    "raw_multiplier": "0.95",
+    "applied_multiplier": "0.95",
+    "divergence_from_classical": "0"
+   },
+   {
+    "weight_id": "LL1:fam_graha_natal",
+    "target_ref": "fam_graha_natal",
+    "n_observations": "271",
+    "held_out_validity": "pass",
+    "promotion_status": "promoted",
+    "gate_passed": "t",
+    "confidence_high": "t",
+    "neg_control_clear": "t",
+    "kill_switch_state": "active",
+    "raw_multiplier": "0.9924",
+    "applied_multiplier": "0.9924",
+    "divergence_from_classical": "0.0978"
+   },
+   {
+    "weight_id": "LL1:fam_msr_signal",
+    "target_ref": "fam_msr_signal",
+    "n_observations": "0",
+    "held_out_validity": "insufficient_n",
+    "promotion_status": "prior_only",
+    "gate_passed": "f",
+    "confidence_high": "f",
+    "neg_control_clear": "t",
+    "kill_switch_state": "active",
+    "raw_multiplier": "1.4",
+    "applied_multiplier": "1.4",
+    "divergence_from_classical": "0"
+   },
+   {
+    "weight_id": "LL1:fam_transit",
+    "target_ref": "fam_transit",
+    "n_observations": "14",
+    "held_out_validity": "pass",
+    "promotion_status": "promoted",
+    "gate_passed": "t",
+    "confidence_high": "t",
+    "neg_control_clear": "t",
+    "kill_switch_state": "active",
+    "raw_multiplier": "0.9643",
+    "applied_multiplier": "0.9643",
+    "divergence_from_classical": "0.0151"
+   },
+   {
+    "weight_id": "LL1:fam_yoga",
+    "target_ref": "fam_yoga",
+    "n_observations": "0",
+    "held_out_validity": "insufficient_n",
+    "promotion_status": "prior_only",
+    "gate_passed": "f",
+    "confidence_high": "f",
+    "neg_control_clear": "t",
+    "kill_switch_state": "active",
+    "raw_multiplier": "1.4",
+    "applied_multiplier": "1.4",
+    "divergence_from_classical": "0"
+   }
+  ]
+ },
+ "snap": {
+  "sql": "select snapshot_id, publication_status, two_key_complete, proposing_executor, created_at from mimamsa_calibration_snapshot where chart_id='482012f1-710e-4a25-994a-93821f5871aa' order by created_at",
+  "rows": {
+   "error": "ERROR:  column \"created_at\" does not exist\nLINE 1: ...ion_status, two_key_complete, proposing_executor, created_at...\n                                                             ^"
+  }
+ },
+ "adh_counts": {
+  "sql": "select (select count(*) from mimamsa_signal_adjustment where chart_id='482012f1-710e-4a25-994a-93821f5871aa') sig, (select count(*) from mimamsa_fact_adjustment where chart_id='482012f1-710e-4a25-994a-93821f5871aa') fact, (select count(*) from mimamsa_convergence_adjustment where chart_id='482012f1-710e-4a25-994a-93821f5871aa') conv, (select count(*) from mimamsa_anchor_adjustment where chart_id='482012f1-710e-4a25-994a-93821f5871aa') anc, (select count(*) from mimamsa_load_bearing where chart_id='482012f1-710e-4a25-994a-93821f5871aa') lb",
+  "rows": [
+   {
+    "sig": "50104",
+    "fact": "61523",
+    "conv": "500",
+    "anc": "139",
+    "lb": "4"
+   }
+  ]
+ },
+ "adh_sig_live": {
+  "sql": "select count(*) rows, count(*) filter (where exists (select 1 from bodha_msr_signals s where s.chart_id=a.chart_id and s.signal_id::text=a.origin_id)) resolving, count(distinct weight_id) weights, count(*) filter (where applies_to_reading) applies, count(*) filter (where evidence_n=0) n0, count(*) filter (where leakage_status='not_assessed') lk_na from mimamsa_signal_adjustment a where chart_id='482012f1-710e-4a25-994a-93821f5871aa'",
+  "rows": []
+ },
+ "adh_fact_live": {
+  "sql": "select count(*) rows, count(*) filter (where exists (select 1 from chart_facts f where f.chart_id=a.chart_id and f.fact_id::text=a.origin_id)) resolving, count(distinct weight_id) weights from mimamsa_fact_adjustment a where chart_id='482012f1-710e-4a25-994a-93821f5871aa'",
+  "rows": []
+ },
+ "adh_conv_live": {
+  "sql": "select count(*) rows, count(*) filter (where exists (select 1 from kala_convergence k where k.chart_id=a.chart_id and k.convergence_id::text=a.origin_id)) resolving, (select count(*) from kala_convergence where chart_id='482012f1-710e-4a25-994a-93821f5871aa') live_conv from mimamsa_convergence_adjustment a where chart_id='482012f1-710e-4a25-994a-93821f5871aa'",
+  "rows": [
+   {
+    "rows": "500",
+    "resolving": "0",
+    "live_conv": "0"
+   }
+  ]
+ },
+ "adh_anc_live": {
+  "sql": "select count(*) rows, count(*) filter (where exists (select 1 from phala_anchors k where k.chart_id=a.chart_id and k.anchor_id::text=a.origin_id)) resolving from mimamsa_anchor_adjustment a where chart_id='482012f1-710e-4a25-994a-93821f5871aa'",
+  "rows": [
+   {
+    "rows": "139",
+    "resolving": "0"
+   }
+  ]
+ },
+ "adh_lb": {
+  "sql": "select conclusion_id, signal_id, sensitivity, role from mimamsa_load_bearing where chart_id='482012f1-710e-4a25-994a-93821f5871aa' order by sensitivity desc",
+  "rows": [
+   {
+    "conclusion_id": "concl_fam_yoga",
+    "signal_id": "fam_yoga",
+    "sensitivity": "0.7",
+    "role": "load_bearing"
+   },
+   {
+    "conclusion_id": "concl_fam_msr_signal",
+    "signal_id": "fam_msr_signal",
+    "sensitivity": "0.7",
+    "role": "supporting"
+   },
+   {
+    "conclusion_id": "concl_fam_convergence",
+    "signal_id": "fam_convergence",
+    "sensitivity": "0.6",
+    "role": "supporting"
+   },
+   {
+    "conclusion_id": "concl_fam_dasha_period",
+    "signal_id": "fam_dasha_period",
+    "sensitivity": "0.575",
+    "role": "redundant"
+   }
+  ]
+ },
+ "adh_w": {
+  "sql": "select weight_id, multiplier, evidence_n, count(*) from mimamsa_signal_adjustment where chart_id='482012f1-710e-4a25-994a-93821f5871aa' group by 1,2,3 order by 4 desc",
+  "rows": [
+   {
+    "weight_id": "LL1:fam_graha_natal",
+    "multiplier": "0.9924",
+    "evidence_n": "271",
+    "count": "47059"
+   },
+   {
+    "weight_id": "LL1:fam_transit",
+    "multiplier": "0.9643",
+    "evidence_n": "14",
+    "count": "2871"
+   },
+   {
+    "weight_id": "LL1:fam_yoga",
+    "multiplier": "1.4",
+    "evidence_n": "0",
+    "count": "80"
+   },
+   {
+    "weight_id": "LL1:fam_divisional",
+    "multiplier": "0.95",
+    "evidence_n": "0",
+    "count": "49"
+   },
+   {
+    "weight_id": "LL1:fam_msr_signal",
+    "multiplier": "1.4",
+    "evidence_n": "0",
+    "count": "45"
+   }
+  ]
+ },
+ "msr_now": {
+  "sql": "select count(*), max(computed_at) from bodha_msr_signals where chart_id='482012f1-710e-4a25-994a-93821f5871aa'",
+  "rows": [
+   {
+    "count": "50678",
+    "max": "2026-09-11 12:09:33.258995+00"
+   }
+  ]
+ },
+ "facts_now": {
+  "sql": "select count(*) from chart_facts where chart_id='482012f1-710e-4a25-994a-93821f5871aa'",
+  "rows": [
+   {
+    "count": "143299"
+   }
+  ]
+ },
+ "qa": {
+  "sql": "select check_type, status, count(*) from mimamsa_qa_eval where chart_id='482012f1-710e-4a25-994a-93821f5871aa' group by 1,2 order by 1,2",
+  "rows": [
+   {
+    "check_type": "ablation",
+    "status": "structural_proxy",
+    "count": "9"
+   },
+   {
+    "check_type": "control_window",
+    "status": "control_baseline",
+    "count": "92"
+   },
+   {
+    "check_type": "control_window",
+    "status": "FAIL_event_too_close",
+    "count": "61"
+   },
+   {
+    "check_type": "degenerate_distribution",
+    "status": "pass",
+    "count": "1"
+   },
+   {
+    "check_type": "negative_control",
+    "status": "not_implemented",
+    "count": "4"
+   },
+   {
+    "check_type": "tail_only",
+    "status": "structural_proxy",
+    "count": "1"
+   }
+  ]
+ },
+ "attr": {
+  "sql": "select count(*) n, count(distinct match_id) matches, count(distinct signal_id) sigs, count(distinct family_id) fams, min(credit_blame), max(credit_blame) from mimamsa_attribution where chart_id='482012f1-710e-4a25-994a-93821f5871aa'",
+  "rows": [
+   {
+    "n": "1425",
+    "matches": "57",
+    "sigs": "15",
+    "fams": "2",
+    "min": "0",
+    "max": "0.6396"
+   }
+  ]
+ },
+ "attr_sig_live": {
+  "sql": "select count(distinct signal_id) sigs, count(distinct signal_id) filter (where exists (select 1 from bodha_msr_signals s where s.chart_id='482012f1-710e-4a25-994a-93821f5871aa' and s.signal_id::text=a.signal_id)) resolving from mimamsa_attribution a where chart_id='482012f1-710e-4a25-994a-93821f5871aa'",
+  "rows": []
+ },
+ "disc": {
+  "sql": "select discovery_class, activation_status, count(*), min(n_support), max(n_support), min(strength), max(strength) from mimamsa_discoveries where chart_id='482012f1-710e-4a25-994a-93821f5871aa' group by 1,2",
+  "rows": [
+   {
+    "discovery_class": "emergent_law",
+    "activation_status": "candidate",
+    "count": "20",
+    "min": "0.2161",
+    "max": "0.3734"
+   },
+   {
+    "discovery_class": "retrodiction",
+    "activation_status": "candidate",
+    "count": "51",
+    "min": "0",
+    "max": "0.95"
+   }
+  ]
+ },
+ "disc_scored": {
+  "sql": "select count(*) filter (where (evidence_refs->>'n_scored_matches')::int > 0) with_scored, max((evidence_refs->>'n_scored_matches')::int) max_scored from mimamsa_discoveries where chart_id='482012f1-710e-4a25-994a-93821f5871aa' and discovery_class='emergent_law'",
+  "rows": [
+   {
+    "psql: error: connection to server at \"127.0.0.1\", port 5433 failed: server closed the connection unexpectedly": "\tThis probably means the server terminated abnormally"
+   },
+   {
+    "psql: error: connection to server at \"127.0.0.1\", port 5433 failed: server closed the connection unexpectedly": "\tbefore or while processing the request."
+   }
+  ]
+ },
+ "disc_retro": {
+  "sql": "select count(*) n, count(*) filter (where n_support=0) zero_anchor, count(*) filter (where (evidence_refs->>'cutoff_enforced') = 'false') cutoff_false from mimamsa_discoveries where chart_id='482012f1-710e-4a25-994a-93821f5871aa' and discovery_class='retrodiction'",
+  "rows": [
+   {
+    "n": "51",
+    "zero_anchor": "43",
+    "cutoff_false": "0"
+   }
+  ]
+ },
+ "gram": {
+  "sql": "select evidence_grade, count(*), sum(opportunity_count) opp, sum(scored_count) scored, sum(fire_count) fire, count(channel_propensity) prop_nn from mimamsa_manifestation_grammar where chart_id='482012f1-710e-4a25-994a-93821f5871aa' group by 1",
+  "rows": [
+   {
+    "evidence_grade": "prior_only",
+    "count": "17",
+    "opp": "0",
+    "scored": "0",
+    "fire": "0",
+    "prop_nn": "0"
+   },
+   {
+    "evidence_grade": "empirical",
+    "count": "7",
+    "opp": "183",
+    "scored": "0",
+    "fire": "0",
+    "prop_nn": "7"
+   }
+  ]
+ },
+ "gram_prior": {
+  "sql": "select channel_id, domain, prior_propensity, opportunity_count, scored_count, evidence_grade from mimamsa_manifestation_grammar where chart_id='482012f1-710e-4a25-994a-93821f5871aa' order by opportunity_count desc, channel_id limit 12",
+  "rows": [
+   {
+    "channel_id": "ch_transition_verbal",
+    "domain": "transition",
+    "prior_propensity": "0.5",
+    "opportunity_count": "55",
+    "scored_count": "0",
+    "evidence_grade": "empirical"
+   },
+   {
+    "channel_id": "ch_relationship_verbal",
+    "domain": "relationship",
+    "prior_propensity": "0.5",
+    "opportunity_count": "49",
+    "scored_count": "0",
+    "evidence_grade": "empirical"
+   },
+   {
+    "channel_id": "ch_career_verbal",
+    "domain": "career",
+    "prior_propensity": "0.4",
+    "opportunity_count": "37",
+    "scored_count": "0",
+    "evidence_grade": "empirical"
+   },
+   {
+    "channel_id": "ch_wealth_verbal",
+    "domain": "wealth",
+    "prior_propensity": "0.5",
+    "opportunity_count": "26",
+    "scored_count": "0",
+    "evidence_grade": "empirical"
+   },
+   {
+    "channel_id": "ch_spirituality_verbal",
+    "domain": "spirituality",
+    "prior_propensity": "0.5",
+    "opportunity_count": "6",
+    "scored_count": "0",
+    "evidence_grade": "empirical"
+   },
+   {
+    "channel_id": "ch_character_verbal",
+    "domain": "character",
+    "prior_propensity": "0.5",
+    "opportunity_count": "5",
+    "scored_count": "0",
+    "evidence_grade": "empirical"
+   },
+   {
+    "channel_id": "ch_health_verbal",
+    "domain": "health",
+    "prior_propensity": "0.5",
+    "opportunity_count": "5",
+    "scored_count": "0",
+    "evidence_grade": "empirical"
+   },
+   {
+    "channel_id": "ch_career_material",
+    "domain": "career",
+    "prior_propensity": "0.35",
+    "opportunity_count": "0",
+    "scored_count": "0",
+    "evidence_grade": "prior_only"
+   },
+   {
+    "channel_id": "ch_career_relational",
+    "domain": "career",
+    "prior_propensity": "0.25",
+    "opportunity_count": "0",
+    "scored_count": "0",
+    "evidence_grade": "prior_only"
+   },
+   {
+    "channel_id": "ch_edu_formal",
+    "domain": "education",
+    "prior_propensity": "0.6",
+    "opportunity_count": "0",
+    "scored_count": "0",
+    "evidence_grade": "prior_only"
+   },
+   {
+    "channel_id": "ch_edu_informal",
+    "domain": "education",
+    "prior_propensity": "0.4",
+    "opportunity_count": "0",
+    "scored_count": "0",
+    "evidence_grade": "prior_only"
+   },
+   {
+    "channel_id": "ch_fin_asset",
+    "domain": "wealth",
+    "prior_propensity": "0.35",
+    "opportunity_count": "0",
+    "scored_count": "0",
+    "evidence_grade": "prior_only"
+   }
+  ]
+ },
+ "gram_prior_dist": {
+  "sql": "select prior_propensity, count(*) from mimamsa_manifestation_grammar where chart_id='482012f1-710e-4a25-994a-93821f5871aa' group by 1 order by 2 desc",
+  "rows": [
+   {
+    "prior_propensity": "0.5",
+    "count": "9"
+   },
+   {
+    "prior_propensity": "0.4",
+    "count": "3"
+   },
+   {
+    "prior_propensity": "0.35",
+    "count": "3"
+   },
+   {
+    "prior_propensity": "0.45",
+    "count": "2"
+   },
+   {
+    "prior_propensity": "0.25",
+    "count": "2"
+   },
+   {
+    "prior_propensity": "0.2",
+    "count": "2"
+   },
+   {
+    "prior_propensity": "0.55",
+    "count": "1"
+   },
+   {
+    "prior_propensity": "0.3",
+    "count": "1"
+   },
+   {
+    "prior_propensity": "0.6",
+    "count": "1"
+   }
+  ]
+ },
+ "mset_vs_opp": {
+  "sql": "select (select count(*) from mimamsa_manifestation_sets where chart_id='482012f1-710e-4a25-994a-93821f5871aa') sets, (select coalesce(sum(opportunity_count),0) from mimamsa_manifestation_grammar where chart_id='482012f1-710e-4a25-994a-93821f5871aa') opp_sum",
+  "rows": [
+   {
+    "sets": "139",
+    "opp_sum": "183"
+   }
+  ]
+ },
+ "ins": {
+  "sql": "select insight_type, evidence_grade, leakage_status, count(*), min(rank_consequence), max(rank_consequence) from mimamsa_insight_units where chart_id='482012f1-710e-4a25-994a-93821f5871aa' group by 1,2,3 order by 1,2",
+  "rows": [
+   {
+    "insight_type": "calibrated_outlook",
+    "evidence_grade": "empirical",
+    "leakage_status": "clean",
+    "count": "4",
+    "min": "0",
+    "max": "0.285714285714286"
+   },
+   {
+    "insight_type": "calibrated_outlook",
+    "evidence_grade": "prior_only",
+    "leakage_status": "clean",
+    "count": "2",
+    "min": "0",
+    "max": "0"
+   },
+   {
+    "insight_type": "emergent_law",
+    "evidence_grade": "empirical",
+    "leakage_status": "clean",
+    "count": "20",
+    "min": "0.2161",
+    "max": "0.3734"
+   },
+   {
+    "insight_type": "load_bearing",
+    "evidence_grade": "structural",
+    "leakage_status": "clean",
+    "count": "4",
+    "min": "0.575",
+    "max": "0.7"
+   },
+   {
+    "insight_type": "manifestation_grammar",
+    "evidence_grade": "empirical",
+    "leakage_status": "clean",
+    "count": "7",
+    "min": "0",
+    "max": "0"
+   },
+   {
+    "insight_type": "retrodiction",
+    "evidence_grade": "prior_only",
+    "leakage_status": "clean",
+    "count": "51",
+    "min": "0.02",
+    "max": "0.95"
+   },
+   {
+    "insight_type": "verdict_object",
+    "evidence_grade": "structural",
+    "leakage_status": "clean",
+    "count": "27",
+    "min": "0.379",
+    "max": "0.88"
+   }
+  ]
+ },
+ "ins_emb": {
+  "sql": "select (select count(*) from mimamsa_insight_embeddings where chart_id='482012f1-710e-4a25-994a-93821f5871aa') emb, (select count(*) from mimamsa_insight_units where chart_id='482012f1-710e-4a25-994a-93821f5871aa') units",
+  "rows": [
+   {
+    "emb": "0",
+    "units": "115"
+   }
+  ]
+ },
+ "views": {
+  "sql": "select table_name from information_schema.views where table_name like 'vw_mimamsa%' order by 1",
+  "rows": [
+   {
+    "table_name": "vw_mimamsa_admissible_clean"
+   },
+   {
+    "table_name": "vw_mimamsa_held_out"
+   },
+   {
+    "table_name": "vw_mimamsa_insight_by_domain"
+   },
+   {
+    "table_name": "vw_mimamsa_insight_by_horizon"
+   },
+   {
+    "table_name": "vw_mimamsa_insight_by_lens"
+   },
+   {
+    "table_name": "vw_mimamsa_negative_knowledge"
+   }
+  ]
+ },
+ "ins_lb": {
+  "sql": "select statement from mimamsa_insight_units where chart_id='482012f1-710e-4a25-994a-93821f5871aa' and insight_type='load_bearing' limit 2",
+  "rows": [
+   {
+    "statement": "Signal 'fam_yoga' is load_bearing for conclusion 'concl_fam_yoga' (sensitivity=0.70). Removing this signal would materially alter the reading."
+   },
+   {
+    "statement": "Signal 'fam_msr_signal' is supporting for conclusion 'concl_fam_msr_signal' (sensitivity=0.70). Removing this signal would materially alter the reading."
+   }
+  ]
+ },
+ "ins_cal": {
+  "sql": "select statement, evidence_grade from mimamsa_insight_units where chart_id='482012f1-710e-4a25-994a-93821f5871aa' and insight_type='calibrated_outlook' order by insight_id limit 3",
+  "rows": [
+   {
+    "statement": "In predictions scored [0.2, 0.3), the observed outcome rate is 0.0% across 4 events (evidence: prior_only).",
+    "evidence_grade": "prior_only"
+   },
+   {
+    "statement": "In predictions scored [0.3, 0.4), the observed outcome rate is 0.0% across 13 events (evidence: empirical).",
+    "evidence_grade": "empirical"
+   },
+   {
+    "statement": "In predictions scored [0.4, 0.5), the observed outcome rate is 0.0% across 12 events (evidence: empirical).",
+    "evidence_grade": "empirical"
+   }
+  ]
+ },
+ "exp": {
+  "sql": "select count(*) from mimamsa_export_log",
+  "rows": [
+   {
+    "count": "0"
+   }
+  ]
+ },
+ "pref": {
+  "sql": "select count(*) from mimamsa_preferences",
+  "rows": [
+   {
+    "count": "0"
+   }
+  ]
+ },
+ "jrn": {
+  "sql": "select count(*), count(distinct chart_id) from mimamsa_journal",
+  "rows": [
+   {
+    "count": "0"
+   }
+  ]
+ },
+ "ledger": {
+  "sql": "select count(*), count(distinct chart_id) from mimamsa_intervention_ledger",
+  "rows": [
+   {
+    "count": "0"
+   }
+  ]
+ },
+ "ledger_cols": {
+  "sql": "select column_name from information_schema.columns where table_name='mimamsa_intervention_ledger' order by ordinal_position",
+  "rows": [
+   {
+    "column_name": "intervention_id"
+   },
+   {
+    "column_name": "chart_id"
+   },
+   {
+    "column_name": "intent"
+   },
+   {
+    "column_name": "intervention_class"
+   },
+   {
+    "column_name": "rite_or_activity_class"
+   },
+   {
+    "column_name": "event_class"
+   },
+   {
+    "column_name": "elected_window"
+   },
+   {
+    "column_name": "precision_regime"
+   },
+   {
+    "column_name": "precision_basis"
+   },
+   {
+    "column_name": "adjudication_record"
+   },
+   {
+    "column_name": "score_vector"
+   },
+   {
+    "column_name": "efficacy_tier"
+   },
+   {
+    "column_name": "source_citation"
+   },
+   {
+    "column_name": "paddhati_version"
+   },
+   {
+    "column_name": "predicted_differential"
+   },
+   {
+    "column_name": "prediction_id"
+   },
+   {
+    "column_name": "study_arm"
+   },
+   {
+    "column_name": "performed"
+   },
+   {
+    "column_name": "performed_at"
+   },
+   {
+    "column_name": "performed_attested_by"
+   },
+   {
+    "column_name": "outcome_event_id"
+   },
+   {
+    "column_name": "outcome_linked_at"
+   },
+   {
+    "column_name": "authority_basis"
+   },
+   {
+    "column_name": "filed_by"
+   },
+   {
+    "column_name": "adoption_basis"
+   },
+   {
+    "column_name": "engine_version"
+   },
+   {
+    "column_name": "build_id"
+   },
+   {
+    "column_name": "created_at"
+   }
+  ]
+ },
+ "skill": {
+  "sql": "select event_class, n_events, n_prospective, n_backfill, skill_score, skill_state, skill_prospective, null_replicates from kala_field_skill where chart_id='482012f1-710e-4a25-994a-93821f5871aa' order by 1",
+  "rows": [
+   {
+    "event_class": "childbirth",
+    "n_events": "1",
+    "n_prospective": "0",
+    "n_backfill": "1",
+    "skill_score": "-1.7763568394002505e-15",
+    "skill_state": "underpowered",
+    "skill_prospective": "",
+    "null_replicates": "256"
+   },
+   {
+    "event_class": "foreign_settlement",
+    "n_events": "1",
+    "n_prospective": "0",
+    "n_backfill": "1",
+    "skill_score": "5.329070518200751e-15",
+    "skill_state": "underpowered",
+    "skill_prospective": "",
+    "null_replicates": "256"
+   },
+   {
+    "event_class": "marriage",
+    "n_events": "1",
+    "n_prospective": "0",
+    "n_backfill": "1",
+    "skill_score": "-1.9984014443252818e-15",
+    "skill_state": "underpowered",
+    "skill_prospective": "",
+    "null_replicates": "256"
+   },
+   {
+    "event_class": "relocation",
+    "n_events": "2",
+    "n_prospective": "0",
+    "n_backfill": "2",
+    "skill_score": "5.551115123125783e-17",
+    "skill_state": "underpowered",
+    "skill_prospective": "",
+    "null_replicates": "256"
+   },
+   {
+    "event_class": "separation",
+    "n_events": "1",
+    "n_prospective": "0",
+    "n_backfill": "1",
+    "skill_score": "-3.552713678800501e-15",
+    "skill_state": "underpowered",
+    "skill_prospective": "",
+    "null_replicates": "256"
+   },
+   {
+    "event_class": "surgery",
+    "n_events": "1",
+    "n_prospective": "0",
+    "n_backfill": "1",
+    "skill_score": "-1.7208456881689926e-15",
+    "skill_state": "underpowered",
+    "skill_prospective": "",
+    "null_replicates": "256"
+   },
+   {
+    "event_class": "",
+    "n_events": "7",
+    "n_prospective": "0",
+    "n_backfill": "7",
+    "skill_score": "-5.15460690004537e-16",
+    "skill_state": "underpowered",
+    "skill_prospective": "",
+    "null_replicates": "256"
+   }
+  ]
+ },
+ "gof": {
+  "sql": "select event_class, n, gof_state, ks_p from kala_field_gof where chart_id='482012f1-710e-4a25-994a-93821f5871aa' order by 1",
+  "rows": [
+   {
+    "event_class": "childbirth",
+    "n": "1",
+    "gof_state": "underpowered",
+    "ks_p": "0.974956921729957"
+   },
+   {
+    "event_class": "foreign_settlement",
+    "n": "1",
+    "gof_state": "underpowered",
+    "ks_p": "0.006556322171543449"
+   },
+   {
+    "event_class": "marriage",
+    "n": "1",
+    "gof_state": "underpowered",
+    "ks_p": "0.3662610423467836"
+   },
+   {
+    "event_class": "relocation",
+    "n": "2",
+    "gof_state": "underpowered",
+    "ks_p": "0.022560889238682727"
+   },
+   {
+    "event_class": "separation",
+    "n": "1",
+    "gof_state": "underpowered",
+    "ks_p": "0.005837222742371528"
+   },
+   {
+    "event_class": "surgery",
+    "n": "1",
+    "gof_state": "underpowered",
+    "ks_p": "0.08103792332656701"
+   }
+  ]
+ },
+ "wv": {
+  "sql": "select version_id, status, scope, fitted_from_chart_id::text, activated_at from kala_field_weight_versions",
+  "rows": [
+   {
+    "version_id": "v0_classical",
+    "status": "active",
+    "scope": "global",
+    "fitted_from_chart_id": "",
+    "activated_at": "2026-07-30 18:11:00.71655+00"
+   }
+  ]
+ },
+ "kfw": {
+  "sql": "select count(*) from kala_field_weights where chart_id='482012f1-710e-4a25-994a-93821f5871aa'",
+  "rows": {
+   "error": "ERROR:  column \"chart_id\" does not exist\nLINE 1: ...on; select count(*) from kala_field_weights where chart_id='...\n                                                             ^"
+  }
+ },
+ "kins": {
+  "sql": "select count(*), count(*) filter (where lel_derived) lel_derived from kala_insights where chart_id='482012f1-710e-4a25-994a-93821f5871aa'",
+  "rows": [
+   {
+    "count": "0",
+    "lel_derived": "0"
+   }
+  ]
+ },
+ "kfield": {
+  "sql": "select (select count(*) from kala_field where chart_id='482012f1-710e-4a25-994a-93821f5871aa') kala_field_rows",
+  "rows": [
+   {
+    "kala_field_rows": "8570075"
+   }
+  ]
+ },
+ "pl": {
+  "sql": "select lifecycle_status, count(*) from brahma_prospective_ledger where chart_id='482012f1-710e-4a25-994a-93821f5871aa' group by 1",
+  "rows": [
+   {
+    "lifecycle_status": "open",
+    "count": "18"
+   }
+  ]
+ },
+ "mpl": {
+  "sql": "select lifecycle_status, count(*) from brahma_mimamsa_prediction_ledger where chart_id='482012f1-710e-4a25-994a-93821f5871aa' group by 1",
+  "rows": [
+   {
+    "lifecycle_status": "unverifiable",
+    "count": "1"
+   },
+   {
+    "lifecycle_status": "dismissed",
+    "count": "4"
+   }
+  ]
+ },
+ "pl_cols": {
+  "sql": "select column_name from information_schema.columns where table_name='brahma_prospective_ledger' order by ordinal_position",
+  "rows": [
+   {
+    "column_name": "prediction_id"
+   },
+   {
+    "column_name": "chart_id"
+   },
+   {
+    "column_name": "claim"
+   },
+   {
+    "column_name": "event_class"
+   },
+   {
+    "column_name": "claim_shape"
+   },
+   {
+    "column_name": "observation_window"
+   },
+   {
+    "column_name": "milestone_set"
+   },
+   {
+    "column_name": "model"
+   },
+   {
+    "column_name": "formula_version"
+   },
+   {
+    "column_name": "confidence"
+   },
+   {
+    "column_name": "falsifier"
+   },
+   {
+    "column_name": "as_of"
+   },
+   {
+    "column_name": "generator_class"
+   },
+   {
+    "column_name": "configuration_signature"
+   },
+   {
+    "column_name": "lifecycle_status"
+   },
+   {
+    "column_name": "matched_event_id"
+   },
+   {
+    "column_name": "matched_at"
+   },
+   {
+    "column_name": "match_note"
+   },
+   {
+    "column_name": "filed_by"
+   },
+   {
+    "column_name": "filing_method"
+   },
+   {
+    "column_name": "source_citation"
+   },
+   {
+    "column_name": "created_at"
+   },
+   {
+    "column_name": "contact_id"
+   },
+   {
+    "column_name": "chart_context_stale_at"
+   },
+   {
+    "column_name": "chart_context_stale_reason"
+   },
+   {
+    "column_name": "chart_context_superseded_by_run_id"
+   }
+  ]
+ },
+ "other_charts": {
+  "sql": "select 'predictions' t, chart_id::text, count(*) from mimamsa_predictions group by 2 union all select 'calibration', chart_id::text, count(*) from mimamsa_calibration group by 2 union all select 'provenance', chart_id::text, count(*) from mimamsa_event_provenance group by 2 union all select 'insight_units', chart_id::text, count(*) from mimamsa_insight_units group by 2 order by 1,3 desc",
+  "rows": [
+   {
+    "t": "calibration",
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+    "count": "57"
+   },
+   {
+    "t": "insight_units",
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+    "count": "115"
+   },
+   {
+    "t": "insight_units",
+    "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+    "count": "35"
+   },
+   {
+    "t": "predictions",
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+    "count": "139"
+   },
+   {
+    "t": "predictions",
+    "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+    "count": "56"
+   },
+   {
+    "t": "provenance",
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+    "count": "63"
+   }
+  ]
+ },
+ "tp": {
+  "sql": "select asset_id, state, rows_written, last_built_at, left(coalesce(last_error,''),90) err, built_against_writer_hash from asset_throughput where chart_id='482012f1-710e-4a25-994a-93821f5871aa' and (asset_id like 'mi\\_%' or asset_id='lel_events') order by 1",
+  "rows": [
+   {
+    "asset_id": "mi_abhilekha",
+    "state": "stale",
+    "rows_written": "0",
+    "last_built_at": "2026-08-13 01:16:30.108068+00",
+    "err": "",
+    "built_against_writer_hash": "unknown"
+   },
+   {
+    "asset_id": "mi_adhilepa",
+    "state": "error",
+    "rows_written": "112270",
+    "last_built_at": "2026-08-21 02:36:53.708535+00",
+    "err": "BLOCKED: upstream dependency(ies) mi_gunanaka did not complete in this run; skipped to avo",
+    "built_against_writer_hash": "unknown"
+   },
+   {
+    "asset_id": "mi_bhara",
+    "state": "error",
+    "rows_written": "0",
+    "last_built_at": "2026-08-21 02:28:16.524173+00",
+    "err": "BLOCKED: upstream dependency(ies) timeout:600s did not complete in this run; skipped to av",
+    "built_against_writer_hash": ""
+   },
+   {
+    "asset_id": "mi_bhavisya",
+    "state": "error",
+    "rows_written": "278",
+    "last_built_at": "2026-08-21 02:36:53.672507+00",
+    "err": "BLOCKED: upstream dependency(ies) ph_phaladesa, ph_pramana did not complete in this run; s",
+    "built_against_writer_hash": "unknown"
+   },
+   {
+    "asset_id": "mi_darshana",
+    "state": "error",
+    "rows_written": "115",
+    "last_built_at": "2026-08-21 02:36:53.7534+00",
+    "err": "BLOCKED: upstream dependency(ies) mi_adhilepa, mi_gunanaka, mi_pariksha, mi_pramana, mi_sa",
+    "built_against_writer_hash": "unknown"
+   },
+   {
+    "asset_id": "mi_gunanaka",
+    "state": "error",
+    "rows_written": "9",
+    "last_built_at": "2026-08-21 02:36:53.690124+00",
+    "err": "BLOCKED: upstream dependency(ies) mi_pramana did not complete in this run; skipped to avoi",
+    "built_against_writer_hash": "unknown"
+   },
+   {
+    "asset_id": "mi_jivanaghatana",
+    "state": "lit",
+    "rows_written": "63",
+    "last_built_at": "2026-09-06 10:55:02.562194+00",
+    "err": "",
+    "built_against_writer_hash": "ab15008f71f8a9ece4c94465bf8fd25f36937882782a2e3f5bf9620e6e2b04d1"
+   },
+   {
+    "asset_id": "mi_pariksha",
+    "state": "error",
+    "rows_written": "1664",
+    "last_built_at": "2026-08-21 02:36:53.655163+00",
+    "err": "BLOCKED: upstream dependency(ies) mi_pramana did not complete in this run; skipped to avoi",
+    "built_against_writer_hash": "unknown"
+   },
+   {
+    "asset_id": "mi_pramana",
+    "state": "error",
+    "rows_written": "63",
+    "last_built_at": "2026-08-21 02:36:53.627032+00",
+    "err": "BLOCKED: upstream dependency(ies) mi_bhavisya did not complete in this run; skipped to avo",
+    "built_against_writer_hash": "unknown"
+   },
+   {
+    "asset_id": "mi_sambandha",
+    "state": "error",
+    "rows_written": "24",
+    "last_built_at": "2026-08-21 02:36:53.726749+00",
+    "err": "BLOCKED: upstream dependency(ies) mi_bhavisya, mi_pariksha, mi_pramana did not complete in",
+    "built_against_writer_hash": "unknown"
+   },
+   {
+    "asset_id": "mi_sankalpa",
+    "state": "dormant",
+    "rows_written": "0",
+    "last_built_at": "2026-08-13 01:02:38.387443+00",
+    "err": "",
+    "built_against_writer_hash": "unknown"
+   },
+   {
+    "asset_id": "mi_seva",
+    "state": "stale",
+    "rows_written": "0",
+    "last_built_at": "2026-08-13 01:17:19.31703+00",
+    "err": "",
+    "built_against_writer_hash": "unknown"
+   }
+  ]
+ },
+ "runs": {
+  "sql": "select asset_id, state, count(*) from build_run_assets where asset_id like 'mi\\_%' group by 1,2 order by 1,2",
+  "rows": [
+   {
+    "asset_id": "mi_abhilekha",
+    "state": "aborted",
+    "count": "9"
+   },
+   {
+    "asset_id": "mi_abhilekha",
+    "state": "complete",
+    "count": "34"
+   },
+   {
+    "asset_id": "mi_abhilekha",
+    "state": "error",
+    "count": "26"
+   },
+   {
+    "asset_id": "mi_abhilekha",
+    "state": "queued",
+    "count": "19"
+   },
+   {
+    "asset_id": "mi_adhilepa",
+    "state": "aborted",
+    "count": "10"
+   },
+   {
+    "asset_id": "mi_adhilepa",
+    "state": "complete",
+    "count": "33"
+   },
+   {
+    "asset_id": "mi_adhilepa",
+    "state": "error",
+    "count": "31"
+   },
+   {
+    "asset_id": "mi_adhilepa",
+    "state": "queued",
+    "count": "19"
+   },
+   {
+    "asset_id": "mi_bhara",
+    "state": "aborted",
+    "count": "4"
+   },
+   {
+    "asset_id": "mi_bhara",
+    "state": "complete",
+    "count": "34"
+   },
+   {
+    "asset_id": "mi_bhara",
+    "state": "error",
+    "count": "19"
+   },
+   {
+    "asset_id": "mi_bhara",
+    "state": "queued",
+    "count": "7"
+   },
+   {
+    "asset_id": "mi_bhavisya",
+    "state": "aborted",
+    "count": "9"
+   },
+   {
+    "asset_id": "mi_bhavisya",
+    "state": "complete",
+    "count": "34"
+   },
+   {
+    "asset_id": "mi_bhavisya",
+    "state": "error",
+    "count": "27"
+   },
+   {
+    "asset_id": "mi_bhavisya",
+    "state": "queued",
+    "count": "19"
+   },
+   {
+    "asset_id": "mi_darshana",
+    "state": "aborted",
+    "count": "10"
+   },
+   {
+    "asset_id": "mi_darshana",
+    "state": "complete",
+    "count": "33"
+   },
+   {
+    "asset_id": "mi_darshana",
+    "state": "error",
+    "count": "30"
+   },
+   {
+    "asset_id": "mi_darshana",
+    "state": "queued",
+    "count": "21"
+   },
+   {
+    "asset_id": "mi_gunanaka",
+    "state": "aborted",
+    "count": "9"
+   },
+   {
+    "asset_id": "mi_gunanaka",
+    "state": "complete",
+    "count": "35"
+   },
+   {
+    "asset_id": "mi_gunanaka",
+    "state": "error",
+    "count": "28"
+   },
+   {
+    "asset_id": "mi_gunanaka",
+    "state": "queued",
+    "count": "19"
+   },
+   {
+    "asset_id": "mi_jivanaghatana",
+    "state": "aborted",
+    "count": "4"
+   },
+   {
+    "asset_id": "mi_jivanaghatana",
+    "state": "complete",
+    "count": "35"
+   },
+   {
+    "asset_id": "mi_jivanaghatana",
+    "state": "error",
+    "count": "2"
+   },
+   {
+    "asset_id": "mi_jivanaghatana",
+    "state": "queued",
+    "count": "1"
+   },
+   {
+    "asset_id": "mi_kula",
+    "state": "aborted",
+    "count": "1"
+   },
+   {
+    "asset_id": "mi_kula",
+    "state": "complete",
+    "count": "32"
+   },
+   {
+    "asset_id": "mi_kula",
+    "state": "queued",
+    "count": "1"
+   },
+   {
+    "asset_id": "mi_pariksha",
+    "state": "aborted",
+    "count": "9"
+   },
+   {
+    "asset_id": "mi_pariksha",
+    "state": "complete",
+    "count": "34"
+   },
+   {
+    "asset_id": "mi_pariksha",
+    "state": "error",
+    "count": "29"
+   },
+   {
+    "asset_id": "mi_pariksha",
+    "state": "queued",
+    "count": "19"
+   },
+   {
+    "asset_id": "mi_pramana",
+    "state": "aborted",
+    "count": "9"
+   },
+   {
+    "asset_id": "mi_pramana",
+    "state": "complete",
+    "count": "34"
+   },
+   {
+    "asset_id": "mi_pramana",
+    "state": "error",
+    "count": "27"
+   },
+   {
+    "asset_id": "mi_pramana",
+    "state": "queued",
+    "count": "19"
+   },
+   {
+    "asset_id": "mi_sambandha",
+    "state": "aborted",
+    "count": "9"
+   },
+   {
+    "asset_id": "mi_sambandha",
+    "state": "complete",
+    "count": "34"
+   },
+   {
+    "asset_id": "mi_sambandha",
+    "state": "error",
+    "count": "28"
+   },
+   {
+    "asset_id": "mi_sambandha",
+    "state": "queued",
+    "count": "20"
+   },
+   {
+    "asset_id": "mi_sankalpa",
+    "state": "aborted",
+    "count": "3"
+   },
+   {
+    "asset_id": "mi_sankalpa",
+    "state": "complete",
+    "count": "5"
+   },
+   {
+    "asset_id": "mi_sankalpa",
+    "state": "queued",
+    "count": "2"
+   },
+   {
+    "asset_id": "mi_seva",
+    "state": "aborted",
+    "count": "10"
+   },
+   {
+    "asset_id": "mi_seva",
+    "state": "complete",
+    "count": "33"
+   },
+   {
+    "asset_id": "mi_seva",
+    "state": "error",
+    "count": "28"
+   },
+   {
+    "asset_id": "mi_seva",
+    "state": "queued",
+    "count": "20"
+   },
+   {
+    "asset_id": "mi_vistara",
+    "state": "complete",
+    "count": "35"
+   },
+   {
+    "asset_id": "mi_vistara",
+    "state": "queued",
+    "count": "1"
+   }
+  ]
+ },
+ "lastrun": {
+  "sql": "select distinct on (b.asset_id) b.asset_id, b.state, b.started_at, left(coalesce(b.error,''),130) err from build_run_assets b join build_runs r on r.id=b.run_id where b.asset_id like 'mi\\_%' and r.chart_id='482012f1-710e-4a25-994a-93821f5871aa' and b.state in ('complete','error','aborted') order by b.asset_id, b.started_at desc nulls last",
+  "rows": [
+   {
+    "asset_id": "mi_abhilekha",
+    "state": "complete",
+    "started_at": "2026-08-13 01:16:30.035446+00",
+    "err": ""
+   },
+   {
+    "asset_id": "mi_adhilepa",
+    "state": "complete",
+    "started_at": "2026-08-13 01:16:30.825016+00",
+    "err": ""
+   },
+   {
+    "asset_id": "mi_bhara",
+    "state": "error",
+    "started_at": "2026-08-21 02:18:20.008328+00",
+    "err": "BLOCKED: upstream dependency(ies) timeout:600s did not complete in this run; skipped to avoid building on incomplete data"
+   },
+   {
+    "asset_id": "mi_bhavisya",
+    "state": "complete",
+    "started_at": "2026-08-13 01:16:27.615351+00",
+    "err": ""
+   },
+   {
+    "asset_id": "mi_darshana",
+    "state": "complete",
+    "started_at": "2026-08-13 01:17:18.582672+00",
+    "err": ""
+   },
+   {
+    "asset_id": "mi_gunanaka",
+    "state": "complete",
+    "started_at": "2026-08-13 01:16:30.54318+00",
+    "err": ""
+   },
+   {
+    "asset_id": "mi_jivanaghatana",
+    "state": "complete",
+    "started_at": "2026-09-06 10:55:02.497538+00",
+    "err": ""
+   },
+   {
+    "asset_id": "mi_kula",
+    "state": "complete",
+    "started_at": "2026-09-06 21:30:30.868093+00",
+    "err": ""
+   },
+   {
+    "asset_id": "mi_pariksha",
+    "state": "complete",
+    "started_at": "2026-08-13 01:16:30.54903+00",
+    "err": ""
+   },
+   {
+    "asset_id": "mi_pramana",
+    "state": "complete",
+    "started_at": "2026-08-13 01:16:30.040016+00",
+    "err": ""
+   },
+   {
+    "asset_id": "mi_sambandha",
+    "state": "complete",
+    "started_at": "2026-08-13 01:16:35.085059+00",
+    "err": ""
+   },
+   {
+    "asset_id": "mi_sankalpa",
+    "state": "complete",
+    "started_at": "2026-08-13 01:02:38.055325+00",
+    "err": ""
+   },
+   {
+    "asset_id": "mi_seva",
+    "state": "complete",
+    "started_at": "2026-08-13 01:17:18.592534+00",
+    "err": ""
+   },
+   {
+    "asset_id": "mi_vistara",
+    "state": "complete",
+    "started_at": "2026-09-06 10:31:45.548983+00",
+    "err": ""
+   }
+  ]
+ },
+ "regrow": {
+  "sql": "select asset_id, storage_type, catalog_status, has_substeps, writer_timeout_seconds, data_disposition, natural_key_partition, left(count_sql,160) count_sql, left(coalesce(integrity_check_sql,''),200) integrity, service_health from asset_registry where layer='mimamsa' order by 1",
+  "rows": [
+   {
+    "asset_id": "lel_events",
+    "storage_type": "postgres_table",
+    "catalog_status": "CURRENT",
+    "has_substeps": "f",
+    "writer_timeout_seconds": "600",
+    "data_disposition": "",
+    "natural_key_partition": "",
+    "count_sql": "SELECT count(*) FROM life_events WHERE chart_id = $1",
+    "integrity": ""
+   },
+   {
+    "asset_id": "SELECT NOT EXISTS ("
+   },
+   {
+    "asset_id": "  SELECT 1"
+   },
+   {
+    "asset_id": "  FROM life_events le"
+   },
+   {
+    "asset_id": "  LEFT JOIN charts c ON c.id = le.chart_id"
+   },
+   {
+    "asset_id": "  GROUP BY le.chart_id"
+   },
+   {
+    "asset_id": "  HAVING count(DISTINCT le.event_id) <> count(*)"
+   },
+   {
+    "asset_id": "      OR count(*) FILTER (WHERE",
+    "storage_type": ""
+   },
+   {
+    "asset_id": "mi_abhilekha",
+    "storage_type": "service",
+    "catalog_status": "DRAFT",
+    "has_substeps": "f",
+    "writer_timeout_seconds": "10800",
+    "data_disposition": "",
+    "natural_key_partition": "",
+    "count_sql": "SELECT count(*) FROM mimamsa_journal WHERE chart_id = $1",
+    "integrity": ""
+   },
+   {
+    "asset_id": "SELECT NOT EXISTS ("
+   },
+   {
+    "asset_id": "  SELECT 1 FROM mimamsa_journal j"
+   },
+   {
+    "asset_id": "  GROUP BY j.chart_id"
+   },
+   {
+    "asset_id": "  HAVING count(DISTINCT j.journal_id) <> count(*)"
+   },
+   {
+    "asset_id": "      OR count(*) FILTER (WHERE NOT EXISTS (SELECT 1 FROM charts c WHERE ",
+    "storage_type": ""
+   },
+   {
+    "asset_id": "mi_adhilepa",
+    "storage_type": "postgres_table",
+    "catalog_status": "CURRENT",
+    "has_substeps": "f",
+    "writer_timeout_seconds": "10800",
+    "data_disposition": "",
+    "natural_key_partition": "mimamsa_signal_adjustment, mimamsa_fact_adjustment, mimamsa_anchor_adjustment (chart_id, origin_id, weight_id) each -- MiAdhilepaWriter (@register('mi_adhilepa')) is the confirmed sole live BUILD-TIME writer of all 5 tables it touches (grepped tree-wide for INSERT/UPDATE/DELETE across pipeline/orchestrator/writers/*.py, platform/scripts/*.py, and brahmagyan/, excluding this writer's own file and tests/: mimamsa_signal_adjustment's other hit is mi_seva.py's existence-check-only service-handler list, not a co-writer; mimamsa_load_bearing's other hits are mi_darshana.py's read-only SELECT and dispatch_nirmana_campaign_wave.py's blast-radius NO_FK_REFERRERS registry, neither a writer). The key matches each table's own live PRIMARY KEY exactly. The writer's own idempotent DELETE FROM <table> WHERE chart_id = %s (shared loop across all 5 sibling tables) before the classification/insert passes means exactly the current run's row set exists per chart_id at any point in time, and each origin_id yields at most one row per table (single family match per signal/fact/anchor) so same-run PK collision cannot occur either. Non-determinism check on the 3 covered tables: each is fed by a per-row classify-and-match loop with no top-N cut and no aggregation, so the SET of rows produced is independent of the feeding SELECT's fetch order regardless of ORDER BY presence (mimamsa_fact_adjustment's feed is additionally explicitly ORDER BY fact_id). Live-verified 0 duplicate (chart_id, origin_id, weight_id) groups and 0 NULL keys across 50104+50171 (signal), 61523+61749 (fact), and 139+56 (anchor) live rows spanning both populated charts (canonical 482012f1, 1c826d5a). Surrogate/non-owned column excluded from the digest value columns: created_at (wall-clock write-time artifact, same exclusion class used throughout this campaign). DELIBERATELY NOT COVERED by this partition declaration: mimamsa_convergence_adjustment (fed by an unordered SELECT convergence_id FROM kala_convergence WHERE chart_id = %s LIMIT 500 with no ORDER BY -- live-verified both populated charts, 1c826d5a at 17,957 rows and cb73cd3d at 2,540 rows, exceed the cutoff, so which 500 land is not guaranteed stable across rebuilds) and mimamsa_load_bearing (top_mults = sorted(applied_multiplier>=1.0 items, key=applied_multiplier, reverse=True)[:5] over an unordered SELECT FROM mimamsa_multipliers -- live-verified real tie on BOTH populated charts between fam_yoga and fam_msr_signal at applied_multiplier=1.4, so which family gets role='load_bearing' at rank 0 versus role='supporting' at rank 1 is non-deterministic) -- both flagged on #1770 for a future writer fix, not fabricated over here per SS N.8.",
+    "count_sql": "SELECT"
+   },
+   {
+    "asset_id": "  (SELECT count(*) FROM mimamsa_load_bearing           WHERE chart_id = $1) +"
+   },
+   {
+    "asset_id": "  (SELECT count(*) FROM mimamsa_convergence_adjustment WHERE chart_id = $1)",
+    "storage_type": ""
+   },
+   {
+    "asset_id": "WITH ov AS ("
+   },
+   {
+    "asset_id": "  SELECT chart_id, origin_layer, origin_asset_id, origin_id, weight_id, multiplier,"
+   },
+   {
+    "asset_id": "         raw_multiplier, applied_bound, evidence_n, leakage_status,"
+   },
+   {
+    "asset_id": "         derived_from_pramana_ids,",
+    "storage_type": ""
+   },
+   {
+    "asset_id": "mi_bhara",
+    "storage_type": "postgres_table",
+    "catalog_status": "CURRENT",
+    "has_substeps": "f",
+    "writer_timeout_seconds": "10800",
+    "data_disposition": "",
+    "natural_key_partition": "",
+    "count_sql": "SELECT COUNT(*) FROM kala_field_skill WHERE chart_id = $1",
+    "integrity": ""
+   },
+   {
+    "asset_id": "SELECT"
+   },
+   {
+    "asset_id": "  NOT EXISTS ("
+   },
+   {
+    "asset_id": "    SELECT 1 FROM kala_field_skill s"
+   },
+   {
+    "asset_id": "    GROUP BY s.chart_id"
+   },
+   {
+    "asset_id": "    HAVING count(DISTINCT (s.event_class, s.weights_version, s.field_snapshot_id)) <> count(*)"
+   },
+   {
+    "asset_id": "        OR count(*) F",
+    "storage_type": ""
+   },
+   {
+    "asset_id": "mi_bhavisya",
+    "storage_type": "postgres_table",
+    "catalog_status": "CURRENT",
+    "has_substeps": "f",
+    "writer_timeout_seconds": "10800",
+    "data_disposition": "",
+    "natural_key_partition": "mimamsa_manifestation_sets (chart_id, prediction_id, channel_id) -- MiBhavisyaWriter (@register('mi_bhavisya')) is the confirmed sole live BUILD-TIME writer of this table (grepped tree-wide for INSERT/UPDATE/DELETE across pipeline/orchestrator/writers/*.py and brahmagyan/, excluding this writer's own file and tests/: mi_sambandha.py and mi_pramana.py both only read it via SELECT, neither is a writer). The key matches the table's own live PRIMARY KEY exactly. The writer's own idempotent DELETE FROM mimamsa_manifestation_sets WHERE chart_id = %s before the insert pass means exactly the current run's row set exists per chart_id at any point in time, fed by an explicitly ORDER BY anchor_id SELECT with one row emitted per anchor (no top-N cut, no aggregation) so the SET of rows produced is independent of fetch order and same-run PK collision cannot occur either. Live-verified 0 duplicate (chart_id, prediction_id, channel_id) groups and 0 NULL keys across 139+56 live rows spanning both populated charts (canonical 482012f1, 1c826d5a). Surrogate/non-owned column excluded from the digest value columns: frozen_at (wall-clock write-time artifact -- this writer stamps every row in a run with one shared emitted_at/frozen_at value, so it differs every rebuild regardless of underlying chart-fact content; same exclusion class as created_at used throughout this campaign). DELIBERATELY NOT COVERED by this partition declaration: mimamsa_predictions (its driving_signals field is populated, per prediction, from either a per-domain or chart-wide top-5-by-computed_salience pick over an ORDER BY computed_salience DESC-but-untied bodha_msr_signals query -- live-verified REAL ties at the top-5 cutoff in 9 of 10 domains checked on the canonical chart itself, including one domain, relationship, where the entire 14-row candidate set shares one tied salience value spanning rank 1-14 -- which signal_ids land in the frozen top-5 is therefore not guaranteed stable across rebuilds; flagged on #1770 for a future writer fix -- e.g. a secondary ORDER BY tiebreak key such as signal_id -- not fabricated over here per SS N.8. Separately, and not itself a blocker for this table since it never actually executes: brahmagyan/mimamsa/prediction_ledger.py's log_prediction API route (live-mounted at POST /api/brahma/mimamsa/log_prediction) targets column names that do not exist on the live mimamsa_predictions schema (prediction_text/confidence/falsifier/source_citation/predicted_at vs the real outcome_claim/confidence_band/falsifier_jsonb/source_pramana_id/emitted_at) -- any call would raise psycopg.errors.UndefinedColumn, the same disconnected-legacy-schema pattern brahmagyan/mimamsa/outcome.py's own inline comment already documents for its sibling calibration path; flagged on #1770 as a separate schema-drift/broken-endpoint defect.",
+    "count_sql": "SELECT (SELECT count(*) FROM mimamsa_predictions WHERE chart_id = $1) + (SELECT count(*) FROM mimamsa_manifestation_sets WHERE chart_id = $1) AS count",
+    "integrity": ""
+   },
+   {
+    "asset_id": "SELECT"
+   },
+   {
+    "asset_id": "  NOT EXISTS ("
+   },
+   {
+    "asset_id": "    SELECT 1"
+   },
+   {
+    "asset_id": "    FROM mimamsa_predictions p"
+   },
+   {
+    "asset_id": "    FULL JOIN mimamsa_manifestation_sets m"
+   },
+   {
+    "asset_id": "      ON m.chart_id = p.chart_id AND m.prediction_id = p.prediction_id"
+   },
+   {
+    "asset_id": "    LEFT JOIN chart",
+    "storage_type": ""
+   },
+   {
+    "asset_id": "mi_darshana",
+    "storage_type": "pgvector",
+    "catalog_status": "CURRENT",
+    "has_substeps": "t",
+    "writer_timeout_seconds": "10800",
+    "data_disposition": "",
+    "natural_key_partition": "mimamsa_insight_units (chart_id, insight_id) -- sole writer; (chart_id, insight_id) is the table's own PRIMARY KEY, and insight_id is deterministically constructed per insight_type from stable upstream identifiers (stratum_key / discovery_id / conclusion_id / event_class_id / channel_id+domain), never a bare uuid4 -- writer does an unconditional DELETE FROM mimamsa_insight_units WHERE chart_id = %s immediately before the INSERT batch (delete-then-insert-per-chart, CLAUDE.md SS N.3), so (chart_id, insight_id) is a sufficient live natural key; updated_at (DEFAULT now()) and last_calibrated_at (a second wall-clock write-time stamp on 2 of 5 insight_type branches) excluded from the digest value columns as non-deterministic across rebuilds",
+    "count_sql": "SELECT (SELECT count(*) FROM mimamsa_insight_units WHERE chart_id = $1) + (SELECT count(*) FROM mimamsa_insight_embeddings WHERE chart_id = $1) AS count",
+    "integrity": ""
+   },
+   {
+    "asset_id": "SELECT"
+   },
+   {
+    "asset_id": "  NOT EXISTS ("
+   },
+   {
+    "asset_id": "    SELECT 1 FROM mimamsa_insight_units u"
+   },
+   {
+    "asset_id": "    GROUP BY u.chart_id"
+   },
+   {
+    "asset_id": "    HAVING count(DISTINCT u.insight_id) <> count(*)"
+   },
+   {
+    "asset_id": "        OR count(*) FILTER (WHERE NOT EXISTS (SELECT 1 FROM",
+    "storage_type": ""
+   },
+   {
+    "asset_id": "mi_gunanaka",
+    "storage_type": "postgres_table",
+    "catalog_status": "CURRENT",
+    "has_substeps": "f",
+    "writer_timeout_seconds": "10800",
+    "data_disposition": "",
+    "natural_key_partition": "",
+    "count_sql": "SELECT (SELECT COUNT(*) FROM mimamsa_multipliers WHERE chart_id = $1) + (SELECT COUNT(*) FROM mimamsa_calibration_snapshot WHERE chart_id = $1) AS count",
+    "integrity": ""
+   },
+   {
+    "asset_id": "SELECT"
+   },
+   {
+    "asset_id": "  NOT EXISTS ("
+   },
+   {
+    "asset_id": "    SELECT 1"
+   },
+   {
+    "asset_id": "    FROM mimamsa_multipliers m"
+   },
+   {
+    "asset_id": "    LEFT JOIN mimamsa_signal_families f"
+   },
+   {
+    "asset_id": "      ON f.family_id = m.target_ref AND f.is_active AND f.default_state <> 'CONTROL_ONLY'"
+   },
+   {
+    "asset_id": "   ",
+    "storage_type": ""
+   },
+   {
+    "asset_id": "mi_jivanaghatana",
+    "storage_type": "postgres_table",
+    "catalog_status": "CURRENT",
+    "has_substeps": "f",
+    "writer_timeout_seconds": "10800",
+    "data_disposition": "",
+    "natural_key_partition": "",
+    "count_sql": "SELECT count(*) FROM mimamsa_event_provenance WHERE chart_id = $1",
+    "integrity": ""
+   },
+   {
+    "asset_id": "SELECT NOT EXISTS ("
+   },
+   {
+    "asset_id": "  SELECT 1"
+   },
+   {
+    "asset_id": "  FROM life_events le"
+   },
+   {
+    "asset_id": "  FULL JOIN mimamsa_event_provenance ep"
+   },
+   {
+    "asset_id": "    ON ep.chart_id = le.chart_id AND ep.event_id = le.event_id"
+   },
+   {
+    "asset_id": "  GROUP BY coalesce(le.chart_id, ep.chart_i",
+    "storage_type": ""
+   },
+   {
+    "asset_id": "mi_kula",
+    "storage_type": "postgres_table",
+    "catalog_status": "CURRENT",
+    "has_substeps": "f",
+    "writer_timeout_seconds": "10800",
+    "data_disposition": "",
+    "natural_key_partition": "",
+    "count_sql": "SELECT"
+   },
+   {
+    "asset_id": "  (SELECT count(*) FROM mimamsa_signal_families) +"
+   },
+   {
+    "asset_id": "  (SELECT count(*) FROM mimamsa_negative_controls) AS count",
+    "storage_type": ""
+   },
+   {
+    "asset_id": "WITH prior_map(family_id, stc, sub) AS (VALUES"
+   },
+   {
+    "asset_id": "    ('fam_graha_natal','position','*'),"
+   },
+   {
+    "asset_id": "    ('fam_dasha_period','dasha_period','*'),"
+   },
+   {
+    "asset_id": "    ('fam_yoga','yoga','*'),"
+   },
+   {
+    "asset_id": "    ('fam_divisional','varga_pattern',",
+    "storage_type": ""
+   },
+   {
+    "asset_id": "mi_pariksha",
+    "storage_type": "postgres_table",
+    "catalog_status": "CURRENT",
+    "has_substeps": "t",
+    "writer_timeout_seconds": "10800",
+    "data_disposition": "",
+    "natural_key_partition": "mimamsa_qa_eval (chart_id, check_id) -- MiParikshaWriter (@register('mi_pariksha')) is the confirmed sole live BUILD-TIME writer of this table (grepped tree-wide for INSERT/UPDATE/DELETE across pipeline/orchestrator/writers/*.py, brahmagyan/, services/, and all TS consumers, excluding this writer's own file and tests/: brahmagyan/mimamsa/answer_quality.py contains a live INSERT/UPDATE against mimamsa_qa_eval but targets a disconnected legacy schema shape that does not match the live table -- confirmed dead code via \\d, same pattern as mi_bhavisya's log_prediction finding). Key matches the table's own live PRIMARY KEY exactly. Written by 4 of this writer's 7 substeps (control_windows, ablation, neg_control, tail_only), each verified deterministic by full source read: fixed per-event control-window offsets; one row per active family_id from order-independent aggregates (marginal_skill honestly stored as 0.0 under status='structural_proxy', never a fabricated 'pass'); one row per catalog negative-control (status='not_implemented', an honest null per JL-019, not a tautological pass); and a tail-selection substep whose live tie-prone ORDER BY affects only WHICH signals fall in the bottom-30% set, never the persisted values (only the deterministic COUNT of that set is ever written). Live-verified 0 duplicate-key groups and 0 NULL keys across all populated charts. This writer's other 2 tables (mimamsa_attribution, mimamsa_discoveries) are DELIBERATELY NOT covered here -- mimamsa_attribution propagates a live-verified non-determinism from mimamsa_predictions.driving_signals (the same column that excluded mi_bhavisya, migration 990/991), and mimamsa_discoveries inherits that same defect transitively via its emergent_law substep plus an independent top-3-anchor tie risk in its retrodiction substep -- both flagged on #1770, not fixed this cycle.",
+    "count_sql": "SELECT (SELECT count(*) FROM mimamsa_qa_eval WHERE chart_id = $1) + (SELECT count(*) FROM mimamsa_attribution WHERE chart_id = $1) + (SELECT count(*) FROM mimam",
+    "integrity": ""
+   },
+   {
+    "asset_id": "SELECT"
+   },
+   {
+    "asset_id": "  NOT EXISTS ("
+   },
+   {
+    "asset_id": "    SELECT 1 FROM mimamsa_qa_eval q LEFT JOIN charts ch ON ch.id = q.chart_id"
+   },
+   {
+    "asset_id": "    GROUP BY q.chart_id"
+   },
+   {
+    "asset_id": "    HAVING count(DISTINCT q.check_id) <> count(*)"
+   },
+   {
+    "asset_id": "        OR count(*) FILTE",
+    "storage_type": ""
+   },
+   {
+    "asset_id": "mi_pramana",
+    "storage_type": "postgres_table",
+    "catalog_status": "CURRENT",
+    "has_substeps": "t",
+    "writer_timeout_seconds": "10800",
+    "data_disposition": "",
+    "natural_key_partition": "mimamsa_calibration (chart_id, match_id) + mimamsa_reliability (chart_id, stratum_key, predicted_prob_bin) -- MiPramanaWriter (@register('mi_pramana')) is the confirmed sole live BUILD-TIME writer of both tables (grepped tree-wide for INSERT/UPDATE/DELETE across pipeline/orchestrator/writers/*.py, brahmagyan/, services/, and all TS consumers, excluding this writer's own file and tests/: 0 hits against either table outside mi_pramana.py; mi_gunanaka.py writes a DIFFERENT table, mimamsa_calibration_snapshot). Both keys match the tables' own live PRIMARY KEYs exactly. mimamsa_calibration's row set is the full cross-product of (prediction, event) pairs whose event_date falls within the prediction's observation_window, fed by two unbounded chart-scoped SELECTs with no top-N cut or dedup -- content-set independent of fetch order, keyed by match_id = prediction_id concatenated with event_id, a deterministic composite of the two source PKs. Every column value is a pure function of the matched row's own data; the one stub scorer (_score_manifestation) returns a hardcoded constant regardless of its inputs, and the one currently-empty lookup (_load_base_rates, honest-null per A-F-24/#1738) returns {} deterministically -- neither is a source of drift. mimamsa_reliability aggregates the FULL mimamsa_calibration row set per chart into fixed probability-decile bins (Decimal-based indexing, confirmed the A-F-34 float-floor bug this same file previously fixed is absent from the current source) via order-independent sum/count over full bin membership -- no top-N cut, no first-row pick. Both tables' DELETE-then-insert-per-chart idempotency (writer's own `DELETE FROM ... WHERE chart_id = %s` before each insert pass) means exactly the current run's row set exists per chart_id at any point in time. Live-verified 0 duplicate-key groups and 0 NULL keys on both tables across all populated charts (canonical 482012f1: 57 calibration rows, 6 reliability rows; 1c826d5a: 0 rows in either table, not yet built for this writer). Surrogate/non-owned columns excluded from the digest value columns: mimamsa_calibration.scored_at, mimamsa_reliability.computed_at -- both plain wall-clock DEFAULT now() write-time timestamps, same exclusion class as created_at used throughout this campaign. Unlike the prior 3 specs this campaign (bo_cdlm_summary, mi_adhilepa, mi_bhavisya, all partial under the #2502 subset-declaration ruling), this partition declaration covers the writer's FULL table scope -- no exclusion was needed, no live non-determinism defect was found in either table.",
+    "count_sql": "SELECT (SELECT count(*) FROM mimamsa_calibration WHERE chart_id = $1) + (SELECT count(*) FROM mimamsa_reliability WHERE chart_id = $1) AS count",
+    "integrity": ""
+   },
+   {
+    "asset_id": "SELECT"
+   },
+   {
+    "asset_id": "  NOT EXISTS ("
+   },
+   {
+    "asset_id": "    SELECT 1 FROM mimamsa_calibration c"
+   },
+   {
+    "asset_id": "    GROUP BY c.chart_id"
+   },
+   {
+    "asset_id": "    HAVING count(DISTINCT c.match_id) <> count(*)"
+   },
+   {
+    "asset_id": "        OR count(*) FILTER (WHERE c.match_id <> c.prediction_id",
+    "storage_type": ""
+   },
+   {
+    "asset_id": "mi_sambandha",
+    "storage_type": "postgres_table",
+    "catalog_status": "CURRENT",
+    "has_substeps": "f",
+    "writer_timeout_seconds": "10800",
+    "data_disposition": "",
+    "natural_key_partition": "mimamsa_manifestation_grammar (chart_id, origin_kind, origin_ref, channel_id) -- sole writer; (chart_id, origin_kind, origin_ref, channel_id) is the table's own PRIMARY KEY. domain is excluded from the key -- the writer always sets origin_ref equal to domain (both the empirical and prior-seed row-construction loops build the same key tuple), so domain is a value column redundant with origin_ref, not an independent key component. None of the three key columns beyond chart_id is a random uuid4 -- origin_kind is a fixed literal (\"prediction_set\") and origin_ref/channel_id are deterministic domain/channel names -- writer does an unconditional DELETE FROM mimamsa_manifestation_grammar WHERE chart_id = %s immediately before the INSERT batch (delete-then-insert-per-chart, CLAUDE.md SS N.3), so the PK is a sufficient live natural key; updated_at (DEFAULT now()) excluded from the digest value columns as non-deterministic across rebuilds",
+    "count_sql": "SELECT count(*) FROM mimamsa_manifestation_grammar WHERE chart_id = $1",
+    "integrity": ""
+   },
+   {
+    "asset_id": "SELECT NOT EXISTS ("
+   },
+   {
+    "asset_id": "  SELECT 1 FROM mimamsa_manifestation_grammar g"
+   },
+   {
+    "asset_id": "  GROUP BY g.chart_id"
+   },
+   {
+    "asset_id": "  HAVING count(DISTINCT (g.origin_kind, g.origin_ref, g.channel_id)) <> count(*)"
+   },
+   {
+    "asset_id": "      OR count(*) FILTER (WH",
+    "storage_type": ""
+   },
+   {
+    "asset_id": "mi_sankalpa",
+    "storage_type": "postgres_table",
+    "catalog_status": "CURRENT",
+    "has_substeps": "f",
+    "writer_timeout_seconds": "300",
+    "data_disposition": "",
+    "natural_key_partition": "",
+    "count_sql": "SELECT count(*) FROM mimamsa_intervention_ledger WHERE chart_id = $1",
+    "integrity": ""
+   },
+   {
+    "asset_id": "SELECT NOT EXISTS ("
+   },
+   {
+    "asset_id": "  SELECT 1 FROM mimamsa_intervention_ledger l"
+   },
+   {
+    "asset_id": "  GROUP BY l.chart_id"
+   },
+   {
+    "asset_id": "  HAVING count(DISTINCT l.intervention_id) <> count(*)"
+   },
+   {
+    "asset_id": "      OR count(*) FILTER (WHERE NOT EXISTS (SELECT 1 FRO",
+    "storage_type": ""
+   },
+   {
+    "asset_id": "mi_seva",
+    "storage_type": "service",
+    "catalog_status": "DRAFT",
+    "has_substeps": "f",
+    "writer_timeout_seconds": "10800",
+    "data_disposition": "",
+    "natural_key_partition": "",
+    "count_sql": "SELECT count(*) FROM mimamsa_preferences",
+    "integrity": ""
+   },
+   {
+    "asset_id": "SELECT NOT EXISTS ("
+   },
+   {
+    "asset_id": "  SELECT 1 FROM mimamsa_preferences p"
+   },
+   {
+    "asset_id": "   WHERE btrim(coalesce(p.user_id, '')) = ''"
+   },
+   {
+    "asset_id": "      OR btrim(coalesce(p.channel_id, '')) = ''"
+   },
+   {
+    "asset_id": "      OR btrim(coalesce(p.saved_state, '')) = ''",
+    "storage_type": ""
+   },
+   {
+    "asset_id": "mi_vistara",
+    "storage_type": "postgres_table",
+    "catalog_status": "CURRENT",
+    "has_substeps": "f",
+    "writer_timeout_seconds": "10800",
+    "data_disposition": "",
+    "natural_key_partition": "",
+    "count_sql": "SELECT count(*) FROM mimamsa_export_log",
+    "integrity": ""
+   },
+   {
+    "asset_id": "SELECT NOT EXISTS ("
+   },
+   {
+    "asset_id": "  SELECT 1 FROM mimamsa_export_log e"
+   },
+   {
+    "asset_id": "   WHERE e.calibration_mode NOT IN ('empirical','prior_only','structural_prior_only')"
+   },
+   {
+    "asset_id": "      OR e.export_format NOT IN ('pdf','json','mcp_bundl",
+    "storage_type": ""
+   }
+  ]
+ },
+ "blast": {
+  "sql": "select u as upstream, array_agg(asset_id order by asset_id) downstream from (select asset_id, unnest(depends_on) u from asset_registry where is_active) x where u like 'mi\\_%' or u='lel_events' group by 1 order by 1",
+  "rows": [
+   {
+    "upstream": "mi_adhilepa",
+    "downstream": "{mi_darshana,mi_seva}"
+   },
+   {
+    "upstream": "mi_bhavisya",
+    "downstream": "{mi_abhilekha,mi_pramana,mi_sambandha}"
+   },
+   {
+    "upstream": "mi_gunanaka",
+    "downstream": "{mi_adhilepa,mi_darshana}"
+   },
+   {
+    "upstream": "mi_jivanaghatana",
+    "downstream": "{mi_bhavisya,mi_darshana,mi_pariksha,mi_pramana}"
+   },
+   {
+    "upstream": "mi_kula",
+    "downstream": "{mi_bhavisya,mi_darshana,mi_gunanaka,mi_pariksha}"
+   },
+   {
+    "upstream": "mi_pariksha",
+    "downstream": "{mi_darshana,mi_sambandha}"
+   },
+   {
+    "upstream": "mi_pramana",
+    "downstream": "{mi_darshana,mi_gunanaka,mi_pariksha,mi_sambandha}"
+   },
+   {
+    "upstream": "mi_sambandha",
+    "downstream": "{mi_darshana}"
+   }
+  ]
+ }
+}

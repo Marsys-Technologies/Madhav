@@ -1,0 +1,286 @@
+{
+ "asset_id": "mi_pariksha",
+ "collected_utc": "2026-10-03T12:30:29.054333Z",
+ "chart": "482012f1-710e-4a25-994a-93821f5871aa",
+ "registry": {
+  "rung": "R5",
+  "layer": "mimamsa",
+  "scope": "per_chart",
+  "domain": "chart",
+  "asset_id": "mi_pariksha",
+  "size_sql": "SELECT pg_total_relation_size('mimamsa_qa_eval')",
+  "count_sql": "SELECT (SELECT count(*) FROM mimamsa_qa_eval WHERE chart_id = $1) + (SELECT count(*) FROM mimamsa_attribution WHERE chart_id = $1) + (SELECT count(*) FROM mimamsa_discoveries WHERE chart_id = $1) AS count",
+  "dead_flag": null,
+  "is_active": true,
+  "asset_kind": "data",
+  "asset_type": "data",
+  "created_at": "2026-06-05T21:58:21.523916+00:00",
+  "depends_on": [
+   "mi_pramana",
+   "mi_kula",
+   "bg_formula_constants",
+   "bo_laksana",
+   "mi_jivanaghatana"
+  ],
+  "has_writer": true,
+  "layer_name": "M\u012bm\u0101\u1e43s\u0101",
+  "sort_order": 7,
+  "layer_index": "L5",
+  "clear_tables": null,
+  "english_name": "QA evaluation",
+  "has_substeps": true,
+  "health_probe": null,
+  "storage_type": "postgres_table",
+  "target_floor": 0,
+  "target_table": "mimamsa_qa_eval",
+  "provides_apis": null,
+  "sanskrit_name": "Par\u012bk\u1e63\u0101",
+  "superseded_by": null,
+  "catalog_status": "CURRENT",
+  "service_health": null,
+  "last_invoked_at": null,
+  "selftest_detail": null,
+  "data_disposition": null,
+  "last_selftest_at": null,
+  "estimated_seconds": 4,
+  "volume_explanation": "Accumulates as eval runs are executed \u2014 not a deterministic target",
+  "english_description": "Answer quality evaluation runs \u2014 automated + human QA over synthesis outputs",
+  "integrity_check_sql": "\nSELECT\n  NOT EXISTS (\n    SELECT 1 FROM mimamsa_qa_eval q LEFT JOIN charts ch ON ch.id = q.chart_id\n    GROUP BY q.chart_id\n    HAVING count(DISTINCT q.check_id) <> count(*)\n        OR count(*) FILTER (WHERE ch.id IS NULL) > 0\n        OR count(*) FILTER (WHERE q.check_type NOT IN\n              ('ablation','control_window','degenerate_distribution','negative_control','tail_only')) > 0\n        OR count(*) FILTER (WHERE q.status NOT IN\n              ('pass','control_baseline','structural_proxy','not_implemented','FAIL_event_too_close')) > 0\n        OR count(*) FILTER (WHERE (q.status = 'not_implemented') <> (q.result_score IS NULL)) > 0\n        OR count(*) FILTER (WHERE q.detail IS NULL OR q.checked_at IS NULL\n                              OR btrim(coalesce(q.check_id, '')) = '' OR btrim(coalesce(q.target, '')) = '') > 0\n  )\n  AND NOT EXISTS (\n    SELECT 1 FROM mimamsa_attribution a\n    GROUP BY a.chart_id\n    HAVING count(DISTINCT (a.match_id, a.signal_id, a.dimension)) <> count(*)\n        OR count(*) <> 5 * count(DISTINCT (a.match_id, a.signal_id))\n        OR count(*) FILTER (WHERE a.dimension NOT IN\n              ('timing','magnitude','domain','falsifier','manifestation')) > 0\n        OR count(*) FILTER (WHERE NOT EXISTS (SELECT 1 FROM mimamsa_calibration c\n                                               WHERE c.chart_id = a.chart_id AND c.match_id = a.match_id)) > 0\n        OR count(*) FILTER (WHERE NOT EXISTS (SELECT 1 FROM mimamsa_signal_families f\n                                               WHERE f.family_id = a.family_id)) > 0\n        OR count(*) FILTER (WHERE a.credit_blame NOT BETWEEN -1 AND 1\n                              OR btrim(coalesce(a.signal_id, '')) = ''\n                              OR btrim(coalesce(a.attribution_formula_ver, '')) = '') > 0\n  )\n  AND NOT EXISTS (\n    SELECT 1 FROM mimamsa_calibration c\n    GROUP BY c.chart_id\n    HAVING count(*) FILTER (WHERE NOT EXISTS (SELECT 1 FROM mimamsa_attribution a\n                                               WHERE a.chart_id = c.chart_id AND a.match_id = c.match_id)) > 0\n  )\n  AND NOT EXISTS (\n    SELECT 1 FROM mimamsa_discoveries d LEFT JOIN charts ch ON ch.id = d.chart_id\n    GROUP BY d.chart_id\n    HAVING count(DISTINCT d.discovery_id) <> count(*)\n        OR count(*) FILTER (WHERE ch.id IS NULL) > 0\n        OR count(*) FILTER (WHERE d.discovery_class NOT IN ('retrodiction','emergent_law')) > 0\n        OR count(*) FILTER (WHERE d.citation_required AND d.citation_ref IS NULL) > 0\n        OR count(*) FILTER (WHERE d.strength IS NOT NULL AND d.strength NOT BETWEEN 0 AND 1) > 0\n        OR count(*) FILTER (WHERE d.confidence_band IS NOT NULL\n                              AND (isempty(d.confidence_band) OR lower(d.confidence_band) < 0\n                                   OR upper(d.confidence_band) > 1)) > 0\n        OR count(*) FILTER (WHERE d.n_support < 0 OR d.evidence_refs IS NULL\n                              OR btrim(coalesce(d.statement, '')) = ''\n                              OR btrim(coalesce(d.activation_status, '')) = ''\n                              OR btrim(coalesce(d.discovery_formula_ver, '')) = '') > 0\n  )\n",
+  "natural_key_partition": "mimamsa_qa_eval (chart_id, check_id) -- MiParikshaWriter (@register('mi_pariksha')) is the confirmed sole live BUILD-TIME writer of this table (grepped tree-wide for INSERT/UPDATE/DELETE across pipeline/orchestrator/writers/*.py, brahmagyan/, services/, and all TS consumers, excluding this writer's own file and tests/: brahmagyan/mimamsa/answer_quality.py contains a live INSERT/UPDATE against mimamsa_qa_eval but targets a disconnected legacy schema shape that does not match the live table -- confirmed dead code via \\d, same pattern as mi_bhavisya's log_prediction finding). Key matches the table's own live PRIMARY KEY exactly. Written by 4 of this writer's 7 substeps (control_windows, ablation, neg_control, tail_only), each verified deterministic by full source read: fixed per-event control-window offsets; one row per active family_id from order-independent aggregates (marginal_skill honestly stored as 0.0 under status='structural_proxy', never a fabricated 'pass'); one row per catalog negative-control (status='not_implemented', an honest null per JL-019, not a tautological pass); and a tail-selection substep whose live tie-prone ORDER BY affects only WHICH signals fall in the bottom-30% set, never the persisted values (only the deterministic COUNT of that set is ever written). Live-verified 0 duplicate-key groups and 0 NULL keys across all populated charts. This writer's other 2 tables (mimamsa_attribution, mimamsa_discoveries) are DELIBERATELY NOT covered here -- mimamsa_attribution propagates a live-verified non-determinism from mimamsa_predictions.driving_signals (the same column that excluded mi_bhavisya, migration 990/991), and mimamsa_discoveries inherits that same defect transitively via its emergent_law substep plus an independent top-3-anchor tie risk in its retrodiction substep -- both flagged on #1770, not fixed this cycle.",
+  "rebuild_on_probe_fail": false,
+  "expected_volume_inputs": {
+   "partition": "chart_id",
+   "derivation": "attribution tiles every (match, signal) pair across exactly the five calibration score dimensions",
+   "dimensions": [
+    "timing",
+    "magnitude",
+    "domain",
+    "falsifier",
+    "manifestation"
+   ],
+   "chart_scoped": true,
+   "observed_2026_09_05": {
+    "derived": 1425,
+    "qa_eval": 174,
+    "discoveries": 71,
+    "attribution_rows": 1425
+   }
+  },
+  "writer_timeout_seconds": 10800,
+  "expected_volume_formula": "5 * COUNT(DISTINCT (match_id, signal_id)) for mimamsa_attribution; mimamsa_qa_eval is check-driven, not volume-derived"
+ },
+ "throughput": {
+  "state": "error",
+  "history": [],
+  "asset_id": "mi_pariksha",
+  "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+  "last_error": "BLOCKED: upstream dependency(ies) mi_pramana did not complete in this run; skipped to avoid building on incomplete data",
+  "rows_written": 1664,
+  "expected_rows": null,
+  "last_built_at": "2026-08-21T02:36:53.655163+00:00",
+  "rows_per_second": null,
+  "duration_seconds": null,
+  "last_measured_at": null,
+  "measurement_count": 0,
+  "last_measured_build_id": null,
+  "built_against_writer_hash": "unknown",
+  "built_against_upstream_hash": "eadf4612ecef6882"
+ },
+ "runs_summary": [
+  {
+   "n": 9,
+   "last": "2026-07-13T21:13:41.719555+00:00",
+   "state": "aborted",
+   "disposition": null
+  },
+  {
+   "n": 34,
+   "last": "2026-08-13T01:16:34.592741+00:00",
+   "state": "complete",
+   "disposition": null
+  },
+  {
+   "n": 28,
+   "last": "2026-08-21T02:36:53.655163+00:00",
+   "state": "error",
+   "disposition": "blocked_dependency"
+  },
+  {
+   "n": 1,
+   "last": "2026-08-07T21:00:14.90372+00:00",
+   "state": "error",
+   "disposition": null
+  },
+  {
+   "n": 19,
+   "last": null,
+   "state": "queued",
+   "disposition": null
+  }
+ ],
+ "last_runs": [
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "cbd6ea44-3c09-4ce5-9b21-d22fb0eeccf6",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-08-13T01:16:34.592741+00:00",
+   "started_at": "2026-08-13T01:16:30.54903+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "51eaa05c-7604-42cc-a3db-e7fa6d9c3f7c",
+   "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+   "ended_at": "2026-08-12T17:12:06.095182+00:00",
+   "started_at": "2026-08-12T17:11:58.580102+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "global",
+   "state": "complete",
+   "run_id": "9fc3e49d-8c24-4be7-80f0-29c8cff726e8",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-08-07T23:49:08.755621+00:00",
+   "started_at": "2026-08-07T23:48:35.845216+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "d33b44ce-5e42-4e90-9e54-6f7445652931",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-08-07T19:01:10.381378+00:00",
+   "started_at": "2026-08-07T19:00:52.676116+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "5940f325-63b5-48ce-b9de-3472a5746af4",
+   "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+   "ended_at": "2026-07-28T10:59:23.772224+00:00",
+   "started_at": "2026-07-28T10:59:14.421609+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "08b895f3-b3dc-4d75-b672-6bca077e28a0",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-07-28T10:19:46.084654+00:00",
+   "started_at": "2026-07-28T10:19:35.177975+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "0faf6c66-8dad-4bcf-8478-fd92f3171b66",
+   "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+   "ended_at": "2026-07-28T05:02:19.705009+00:00",
+   "started_at": "2026-07-28T05:02:12.399474+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "scope": "asset_set",
+   "state": "complete",
+   "run_id": "ed26e2d3-6dfa-43a4-936e-a815f7fc5309",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "ended_at": "2026-07-28T03:31:33.141761+00:00",
+   "started_at": "2026-07-28T03:31:15.896667+00:00",
+   "disposition": null,
+   "output_changed": null
+  }
+ ],
+ "last_runs_canonical": [
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "cbd6ea44-3c09-4ce5-9b21-d22fb0eeccf6",
+   "ended_at": "2026-08-13T01:16:34.592741+00:00",
+   "started_at": "2026-08-13T01:16:30.54903+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "9fc3e49d-8c24-4be7-80f0-29c8cff726e8",
+   "ended_at": "2026-08-07T23:49:08.755621+00:00",
+   "started_at": "2026-08-07T23:48:35.845216+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "d33b44ce-5e42-4e90-9e54-6f7445652931",
+   "ended_at": "2026-08-07T19:01:10.381378+00:00",
+   "started_at": "2026-08-07T19:00:52.676116+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "08b895f3-b3dc-4d75-b672-6bca077e28a0",
+   "ended_at": "2026-07-28T10:19:46.084654+00:00",
+   "started_at": "2026-07-28T10:19:35.177975+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "ed26e2d3-6dfa-43a4-936e-a815f7fc5309",
+   "ended_at": "2026-07-28T03:31:33.141761+00:00",
+   "started_at": "2026-07-28T03:31:15.896667+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "7b364f83-07ce-4bd0-9024-92f01fc8ec59",
+   "ended_at": "2026-07-27T06:15:05.635771+00:00",
+   "started_at": "2026-07-27T06:15:03.786052+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "42720d15-f943-42af-8b76-e4f97f3bfd3f",
+   "ended_at": "2026-07-24T11:12:28.193014+00:00",
+   "started_at": "2026-07-24T11:12:21.953851+00:00",
+   "disposition": null,
+   "output_changed": null
+  },
+  {
+   "error": null,
+   "state": "complete",
+   "run_id": "17d69e59-50f2-4c47-ab81-602516b9211d",
+   "ended_at": "2026-07-18T14:18:33.323139+00:00",
+   "started_at": "2026-07-18T14:18:31.358225+00:00",
+   "disposition": null,
+   "output_changed": null
+  }
+ ],
+ "live_count": "count\n1664\n(1 row)"
+}
