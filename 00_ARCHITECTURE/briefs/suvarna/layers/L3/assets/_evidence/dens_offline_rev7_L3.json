@@ -1,0 +1,86 @@
+{
+ "ka_avadhi": [
+  "FAIL",
+  "STRUCTURAL: 2 module(s) reach it by code: L3_kala/query_dasha_dossier.ts, platform-mcp/src/tools/retrieval/kala_temporal.ts; 2 served select(s) of its table; no referencing capability that serves it declares density_contract"
+ ],
+ "ka_bhavishya_lekha": [
+  "FAIL",
+  "STRUCTURAL: 5 module(s) reach it by code: L3_kala/query_projections.ts, L3_kala/query_temporal_activation.ts, platform-mcp/src/tools/kala_views/ahead.ts, platform-mcp/src/tools/kala_views/now.ts, platform-mcp/src/tools/register_p1_aliases.ts; 5 served select(s) of its table; no referencing capability that serves it declares density_contract; a tier column is selected without a contract in: L3_kala/query_projections.ts, L3_kala/query_temporal_activation.ts"
+ ],
+ "ka_dasha_kala": [
+  "NO_DETECTOR",
+  "NO_DETECTOR — 1 module(s) reach it by code: L3_kala/call_service_wrappers.ts, but no served `SELECT ... FROM` its table was found (no served select): whether it is served cannot be told by code"
+ ],
+ "ka_gochara": [
+  "PARTIAL",
+  "STRUCTURAL: 3 module(s) reach it by code: L3_kala/call_service_wrappers.ts, reading_checklist.ts, platform-mcp/src/tools/retrieval/register_gochara_windows.ts; a referencing capability declares density_contract but platform-mcp/src/tools/retrieval/register_gochara_windows.ts: its served select of the table is in the same top-level declaration but a different capability entry, not the object that declares the contract (attribution not established)"
+ ],
+ "ka_gochara_resonance": [
+  "FAIL",
+  "STRUCTURAL: 1 module(s) reach it by code: platform-mcp/src/tools/retrieval/register_gochara_windows.ts; 2 served select(s) of its table; no referencing capability that serves it declares density_contract; a density_contract is declared in platform-mcp/src/tools/retrieval/register_gochara_windows.ts, but not in a capability that serves it"
+ ],
+ "ka_graha_sancara": [
+  "NO_DETECTOR",
+  "NO_DETECTOR — 1 module(s) reach it by code: L3_kala/call_service_wrappers.ts, but no served `SELECT ... FROM` its table was found (no served select): whether it is served cannot be told by code"
+ ],
+ "ka_jivana_parva": [
+  "NO_DETECTOR",
+  "NO_DETECTOR — 1 serving-root file(s) naming kala_jivana_parva lose the string scanner's sync (an unbalanced quote, a nested template literal, or a regex literal holding a quote desynced it): platform-mcp/src/tools/register_p1_synthesis.ts; its served select and density_contract cannot be read — never FAIL, never the closable N/A"
+ ],
+ "ka_kala_darshana": [
+  "FAIL",
+  "STRUCTURAL: 3 module(s) reach it by code: L3_kala/query_temporal_view.ts, platform-mcp/src/tools/kala_views/now.ts, platform-mcp/src/tools/retrieval/kala_temporal.ts; 2 served select(s) of its table; no referencing capability that serves it declares density_contract"
+ ],
+ "ka_kalasutra": [
+  "FAIL",
+  "STRUCTURAL: 7 module(s) reach it by code: L3_kala/call_service_wrappers.ts, L3_kala/query_temporal_activation.ts, register_d8_assess_domain.ts, register_d9_judgment.ts, register_spine_bundle.ts, platform-mcp/src/tools/kala_views/ahead.ts (+1 more); 4 served select(s) of its table; no referencing capability that serves it declares density_contract"
+ ],
+ "ka_kota_chakra": [
+  "FAIL",
+  "STRUCTURAL: 2 module(s) reach it by code: L3_kala/query_kota_chakra.ts, platform-mcp/src/tools/kala_views/now.ts; 2 served select(s) of its table; no referencing capability that serves it declares density_contract"
+ ],
+ "ka_kshetra": [
+  "NO_DETECTOR",
+  "NO_DETECTOR — 8 module(s) reach it by code: L4_phala/query_predictive_anchors.ts, L5_mimamsa/query_insights.ts, platform-mcp/src/tools/kala_views/priority.ts, platform-mcp/src/tools/kala_views/ritual.ts, platform-mcp/src/lib/kala_e8_register.ts, platform-mcp/src/lib/kala_envelope.ts (+2 more), but no served `SELECT ... FROM` its table was found (no served select): whether it is served cannot be told by code"
+ ],
+ "ka_moorti_nirnaya": [
+  "FAIL",
+  "STRUCTURAL: 2 module(s) reach it by code: L3_kala/query_moorti_nirnaya.ts, platform-mcp/src/tools/kala_views/now.ts; 2 served select(s) of its table; no referencing capability that serves it declares density_contract; a tier column is selected without a contract in: L3_kala/query_moorti_nirnaya.ts"
+ ],
+ "ka_muhurta_seva": [
+  "NO_DETECTOR",
+  "NO_DETECTOR — 1 module(s) reach it by code: L3_kala/call_service_wrappers.ts, but no served `SELECT ... FROM` its table was found (no served select): whether it is served cannot be told by code"
+ ],
+ "ka_sangam": [
+  "FAIL",
+  "STRUCTURAL: 3 module(s) reach it by code: L3_kala/query_convergence_windows.ts, L3_kala/query_temporal_activation.ts, platform-mcp/src/tools/retrieval/kala_temporal.ts; 2 served select(s) of its table; no referencing capability that serves it declares density_contract; a tier column is selected without a contract in: L3_kala/query_convergence_windows.ts"
+ ],
+ "ka_sudarshana_varsha": [
+  "FAIL",
+  "STRUCTURAL: 2 module(s) reach it by code: L3_kala/query_sudarshana_varsha.ts, platform-mcp/src/tools/kala_views/now.ts; 2 served select(s) of its table; no referencing capability that serves it declares density_contract"
+ ],
+ "ka_taranga": [
+  "FAIL",
+  "STRUCTURAL: 1 module(s) reach it by code: L3_kala/query_activation_waveform.ts; 4 served select(s) of its table; no referencing capability that serves it declares density_contract"
+ ],
+ "ka_tithi_pravesha": [
+  "FAIL",
+  "STRUCTURAL: 2 module(s) reach it by code: L3_kala/query_tithi_pravesha.ts, platform-mcp/src/tools/kala_views/now.ts; 2 served select(s) of its table; no referencing capability that serves it declares density_contract; a tier column is selected without a contract in: L3_kala/query_tithi_pravesha.ts"
+ ],
+ "ka_tulana": [
+  "NO_DETECTOR",
+  "NO_DETECTOR — 3 module(s) reach it by code: L3_kala/call_service_wrappers.ts, platform-mcp/src/tools/kala_views/priority.ts, platform-mcp/src/tools/register_p1_aliases.ts, but no served `SELECT ... FROM` its table was found (no served select): whether it is served cannot be told by code"
+ ],
+ "ka_vedha_gochara": [
+  "FAIL",
+  "STRUCTURAL: 3 module(s) reach it by code: L0_brahmagyan/query_transit_vedha.ts, L3_kala/query_vedha_gochara.ts, platform-mcp/src/tools/kala_views/now.ts; 2 served select(s) of its table; no referencing capability that serves it declares density_contract"
+ ],
+ "ka_vighnakara": [
+  "FAIL",
+  "STRUCTURAL: 2 module(s) reach it by code: L3_kala/query_obstruction_periods.ts, platform-mcp/src/tools/retrieval/kala_temporal.ts; 2 served select(s) of its table; no referencing capability that serves it declares density_contract"
+ ],
+ "ka_yojaka": [
+  "FAIL",
+  "STRUCTURAL: 4 module(s) reach it by code: L3_kala/query_temporal_activation.ts, register_d8_assess_domain.ts, platform-mcp/src/tools/kala_views/ahead.ts, platform-mcp/src/tools/kala_views/now.ts; 1 served select(s) of its table; no referencing capability that serves it declares density_contract"
+ ]
+}
