@@ -1,6 +1,6 @@
+import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { ArrowUpRight } from 'lucide-react'
-import { AtlasView, type AtlasAsset } from '@/components/build/AtlasView'
 import { PageTitle } from '@/components/journey1/Titles'
 import styles from './atlas.module.css'
 
@@ -20,7 +20,7 @@ const layers = [
   ['Mīmāṃsā', 'Outcome review and calibration', '#b5565e'],
 ] as const
 
-export function AtlasScreen({ assets, defaultChartId }: { assets: AtlasAsset[]; defaultChartId: string }) {
+export function AtlasScreen({ assetCount, children }: { assetCount: number; children: ReactNode }) {
   return (
     <div className={styles.atlas}>
       <header className={styles.heading}>
@@ -68,9 +68,9 @@ export function AtlasScreen({ assets, defaultChartId }: { assets: AtlasAsset[]; 
       <section id="asset-catalog" className={styles.catalog}>
         <div className={styles.catalogHeading}>
           <h2>Asset Atlas</h2>
-          <p>{assets.length} {assets.length === 1 ? 'asset' : 'assets'}</p>
+          <p>{assetCount} {assetCount === 1 ? 'asset' : 'assets'}</p>
         </div>
-        <AtlasView assets={assets} defaultChartId={defaultChartId} />
+        {children}
       </section>
     </div>
   )

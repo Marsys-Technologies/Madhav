@@ -1,4 +1,5 @@
 import { readAtlasAssets } from '@/lib/build/atlasPageData'
+import { AtlasView } from '@/components/build/AtlasView'
 import { AtlasScreen } from './AtlasScreen'
 import { requireSuperAdminPage } from '@/lib/auth/super-admin-page-guard'
 
@@ -13,5 +14,9 @@ export default async function AtlasPage() {
   await requireSuperAdminPage()
   const result = await readAtlasAssets()
 
-  return <AtlasScreen assets={result.rows} defaultChartId={NATIVE_CHART_ID} />
+  return (
+    <AtlasScreen assetCount={result.rows.length}>
+      <AtlasView assets={result.rows} defaultChartId={NATIVE_CHART_ID} />
+    </AtlasScreen>
+  )
 }
