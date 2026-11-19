@@ -185,6 +185,7 @@ export function PanchangHeader({ initialDate, initialLocation, onChartIdChange, 
     <header
       className="border-b border-[rgba(212,175,55,0.12)] bg-[rgba(28,28,26,0.70)] backdrop-blur-sm px-4 py-3"
       aria-label="Panchang controls"
+      data-almanac-controls
     >
       <div className="mx-auto max-w-4xl flex flex-wrap items-center gap-3">
 

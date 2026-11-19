@@ -1,0 +1,176 @@
+import Link from "next/link";
+import { formatDate } from "@/lib/utils/date";
+import { ChartReadinessBand } from "@/components/profile/ChartReadinessBand";
+import { ChartActionsMenu } from "@/components/profile/ChartActionsMenu";
+import { PageTitle } from "@/components/journey1/Titles";
+import { VargaChart } from "@/components/journey1/VargaChart";
+import { ActivationTimeline } from "@/components/journey1/ActivationTimeline";
+import { ChartNav } from "@/components/journey1/ChartNav";
+import "@/components/profile/jataka-workspace.css";
+import styles from "./folio.module.css";
+
+import type { readFolioChartIdentity } from "@/lib/charts/folioIdentity";
+import type { getJourney1ChartData } from "@/lib/charts/journey1";
+import type { ChartWorkspaceSummary } from "@/lib/charts/workspaceSummary";
+import type { emptyChartReadiness } from "@/lib/charts/readiness";
+
+type ChartOverviewProps = {
+  id: string;
+  chart: NonNullable<Awaited<ReturnType<typeof readFolioChartIdentity>>>;
+  summary: ChartWorkspaceSummary;
+  extra: Awaited<ReturnType<typeof getJourney1ChartData>>;
+  readiness: ReturnType<typeof emptyChartReadiness> | null;
+  permission: string;
+  canBuild: boolean;
+  isSuperAdmin: boolean;
+  frameLabel: string;
+};
+
+export function ChartOverviewView({
+  id, chart, summary, extra, readiness, permission, canBuild, isSuperAdmin, frameLabel,
+}: ChartOverviewProps) {
+  return (
+    <div className={`j1 j1-container ${styles.warmWorkspace} ${styles.folio}`} data-permission={permission}>
+      <Link href="/dashboard" className={styles.rosterReturn}>
+        ← Birth charts
+      </Link>
+      <section className={`j1-chart-hero ${styles.chartHero}`} aria-label="Chart identity">
+        <VargaChart
+          charts={[summary.d1, extra.d9, extra.d10]}
+          availability={[
+            !summary.flags.includes("positions_unresolved"),
+            !extra.flags.includes("divisionals_unavailable"),
+            !extra.flags.includes("divisionals_unavailable"),
+          ]}
+          ayanamsha={frameLabel}
+        />
+        <div className="j1-chart-info">
+          <PageTitle name="overview" />
+          <h2>{chart.name}</h2>
+          <p className="j1-note">
+            {formatDate(chart.birth_date)} · {chart.birth_time?.slice(0, 5)}{" "}
+            {chart.timezone_id} <br />
+            {chart.birth_place}
+          </p>
+          <p>
+            {summary.d1.isEmpty
+              ? summary.flags.includes("positions_unresolved")
+                ? "Lagna temporarily unavailable"
+                : "Lagna not yet computed"
+              : `Lagna · ${summary.d1.lagnaSign} ${summary.d1.lagnaDegreeDms}`}
+          </p>
+          <div className={styles.chartActions}>
+            <Link
+              href={`/clients/${id}/pariprashna`}
+              className={`j1-btn ${styles.consultAction}`}
+              data-testid="consult-room-card"
+            >
+              <PageTitle name="consultation" as="span" compact />
+            </Link>
+            <ChartActionsMenu
+              chartId={id}
+              chartName={chart.name}
+              canBuild={canBuild}
+              isSuperAdmin={isSuperAdmin}
+              canShare={isSuperAdmin}
+            />
+          </div>
+        </div>
+      </section>
+      <ChartNav chartId={id} canBuild={canBuild} />
+      {readiness ? (
+        <ChartReadinessBand
+          readiness={readiness}
+          chartId={id}
+          canBuild={canBuild}
+        />
+      ) : (
+        <p className="j1-note" role="status">Chart preparation status is temporarily unavailable.</p>
+      )}
+      <div className={`j1-summary-grid ${styles.chartSummaries}`}>
+        <section className="j1-panel">
+          <PageTitle name="review" as="h2" compact />
+          <p className="j1-note">Qualified transit activation windows</p>
+          {extra.windows.length ? (
+            <ActivationTimeline windows={extra.windows} />
+          ) : (
+            <p className="j1-note" style={{ marginBlock: 16 }}>
+              {extra.flags.includes("windows_unavailable")
+                ? "Activation windows are temporarily unavailable."
+                : "No qualified upcoming activation windows are available for this chart."}
+            </p>
+          )}
+          <Link href={`/clients/${id}/samiksha`}>Open prediction review →</Link>
+        </section>
+        <section className="j1-panel">
+          <PageTitle name="periods" as="h2" compact />
+          <dl>
+            <div>
+              <dt>Current daśā</dt>
+              <dd>
+                {summary.currentDasha
+                  ? `${summary.currentDasha.md} mahādaśā · ${summary.currentDasha.ad} antardaśā`
+                  : summary.flags.includes("dasha_unresolved")
+                    ? "Daśā temporarily unavailable"
+                    : "Not yet computed"}
+              </dd>
+              {summary.currentDasha && (
+                <dd className="j1-note">
+                  Antardaśā until {formatDate(summary.currentDasha.adEnd)}
+                </dd>
+              )}
+            </div>
+            <div>
+              <dt>Transit timing</dt>
+              <dd>
+                {extra.windows.length
+                  ? `${extra.windows.length} upcoming or active recorded windows shown. `
+                  : "No transit timing summary available."}
+              </dd>
+            </div>
+            <div>
+              <dt>Confirmed yogas</dt>
+              <dd>
+                {summary.confirmedYogas.length
+                  ? summary.confirmedYogas.map((y) => y.name).join(" · ")
+                  : summary.flags.includes("yogas_unresolved")
+                    ? "Temporarily unavailable"
+                    : "None confirmed yet"}
+              </dd>
+            </div>
+          </dl>
+        </section>
+        <section className="j1-panel">
+          <PageTitle name="preparation" as="h2" compact />
+          <p>{readiness?.label ?? "Chart preparation status is temporarily unavailable."}</p>
+          <p className="j1-note">
+            {readiness === null
+              ? "Try again later."
+              : readiness.lastActivity
+                ? `Last activity ${formatDate(readiness.lastActivity)}`
+                : "No computed data yet"}
+          </p>
+          {canBuild && (
+            <Link href={`/clients/${id}/nirmana`} data-testid="build-room-card">
+              Open chart preparation →
+            </Link>
+          )}
+        </section>
+        <section className="j1-panel">
+          <PageTitle name="almanac" as="h2" compact />
+          <p className="j1-note">
+            Chart context: {chart.birth_place}. The daily almanac and its
+            chart-specific interpretation are not yet integrated.
+          </p>
+          <Link
+            href={`/clients/${id}/panchang`}
+            data-testid="panchang-room-card"
+          >
+            Open personal almanac →
+          </Link>
+        </section>
+      </div>
+      <footer className="j1-footer">Marsys Jyotish Intelligence System</footer>
+    </div>
+  );
+}

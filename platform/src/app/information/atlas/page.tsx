@@ -1,5 +1,5 @@
 import { readAtlasAssets } from '@/lib/build/atlasPageData'
-import { AtlasView } from '@/components/build/AtlasView'
+import { AtlasScreen } from './AtlasScreen'
 import { requireSuperAdminPage } from '@/lib/auth/super-admin-page-guard'
 
 export const dynamic = 'force-dynamic'
@@ -13,13 +13,5 @@ export default async function AtlasPage() {
   await requireSuperAdminPage()
   const result = await readAtlasAssets()
 
-  return (
-    <main className="mx-auto max-w-7xl px-4 py-6">
-      <div className="mb-6 flex items-baseline justify-between">
-        <h1 className="bt-display">Asset Atlas</h1>
-        <p className="bt-body text-muted-foreground">{result.rows.length} assets across 6 layers</p>
-      </div>
-      <AtlasView assets={result.rows} defaultChartId={NATIVE_CHART_ID} />
-    </main>
-  )
+  return <AtlasScreen assets={result.rows} defaultChartId={NATIVE_CHART_ID} />
 }

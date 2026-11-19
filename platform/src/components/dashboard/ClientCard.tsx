@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { ArrowUpRight } from 'lucide-react'
 import type { ChartWithMeta } from '@/lib/roster/types'
 import { formatDate } from '@/lib/utils/date'
 import { DirectoryReadiness } from './DirectoryReadiness'
@@ -21,15 +22,17 @@ export function ClientCard({ chart }: Props) {
     <Link
       href={`/clients/${chart.id}`}
       aria-label={`Open ${chart.name} Jātaka — ${chart.readiness.label}`}
-      className="group flex min-h-11 rounded-xl border border-[var(--folio-divider)] bg-[var(--folio-panel)] p-4 hover:border-[var(--folio-action)] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--folio-focus)] focus-visible:ring-offset-[var(--folio-canvas)]"
+      data-roster-card
+      className="focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--folio-focus)] focus-visible:ring-offset-[var(--folio-canvas)]"
     >
-      <div className="min-w-0 flex-1">
-        <h2 className="break-words font-[family-name:var(--folio-font-heading)] text-lg font-semibold text-[var(--folio-ink)]">{chart.name}</h2>
-        <p className="mt-1 break-words text-sm text-[var(--folio-muted)]">
+      <div data-roster-card-identity>
+        <h2>{chart.name}</h2>
+        <p>
           {formatDate(chart.birth_date)} · {chart.birth_place}
         </p>
-        <DirectoryReadiness readiness={chart.readiness} chartName={chart.name} />
       </div>
+      <ArrowUpRight aria-hidden="true" focusable="false" size={17} />
+      <DirectoryReadiness readiness={chart.readiness} chartName={chart.name} />
     </Link>
   )
 }

@@ -1,27 +1,20 @@
-"use client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import type { PageName } from "@/components/journey1/Titles";
 const items = [
-  ["Overview", "/account"],
-  ["Profile", "/account/profile"],
-  ["Security", "/account/security"],
-  ["Preferences", "/account/preferences"],
-  ["AI Cockpit", "/account/ai-cockpit"],
+  ["Overview", "/account", "account"],
+  ["Profile", "/account/profile", "profile"],
+  ["Security", "/account/security", "security"],
+  ["Preferences", "/account/preferences", "preferences"],
+  ["AI Cockpit", "/account/ai-cockpit", "aiCockpit"],
 ] as const;
-export function AccountNav() {
-  const path = usePathname();
+export function AccountNav({ active }: { active: PageName }) {
   return (
     <nav aria-label="Account sections" className="j5-tabs">
-      {items.map(([label, href]) => (
+      {items.map(([label, href, name]) => (
         <Link
           key={href}
           href={href}
-          aria-current={
-            path === href ||
-            (href === "/account/ai-cockpit" && path.startsWith(href + "/"))
-              ? "page"
-              : undefined
-          }
+          aria-current={active === name ? "page" : undefined}
         >
           {label}
         </Link>

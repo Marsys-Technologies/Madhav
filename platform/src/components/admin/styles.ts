@@ -14,7 +14,7 @@ export const adminDestructiveBtn =
   'rounded-[10px] border border-red-900/60 bg-transparent px-4 py-2.5 text-xs font-medium uppercase tracking-[0.16em] text-red-400 transition-colors hover:border-red-500 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50'
 
 export const adminCard =
-  'rounded-2xl border border-[rgba(var(--brand-gold-rgb),0.15)] bg-brand-ink shadow-[0_2px_24px_rgba(0,0,0,0.4)]'
+  'j6-card rounded-2xl border border-[rgba(var(--brand-gold-rgb),0.15)] bg-brand-ink shadow-[0_2px_24px_rgba(0,0,0,0.4)]'
 
 export const adminDialog =
   'border-[var(--brand-gold-hairline)] bg-brand-ink text-brand-gold-cream'

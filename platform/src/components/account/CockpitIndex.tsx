@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { ArrowUpRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useAiAccountState } from "./useAiAccountState";
 import { describeDefault } from "@/components/ai-console/default-summary";
@@ -72,25 +73,24 @@ export function CockpitIndex({ consoleEnabled }: { consoleEnabled: boolean }) {
   ] as const;
   return (
     <>
-      <p className="j1-note">
-        Everything about how Madhav answers for you and what it has done for
-        you, at account level.
-      </p>
-      <div className="j5-grid">
+      <div className="j5-grid j5-cockpit-grid">
         {cards.filter(([, , , , suffix]) => consoleEnabled || suffix !== "console").map(([sa, title, description, summary, suffix]) => (
           <Link
             className="j5-panel j5-destination"
             key={suffix}
             href={"/account/ai-cockpit/" + suffix}
           >
-            <p className="j5-eyebrow">{sa}</p>
+            <div className="j5-destination-label">
+              <p className="j5-eyebrow">{sa}</p>
+              <ArrowUpRight size={17} aria-hidden="true" />
+            </div>
             <h2>{title}</h2>
             <p className="j1-note">{description}</p>
             <p className="j5-card-summary">{summary}</p>
           </Link>
         ))}
       </div>
-      <p className="j1-note">
+      <p className="j1-note j5-cockpit-note">
         Activity summaries cover the last 30 days. The Sanskrit names for AI
         Cockpit and My Observatory are provisional.
       </p>

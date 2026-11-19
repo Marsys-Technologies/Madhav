@@ -74,7 +74,7 @@ export function SynthesisDetail({ synthesis }: SynthesisDetailProps) {
   if (!synthesis) {
     return (
       <div data-testid="synthesis-detail">
-        <p className="text-xs text-zinc-500">Synthesis did not run for this query.</p>
+        <p className="text-xs text-[var(--folio-muted)]">Synthesis did not run for this query.</p>
       </div>
     )
   }

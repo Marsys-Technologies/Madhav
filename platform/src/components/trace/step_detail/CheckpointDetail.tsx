@@ -30,7 +30,7 @@ export function CheckpointDetail({ checkpoint }: Props) {
   if (!checkpoint) {
     return (
       <div data-testid="checkpoint-detail">
-        <p className="text-xs text-zinc-500">Checkpoint not found.</p>
+        <p className="text-xs text-[var(--folio-muted)]">Checkpoint not found.</p>
       </div>
     )
   }

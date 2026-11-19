@@ -112,7 +112,7 @@ function TimingRow({
   return (
     <div
       className={`flex items-center justify-between px-5 py-3 ${!isLast ? 'border-b border-[rgba(212,175,55,0.06)]' : ''}`}
-      role="row"
+      role="group"
       aria-label={`${label}: ${value}`}
     >
       <span
@@ -159,6 +159,7 @@ export function TimingsPanel({ timings, tzOffsetMinutes = 330 }: TimingsPanelPro
   return (
     <section
       aria-label="Timings — Sun, Moon, Inauspicious and Auspicious Windows"
+      data-almanac-surface
       className="rounded-xl border border-[rgba(212,175,55,0.14)] bg-[rgba(28,28,26,0.50)] overflow-hidden shadow-[0_0_40px_rgba(212,175,55,0.04)]"
     >
       {/* Sun / Moon block */}

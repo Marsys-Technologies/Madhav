@@ -83,21 +83,33 @@ function SubRow({
 }: {
   label: string
   dim: boolean
-  onClick: () => void
+  onClick?: () => void
   selected: boolean
   testid?: string
   status?: string
 }) {
+  const labelContent = <><span aria-hidden="true">• </span>{label}</>
+
   return (
     <li
       data-testid={testid}
       data-subrow-status={status}
-      onClick={onClick}
-      className={`text-[11px] font-mono pl-2 cursor-pointer hover:underline ${
-        isDimmed ? 'text-muted-foreground/50' : selected ? 'text-[#fce29a]' : 'text-foreground'
+      className={`text-[11px] font-mono ${
+        isDimmed ? 'text-[var(--folio-muted)]' : selected ? 'text-[var(--folio-action)]' : 'text-[var(--folio-ink)]'
       }`}
     >
-      • {label}
+      {onClick ? (
+        <button
+          type="button"
+          onClick={onClick}
+          aria-pressed={selected}
+          className="w-full cursor-pointer rounded px-2 py-1 text-left hover:underline focus-visible:outline focus-visible:outline-[var(--folio-focus)]"
+        >
+          {labelContent}
+        </button>
+      ) : (
+        <span className="block px-2 py-1">{labelContent} <span className="sr-only">skipped</span></span>
+      )}
     </li>
   )
 }
@@ -216,7 +228,7 @@ export function LifecycleGraph({
                 key={toolName}
                 label={toolName}
                 dim={!fired}
-                onClick={() => fired ? onSelectStep(`retrieval:${toolName}`) : undefined}
+                onClick={fired ? () => onSelectStep(`retrieval:${toolName}`) : undefined}
                 selected={selectedStepId === `retrieval:${toolName}`}
                 testid={`retrieval-subrow-${toolName}`}
                 status={run?.status ?? 'skipped'}
@@ -293,11 +305,22 @@ export function LifecycleGraph({
                   key={c}
                   data-testid={`checkpoint-${c}`}
                   data-checkpoint-status={ran ? (groups[c][0]?.status ?? 'done') : 'skipped'}
-                  className={`text-[11px] font-mono ${ran ? 'text-foreground cursor-pointer hover:underline' : 'text-muted-foreground/50'}`}
-                  onClick={() => ran && onSelectStep(c)}
+                  className="text-[11px] font-mono"
                 >
-                  • {label}
-                  {!ran && <span className="ml-1 italic text-[10px]">disabled / skipped</span>}
+                  {ran ? (
+                    <button
+                      type="button"
+                      onClick={() => onSelectStep(c)}
+                      aria-pressed={selectedStepId === c}
+                      className="w-full cursor-pointer rounded py-1 text-left text-[var(--folio-ink)] hover:underline focus-visible:outline focus-visible:outline-[var(--folio-focus)]"
+                    >
+                      <span aria-hidden="true">• </span>{label}
+                    </button>
+                  ) : (
+                    <span className="text-[var(--folio-muted)]">
+                      <span aria-hidden="true">• </span>{label} <span className="ml-1 italic text-[10px]">disabled / skipped</span>
+                    </span>
+                  )}
                 </li>
               )
             })}

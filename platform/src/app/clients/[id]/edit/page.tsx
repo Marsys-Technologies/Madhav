@@ -7,6 +7,7 @@ import { PageTitle } from '@/components/journey1/Titles'
 import { getAyanamshaEditPolicy } from '@/lib/charts/ayanamshaEditPolicy'
 import { normalizeStoredChart, resolveTimezoneOffsetMinutes } from '@/lib/charts/updateChart'
 import '@/components/profile/jataka-workspace.css'
+import styles from '../folio.module.css'
 
 /**
  * Edit chart details — owners and super-admins only; view grantees return to
@@ -37,7 +38,7 @@ export default async function EditPage({ params }: { params: Promise<{ id: strin
   }
 
   return (
-    <div data-testid="edit-page-root">
+    <div className={`${styles.warmWorkspace} ${styles.chartForm}`} data-testid="edit-page-root">
       <EditClientForm
         ayanamshaEditPolicy={getAyanamshaEditPolicy()}
         chart={{
@@ -55,7 +56,7 @@ export default async function EditPage({ params }: { params: Promise<{ id: strin
           ayanamshas: stored.ayanamshas,
         }}
       />
-      {access.role === 'super_admin' && <section id="sharing" className="j1-panel mx-auto mb-8 max-w-2xl" aria-label="Chart access"><PageTitle name="access" as="h2" compact/><SharingPanel chartId={id}/></section>}
+      {access.role === 'super_admin' && <section id="sharing" className={`j1-panel ${styles.accessPanel}`} aria-label="Chart access"><PageTitle name="access" as="h2" compact/><SharingPanel chartId={id}/></section>}
     </div>
   )
 }

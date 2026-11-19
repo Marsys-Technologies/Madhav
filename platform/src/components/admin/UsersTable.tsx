@@ -166,25 +166,25 @@ export function UsersTable({
         </p>
       ) : (
         <div className={folio.directoryResults} role="region" aria-label="User directory results" tabIndex={0}>
-          <table className="w-full">
-            <thead>
-              <tr>
-                <th className={adminTableTh}>Username</th>
-                <th className={adminTableTh}>Name</th>
-                <th className={adminTableTh}>Email</th>
-                <th className={adminTableTh}>Role</th>
-                <th className={adminTableTh}>Status</th>
-                <th className={adminTableTh}>Created</th>
-                <th className={adminTableTh}><span className="sr-only">Actions</span></th>
+          <table role="table" className="j6-data w-full">
+            <thead role="rowgroup">
+              <tr role="row">
+                <th role="columnheader" scope="col" className={adminTableTh}>Username</th>
+                <th role="columnheader" scope="col" className={adminTableTh}>Name</th>
+                <th role="columnheader" scope="col" className={adminTableTh}>Email</th>
+                <th role="columnheader" scope="col" className={adminTableTh}>Role</th>
+                <th role="columnheader" scope="col" className={adminTableTh}>Status</th>
+                <th role="columnheader" scope="col" className={adminTableTh}>Created</th>
+                <th role="columnheader" scope="col" className={adminTableTh}><span className="sr-only">Actions</span></th>
               </tr>
             </thead>
-            <tbody>
+            <tbody role="rowgroup">
               {filtered.map((u) => {
                 const isMe = u.id === currentUserId
                 const identity = u.name ?? u.username ?? u.email ?? u.id
                 return (
-                  <tr key={u.id} className={adminTableRow}>
-                    <td className={adminTableTd + ' font-medium'}>
+                  <tr role="row" key={u.id} className={adminTableRow}>
+                    <td role="cell" data-label="Username" className={adminTableTd + ' font-medium'}>
                       {u.username ?? <span className="text-muted-foreground">—</span>}
                       <Link className="ml-2 text-xs text-brand-gold" href={`/admin/users/${encodeURIComponent(u.id)}`} aria-label={`Details for ${identity}`}>Details</Link>
                       {isMe && (
@@ -193,18 +193,18 @@ export function UsersTable({
                         </span>
                       )}
                     </td>
-                    <td className={adminTableTd + ' text-muted-foreground'}>{u.name ?? '—'}</td>
-                    <td className={adminTableTd + ' text-brand-gold'}>{u.email ?? '—'}</td>
-                    <td className={adminTableTd + ' text-[11px] uppercase tracking-[0.14em]'}>
+                    <td role="cell" data-label="Name" className={adminTableTd + ' text-muted-foreground'}>{u.name ?? '—'}</td>
+                    <td role="cell" data-label="Email" className={adminTableTd + ' text-brand-gold'}>{u.email ?? '—'}</td>
+                    <td role="cell" data-label="Role" className={adminTableTd + ' text-[11px] uppercase tracking-[0.14em]'}>
                       {u.role}
                     </td>
-                    <td className={adminTableTd}>
+                    <td role="cell" data-label="Status" className={adminTableTd}>
                       <StatusBadge status={u.status} />
                     </td>
-                    <td className={adminTableTd + ' whitespace-nowrap text-muted-foreground'}>
+                    <td role="cell" data-label="Created" className={adminTableTd + ' whitespace-nowrap text-muted-foreground'}>
                       {formatDate(u.created_at)}
                     </td>
-                    <td className={adminTableTd + ' text-right'}>
+                    <td role="cell" data-label="Actions" className={adminTableTd + ' text-right'}>
                       {isMe ? null : (
                         <DropdownMenu>
                           <DropdownMenuTrigger aria-label={`Actions for ${identity}`} className="rounded border border-[rgba(var(--brand-gold-rgb),0.22)] px-3 py-1 text-xs text-brand-gold hover:border-brand-gold hover:text-brand-gold-cream">

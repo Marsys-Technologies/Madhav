@@ -6,6 +6,7 @@ import { AwaitingSection } from './AwaitingSection'
 import { OpenTimeline } from './OpenTimeline'
 import { ResolveSection } from './ResolveSection'
 import type { ReviewViewModel, ReviewActions } from './types'
+import './samiksha.css'
 
 /**
  * SAMĪKṢĀ review surface — PB-3 (SAMĪKṢĀ) lane L-3.
@@ -17,28 +18,16 @@ import type { ReviewViewModel, ReviewActions } from './types'
  */
 export function SamiksaReview({ vm, actions }: { vm: ReviewViewModel; actions: ReviewActions | null }) {
   return (
-    <main
-      className="samiksa-review"
-      style={{ maxWidth: '760px', margin: '0 auto', padding: '32px 24px 96px' }}
-    >
-      <header style={{ marginBottom: '28px' }}>
-        <div className="flex items-center" style={{ gap: '10px' }}>
-          <h1
-            style={{
-              fontFamily: 'var(--pp-font-serif, Georgia, serif)',
-              fontSize: '24px',
-              color: 'var(--pp-ink, #EBE3D2)',
-              margin: 0,
-            }}
-          >
-            Samīkṣā — prediction review
-          </h1>
+    <section aria-labelledby="samiksa-review-title" className="samiksa-review">
+      <header className="samiksa-review-heading">
+        <div className="samiksa-review-title">
+          <h1 id="samiksa-review-title">Samīkṣā — prediction review</h1>
           <SamiksaBadge count={vm.badgeCount} />
         </div>
-        <p style={{ fontSize: '12px', color: 'var(--pp-ink-dim, rgba(235,227,210,0.64))', marginTop: '6px' }}>
+        <p className="samiksa-review-description">
           {vm.chartName}{actions === null && ' · Read-only'} · predictions detected in conversation, tracked through their window, and resolved.
         </p>
-        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm">
+        <div className="samiksa-review-links">
           <Link href={`/clients/${vm.chartId}`} className="underline">
             Back to chart
           </Link>
@@ -48,7 +37,7 @@ export function SamiksaReview({ vm, actions }: { vm: ReviewViewModel; actions: R
         </div>
       </header>
 
-      <div style={{ display: 'grid', gap: '40px' }}>
+      <div className="samiksa-review-sections">
         <AwaitingSection
           rows={vm.awaiting}
           turnAnchors={vm.turnAnchors}
@@ -62,6 +51,6 @@ export function SamiksaReview({ vm, actions }: { vm: ReviewViewModel; actions: R
           actions={actions}
         />
       </div>
-    </main>
+    </section>
   )
 }

@@ -160,8 +160,9 @@ function GrahaCard({
 
   return (
     <div
+      data-almanac-surface
       className="flex flex-col gap-1 rounded-lg border border-[rgba(212,175,55,0.10)] bg-[rgba(28,28,26,0.35)] px-4 py-3"
-      role="row"
+      role="group"
       aria-label={`${spec.english}${ps ? `: ${ps.sign_name} ${dms}` : ''}`}
     >
       {/* Header row: Sanskrit + English + flags */}

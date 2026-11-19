@@ -52,34 +52,34 @@ export function AuditLogPanel({ entries }: { entries: AuditLogEntry[] }) {
   return (
     <div className="j5-panel">
       <div className="overflow-x-auto focus-visible:outline-2 focus-visible:outline-[var(--folio-focus)]" role="region" aria-label="Administration records" tabIndex={0}>
-        <table className="w-full min-w-[600px]">
-          <thead>
-            <tr>
-              <th className={tableHeading}>When</th>
-              <th className={tableHeading}>Actor</th>
-              <th className={tableHeading}>Action</th>
-              <th className={tableHeading}>Source</th>
-              <th className={tableHeading}>Target</th>
-              <th className={tableHeading}>Detail</th>
+        <table role="table" className="j6-data w-full">
+          <thead role="rowgroup">
+            <tr role="row">
+              <th role="columnheader" scope="col" className={tableHeading}>When</th>
+              <th role="columnheader" scope="col" className={tableHeading}>Actor</th>
+              <th role="columnheader" scope="col" className={tableHeading}>Action</th>
+              <th role="columnheader" scope="col" className={tableHeading}>Source</th>
+              <th role="columnheader" scope="col" className={tableHeading}>Target</th>
+              <th role="columnheader" scope="col" className={tableHeading}>Detail</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody role="rowgroup">
             {entries.map((e) => (
-              <tr key={e.id} className="border-t border-[var(--folio-divider)]">
-                <td className={`${tableCell} whitespace-nowrap`} title={e.created_at}>
+              <tr role="row" key={e.id} className="border-t border-[var(--folio-divider)]">
+                <td role="cell" data-label="When" className={`${tableCell} whitespace-nowrap`} title={e.created_at}>
                   {formatRelative(e.created_at)}
                 </td>
-                <td className={tableCell}>
+                <td role="cell" data-label="Actor" className={tableCell}>
                   <span className="text-sm">{e.actor_name ?? e.actor_email ?? e.actor_id ?? '—'}</span>
                 </td>
-                <td className={tableCell}>
+                <td role="cell" data-label="Action" className={tableCell}>
                   <ActionBadge action={e.action} />
                 </td>
-                <td className={tableCell}>{e.source === 'ai_configuration' ? 'AI configuration' : 'Administration'}</td>
-                <td className={tableCell}>
+                <td role="cell" data-label="Source" className={tableCell}>{e.source === 'ai_configuration' ? 'AI configuration' : 'Administration'}</td>
+                <td role="cell" data-label="Target" className={tableCell}>
                   {e.target_name ?? e.target_email ?? (e.detail?.deleted_user_id != null ? String(e.detail.deleted_user_id) : '—')}
                 </td>
-                <td className="max-w-[220px] truncate px-4 py-3 text-xs text-[var(--folio-muted)]">
+                <td role="cell" data-label="Detail" className="max-w-[220px] truncate px-4 py-3 text-xs text-[var(--folio-muted)]">
                   {e.detail ? JSON.stringify(e.detail) : ''}
                 </td>
               </tr>

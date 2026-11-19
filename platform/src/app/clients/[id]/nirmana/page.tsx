@@ -5,6 +5,7 @@ import { resolveChartPageAccess } from '@/lib/auth/chart-page-guard'
 import { CockpitShell } from '@/lib/components/cockpit/v2/CockpitShell'
 import { PageTitle } from '@/components/journey1/Titles'
 import { ChartNav } from '@/components/journey1/ChartNav'
+import styles from '../folio.module.css'
 
 // Journey 3 reuses the guarded cockpit services with the reviewed preparation layout.
 
@@ -46,18 +47,20 @@ export default async function BuildPage({
   const initialChartMeta = chartRows[0] ?? null
 
   return (
-    <div className="j1-container" data-testid="build-page-root" data-permission={access.permission}>
-      <nav aria-label="Breadcrumb" className="j1-note" style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
+    <div className={`j1-container ${styles.warmWorkspace} ${styles.preparation}`} data-testid="build-page-root" data-permission={access.permission}>
+      <nav aria-label="Breadcrumb" className={styles.breadcrumb}>
         <Link href="/dashboard">Birth Charts</Link><span aria-hidden="true">/</span>
         <Link href={`/clients/${id}`}>{initialChartMeta?.subject_name ?? 'Chart'}</Link>
         <span aria-hidden="true">/</span><span>Chart Preparation</span>
       </nav>
       <ChartNav chartId={id} canBuild={access.canBuild} active="preparation" />
-      <PageTitle name="preparation" />
-      <p className="j1-note" style={{ margin: '12px 0 24px', maxWidth: '72ch' }}>
-        Each layer builds on the one beneath it. Partial readiness is normal;
-        Consultation identifies any additional preparation a question needs.
-      </p>
+      <header className={styles.preparationHeader}>
+        <PageTitle name="preparation" />
+        <p className="j1-note">
+          Each layer builds on the one beneath it. Partial readiness is normal;
+          Consultation identifies any additional preparation a question needs.
+        </p>
+      </header>
       <CockpitShell chartId={id} initialChartMeta={initialChartMeta} variant="preparation" />
     </div>
   )

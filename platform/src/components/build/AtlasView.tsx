@@ -212,21 +212,21 @@ function AssetCard({
     <article className="border-b border-border last:border-b-0">
       {/* Always-visible header row */}
       <button
-        className="w-full p-4 flex items-start justify-between gap-3 text-left hover:bg-muted/30 transition-colors"
+        className="grid min-h-11 w-full grid-cols-[minmax(0,1fr)_auto] items-start gap-2 p-4 text-left hover:bg-muted/30 motion-safe:transition-colors sm:gap-3" type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
       >
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="bt-mono text-xs text-muted-foreground shrink-0">{asset.asset_id}</span>
-            <span className="bt-body font-medium">{asset.english_name}</span>
+            <span className="bt-mono min-w-0 break-all text-xs text-muted-foreground">{asset.asset_id}</span>
+            <span className="bt-body min-w-0 break-words font-medium">{asset.english_name}</span>
             <span className="bt-label text-muted-foreground">/{asset.sanskrit_name}</span>
           </div>
           <p className="bt-body text-muted-foreground mt-0.5 text-sm line-clamp-1">
             {asset.english_description}
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex max-w-[8rem] min-w-0 items-center gap-1 sm:max-w-none sm:gap-2">
           <span
             className={`bt-label inline-flex items-center rounded px-2 py-0.5 text-xs ${stateBadgeClass(stat?.state, statsLoading)}`}
           >
@@ -291,7 +291,7 @@ function AssetCard({
                     {stat.actual_rows !== null ? stat.actual_rows.toLocaleString() : '—'}
                   </span>
                   {stat.error && (
-                    <span className="bt-label text-red-600 dark:text-red-400">{stat.error}</span>
+                    <span className="bt-label text-[var(--folio-error)]">{stat.error}</span>
                   )}
                   {stat.last_built_at && (
                     <span className="bt-label text-muted-foreground">
@@ -344,7 +344,7 @@ function AssetCard({
                 <button
                   onClick={loadSample}
                   disabled={sampleLoading}
-                  className="bt-label rounded border border-border bg-card px-2 py-0.5 hover:bg-muted transition-colors disabled:opacity-50 text-xs"
+                  className="bt-label min-h-11 rounded border border-border bg-card px-2 py-0.5 hover:bg-muted transition-colors disabled:opacity-50 text-xs"
                 >
                   {sampleLoading ? 'Loading…' : sample ? 'Refresh rows' : 'Show 10 rows'}
                 </button>
@@ -359,7 +359,7 @@ function AssetCard({
                 <p className="bt-body text-muted-foreground text-sm">{sample.note}</p>
               )}
               {sample?.error && (
-                <p className="bt-body text-red-600 dark:text-red-400 text-sm">{sample.error}</p>
+                <p className="bt-body text-[var(--folio-error)] text-sm">{sample.error}</p>
               )}
               {sample && !sample.error && !sample.note && sample.rows.length === 0 && (
                 <p className="bt-body text-muted-foreground text-sm">
@@ -367,7 +367,7 @@ function AssetCard({
                 </p>
               )}
               {sample && !sample.error && sample.rows.length > 0 && (
-                <div className="overflow-x-auto rounded border border-border">
+                <div className="max-w-full overflow-x-auto rounded border border-border" tabIndex={0} role="region" aria-label={`Sample data for ${asset.english_name}`}>
                   <table className="w-full text-xs">
                     <thead className="bg-muted/50">
                       <tr>
@@ -518,7 +518,7 @@ export function AtlasView({
   return (
     <div>
       {/* Chart selector */}
-      <div className="mb-4 flex flex-wrap items-center gap-3">
+      <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card bg-[image:var(--folio-panel-wash)] p-3">
         <label htmlFor={chartSelectorId} className="bt-label text-muted-foreground shrink-0">Chart</label>
         <select
           id={chartSelectorId}
@@ -548,7 +548,7 @@ export function AtlasView({
       </div>
 
       {/* Summary bar */}
-      <div className="mb-5 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-border bg-card px-4 py-2.5">
+      <div className="mb-5 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-border bg-card bg-[image:var(--folio-panel-wash)] px-4 py-2.5">
         <span className="bt-body text-muted-foreground">{assets.length} assets</span>
         <span className="text-border">·</span>
         <span className="flex items-center gap-1.5">
@@ -562,7 +562,7 @@ export function AtlasView({
         {(statsLoading || summary.red > 0) && (
           <span className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full bg-red-500" />
-            <span className={`bt-body ${!statsLoading && summary.red > 0 ? 'text-red-700 dark:text-red-400' : ''}`}>
+            <span className={`bt-body ${!statsLoading && summary.red > 0 ? 'text-[var(--folio-error)]' : ''}`}>
               {statsLoading ? '…' : summary.red} error
             </span>
           </span>
@@ -586,7 +586,7 @@ export function AtlasView({
 
           return (
             <section key={layer}>
-              <div className="mb-2 flex items-baseline justify-between">
+              <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                 <h2 className="bt-heading">{label}</h2>
                 <span className="bt-label text-muted-foreground">
                   {statsLoading
@@ -594,7 +594,7 @@ export function AtlasView({
                     : `${litCount}/${layerAssets.length} lit`}
                 </span>
               </div>
-              <div className="rounded-lg border border-border bg-card divide-y divide-border">
+              <div className="divide-y divide-border rounded-xl border border-border bg-card bg-[image:var(--folio-panel-wash)]">
                 {layerAssets.map((asset) => (
                   // Key includes chartId so asset cards reset sample state on chart switch
                   <AssetCard

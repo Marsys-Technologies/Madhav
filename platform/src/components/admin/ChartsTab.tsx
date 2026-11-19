@@ -259,6 +259,7 @@ function ChartAccessPanel({
         </div>
         <input
           type="search"
+          aria-label="Search charts for selected guest"
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Search charts…"
@@ -339,7 +340,7 @@ export function ChartsTab({
         </p>
       </header>
 
-      <div className="flex flex-col md:flex-row" style={{ minHeight: '480px' }}>
+      <div className="flex flex-col md:min-h-[480px] md:flex-row">
         <div className="w-full shrink-0 border-b border-[rgba(var(--brand-gold-rgb),0.12)] bg-[rgba(0,0,0,0.2)] md:w-56 md:border-b-0 md:border-r">
           <div className="border-b border-[rgba(var(--brand-gold-rgb),0.08)] px-4 py-3">
             <span className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Guests</span>
@@ -361,7 +362,7 @@ export function ChartsTab({
             onGrantCountKnown={handleGrantCountKnown}
           />
         ) : (
-          <div className="flex flex-1 items-center justify-center">
+          <div className="flex flex-1 items-center justify-center px-4 py-10 text-center">
             <p className="text-sm text-muted-foreground">
               Select a guest to manage their chart access.
             </p>

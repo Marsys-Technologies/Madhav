@@ -132,9 +132,10 @@ export function PrimaryStrip({ angas, tzOffsetMinutes = 330, date, nativeContext
   return (
     <section
       aria-label="Five Angas — Primary Panchang Strip"
+      data-almanac-angas
       className="mx-auto max-w-4xl px-4 py-6"
     >
-      <div className="rounded-xl border border-[rgba(212,175,55,0.14)] bg-[rgba(28,28,26,0.50)] overflow-hidden shadow-[0_0_40px_rgba(212,175,55,0.04)]">
+      <div role="table" aria-label="Daily angas" data-almanac-surface className="rounded-xl border border-[rgba(212,175,55,0.14)] bg-[rgba(28,28,26,0.50)] overflow-hidden shadow-[0_0_40px_rgba(212,175,55,0.04)]">
         {rows.map((row, i) => (
           <PrimaryStripRow
             key={row.label}
@@ -238,9 +239,10 @@ function PrimaryStripRow({
     <div
       className={`flex items-center justify-between px-5 py-4 ${!isLast ? 'border-b border-[rgba(212,175,55,0.08)]' : ''}`}
       role="row"
+      data-almanac-anga
       aria-label={`${row.label}: ${row.value ?? 'unavailable'}`}
     >
-      <div className="flex items-center gap-3 min-w-0">
+      <div className="flex items-center gap-3 min-w-0" role="cell">
         {/* Sanskrit label */}
         <span
           className="shrink-0 font-serif text-xs w-14 text-right"
@@ -280,7 +282,7 @@ function PrimaryStripRow({
       </div>
 
       {/* Right-side cluster: ends-at + Ask-Madhav link */}
-      <div className="flex items-center gap-2 shrink-0 ml-2">
+      <div className="flex items-center gap-2 shrink-0 ml-2" role="cell">
         {row.endsAt && <EndsBadge time={row.endsAt} />}
         {askMadhavPrompt && (
           <AskMadhavLink

@@ -15,7 +15,7 @@ export default async function AccountLayout({
   return (
     <JourneyShell user={ctx.user} role={ctx.profile.role}>
       <ObservatoryScope admin={false} userId={ctx.user.uid}>
-        <div className="j5-account">{children}</div>
+        <div className="j5-account j5-personal">{children}</div>
       </ObservatoryScope>
     </JourneyShell>
   );

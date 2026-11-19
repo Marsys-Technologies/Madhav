@@ -48,7 +48,7 @@ export function QueryHeaderStrip({ trace }: QueryHeaderStripProps) {
         className="min-w-0 basis-full truncate text-sm text-zinc-200 sm:basis-auto sm:max-w-[50%]"
         title={queryText}
       >
-        {truncated || <span className="text-zinc-500 italic">no query text</span>}
+        {truncated || <span className="text-[var(--folio-muted)] italic">no query text</span>}
       </p>
 
       {/* Center: pills */}
@@ -73,7 +73,7 @@ export function QueryHeaderStrip({ trace }: QueryHeaderStripProps) {
         </span>
 
         <div className="flex items-center gap-1">
-          <span className="text-[10px] font-mono text-zinc-500 select-all">{q.id.slice(0, 8)}…</span>
+          <span className="text-[10px] font-mono text-[var(--folio-muted)] select-all">{q.id.slice(0, 8)}…</span>
           <button
             onClick={handleCopyId}
             type="button"

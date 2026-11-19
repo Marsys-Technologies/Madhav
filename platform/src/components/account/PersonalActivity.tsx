@@ -33,7 +33,7 @@ function Metric({
   note?: string;
 }) {
   return (
-    <div className="j5-panel">
+    <div className="j5-panel j5-metric-panel">
       <p className="j5-eyebrow">{label}</p>
       <p className="j5-metric">{value}</p>
       {note && <p className="j1-note">{note}</p>}
@@ -159,7 +159,7 @@ export function ScopedActivity({
               note="Successful calls with recorded duration"
             />
           </div>
-          <div className="j5-metrics">
+          <div className="j5-metrics j5-cost-metrics">
             <Metric
               label="Provider-reported cost"
               value={cost(summary.data.provider_transport_cost_usd)}
@@ -192,7 +192,7 @@ export function ScopedActivity({
               </p>
             </>
           ) : (
-            <>
+            <div className="j5-stack j5-consumption">
               <Consumption
                 summary={summary.data}
                 initial={conversations.data}
@@ -204,7 +204,7 @@ export function ScopedActivity({
                 params.get("aggregation") === "cli_aggregate") && (
                 <CliExecutions baseUrl={base} />
               )}
-            </>
+            </div>
           )}
         </>
       )}

@@ -51,7 +51,7 @@ export function AuditDetail({ audit }: Props) {
   if (!audit) {
     return (
       <div data-testid="audit-detail">
-        <p className="text-xs text-zinc-500">Audit data not available.</p>
+        <p className="text-xs text-[var(--folio-muted)]">Audit data not available.</p>
       </div>
     )
   }

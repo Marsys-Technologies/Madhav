@@ -33,7 +33,7 @@ export function PlannerDetail({ planner, focusedSub = null }: PlannerDetailProps
   if (!planner) {
     return (
       <div data-testid="planner-detail">
-        <p className="text-xs text-zinc-500">Planner did not run for this query.</p>
+        <p className="text-xs text-[var(--folio-muted)]">Planner did not run for this query.</p>
       </div>
     )
   }
@@ -51,15 +51,15 @@ export function PlannerDetail({ planner, focusedSub = null }: PlannerDetailProps
       <Section title="Plan summary">
         <div className="text-xs text-zinc-300 space-y-1">
           <p>
-            <span className="text-zinc-500">query_class: </span>
+            <span className="text-[var(--folio-muted)]">query_class: </span>
             <span className="font-mono text-foreground" data-testid="planner-query-class">{queryClass}</span>
           </p>
           <p>
-            <span className="text-zinc-500">plan_type: </span>
+            <span className="text-[var(--folio-muted)]">plan_type: </span>
             <span className="font-mono text-foreground" data-testid="planner-plan-type">{planType}</span>
           </p>
           <p>
-            <span className="text-zinc-500">confidence: </span>
+            <span className="text-[var(--folio-muted)]">confidence: </span>
             <span className="font-mono text-foreground" data-testid="planner-confidence">
               {confidence != null ? confidence.toFixed(2) : '—'}
             </span>
@@ -73,12 +73,12 @@ export function PlannerDetail({ planner, focusedSub = null }: PlannerDetailProps
             )}
           </p>
           <p>
-            <span className="text-zinc-500">latency: </span>
+            <span className="text-[var(--folio-muted)]">latency: </span>
             <span className="font-mono text-foreground">{fmtMs(planner.latency_ms)}</span>
           </p>
           {planner.bundle_summary && (
             <p>
-              <span className="text-zinc-500">bundle: </span>
+              <span className="text-[var(--folio-muted)]">bundle: </span>
               <span className="text-foreground">{planner.bundle_summary}</span>
             </p>
           )}
@@ -87,7 +87,7 @@ export function PlannerDetail({ planner, focusedSub = null }: PlannerDetailProps
 
       <Section title="Tools selected">
         {planner.tool_calls.length === 0 ? (
-          <p className="text-xs text-zinc-500">No tools planned.</p>
+          <p className="text-xs text-[var(--folio-muted)]">No tools planned.</p>
         ) : (
           <ul className="flex flex-wrap gap-1.5" data-testid="planner-tool-chips">
             {planner.tool_calls.map((tc, i) => (
@@ -121,18 +121,18 @@ export function PlannerDetail({ planner, focusedSub = null }: PlannerDetailProps
         {planner.compose_bundle ? (
           <div className="text-xs text-zinc-300 space-y-1" data-testid="planner-compose-bundle">
             <p>
-              <span className="text-zinc-500">latency: </span>
+              <span className="text-[var(--folio-muted)]">latency: </span>
               <span className="font-mono text-foreground">{fmtMs(planner.compose_bundle.latency_ms)}</span>
             </p>
             {planner.compose_bundle.result && (
               <p>
-                <span className="text-zinc-500">result: </span>
+                <span className="text-[var(--folio-muted)]">result: </span>
                 <span className="text-foreground">{planner.compose_bundle.result}</span>
               </p>
             )}
           </div>
         ) : (
-          <p className="text-xs text-zinc-500">compose_bundle did not fire.</p>
+          <p className="text-xs text-[var(--folio-muted)]">compose_bundle did not fire.</p>
         )}
       </Section>
 
@@ -156,7 +156,7 @@ export function PlannerDetail({ planner, focusedSub = null }: PlannerDetailProps
             </div>
           </dl>
         ) : (
-          <p className="text-xs text-zinc-500">plan_per_tool did not fire.</p>
+          <p className="text-xs text-[var(--folio-muted)]">plan_per_tool did not fire.</p>
         )}
       </Section>
 
@@ -168,13 +168,13 @@ export function PlannerDetail({ planner, focusedSub = null }: PlannerDetailProps
             </pre>
             <button
               onClick={() => setShowRaw(true)}
-              className="mt-2 text-xs text-zinc-500 hover:text-zinc-300"
+              className="mt-2 text-xs text-[var(--folio-muted)] hover:text-zinc-300"
             >
               View raw
             </button>
           </div>
         ) : (
-          <p className="text-xs text-zinc-500">No raw plan available.</p>
+          <p className="text-xs text-[var(--folio-muted)]">No raw plan available.</p>
         )}
       </Section>
 

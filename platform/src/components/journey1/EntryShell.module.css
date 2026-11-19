@@ -1,45 +1,3 @@
-.folio:global(.j1-entry) {
-  --j1-text: var(--folio-ink);
-  background: var(--folio-canvas);
-  color: var(--j1-text);
-  color-scheme: light;
-  font-family: var(--folio-font-body);
-}
-
-.folio :global(.j1-cosmos) {
-  display: none;
-}
-
-.folio :global(.j1-entry-column) {
-  padding-block-start: clamp(24px, 5vw, 64px);
-  gap: 20px;
-}
-
-.folio :global(.j1-entry-card) {
-  background: var(--folio-panel);
-  border: 1px solid var(--folio-divider);
-  padding: clamp(16px, 5vw, 28px);
-}
-
-.folio :global(.j1-entry-brand) > svg {
-  background: var(--j1-text);
-  border-radius: 12px;
-  max-inline-size: 100%;
-  padding: 8px 16px;
-}
-
-.folio :global(.j1-title) > span,
-.heading {
-  font-family: var(--folio-font-heading);
-  color: var(--j1-text);
-}
-
-.heading {
-  font-size: 1.5rem;
-  line-height: 1.2;
-  margin-block: 0 4px;
-}
-
 .folio :global(.j1-title) > small,
 .folio :global(.j1-descriptor),
 .folio :global(.j1-note),
@@ -123,7 +81,146 @@
   text-decoration: underline;
 }
 
-
 .folio:global(.j1-entry) a:global(.j1-btn):hover {
   color: var(--folio-on-action);
+}
+
+.folio[data-entry-page="login"] {
+  --entry-sun-top: clamp(52px, calc((100dvh - 570px) / 2), 250px);
+  --entry-sun-size: clamp(68px, 13.4dvh, 124px);
+  --sign-in-gap: clamp(12px, 2dvh, 20px);
+}
+
+.folio[data-entry-page="login"] :global(.j1-entry-column) {
+  max-inline-size: 29.5rem;
+  padding-block: calc(var(--entry-sun-top) + var(--entry-sun-size) / 2 + 12px)
+    var(--sign-in-gap);
+  padding-inline: max(16px, env(safe-area-inset-left))
+    max(16px, env(safe-area-inset-right));
+  gap: var(--sign-in-gap);
+}
+
+.folio[data-entry-page="login"] :global(.j1-entry-brand) {
+  gap: 6px;
+}
+
+.folio[data-entry-page="login"] :global(.j1-entry-brand) > svg {
+  max-block-size: clamp(54px, 8.8dvh, 90px);
+  max-inline-size: 100%;
+}
+
+.folio[data-entry-page="login"] :global(.j1-descriptor) {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  inline-size: min(100%, 23.75rem);
+  line-height: 1.2;
+}
+
+.folio[data-entry-page="login"] :global(.j1-descriptor)::before,
+.folio[data-entry-page="login"] :global(.j1-descriptor)::after {
+  content: "";
+  flex: 1 0 12px;
+  block-size: 1px;
+  background: linear-gradient(90deg, transparent, var(--folio-boundary));
+}
+
+.folio[data-entry-page="login"] :global(.j1-descriptor)::after {
+  transform: scaleX(-1);
+}
+
+.folio[data-entry-page="login"] :global(.j1-title) {
+  gap: 0;
+}
+
+.folio[data-entry-page="login"] :global(.j1-entry-card) {
+  padding: clamp(16px, 4vw, 24px);
+  border-color: var(--folio-divider);
+  border-block-start-color: var(--folio-boundary);
+  background: linear-gradient(
+    155deg,
+    color-mix(in srgb, var(--folio-panel) 94%, var(--folio-action)),
+    var(--folio-panel) 68%
+  );
+  box-shadow: 0 12px 36px color-mix(in srgb, var(--folio-canvas) 75%, transparent);
+}
+
+.folio .signInForm {
+  gap: clamp(8px, 1.4dvh, 14px);
+}
+
+.signInForm :global(.j1-field) {
+  gap: 3px;
+}
+
+.folio .signInForm :global(.j1-btn) {
+  background: linear-gradient(180deg, var(--folio-action), var(--brand-gold));
+  transition: filter 150ms ease-out;
+}
+
+.folio .signInForm :global(.j1-btn):hover:not(:disabled) {
+  filter: brightness(1.09);
+}
+
+.folio .signInForm :global(.j1-error) {
+  padding: 8px 12px;
+}
+
+.signInForm .help {
+  gap: 0 12px;
+  font-size: 0.9375rem;
+}
+
+.signInForm .help a {
+  text-underline-offset: 0.2em;
+}
+
+.folio[data-entry-page="login"] footer {
+  flex-flow: row wrap;
+  justify-content: center;
+  gap: 0 8px;
+  padding-block-end: env(safe-area-inset-bottom);
+}
+
+/* Compact the artwork and title before reducing the available space for controls. */
+@media (max-height: 740px) {
+  .folio[data-entry-page="login"] {
+    --entry-sun-top: clamp(42px, calc((100dvh - 532px) / 2), 100px);
+    --entry-sun-size: 56px;
+    --sign-in-gap: 8px;
+  }
+
+  .folio[data-entry-page="login"] :global(.j1-entry-column) {
+    padding-block-start: calc(var(--entry-sun-top) + var(--entry-sun-size) / 2 + 6px);
+  }
+
+  .folio[data-entry-page="login"] :global(.j1-entry-brand) {
+    gap: 3px;
+  }
+
+  .folio[data-entry-page="login"] :global(.j1-entry-brand) > svg {
+    max-block-size: 46px;
+  }
+
+  .folio[data-entry-page="login"] :global(.j1-title) {
+    flex-flow: row wrap;
+    align-items: baseline;
+    justify-content: center;
+    gap: 0 8px;
+  }
+
+  .folio[data-entry-page="login"] :global(.j1-title) > span {
+    font-size: 1.375rem;
+  }
+
+  .folio[data-entry-page="login"] :global(.j1-entry-card) {
+    padding: 12px;
+  }
+}
+
+@media (max-height: 600px) {
+  .folio[data-entry-page="login"] {
+    --entry-sun-top: 32px;
+    --entry-sun-size: 48px;
+  }
 }

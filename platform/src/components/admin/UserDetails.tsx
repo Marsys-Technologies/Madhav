@@ -13,7 +13,11 @@ export function UserDetails({selectedId}:{selectedId:string}) {
   const aiAccessEnabled = process.env.NEXT_PUBLIC_MARSYS_FLAG_AI_CONSOLE_BYOK === 'true'
   const cliGrants = useQuery({queryKey:['admin',userId,'user-ai-cli-grants',selectedId],queryFn:()=>read<{grants:AdminCliGrant[]}>(`/api/admin/users/${encodeURIComponent(selectedId)}/ai-cli-grants`),enabled:aiAccessEnabled})
   const user = state.data?.users.find(user=>user.id===selectedId)
-  return <div className="j6-evidence"><PageTitle name="adminUsers" /><p className="j1-note">Selected user · account record and chart access. Viewing this record does not change their account.</p>
+  return <div className="j6-evidence">
+    <header className="j6-heading">
+      <PageTitle name="adminUsers" />
+      <p>Selected user · account record and chart access.</p>
+    </header>
     {state.isPending ? <p role="status">Loading user…</p> : state.isError ? <p role="alert">User record unavailable.</p> : !user ? <p>User not found.</p> : <>
       <section className={folio.userRecord}><h2>{user.name ?? user.username ?? 'Member'}</h2><dl>{(['username','email','role','status','created_at','approved_at'] as const).map(key=><div style={{display:'contents'}} key={key}><dt>{key.replaceAll('_',' ')}</dt><dd>{user[key] ?? 'Not reported'}</dd></div>)}</dl></section>
       <div className="j6-links"><Link href={`/admin/activity?scope=user&userId=${encodeURIComponent(selectedId)}`}>View selected user activity</Link><Link href="/admin?tab=users">Manage user account</Link>{aiAccessEnabled && <Link href={`/admin?tab=ai-access&userId=${encodeURIComponent(selectedId)}`}>Review AI product grants</Link>}<Link href={user.role === 'guest' ? `/admin?tab=charts&guest=${encodeURIComponent(selectedId)}` : '/admin?tab=charts'}>{user.role === 'guest' ? 'Manage selected user chart grants' : 'Browse guest chart grants'}</Link></div>

@@ -33,17 +33,17 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
 function KeyRow({ k, onRevoke }: { k: McpApiKeyRow; onRevoke: (id: string) => void }) {
   const revoked = !!k.revoked_at
   return (
-    <tr className={revoked ? styles.revoked : undefined}>
-      <td className="px-3 py-2 font-mono text-xs text-muted-foreground">{k.key_id}</td>
-      <td className="px-3 py-2 text-sm">{k.label ?? '—'}</td>
-      <td className="px-3 py-2 text-sm">{k.user_uid.slice(0, 12)}…</td>
-      <td className="px-3 py-2 text-xs text-muted-foreground">
+    <tr role="row" className={revoked ? styles.revoked : undefined}>
+      <td role="cell" data-label="Key ID" className="px-3 py-2 font-mono text-xs text-muted-foreground">{k.key_id}</td>
+      <td role="cell" data-label="Label" className="px-3 py-2 text-sm">{k.label ?? '—'}</td>
+      <td role="cell" data-label="User" className="px-3 py-2 text-sm">{k.user_uid.slice(0, 12)}…</td>
+      <td role="cell" data-label="Last used" className="px-3 py-2 text-xs text-muted-foreground">
         {k.last_used_at ? new Date(k.last_used_at).toLocaleDateString() : '—'}
       </td>
-      <td className="px-3 py-2 text-xs text-muted-foreground">
+      <td role="cell" data-label="Created" className="px-3 py-2 text-xs text-muted-foreground">
         {new Date(k.created_at).toLocaleDateString()}
       </td>
-      <td className="px-3 py-2">
+      <td role="cell" data-label="Actions" className="px-3 py-2">
         {revoked ? (
           <span className={`${styles.error} text-xs`}>Revoked</span>
         ) : (
@@ -199,8 +199,8 @@ export function McpKeysClient() {
         <CreatedKeyModal result={createdKey} returnFocus={createButton} onClose={() => {setCreatedKey(null);createMutation.reset()}} />
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
+      <header className="flex flex-wrap items-end justify-between gap-4">
+        <div className="j6-heading">
           <PageTitle name="mcpKeys" />
           <p className="mt-1 text-sm text-muted-foreground">
             User-associated keys for external clients. Permissions come from the account and chart grants; a key does not create a new role.
@@ -214,7 +214,7 @@ export function McpKeysClient() {
         >
           {showCreate ? 'Cancel' : 'Create new key'}
         </button>
-      </div>
+      </header>
 
       {showCreate && (
         <form
@@ -264,28 +264,28 @@ export function McpKeysClient() {
       )}
 
       <div className={styles.results} role="region" aria-label="MCP key list" tabIndex={0}>
-        <table className="w-full text-left">
-          <thead>
-            <tr className={styles.tableHeading}>
-              <th className="px-3 py-2 text-xs font-medium text-muted-foreground">Key ID</th>
-              <th className="px-3 py-2 text-xs font-medium text-muted-foreground">Label</th>
-              <th className="px-3 py-2 text-xs font-medium text-muted-foreground">User</th>
-              <th className="px-3 py-2 text-xs font-medium text-muted-foreground">Last used</th>
-              <th className="px-3 py-2 text-xs font-medium text-muted-foreground">Created</th>
-              <th className="px-3 py-2 text-xs font-medium text-muted-foreground">Action</th>
+        <table role="table" className="j6-data w-full text-left">
+          <thead role="rowgroup">
+            <tr role="row" className={styles.tableHeading}>
+              <th role="columnheader" scope="col" className="px-3 py-2 text-xs font-medium text-muted-foreground">Key ID</th>
+              <th role="columnheader" scope="col" className="px-3 py-2 text-xs font-medium text-muted-foreground">Label</th>
+              <th role="columnheader" scope="col" className="px-3 py-2 text-xs font-medium text-muted-foreground">User</th>
+              <th role="columnheader" scope="col" className="px-3 py-2 text-xs font-medium text-muted-foreground">Last used</th>
+              <th role="columnheader" scope="col" className="px-3 py-2 text-xs font-medium text-muted-foreground">Created</th>
+              <th role="columnheader" scope="col" className="px-3 py-2 text-xs font-medium text-muted-foreground">Action</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
+          <tbody role="rowgroup" className="divide-y divide-border">
             {keysQuery.isLoading && (
-              <tr>
-                <td colSpan={6} className="px-3 py-4 text-center text-sm text-muted-foreground">
+              <tr role="row">
+                <td role="cell" colSpan={6} className="px-3 py-4 text-center text-sm text-muted-foreground">
                   <span role="status">Loading keys…</span>
                 </td>
               </tr>
             )}
             {!keysQuery.isLoading && !keysQuery.isError && activeKeys.length === 0 && revokedKeys.length === 0 && (
-              <tr>
-                <td colSpan={6} className="px-3 py-4 text-center text-sm text-muted-foreground">
+              <tr role="row">
+                <td role="cell" colSpan={6} className="px-3 py-4 text-center text-sm text-muted-foreground">
                   No keys yet. Create one above.
                 </td>
               </tr>

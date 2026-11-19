@@ -84,7 +84,7 @@ export function ClientRoster({ charts, stats, canCreateChart }: Props) {
   }
 
   return (
-    <div className="space-y-4">
+    <div data-roster-content>
       <RosterStatsRibbon
         total={stats.total}
         inActiveBuild={stats.inActiveBuild}
@@ -101,10 +101,16 @@ export function ClientRoster({ charts, stats, canCreateChart }: Props) {
         onViewChange={handleViewChange}
       />
 
+      {filtered.length > 0 && filtered.length !== charts.length && (
+        <p data-roster-count role="status">
+          {filtered.length} of {charts.length} charts
+        </p>
+      )}
+
       {view === 'table' ? (
         <RosterTableView charts={filtered} />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div data-roster-grid>
           {filtered.map((chart) => (
             <ClientCard key={chart.id} chart={chart} />
           ))}

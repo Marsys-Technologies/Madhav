@@ -11,10 +11,22 @@ export function TraceHistory() {
     if (!response.ok) throw Error('Trace history unavailable')
     return await response.json() as TraceHistoryRow[]
   }})
-  return <div className="j6-evidence"><PageTitle name="queryTrace" /><p className="j1-note">Portal scope · last 50 recorded queries. Open a query to inspect its recorded steps. Missing traces do not prove that no activity occurred.</p>
+  return <div className="j6-evidence">
+    <header className="j6-heading">
+      <PageTitle name="queryTrace" />
+      <p>Portal scope · last 50 recorded queries. Open a query to inspect its recorded steps. Missing traces do not prove that no activity occurred.</p>
+    </header>
     {state.isPending && <p role="status">Loading recorded queries…</p>}
     {state.isError && <div role="alert">Trace history could not be read. <button onClick={() => void state.refetch()}>Try again</button></div>}
     {!state.isError && state.data?.length === 0 && <div className="j5-panel">No recorded traces returned.</div>}
-    {!state.isError && state.data?.map(row => <article key={row.query_id} className="j5-panel"><Link href={`/admin/trace/${encodeURIComponent(row.query_id)}`}>Open query trace</Link><p>{row.query_text ?? 'Query text not recorded'}</p><p className="j1-note">{row.created_at} · {row.step_count} steps · {row.total_latency_ms == null ? 'Latency not reported' : `${row.total_latency_ms} ms`}</p></article>)}
+    {!state.isError && state.data?.map(row => (
+      <article key={row.query_id} className="j5-panel j6-source">
+        <header><h2>{row.query_text ?? 'Query text not recorded'}</h2></header>
+        <p className="j1-note">{row.created_at} · {row.step_count} steps · {row.total_latency_ms == null ? 'Latency not reported' : `${row.total_latency_ms} ms`}</p>
+        <div className="j6-links">
+          <Link href={`/admin/trace/${encodeURIComponent(row.query_id)}`}>Open query trace</Link>
+        </div>
+      </article>
+    ))}
   </div>
 }

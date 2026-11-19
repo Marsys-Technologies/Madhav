@@ -8,10 +8,16 @@ import { operatorActivityFilters } from '@/lib/admin/activity-filters'
 import { PageTitle } from '@/components/journey1/Titles'
 import { AccountingRecords } from './AccountingRecords'
 
-export function OperatorActivity({ view }: { view: 'observatory' | 'consumption' }) {
+export function OperatorActivity({
+  view,
+  initialNow,
+}: {
+  view: 'observatory' | 'consumption'
+  initialNow: string
+}) {
   const search = useSearchParams(), router = useRouter(), path = usePathname()
   const { userId, users, usersLoading, usersError } = useObservatoryScope()
-  const [now] = useState(() => new Date())
+  const [now] = useState(() => new Date(initialNow))
   let filter: ReturnType<typeof operatorActivityFilters>
   try { filter = operatorActivityFilters(search, userId, now) } catch {
     return <div role="alert" className="j5-panel">Choose a valid scope and a period of up to 90 days. <Link href={path}>Reset filters</Link></div>
@@ -29,9 +35,13 @@ export function OperatorActivity({ view }: { view: 'observatory' | 'consumption'
   const shared = new URLSearchParams(filter.params)
   shared.delete('userId')
   const personal = shared.toString()
-  return <>
-    <PageTitle name={view === 'observatory' ? 'systemObservatory' : 'analytics'} />
-    <p className="j1-note">One activity ledger across My Account and Administration. Selected-user inspection does not change that person’s preferences, personas or AI defaults.</p>
+  return <div className="j6-evidence">
+    <header className="j6-heading">
+      <PageTitle name={view === 'observatory' ? 'systemObservatory' : 'analytics'} />
+      <p>{view === 'observatory'
+        ? 'Compare recorded activity across the portal, your account or a selected user.'
+        : 'Review recorded consumption, monthly accounting and reconciliation.'}</p>
+    </header>
     <div className="j6-scope">
       <label>Activity scope<select value={filter.scope} onChange={event => change(event.target.value)}>
         <option value="portal">Portal activity</option><option value="mine">My activity</option><option value="user">Selected user activity</option>
@@ -49,5 +59,5 @@ export function OperatorActivity({ view }: { view: 'observatory' | 'consumption'
     {filter.ready ? <ScopedActivity key={`${userId}:${view}:${filter.params}`} operator view={view} params={filter.params} scopeLabel={label} authorityParams={filter.navigation} />
       : <div className="j5-panel">Choose a user to inspect recorded activity.</div>}
     {view === 'consumption' && <AccountingRecords />}
-  </>
+  </div>
 }

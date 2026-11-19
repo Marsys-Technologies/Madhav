@@ -100,7 +100,7 @@ function HoraRow({
       aria-label={`Hora ${index + 1}: ${meta.display}, ${window}`}
     >
       {/* Index + planet */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3" role="cell">
         <span
           className="text-[10px] font-mono tabular-nums w-4 text-right shrink-0"
           style={{ color: 'rgba(212,175,55,0.30)' }}
@@ -128,6 +128,7 @@ function HoraRow({
       {/* Time window */}
       <span
         className="font-mono text-xs tabular-nums shrink-0"
+        role="cell"
         style={{ color: 'rgba(212,175,55,0.55)' }}
       >
         {window}
@@ -189,15 +190,17 @@ export function HoraPanel({
             </span>
           </div>
         ) : (
-          segments.map((seg, i) => (
-            <HoraRow
-              key={`hora-${i}`}
-              segment={seg}
-              index={i}
-              tzOffsetMinutes={tzOffsetMinutes}
-              isLast={i === segments.length - 1}
-            />
-          ))
+          <div role="table" aria-label="Planetary hours">
+            {segments.map((seg, i) => (
+              <HoraRow
+                key={`hora-${i}`}
+                segment={seg}
+                index={i}
+                tzOffsetMinutes={tzOffsetMinutes}
+                isLast={i === segments.length - 1}
+              />
+            ))}
+          </div>
         )}
       </CollapsibleContent>
     </CollapsibleRoot>

@@ -108,7 +108,7 @@ export function StepDetail({ assembled, selectedStepId }: StepDetailProps) {
         </div>
         <button
           onClick={handleCopyJson}
-          className="text-xs text-zinc-500 hover:text-zinc-300"
+          className="text-xs text-[var(--folio-muted)] hover:text-zinc-300"
           data-testid="copy-step-json"
         >
           Copy JSON

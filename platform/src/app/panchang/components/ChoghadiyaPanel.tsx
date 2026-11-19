@@ -120,7 +120,7 @@ function SegmentRow({
       role="row"
       aria-label={`${meta.display}: ${window}`}
     >
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2" role="cell">
         <span
           className="text-sm font-medium"
           style={{ color: QUALITY_COLOR[meta.quality] }}
@@ -139,6 +139,7 @@ function SegmentRow({
       </div>
       <span
         className="font-mono text-xs tabular-nums"
+        role="cell"
         style={{ color: 'rgba(212,175,55,0.55)' }}
       >
         {window}
@@ -176,14 +177,16 @@ function ChoghadiyaSubSection({
           <span className="text-sm italic opacity-30">No data</span>
         </div>
       ) : (
-        segments.map((seg, i) => (
-          <SegmentRow
-            key={`${seg.label}-${i}`}
-            segment={seg}
-            tzOffsetMinutes={tzOffsetMinutes}
-            isLast={i === segments.length - 1}
-          />
-        ))
+        <div role="table" aria-label={title}>
+          {segments.map((seg, i) => (
+            <SegmentRow
+              key={`${seg.label}-${i}`}
+              segment={seg}
+              tzOffsetMinutes={tzOffsetMinutes}
+              isLast={i === segments.length - 1}
+            />
+          ))}
+        </div>
       )}
     </div>
   )

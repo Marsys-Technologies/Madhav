@@ -117,10 +117,13 @@ function StageHealthRow({
   return (
     <div className="flex items-center gap-2 py-1.5" data-testid={`stage-health-row-${stage}`}>
       <span className="text-xs text-zinc-400 w-16 shrink-0">{stage}</span>
+      <span className="sr-only">
+        Latency {latencyRatio == null ? 'unavailable' : latencyLabel}, completeness {completeness == null ? 'unavailable' : completenessLabel}, quality {qualityOk == null ? 'unavailable' : qualityLabel}.
+      </span>
       <div
         className="flex-1 h-1.5 rounded-full bg-zinc-800 overflow-hidden"
         title={`latency ${latencyLabel}`}
-        aria-label={`${stage} latency ${latencyLabel}`}
+        aria-hidden="true"
       >
         <div
           className={`h-full rounded-full transition-all ${latencyColor}`}
@@ -130,12 +133,12 @@ function StageHealthRow({
       <div
         className={`w-2 h-2 rounded-full shrink-0 ${completenessColor}`}
         title={`completeness ${completenessLabel}`}
-        aria-label={`${stage} completeness ${completenessLabel}`}
+        aria-hidden="true"
       />
       <div
         className={`w-2 h-2 rounded-full shrink-0 ${qualityColor}`}
         title={`quality ${qualityLabel}`}
-        aria-label={`${stage} quality ${qualityLabel}`}
+        aria-hidden="true"
       />
     </div>
   )
@@ -172,7 +175,7 @@ function AnomalyCallouts({
             className={`text-[10px] px-2 py-0.5 rounded border transition-colors ${
               filter === f
                 ? 'border-[rgba(212,175,55,0.4)] text-[#d4af37]'
-                : 'border-zinc-700 text-zinc-500 hover:border-zinc-500'
+                : 'border-zinc-700 text-[var(--folio-muted)] hover:border-zinc-500'
             }`}
           >
             {f}
@@ -180,7 +183,7 @@ function AnomalyCallouts({
         ))}
       </div>
       {filtered.length === 0 ? (
-        <p className="text-xs text-zinc-600">No anomalies detected.</p>
+        <p className="text-xs text-[var(--folio-muted)]">No anomalies detected.</p>
       ) : (
         <div className="space-y-1.5">
           {filtered.map((a, i) => (
@@ -250,7 +253,7 @@ function CostTokenLedger({ trace }: { trace: TraceDocument }) {
     <div data-testid="cost-token-ledger">
       <table className="w-full text-[10px]">
         <thead>
-          <tr className="text-zinc-500 border-b border-zinc-800">
+          <tr className="text-[var(--folio-muted)] border-b border-zinc-800">
             <th className="py-1 text-left font-normal">Call</th>
             <th className="py-1 text-right font-normal">In</th>
             <th className="py-1 text-right font-normal">Out</th>
@@ -302,7 +305,7 @@ interface HealthRailProps {
 
 function SectionHeader({ title }: { title: string }) {
   return (
-    <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-500 mb-2">
+    <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--folio-muted)] mb-2">
       {title}
     </p>
   )
@@ -384,7 +387,7 @@ export function HealthRail({ trace, anomalies, onFocusStep }: HealthRailProps) {
   const lowSampleSize = (baselines?.sample_size ?? 0) < 30
 
   return (
-    <div
+    <section
       data-testid="health-rail"
       className="p-4 space-y-5 text-xs"
       aria-label="Health and performance rail"
@@ -399,10 +402,10 @@ export function HealthRail({ trace, anomalies, onFocusStep }: HealthRailProps) {
       <div data-testid="stage-health-strip">
         <SectionHeader title="Stage Health" />
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-[9px] text-zinc-600 w-16 shrink-0" />
-          <span className="flex-1 text-[9px] text-zinc-600 text-center">latency vs p50</span>
-          <span className="text-[9px] text-zinc-600 w-2 text-center" title="completeness">C</span>
-          <span className="text-[9px] text-zinc-600 w-2 text-center" title="quality">Q</span>
+          <span className="text-[9px] text-[var(--folio-muted)] w-16 shrink-0" />
+          <span className="flex-1 text-[9px] text-[var(--folio-muted)] text-center">latency vs p50</span>
+          <span className="text-[9px] text-[var(--folio-muted)] w-2 text-center" title="completeness">C</span>
+          <span className="text-[9px] text-[var(--folio-muted)] w-2 text-center" title="quality">Q</span>
         </div>
         <StageHealthRow
           stage="classify"
@@ -454,7 +457,7 @@ export function HealthRail({ trace, anomalies, onFocusStep }: HealthRailProps) {
           </p>
         )}
         {baselines && (
-          <p className="text-[10px] text-zinc-500 mb-2">
+          <p className="text-[10px] text-[var(--folio-muted)] mb-2">
             n={baselines.sample_size} queries
           </p>
         )}
@@ -492,6 +495,6 @@ export function HealthRail({ trace, anomalies, onFocusStep }: HealthRailProps) {
         <SectionHeader title="Cost & Tokens" />
         <CostTokenLedger trace={trace} />
       </div>
-    </div>
+    </section>
   )
 }

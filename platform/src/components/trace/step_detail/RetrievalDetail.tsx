@@ -33,9 +33,9 @@ function StatusPill({ status }: { status: RetrievalSubToolRun['status'] }) {
   const map: Record<RetrievalSubToolRun['status'], string> = {
     done: 'bg-emerald-400/10 text-emerald-400',
     running: 'bg-zinc-700/30 text-zinc-300',
-    pending: 'bg-zinc-700/20 text-zinc-500',
+    pending: 'bg-zinc-700/20 text-[var(--folio-muted)]',
     error: 'bg-amber-400/10 text-amber-400',
-    cancelled: 'bg-zinc-700/20 text-zinc-600',
+    cancelled: 'bg-zinc-700/20 text-[var(--folio-muted)]',
   }
   return (
     <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold uppercase tracking-wide ${map[status]}`}>
@@ -95,7 +95,7 @@ export function RetrievalDetail({ retrieval, focusedTool = null }: Props) {
   if (visible.length === 0) {
     return (
       <div data-testid="retrieval-detail">
-        <p className="text-xs text-zinc-500">No retrieval data for this query.</p>
+        <p className="text-xs text-[var(--folio-muted)]">No retrieval data for this query.</p>
       </div>
     )
   }

@@ -21,21 +21,23 @@
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=Inter:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap');
 
 :root {
-  /* Chart Folio. Use boundary for controls and divider for decoration. */
-  --folio-canvas: #f5efe2;
-  --folio-panel: #fcf8ee;
-  --folio-selected: #e6eadb;
-  --folio-divider: #a5a18e;
-  --folio-boundary: #716d5e;
-  --folio-ink: #242920;
-  --folio-muted: #52584a;
-  --folio-action: #2e563e;
+  /* Claude portal palette. Use boundary for controls and divider for decoration. */
+  --folio-canvas: #000;
+  --folio-panel: #0d0b08;
+  --folio-wash: radial-gradient(ellipse 70% 28rem at 34% 0, #1b1409, transparent 100%);
+  --folio-panel-wash: linear-gradient(155deg, #1a130b 0%, transparent 76%);
+  --folio-selected: #1c160c;
+  --folio-divider: #382b18;
+  --folio-boundary: #806c47;
+  --folio-ink: #f3eee2;
+  --folio-muted: #c4baa0;
+  --folio-action: #ecc56a;
   --folio-focus: var(--folio-action);
-  --folio-on-action: #fffaf0;
-  --folio-error: #802e28;
-  --folio-attention: #805e25;
-  --folio-font-heading: Georgia, "Times New Roman", serif;
-  --folio-font-body: system-ui, sans-serif;
+  --folio-on-action: #171004;
+  --folio-error: var(--danger);
+  --folio-attention: var(--warning);
+  --folio-font-heading: var(--font-serif);
+  --folio-font-body: Alegreya, Georgia, serif;
   --folio-target: 44px;
 
   /* ── Background family ─────────────────────────────────────────────────── */
@@ -124,10 +126,15 @@
   --z-toast:   200;
 }
 
-/* Only the portal chrome adopts these rules. Feature surfaces retain their own tokens. */
+.dark .folio-page-surface {
+  color-scheme: dark;
+  background: var(--folio-wash), var(--folio-canvas);
+}
+
+/* The navigation also uses the portal palette. */
 .folio-nav-surface {
-  color-scheme: light;
-  background: var(--folio-panel);
+  color-scheme: dark;
+  background: var(--folio-panel-wash), var(--folio-panel);
   border-color: var(--folio-divider);
   color: var(--folio-ink);
   font-family: var(--folio-font-body);
@@ -174,6 +181,8 @@
 .folio-nav-surface[data-slot="dropdown-menu-content"] {
   --accent: var(--folio-selected);
   --accent-foreground: var(--folio-action);
+  --popover: var(--folio-panel);
+  --popover-foreground: var(--folio-ink);
 }
 
 .folio-nav-identity {
