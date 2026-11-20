@@ -53,6 +53,7 @@ for _p in (str(_SCRIPTS_DIR), str(_SIDECAR_ROOT)):
 
 from kala_admission.checks import run_blind_battery_curve  # noqa: E402
 from kala_admission.lel import TEST_SPLIT_BOUNDARY, load_train_events, partition_scorable  # noqa: E402
+from services.mimamsa.lel_calibration import may_consume_into_pool  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -642,16 +643,25 @@ def load_v3_windows(conn: Any, chart_id: str) -> list[GochaWindow]:
     return windows
 
 
-def load_abhinandan_train_events(conn: Any, chart_id: str) -> list[tuple[str, date]]:
+def load_pooled_train_events(
+    conn: Any, chart_id: str, pool_override: Optional[str] = None,
+) -> tuple[list[tuple[str, date]], int]:
     """
-    Load TRAIN events for Abhinandan chart from DB.
+    Load the second chart's TRAIN events that may be POOLED with the native's.
 
-    TEST SPLIT: WHERE event_date < '2020-01-01' — hard-coded in the query.
-    Returns list of (event_id, event_date).
+    F8 (Track I, LIFE_EVENTS_SCOPE_AUDIT): life_events is people-entered and
+    private. A row is consumed into the cross-chart pool only when its own
+    `pool_consent` is true AND the global pool is on -- exactly
+    `services.mimamsa.lel_calibration.may_consume_into_pool(pool_consent, override)`
+    (both keys required; the pool is OFF unless MIMAMSA_CROSS_CHART_POOL or
+    `pool_override` switches it on). A row with pool_consent false/NULL is never
+    returned. If nothing is consented the second chart contributes nothing: no
+    fallback, no fabricated rows.
 
-    Tries life_events table (the real LEL table) first.
-    Falls back to lel_event_class_resolution or other tables if found.
-    If none found: returns [] and logs the missing table.
+    TEST SPLIT: WHERE event_date < '2020-01-01' -- hard-coded in the query.
+
+    Returns (pairs, withheld): pairs = list of (event_id, event_date) that may be
+    pooled; withheld = number of in-train rows excluded for lack of consent.
     """
     # Check what tables exist
     with conn.cursor() as cur:
@@ -671,7 +681,8 @@ def load_abhinandan_train_events(conn: Any, chart_id: str) -> list[tuple[str, da
             cur.execute(
                 """
                 SELECT event_id,
-                       event_date
+                       event_date,
+                       pool_consent
                   FROM life_events
                  WHERE chart_id = %s
                    AND event_date < '2020-01-01'
@@ -681,18 +692,25 @@ def load_abhinandan_train_events(conn: Any, chart_id: str) -> list[tuple[str, da
             )
             rows = cur.fetchall()
         events: list[tuple[str, date]] = []
+        withheld = 0
         for r in rows:
             if isinstance(r, dict):
                 eid = str(r["event_id"])
                 edate = r["event_date"]
+                consent = r.get("pool_consent")
             else:
-                eid, edate = str(r[0]), r[1]
+                eid, edate, consent = str(r[0]), r[1], r[2]
             if isinstance(edate, str):
                 edate = date.fromisoformat(edate)
             # Double-check TEST split (belt and suspenders)
-            if edate < TEST_SPLIT_BOUNDARY:
-                events.append((eid, edate))
-        return events
+            if edate >= TEST_SPLIT_BOUNDARY:
+                continue
+            # Consent gate (F8): NULL/false/absent consent is never pooled.
+            if not may_consume_into_pool(consent is True, pool_override):
+                withheld += 1
+                continue
+            events.append((eid, edate))
+        return events, withheld
 
     logger.warning(
         "life_events table not found for Abhinandan chart %s. "
@@ -700,7 +718,14 @@ def load_abhinandan_train_events(conn: Any, chart_id: str) -> list[tuple[str, da
         chart_id,
         found_tables,
     )
-    return []
+    return [], 0
+
+
+def load_abhinandan_train_events(
+    conn: Any, chart_id: str, pool_override: Optional[str] = None,
+) -> list[tuple[str, date]]:
+    """Consent-gated TRAIN events only (see load_pooled_train_events)."""
+    return load_pooled_train_events(conn, chart_id, pool_override)[0]
 
 
 def store_calibration_results(
@@ -962,12 +987,14 @@ def build_weight_fitting_report(conn: Any) -> dict:
         assert edate < TEST_SPLIT_BOUNDARY, "unreachable — load_train_events already enforces this"
 
     # Abhinandan TRAIN events (from DB, WHERE event_date < '2020-01-01')
-    abhinandan_train_pairs = load_abhinandan_train_events(conn, ABHINANDAN_CHART_ID)
+    abhinandan_train_pairs, abhinandan_withheld = load_pooled_train_events(conn, ABHINANDAN_CHART_ID)
     abhinandan_available = len(abhinandan_train_pairs) > 0
     if not abhinandan_available:
         logger.warning(
-            "Abhinandan train events not available. "
-            "Cross-chart pooling approximated: native result treated as prior."
+            "Abhinandan train events not available for pooling "
+            "(%d withheld: no pool_consent / pool off). "
+            "Cross-chart pooling approximated: native result treated as prior.",
+            abhinandan_withheld,
         )
 
     n_native = len(native_train_pairs)
@@ -1009,6 +1036,7 @@ def build_weight_fitting_report(conn: Any) -> dict:
         "n_train_events_native": n_native,
         "n_train_events_abhinandan": n_abhinandan,
         "abhinandan_events_not_available_in_db": not abhinandan_available,
+        "abhinandan_events_withheld_no_pool_consent": abhinandan_withheld,
         "shrinkage_prior_k": SHRINKAGE_PRIOR_K,
         "proxy_ablation_fraction": PROXY_ABLATION_FRACTION,
         "dataset_hash": dataset_hash,
@@ -1033,6 +1061,7 @@ def build_weight_fitting_report(conn: Any) -> dict:
         "n_train_events_native": n_native,
         "n_train_events_abhinandan": n_abhinandan,
         "abhinandan_events_not_available_in_db": not abhinandan_available,
+        "abhinandan_events_withheld_no_pool_consent": abhinandan_withheld,
         "hit_rate_full_native": round(hit_rate_full_native, 6),
         "hit_rate_full_abhinandan": round(hit_rate_full_abhinandan, 6),
         "native_v3_windows_count": len(native_windows),
