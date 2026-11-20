@@ -16,7 +16,7 @@
       "descriptor_content_untyped": 194,
       "exhaustible_paginated": 5,
       "full_profile_allowlist_enforced": true,
-      "non_exhaustible_paginated": 109
+      "non_exhaustible_paginated": 107
     },
     "planner_addressable_descriptors": {
       "excluded": 3,
@@ -107,7 +107,7 @@
       },
       "callable": 199,
       "output_schema_declared": 5,
-      "paginated_declared": 114,
+      "paginated_declared": 112,
       "prompts": 1,
       "resources": 4,
       "tools": 194,
@@ -2825,7 +2825,7 @@
             "type": "number"
           },
           "limit": {
-            "description": "Maximum rows to return (default: 20, max: 500).",
+            "description": "Maximum rows to return (default: 20, max: 200).",
             "type": "number"
           },
           "planet": {
@@ -8287,39 +8287,6 @@
             "description": "Integer 1..200; legacy default 20.",
             "type": "number"
           },
-          "published_request": {
-            "description": "Explicit published-stage selectors. Opts into the stage response; omitted requests retain the legacy contract.",
-            "properties": {
-              "assertion_id": {
-                "type": "string"
-              },
-              "at": {
-                "type": "string"
-              },
-              "date_from": {
-                "type": "string"
-              },
-              "date_to": {
-                "type": "string"
-              },
-              "event_class": {
-                "type": "string"
-              },
-              "limit": {
-                "type": "number"
-              },
-              "offset": {
-                "type": "number"
-              },
-              "record_id": {
-                "type": "string"
-              },
-              "source_table": {
-                "type": "string"
-              }
-            },
-            "type": "object"
-          },
           "question_frame": {
             "description": "Forwarded without reinterpretation to the established handler.",
             "properties": {
@@ -8352,9 +8319,7 @@
         "output_contract": null,
         "output_contract_state": "descriptor_content_untyped",
         "pagination": {
-          "blocker": "response collection and exhaustion paths are not source-reviewed",
-          "declared": "bounded_without_position",
-          "disposition": "non_exhaustible"
+          "disposition": "not_paginated"
         },
         "planner_disposition": "addressable",
         "planner_reason": null,
@@ -8413,39 +8378,6 @@
           },
           "native_janma_nakshatra": {
             "type": "string"
-          },
-          "published_request": {
-            "description": "Explicit published-stage selectors. Opts into the stage response; omitted requests retain the legacy contract.",
-            "properties": {
-              "assertion_id": {
-                "type": "string"
-              },
-              "at": {
-                "type": "string"
-              },
-              "date_from": {
-                "type": "string"
-              },
-              "date_to": {
-                "type": "string"
-              },
-              "event_class": {
-                "type": "string"
-              },
-              "limit": {
-                "type": "number"
-              },
-              "offset": {
-                "type": "number"
-              },
-              "record_id": {
-                "type": "string"
-              },
-              "source_table": {
-                "type": "string"
-              }
-            },
-            "type": "object"
           },
           "question_frame": {
             "description": "Forwarded without reinterpretation to the established handler.",
@@ -8562,39 +8494,6 @@
             "description": "Integer 1..50; legacy default 15.",
             "type": "number"
           },
-          "published_request": {
-            "description": "Explicit published-stage selectors. Opts into the stage response; omitted requests retain the legacy contract.",
-            "properties": {
-              "assertion_id": {
-                "type": "string"
-              },
-              "at": {
-                "type": "string"
-              },
-              "date_from": {
-                "type": "string"
-              },
-              "date_to": {
-                "type": "string"
-              },
-              "event_class": {
-                "type": "string"
-              },
-              "limit": {
-                "type": "number"
-              },
-              "offset": {
-                "type": "number"
-              },
-              "record_id": {
-                "type": "string"
-              },
-              "source_table": {
-                "type": "string"
-              }
-            },
-            "type": "object"
-          },
           "question_frame": {
             "description": "Forwarded without reinterpretation to the established handler.",
             "properties": {
@@ -8672,39 +8571,6 @@
             "required": true,
             "type": "string"
           },
-          "published_request": {
-            "description": "Explicit published-stage selectors. Opts into the stage response; omitted requests retain the legacy contract.",
-            "properties": {
-              "assertion_id": {
-                "type": "string"
-              },
-              "at": {
-                "type": "string"
-              },
-              "date_from": {
-                "type": "string"
-              },
-              "date_to": {
-                "type": "string"
-              },
-              "event_class": {
-                "type": "string"
-              },
-              "limit": {
-                "type": "number"
-              },
-              "offset": {
-                "type": "number"
-              },
-              "record_id": {
-                "type": "string"
-              },
-              "source_table": {
-                "type": "string"
-              }
-            },
-            "type": "object"
-          },
           "question_frame": {
             "description": "Forwarded without reinterpretation to the established handler.",
             "properties": {
@@ -8737,9 +8603,7 @@
         "output_contract": null,
         "output_contract_state": "descriptor_content_untyped",
         "pagination": {
-          "blocker": "response collection and exhaustion paths are not source-reviewed",
-          "declared": "bounded_without_position",
-          "disposition": "non_exhaustible"
+          "disposition": "not_paginated"
         },
         "planner_disposition": "addressable",
         "planner_reason": null,
@@ -8797,39 +8661,6 @@
               "type": "string"
             },
             "type": "array"
-          },
-          "published_request": {
-            "description": "Explicit published-stage selectors. Opts into the stage response; omitted requests retain the legacy contract.",
-            "properties": {
-              "assertion_id": {
-                "type": "string"
-              },
-              "at": {
-                "type": "string"
-              },
-              "date_from": {
-                "type": "string"
-              },
-              "date_to": {
-                "type": "string"
-              },
-              "event_class": {
-                "type": "string"
-              },
-              "limit": {
-                "type": "number"
-              },
-              "offset": {
-                "type": "number"
-              },
-              "record_id": {
-                "type": "string"
-              },
-              "source_table": {
-                "type": "string"
-              }
-            },
-            "type": "object"
           },
           "question_frame": {
             "description": "Forwarded without reinterpretation to the established handler.",
@@ -8926,39 +8757,6 @@
             "description": "Integer 1..50; legacy default 10.",
             "type": "number"
           },
-          "published_request": {
-            "description": "Explicit published-stage selectors. Opts into the stage response; omitted requests retain the legacy contract.",
-            "properties": {
-              "assertion_id": {
-                "type": "string"
-              },
-              "at": {
-                "type": "string"
-              },
-              "date_from": {
-                "type": "string"
-              },
-              "date_to": {
-                "type": "string"
-              },
-              "event_class": {
-                "type": "string"
-              },
-              "limit": {
-                "type": "number"
-              },
-              "offset": {
-                "type": "number"
-              },
-              "record_id": {
-                "type": "string"
-              },
-              "source_table": {
-                "type": "string"
-              }
-            },
-            "type": "object"
-          },
           "question_frame": {
             "description": "Forwarded without reinterpretation to the established handler.",
             "properties": {
@@ -9034,39 +8832,6 @@
             "description": "Explicit chart UUID; no chart default.",
             "required": true,
             "type": "string"
-          },
-          "published_request": {
-            "description": "Explicit published-stage selectors. Opts into the stage response; omitted requests retain the legacy contract.",
-            "properties": {
-              "assertion_id": {
-                "type": "string"
-              },
-              "at": {
-                "type": "string"
-              },
-              "date_from": {
-                "type": "string"
-              },
-              "date_to": {
-                "type": "string"
-              },
-              "event_class": {
-                "type": "string"
-              },
-              "limit": {
-                "type": "number"
-              },
-              "offset": {
-                "type": "number"
-              },
-              "record_id": {
-                "type": "string"
-              },
-              "source_table": {
-                "type": "string"
-              }
-            },
-            "type": "object"
           },
           "question_frame": {
             "description": "Forwarded without reinterpretation to the established handler.",
@@ -14406,9 +14171,9 @@
       {
         "asset_id": "ka_vighnakara",
         "contract_ref": {
-          "migration_path": "platform/migrations/1406_kala_obstruction_generation_scope.sql",
+          "migration_path": "platform/migrations/1212_nirmana_l3_ka_vighnakara_output_digest_spec.sql",
           "source_state": "ordered_static_replay_not_database_replay",
-          "spec_sha256": "13ba8554c1972bc3a99a5b9c14d2801e55ef96481d35e8771ce42373e56dfc74"
+          "spec_sha256": "a731cb0c49546583b12dd24f1366389b99eb695aed4142f16560cea08b88f117"
         },
         "disposition": "relational_digest_current_source_intent",
         "implementation_refs": [
@@ -14426,9 +14191,9 @@
       {
         "asset_id": "ka_yojaka",
         "contract_ref": {
-          "migration_path": "platform/migrations/1400_ka_yojaka_output_digest_v3.sql",
+          "migration_path": "platform/migrations/1024_nirmana_l3_ka_yojaka_output_digest_spec.sql",
           "source_state": "ordered_static_replay_not_database_replay",
-          "spec_sha256": "d7a0f921e7499b108f1b3dde92417bac898df268639812f8909e20f2fe6f894b"
+          "spec_sha256": "9f6bbfd1011ebf82aec647c3b80da57365e11a2fffbaf00f3a4df5bc77d307a5"
         },
         "disposition": "relational_digest_current_source_intent",
         "implementation_refs": [
@@ -21275,7 +21040,7 @@
         },
         {
           "asset_id": "ka_vighnakara",
-          "migration_path": "platform/migrations/1406_kala_obstruction_generation_scope.sql",
+          "migration_path": "platform/migrations/1212_nirmana_l3_ka_vighnakara_output_digest_spec.sql",
           "spec": {
             "components": [
               {
@@ -21287,7 +21052,7 @@
                   "severity",
                   "obstruction_detail"
                 ],
-                "name": "kala_obstruction_legacy",
+                "name": "kala_obstruction",
                 "relation": "kala_obstruction",
                 "value_columns": [
                   "chart_id",
@@ -21300,59 +21065,25 @@
                 ],
                 "where_equals": {
                   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa"
-                },
-                "where_is_null": [
-                  "generation"
-                ]
-              },
-              {
-                "key_columns": [
-                  "generation",
-                  "signal_id",
-                  "obstruction_type",
-                  "severity_score",
-                  "override_score",
-                  "severity",
-                  "obstruction_detail"
-                ],
-                "name": "kala_obstruction_candidate",
-                "relation": "kala_obstruction",
-                "value_columns": [
-                  "chart_id",
-                  "signal_id",
-                  "obstruction_type",
-                  "severity",
-                  "severity_score",
-                  "override_score",
-                  "obstruction_detail",
-                  "generation"
-                ],
-                "where_equals": {
-                  "chart_id": "482012f1-710e-4a25-994a-93821f5871aa"
-                },
-                "where_not_null": [
-                  "generation"
-                ]
+                }
               }
             ],
             "version": "nirmana-output-digest-spec-v1"
           },
-          "spec_sha256": "13ba8554c1972bc3a99a5b9c14d2801e55ef96481d35e8771ce42373e56dfc74"
+          "spec_sha256": "a731cb0c49546583b12dd24f1366389b99eb695aed4142f16560cea08b88f117"
         },
         {
           "asset_id": "ka_yojaka",
-          "migration_path": "platform/migrations/1400_ka_yojaka_output_digest_v3.sql",
+          "migration_path": "platform/migrations/1024_nirmana_l3_ka_yojaka_output_digest_spec.sql",
           "spec": {
             "components": [
               {
                 "key_columns": [
                   "chart_id",
-                  "ayanamsha_id",
-                  "mechanism_id",
-                  "event_class_id"
+                  "signal_id",
+                  "ayanamsha_id"
                 ],
-                "name": "kap_candidate_classed",
-                "newest_candidate_generation": "generation",
+                "name": "kala_activation_predicates",
                 "relation": "kala_activation_predicates",
                 "value_columns": [
                   "chart_id",
@@ -21362,57 +21093,16 @@
                   "dasha_eligibility_rule_jsonb",
                   "transit_trigger_jsonb",
                   "strength_affliction_hook_jsonb",
-                  "derivation_ledger_jsonb",
-                  "mechanism_route",
-                  "conclusion_state_jsonb",
-                  "mechanism_id",
-                  "event_class_id"
+                  "derivation_ledger_jsonb"
                 ],
                 "where_equals": {
                   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa"
-                },
-                "where_not_null": [
-                  "event_class_id",
-                  "mechanism_id"
-                ]
-              },
-              {
-                "key_columns": [
-                  "chart_id",
-                  "ayanamsha_id",
-                  "mechanism_id"
-                ],
-                "name": "kap_candidate_classless",
-                "newest_candidate_generation": "generation",
-                "relation": "kala_activation_predicates",
-                "value_columns": [
-                  "chart_id",
-                  "ayanamsha_id",
-                  "signal_id",
-                  "signature_class",
-                  "dasha_eligibility_rule_jsonb",
-                  "transit_trigger_jsonb",
-                  "strength_affliction_hook_jsonb",
-                  "derivation_ledger_jsonb",
-                  "mechanism_route",
-                  "conclusion_state_jsonb",
-                  "mechanism_id",
-                  "event_class_id"
-                ],
-                "where_equals": {
-                  "chart_id": "482012f1-710e-4a25-994a-93821f5871aa"
-                },
-                "where_is_null": [
-                  "event_class_id"
-                ],
-                "where_not_null": [
-                  "mechanism_id"
-                ]
+                }
               }
             ],
             "version": "nirmana-output-digest-spec-v1"
           },
-          "spec_sha256": "d7a0f921e7499b108f1b3dde92417bac898df268639812f8909e20f2fe6f894b"
+          "spec_sha256": "9f6bbfd1011ebf82aec647c3b80da57365e11a2fffbaf00f3a4df5bc77d307a5"
         },
         {
           "asset_id": "mi_adhilepa",
@@ -22457,11 +22147,6 @@
         "platform/migrations/1221_nirmana_l1_ga_structural_a29_integrity_conjunct.sql",
         "platform/migrations/1223_nirmana_l1_ga_vargas_output_digest_spec_seven_column_key.sql",
         "platform/migrations/1333_ga_fact_identity_writer_registration.sql",
-        "platform/migrations/1399_ka_yojaka_output_digest_v2.sql",
-        "platform/migrations/1400_ka_yojaka_output_digest_v3.sql",
-        "platform/migrations/1404_gochara_resonance_map_generation.sql",
-        "platform/migrations/1405_kala_convergence_generation.sql",
-        "platform/migrations/1406_kala_obstruction_generation_scope.sql",
         "platform/migrations/632_nirmana_evidence_server_writer_guard.sql",
         "platform/migrations/820_nirmana_l5_mi_jivanaghatana_output_digest_spec.sql",
         "platform/migrations/821_nirmana_l5_mi_vistara_output_digest_spec.sql",
@@ -22525,8 +22210,6 @@
         "platform/migrations/996_nirmana_l2_bo_sangati_output_digest_spec.sql",
         "platform/migrations/998_nirmana_l5_mi_pariksha_output_digest_spec.sql",
         "platform/supabase/migrations/1036_data_plane_l2_producer_generations.sql",
-        "platform/supabase/migrations/1416_bo_cdlm_summary_three_table_receipts.sql",
-        "platform/supabase/migrations/1417_bo_cdlm_summary_achieved_floor.sql",
         "platform/supabase/migrations/598_nirmana_output_digest_specs.sql",
         "platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql",
         "platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql",
@@ -22558,11 +22241,11 @@
       {
         "id": "live_runtime_catalog_projection",
         "path": "platform/src/lib/retrieval/registry/catalog.ts",
-        "sha256": "7b6aeec3b7fef56c60e372d6aaddae06e8a8f57e3ad5483c7d7430afb6f0f9f4"
+        "sha256": "0b88c31db28b907947e8c50da29da384ad39df1b525c9fca3f921a818b0e1cf9"
       },
       {
         "id": "output_digest_migration_source_set",
-        "member_count": 102,
+        "member_count": 95,
         "members": [
           {
             "path": "platform/migrations/1000_nirmana_l2_bo_cgm_motifs_output_digest_spec.sql",
@@ -22663,26 +22346,6 @@
           {
             "path": "platform/migrations/1333_ga_fact_identity_writer_registration.sql",
             "sha256": "88965eb4b6433b66307a143d1970d06e070140a72ead485e34b81a7bb9f943b4"
-          },
-          {
-            "path": "platform/migrations/1399_ka_yojaka_output_digest_v2.sql",
-            "sha256": "2b4e19e3ced8defdf35c29f746360e2efc393f5a336fd659eb2430b38f80aeb9"
-          },
-          {
-            "path": "platform/migrations/1400_ka_yojaka_output_digest_v3.sql",
-            "sha256": "d7144945014b4d02272ca3c6ffed38220fde24145e207e4c57410af0d00990ae"
-          },
-          {
-            "path": "platform/migrations/1404_gochara_resonance_map_generation.sql",
-            "sha256": "e7c1f55183cd54f226f371f4458bf518aa87a6b8b0e5b0d4ed905a0529202a65"
-          },
-          {
-            "path": "platform/migrations/1405_kala_convergence_generation.sql",
-            "sha256": "bf1a3bb815fcf26a29e79c9f08943c639f60a99531f2bfe398cd84ca1a7faa3d"
-          },
-          {
-            "path": "platform/migrations/1406_kala_obstruction_generation_scope.sql",
-            "sha256": "79b1fcc90b2a30f39a2c66fbb41f986d48d18da591f64fa66512dc6ba699a483"
           },
           {
             "path": "platform/migrations/632_nirmana_evidence_server_writer_guard.sql",
@@ -22937,14 +22600,6 @@
             "sha256": "9fd38140dca82efb379a6af1b575b94b60236501d9f5ce65cb4e4fcb6e4f890d"
           },
           {
-            "path": "platform/supabase/migrations/1416_bo_cdlm_summary_three_table_receipts.sql",
-            "sha256": "7924405e7c8ac055c39b23900d25d479b788d08901fba6d65ee42f39429f379d"
-          },
-          {
-            "path": "platform/supabase/migrations/1417_bo_cdlm_summary_achieved_floor.sql",
-            "sha256": "2a28ce61a07fce0b4877ecc7c775244ee64cfd6894dbcce86789a2a65f4af698"
-          },
-          {
             "path": "platform/supabase/migrations/598_nirmana_output_digest_specs.sql",
             "sha256": "ed7e6be80bf53180e99527c12c8747cc7e1b6448aa6308efa5caa8eace28ef34"
           },
@@ -22974,20 +22629,20 @@
           }
         ],
         "path": "platform/{migrations,supabase/migrations}/*.sql containing asset_output_digest_specs",
-        "sha256": "a0eec573315681e3c51c4d1266864ef67a965d1f6a6448651f19970ef8773e61"
+        "sha256": "d68412f33a8c2850af44e93f6f11147f7247f7fe5e5f3fc8256b7993017ffac7"
       },
       {
         "id": "producer_asset_seed",
         "path": "platform/scripts/seed/asset_registry_seed.ts",
-        "sha256": "cc67fcd02a1272da59793d8609c079970e9bf73e80967325cfbd763821e38443"
+        "sha256": "4ef0932afe06188beaa884bcf14a23572f12925f6d23e95f32f26b57c123ab4a"
       },
       {
         "id": "public_registrar_source_set",
-        "member_count": 54,
+        "member_count": 53,
         "members": [
           {
             "path": "platform-mcp/src/tools/bo_2-8.ts",
-            "sha256": "035d4d4dcf14b5cd5632221274b8b86cc7e0454bb372a893cddd9a33ffbfc2ef"
+            "sha256": "cfeaf4887abfc8fd5f0333f54d12055adcad56f3fc5b80338123ebbbaca46d42"
           },
           {
             "path": "platform-mcp/src/tools/chart_selection.ts",
@@ -22995,7 +22650,7 @@
           },
           {
             "path": "platform-mcp/src/tools/dossier.ts",
-            "sha256": "91b1ea1a927e19d32f48a11c9850477d2e7e75e1839f5dd424f7fc95437c6afc"
+            "sha256": "8da4c5840760a6fd14869415e0a8ed61a8a1ae3839e10aeca02bb0d840340976"
           },
           {
             "path": "platform-mcp/src/tools/errors_that_teach.ts",
@@ -23003,7 +22658,7 @@
           },
           {
             "path": "platform-mcp/src/tools/intent_scope_classifier.ts",
-            "sha256": "b749904e0010a68743ae8720d35895d737cf21ca10cbb3e0c09817178af2ff30"
+            "sha256": "16385bd592b21f4ea04ba27e2fc88b1ef25014aa5bb861f2016d90adfaa83d25"
           },
           {
             "path": "platform-mcp/src/tools/kala_timeline.ts",
@@ -23011,7 +22666,7 @@
           },
           {
             "path": "platform-mcp/src/tools/kala_views/ahead.ts",
-            "sha256": "bcf1e502984d63850cea97d61dafcdd5dc7d1657c00c8e3acb1da9e93dea0dd6"
+            "sha256": "5512684ed1fe4b6710b0c3bc967b541eb84fb9cfb11d6657b7f473b8a4147dda"
           },
           {
             "path": "platform-mcp/src/tools/kala_views/dasha_sandhi.ts",
@@ -23019,19 +22674,19 @@
           },
           {
             "path": "platform-mcp/src/tools/kala_views/elect.ts",
-            "sha256": "b6aa2b11e499e80f51544e3c4788e8dacebcdad88eaff8a0b6ded1179fa67f5e"
+            "sha256": "905f830f0933092ead34294494f315121edb33bab190608ce57c312825eb129c"
           },
           {
             "path": "platform-mcp/src/tools/kala_views/explain.ts",
-            "sha256": "8756018e6c34f95e3f687e878bf879cee581a137e6e9b08e231664f045835fd7"
+            "sha256": "66357ab15c412fadc253653dc95c4349fd9bdaea9f44dceff2e56edf2f3a163b"
           },
           {
             "path": "platform-mcp/src/tools/kala_views/now.ts",
-            "sha256": "dd3027de8269d07d7658871014e75caeb3407b63ed9b707f22aa3acaa11718ad"
+            "sha256": "0ac067fa62d1fc5f8b2b556110b2d7f04b1d0e48bc73ab4f34c5fc9652bdc1bf"
           },
           {
             "path": "platform-mcp/src/tools/kala_views/priority.ts",
-            "sha256": "fb5025fd58d4db4dfa7df66d4ff87114e713cea11d1a157b1c45477bf4bd9d47"
+            "sha256": "56566475ec12548b19e2bc1984ef87428630c1c05e1f8391d9514290a1a958c9"
           },
           {
             "path": "platform-mcp/src/tools/kala_views/promise_gate.ts",
@@ -23042,16 +22697,12 @@
             "sha256": "416c7105afe64dc168e590954ea7bf00742ebf8ab940d4bb2ecf727c20055dd1"
           },
           {
-            "path": "platform-mcp/src/tools/kala_views/published_request.ts",
-            "sha256": "2c78e502c8da28216252f1484d516ba1636260ca7ed0d4d0c53f9f6a768b66f3"
-          },
-          {
             "path": "platform-mcp/src/tools/kala_views/register_all.ts",
             "sha256": "d224a51c27037ede2e0a96c1eb56b34efcf8567c5c111b4e070a8c9912806455"
           },
           {
             "path": "platform-mcp/src/tools/kala_views/registry_alias.ts",
-            "sha256": "ccdc4796fc187b799c4fbf1fb9e945ea877eb0db4fb18f60bb3bef86726ee325"
+            "sha256": "ee5d3cd54d0105b727805705b362ccfef1fc45dbefd550600ee96ee0e0710e1f"
           },
           {
             "path": "platform-mcp/src/tools/kala_views/registry_alias.vitest.config.ts",
@@ -23059,7 +22710,7 @@
           },
           {
             "path": "platform-mcp/src/tools/kala_views/ritual.ts",
-            "sha256": "ae532ec9df4b5c0777a7f701168cd750d102052de96f4148f9a1898b6f6468a7"
+            "sha256": "4230076ca8bb9e6d061aaff2fc37f8e59d358c1192f60dd4684863e0bdfa5b6c"
           },
           {
             "path": "platform-mcp/src/tools/kala_views/shared.ts",
@@ -23071,7 +22722,7 @@
           },
           {
             "path": "platform-mcp/src/tools/kala_views/story.ts",
-            "sha256": "aed596a024692f1dd603e79d10b9dcfc7dcaeea9f0756e84207bce8f373d52cc"
+            "sha256": "43fe28a73731dc76e95a851fcd6b8e2f73becf55a9db87ecc09e31e1c481d413"
           },
           {
             "path": "platform-mcp/src/tools/kala_views/upaya.ts",
@@ -23079,7 +22730,7 @@
           },
           {
             "path": "platform-mcp/src/tools/l0_brahmagyan.ts",
-            "sha256": "7234176fe9df38df9ec88ee4677330b3300b9688e783332b39685788117763fb"
+            "sha256": "b27004ce0e1cf5e1e2710e7a4e7cbbfa270be98e087c1e95189251d346daa3bc"
           },
           {
             "path": "platform-mcp/src/tools/l0_ephemeris.ts",
@@ -23091,11 +22742,11 @@
           },
           {
             "path": "platform-mcp/src/tools/mimamsa_lel_intake.ts",
-            "sha256": "64b7eab0ebb6bc48027fd2b8da118d592fc40b5f401cb398ff502dfbb029bdd9"
+            "sha256": "09df0b5faa32c02431e3e76e63dad832a1f91178a958d45df4d19635618e2a2e"
           },
           {
             "path": "platform-mcp/src/tools/mimamsa_outcome.ts",
-            "sha256": "6d995dafbf7c40cd02ca893db8f0d52a53c43480e2a8d291ef1d3ec7281568d8"
+            "sha256": "7321bdffdf6f6a3e4283703b3cce26bafcff4f45975c0c5495269d7d4249f114"
           },
           {
             "path": "platform-mcp/src/tools/muhurta_finder.ts",
@@ -23139,11 +22790,11 @@
           },
           {
             "path": "platform-mcp/src/tools/register_p1_reference.ts",
-            "sha256": "3cb106ae1f847f3ea80e7fa7444940a92c342ff62be902f9ad50344afc4b8bae"
+            "sha256": "ab73f34bf6417785843879a6554e7f53f657d231bc96dc0231aa574d51ca0112"
           },
           {
             "path": "platform-mcp/src/tools/register_p1_synthesis.ts",
-            "sha256": "f7d5dd7f402d492f59fcf9876da92f98d874757ab1c50118ad2a13c47e28f241"
+            "sha256": "a6feac5e8e4bfcda9b8b66de0bc21734fc4e58d86d9223a48a562a5d7906fb12"
           },
           {
             "path": "platform-mcp/src/tools/register_p2_dasha_lord.ts",
@@ -23159,7 +22810,7 @@
           },
           {
             "path": "platform-mcp/src/tools/register_server_info.ts",
-            "sha256": "4bd826692482a8684c2dba050b00fe55ac9affb034cbe73dc0e639da5aaf1fcb"
+            "sha256": "fa113a6bb43e58c93e1aab3757607c8fd14df58f1012d1bf108517147299158c"
           },
           {
             "path": "platform-mcp/src/tools/register_vidhi_plan.ts",
@@ -23167,11 +22818,11 @@
           },
           {
             "path": "platform-mcp/src/tools/registry_bridge.ts",
-            "sha256": "6c62c7403de374e9676fe188b244d31bc931e24afba9e53c84da716d0a4afec0"
+            "sha256": "a23e12659d2cd08f74c2d2c61fa156c8ba5e431dcdc4769c18e8f249f9f9f7ff"
           },
           {
             "path": "platform-mcp/src/tools/retrieval/holistic_bundle.ts",
-            "sha256": "0af2ae7697c53e4bff803d2ee115fa9dfb65bf88015edc677767810b861bbac4"
+            "sha256": "93b4a85eb551d5d5004ca61066dfcceb28044d9c4b17efc7a0429b334cddeace"
           },
           {
             "path": "platform-mcp/src/tools/retrieval/kala_temporal.ts",
@@ -23183,11 +22834,11 @@
           },
           {
             "path": "platform-mcp/src/tools/retrieval/register_gochara_contact_ledger.ts",
-            "sha256": "6a9a526c4d08700444c4f316713e3728262dbebde825ae4dbf5d98c5bec63ee7"
+            "sha256": "bcf30fbab670391962c848b00af9872eed6a441806c43bb0a4a8ab8ab28f270b"
           },
           {
             "path": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts",
-            "sha256": "8b5cc0b7fef1eaf7b728654cc502f5e783bceb255a0f0cd12babe2a923ddf469"
+            "sha256": "01af2c97d6bd7f774b4e800f83aa26c2811379d26bef4de968cc904d39beed51"
           },
           {
             "path": "platform-mcp/src/tools/retrieval/remedy_tools.ts",
@@ -23203,7 +22854,7 @@
           }
         ],
         "path": "platform-mcp/src/tools/**/*.ts (excluding tests)",
-        "sha256": "280d7433e23434463cbef2153111fad02d3c8d6c84aa157d8c05359dc4647b93"
+        "sha256": "a8a511aa7c20faf17140d92e83a1dfb3d6c49b406c80cca5f8f033eca439f5c8"
       },
       {
         "id": "registrar_bridge_extractor",
@@ -23217,7 +22868,7 @@
       },
       {
         "id": "runtime_registry_source_set",
-        "member_count": 224,
+        "member_count": 218,
         "members": [
           {
             "path": "platform/src/lib/retrieval/registry/catalog.ts",
@@ -23233,7 +22884,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/description_payload_audit.ts",
-            "sha256": "e4482cb3ce0a6c6f8961fe5ad367db09ab1592ac61e7ebfd628d6800f97cf7a7"
+            "sha256": "f90135fef641e098df8cfa1aa644338d4bdf7fc95f2889d390ec05e8cb9ba991"
           },
           {
             "path": "platform/src/lib/retrieval/registry/descriptor_defaults.ts",
@@ -23309,7 +22960,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-            "sha256": "dcbfa832aa6a3182a2c2904b30be77d94af305fa3f4e74d6e80e71990eaf4968"
+            "sha256": "306b21eb40a6de69dc5de1c5e533e65b50548e0f261643fdf06a0d26f983acd7"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/stable.ts",
@@ -23325,7 +22976,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/dprofiles_registration.ts",
-            "sha256": "324598d2e4aa8edce2eabf969cbd0bd50f2c9f61c0c511e3a0f3c97c069e34d9"
+            "sha256": "9d57a071de9582ade9bda9f2795dca0125764c4fa398770e1ac9292336039f2c"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/asset_registry_all.ts",
@@ -23337,7 +22988,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/call_panchanga_service.ts",
-            "sha256": "cf63f1284a6ce73c7fd11d1a59f984bdef81bfa59ca6a2fde2b25dd0dcede1f7"
+            "sha256": "d1ae4f3f31c10444e2e90b477c3b05bc85eff902598e6221002d2289ad6e8d50"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/ephemeris_cache_year.ts",
@@ -23393,7 +23044,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_formula_constants.ts",
-            "sha256": "99c215820330384a93494d7b30935c52c72c8a2ec1f325bb0fc2003d35800ef8"
+            "sha256": "6e61f76240fde4959339fd34618ff99e3b43e8832b97a2bfeb8d835dc8028984"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_graha_dik.ts",
@@ -23421,7 +23072,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_parihara_graph.ts",
-            "sha256": "9a22b5412337f85d0b9905389f106023e100356010d1b354f291a705c46993f3"
+            "sha256": "0c744ee92d777121bd65f5c13c5a200c576d9adbbe7a0edf804f37babd3583b3"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_position.ts",
@@ -23429,7 +23080,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_transit.ts",
-            "sha256": "6d6012d7f9898ad99d7384c3dc67e16056106cd0b9a7bf8665bfea9a69e2b186"
+            "sha256": "635ee1734e201682defd5236517aaa07b9aed9664a2aeb97ae2f725e52d7a10d"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_fructification_rules.ts",
@@ -23473,19 +23124,19 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_av_gates.ts",
-            "sha256": "77b8ddcedaa1779c635236c9d26beb166ab6ccda0ce6c5dda300c03ed5235857"
+            "sha256": "db8d874ebfd0d80bf852827bbc91841fbbc0e6c56d6c061c3c7b6afa6004e2e0"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_engine.ts",
-            "sha256": "e3a46be28ddff03471db73c7b39a27b0f5ed774598f16930d414ced081f9ee6a"
+            "sha256": "aafd0386c8386c1bff3aef005596de942b273ec0f6e4afadd3307223183b67b3"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_moorti.ts",
-            "sha256": "79e54fc290dd2bc5ee938a9429ca283ba65d4d1cd46062f5e1174275f19efd83"
+            "sha256": "ae50fa3748997dac59b4f8fe032b83c1e0e0ace2025d95f9a414ad91f158071e"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_vedha.ts",
-            "sha256": "5e730acea11f74ec7ca4a1d2d8619ee245701d346bfa27073e3c8a7960bd95c5"
+            "sha256": "757f87eb24a7cbce6519a4d2a29916187c430f4ec39193104a7dea1ac92ad151"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vastu_direction_remedials.ts",
@@ -23497,7 +23148,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vichara_constants.ts",
-            "sha256": "5ae60bff5e49b8702a601bed0bdb64552b16b1757f5cb327a71b4a3430be4845"
+            "sha256": "5d7611c2ad84f8bac8463e87e1fde7f44005e1e462e37a11e59c4daa3480e608"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_yoga_catalog.ts",
@@ -23532,24 +23183,20 @@
             "sha256": "8c34e1b76b1f05d5cc93902e5aff89454aca56dfea3b49116fe31f644a0c69f3"
           },
           {
-            "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/fact_collection.ts",
-            "sha256": "de78db7a4b302fe6a05a3d5ddbccfd2e5ff94617a2debb7fcca57f662e8b7a46"
-          },
-          {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_argala.ts",
             "sha256": "38ee38bff6895a50f206bb9d16a9130735f9120a1ba38422d1309956dba4a8d3"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_ashtakavarga.ts",
-            "sha256": "f3762b4504bc680c70d564a0c807106d26ad81b9b854fa600e17d88cb7f89e8f"
+            "sha256": "965cf3e48a423d8da670551340473a35cc5aef431fa7cab2f32b6574a2beb7a5"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_aspects.ts",
-            "sha256": "d38daa64a26ea627a0df256d96899db86d98f83b22388999461fb23cd7ba4c69"
+            "sha256": "4ccaecafbef0166e95ef781b119d7b4a4438d657af923c9041201b4129d06d4c"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_av_transit_gating.ts",
-            "sha256": "d68dca36e7a467f4a76686e3665c7033f29ec4ec079f1b4cc27abf8fceef011e"
+            "sha256": "f78ce291d6489490e78ee04a698e7aa3288e6bc2b545f213e05cc1cd0fd773cd"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_avasthas.ts",
@@ -23561,7 +23208,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_bhava_bala.ts",
-            "sha256": "e679944f452a05cbb18b4a7d7f1305d760d9edc8f18844d2055417c10db2b895"
+            "sha256": "cbedf0897e497c799f4f92a012e90280237dc5a53be2b69308f31b4ad1b1acd7"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_chart_header.ts",
@@ -23577,11 +23224,11 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dasha_lord_capability.ts",
-            "sha256": "b0334f967ad20b9303a1c8f3b3a62c027df36af7673af8cfe1b7a9e5cd1b6dff"
+            "sha256": "5b43aad2b6bae4876a18cda3d479af42cc85364dcaa7f05c535db93d6e7439f9"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dashas.ts",
-            "sha256": "ca17596d8c4819307ec6608cb0e689bf086f8f792863920509fd93b43ae01820"
+            "sha256": "966fd1dd470454eb2aea01454c73afb3a9371da741e4faa359c707050f520117"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_database_schema.ts",
@@ -23593,7 +23240,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dispositors.ts",
-            "sha256": "1361f52c74e50ffc54537edf0672cb29b1b15fcead37ca03f978564ea1b1a1d2"
+            "sha256": "278a8a97ee62d334bbdafd27db04071e9106ff768be53f2bf7fc92d8db8483ba"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_divisionals.ts",
@@ -23601,11 +23248,11 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_eclipse_flags.ts",
-            "sha256": "ffa1ad80d2d44799a13424423c69045f22417cca67b4c7a680c78171fcc8665a"
+            "sha256": "34d22d09abe647fa96089d02c4668e4729de48d23be99c971515471c6fe37504"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_graha_yuddha.ts",
-            "sha256": "87430f3ffb6a9990eb50e64888c96e80bbe19d841edc047beba25abe7a35c89e"
+            "sha256": "cdb1750697e82c1514a32b3efc705289ab721bd52895344ce8a484b73dc9009d"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_karakas.ts",
@@ -23613,7 +23260,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_kp_cusps.ts",
-            "sha256": "97b632c9430df568437ca9742351e926aebb177da6cc156d3d0d87e47bb6c9a6"
+            "sha256": "930999751c56dff3127e37e64f1a0e0eef83f8fa0c49bd99872c0f928a007087"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_medical_indications.ts",
@@ -23621,7 +23268,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_nakshatra.ts",
-            "sha256": "3d8882b8c790c2e240d6d1fba749d96532d5587d082ebf968a6142856d5e5252"
+            "sha256": "56fe79fe07851607218bbdb47c119c02d92dfbe1cf15a05726eebe8da355a04d"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_panchanga.ts",
@@ -23629,7 +23276,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts",
-            "sha256": "df6dadd00e6bcf1813125c70ca9f5466a0b03c1cbbe4cca53610f66706f52ab3"
+            "sha256": "13479e56b3750f44c89f93b8f887a89928aa5ccc01a699ff823f736276b2d959"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_prashna_lagna.ts",
@@ -23637,7 +23284,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sade_sati.ts",
-            "sha256": "4917ff2d92adc09a317137a0b72f23675b8239d248bcf6047a173e98a739bec4"
+            "sha256": "92e2d1ca41d28c4d6a578d8e3d3c913ef57871ff662eb4dedd1cb24dbdf1c42c"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_degrees.ts",
@@ -23645,7 +23292,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_points.ts",
-            "sha256": "31fde65c063533025a8061fea24a577f7e24d5d312805bc5c299d1b427a6b5be"
+            "sha256": "52a89cd9ce6906cbeaf7df0a69279ce9781216ca769943416d39a09f25c8cd38"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts",
@@ -23653,11 +23300,11 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_structural_signals.ts",
-            "sha256": "8a08287db1df55f20d74616de3a7aad3af228d9e04cd09b261b0641bce07ceb7"
+            "sha256": "2a1f3a647b4ad91e3582335c995dffa81573afa471954a49820c9c2e71068b5d"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_tajik.ts",
-            "sha256": "bdc0c3f570674fceea20dcfa7080a07c0e3552cc2d6ca6e42b2d3bd04f8f5ce5"
+            "sha256": "d13e4ee448fcff8375432764be49c0ad4bfe123e1efe8c1341aa4b67c83f13d9"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_tara_chandra_bala.ts",
@@ -23665,7 +23312,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_transit_anchors.ts",
-            "sha256": "f13380d1f2af3f5cc644bd986d4a4f09e4eadd1f041d14e25a752dddcbbd953c"
+            "sha256": "dd343ed042f4cb92e1b645e3e167bfc0b305d7d2c38eaf07522f87339e2f6237"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_vastu_directions.ts",
@@ -23673,11 +23320,11 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_vichara.ts",
-            "sha256": "1bb1d15d30a190da6c90bdb09a7cb8345b7983d5a9f09db590081aad59bba7f6"
+            "sha256": "4515dbb49c3f59d549fde42133925285f6813432f898614a287acc38ff4e46b5"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts",
-            "sha256": "edebf78cb66317bbc19bff48110ef15972ed6277639a4d69e04fccbc09343207"
+            "sha256": "ee42030058eb43563cbce4edded3978839f0bc5070735271d68133543dc13e4e"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_firings.ts",
@@ -23689,7 +23336,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/query_planet.ts",
-            "sha256": "728ba5733c2a2ea99741a3383e39eb1c27825d76356d2bc99bca9ecebbeac1f6"
+            "sha256": "159627c98716ae71dfe856a1ddfa5ea380fc8d80330f44ae9ae76a1e8444b181"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/resolve_concept.ts",
@@ -23697,7 +23344,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/graha_portrait.ts",
-            "sha256": "846bb60f0a83e3d588b47a88666cf6efe5bae50015f8956f55447864c803c263"
+            "sha256": "cd355359dd35bf5381d4b96823ce73e8c64f19552b86a69ad344c7664f53071e"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/index.ts",
@@ -23749,7 +23396,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_remedies.ts",
-            "sha256": "d85a8de921796f1468ff27680fcb042dbcf430bd25197a0277a246d496728b79"
+            "sha256": "83f253f47ba5725660f3453d365235f4b1d8a986dff729948959f88281b3a978"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_chart_summary.ts",
@@ -23777,7 +23424,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts",
-            "sha256": "72077bc004635ce198908534100360e85256efa9e60f5c711bb1d2cdc23e1043"
+            "sha256": "87ec58d7a6e014ebc654c33f9c6b55c2b89b24310564bc80b49b08e9e668ec4b"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_triangulation.ts",
@@ -23785,7 +23432,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts",
-            "sha256": "a58b4439685e72b217d8df62e46acd6b8bd5ac6b46d8ce1d2be2fb156d80e285"
+            "sha256": "360885fc8029bddd69813dd3b3e44caf1e1c06416bece60a4e7b51448bc9643f"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/register_d4_graph.ts",
@@ -23796,32 +23443,16 @@
             "sha256": "e488a71efb4b0985a0f406529cdd460ee21e7d4b6faf0ca4f31c06a2caa967b0"
           },
           {
-            "path": "platform/src/lib/retrieval/registry/layers/L3_kala/arrival_state.ts",
-            "sha256": "daf70ad112034b5bf2faa2b053fe798759986bf04664fd710b7ae1c26338bd27"
-          },
-          {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts",
-            "sha256": "7afde2d469d9baac492bc18f70b18c10361160246569e904e36cb097a2d760de"
+            "sha256": "73b4ea74e3b3e57ea3a6a1992df6cfa6842301087472f797f147d448e73c8635"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/disposable_sql.test_support.ts",
-            "sha256": "af70c419b5fc725ecbf82521886a4da74a7b3b822eecbe10d1920c2bac6c832d"
-          },
-          {
-            "path": "platform/src/lib/retrieval/registry/layers/L3_kala/empty_layer_reason.ts",
-            "sha256": "c4aca9dfd1f5547ec88cd7c084fafb2a316ab18d3a8c76d9553f39c23d5e09d2"
+            "sha256": "8c2f4cafc1003da4663bcfc8f5edd41fb8b96ce2efafe585fae38d52a3a7b78a"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/index.ts",
             "sha256": "2c0e34f5823dcd9a7fd0dfcb7a7160e1c009b2b09dca79e31c71336abec67dbc"
-          },
-          {
-            "path": "platform/src/lib/retrieval/registry/layers/L3_kala/parihara_cancellation.ts",
-            "sha256": "4c9b97fa675e190c7b56f6b809b6ab2a528454dc472b196fb85c146db42d01db"
-          },
-          {
-            "path": "platform/src/lib/retrieval/registry/layers/L3_kala/published_request.ts",
-            "sha256": "d7af779b6601923515e38dede1359b075393240eecdb991cb1ac2c65493ad1ea"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_activation_waveform.ts",
@@ -23837,7 +23468,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_convergence_windows.ts",
-            "sha256": "0c2cd0e178c3c9ce6538f46bd70954358e5127f37d6ffa0f3b4dedb22825dcec"
+            "sha256": "11cffe3fc94d8e73a6f77edb041218f269f55906660e1a24845bb2d9bb05e727"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_dasha_dossier.ts",
@@ -23853,7 +23484,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_life_arc.ts",
-            "sha256": "ec438b7aabfb5406a14394c0e1649a68b823fc794cd9c3be39e87eb09e63eda8"
+            "sha256": "be79ca73708813971f2276a1e0602ec360169d7c7345ed39a2c56fff6a2ac1e9"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_moorti_nirnaya.ts",
@@ -23861,7 +23492,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_obstruction_periods.ts",
-            "sha256": "8d48404f708c6bffc79e0299aad958a2bb193f305ba71249559de443d0d1d6e9"
+            "sha256": "a61befa02751d683d29703358e9086e77caadb352cdfcac9882187e82509600c"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_projections.ts",
@@ -23873,7 +23504,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts",
-            "sha256": "1c5725c929debc04e5bce54655411dea89376fa000e993f1a18d97bd08c4b4c7"
+            "sha256": "80232184c8505146f030e0089b00597ca53dfdce062ff0ea97755ceb58ad0160"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_view.ts",
@@ -23888,10 +23519,6 @@
             "sha256": "5a1cc7853c530df35b1ad2794e37818424c47afc26f22488241552606eb1284c"
           },
           {
-            "path": "platform/src/lib/retrieval/registry/layers/L3_kala/served_obstruction.ts",
-            "sha256": "001c17beeab27213bcc46b3c5ccf408caeec071c72664bb4cdf521a03862d90d"
-          },
-          {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/story_source.ts",
             "sha256": "1e287c7611bf7e1acf2cfcb2749e8249fd1a3520eb64d749ff4448736539c096"
           },
@@ -23901,11 +23528,11 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts",
-            "sha256": "bdbe0a3956093f0ae432b0de0d59e9068fafa38d8d589724915f424a355ed1a0"
+            "sha256": "89f21cf3247c95bb1d0dcafcbf2cd8585ce764b545d4d3936fb349b47a8f101e"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/view_elect.ts",
-            "sha256": "6103e4c92fc78b47561ee1e86ff1a4c325e6b4f80f13d185a35aa6c1d68500c7"
+            "sha256": "33a4c14a7a66b27c6757188bd886d9a114a4c7711e2e085ad90061afc4a95589"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/view_explain.ts",
@@ -24025,11 +23652,11 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/reading_checklist.ts",
-            "sha256": "7299cccd89ffde61737f407ec575423dc6d44d1b8060b1b11d1dd0da7beb14cf"
+            "sha256": "2a9cb20e0276b77d4bc851c477e204d63566284c02d4436b0dc967a8d9ef3cde"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d10_pact.ts",
-            "sha256": "0f0ea25e4cbb2483af507c0124792eeaec517eeaebe36fd07b0536eff30d5ead"
+            "sha256": "f5461c48337b9101711f6263a7a96bc45ba2572de3ca8d199d4c20bca09849ad"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d5_fanout.ts",
@@ -24041,11 +23668,11 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts",
-            "sha256": "a6e79a475e0b4f2a6f761d8f0f623a93bf463daac4e90d729110d917bedd2c9b"
+            "sha256": "fdd9e12ff4a77f88da2f92bef0e6e0f517a8c1e4cfe8e67a095a71ba577967c2"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts",
-            "sha256": "af8303e7f967f7da8074d191ecc643031298db0a6ac4d188c92e6c56895972e9"
+            "sha256": "183981ecc2fe999a839f406959c2b8aac49663098d0d8d888738241270000d92"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts",
@@ -24117,7 +23744,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "03a02fb328f304576817442c47f25dc942deea84696cceccd6223280a71b4b8e"
+        "sha256": "14fc04c4223a8d7818946d6de6a65e35ebc0264fd2cca1a03cb4e44e49d015b6"
       },
       {
         "id": "service_effect_contracts",
@@ -24137,7 +23764,7 @@
       {
         "id": "writer_digest_inventory",
         "path": "platform/src/generated/nirmana-writer-digests.json",
-        "sha256": "861582e4c1d3a8fe3eea191dc35d9f8b6f82a770c17c2fc0dbb4cea542b5018a"
+        "sha256": "f76aa22c3445830d9490a69a3c37bf3b5a58c188e5c4e80c69f46e78c25b5bc5"
       }
     ]
   },
