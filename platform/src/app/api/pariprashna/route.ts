@@ -81,6 +81,7 @@ import { buildGroundingSummary } from '@/lib/pariprashna/citations/grounding_sum
 import { buildStructuredResponseAccountability, restoreRegisterCitationMarkers } from '@/lib/vidhi/inquiry'
 import { getPinnedCapabilityKnowledgeSnapshot } from '@/lib/retrieval/registry/knowledge'
 import { isByokEvidencePayloadWithinLimit, validateByokUiMessages } from '@/lib/limits/byok_admission'
+import { getChartReadinessMap } from '@/lib/charts/readiness'
 
 export const maxDuration = 120
 
@@ -259,6 +260,16 @@ async function executeMeteredRequest(request: Request) {
         // ── Entitlement + conversation resolution (PPR-11, fail-closed). ─────
         const authorized = await authorizeTurn({ em, user, identity })
         if (authorized.halted) return finish(authorized.status)
+        const beforePreparation = (await getChartReadinessMap([chartId])).get(chartId)
+        if (beforePreparation?.preparationDataUnavailable) {
+          em.error({
+            code: 'CHART_PREPARATION_INCOMPLETE',
+            message: 'Chart preparation is in progress or needs a retry. Open Chart Preparation to check its status.',
+            retryable: true,
+            phase: 'plan',
+          })
+          return finish('error')
+        }
         if(body.persona_id !== undefined){
           try {
             if(typeof body.persona_id !== 'string')throw Error('Persona unavailable')
@@ -345,6 +356,16 @@ async function executeMeteredRequest(request: Request) {
           excludedCapabilities: postPlanSafety.excluded_capabilities,
         })
         if (runtime.kind === 'byok' && turnSignal.aborted) return finish('aborted')
+        const afterPreparation = (await getChartReadinessMap([chartId])).get(chartId)
+        if (afterPreparation?.preparationDataUnavailable ||
+            afterPreparation?.latestRunId !== beforePreparation?.latestRunId) {
+          em.error({
+            code: 'CHART_PREPARATION_INCOMPLETE',
+            message: 'The chart changed during evidence retrieval. Try your question again once preparation is ready.',
+            retryable: true,
+          })
+          return finish('error')
+        }
         if (runtime.kind === 'byok') {
           if (!isByokEvidencePayloadWithinLimit({ messages, bundle: evidence.bundle,
             toolResults: evidence.validToolResults })) throw new AiConsoleError('AI_EXECUTION_FAILED')

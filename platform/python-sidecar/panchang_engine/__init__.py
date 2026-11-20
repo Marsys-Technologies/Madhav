@@ -273,15 +273,11 @@ def panchanga_instant(instant, lat: float, lon: float, tz_offset: int) -> "Panch
     sun_lon = next(p.longitude_sidereal for p in planets if p.name == "Sun")
     moon_lon = next(p.longitude_sidereal for p in planets if p.name == "Moon")
 
-    # All 5 angas at the instant (not sunrise-based)
+    # Longitude-based angas at the instant
     tithi = compute_tithi(sun_lon, moon_lon, instant_utc)
     nakshatra = compute_nakshatra(moon_lon, instant_utc)
     yoga = compute_yoga(sun_lon, moon_lon, instant_utc)
     karana_first, karana_second = compute_karana_pair(sun_lon, moon_lon, instant_utc, instant_utc)
-
-    # Vara from the local calendar date (day of week is date-level, not moment-level)
-    local_date = instant.date()
-    vara = compute_vara(local_date)
 
     paksha = "shukla" if tithi.id <= 15 else "krishna"
 
@@ -293,12 +289,27 @@ def panchanga_instant(instant, lat: float, lon: float, tz_offset: int) -> "Panch
 
     _inst_u = _ensure_utc(instant_utc)
 
+    local_date = instant.date()
+    _sunrise_utc, _sunset_utc = compute_sunrise_sunset(local_date, lat, lon, tz_offset)
+    if _inst_u < _sunrise_utc:
+        # The civil date's sunrise is still ahead. The current vāra began yesterday.
+        vara_date = local_date - timedelta(days=1)
+        ensure_swiss_backend(*panchang_sample_jds(
+            swe.julday(vara_date.year, vara_date.month, vara_date.day, 12.0)
+        ))
+        _next_sunrise = _sunrise_utc
+        _sunrise_utc, _sunset_utc = compute_sunrise_sunset(vara_date, lat, lon, tz_offset)
+    else:
+        vara_date = local_date
+        _next_sunrise, _ = compute_sunrise_sunset(local_date + timedelta(days=1), lat, lon, tz_offset)
+    weekday = compute_vara(vara_date)
+    vara = Anga(id=weekday.id, name=weekday.name, end_utc=_next_sunrise)
+
     # T1: anga attributes
     _tithi_attrs = compute_tithi_attrs(tithi.id)
     _nakshatra_attrs = compute_nakshatra_attrs(nakshatra.id)
 
     # T3: upagrahas + outer planets
-    _sunrise_utc, _sunset_utc = compute_sunrise_sunset(local_date, lat, lon, tz_offset)
     _upagrahas = compute_upagrahas(_sunrise_utc, _sunset_utc, vara.id)
     _outer_planets = compute_outer_planets(instant_utc)
 
@@ -312,8 +323,6 @@ def panchanga_instant(instant, lat: float, lon: float, tz_offset: int) -> "Panch
         _sunrise_utc, _sunset_utc, vara.id, tithi.id, nakshatra.id)
 
     # T9: special yogas active at instant
-    _next_date = local_date + timedelta(days=1)
-    _next_sunrise, _ = compute_sunrise_sunset(_next_date, lat, lon, tz_offset)
     _all_yogas = detect_all_special_yogas(
         _sunrise_utc, _sunset_utc, _next_sunrise,
         tithi, nakshatra, yoga, karana_first, karana_second, vara,

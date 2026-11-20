@@ -42,12 +42,13 @@ export async function getChartReadinessMap(chartIds: string[]): Promise<Map<stri
       [chartIds],
     ),
     // Failed/stopped runs of any age that still own broken active per-chart
-    // assets. A small run's asset is broken when it no longer holds valid data;
-    // a full rebuild's asset is broken until rebuilt after the rebuild started.
-    query<{ chart_id: string; assets: number; dispatch_failed: boolean }>(
+    // assets. A full rebuild or a started preparation through both Gaṇita and
+    // Bodha can leave mixed generations. An old lit marker cannot clear that failure.
+    query<{ chart_id: string; assets: number; dispatch_failed: boolean; unsafe_preparation: boolean }>(
       `SELECT r.chart_id,
               COUNT(DISTINCT bra.asset_id)::int AS assets,
-              COALESCE(bool_or(r.last_error LIKE 'JOB_DISPATCH_FAILED%'), false) AS dispatch_failed
+              COALESCE(bool_or(r.last_error LIKE 'JOB_DISPATCH_FAILED%'), false) AS dispatch_failed,
+              bool_or(r.started_at IS NOT NULL AND ar.layer IN ('ganita', 'bodha')) AS unsafe_preparation
          FROM build_runs r
          JOIN build_run_assets bra ON bra.run_id = r.id
          JOIN asset_registry ar ON ar.asset_id = bra.asset_id AND ar.is_active = true AND ar.scope = 'per_chart'
@@ -56,7 +57,23 @@ export async function getChartReadinessMap(chartIds: string[]): Promise<Map<stri
           AND r.state IN ('failed', 'stopped')
           AND NOT COALESCE(
                 at.state = 'lit'
-                AND (NOT (r.scope = 'global' AND r.action = 'rebuild') OR at.last_built_at >= r.created_at),
+                AND (NOT (r.scope = 'global' AND r.action = 'rebuild') OR at.last_built_at >= r.created_at)
+                AND (
+                  NOT (
+                    r.scope = 'asset_set' AND r.started_at IS NOT NULL
+                      AND COALESCE(r.scope_target ~ '(^|,)ga_positions(,|$)', false)
+                      AND COALESCE(r.scope_target ~ '(^|,)bo_laksana(,|$)', false)
+                  )
+                  OR bra.state = 'complete'
+                  OR EXISTS (
+                    SELECT 1
+                      FROM build_runs recovered
+                      JOIN build_run_assets receipt ON receipt.run_id = recovered.id
+                     WHERE recovered.chart_id = r.chart_id AND recovered.created_at > r.created_at
+                       AND recovered.state = 'completed' AND receipt.state = 'complete'
+                       AND receipt.asset_id = bra.asset_id
+                  )
+                ),
                 false)
         GROUP BY r.chart_id`,
       [chartIds],
@@ -71,7 +88,11 @@ export async function getChartReadinessMap(chartIds: string[]): Promise<Map<stri
           throughput: throughput.rows.filter((row) => row.chart_id === id),
           latestRun: runs.rows.find((row) => row.chart_id === id) ?? null,
           unresolvedFailure: failure
-            ? { assets: Number(failure.assets), dispatchFailed: Boolean(failure.dispatch_failed) }
+            ? {
+                assets: Number(failure.assets),
+                dispatchFailed: Boolean(failure.dispatch_failed),
+                unsafePreparation: Boolean(failure.unsafe_preparation),
+              }
             : { assets: 0, dispatchFailed: false },
         }),
       ]

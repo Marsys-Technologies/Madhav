@@ -2,21 +2,9 @@
 
 Why this file exists
 --------------------
-A rebuild rehearsal logged, on every ayanamsha of the orchestrator path::
-
-    [EXTERNAL_COMPUTATION_REQUIRED] Hora Lagna requires sunrise_jd + birth_jd ...
-    Trisphuta/Chatushphuta/Panchasphuta rows SKIPPED
-
-and raised the fear that the S-L1 rebuild would DROP stored ``HORA_LAGNA`` rows (the
-wealth reading leg ``fetchWealthSpecialLagnas`` needs INDU/SREE/HORA_LAGNA x 7 atoms).
-Investigation result (see the lane report): that warning is emitted by
-``_build_trisphuta_family_rows``, which feeds ONLY the three ``esoteric_point_trisphuta`` /
-``chatushphuta`` / ``panchasphuta`` categories. Those categories are not stored for any chart
-(migration 874 documents the honest B.10 gap: "34 of 37 present"), and no call path -- legacy
-``build_ga_sensitive`` or the orchestrator adapter -- has supplied ``sunrise_jd``/``birth_jd``
-since Wave 3 (88f10a80d, 2026-06-29). ``special_lagna`` (incl. ``HORA_LAGNA``) is a different
-builder (``_build_special_lagnas_rows``) that delegates to PyJHora through the adapter, which
-computes sunrise itself; it needs neither argument.
+The orchestrator now passes the chart engine's Hora Lagna to the sphuṭa
+writer. Verify that every calculation frame emits both Pañcasphuṭa variants
+without compromising the existing special-lagna facts.
 
 These tests pin that conclusion so the rebuild cannot silently lose stored rows:
 
@@ -98,8 +86,8 @@ STORED_SPECIAL_LAGNA_SUBJECTS = {
 STORED_SPECIAL_LAGNA_KEYS = {
     "house_d1", "longitude_sidereal", "nakshatra", "nakshatra_lord", "pada", "sign", "sign_lord",
 }
-# Declared in the registry partition (migration 874) but never emitted: honest B.10 gap.
-KNOWN_ABSENT_CATEGORIES = {
+
+SPHUTA_FAMILY_CATEGORIES = {
     "esoteric_point_trisphuta", "esoteric_point_chatushphuta", "esoteric_point_panchasphuta",
 }
 
@@ -175,14 +163,15 @@ def test_every_stored_category_is_still_emitted_without_row_loss(rows_by_ayanams
             assert len({r["fact_key"] for r in cat_rows}) >= n_keys, f"{aya}/{cat}: keys lost"
 
 
-def test_trisphuta_family_is_the_documented_absent_gap_not_a_loss(rows_by_ayanamsha):
-    """The EXTERNAL_COMPUTATION_REQUIRED warning concerns exactly these categories, which are
-    not stored for any chart (migration 874). If a later change starts emitting them, the
-    Trisphuta formula must be re-verified first: the dormant builder derives Hora Lagna as
-    Lagna + 12 deg/hr x elapsed (not the classical Sun-at-sunrise + 30 deg/hr), and its
-    Panchasphuta uses Saturn. Update STORED_SHAPE + this test deliberately in that change."""
+def test_trisphuta_family_is_emitted_with_both_variants_in_each_frame(rows_by_ayanamsha):
     for aya, rows in rows_by_ayanamsha.items():
-        assert KNOWN_ABSENT_CATEGORIES.isdisjoint({r["fact_category"] for r in rows}), aya
+        assert SPHUTA_FAMILY_CATEGORIES <= {r["fact_category"] for r in rows}, aya
+        variants = {
+            r["formula_id"]
+            for r in _by_category(rows, "esoteric_point_panchasphuta")
+            if r["fact_key"] == "longitude_sidereal"
+        }
+        assert variants == {"with_saturn", "with_rahu"}, aya
 
 
 def test_special_lagna_exact_stored_shape(rows_by_ayanamsha):

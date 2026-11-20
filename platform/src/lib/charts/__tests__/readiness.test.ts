@@ -317,6 +317,7 @@ describe('getChartReadinessMap', () => {
     expect(failureSql).toMatch(/r\.state IN \('failed', 'stopped'\)/)
     expect(failureSql).toMatch(/ar\.scope = 'per_chart'/)
     expect(failureSql).toMatch(/at\.last_built_at >= r\.created_at/)
+    expect(failureSql).toMatch(/r\.scope = 'asset_set' AND r\.started_at IS NOT NULL/)
     expect(failureSql).toMatch(/COUNT\(DISTINCT bra\.asset_id\)/)
     expect(failureSql).toMatch(/JOB_DISPATCH_FAILED/)
     // Only a lit asset holds valid current data; a stale one does not resolve a failure.

@@ -7,6 +7,7 @@ houses 2..12 follow in zodiacal order.
 """
 from __future__ import annotations
 
+from math import isclose, isfinite
 from typing import Any
 
 from panchang_engine.swiss_state import serialized_swiss_state
@@ -146,6 +147,14 @@ def _forward_arc_contains(long_deg: float, start: float, end: float) -> bool:
     return off < span
 
 
+def _validate_house_ring(points: list[float], method: str) -> None:
+    if len(points) != 12 or not all(isfinite(point) for point in points):
+        raise ValueError(f"{method} requires twelve finite house cusps")
+    spans = [(end - start) % 360.0 for start, end in zip(points, points[1:] + points[:1])]
+    if not all(span > 0 for span in spans) or not isclose(sum(spans), 360.0, abs_tol=1e-8):
+        raise ValueError(f"{method} house cusps do not form one ordered circuit")
+
+
 @serialized_swiss_state
 def compute_bhava_chalit(
     jd_ut: float,
@@ -197,6 +206,7 @@ def compute_bhava_chalit(
 
     # --- Sripati (Indian bhāva-chalita) madhyas + derived boundaries ---
     sri_madhyas = [float(x) % 360.0 for x in drik.bhaava_madhya_sripathi(jd_ut, place)]
+    _validate_house_ring(sri_madhyas, "Śrīpati")
     # sandhi[h] = boundary between house h and house h+1 = midpoint(madhya[h], madhya[h+1]).
     # House h therefore starts at sandhi[h-1] and ends at sandhi[h].
     sri_sandhi = [_mid_point(sri_madhyas[h], sri_madhyas[(h + 1) % 12]) for h in range(12)]
@@ -213,6 +223,7 @@ def compute_bhava_chalit(
 
     # --- Placidus (KP/Western) cusp boundaries ---
     plac_bounds = [float(x) % 360.0 for x in drik.bhaava_madhya_swe(jd_ut, place, house_code="P")]
+    _validate_house_ring(plac_bounds, "Placidus")
     placidus_cusps: list[dict[str, Any]] = []
     for h in range(12):
         start = plac_bounds[h]
@@ -235,17 +246,12 @@ def compute_bhava_chalit(
             continue
         lon_deg = float(lon_deg) % 360.0
 
-        chalit_house = None
-        for h in range(12):
-            start = sri_sandhi[(h - 1) % 12]
-            end = sri_sandhi[h]
-            if _forward_arc_contains(lon_deg, start, end):
-                chalit_house = h + 1
-                break
-        if chalit_house is None:  # numerical fallback (should not happen)
-            chalit_house = 1
-
-        hidx = chalit_house - 1
+        containing_houses = [h for h in range(12)
+                             if _forward_arc_contains(lon_deg, sri_sandhi[(h - 1) % 12], sri_sandhi[h])]
+        if len(containing_houses) != 1:
+            raise ValueError("Śrīpati longitude does not match exactly one house")
+        hidx = containing_houses[0]
+        chalit_house = hidx + 1
         b_start = sri_sandhi[(hidx - 1) % 12]
         b_end = sri_sandhi[hidx]
         dist_start = _arc_sep(lon_deg, b_start)

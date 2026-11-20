@@ -65,7 +65,11 @@ def _independent(dt, lat, lon, tz, ayanamsha_id, extra_sun_hours=0.0):
     jd0 = swe.julday(y, m, d, 0.0)
     rise_ut = swe.rise_trans(jd0 - tz / 24.0, swe.SUN, swe.CALC_RISE | swe.BIT_HINDU_RISING,
                              (lon, lat, 0.0), 0.0, 0.0, swe.FLG_SWIEPH)[1][0]
-    minutes = (birth_h - ((rise_ut - jd0) * 24.0 + tz)) * 60.0
+    birth_ut = jd0 + (birth_h - tz) / 24.0
+    if birth_ut < rise_ut:
+        rise_ut = swe.rise_trans(jd0 - 1 - tz / 24.0, swe.SUN, swe.CALC_RISE | swe.BIT_HINDU_RISING,
+                                 (lon, lat, 0.0), 0.0, 0.0, swe.FLG_SWIEPH)[1][0]
+    minutes = (birth_ut - rise_ut) * 1440.0
     flags = swe.FLG_SWIEPH | swe.FLG_SIDEREAL | swe.FLG_TRUEPOS | swe.FLG_NONUT | swe.FLG_NOGDEFL
     sun = swe.calc_ut(rise_ut + extra_sun_hours / 24.0, swe.SUN, flags)[0][0]
     return sun, minutes
@@ -103,6 +107,16 @@ def test_old_sun_read_tz_hours_after_sunrise_is_gone(case):
     sun_old, minutes = _independent(dt, lat, lon, tz, "lahiri", extra_sun_hours=tz)
     old = (sun_old + minutes * RATES["hora_lagna"]) % 360.0
     assert abs(_diff(sl["hora_lagna"]["longitude_deg"], old)) > 0.1
+
+
+@pytest.mark.parametrize("aya", AYANAMSHAS)
+def test_hora_lagna_before_sunrise_uses_preceding_sunrise(aya):
+    dt, lat, lon, tz = "2000-01-02T05:45:00", 20.3, 85.8, 5.5
+    sun, minutes = _independent(dt, lat, lon, tz, aya)
+    assert 23 * 60 < minutes < 24 * 60
+    expected = (sun + minutes * RATES["hora_lagna"]) % 360
+    actual = _special(dt, lat, lon, tz, aya)["hora_lagna"]["longitude_deg"]
+    assert abs(_diff(actual, expected)) < TOL_DEG
 
 
 def test_module_rates_reproduce_the_bphs_worked_example():

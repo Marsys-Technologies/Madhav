@@ -12851,17 +12851,17 @@
        "family": "name",
        "why": "graha: ga_structural writes g_name, the engine graha name (PLANET_NAMES gives Sun to Ketu); the arudha emitter writes graha_display, the to_title of the graha code (_GRAHA_DISPLAY); bo_laksana composes its own copy through _compose_graha_name (Title long form). lord: the SIGN_LORDS table (Title graha name per sign) for the house and bhava-web lords, and the nakshatra lord through canonical_graha_title, which returns the Title name of a recognised graha and the original text otherwise. Divisional-chart builders read names from chart_divisionals.graha.",
        "evidence": [
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5420",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5434",
         "platform/python-sidecar/pyjhora_adapter/positions.py:75",
         "platform/python-sidecar/bodha_writers/arudha_emitter.py:48",
         "platform/python-sidecar/bodha_writers/arudha_emitter.py:278",
         "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:4240",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:223",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5511",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5528",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:7612",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:7621",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:7927",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:222",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5525",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5542",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:7629",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:7638",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:7944",
         "platform/python-sidecar/ga_writers/_graha_text.py:15"
        ]
       },
@@ -12883,10 +12883,10 @@
         "platform/python-sidecar/brahmagyan/l0_reference.py:211",
         "platform/python-sidecar/bodha_writers/nakshatra_semantic_emitter.py:173",
         "platform/python-sidecar/bodha_writers/nakshatra_semantic_emitter.py:207",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:4361",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5840",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:8034",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:8075"
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:4360",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5854",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:8051",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:8092"
        ]
       },
       {
@@ -12903,7 +12903,7 @@
         "platform/python-sidecar/bodha_writers/nakshatra_semantic_emitter.py:38",
         "platform/python-sidecar/bodha_writers/arudha_emitter.py:32",
         "platform/python-sidecar/bodha_writers/vargottama_dhana_emitter.py:42",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:7936",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:7953",
         "platform/python-sidecar/ga_writers/ga_positions_writer.py:60",
         "platform/python-sidecar/ga_writers/ga_positions_writer.py:278"
        ]
@@ -12920,13 +12920,13 @@
        "family": "name",
        "why": "The sign key of ga_structural holds the engine or table sign names (house_sign() indexes SIGN_NAMES, varga states carry the sign of chart_divisionals, the stellium key is a varga-state sign), the tajaka muntha sign is SIGNS[...], and the three ayurdaya signs, the 64th navamsa sign and the dhana house sign all index Title SIGNS lists. Varga sign texts are read from chart_divisionals, which ga_vargas fills with SIGN_NAMES; the whole-column read grades every value.",
        "evidence": [
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:217",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5504",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5527",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5655",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5748",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:7791",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:1077",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:216",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5518",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5541",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5669",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5762",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:7808",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:1092",
         "platform/python-sidecar/ga_writers/ga_tajaka_writer.py:613",
         "platform/python-sidecar/ga_writers/ga_ayurdaya_writer.py:176",
         "platform/python-sidecar/ga_writers/ga_ayurdaya_writer.py:177",
@@ -12950,18 +12950,18 @@
        "family": "name",
        "why": "These ga_structural keys all hold graha names taken from the engine graha loop (g_name of the special-point aspect rows, g2_name of the grahas in the contribution loop, n1 and n2 of the ALL_GRAHAS-filtered pair loop, the adjacency over present, the ALL_GRAHAS names that have a house) or from the argala reading, which iterates ALL_GRAHAS (Title constants Sun to Ketu) for target, source, argala and obstructor grahas.",
        "evidence": [
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5449",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:4732",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:7715",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:7696",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:6188",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:6214",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5034",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5463",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:4731",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:7732",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:7713",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:6202",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:6228",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5033",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5061",
         "platform/python-sidecar/ga_writers/ga_structural_writer.py:5062",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5063",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5070",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5072",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:151"
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5069",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5071",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:150"
        ]
       },
       {
@@ -12976,18 +12976,18 @@
        "family": "name",
        "why": "lord_a and lord_b are the unique house lords (unique_lords, from the SIGN_LORDS table); in the parivartana rows planet_a is a graha of CLASSICAL_GRAHAS and planet_b its SIGN_LORDS lord; in the panchadha-maitri rows source is a graha of CLASSICAL_GRAHAS; in the karaka web the planets are the stored assigned_graha texts of ga_sensitive, ordered against ALL_GRAHAS, so they rest on the spelling that writer stores.",
        "evidence": [
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:223",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5543",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5572",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5574",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5774",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5802",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5803",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:3629",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:6060",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:6072",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:6140",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:6141"
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:222",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5557",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5586",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5588",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5788",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5816",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5817",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:3619",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:6074",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:6086",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:6154",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:6155"
        ]
       },
       {
@@ -13000,10 +13000,10 @@
        "family": "name",
        "why": "The significator path is built over planet_names, the intersection of the graha names of the varga with ALL_GRAHAS (Title constants), so path, from_graha and to_graha are Title graha names.",
        "evidence": [
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:8209",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:8240",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:8241",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:151"
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:8186",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:8217",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:8218",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:150"
        ]
       },
       {
@@ -13084,15 +13084,15 @@
        "family": "code",
        "why": "These keys are written through PLANET_TO_SUBJECT (norm_graha, the canonical graha subject code): bhava_lord and natural_karaka as lord_subj and nat_subj, the dispositor tree parent, children and roots as disp_subj, subject codes and root_subjects, final_dispositor as final_disp_subj; subject is the varga-ratification subject, a PLANET_TO_SUBJECT code that ga_vichara writes and bo_laksana copies into the divergence signal.",
        "evidence": [
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:6587",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:6598",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:6599",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:6287",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:6296",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:6297",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:6280",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:6315",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:6453",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:6601",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:6612",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:6613",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:6301",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:6310",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:6311",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:6294",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:6329",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:6467",
         "platform/python-sidecar/ga_writers/ga_vichara_writer.py:613",
         "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:1504",
         "platform/python-sidecar/ga_writers/ga_positions_writer.py:60"
@@ -13112,17 +13112,17 @@
        "family": "name",
        "why": "bhava_sign indexes SIGN_NAMES; start_sign, varga_sign, sign_a and sign_b come from the varga-state sign of a graha or of its sign lord (get_sign); signs[*] is the chain_signs list of engine signs; target_sign is an element of _ALL_SIGNS_LOCAL (Title) or the sign text of a special point loaded from L1 (sp_sign).",
        "evidence": [
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:6580",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:6597",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5817",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5842",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5905",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5950",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5973",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5453",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:4362",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5802",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5803"
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:6594",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:6611",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5831",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5856",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5919",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5964",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5987",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5467",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:4361",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5816",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5817"
        ]
       },
       {
@@ -13138,8 +13138,8 @@
         "why": "The ayanamsha_id key written into fact_value_jsonb by the ga_structural builders is the loop variable over the keys of CANONICAL_AYANAMSHAS (canonical_id at the loop and ayanamsha_id[...] at the single-ayanamsha entry, which raises KeyError for any other id), a dict with exactly these five keys in ga_positions_writer; true_chitra embeds the nakshatra word chitra and is an identifier, not spelled vocabulary.",
         "evidence": [
          "platform/python-sidecar/ga_writers/ga_positions_writer.py:46",
-         "platform/python-sidecar/ga_writers/ga_structural_writer.py:7170",
-         "platform/python-sidecar/ga_writers/ga_structural_writer.py:8424"
+         "platform/python-sidecar/ga_writers/ga_structural_writer.py:7184",
+         "platform/python-sidecar/ga_writers/ga_structural_writer.py:8401"
         ]
        }
       },
@@ -13154,10 +13154,10 @@
         ],
         "why": "cancellation_citation_ref is the citation_ref of the verdict that a dosha cancellation callable returns (verdict.get of citation_ref in the dosha_label builder); the callables registered in DOSHA_CANCELLATIONS and the daridra post-pass return exactly these four constants (kemadruma, kala_sarpa with its empty named-variant table, manglik, daridra); the manglik reference embeds the graha word jupiter and is an identifier.",
         "evidence": [
-         "platform/python-sidecar/ga_writers/ga_structural_writer.py:3203",
-         "platform/python-sidecar/ga_writers/ga_structural_writer.py:2753",
-         "platform/python-sidecar/ga_writers/ga_structural_writer.py:3052",
-         "platform/python-sidecar/ga_writers/ga_structural_writer.py:2885",
+         "platform/python-sidecar/ga_writers/ga_structural_writer.py:3193",
+         "platform/python-sidecar/ga_writers/ga_structural_writer.py:2743",
+         "platform/python-sidecar/ga_writers/ga_structural_writer.py:3042",
+         "platform/python-sidecar/ga_writers/ga_structural_writer.py:2875",
          "platform/python-sidecar/ga_writers/ga_daridra_postpass.py:188"
         ]
        }
@@ -13216,9 +13216,9 @@
        "key_family": "code",
        "why": "The tally object of the chart centre-of-gravity row is keyed by graha subject codes: each key is PLANET_TO_SUBJECT.get(k, k.upper()) of a dispositor terminus, and a terminus is a SIGN_LORDS value (a classical graha), so the keys are the canonical codes SUN MOON MAR MER JUP VEN SAT.",
        "evidence": [
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:6464",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:6425",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:6428"
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:6478",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:6439",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:6442"
        ]
       },
       {
@@ -13234,11 +13234,11 @@
        ],
        "why": "These top-level keys of configuration_jsonb are field names of the producing dicts, not vocabulary: grahas, house, nakshatras, planet and signs are the stellium, house-lord, nakshatra-chain, kendradhipati and dispositor-chain dict keys of ga_structural, second_house and twelfth_house the kartari result keys of ga_sensitive_degree; the values under them are numbers or arrays and the string leaves are graded at their own paths.",
        "evidence": [
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:7792",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5526",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:8077",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:3687",
-        "platform/python-sidecar/ga_writers/ga_structural_writer.py:4362",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:7809",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:5540",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:8094",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:3677",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py:4361",
         "platform/python-sidecar/ga_writers/ga_sensitive_degree_writer.py:242"
        ]
       }
@@ -16095,7 +16095,7 @@
       },
       "bhava_system": {
        "value": "sripati_quadrant_trisection_and_placidus",
-       "evidence": "platform/python-sidecar/pyjhora_adapter/houses.py:198"
+       "evidence": "platform/python-sidecar/pyjhora_adapter/houses.py:207"
       },
       "bhava_flags": {
        "value": "sidereal_only",
@@ -16107,7 +16107,7 @@
       },
       "sandhi_orb": {
        "value": "3.0",
-       "evidence": "platform/python-sidecar/pyjhora_adapter/houses.py:128"
+       "evidence": "platform/python-sidecar/pyjhora_adapter/houses.py:129"
       }
      },
      "uncovered": [],
@@ -16448,7 +16448,7 @@
    "kind": "data",
    "lint_none": {
     "why": "the writer scope selects no chart_facts by fact_category and writes no raw-token narrative column (citation_human are composed text the fact-category-pin and raw-token lints cannot see), so neither narration lint has a surface",
-    "evidence": "platform/python-sidecar/ga_writers/ga_sensitive_writer.py:3083"
+    "evidence": "platform/python-sidecar/ga_writers/ga_sensitive_writer.py:3062"
    },
    "carriage": {
     "served_surface": true,
@@ -16469,7 +16469,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_facts; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_points.ts:116 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = ANY(categories) of which 7 of the asset's 20 count_sql categories appear in the file (upagraha/saham/saturn_derived/lal_kitab/maharsi...): a subset is served.",
-    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): helper _citation_human renders '{category}.{subject}.{key} = {value} (ayanamsha).' from the computed value; the other composed strings are honest-gap/error text. Composed at platform/python-sidecar/ga_writers/ga_sensitive_writer.py:279. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_sensitive_writer.py): 4 composed, 0 constant, 0 forwarded, 1 other. Column bound at platform/python-sidecar/ga_writers/ga_sensitive_writer.py:3083 (INSERT INTO chart_facts); NOT served by a typed reader (SS N-344/N-345): citation_human is written and graded but not served by a typed reader (the typed L1 readers select citation_ref only; the chart_facts readers that select citation_human are unimported or unregistered)."
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): helper _citation_human renders '{category}.{subject}.{key} = {value} (ayanamsha).' from the computed value; the other composed strings are honest-gap/error text. Composed at platform/python-sidecar/ga_writers/ga_sensitive_writer.py:279. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_sensitive_writer.py): 4 composed, 0 constant, 0 forwarded, 1 other. Column bound at platform/python-sidecar/ga_writers/ga_sensitive_writer.py:3062 (INSERT INTO chart_facts); NOT served by a typed reader (SS N-344/N-345): citation_human is written and graded but not served by a typed reader (the typed L1 readers select citation_ref only; the chart_facts readers that select citation_human are unimported or unregistered)."
    },
    "evidence_kind": "writer",
    "fidelity_tests": [
@@ -16917,12 +16917,12 @@
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:196",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:197",
    "read_table": "chart_facts",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_facts; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:196 reads `chart_facts` (`FROM chart_facts`). Dens.served=NO_DETECTOR. Shared table chart_facts: the query filters fact_category = ANY(STRENGTH_CATEGORIES) (graha_shadbala_*, graha_vimsopaka_*, ishta/kashta phala...: the asset's categories).",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:197 reads `chart_facts` (`FROM chart_facts`). Dens.served=NO_DETECTOR. Shared table chart_facts: the query filters fact_category = ANY(STRENGTH_CATEGORIES) (graha_shadbala_*, graha_vimsopaka_*, ishta/kashta phala...: the asset's categories).",
     "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state shadbala rupa values, ratios against the classical minimum, bindu and pinda counts. Composed at platform/python-sidecar/ga_writers/ga_strength_writer.py:956, platform/python-sidecar/ga_writers/ga_strength_writer.py:993. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_strength_writer.py): 21 composed, 0 constant, 0 forwarded, 1 other. Column bound at platform/python-sidecar/ga_writers/ga_strength_writer.py:1845 (INSERT INTO chart_facts); NOT served by a typed reader (SS N-344/N-345): citation_human is written and graded but not served by a typed reader (the typed L1 readers select citation_ref only; the chart_facts readers that select citation_human are unimported or unregistered)."
    },
    "evidence_kind": "writer",
@@ -16942,7 +16942,7 @@
     "applies": "D3",
     "nature": "single_derivation",
     "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
-    "evidence": "platform/python-sidecar/ga_writers/ga_structural_writer.py:5304",
+    "evidence": "platform/python-sidecar/ga_writers/ga_structural_writer.py:5318",
     "per_witness_values": false
    },
    "prose_fields": [
@@ -16956,7 +16956,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_facts,fact_category_ownership; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_structural_signals.ts:148 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = ANY(STRUCTURAL_SIGNAL_CATEGORIES) (19 categories) which get_structural_signals.ts:1-12 documents as ga_structural's residual categories; the fact_category_ownership table was not checked offline.",
-    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state aspect counts, classifications with totals, dignity scores, house and sign placements. Composed at platform/python-sidecar/ga_writers/ga_structural_writer.py:1391, platform/python-sidecar/ga_writers/ga_structural_writer.py:1790, platform/python-sidecar/ga_writers/ga_structural_writer.py:4757. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_structural_writer.py): 190 composed, 4 constant, 0 forwarded, 6 other. Column bound at platform/python-sidecar/ga_writers/ga_structural_writer.py:5195 (column list); platform/python-sidecar/ga_writers/ga_structural_writer.py:5204 (INSERT INTO chart_facts); NOT served by a typed reader (SS N-344/N-345): citation_human is written and graded but not served by a typed reader (the typed L1 readers select citation_ref only; the chart_facts readers that select citation_human are unimported or unregistered)."
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state aspect counts, classifications with totals, dignity scores, house and sign placements. Composed at platform/python-sidecar/ga_writers/ga_structural_writer.py:1406, platform/python-sidecar/ga_writers/ga_structural_writer.py:1805, platform/python-sidecar/ga_writers/ga_structural_writer.py:4756. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_structural_writer.py): 190 composed, 4 constant, 0 forwarded, 6 other. Column bound at platform/python-sidecar/ga_writers/ga_structural_writer.py:5194 (column list); platform/python-sidecar/ga_writers/ga_structural_writer.py:5203 (INSERT INTO chart_facts); NOT served by a typed reader (SS N-344/N-345): citation_human is written and graded but not served by a typed reader (the typed L1 readers select citation_ref only; the chart_facts readers that select citation_human are unimported or unregistered)."
    },
    "evidence_kind": "writer",
    "fidelity_tests": [
@@ -17283,7 +17283,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_vichara; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_vichara.ts:191 reads `chart_vichara` (`FROM chart_vichara`). Dens.served=PASS.",
-    "prose_fields": "value_text (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration): on a varga_ratification_divergence row it is the sentence '<GRAHA>: D1 <dignity> vs <varga> <dignity> — <domain> ratification fails in <varga>' composed at platform/python-sidecar/ga_writers/ga_vichara_writer.py:693 and platform/python-sidecar/ga_writers/ga_vichara_writer.py:695, stating the two computed dignities and grading the ratification as failed (on a valence_pass row it is a one-word label from platform/python-sidecar/ga_writers/ga_vichara_writer.py:388, and the other families store no text); source_citation on a valence_pass row is the verdict citation of the shared valence doctrine, composed at platform/python-sidecar/brahmagyan/valence_doctrine.py:251 from two fixed source phrases and the four signed components and the valence it computed, returned at platform/python-sidecar/ga_writers/ga_vichara_writer.py:388 and bound at platform/python-sidecar/ga_writers/ga_vichara_writer.py:461 and platform/python-sidecar/ga_writers/ga_vichara_writer.py:543 (the other families bind four fixed provenance strings). Both columns are bound by the INSERT at platform/python-sidecar/ga_writers/ga_vichara_writer.py:1105 and platform/python-sidecar/ga_writers/ga_vichara_writer.py:1107 (INSERT INTO chart_vichara, platform/python-sidecar/ga_writers/ga_vichara_writer.py:1103). The structural code in target (f\"<varga>_HOUSE_<n>\", platform/python-sidecar/ga_writers/ga_vichara_writer.py:451) is an identity label, not narration. citation_human (the same ruling) is written by the daridra post-pass that ga_vichara runs after its own insert (platform/python-sidecar/ga_writers/ga_vichara_writer.py:1237, platform/python-sidecar/ga_writers/ga_vichara_writer.py:1238 calls emit_daridra_label_post_pass, platform/python-sidecar/ga_writers/ga_daridra_postpass.py:393): the one chart_facts row (fact_category dosha_label, fact_subject daridra) per chart and ayanamsha is built by platform/python-sidecar/ga_writers/ga_structural_writer.py:3104 (_build_dosha_rows) and its citation_human is the sentence 'Dosha <name> (daridra) labels chart <chart id prefix> (<ayanamsha>): <reason>.' composed at platform/python-sidecar/ga_writers/ga_structural_writer.py:3215 and platform/python-sidecar/ga_writers/ga_structural_writer.py:3216, followed by ' CANCELLED: ' (platform/python-sidecar/ga_writers/ga_structural_writer.py:3222) and the cancellation sentence composed at platform/python-sidecar/ga_writers/ga_daridra_postpass.py:216 and platform/python-sidecar/ga_writers/ga_daridra_postpass.py:218 from the fired grounds when the dosha is cancelled (the uncancelled sentence is the fixed text at platform/python-sidecar/ga_writers/ga_daridra_postpass.py:226); it states which chart and verdict it labels and the computed cancelling grounds. The row is inserted, bound as a literal tuple, at platform/python-sidecar/ga_writers/ga_daridra_postpass.py:87 (called at platform/python-sidecar/ga_writers/ga_daridra_postpass.py:420).",
+    "prose_fields": "value_text (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration): on a varga_ratification_divergence row it is the sentence '<GRAHA>: D1 <dignity> vs <varga> <dignity> — <domain> ratification fails in <varga>' composed at platform/python-sidecar/ga_writers/ga_vichara_writer.py:693 and platform/python-sidecar/ga_writers/ga_vichara_writer.py:695, stating the two computed dignities and grading the ratification as failed (on a valence_pass row it is a one-word label from platform/python-sidecar/ga_writers/ga_vichara_writer.py:388, and the other families store no text); source_citation on a valence_pass row is the verdict citation of the shared valence doctrine, composed at platform/python-sidecar/brahmagyan/valence_doctrine.py:251 from two fixed source phrases and the four signed components and the valence it computed, returned at platform/python-sidecar/ga_writers/ga_vichara_writer.py:388 and bound at platform/python-sidecar/ga_writers/ga_vichara_writer.py:461 and platform/python-sidecar/ga_writers/ga_vichara_writer.py:543 (the other families bind four fixed provenance strings). Both columns are bound by the INSERT at platform/python-sidecar/ga_writers/ga_vichara_writer.py:1105 and platform/python-sidecar/ga_writers/ga_vichara_writer.py:1107 (INSERT INTO chart_vichara, platform/python-sidecar/ga_writers/ga_vichara_writer.py:1103). The structural code in target (f\"<varga>_HOUSE_<n>\", platform/python-sidecar/ga_writers/ga_vichara_writer.py:451) is an identity label, not narration. citation_human (the same ruling) is written by the daridra post-pass that ga_vichara runs after its own insert (platform/python-sidecar/ga_writers/ga_vichara_writer.py:1237, platform/python-sidecar/ga_writers/ga_vichara_writer.py:1238 calls emit_daridra_label_post_pass, platform/python-sidecar/ga_writers/ga_daridra_postpass.py:393): the one chart_facts row (fact_category dosha_label, fact_subject daridra) per chart and ayanamsha is built by platform/python-sidecar/ga_writers/ga_structural_writer.py:3094 (_build_dosha_rows) and its citation_human is the sentence 'Dosha <name> (daridra) labels chart <chart id prefix> (<ayanamsha>): <reason>.' composed at platform/python-sidecar/ga_writers/ga_structural_writer.py:3205 and platform/python-sidecar/ga_writers/ga_structural_writer.py:3206, followed by ' CANCELLED: ' (platform/python-sidecar/ga_writers/ga_structural_writer.py:3212) and the cancellation sentence composed at platform/python-sidecar/ga_writers/ga_daridra_postpass.py:216 and platform/python-sidecar/ga_writers/ga_daridra_postpass.py:218 from the fired grounds when the dosha is cancelled (the uncancelled sentence is the fixed text at platform/python-sidecar/ga_writers/ga_daridra_postpass.py:226); it states which chart and verdict it labels and the computed cancelling grounds. The row is inserted, bound as a literal tuple, at platform/python-sidecar/ga_writers/ga_daridra_postpass.py:87 (called at platform/python-sidecar/ga_writers/ga_daridra_postpass.py:420).",
     "cross_asset_writes": "ga_vichara_writer.py:1237-1238 calls emit_daridra_label_post_pass (ga_daridra_postpass.py:281), which DELETEs and INSERTs the one chart_facts row (fact_category dosha_label, fact_subject daridra) per chart and ayanamsha (ga_daridra_postpass.py:274, :86; the row is bound as a literal tuple and COUNTED in ga_vichara's rows_written); the row is moved verbatim from ga_structural (producer change only, same natural key and fact_id). The whole row is written; fact_value_text is the column naming its value and citation_human is the composed sentence declared as prose in prose_fields (prose batch 2); the substep counts that row in rows_written, so the declared produced set sums to it"
    },
    "source": {

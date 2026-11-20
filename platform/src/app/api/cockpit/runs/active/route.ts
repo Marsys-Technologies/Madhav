@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
 import { requireChartPermission } from '@/lib/auth/requireChartPermission'
 import { readActiveBuildRun } from '@/lib/build/activeRunData'
+import { getChartReadinessMap } from '@/lib/charts/readiness'
 
 export const maxDuration = 8
 
@@ -24,10 +25,17 @@ export async function GET(req: NextRequest) {
   if (denied) return denied
 
   try {
-    const data = await readActiveBuildRun(chart_id)
-    return NextResponse.json({ data })
+    const wantsPreparationStatus = req.nextUrl.searchParams.get('preparation') === 'true'
+    const [data, readiness] = await Promise.all([
+      readActiveBuildRun(chart_id),
+      wantsPreparationStatus ? getChartReadinessMap([chart_id]) : null,
+    ])
+    return NextResponse.json({
+      data,
+      ...(readiness ? { preparation_incomplete: readiness.get(chart_id)?.preparationDataUnavailable === true } : {}),
+    })
   } catch (err) {
     console.error('[cockpit/runs/active]', err)
-    return NextResponse.json({ data: null, _error: (err as Error).message })
+    return NextResponse.json({ error: 'Run status is temporarily unavailable.' }, { status: 503 })
   }
 }

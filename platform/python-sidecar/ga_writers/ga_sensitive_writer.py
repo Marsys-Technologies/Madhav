@@ -966,45 +966,20 @@ def _build_mrityu_rows(
 def _build_trisphuta_family_rows(
     all_longs: dict[str, float],
     chart_id: str, ayanamsha_id: str, build_id: str, eng_ver: str,
-    sunrise_jd: float | None = None,
-    birth_jd: float | None = None,
+    *, hora_lagna: float | None,
 ) -> list[dict[str, Any]]:
-    """
-    Categories 7+8+9: Trisphuta, Chatushphuta, Panchasphuta (2 variants)
-    Trisphuta = Lagna + Moon + Hora_Lagna (mod 360)
-    Chatushphuta = Trisphuta + Sun (mod 360)
-    Panchasphuta v1 = Chatushphuta + Saturn (mod 360)
-    Panchasphuta v2 = Chatushphuta + Rahu (mod 360)
-    Hora Lagna = computed from birth time after sunrise; requires sunrise_jd and
-    birth_jd (both Julian Day numbers from Swiss Ephemeris). When not provided this
-    function logs [EXTERNAL_COMPUTATION_REQUIRED] and skips Trisphuta-family emission
-    rather than silently emitting a fabricated approximation (B.10).
-    """
-    rows = []
-    lagna = all_longs.get("LAGNA", 0.0)
-    moon = all_longs.get("MOON", 0.0)
-    sun = all_longs.get("SUN", 0.0)
-    sat = all_longs.get("SAT", 0.0)
-    rahu = all_longs.get("RAH_MEAN", 0.0)
-
-    # Hora Lagna: time elapsed since sunrise / 2.5 hours * 30° + Lagna
-    # Requires sunrise_jd and birth_jd (Julian Day numbers) from Swiss Ephemeris.
-    # [EXTERNAL_COMPUTATION_REQUIRED]: swe.rise_trans() at birth lat/lon gives sunrise_jd;
-    # swe.julday() from birth datetime gives birth_jd. Neither is computed here (B.10).
-    if sunrise_jd is not None and birth_jd is not None:
-        elapsed_hrs = (birth_jd - sunrise_jd) * 24.0
-        hora_lagna = (lagna + elapsed_hrs * 30.0 / 2.5) % 360.0
-    else:
+    """Use the chart engine's sunrise-based Hora Lagna in the current frame."""
+    required = ("LAGNA", "MOON", "SUN", "SAT", "RAH_MEAN")
+    if hora_lagna is None or any(graha not in all_longs for graha in required):
         logging.warning(
             "[EXTERNAL_COMPUTATION_REQUIRED] chart_id=%s ayanamsha=%s: "
-            "Hora Lagna requires sunrise_jd + birth_jd (Swiss Ephemeris swe.rise_trans / "
-            "swe.julday). Neither was provided — Trisphuta/Chatushphuta/Panchasphuta "
-            "rows SKIPPED rather than emitting a fabricated sun+15 approximation (B.10). "
-            "Caller must compute these JD values and pass them to _build_trisphuta_family_rows.",
+            "sphuṭa family requires a computed Hora Lagna and all five source longitudes",
             chart_id, ayanamsha_id,
         )
-        return rows
+        return []
 
+    lagna, moon, sun, sat, rahu = (all_longs[graha] for graha in required)
+    rows = []
     trisphuta = (lagna + moon + hora_lagna) % 360.0
     chatushphuta = (trisphuta + sun) % 360.0
     pancha_sat = (chatushphuta + sat) % 360.0
@@ -1012,17 +987,17 @@ def _build_trisphuta_family_rows(
 
     rows.extend(_long_rows("esoteric_point_trisphuta", "TRISPHUTA", trisphuta,
                             chart_id, ayanamsha_id, build_id, eng_ver, lagna,
-                            formula_provenance_text="BPHS: Trisphuta = Lagna + Moon + Hora Lagna",
+                            formula_provenance_text="A5 sensitive-points spec: Trisphuta = Lagna + Moon + Hora Lagna",
                             tolerance_arcsec=30.0))
 
     rows.extend(_long_rows("esoteric_point_chatushphuta", "CHATUSHPHUTA", chatushphuta,
                             chart_id, ayanamsha_id, build_id, eng_ver, lagna,
-                            formula_provenance_text="BPHS: Chatushphuta = Trisphuta + Sun",
+                            formula_provenance_text="A5 sensitive-points spec: Chatushphuta = Trisphuta + Sun",
                             tolerance_arcsec=30.0))
 
     for long_val, fid, prov in [
-        (pancha_sat,  "with_saturn", "BPHS: Panchasphuta = Chatushphuta + Saturn"),
-        (pancha_rahu, "with_rahu",   "BPHS (variant): Panchasphuta = Chatushphuta + Rahu"),
+        (pancha_sat,  "with_saturn", "A5 sensitive-points spec: Panchasphuta = Chatushphuta + Saturn"),
+        (pancha_rahu, "with_rahu",   "A5 sensitive-points spec: Panchasphuta = Chatushphuta + Rahu"),
     ]:
         rows.extend(_long_rows("esoteric_point_panchasphuta", "PANCHASPHUTA", long_val,
                                 chart_id, ayanamsha_id, build_id, eng_ver, lagna,
@@ -2942,7 +2917,11 @@ def _build_all_sensitive_rows_for_ayanamsha(
     rows.extend(_build_mrityu_rows(all_longs, chart_id, cid, build_id, eng_ver, is_day_birth))
 
     # ── 7–9. Trisphuta family ────────────────────────────────────────────────
-    rows.extend(_build_trisphuta_family_rows(all_longs, chart_id, cid, build_id, eng_ver))
+    hora_entry = (chart_data.get("special_lagnas") or {}).get("hora_lagna") or {}
+    hora_lagna = hora_entry.get("longitude_deg")
+    rows.extend(_build_trisphuta_family_rows(
+        all_longs, chart_id, cid, build_id, eng_ver, hora_lagna=hora_lagna,
+    ))
 
     # ── 10. Pranapada ─────────────────────────────────────────────────────────
     rows.extend(_build_pranapada_rows(chart_data, all_longs, chart_id, cid, build_id, eng_ver))
