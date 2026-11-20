@@ -11,7 +11,7 @@ any cloud call. It prints ONE line, a `ky.scheduler_job/1` JSON record.
            (UTC, in the future); the executor, not this script, bounds it by the lease end and arms the backstop before this runs.
   resume   read state → (ENABLED already: no call) | (PAUSED: one `gcloud scheduler jobs resume`) → read state again.
   readback read state, name the acting identity (the principal e-mail only) and test the permissions the governed actions need: the three Cloud Scheduler
-           ones and `run.executions.cancel` (the `measuring_cancel` kind, SR-J3-CANCEL-NULL).
+           ones (pause, resume = `cloudscheduler.jobs.enable`, get) and `run.executions.cancel` (the `measuring_cancel` kind, SR-J3-CANCEL-NULL).
   --dry-run  (pause / resume only) plans the calls and makes NONE.
 
 Every record carries `state` = the job state read back AFTER the action (ENABLED / PAUSED, as Cloud Scheduler reports it). A state that
@@ -47,10 +47,17 @@ SCHEMA = "ky.scheduler_job/1"
 PROJECT = "madhav-astrology"                     # provision_watchdog_scheduler.sh: GCP_PROJECT default
 REGION = "asia-south1"                           # provision_watchdog_scheduler.sh: GCP_REGION default
 JOB = "watchdog-reaper"                          # provision_watchdog_scheduler.sh: the job it creates
-PERMISSIONS = ("cloudscheduler.jobs.pause", "cloudscheduler.jobs.resume", "cloudscheduler.jobs.get", "run.executions.cancel")   # + the one measuring_cancel needs (SR-J3-CANCEL-NULL)
+# capability the governed actions need -> the IAM permission Google tests for it. Google names the permission for the Cloud Scheduler `jobs.resume`
+# method `cloudscheduler.jobs.enable` (REST reference https://docs.cloud.google.com/scheduler/docs/reference/rest/v1/projects.locations.jobs/resume:
+# "Authorization requires ... cloudscheduler.jobs.enable"); `cloudscheduler.jobs.resume` is not a permission (testIamPermissions answered HTTP 400
+# "Permission cloudscheduler.jobs.resume is not valid for this resource", receipt J-3c.scheduler-readback-iam-20261018T120446Z). `cancel` is the one
+# measuring_cancel needs (SR-J3-CANCEL-NULL).
+CAPABILITY_PERMISSIONS = {"pause": "cloudscheduler.jobs.pause", "resume": "cloudscheduler.jobs.enable", "get": "cloudscheduler.jobs.get",
+                          "cancel": "run.executions.cancel"}
+PERMISSIONS = tuple(CAPABILITY_PERMISSIONS.values())
 PERMISSION_ENDPOINT = f"https://cloudresourcemanager.googleapis.com/v1/projects/{PROJECT}:testIamPermissions"
 CANCEL_ROLES = ("roles/owner", "roles/editor", "roles/run.admin")                   # each contains run.executions.cancel
-SCHEDULER_ROLES = ("roles/owner", "roles/editor", "roles/cloudscheduler.admin")      # each contains cloudscheduler.jobs.pause / resume / get
+SCHEDULER_ROLES = ("roles/owner", "roles/editor", "roles/cloudscheduler.admin")      # each contains cloudscheduler.jobs.pause / enable (resume) / get
 ERROR_MESSAGE_MAX = 300
 ERROR_BODY_MAX = 65536
 KNOWN_STATES = ("ENABLED", "PAUSED", "DISABLED", "UPDATE_FAILED")      # google.cloud.scheduler.v1.Job.State (STATE_UNSPECIFIED reads as unknown)
@@ -152,7 +159,7 @@ class Measure:
 
     def permissions(self) -> dict:
         record = {"checked_on": f"projects/{PROJECT}", "method": "cloudresourcemanager.v1.projects.testIamPermissions",
-                  "requested": list(PERMISSIONS), "granted": None, "missing": None, "invalid": None, "results": None,
+                  "capabilities": dict(CAPABILITY_PERMISSIONS), "requested": list(PERMISSIONS), "granted": None, "missing": None, "invalid": None, "results": None,
                   "status": "UNAVAILABLE", "reason": None}
         batch_note = None
         try:
