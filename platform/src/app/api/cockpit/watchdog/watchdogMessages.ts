@@ -7,5 +7,7 @@
 export const ORPHAN_RUN_MESSAGE =
   'orphan-watchdog: run orphaned — no asset_throughput heartbeat or build_substep_progress ' +
   'commit in the last 15 minutes on a run running 30+ minutes'
+export const INTERRUPTED_PREPARATION_MESSAGE =
+  'orphan-watchdog: preparation worker disconnected before finishing. Retry unfinished work in Chart Preparation.'
 export const STUCK_ASSET_MESSAGE = 'orphan-watchdog: writer never reported back'
 export const UNDISPATCHED_RUN_MESSAGE = 'orphan-watchdog: run never dispatched'
