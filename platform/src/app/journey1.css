@@ -570,6 +570,20 @@
 .j1-rail[data-open="true"] .j1-title {
   display: flex;
 }
+@media (min-width: 768px) {
+  .j1-rail a {
+    flex: none;
+  }
+  .j1-rail .j1-title {
+    /* Lay out titles at the open rail width throughout the transition. */
+    display: flex;
+    flex: 0 0 calc(220px - 21px - 20px - 22px - 14px);
+    visibility: hidden;
+  }
+  .j1-rail[data-open="true"] .j1-title {
+    visibility: visible;
+  }
+}
 .j1-shell-body {
   min-width: 0;
   flex: 1;
