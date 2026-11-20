@@ -19,7 +19,8 @@
       "cwd": ".",
       "engine": "pytest",
       "include": [
-        "platform/scripts/governance/__tests__/test_deploy_build*.py"
+        "platform/scripts/governance/__tests__/test_deploy_build*.py",
+        "platform/scripts/governance/__tests__/test_logview_narrow*.py"
       ]
     },
     "unit-tests-4-9": {

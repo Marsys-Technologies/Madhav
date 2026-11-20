@@ -66,6 +66,26 @@ interface CloudSqlRestoreAuditEntry {
   }
 }
 
+/**
+ * The Admin Activity audit read is served only through this log view (LOGVIEW-NARROW-IAC), so the
+ * deploy identity needs `roles/logging.viewAccessor` on this one view and no project-wide
+ * `roles/logging.viewer`. The three values must equal `google_logging_log_view.cloudsql_restore_audit`
+ * in infra/iam/main.tf; platform/scripts/governance/__tests__/test_logview_narrow_iac.py compares them.
+ */
+export const CLOUDSQL_RESTORE_AUDIT_LOG_VIEW = {
+  bucket: '_Required', location: 'global', view: 'cloudsql_restore_audit',
+} as const
+
+export function cloudSqlRestoreAuditReadArgs(project: string, restoreOperationId: string): string[] {
+  const { bucket, location, view } = CLOUDSQL_RESTORE_AUDIT_LOG_VIEW
+  return [
+    'logging', 'read',
+    `operation.id="${restoreOperationId}" AND logName="projects/${project}/logs/cloudaudit.googleapis.com%2Factivity"`,
+    '--project', project, `--bucket=${bucket}`, `--location=${location}`, `--view=${view}`,
+    '--limit=10', '--format=json',
+  ]
+}
+
 export const DATA_PLANE_CUTOVER_AUTHORITY = 'DP-SD-020'
 export const DATA_PLANE_CUTOVER_EXECUTION_MODE = 'native_authorized_automated_cutover'
 
@@ -430,11 +450,10 @@ export async function withDataPlaneCutoverLease<T>(action: () => Promise<T>): Pr
       || restoreCompleted > Date.parse(receipt.expiresAt)) {
     throw new Error('Named restore does not prove the pinned backup on the isolated validation instance.')
   }
-  const restoreAudit = JSON.parse(execFileSync('gcloud', [
-    'logging', 'read',
-    `operation.id="${receipt.restoreOperationId}" AND logName="projects/${project}/logs/cloudaudit.googleapis.com%2Factivity"`,
-    '--project', project, '--limit=10', '--format=json',
-  ], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })) as CloudSqlRestoreAuditEntry[]
+  const restoreAudit = JSON.parse(execFileSync(
+    'gcloud', cloudSqlRestoreAuditReadArgs(project, receipt.restoreOperationId),
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
+  )) as CloudSqlRestoreAuditEntry[]
   assertRestoreAuditBinding(restoreAudit, {
     project, operationId: receipt.restoreOperationId, backupId: receipt.backupId,
     sourceInstance: 'amjis-postgres', validationInstance,
