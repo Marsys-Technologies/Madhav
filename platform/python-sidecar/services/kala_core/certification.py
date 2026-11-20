@@ -33,6 +33,26 @@ PRIORITY_TESTS = frozenset({
     VIEW_ROOT + '__tests__/f131_priority_ranking_glossary.test.ts',
     'platform-mcp/src/tools/kala_views/f171_disclosure_receipt_regression.test.ts',
 })
+# K5-G1b / ALGO §3.20: independently declared candidate output footprint.
+# Include intermediate operands and provenance as well as final products.
+KSHETRA_OUTPUTS = frozenset({
+    'kala_field_provenance_candidate', 'kala_field_salience_candidate',
+    'kala_insights_candidate', 'kala_timeline_spec_candidate',
+    'kala_field_windows_candidate', 'kala_field_null_candidate',
+    'kala_field_candidate', 'kala_field_snapshots_candidate',
+    'kala_field_primitives_candidate', 'kala_field_boundaries_candidate',
+    'kala_field_clocks_candidate', 'kala_field_routes_candidate',
+    'kala_field_promise_edges_candidate', 'kala_field_promise_nodes_candidate',
+    'kala_field_kinematics_candidate', 'build_substep_progress_candidate',
+    'kala_layer_candidate_grain',
+})
+KSHETRA_UNMEASURED_READING = (
+    'UNMEASURED in production. Candidate structural oracles are code evidence only; '
+    'no census PASS claimed.'
+)
+KSHETRA_NO_DETECTOR_READING = (
+    ' NO_DETECTOR for the explicitly listed missing detectors.'
+)
 
 
 def _text(value) -> bool:
@@ -99,6 +119,10 @@ def validate_contract_data(root: Path, mapping: dict) -> list[str]:
             or any(not isinstance(table, str) or not re.fullmatch(
                 r'[a-z_][a-z0-9_]*(?:\.[a-z_][a-z0-9_]*)?', table) for table in tables)):
         errors.append('invalid produced_tables declaration')
+    if asset == 'ka_kshetra' and (not isinstance(tables, list)
+            or any(not isinstance(table, str) for table in tables)
+            or set(tables) != KSHETRA_OUTPUTS or len(tables) != len(KSHETRA_OUTPUTS)):
+        errors.append('incomplete Kshetra candidate output footprint')
 
     fingerprint = mapping.get('semantic_fingerprint')
     fields = ('inputs', 'outputs', 'oracles') if data else (
@@ -178,6 +202,13 @@ def validate_detector_bindings(root: Path, mapping: dict, *, gates=None,
                         or evidence.get('verdict', 'FAIL') != 'FAIL'):
                     errors.append('Idem reading contradicts declared current-detector FAIL/R-10 disposition')
             none = {key for key in expected if criteria[key]['detector'] == 'NONE'}
+            # §N.8: an offline mapping cannot earn a live detector verdict.
+            # (I) INTERPRETATION: pin the complete approved reading, including
+            # detector absence; a token/prefix check admits contradictory prose.
+            if mapping.get('asset') == 'ka_kshetra':
+                reading = KSHETRA_UNMEASURED_READING + (KSHETRA_NO_DETECTOR_READING if none else '')
+                if evidence.get('expected_reading') != reading:
+                    errors.append(f'unearned Kshetra production reading: {gate}')
             if set(evidence.get('detector_none', [])) != none:
                 errors.append(f'wrong NO_DETECTOR binding: {gate}')
             if none and ('NO_DETECTOR' not in evidence.get('expected_reading', '')

@@ -22,10 +22,12 @@ def test_baseline_freeze_requires_merged_head_and_pins_exact_code(tmp_path):
     from services.ka_kshetra.g1_manifest import freeze_baseline
     target=tmp_path/'G1_BASELINE.json'
     with pytest.raises(ValueError): freeze_baseline(target,merged_head='not-a-sha',code_digest='c'*64)
+    with pytest.raises(ValueError): freeze_baseline(target,merged_head='a'*40,code_digest='not-a-digest')
     freeze_baseline(target,merged_head='a'*40,code_digest='c'*64)
     assert json.loads(target.read_text())=={'schema':'ky.g1_baseline/1','merged_head':'a'*40,'code_digest':'c'*64}
     freeze_baseline(target,merged_head='a'*40,code_digest='c'*64)
     with pytest.raises(ValueError,match='frozen'): freeze_baseline(target,merged_head='b'*40,code_digest='c'*64)
+    with pytest.raises(ValueError,match='frozen'): freeze_baseline(target,merged_head='a'*40,code_digest='d'*64)
 
 
 def test_writer_attaches_snapshot_to_manifest(monkeypatch):

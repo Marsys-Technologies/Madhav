@@ -1,5 +1,5 @@
 {
-  "version": "K5-G1b/v1",
+  "version": "K5-G1b/v2",
   "registry_revision": 30,
   "asset": "ka_kshetra",
   "scope": "Candidate-only G1 pre-build SR-A4-01; no activated output or production certificate",
@@ -28,7 +28,16 @@
     "kala_insights_candidate",
     "kala_timeline_spec_candidate",
     "kala_field_snapshots_candidate",
-    "kala_layer_candidate_grain"
+    "kala_layer_candidate_grain",
+    "kala_field_provenance_candidate",
+    "kala_field_primitives_candidate",
+    "kala_field_boundaries_candidate",
+    "kala_field_clocks_candidate",
+    "kala_field_routes_candidate",
+    "kala_field_promise_edges_candidate",
+    "kala_field_promise_nodes_candidate",
+    "kala_field_kinematics_candidate",
+    "build_substep_progress_candidate"
   ],
   "density_tier_columns": [
     "confidence_tier"
