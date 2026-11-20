@@ -1037,7 +1037,7 @@ def test_panchang_checks_the_jds_it_actually_samples_not_just_the_date_noon(hidd
     from panchang_engine import compute_panchang, panchanga_instant
 
     lo, hi = ss.SWIEPH_WINDOW_JD
-    # noon of 1800-01-02 is JD 2378498.0: inside the bare window (lo = 2378497.5) but its -1.5 d sample
+    # noon of 1800-01-02 is JD 2378498.0: inside the bare window (lo = 2378497.5) but its pre-noon sample
     # (2378496.5) is not.
     assert swe.julday(1800, 1, 2, 12.0) - ss.PANCHANG_SAMPLE_BEFORE_DAYS < lo <= swe.julday(1800, 1, 2, 12.0)
     for fn, arg in ((compute_panchang, datetime.date(1800, 1, 2)),
@@ -1139,7 +1139,7 @@ def test_decorator_raises_before_the_body_when_the_chart_window_cannot_be_checke
 @needs_corpus
 def test_decorator_lifetime_check_includes_the_panchang_margin(hidden_env):
     """Chart born at the very start of the window: the lifetime check includes the panchang
-    sample margin, so 1800-01-02 (noon -1.5 d is outside) is refused and 1800-01-06 is accepted."""
+    sample margin, so 1800-01-02 is refused and 1800-01-06 is accepted."""
     @records_swiss_backend
     class W:
         def run(self, ctx):

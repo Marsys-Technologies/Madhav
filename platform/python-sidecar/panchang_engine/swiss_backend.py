@@ -68,12 +68,11 @@ precondition instead of ambient process state.
   window raises ``OutOfCorpusRangeError`` (named ``out_of_corpus_range``, a
   ``SwissBackendError`` AND a ``panchang_engine.OutOfRangeError`` so the existing 422
   handlers disclose it) -- the helper never reports swieph for such a date.
-  A panchang for a date samples more than that date's noon: ``compute_panchang`` /
-  ``panchanga_instant`` start the sunrise search at local noon - 0.75 day and run the anga
-  boundary searches up to 2 days past sunrise (measured over tz -720..+840 min: sampled
-  JDs span noon(12:00 UT of the date) - 1.334 .. + 1.847 days), so they check
+  The sunrise search starts at local noon - 0.75 day. A pre-sunrise instant
+  also searches the previous civil date for the start of its vāra. The anga
+  boundary searches extend past sunrise, so these entry points check
   ``panchang_sample_jds(jd)`` = (jd - PANCHANG_SAMPLE_BEFORE_DAYS, jd + PANCHANG_SAMPLE_AFTER_DAYS)
-  = (-1.5, +3.0) days, not the bare noon JD.
+  = (-2.5, +3.0) days relative to noon UT of the supplied date.
   Decorated writers check the chart's lifetime (birth .. birth + 125 years, with the same
   panchang margins) before their body runs, i.e. before any write.  A decorated writer
   whose context carries no parseable ``birth_params['datetime_iso']`` RAISES
@@ -132,9 +131,9 @@ SWIEPH_WINDOW_JD = (
     _CORPUS_NOMINAL_JD[0] + WINDOW_EDGE_MARGIN_DAYS,
     _CORPUS_NOMINAL_JD[1] - WINDOW_EDGE_MARGIN_DAYS,
 )
-# compute_panchang / panchanga_instant sample JDs around the date's noon (module docstring):
-# measured -1.334 .. +1.847 days around 12:00 UT of the date over tz -720..+840 minutes.
-PANCHANG_SAMPLE_BEFORE_DAYS = 1.5
+# Include the previous civil date's sunrise search at the maximum +14 h offset.
+# tests/test_swiss_backend_helper.py traces the actual sampled JDs.
+PANCHANG_SAMPLE_BEFORE_DAYS = 2.5
 PANCHANG_SAMPLE_AFTER_DAYS = 3.0
 # Writers' chart horizon (dashas 120y, ka_sangam 100y, ka_kshetra 100y, tithi-pravesha 120 rows).
 LIFETIME_HORIZON_YEARS = 125

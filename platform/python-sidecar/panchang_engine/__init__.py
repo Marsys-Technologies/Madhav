@@ -294,9 +294,6 @@ def panchanga_instant(instant, lat: float, lon: float, tz_offset: int) -> "Panch
     if _inst_u < _sunrise_utc:
         # The civil date's sunrise is still ahead. The current vāra began yesterday.
         vara_date = local_date - timedelta(days=1)
-        ensure_swiss_backend(*panchang_sample_jds(
-            swe.julday(vara_date.year, vara_date.month, vara_date.day, 12.0)
-        ))
         _next_sunrise = _sunrise_utc
         _sunrise_utc, _sunset_utc = compute_sunrise_sunset(vara_date, lat, lon, tz_offset)
     else:
