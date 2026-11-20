@@ -132,6 +132,19 @@ def test_verify_mudda_agreeing_is_classical_match_not_tpv(raw_mudda):
     assert W._verify_mudda(rows, 24) != T.TWO_PASS_VERIFIED
 
 
+def test_mudda_uses_the_birth_instant_at_a_nakshatra_boundary():
+    birth = {
+        "datetime_iso": "1991-07-19T06:20:00",
+        "latitude_deg": 18.52, "longitude_deg": 73.86, "tz_offset_hours": 5.5,
+    }
+    moon, birth_jd = W._get_moon_position(AYA, birth)
+    assert moon == pytest.approx(186.86417, abs=1e-4)
+    rows = W.compute_mudda_system(birth_jd, AYA, CHART, "b", birth_params=birth)
+    first = next(r for r in rows if r["level_n"] == 1)
+    assert first["lord_graha"] == "Ketu"
+    assert W._verify_mudda(rows, 14) == T.CLASSICAL_MATCH
+
+
 def test_verify_mudda_wrong_varsha1_lord_halts(raw_mudda):
     rows = copy.deepcopy(raw_mudda)
     l1 = sorted((r for r in rows if r["level_n"] == 1), key=lambda r: r["start_date"])

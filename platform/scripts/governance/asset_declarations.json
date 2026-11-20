@@ -14519,7 +14519,7 @@
     "nature": "single_derivation",
     "per_witness_values": false,
     "why": "single_derivation applies to every dasha row EXCEPT the Vimshottari rows of levels 1 to 4 (non-KP), which ARE independently re-derived in the build (compute_independent_vimshottari_tree against the engine's own tree, compared row by row, each row stamped with its own verification_pass_status: ga_dashas_writer.py _apply_vimshottari_independent_verification) and for which single-derivation is NOT claimed; this census does not measure that re-derivation and the rows store only its verdict, never either witness's value; the other systems (yogini, ashtottari, chara_karaka, naisargika, mudda, kalachakra, narayana) and the KP sub-periods are computed once by the writer and verified by integrity checks and internal consistency; they are stored at the single tier, EXCEPT the level-1 mudda rows, which carry classical_match (ga_dashas_writer.py _verify_mudda: a table-relay check of the varsha-1 lord and the 9-year year-lord cycle over the same transcribed tables, NOT a second algorithm), so no second derivation is claimed for them",
-    "evidence": "platform/python-sidecar/ga_writers/ga_dashas_writer.py:3381"
+    "evidence": "platform/python-sidecar/ga_writers/ga_dashas_writer.py:3357"
    },
    "prose_fields": [],
    "terminal_by_construction": null,
@@ -14530,7 +14530,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_dashas; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_dashas.ts:817 reads `chart_dashas` (`FROM chart_dashas d`). Dens.served=PASS.",
-    "prose_fields": "stores dasha periods: lords, signs, nakshatras, closed status words, pointers and the source column citation_human; composes no sentence of its own. Rows are built by the per-system builders of platform/python-sidecar/ga_writers/ga_dashas_writer.py (vimshottari platform/python-sidecar/ga_writers/ga_dashas_writer.py:1296-1330, kp platform/python-sidecar/ga_writers/ga_dashas_writer.py:1553-1620, yogini platform/python-sidecar/ga_writers/ga_dashas_writer.py:1654, ashtottari platform/python-sidecar/ga_writers/ga_dashas_writer.py:1839, chara_karaka platform/python-sidecar/ga_writers/ga_dashas_writer.py:2151, narayana platform/python-sidecar/ga_writers/ga_dashas_writer.py:2413, naisargika platform/python-sidecar/ga_writers/ga_dashas_writer.py:2506, mudda platform/python-sidecar/ga_writers/ga_dashas_writer.py:2852-2945, kalachakra platform/python-sidecar/ga_writers/ga_dashas_writer.py:3012) and bulk-loaded by COPY chart_dashas at platform/python-sidecar/ga_writers/ga_dashas_writer.py:3225 (columns platform/python-sidecar/ga_writers/ga_dashas_writer.py:3147-3168); the post-pass UPDATE at platform/python-sidecar/ga_writers/ga_dashas_writer.py:3832-3840 writes concurrent_system_lords_jsonb; the scope-cap sentinels are written at platform/python-sidecar/ga_writers/ga_dashas_writer.py:3536-3676 (one chart_dashas row, one chart_facts row). citation_ref is a pointer built by 13 fixed f-string templates (platform/python-sidecar/ga_writers/ga_dashas_writer.py:1310 ... platform/python-sidecar/ga_writers/ga_dashas_writer.py:3012) that embed the chart id and closed identifiers; citation_human is the declared source column."
+    "prose_fields": "stores dasha periods: lords, signs, nakshatras, closed status words, pointers and the source column citation_human; composes no sentence of its own. Rows are built by the per-system builders of platform/python-sidecar/ga_writers/ga_dashas_writer.py (vimshottari platform/python-sidecar/ga_writers/ga_dashas_writer.py:1278-1330, kp platform/python-sidecar/ga_writers/ga_dashas_writer.py:1535-1620, yogini platform/python-sidecar/ga_writers/ga_dashas_writer.py:1636, ashtottari platform/python-sidecar/ga_writers/ga_dashas_writer.py:1821, chara_karaka platform/python-sidecar/ga_writers/ga_dashas_writer.py:2133, narayana platform/python-sidecar/ga_writers/ga_dashas_writer.py:2395, naisargika platform/python-sidecar/ga_writers/ga_dashas_writer.py:2488, mudda platform/python-sidecar/ga_writers/ga_dashas_writer.py:2840-2945, kalachakra platform/python-sidecar/ga_writers/ga_dashas_writer.py:3000) and bulk-loaded by COPY chart_dashas at platform/python-sidecar/ga_writers/ga_dashas_writer.py:3213 (columns platform/python-sidecar/ga_writers/ga_dashas_writer.py:3135-3168); the post-pass UPDATE at platform/python-sidecar/ga_writers/ga_dashas_writer.py:3808-3840 writes concurrent_system_lords_jsonb; the scope-cap sentinels are written at platform/python-sidecar/ga_writers/ga_dashas_writer.py:3512-3676 (one chart_dashas row, one chart_facts row). citation_ref is a pointer built by 13 fixed f-string templates (platform/python-sidecar/ga_writers/ga_dashas_writer.py:1292 ... platform/python-sidecar/ga_writers/ga_dashas_writer.py:3000) that embed the chart id and closed identifiers; citation_human is the declared source column."
    },
    "produced_tables": [
     {
@@ -14557,7 +14557,7 @@
     ],
     "citation_state": "sourced",
     "why": "each dasha period row carries citation_human, the classical dasha source with its karaka provenance suffix, so the column is the row source and not narration",
-    "evidence": "platform/python-sidecar/ga_writers/ga_dashas_writer.py:1236"
+    "evidence": "platform/python-sidecar/ga_writers/ga_dashas_writer.py:1218"
    },
    "evidence_kind": "writer",
    "prose_none": {
@@ -14573,7 +14573,7 @@
        "surya_siddhanta_classical",
        "INVARIANT"
       ],
-      "why": "the five canonical ayanamshas (AYANAMSHAS platform/python-sidecar/ga_writers/ga_dashas_writer.py:99) and the INVARIANT key of the scope-cap sentinel row (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3559)"
+      "why": "the five canonical ayanamshas (AYANAMSHAS platform/python-sidecar/ga_writers/ga_dashas_writer.py:99) and the INVARIANT key of the scope-cap sentinel row (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3535)"
      },
      {
       "column": "system_id",
@@ -14589,7 +14589,7 @@
        "vimshottari_kp",
        "scope_cap"
       ],
-      "why": "the eight systems of SYSTEMS (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3530-3533), the KP system id (platform/python-sidecar/ga_writers/ga_dashas_writer.py:132) and the scope-cap sentinel system (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3561)"
+      "why": "the eight systems of SYSTEMS (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3506-3533), the KP system id (platform/python-sidecar/ga_writers/ga_dashas_writer.py:132) and the scope-cap sentinel system (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3537)"
      },
      {
       "column": "lord_graha",
@@ -14625,7 +14625,7 @@
        "Pisces",
        "KP_LEVELS_BEYOND_SUB_SUB"
       ],
-      "why": "the lord of a period: a graha (platform/python-sidecar/ga_writers/ga_dashas_writer.py:116-119, platform/python-sidecar/ga_writers/ga_dashas_writer.py:2659), a yogini name (platform/python-sidecar/ga_writers/ga_dashas_writer.py:156-165), a sign name (platform/python-sidecar/ga_writers/ga_dashas_writer.py:2124-2127, platform/python-sidecar/ga_writers/ga_dashas_writer.py:2390-2393, platform/python-sidecar/ga_writers/ga_dashas_writer.py:3000-3003) or the KP cap marker (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3610)"
+      "why": "the lord of a period: a graha (platform/python-sidecar/ga_writers/ga_dashas_writer.py:116-119, platform/python-sidecar/ga_writers/ga_dashas_writer.py:2641), a yogini name (platform/python-sidecar/ga_writers/ga_dashas_writer.py:156-165), a sign name (platform/python-sidecar/ga_writers/ga_dashas_writer.py:2106-2127, platform/python-sidecar/ga_writers/ga_dashas_writer.py:2372-2393, platform/python-sidecar/ga_writers/ga_dashas_writer.py:2988-3003) or the KP cap marker (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3586)"
      },
      {
       "column": "lord_sign",
@@ -14643,7 +14643,7 @@
        "Aquarius",
        "Pisces"
       ],
-      "why": "the natal sign of the lord copied from L1 (natal.get lord_natal_sign, platform/python-sidecar/ga_writers/ga_dashas_writer.py:1225): one of the twelve adapter sign names, or no value (the column is nullable)"
+      "why": "the natal sign of the lord copied from L1 (natal.get lord_natal_sign, platform/python-sidecar/ga_writers/ga_dashas_writer.py:1207): one of the twelve adapter sign names, or no value (the column is nullable)"
      },
      {
       "column": "karaka_role_at_period",
@@ -14657,7 +14657,7 @@
        "GK",
        "DK"
       ],
-      "why": "the Jaimini chara-karaka role abbreviation of the lord read from ga_sensitive (KARAKA_ABBREVIATIONS_8, platform/python-sidecar/ga_writers/_karaka_roles.py:63-65; platform/python-sidecar/ga_writers/ga_dashas_writer.py:775-778), or no value (the column is nullable)"
+      "why": "the Jaimini chara-karaka role abbreviation of the lord read from ga_sensitive (KARAKA_ABBREVIATIONS_8, platform/python-sidecar/ga_writers/_karaka_roles.py:63-65; platform/python-sidecar/ga_writers/ga_dashas_writer.py:757-778), or no value (the column is nullable)"
      },
      {
       "column": "verification_pass_status",
@@ -14668,7 +14668,7 @@
        "classical_match",
        "scope_cap_sentinel"
       ],
-      "why": "the verification tier: the five values of the table's CHECK (migration 652) and verification_vocab (platform/python-sidecar/ga_writers/ga_dashas_writer.py:76, platform/python-sidecar/ga_writers/ga_dashas_writer.py:1236)"
+      "why": "the verification tier: the five values of the table's CHECK (migration 652) and verification_vocab (platform/python-sidecar/ga_writers/ga_dashas_writer.py:76, platform/python-sidecar/ga_writers/ga_dashas_writer.py:1218)"
      },
      {
       "column": "verification_method",
@@ -14676,14 +14676,14 @@
        "two_pass_classical_reconstruction",
        "scope_cap_sentinel"
       ],
-      "why": "the verification method word of platform/python-sidecar/ga_writers/ga_dashas_writer.py:1234 and the sentinel value of platform/python-sidecar/ga_writers/ga_dashas_writer.py:3579"
+      "why": "the verification method word of platform/python-sidecar/ga_writers/ga_dashas_writer.py:1216 and the sentinel value of platform/python-sidecar/ga_writers/ga_dashas_writer.py:3555"
      },
      {
       "column": "engine_version",
       "values": [
        "pyjhora_adapter/0.1.0"
       ],
-      "why": "one engine-version constant (platform/python-sidecar/ga_writers/ga_dashas_writer.py:1238, platform/python-sidecar/ga_writers/ga_dashas_writer.py:3582)"
+      "why": "one engine-version constant (platform/python-sidecar/ga_writers/ga_dashas_writer.py:1220, platform/python-sidecar/ga_writers/ga_dashas_writer.py:3558)"
      },
      {
       "column": "kp_sublevel",
@@ -14692,7 +14692,7 @@
        "sub_sub",
        "beyond_sub_sub"
       ],
-      "why": "the KP sub-level words (platform/python-sidecar/ga_writers/ga_dashas_writer.py:1564, platform/python-sidecar/ga_writers/ga_dashas_writer.py:1607, platform/python-sidecar/ga_writers/ga_dashas_writer.py:3615), or no value (the column is nullable) for a classical row"
+      "why": "the KP sub-level words (platform/python-sidecar/ga_writers/ga_dashas_writer.py:1546, platform/python-sidecar/ga_writers/ga_dashas_writer.py:1589, platform/python-sidecar/ga_writers/ga_dashas_writer.py:3591), or no value (the column is nullable) for a classical row"
      },
      {
       "column": "kp_sub_lord",
@@ -14707,7 +14707,7 @@
        "Rahu",
        "Ketu"
       ],
-      "why": "the lord at the KP sub level: a Vimshottari graha name (platform/python-sidecar/ga_writers/ga_dashas_writer.py:1565)"
+      "why": "the lord at the KP sub level: a Vimshottari graha name (platform/python-sidecar/ga_writers/ga_dashas_writer.py:1547)"
      },
      {
       "column": "kp_sub_sub_lord",
@@ -14722,7 +14722,7 @@
        "Rahu",
        "Ketu"
       ],
-      "why": "the lord at the KP sub-sub level: a Vimshottari graha name (platform/python-sidecar/ga_writers/ga_dashas_writer.py:1608-1609)"
+      "why": "the lord at the KP sub-sub level: a Vimshottari graha name (platform/python-sidecar/ga_writers/ga_dashas_writer.py:1590-1609)"
      },
      {
       "column": "lord_natal_sign",
@@ -14740,7 +14740,7 @@
        "Aquarius",
        "Pisces"
       ],
-      "why": "the natal sign of the lord read from chart_facts graha_position sign (platform/python-sidecar/ga_writers/ga_dashas_writer.py:559-583): an adapter sign name, or no value (the column is nullable)"
+      "why": "the natal sign of the lord read from chart_facts graha_position sign (platform/python-sidecar/ga_writers/ga_dashas_writer.py:541-583): an adapter sign name, or no value (the column is nullable)"
      },
      {
       "column": "lord_natal_nakshatra",
@@ -14773,7 +14773,7 @@
        "Uttara Bhadrapada",
        "Revati"
       ],
-      "why": "the natal nakshatra of the lord read from chart_facts graha_position nakshatra (platform/python-sidecar/ga_writers/ga_dashas_writer.py:559-583): one of the 27 names of the L0 lexicon (bg_nakshatra name_en: Mrigasira, Moola, Dhanishtha; ga_positions folds the adapter spelling to it at emission), or no value (the column is nullable)"
+      "why": "the natal nakshatra of the lord read from chart_facts graha_position nakshatra (platform/python-sidecar/ga_writers/ga_dashas_writer.py:541-583): one of the 27 names of the L0 lexicon (bg_nakshatra name_en: Mrigasira, Moola, Dhanishtha; ga_positions folds the adapter spelling to it at emission), or no value (the column is nullable)"
      },
      {
       "column": "lord_natal_dignity_d1",
@@ -14785,7 +14785,7 @@
        "neutral",
        "unknown"
       ],
-      "why": "the D1 dignity lower-cased from chart_divisionals (platform/python-sidecar/ga_writers/ga_dashas_writer.py:584-605): the five tiers of dignity_oracle.classify_dignity and the unrecognised-graha word of ga_vargas_writer._compute_dignity"
+      "why": "the D1 dignity lower-cased from chart_divisionals (platform/python-sidecar/ga_writers/ga_dashas_writer.py:566-605): the five tiers of dignity_oracle.classify_dignity and the unrecognised-graha word of ga_vargas_writer._compute_dignity"
      },
      {
       "column": "sandhi_with_next_dasha_lord",
@@ -14820,7 +14820,7 @@
        "Aquarius",
        "Pisces"
       ],
-      "why": "the lord_graha of the next sibling period (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3134): a graha, yogini or sign name, or no value (the column is nullable)"
+      "why": "the lord_graha of the next sibling period (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3122): a graha, yogini or sign name, or no value (the column is nullable)"
      },
      {
       "column": "period_deity_or_marker",
@@ -14847,7 +14847,7 @@
        "Kalachakra-Pisces",
        "scope_cap"
       ],
-      "why": "the yogini names (platform/python-sidecar/ga_writers/ga_dashas_writer.py:1691, platform/python-sidecar/ga_writers/ga_dashas_writer.py:1724, platform/python-sidecar/ga_writers/ga_dashas_writer.py:1755, platform/python-sidecar/ga_writers/ga_dashas_writer.py:1785), Kalachakra-<sign> (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3058) and the scope-cap marker (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3593), or no value (the column is nullable)"
+      "why": "the yogini names (platform/python-sidecar/ga_writers/ga_dashas_writer.py:1673, platform/python-sidecar/ga_writers/ga_dashas_writer.py:1706, platform/python-sidecar/ga_writers/ga_dashas_writer.py:1737, platform/python-sidecar/ga_writers/ga_dashas_writer.py:1767), Kalachakra-<sign> (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3046) and the scope-cap marker (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3569), or no value (the column is nullable)"
      },
      {
       "column": "lord_to_parent_relationship",
@@ -14871,7 +14871,7 @@
        "Rahu",
        "Ketu"
       ],
-      "why": "the year lord of a Mudda row: one of the nine grahas of _MUDDA_IDX_TO_LORD (platform/python-sidecar/ga_writers/ga_dashas_writer.py:2659), or no value (the column is nullable)"
+      "why": "the year lord of a Mudda row: one of the nine grahas of _MUDDA_IDX_TO_LORD (platform/python-sidecar/ga_writers/ga_dashas_writer.py:2641), or no value (the column is nullable)"
      },
      {
       "column": "karakas_active_during_period",
@@ -14941,7 +14941,7 @@
        "Rahu:GK",
        "Rahu:DK"
       ],
-      "why": "Graha:role strings of the lord and its parent lord (platform/python-sidecar/ga_writers/ga_dashas_writer.py:791): the eight grahas of _KARAKAS_ACTIVE_GRAHA_ORDER (platform/python-sidecar/ga_writers/ga_dashas_writer.py:679-681) and the eight role abbreviations"
+      "why": "Graha:role strings of the lord and its parent lord (platform/python-sidecar/ga_writers/ga_dashas_writer.py:773): the eight grahas of _KARAKAS_ACTIVE_GRAHA_ORDER (platform/python-sidecar/ga_writers/ga_dashas_writer.py:661-681) and the eight role abbreviations"
      },
      {
       "column": "concurrent_system_lords_jsonb",
@@ -14976,7 +14976,7 @@
        "Aquarius",
        "Pisces"
       ],
-      "why": "a document {other_system: lord_graha} written by the post-pass UPDATE (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3819-3839): every string leaf is the lord_graha of another L1 system row, a graha, yogini or sign name; the keys are system ids and are not string leaves"
+      "why": "a document {other_system: lord_graha} written by the post-pass UPDATE (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3795-3839): every string leaf is the lord_graha of another L1 system row, a graha, yogini or sign name; the keys are system ids and are not string leaves"
      },
      {
       "table": "chart_facts",
@@ -14984,7 +14984,7 @@
       "values": [
        "INVARIANT"
       ],
-      "why": "the scope-cap fact is stored under the INVARIANT key (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3643)"
+      "why": "the scope-cap fact is stored under the INVARIANT key (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3619)"
      },
      {
       "table": "chart_facts",
@@ -14992,7 +14992,7 @@
       "values": [
        "dasha_scope_cap"
       ],
-      "why": "the fact category literal of the sentinel INSERT (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3647)"
+      "why": "the fact category literal of the sentinel INSERT (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3623)"
      },
      {
       "table": "chart_facts",
@@ -15000,7 +15000,7 @@
       "values": [
        "PRANA_DASHA"
       ],
-      "why": "the fact subject literal of the sentinel INSERT (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3647)"
+      "why": "the fact subject literal of the sentinel INSERT (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3623)"
      },
      {
       "table": "chart_facts",
@@ -15008,7 +15008,7 @@
       "values": [
        "level_5_not_computed"
       ],
-      "why": "the fact key literal of the sentinel INSERT (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3647)"
+      "why": "the fact key literal of the sentinel INSERT (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3623)"
      },
      {
       "table": "chart_facts",
@@ -15017,7 +15017,7 @@
        "method_inapplicable",
        "Prana Dasha is beyond the admitted L1 hierarchy"
       ],
-      "why": "the string leaves of the sentinel payload json.dumps({state, requested_level, supported_max_level, reason}) (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3657-3662): two fixed strings; the other leaves are numbers"
+      "why": "the string leaves of the sentinel payload json.dumps({state, requested_level, supported_max_level, reason}) (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3633-3662): two fixed strings; the other leaves are numbers"
      },
      {
       "table": "chart_facts",
@@ -15025,7 +15025,7 @@
       "values": [
        "scope_declaration"
       ],
-      "why": "the unit literal of the sentinel INSERT (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3648)"
+      "why": "the unit literal of the sentinel INSERT (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3624)"
      },
      {
       "table": "chart_facts",
@@ -15033,7 +15033,7 @@
       "values": [
        "L1_GANITA_SCOPE_CAP"
       ],
-      "why": "the fixed pointer of the sentinel INSERT (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3648)"
+      "why": "the fixed pointer of the sentinel INSERT (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3624)"
      },
      {
       "table": "chart_facts",
@@ -15041,7 +15041,7 @@
       "values": [
        "Prana Dasha fifth-level sub-period is explicitly not computed; the admitted L1 interval hierarchy ends at level 4."
       ],
-      "why": "the one fixed sentence the sentinel INSERT binds (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3663-3664): a constant of the scope declaration, not narration of a computed value"
+      "why": "the one fixed sentence the sentinel INSERT binds (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3639-3664): a constant of the scope declaration, not narration of a computed value"
      },
      {
       "table": "chart_facts",
@@ -15049,7 +15049,7 @@
       "values": [
        "ga_dashas.scope_cap/v1"
       ],
-      "why": "the fixed calculation id of the sentinel INSERT (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3649)"
+      "why": "the fixed calculation id of the sentinel INSERT (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3625)"
      },
      {
       "table": "chart_facts",
@@ -15057,7 +15057,7 @@
       "values": [
        "scope_cap_sentinel"
       ],
-      "why": "the sentinel tier (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3665)"
+      "why": "the sentinel tier (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3641)"
      },
      {
       "table": "chart_facts",
@@ -15065,15 +15065,15 @@
       "values": [
        "pyjhora_adapter/0.1.0"
       ],
-      "why": "the engine-version literal of the sentinel INSERT (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3650)"
+      "why": "the engine-version literal of the sentinel INSERT (platform/python-sidecar/ga_writers/ga_dashas_writer.py:3626)"
      }
     ],
     "identifier_columns": [
      {
       "table": "chart_facts",
       "column": "fact_id",
-      "why": "the primary key of chart_facts (a stable uuid string, platform/python-sidecar/ga_writers/ga_dashas_writer.py:3621-3623) of the scope-cap fact",
-      "evidence": "platform/python-sidecar/ga_writers/ga_dashas_writer.py:3642"
+      "why": "the primary key of chart_facts (a stable uuid string, platform/python-sidecar/ga_writers/ga_dashas_writer.py:3597-3623) of the scope-cap fact",
+      "evidence": "platform/python-sidecar/ga_writers/ga_dashas_writer.py:3618"
      }
     ],
     "templated_columns": [
@@ -15270,8 +15270,8 @@
         "max": 4
        }
       },
-      "why": "the derivation pointer of a dasha period: 13 fixed f-string templates, each embedding the chart id, the closed level, the lord chain and the ayanamsha, plus the fixed scope-cap pointer; the sites are platform/python-sidecar/ga_writers/ga_dashas_writer.py:1310, platform/python-sidecar/ga_writers/ga_dashas_writer.py:1553, platform/python-sidecar/ga_writers/ga_dashas_writer.py:1597, platform/python-sidecar/ga_writers/ga_dashas_writer.py:1654, platform/python-sidecar/ga_writers/ga_dashas_writer.py:1839, platform/python-sidecar/ga_writers/ga_dashas_writer.py:2151, platform/python-sidecar/ga_writers/ga_dashas_writer.py:2413, platform/python-sidecar/ga_writers/ga_dashas_writer.py:2506, platform/python-sidecar/ga_writers/ga_dashas_writer.py:2852, platform/python-sidecar/ga_writers/ga_dashas_writer.py:2879, platform/python-sidecar/ga_writers/ga_dashas_writer.py:2911, platform/python-sidecar/ga_writers/ga_dashas_writer.py:2940, platform/python-sidecar/ga_writers/ga_dashas_writer.py:3012, platform/python-sidecar/ga_writers/ga_dashas_writer.py:3580",
-      "evidence": "platform/python-sidecar/ga_writers/ga_dashas_writer.py:1310"
+      "why": "the derivation pointer of a dasha period: 13 fixed f-string templates, each embedding the chart id, the closed level, the lord chain and the ayanamsha, plus the fixed scope-cap pointer; the sites are platform/python-sidecar/ga_writers/ga_dashas_writer.py:1292, platform/python-sidecar/ga_writers/ga_dashas_writer.py:1535, platform/python-sidecar/ga_writers/ga_dashas_writer.py:1579, platform/python-sidecar/ga_writers/ga_dashas_writer.py:1636, platform/python-sidecar/ga_writers/ga_dashas_writer.py:1821, platform/python-sidecar/ga_writers/ga_dashas_writer.py:2133, platform/python-sidecar/ga_writers/ga_dashas_writer.py:2395, platform/python-sidecar/ga_writers/ga_dashas_writer.py:2488, platform/python-sidecar/ga_writers/ga_dashas_writer.py:2840, platform/python-sidecar/ga_writers/ga_dashas_writer.py:2867, platform/python-sidecar/ga_writers/ga_dashas_writer.py:2899, platform/python-sidecar/ga_writers/ga_dashas_writer.py:2928, platform/python-sidecar/ga_writers/ga_dashas_writer.py:3000, platform/python-sidecar/ga_writers/ga_dashas_writer.py:3556",
+      "evidence": "platform/python-sidecar/ga_writers/ga_dashas_writer.py:1292"
      }
     ],
     "column_scope": "written"
@@ -15289,7 +15289,7 @@
      "table": "chart_dashas",
      "column": "citation_ref",
      "why": "chart_dashas.citation_ref is declared templated text: the graha, sign and nakshatra terms found as examples inside its text are parts of longer text, not a spelling census target (json-key hits are never covered)",
-     "evidence": "platform/python-sidecar/ga_writers/ga_dashas_writer.py:1310"
+     "evidence": "platform/python-sidecar/ga_writers/ga_dashas_writer.py:1292"
     }
    ]
   },

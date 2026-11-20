@@ -55,7 +55,7 @@ const EXPECTED_SQL = [
                       FROM build_runs recovered
                       JOIN build_run_assets receipt ON receipt.run_id = recovered.id
                      WHERE recovered.chart_id = r.chart_id AND recovered.created_at > r.created_at
-                       AND recovered.state = 'completed' AND receipt.state = 'complete'
+                       AND recovered.state IN ('completed', 'failed', 'stopped') AND receipt.state = 'complete'
                        AND receipt.asset_id = bra.asset_id
                   )
                 ),
