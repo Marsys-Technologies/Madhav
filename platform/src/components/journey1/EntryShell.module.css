@@ -86,9 +86,20 @@
 }
 
 .folio[data-entry-page="login"] {
-  --entry-sun-top: clamp(52px, calc((100dvh - 570px) / 2), 250px);
+  --entry-sun-top: clamp(
+    52px,
+    calc((100dvh - 570px) / 2 - var(--sign-in-error-space, 0px)),
+    250px
+  );
   --entry-sun-size: clamp(68px, 13.4dvh, 124px);
   --sign-in-gap: clamp(12px, 2dvh, 20px);
+}
+
+/* Make room above the desktop form when it shows an inline error. */
+@media (min-width: 768px) {
+  .folio[data-entry-page="login"]:has(.signInForm [role="alert"]) {
+    --sign-in-error-space: 3rem;
+  }
 }
 
 .folio[data-entry-page="login"] :global(.j1-entry-column) {
@@ -222,5 +233,19 @@
   .folio[data-entry-page="login"] {
     --entry-sun-top: 32px;
     --entry-sun-size: 48px;
+  }
+
+  .folio[data-entry-page="login"]:has(.signInForm [role="alert"]) {
+    --entry-sun-top: 22px;
+    --entry-sun-size: 32px;
+    --sign-in-gap: 4px;
+  }
+
+  .folio[data-entry-page="login"]:has(.signInForm [role="alert"]) :global(.j1-entry-card) {
+    padding-block: 8px;
+  }
+
+  .folio .signInForm:has([role="alert"]) {
+    gap: 6px;
   }
 }
