@@ -2196,7 +2196,7 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/ga_writers/ga_tajaka_writer.py",
-    635,
+    640,
     "citation_human = ("
    ]
   ],
