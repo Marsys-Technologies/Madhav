@@ -11,6 +11,7 @@ vi.mock('@/lib/build/jobInvoker', () => ({ invokeRunJob: mockInvokeRunJob }))
 
 const request = new NextRequest('http://localhost/api/cockpit/runs/run-1/resume', { method: 'POST' })
 const context = { params: Promise.resolve({ id: 'run-1' }) }
+const resumeRequestedAt = '2026-11-20 16:30:00.123456+00'
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -20,7 +21,7 @@ beforeEach(() => {
 
 describe('POST /api/cockpit/runs/[id]/resume', () => {
   it('dispatches exactly the atomically claimed paused run', async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [{ id: 'run-1', state: 'planned' }] })
+    mockQuery.mockResolvedValueOnce({ rows: [{ id: 'run-1', resume_requested_at: resumeRequestedAt }] })
     mockInvokeRunJob.mockResolvedValue(undefined)
 
     const { POST } = await import('../route')
@@ -29,11 +30,11 @@ describe('POST /api/cockpit/runs/[id]/resume', () => {
     expect(res.status).toBe(200)
     expect((await res.json()).data).toEqual({ run_id: 'run-1', resumed: true })
     expect(mockInvokeRunJob).toHaveBeenCalledTimes(1)
-    expect(mockInvokeRunJob).toHaveBeenCalledWith('run-1')
+    expect(mockInvokeRunJob).toHaveBeenCalledWith('run-1', { forceExecute: true })
   })
 
   it('FIX2: a resumed Rebuild is dispatched with forceExecute (a clear may have preceded it)', async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [{ id: 'run-1', action: 'rebuild' }] })
+    mockQuery.mockResolvedValueOnce({ rows: [{ id: 'run-1', resume_requested_at: resumeRequestedAt }] })
     mockInvokeRunJob.mockResolvedValue(undefined)
     const { POST } = await import('../route')
     const res = await POST(request, context)
@@ -43,7 +44,7 @@ describe('POST /api/cockpit/runs/[id]/resume', () => {
 
   it('claims paused work, invokes its job, and does not report it resumed when dispatch fails', async () => {
     mockQuery
-      .mockResolvedValueOnce({ rows: [{ id: 'run-1', state: 'planned' }] })
+      .mockResolvedValueOnce({ rows: [{ id: 'run-1', resume_requested_at: resumeRequestedAt }] })
       .mockResolvedValueOnce({ rows: [{ id: 'run-1' }] })
     mockInvokeRunJob.mockRejectedValue(new Error('Cloud Run unavailable'))
 
@@ -52,9 +53,10 @@ describe('POST /api/cockpit/runs/[id]/resume', () => {
 
     expect(res.status).toBe(503)
     expect((await res.json()).code).toBe('JOB_DISPATCH_FAILED')
-    expect(mockInvokeRunJob).toHaveBeenCalledWith('run-1')
+    expect(mockInvokeRunJob).toHaveBeenCalledWith('run-1', { forceExecute: true })
     expect(String(mockQuery.mock.calls[1][0])).toContain("state = 'planned'")
     expect(String(mockQuery.mock.calls[2][0])).toContain("state = 'paused'")
+    expect(mockQuery.mock.calls[2][1]).toEqual(['Cloud Run unavailable', 'run-1', resumeRequestedAt])
   })
 
   it('rejects a competing resume attempt without invoking another job', async () => {
