@@ -369,3 +369,20 @@ class TestA7GrahaAspectsHouseOffByOne:
     ])
     def test_non_special_house_pairs_correctly_return_zero(self, aspector, source_h, target_h):
         assert sut._graha_aspects_house(aspector, source_h, target_h) == 0.0
+
+
+def test_divisional_planetary_war_excludes_luminaries_and_nodes():
+    bodies = ("Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu")
+    positions = {
+        body: {"sign_num": 1, "degree": 0.1 * index}
+        for index, body in enumerate(bodies)
+    }
+    rows = sut._build_graha_yuddha_per_varga_rows(
+        positions, "D2", CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER,
+    )
+    eligible = set(bodies[2:7])
+    assert len(rows) == 10
+    for row in rows:
+        pair = row["fact_value_jsonb"]
+        assert pair["graha1"] in eligible
+        assert pair["graha2"] in eligible
