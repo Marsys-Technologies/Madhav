@@ -1,0 +1,196 @@
+{
+ "declared": {
+  "by": [
+   [
+    [
+     "bodha_cgm_edges",
+     "cat__edges",
+     "disappeared",
+     "a"
+    ],
+    1
+   ],
+   [
+    [
+     "bodha_cgm_edges",
+     "cat__edges",
+     "tier",
+     "a"
+    ],
+    1
+   ],
+   [
+    [
+     "bodha_msr_signals",
+     "cat_ignals",
+     "value",
+     "a"
+    ],
+    1
+   ],
+   [
+    [
+     "bodha_pratijna",
+     "cat_atijna",
+     "appeared",
+     "b"
+    ],
+    1
+   ]
+  ],
+  "changes_total": 4,
+  "continuous_l2": {
+   "bodha_cgm_edges": {
+    "changed": 0,
+    "compared": 6,
+    "keys_appeared": 0,
+    "keys_both": 3,
+    "keys_disappeared": 1,
+    "max_abs_delta": 0.0,
+    "to_null": 0
+   },
+   "bodha_msr_signals": {
+    "changed": 1,
+    "compared": 6,
+    "keys_appeared": 0,
+    "keys_both": 4,
+    "keys_disappeared": 0,
+    "max_abs_delta": 9.0,
+    "to_null": 0
+   },
+   "bodha_pratijna": {
+    "changed": 0,
+    "compared": 8,
+    "keys_appeared": 1,
+    "keys_both": 4,
+    "keys_disappeared": 0,
+    "max_abs_delta": 0.0,
+    "to_null": 0
+   }
+  },
+  "exit": 0,
+  "failure_counts": {
+   "DASHA_SHIFT_UNDECLARED": 0,
+   "DECLARED_BUT_ABSENT": 0,
+   "EMPTY_READ": 0,
+   "EXPECTATION_MISMATCH": 0,
+   "HOOK_ERROR": 0,
+   "KIND_MISMATCH": 0,
+   "UNDECLARED_CHANGE": 0
+  },
+  "not_checked": [
+   "chart_dashas.tier",
+   "l1_tajik_varsha_year_lords.tier",
+   "chart_vichara",
+   "ga_yoga_firings.strength",
+   "bodha_rm_resonances",
+   "ga_condition_composite",
+   "ga_medical",
+   "ga_vastu_*",
+   "ga_prashna_*",
+   "prashna_charts",
+   "l2.unread_columns",
+   "l2.generation_ledger",
+   "chart_dashas.not_compared",
+   "panchanga_daily.not_compared"
+  ],
+  "verdict": "NOT_CHECKED"
+ },
+ "undeclared": {
+  "by": [
+   [
+    [
+     "bodha_cgm_edges",
+     "cat__edges",
+     "disappeared",
+     "UNATTRIBUTED"
+    ],
+    1
+   ],
+   [
+    [
+     "bodha_cgm_edges",
+     "cat__edges",
+     "tier",
+     "UNATTRIBUTED"
+    ],
+    1
+   ],
+   [
+    [
+     "bodha_msr_signals",
+     "cat_ignals",
+     "value",
+     "UNATTRIBUTED"
+    ],
+    1
+   ],
+   [
+    [
+     "bodha_pratijna",
+     "cat_atijna",
+     "appeared",
+     "UNATTRIBUTED"
+    ],
+    1
+   ]
+  ],
+  "changes_total": 4,
+  "continuous_l2": {
+   "bodha_cgm_edges": {
+    "changed": 0,
+    "compared": 6,
+    "keys_appeared": 0,
+    "keys_both": 3,
+    "keys_disappeared": 1,
+    "max_abs_delta": 0.0,
+    "to_null": 0
+   },
+   "bodha_msr_signals": {
+    "changed": 1,
+    "compared": 6,
+    "keys_appeared": 0,
+    "keys_both": 4,
+    "keys_disappeared": 0,
+    "max_abs_delta": 9.0,
+    "to_null": 0
+   },
+   "bodha_pratijna": {
+    "changed": 0,
+    "compared": 8,
+    "keys_appeared": 1,
+    "keys_both": 4,
+    "keys_disappeared": 0,
+    "max_abs_delta": 0.0,
+    "to_null": 0
+   }
+  },
+  "exit": 2,
+  "failure_counts": {
+   "DASHA_SHIFT_UNDECLARED": 0,
+   "DECLARED_BUT_ABSENT": 0,
+   "EMPTY_READ": 0,
+   "EXPECTATION_MISMATCH": 0,
+   "HOOK_ERROR": 0,
+   "KIND_MISMATCH": 0,
+   "UNDECLARED_CHANGE": 4
+  },
+  "not_checked": [
+   "chart_dashas.tier",
+   "l1_tajik_varsha_year_lords.tier",
+   "chart_vichara",
+   "ga_yoga_firings.strength",
+   "bodha_rm_resonances",
+   "ga_condition_composite",
+   "ga_medical",
+   "ga_vastu_*",
+   "ga_prashna_*",
+   "prashna_charts",
+   "l2.unread_columns",
+   "l2.generation_ledger",
+   "chart_dashas.not_compared",
+   "panchanga_daily.not_compared"
+  ],
+  "verdict": "FAIL"
+ }
+}
