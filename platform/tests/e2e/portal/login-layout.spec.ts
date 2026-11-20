@@ -31,17 +31,20 @@ for (const viewport of viewports) {
   })
 }
 
-test('a sign-in error stays readable and leaves the controls available', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 667 })
-  await page.route('**/api/auth/resolve-username', (route) => route.fulfill({ status: 401, json: {} }))
-  await page.goto('/login')
-  await page.getByRole('textbox', { name: 'Username', exact: true }).fill('layout-fixture')
-  await page.getByLabel('Password', { exact: true }).fill('fixture-password')
-  await page.getByRole('button', { name: 'Sign in', exact: true }).click()
-  const error = page.getByRole('alert').filter({ hasText: 'Invalid username or password.' })
-  await expect(error).toBeInViewport({ ratio: 1 })
-  await expectFullViewport(page)
-})
+for (const viewport of viewports) {
+  test(`sign-in error fits ${viewport.width}×${viewport.height}`, async ({ page }) => {
+    await page.setViewportSize(viewport)
+    await page.route('**/api/auth/resolve-username', (route) => route.fulfill({ status: 404, json: {} }))
+    await page.goto('/login')
+    await page.evaluate(() => document.fonts.ready)
+    await page.getByRole('textbox', { name: 'Username', exact: true }).fill('layout-fixture')
+    await page.getByLabel('Password', { exact: true }).fill('fixture-password')
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click()
+    const error = page.getByRole('alert').filter({ hasText: 'Invalid username or password.' })
+    await expect(error).toBeInViewport({ ratio: 1 })
+    await expectFullViewport(page)
+  })
+}
 
 test('a keyboard-height viewport leaves the sign-in form keyboard reachable', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 360 })
