@@ -1,0 +1,408 @@
+[
+ {
+  "asset": "bg_transit_engine",
+  "table": "bg_transit_engine",
+  "row_key": {
+   "id": null,
+   "graha": "jupiter"
+  },
+  "row_count": 1,
+  "claim": "jupiter: avg_daily_motion_deg=0.0831, zodiac_period_days=4332.59, sign_residence_days=361.05",
+  "current_citation": "BPHS Ch.22 (Graha Gati — Planetary Motion)",
+  "state": "sourced_inference",
+  "support_class": "INFERENCE",
+  "corpus": [
+   {
+    "text_id": "yavana_jataka",
+    "chunk_id": "yavana_jataka_pg0662_c01",
+    "chunk_uuid": "e0f66e2a-537b-4ec5-9d72-a8d48865375a",
+    "chunk_content_sha256": "d10bcce8883b678afeeea40a6383e236f340d165962385b18b72be79a2f8894e",
+    "page": "PG662",
+    "sloka_printed": null,
+    "quote": "at the rate of one sign a year",
+    "role": "supports sign_residence_days (round figure)"
+   },
+   {
+    "text_id": "yavana_jataka",
+    "chunk_id": "yavana_jataka_pg0900_c01",
+    "chunk_uuid": "dd0eebd8-69dd-4394-bb23-1106f6c6b81a",
+    "chunk_content_sha256": "89fee7fe022915c0f2952e614f258c34f9ede69b65a988c031a7984842d27137",
+    "page": "PG900",
+    "sloka_printed": null,
+    "quote": "Jupiter spends approximately one year in each sign",
+    "role": "supports sign_residence_days (round figure)"
+   },
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0933_c01",
+    "chunk_uuid": "26da5f90-bf44-44c3-b394-764d5213e872",
+    "chunk_content_sha256": "d18a3dbc350df86e90cc4a30bc20de40591064c05a52e352fa62c5f387ae3fb8",
+    "page": "PG933",
+    "sloka_printed": null,
+    "quote": "Jupiter stays in one sign for one year",
+    "role": "supports sign_residence_days (round figure)"
+   },
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0022_c01",
+    "chunk_uuid": "c7dd5619-cc12-4c5c-9742-a162ca4dd159",
+    "chunk_content_sha256": "562faf43056f44efcebe281b61225d6ad28703f13f8b3fff0399e76560a28053",
+    "page": "PG22",
+    "sloka_printed": null,
+    "quote": "From the Sun God the incarnation of Rama",
+    "role": "what the cited 'BPHS Ch.22' actually is (refutes the old citation)"
+   }
+  ],
+  "cells": {
+   "avg_daily_motion_deg": "NONE",
+   "zodiac_period_days": "NONE",
+   "sign_residence_days": "INFERENCE"
+  },
+  "inference_step": "round classical figure -> stored mean (see citation text)",
+  "proposed_citation": "PARTIALLY SOURCED — only sign_residence_days (about one year per sign) is stated in the held corpus: yavana_jataka:PG662:C1 ('at the rate of one sign a year'), yavana_jataka:PG900:C1, bphs:PG933:C1 (worked example); stored 361.05 is read from the round figure: INFERENCE. Motion and period values are not stated (the period coincides with the modern mean sidereal period). Former citation \"BPHS Ch.22 (Graha Gati)\" withdrawn as refuted: served bphs:PG22:C1 is Chapter 2 (incarnations) and the held corpus has no BPHS Graha Gati text.",
+  "proposed_action": "recite",
+  "row_note": "Citation text only; the numeric values are NOT changed here (WAVE-1 Part B is an SS decision).",
+  "acharya_question": "sign_residence_days: the held text gives 'about one year per sign' (yavana_jataka verse 52.1); the stored value is the modern mean 361.05. Classical round figure or modern mean?"
+ },
+ {
+  "asset": "bg_transit_engine",
+  "table": "bg_transit_engine",
+  "row_key": {
+   "id": null,
+   "graha": "ketu"
+  },
+  "row_count": 1,
+  "claim": "ketu: avg_daily_motion_deg=-0.0529, zodiac_period_days=6793.5, sign_residence_days=548",
+  "current_citation": "BPHS Ch.22 (Graha Gati — Planetary Motion)",
+  "state": "unsourced_marked",
+  "support_class": "NONE",
+  "corpus": [
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0022_c01",
+    "chunk_uuid": "c7dd5619-cc12-4c5c-9742-a162ca4dd159",
+    "chunk_content_sha256": "562faf43056f44efcebe281b61225d6ad28703f13f8b3fff0399e76560a28053",
+    "page": "PG22",
+    "sloka_printed": null,
+    "quote": "From the Sun God the incarnation of Rama",
+    "role": "what the cited 'BPHS Ch.22' actually is (refutes the old citation)"
+   }
+  ],
+  "cells": {
+   "avg_daily_motion_deg": "NONE",
+   "zodiac_period_days": "NONE",
+   "sign_residence_days": "NONE"
+  },
+  "inference_step": null,
+  "proposed_citation": "UNSOURCED — no value of this row is stated in the held classical corpus (the period coincides with the modern mean sidereal period). Former citation \"BPHS Ch.22 (Graha Gati)\" withdrawn as refuted: served bphs:PG22:C1 is Chapter 2 (incarnations) and the held corpus has no BPHS Graha Gati text.",
+  "proposed_action": "recite",
+  "row_note": "Citation text only; the numeric values are NOT changed here (WAVE-1 Part B is an SS decision).",
+  "acharya_question": "Same as Rahu (Ketu moves with Rahu): source for 548 d per sign, or period/12?"
+ },
+ {
+  "asset": "bg_transit_engine",
+  "table": "bg_transit_engine",
+  "row_key": {
+   "id": null,
+   "graha": "mars"
+  },
+  "row_count": 1,
+  "claim": "mars: avg_daily_motion_deg=0.524, zodiac_period_days=686.97, sign_residence_days=45",
+  "current_citation": "BPHS Ch.22 (Graha Gati — Planetary Motion)",
+  "state": "unsourced_marked",
+  "support_class": "NONE",
+  "corpus": [
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0022_c01",
+    "chunk_uuid": "c7dd5619-cc12-4c5c-9742-a162ca4dd159",
+    "chunk_content_sha256": "562faf43056f44efcebe281b61225d6ad28703f13f8b3fff0399e76560a28053",
+    "page": "PG22",
+    "sloka_printed": null,
+    "quote": "From the Sun God the incarnation of Rama",
+    "role": "what the cited 'BPHS Ch.22' actually is (refutes the old citation)"
+   }
+  ],
+  "cells": {
+   "avg_daily_motion_deg": "NONE",
+   "zodiac_period_days": "NONE",
+   "sign_residence_days": "NONE"
+  },
+  "inference_step": null,
+  "proposed_citation": "UNSOURCED — no value of this row is stated in the held classical corpus (the period coincides with the modern mean sidereal period). Former citation \"BPHS Ch.22 (Graha Gati)\" withdrawn as refuted: served bphs:PG22:C1 is Chapter 2 (incarnations) and the held corpus has no BPHS Graha Gati text.",
+  "proposed_action": "recite",
+  "row_note": "Citation text only; the numeric values are NOT changed here (WAVE-1 Part B is an SS decision).",
+  "acharya_question": "sign_residence_days 45 is not period/12 (57.25) and is stated nowhere in the held corpus. Is there a classical source (book edition) for 1.5 months per sign, or should it become period/12 or unsourced?"
+ },
+ {
+  "asset": "bg_transit_engine",
+  "table": "bg_transit_engine",
+  "row_key": {
+   "id": null,
+   "graha": "mercury"
+  },
+  "row_count": 1,
+  "claim": "mercury: avg_daily_motion_deg=1.3833, zodiac_period_days=87.97, sign_residence_days=14",
+  "current_citation": "BPHS Ch.22 (Graha Gati — Planetary Motion)",
+  "state": "unsourced_marked",
+  "support_class": "NONE",
+  "corpus": [
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0022_c01",
+    "chunk_uuid": "c7dd5619-cc12-4c5c-9742-a162ca4dd159",
+    "chunk_content_sha256": "562faf43056f44efcebe281b61225d6ad28703f13f8b3fff0399e76560a28053",
+    "page": "PG22",
+    "sloka_printed": null,
+    "quote": "From the Sun God the incarnation of Rama",
+    "role": "what the cited 'BPHS Ch.22' actually is (refutes the old citation)"
+   }
+  ],
+  "cells": {
+   "avg_daily_motion_deg": "NONE",
+   "zodiac_period_days": "NONE",
+   "sign_residence_days": "NONE"
+  },
+  "inference_step": null,
+  "proposed_citation": "UNSOURCED — no value of this row is stated in the held classical corpus (the period coincides with the modern mean sidereal period). Former citation \"BPHS Ch.22 (Graha Gati)\" withdrawn as refuted: served bphs:PG22:C1 is Chapter 2 (incarnations) and the held corpus has no BPHS Graha Gati text.",
+  "proposed_action": "recite",
+  "row_note": "Citation text only; the numeric values are NOT changed here (WAVE-1 Part B is an SS decision).",
+  "acharya_question": "WAVE-1 defect, not curation: avg_daily_motion_deg 1.3833 and sign_residence_days 14 agree neither with the stored 87.97 d period (implies 4.0923 deg/d) nor with each other. Under which single rule (heliocentric period vs Sun-following geocentric mean) should the three cells be set, and what classical source (book edition) exists for any value kept?"
+ },
+ {
+  "asset": "bg_transit_engine",
+  "table": "bg_transit_engine",
+  "row_key": {
+   "id": null,
+   "graha": "moon"
+  },
+  "row_count": 1,
+  "claim": "moon: avg_daily_motion_deg=13.1764, zodiac_period_days=27.32, sign_residence_days=2.28",
+  "current_citation": "BPHS Ch.22 (Graha Gati — Planetary Motion)",
+  "state": "unsourced_marked",
+  "support_class": "NONE",
+  "corpus": [
+   {
+    "text_id": "sarvartha_chintamani",
+    "chunk_id": "sarvartha_chintamani_pg0001_c301",
+    "chunk_uuid": "dc495682-8bfb-4000-9877-37fe3169d000",
+    "chunk_content_sha256": "8aec20a11e5c18dc3285cf925002de501cb8af48de1f41527d029827679705d3",
+    "page": "PG1:C301",
+    "sloka_printed": null,
+    "quote": null,
+    "role": "candidate, not relied on",
+    "note": "Moon who moves one sign in 2 J days (numeral illegible in OCR; not relied on)"
+   },
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0022_c01",
+    "chunk_uuid": "c7dd5619-cc12-4c5c-9742-a162ca4dd159",
+    "chunk_content_sha256": "562faf43056f44efcebe281b61225d6ad28703f13f8b3fff0399e76560a28053",
+    "page": "PG22",
+    "sloka_printed": null,
+    "quote": "From the Sun God the incarnation of Rama",
+    "role": "what the cited 'BPHS Ch.22' actually is (refutes the old citation)"
+   }
+  ],
+  "cells": {
+   "avg_daily_motion_deg": "NONE",
+   "zodiac_period_days": "NONE",
+   "sign_residence_days": "NONE"
+  },
+  "inference_step": null,
+  "proposed_citation": "UNSOURCED — no value of this row is stated in the held corpus (sarvartha_chintamani:PG1:C301 has a translator note giving the Moon's time per sign, but the numeral is OCR-illegible and is not relied on). The period coincides with the modern mean sidereal period. Former citation \"BPHS Ch.22 (Graha Gati)\" withdrawn as refuted: served bphs:PG22:C1 is Chapter 2 (incarnations) and the held corpus has no BPHS Graha Gati text.",
+  "proposed_action": "recite",
+  "row_note": "Citation text only; the numeric values are NOT changed here (WAVE-1 Part B is an SS decision).",
+  "acharya_question": "(1) sarvartha_chintamani PG1:C301 (translator's note) prints the Moon's time per sign as '2 J days' in the OCR; confirm from the page image whether it reads 2 1/4 days. (2) yavana_jataka PG937 (commentary) derives the sidereal month as 27;24,18 d = 27.405 d; the stored zodiac_period_days is the modern 27.32. Which convention should the column carry?"
+ },
+ {
+  "asset": "bg_transit_engine",
+  "table": "bg_transit_engine",
+  "row_key": {
+   "id": null,
+   "graha": "rahu"
+  },
+  "row_count": 1,
+  "claim": "rahu: avg_daily_motion_deg=-0.0529, zodiac_period_days=6793.5, sign_residence_days=548",
+  "current_citation": "BPHS Ch.22 (Graha Gati — Planetary Motion)",
+  "state": "unsourced_marked",
+  "support_class": "NONE",
+  "corpus": [
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0022_c01",
+    "chunk_uuid": "c7dd5619-cc12-4c5c-9742-a162ca4dd159",
+    "chunk_content_sha256": "562faf43056f44efcebe281b61225d6ad28703f13f8b3fff0399e76560a28053",
+    "page": "PG22",
+    "sloka_printed": null,
+    "quote": "From the Sun God the incarnation of Rama",
+    "role": "what the cited 'BPHS Ch.22' actually is (refutes the old citation)"
+   }
+  ],
+  "cells": {
+   "avg_daily_motion_deg": "NONE",
+   "zodiac_period_days": "NONE",
+   "sign_residence_days": "NONE"
+  },
+  "inference_step": null,
+  "proposed_citation": "UNSOURCED — no value of this row is stated in the held classical corpus (the period coincides with the modern mean sidereal period). Former citation \"BPHS Ch.22 (Graha Gati)\" withdrawn as refuted: served bphs:PG22:C1 is Chapter 2 (incarnations) and the held corpus has no BPHS Graha Gati text.",
+  "proposed_action": "recite",
+  "row_note": "Citation text only; the numeric values are NOT changed here (WAVE-1 Part B is an SS decision).",
+  "acharya_question": "sign_residence_days 548 d (18 months) is not period/12 (566.12) and is stated nowhere in the held corpus. Classical source (book edition) for 18 months per sign, or period/12?"
+ },
+ {
+  "asset": "bg_transit_engine",
+  "table": "bg_transit_engine",
+  "row_key": {
+   "id": null,
+   "graha": "saturn"
+  },
+  "row_count": 1,
+  "claim": "saturn: avg_daily_motion_deg=0.0335, zodiac_period_days=10759.22, sign_residence_days=913.37",
+  "current_citation": "BPHS Ch.22 (Graha Gati — Planetary Motion)",
+  "state": "sourced_inference",
+  "support_class": "INFERENCE",
+  "corpus": [
+   {
+    "text_id": "brihat_jataka",
+    "chunk_id": "brihat_jataka_pg0096_c01",
+    "chunk_uuid": "5d961204-ef18-4ce5-a039-8c6b5b942bb1",
+    "chunk_content_sha256": "b7ff5fe1bd8a3cd55bbe8e62301d013d890c262e7040eed3add7e40cc6efccfd",
+    "page": "PG96",
+    "sloka_printed": null,
+    "quote": "30 days and 30 months respectively",
+    "role": "supports sign_residence_days (round figure)"
+   },
+   {
+    "text_id": "jataka_parijata",
+    "chunk_id": "jataka_parijata_pg0144_c01",
+    "chunk_uuid": "e6379c13-79e7-4df7-8920-bd7661c6c138",
+    "chunk_content_sha256": "ddfc5036b159a890bb904b4e52706d5c4026032ff30ed8781182f20feb324c0d",
+    "page": "PG144",
+    "sloka_printed": null,
+    "quote": "30 days and 30 months respectively",
+    "role": "supports sign_residence_days (round figure)"
+   },
+   {
+    "text_id": "sarvartha_chintamani",
+    "chunk_id": "sarvartha_chintamani_pg0001_c301",
+    "chunk_uuid": "dc495682-8bfb-4000-9877-37fe3169d000",
+    "chunk_content_sha256": "8aec20a11e5c18dc3285cf925002de501cb8af48de1f41527d029827679705d3",
+    "page": "PG1:C301",
+    "sloka_printed": null,
+    "quote": "Saturn who takes 900 days to move in a sign",
+    "role": "supports sign_residence_days (round figure)"
+   },
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0022_c01",
+    "chunk_uuid": "c7dd5619-cc12-4c5c-9742-a162ca4dd159",
+    "chunk_content_sha256": "562faf43056f44efcebe281b61225d6ad28703f13f8b3fff0399e76560a28053",
+    "page": "PG22",
+    "sloka_printed": null,
+    "quote": "From the Sun God the incarnation of Rama",
+    "role": "what the cited 'BPHS Ch.22' actually is (refutes the old citation)"
+   }
+  ],
+  "cells": {
+   "avg_daily_motion_deg": "NONE",
+   "zodiac_period_days": "NONE",
+   "sign_residence_days": "INFERENCE"
+  },
+  "inference_step": "round classical figure -> stored mean (see citation text)",
+  "proposed_citation": "PARTIALLY SOURCED — only sign_residence_days is stated in the held corpus, as round figures: '30 months' per sign (brihat_jataka:PG96:C1; jataka_parijata:PG144:C1, translator notes) and 'takes 900 days to move in a sign' (sarvartha_chintamani:PG1:C301, translator note); stored 913.37 is read as 30 months: INFERENCE. Motion and period values are not stated (the period coincides with the modern mean sidereal period). Former citation \"BPHS Ch.22 (Graha Gati)\" withdrawn as refuted: served bphs:PG22:C1 is Chapter 2 (incarnations) and the held corpus has no BPHS Graha Gati text.",
+  "proposed_action": "recite",
+  "row_note": "Citation text only; the numeric values are NOT changed here (WAVE-1 Part B is an SS decision).",
+  "acharya_question": "sign_residence_days: the held notes give '30 months' per sign and 'takes 900 days'; the stored 913.37 d is 30 x 30.446. Which convention, and is 900 or 913.37 intended?"
+ },
+ {
+  "asset": "bg_transit_engine",
+  "table": "bg_transit_engine",
+  "row_key": {
+   "id": null,
+   "graha": "sun"
+  },
+  "row_count": 1,
+  "claim": "sun: avg_daily_motion_deg=0.9856, zodiac_period_days=365.25, sign_residence_days=30.44",
+  "current_citation": "BPHS Ch.22 (Graha Gati — Planetary Motion)",
+  "state": "sourced_inference",
+  "support_class": "INFERENCE",
+  "corpus": [
+   {
+    "text_id": "brihat_jataka",
+    "chunk_id": "brihat_jataka_pg0096_c01",
+    "chunk_uuid": "5d961204-ef18-4ce5-a039-8c6b5b942bb1",
+    "chunk_content_sha256": "b7ff5fe1bd8a3cd55bbe8e62301d013d890c262e7040eed3add7e40cc6efccfd",
+    "page": "PG96",
+    "sloka_printed": null,
+    "quote": "30 days and 30 months respectively",
+    "role": "supports sign_residence_days (round figure)"
+   },
+   {
+    "text_id": "jataka_parijata",
+    "chunk_id": "jataka_parijata_pg0144_c01",
+    "chunk_uuid": "e6379c13-79e7-4df7-8920-bd7661c6c138",
+    "chunk_content_sha256": "ddfc5036b159a890bb904b4e52706d5c4026032ff30ed8781182f20feb324c0d",
+    "page": "PG144",
+    "sloka_printed": null,
+    "quote": "30 days and 30 months respectively",
+    "role": "supports sign_residence_days (round figure)"
+   },
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0022_c01",
+    "chunk_uuid": "c7dd5619-cc12-4c5c-9742-a162ca4dd159",
+    "chunk_content_sha256": "562faf43056f44efcebe281b61225d6ad28703f13f8b3fff0399e76560a28053",
+    "page": "PG22",
+    "sloka_printed": null,
+    "quote": "From the Sun God the incarnation of Rama",
+    "role": "what the cited 'BPHS Ch.22' actually is (refutes the old citation)"
+   }
+  ],
+  "cells": {
+   "avg_daily_motion_deg": "NONE",
+   "zodiac_period_days": "NONE",
+   "sign_residence_days": "INFERENCE"
+  },
+  "inference_step": "round classical figure -> stored mean (see citation text)",
+  "proposed_citation": "PARTIALLY SOURCED — only sign_residence_days is stated in the held corpus, as the round figure '30 days' per sign (brihat_jataka:PG96:C1; jataka_parijata:PG144:C1, translator notes; stored 30.44 is read from it: INFERENCE). Motion and period values are not stated in the held corpus (the period coincides with the modern mean sidereal period). Former citation \"BPHS Ch.22 (Graha Gati)\" withdrawn as refuted: served bphs:PG22:C1 is Chapter 2 (incarnations) and the held corpus has no BPHS Graha Gati text.",
+  "proposed_action": "recite",
+  "row_note": "Citation text only; the numeric values are NOT changed here (WAVE-1 Part B is an SS decision).",
+  "acharya_question": "sign_residence_days: the held notes (brihat_jataka PG96, jataka_parijata PG144) give the round classical figure '30 days' per sign; the stored value is the modern mean 30.44. Which should the column carry (SS decision, WAVE-1 Part A)?"
+ },
+ {
+  "asset": "bg_transit_engine",
+  "table": "bg_transit_engine",
+  "row_key": {
+   "id": null,
+   "graha": "venus"
+  },
+  "row_count": 1,
+  "claim": "venus: avg_daily_motion_deg=1.2, zodiac_period_days=224.7, sign_residence_days=23",
+  "current_citation": "BPHS Ch.22 (Graha Gati — Planetary Motion)",
+  "state": "unsourced_marked",
+  "support_class": "NONE",
+  "corpus": [
+   {
+    "text_id": "bphs",
+    "chunk_id": "bphs_pg0022_c01",
+    "chunk_uuid": "c7dd5619-cc12-4c5c-9742-a162ca4dd159",
+    "chunk_content_sha256": "562faf43056f44efcebe281b61225d6ad28703f13f8b3fff0399e76560a28053",
+    "page": "PG22",
+    "sloka_printed": null,
+    "quote": "From the Sun God the incarnation of Rama",
+    "role": "what the cited 'BPHS Ch.22' actually is (refutes the old citation)"
+   }
+  ],
+  "cells": {
+   "avg_daily_motion_deg": "NONE",
+   "zodiac_period_days": "NONE",
+   "sign_residence_days": "NONE"
+  },
+  "inference_step": null,
+  "proposed_citation": "UNSOURCED — no value of this row is stated in the held classical corpus (the period coincides with the modern mean sidereal period). Former citation \"BPHS Ch.22 (Graha Gati)\" withdrawn as refuted: served bphs:PG22:C1 is Chapter 2 (incarnations) and the held corpus has no BPHS Graha Gati text.",
+  "proposed_action": "recite",
+  "row_note": "Citation text only; the numeric values are NOT changed here (WAVE-1 Part B is an SS decision).",
+  "acharya_question": "WAVE-1 defect, not curation: avg_daily_motion_deg 1.2000 and sign_residence_days 23 agree neither with the stored 224.70 d period (implies 1.6021 deg/d) nor with each other. Same question as Mercury."
+ }
+]

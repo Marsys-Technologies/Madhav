@@ -1,0 +1,15 @@
+Real-PostgreSQL test of DRAFT_NEEDS_NUMBER_l0_transit_engine_citation_curation.sql (disposable local PG 15, unix socket); tools/run_pg_test_draft_engine_curation.py
+
+P0 PASS replica fidelity: both stored contracts read t; engine content hash == pinned pre-state (e2dafc84d7fe..)
+P1 PASS hash probe (rolled back): post-state engine 104aa45b4221.. -> draft regenerated
+P2 PASS apply once: changed = 9 engine.classical_citation + registry (integrity_check_sql, english_description) of the two assets; rules/moorti tables untouched; numeric engine columns identical; both stored contracts read t
+P3 PASS idempotent: re-apply = NOTICE no-op, nothing changed
+P4 PASS guard refuses on 'engine citation altered', nothing changed
+P4 PASS guard refuses on 'engine value altered', nothing changed
+P4 PASS guard refuses on 'engine registry lost the engine literal', nothing changed
+P4 PASS guard refuses on 'rules registry lost the engine literal', nothing changed
+P4 PASS guard refuses on 'description drifted', nothing changed
+P5 PASS reseal necessary: the citation UPDATEs alone turn both stored contracts to f
+P6 PASS mutation: one altered character of a new citation is caught by the pinned post-state hash, nothing applied
+P7 PASS seed parity: unpatched BG_TRANSIT_ENGINE == live pre-state; patched == post-curation table (9 rows x 4 cols); BG_TRANSIT_RULES byte-identical (#3049's territory untouched)
+P8 PASS composes with a simulated #3049 rules reseal in either order: both stored contracts read t afterwards

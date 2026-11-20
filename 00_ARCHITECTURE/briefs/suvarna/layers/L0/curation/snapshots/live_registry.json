@@ -1,0 +1,30 @@
+[
+ {
+  "asset_id": "bg_transit_engine",
+  "layer": "brahmagyan",
+  "sort_order": 61,
+  "english_description": "L0 average graha motion parameters — daily motion, zodiac period, sign residence. Source: BPHS Ch.22.",
+  "volume_explanation": "9 rows = 7 classical grahas + Rahu + Ketu motion parameters.",
+  "target_floor": 9,
+  "target_table": "bg_transit_engine",
+  "count_sql": "SELECT COUNT(*) FROM bg_transit_engine",
+  "catalog_status": "CURRENT",
+  "integrity_check_sql": "\nSELECT\n  (SELECT count(*) = 9 FROM bg_transit_engine)\n  AND (SELECT encode(sha256(convert_to(COALESCE(string_agg(\n    jsonb_build_array(graha,avg_daily_motion_deg,zodiac_period_days,\n      sign_residence_days,classical_citation)::text,\n    E'\\n' ORDER BY graha COLLATE \"C\"\n  ),''),'UTF8')),'hex') =\n    'e2dafc84d7fef9b8a05ad01b98b036686e8ec0af9694a4d43ac4b2b8c425797b'\n  FROM bg_transit_engine)\n",
+  "has_writer": false,
+  "asset_kind": "data"
+ },
+ {
+  "asset_id": "bg_transit_rules",
+  "layer": "brahmagyan",
+  "sort_order": 62,
+  "english_description": "76 classical transit rules: 43 favourable, 26 unfavourable, 7 double-transit. Citation state after the 2026-09 L0 repair, measured not asserted: 36 favourable-with-vedha rows carry page-anchored Phaladipika Adh. XXVI citations (PG322:C1/PG323:C1); 6 Rahu/Ketu favourable-with-vedha rows are declared UNSOURCED (the served corpus carries no house-transit vedha doctrine for the nodes); 19 rows (18 unfavourable + 1 favourable with no vedha pair) STILL carry the refuted \"BPHS Ch.29\" — they lie outside the repair's row-by-row verified predicate and were deliberately not re-cited on an unverified basis; the remaining 15 cite Phaladeepika Ch.26, Adh. XXVI slokas 2/8/21, Saravali or Jataka Parijata.",
+  "volume_explanation": "76 rows = 69 writer-owned Gochara rules (43 favourable + 26 unfavourable) plus 7 preserved migration-owned Jupiter–Saturn double-transit rules. The 69th writer-owned row is the Mercury 8th-house-transit/1st-house-vedha pair L0 repair item 2 inserted (KSHETRA_L0_VEDHA_ROW_FIXES_v1_0.md Sec.3) — present in the text, absent from every prior build.",
+  "target_floor": 76,
+  "target_table": "bg_transit_rules",
+  "count_sql": "SELECT COUNT(*) FROM bg_transit_rules",
+  "catalog_status": "CURRENT",
+  "integrity_check_sql": "\nSELECT\n  (SELECT count(*) = 9 FROM bg_transit_engine)\n  AND (SELECT encode(sha256(convert_to(COALESCE(string_agg(\n    jsonb_build_array(graha,avg_daily_motion_deg,zodiac_period_days,\n      sign_residence_days,classical_citation)::text,\n    E'\\n' ORDER BY graha COLLATE \"C\"\n  ),''),'UTF8')),'hex') =\n    'e2dafc84d7fef9b8a05ad01b98b036686e8ec0af9694a4d43ac4b2b8c425797b'\n  FROM bg_transit_engine)\n  AND (SELECT count(*) = 76 FROM bg_transit_rules)\n  AND (SELECT count(*) FILTER (WHERE rule_type = 'favourable') = 43\n       AND count(*) FILTER (WHERE rule_type = 'unfavourable') = 26\n       AND count(*) FILTER (WHERE rule_type = 'double_transit') = 7\n       FROM bg_transit_rules)\n  AND (SELECT encode(sha256(convert_to(COALESCE(string_agg(\n    jsonb_build_array(rule_type,graha,primary_house,vedha_house,phala,\n      classical_citation,rule_notes)::text,\n    E'\\n' ORDER BY graha COLLATE \"C\",rule_type COLLATE \"C\",primary_house\n  ),''),'UTF8')),'hex') =\n    '1dbdd265cf0e04edd26aebde054f34d9034be38bfabc8102085b0127196a598d'\n  FROM bg_transit_rules)\n  AND (SELECT count(*) = 27 FROM bg_transit_moorti)\n  AND (SELECT encode(sha256(convert_to(COALESCE(string_agg(\n    jsonb_build_array(nakshatra_offset,moorti_name,quality_tier,phala_brief,\n      classical_citation,rule_notes)::text,\n    E'\\n' ORDER BY nakshatra_offset\n  ),''),'UTF8')),'hex') =\n    'b411c02abb7fec89c971353190f1ebe117a31a85e1bba06aeadc6509d0256450'\n  FROM bg_transit_moorti)\n",
+  "has_writer": true,
+  "asset_kind": "data"
+ }
+]
