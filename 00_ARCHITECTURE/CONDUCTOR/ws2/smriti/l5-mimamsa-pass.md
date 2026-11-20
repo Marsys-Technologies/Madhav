@@ -105,7 +105,8 @@ When a multiplier updates from 1.0:
 
 ## BigQuery Export
 
-JSONL preview generated at:
+JSONL preview was generated at (file REMOVED from the repo, lifeevents-audit F6 — it was a
+generated copy of private event text; the exporter is disabled, see l5_bigquery_export.py):
     `platform/python-sidecar/brahmagyan/mimamsa/bigquery_export_preview.jsonl`
     (684 rows = 57 mimamsa_events + 57 event_chart_state_index + 1 calibration_substrate
                 + 569 mimamsa_signal_multipliers)
