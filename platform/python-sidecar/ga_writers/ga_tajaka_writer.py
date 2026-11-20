@@ -37,6 +37,7 @@ import json
 import logging
 import os
 import uuid
+from calendar import isleap
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -265,6 +266,10 @@ def _solar_return(varsha_year: int, natal_sun_long: float, aya_adapter: str,
     birth_day = int(iso[8:10])
     birth_hour = int(iso[11:13])
     birth_min = int(iso[14:16])
+    # February 28 is a valid search anchor for a February 29 birth in a
+    # common year. The solar longitude root determines the actual return.
+    if birth_month == 2 and birth_day == 29 and not isleap(cal_year):
+        birth_day = 28
     anniversary = datetime(cal_year, birth_month, birth_day, birth_hour, birth_min, 0)
 
     def f(dt: datetime) -> float:

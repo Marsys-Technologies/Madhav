@@ -12927,7 +12927,7 @@
         "platform/python-sidecar/ga_writers/ga_structural_writer.py:5762",
         "platform/python-sidecar/ga_writers/ga_structural_writer.py:7808",
         "platform/python-sidecar/ga_writers/ga_structural_writer.py:1092",
-        "platform/python-sidecar/ga_writers/ga_tajaka_writer.py:613",
+        "platform/python-sidecar/ga_writers/ga_tajaka_writer.py:618",
         "platform/python-sidecar/ga_writers/ga_ayurdaya_writer.py:176",
         "platform/python-sidecar/ga_writers/ga_ayurdaya_writer.py:177",
         "platform/python-sidecar/ga_writers/ga_sensitive_degree_writer.py:290",
@@ -16983,7 +16983,7 @@
     "applies": "D3",
     "nature": "single_derivation",
     "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
-    "evidence": "platform/python-sidecar/ga_writers/ga_tajaka_writer.py:688",
+    "evidence": "platform/python-sidecar/ga_writers/ga_tajaka_writer.py:693",
     "per_witness_values": false
    },
    "prose_fields": [
@@ -16997,7 +16997,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) l1_tajik_varsha_year_lords; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): l",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_tajik.ts:213 reads `l1_tajik_varsha_year_lords` (`let vSql = `SELECT * FROM l1_tajik_varsha_year_lords WHERE chart_id = $1``). Dens.served=PASS.",
-    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citation states the varsha window, Muntha sign, house from Lagna and lords. Composed at platform/python-sidecar/ga_writers/ga_tajaka_writer.py:635. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_tajaka_writer.py): 2 composed, 0 constant, 0 forwarded, 0 other. Column bound at platform/python-sidecar/ga_writers/ga_tajaka_writer.py:675 (column list); served by platform/src/lib/retrieval/registry/layers/reading_checklist.ts:905."
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citation states the varsha window, Muntha sign, house from Lagna and lords. Composed at platform/python-sidecar/ga_writers/ga_tajaka_writer.py:640. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_tajaka_writer.py): 2 composed, 0 constant, 0 forwarded, 0 other. Column bound at platform/python-sidecar/ga_writers/ga_tajaka_writer.py:680 (column list); served by platform/src/lib/retrieval/registry/layers/reading_checklist.ts:905."
    },
    "evidence_kind": "writer",
    "source": {
@@ -17012,7 +17012,7 @@
     ],
     "citation_state": "sourced",
     "why": "each varsha year lord row carries classical_source_citation naming the Tajika text the year lord method follows",
-    "evidence": "platform/python-sidecar/ga_writers/ga_tajaka_writer.py:660"
+    "evidence": "platform/python-sidecar/ga_writers/ga_tajaka_writer.py:665"
    },
    "fidelity_tests": [
     {
