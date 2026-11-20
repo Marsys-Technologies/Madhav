@@ -5225,7 +5225,7 @@ _CF_INSERT_SQL = """
 """
 
 
-def _insert_chart_facts_rows(conn: Any, rows: list[dict[str, Any]], *, replace_prior: bool = True) -> int:
+def _insert_chart_facts_rows(conn: Any, rows: list[dict[str, Any]], *, replace_prior: bool = True, replace_empty_families: bool = False) -> int:
     # Q-L1-16(a) choke point: reject a deprecated-alias / out-of-vocabulary tier BEFORE any
     # delete or insert, however the string was built (literal, concatenation, constant).
     for _r in rows:
@@ -5237,7 +5237,7 @@ def _insert_chart_facts_rows(conn: Any, rows: list[dict[str, Any]], *, replace_p
     # wipe the rest of ga_structural's dosha_label rows.
     if replace_prior:
         scope = rows
-        if rows:
+        if rows and replace_empty_families:
             # These owned families can legitimately return zero rows. Their older findings
             # still need to be retired on this chart and frame when the new result is empty.
             scope = rows + [
@@ -7270,7 +7270,7 @@ def build_ga_structural(
             summary["varga_rows_count"] = varga_rows
 
             # Insert
-            cf_count = _insert_chart_facts_rows(ay_conn, all_rows)
+            cf_count = _insert_chart_facts_rows(ay_conn, all_rows, replace_empty_families=True)
             summary["ayanamshas"][canonical_id] = {
                 "chart_facts_rows": cf_count,
                 "argala_rows": argala_count,
@@ -8502,7 +8502,7 @@ def build_ga_structural_substep(
         _write_halt_log("TWO_PASS_STRUCTURAL", msg)
         raise RuntimeError(msg) from exc
 
-    count = _insert_chart_facts_rows(conn, all_rows)
+    count = _insert_chart_facts_rows(conn, all_rows, replace_empty_families=True)
 
     label_count = sum(1 for r in all_rows if r["fact_category"] == "yoga_label")
     dosha_label_count = sum(1 for r in all_rows if r["fact_category"] == "dosha_label")

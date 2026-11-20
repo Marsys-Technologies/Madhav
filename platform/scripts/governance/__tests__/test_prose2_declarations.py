@@ -627,8 +627,8 @@ def test_ga_vichara_declares_the_three_composed_columns_with_golden_tests_the_sc
     ev = e["evidence"]["prose_fields"]
     for cite in ("ga_vichara_writer.py:693", "ga_vichara_writer.py:695", "ga_vichara_writer.py:388", "ga_vichara_writer.py:461", "ga_vichara_writer.py:543", "valence_doctrine.py:251",
                  "ga_vichara_writer.py:1105", "ga_vichara_writer.py:1107", "ga_vichara_writer.py:1237", "ga_vichara_writer.py:1238", "ga_daridra_postpass.py:393", "ga_daridra_postpass.py:216",
-                 "ga_daridra_postpass.py:218", "ga_daridra_postpass.py:226", "ga_daridra_postpass.py:87", "ga_daridra_postpass.py:420", "ga_structural_writer.py:3104", "ga_structural_writer.py:3215",
-                 "ga_structural_writer.py:3216", "ga_structural_writer.py:3222"):
+                 "ga_daridra_postpass.py:218", "ga_daridra_postpass.py:226", "ga_daridra_postpass.py:87", "ga_daridra_postpass.py:420", "ga_structural_writer.py:3094", "ga_structural_writer.py:3205",
+                 "ga_structural_writer.py:3206", "ga_structural_writer.py:3212"):
         assert cite in ev, cite
     # the cited lines really hold what the evidence says they hold
     w = (SIDECAR / "ga_writers" / "ga_vichara_writer.py").read_text(encoding="utf-8").splitlines()
@@ -640,7 +640,7 @@ def test_ga_vichara_declares_the_three_composed_columns_with_golden_tests_the_sc
     assert "import emit_daridra_label_post_pass" in w[1236] and "emit_daridra_label_post_pass(conn" in w[1237] and "return inserted + daridra_written" in w[1238]
     assert "def emit_daridra_label_post_pass" in pp[392] and '"citation_human": (' in pp[215] and "does not serve as a finding" in pp[217] and "Daridra stands uncancelled" in pp[225]
     assert "cur.execute(_DARIDRA_INSERT_SQL, (" in pp[86] and "insert_daridra_label_rows(conn, rows)" in pp[419]
-    assert "def _build_dosha_rows" in sw[3103] and "citation_human = (" in sw[3214] and "labels chart" in sw[3215] and "CANCELLED:" in sw[3221]
+    assert "def _build_dosha_rows" in sw[3093] and "citation_human = (" in sw[3204] and "labels chart" in sw[3205] and "CANCELLED:" in sw[3211]
     assert [t["covers"] for t in e["fidelity_tests"]] == [["value_text"], ["source_citation"], ["source_citation"], ["source_citation"], ["citation_human"], ["citation_human"]]
     got = ac.narr_fidelity_scan(e["prose_fields"], ev, _python_tests(), e["fidelity_tests"], None)
     assert got["v"] == PASS and "6 declared golden-value test(s) verified" in got["measured"] and "covers citation_human, source_citation, value_text" in got["measured"], got["measured"]
