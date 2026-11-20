@@ -1,5 +1,6 @@
 import 'server-only'
 import { query } from '@/lib/db/client'
+import { preparationRunScopeSql } from '../preparationRunScope'
 import { deriveChartReadiness } from './model'
 import type { ChartReadiness, ReadinessRunRow, ReadinessThroughputRow } from './types'
 
@@ -60,9 +61,7 @@ export async function getChartReadinessMap(chartIds: string[]): Promise<Map<stri
                 AND (NOT (r.scope = 'global' AND r.action = 'rebuild') OR at.last_built_at >= r.created_at)
                 AND (
                   NOT (
-                    r.scope = 'asset_set' AND r.started_at IS NOT NULL
-                      AND COALESCE(r.scope_target ~ '(^|,)ga_positions(,|$)', false)
-                      AND COALESCE(r.scope_target ~ '(^|,)bo_laksana(,|$)', false)
+                    ${preparationRunScopeSql('r')} AND r.started_at IS NOT NULL
                   )
                   OR bra.state = 'complete'
                   OR EXISTS (

@@ -1,4 +1,5 @@
 import 'server-only'
+import { preparationRunScopeSql } from './preparationRunScope'
 import { createHash } from 'crypto'
 import type { QueryResult, QueryResultRow } from 'pg'
 import {
@@ -172,6 +173,8 @@ export async function findActiveRun(db: Queryable, chartId: string): Promise<str
   return rows[0]?.id ?? null
 }
 
+export const INTERRUPTED_PREPARATION_REASON = 'interrupted_preparation'
+
 export async function loadPlanningInputs(db: Queryable, chartId: string): Promise<PlanningInputs> {
   const [registryResult, throughputResult, protectedResult, freshnessResult] = await Promise.all([
     db.query<RegistryEntryWithScope>(
@@ -205,14 +208,12 @@ export async function loadPlanningInputs(db: Queryable, chartId: string): Promis
              FROM asset_freshness af
             WHERE af.chart_id=$1 OR af.chart_id IS NULL
            UNION ALL
-           SELECT planned.asset_id, 'stale', '["interrupted_preparation"]'::jsonb,
+           SELECT planned.asset_id, 'stale', '["${INTERRUPTED_PREPARATION_REASON}"]'::jsonb,
                   r.chart_id, r.created_at, true
              FROM build_runs r
              JOIN build_run_assets planned ON planned.run_id = r.id
-            WHERE r.chart_id=$1 AND r.scope = 'asset_set'
+            WHERE r.chart_id=$1 AND ${preparationRunScopeSql('r')}
               AND r.state IN ('failed', 'stopped') AND r.started_at IS NOT NULL
-              AND r.scope_target ~ '(^|,)ga_positions(,|$)'
-              AND r.scope_target ~ '(^|,)bo_laksana(,|$)'
               AND planned.state <> 'complete'
               AND NOT EXISTS (
                 SELECT 1 FROM build_runs recovered

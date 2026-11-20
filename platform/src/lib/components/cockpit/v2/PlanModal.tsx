@@ -290,7 +290,7 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
               })}
 
               {/* MiniDAG — inside scroll area so tall DAGs don't push buttons off-screen */}
-              {planData.plan.length > 1 && scope === 'asset' && action !== 'build' && scopeTarget && assets && assets.length > 0 && (
+              {planData.plan.length > 1 && !throughBodha && action !== 'build' && scopeTarget && assets && assets.length > 0 && (
                 <div style={{ marginTop: '12px' }}>
                   <div style={{
                     fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em',

@@ -8,6 +8,7 @@ import { isCockpitDispatchableServiceProbe } from '@/lib/cockpit/serviceProbeCon
 import { requireChartPermission } from '@/lib/auth/requireChartPermission'
 import {
   BuildPreparationError,
+  INTERRUPTED_PREPARATION_REASON,
   bodhaBuildBlockers,
   computeNonCandidateAssetIds,
   findActiveRun,
@@ -50,7 +51,7 @@ export async function POST(req: NextRequest) {
   const {
     chart_id,
     scope,
-    scope_target = null,
+    scope_target: requestedScopeTarget = null,
     action,
     clear_before = false,
     expected_plan,
@@ -85,8 +86,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `Invalid scope: ${scope}`, code: 'INVALID_SCOPE' }, { status: 400 })
   }
   const requestedAssetSet = scope === 'asset_set'
-    ? (scope_target ?? '').split(',').map(s => s.trim()).filter(Boolean)
+    ? (typeof requestedScopeTarget === 'string' ? requestedScopeTarget : '').split(',').map(s => s.trim()).filter(Boolean)
     : []
+  const scope_target = scope === 'asset_set' ? requestedAssetSet.join(',') : requestedScopeTarget
   if (scope === 'asset_set') {
     if (requestedAssetSet.length === 0) {
       return NextResponse.json(
@@ -461,10 +463,13 @@ export async function POST(req: NextRequest) {
   // Invoke the job — failure is fatal: the run is marked failed so it doesn't orphan as 'planned'.
   // M-1: no pre-mark as 'running'; the watchdog's undispatched-run reaper covers a run the
   // orchestrator never starts.
-  // Rebuild forces each selected writer to replace its data even if its inputs match a
-  // previous receipt. Plain Build keeps receipt-based delta-skip.
+  // An interrupted writer may have replaced parts of its output while an older
+  // input receipt still matches. Recompute the selected recovery work to repair it.
   // A service health probe is an invocation, not a row build, and is never forced.
-  let forceExecute = action === 'rebuild' && requestedServiceProbes.length === 0
+  let forceExecute = requestedServiceProbes.length === 0 && (
+    action === 'rebuild' ||
+    plan.some(id => inputs.freshness.get(id)?.reasons.includes(INTERRUPTED_PREPARATION_REASON))
+  )
   // A per-chart Clear (cockpit Clear button) resets asset_throughput to state='dormant',
   // last_built_at=NULL but leaves the receipts, so a plain Build of that asset would match the
   // receipt, delta-skip, and return it to lit with EMPTY rows. That pair is the clear marker

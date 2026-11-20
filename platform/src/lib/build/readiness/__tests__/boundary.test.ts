@@ -11,6 +11,7 @@ import * as legacy from '@/lib/charts/readiness'
 import * as legacyImpact from '@/lib/charts/servingImpact'
 import * as model from '../model'
 import { getChartReadinessMap } from '../repository'
+import { preparationRunScopeSql } from '../../preparationRunScope'
 import * as impact from '../servingImpact'
 
 const CHART_A = 'c0000000-0000-4000-8000-000000000001'
@@ -45,9 +46,7 @@ const EXPECTED_SQL = [
                 AND (NOT (r.scope = 'global' AND r.action = 'rebuild') OR at.last_built_at >= r.created_at)
                 AND (
                   NOT (
-                    r.scope = 'asset_set' AND r.started_at IS NOT NULL
-                      AND COALESCE(r.scope_target ~ '(^|,)ga_positions(,|$)', false)
-                      AND COALESCE(r.scope_target ~ '(^|,)bo_laksana(,|$)', false)
+                    ${preparationRunScopeSql('r')} AND r.started_at IS NOT NULL
                   )
                   OR bra.state = 'complete'
                   OR EXISTS (

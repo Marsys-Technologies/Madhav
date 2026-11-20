@@ -24,8 +24,8 @@ export async function GET(req: NextRequest) {
   const denied = await requireChartPermission({ uid: user.uid, chartId: chart_id, access: 'read' })
   if (denied) return denied
 
+  const wantsPreparationStatus = req.nextUrl.searchParams.get('preparation') === 'true'
   try {
-    const wantsPreparationStatus = req.nextUrl.searchParams.get('preparation') === 'true'
     const [data, readiness] = await Promise.all([
       readActiveBuildRun(chart_id),
       wantsPreparationStatus ? getChartReadinessMap([chart_id]) : null,
@@ -36,6 +36,8 @@ export async function GET(req: NextRequest) {
     })
   } catch (err) {
     console.error('[cockpit/runs/active]', err)
-    return NextResponse.json({ error: 'Run status is temporarily unavailable.' }, { status: 503 })
+    return wantsPreparationStatus
+      ? NextResponse.json({ error: 'Run status is temporarily unavailable.' }, { status: 503 })
+      : NextResponse.json({ data: null, _error: (err as Error).message })
   }
 }

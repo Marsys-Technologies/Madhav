@@ -19,6 +19,7 @@ import { POST as stop, maxDuration as stopDuration } from '@/app/api/cockpit/run
 import { POST as resume, maxDuration as resumeDuration } from '@/app/api/cockpit/runs/[id]/resume/route'
 
 const CHART = 'fixture-chart', RUN = 'fixture-run'
+const REQUESTED_AT = '2026-11-20 15:00:00.123456+00'
 const run = { id: RUN, scope: 'layer', scope_target: 'kala', action: 'build', state: 'running', plan: ['fixture'], current_asset_id: 'fixture', created_at: 'fixture-created', started_at: null, pause_requested_at: null, stop_requested_at: null }
 const assets = [{ asset_id: 'fixture', position: 0, state: 'error', started_at: null, ended_at: null, error: 'fixture-error', disposition: 'dependency_blocked', blocked_by_asset_id: 'upstream' }]
 const activeRequest = () => new NextRequest(`http://localhost/api/cockpit/runs/active?chart_id=${CHART}`)
@@ -37,7 +38,7 @@ beforeEach(() => {
     if (sql.includes('FROM profiles')) return Promise.resolve({ rows: [{ role: 'super_admin' }] })
     if (sql.includes('FROM build_run_assets')) return Promise.resolve({ rows: assets })
     if (sql.includes('SELECT id, scope')) return Promise.resolve({ rows: [run] })
-    return Promise.resolve({ rows: [{ id: RUN, state: 'planned', action: 'rebuild' }] })
+    return Promise.resolve({ rows: [{ id: RUN, state: 'planned', action: 'rebuild', resume_requested_at: REQUESTED_AT }] })
   })
 })
 
@@ -83,6 +84,13 @@ describe('active-run owner and actual route', () => {
     expect(await response.json()).toEqual({ data: null, _error: 'fixture read failure' })
     expect(h.probe).not.toHaveBeenCalled()
   })
+  it('reports unavailable status to the preparation poll when the read fails', async () => {
+    h.query.mockRejectedValue(new Error('fixture read failure'))
+    const request = new NextRequest(`http://localhost/api/cockpit/runs/active?chart_id=${CHART}&preparation=true`)
+    const response = await GET(request)
+    expect(response.status).toBe(503)
+    expect(await response.json()).toEqual({ error: 'Run status is temporarily unavailable.' })
+  })
   it('does not touch the data owner on denied or absent authentication', async () => {
     const delegate = vi.spyOn(activeOwner, 'readActiveBuildRun')
     h.permission.mockResolvedValue(new Response(null, { status: 403 }))
@@ -119,6 +127,12 @@ describe('actual run control delegates', () => {
     expect(h.query).toHaveBeenCalledTimes(2)
     expect(h.invoke).toHaveBeenCalledExactlyOnceWith(RUN, { forceExecute: true })
   })
+  it('forces even a paused single-asset build', async () => {
+    h.query.mockResolvedValueOnce({ rows: [{ role: 'super_admin' }] })
+      .mockResolvedValueOnce({ rows: [{ id: RUN, action: 'build', resume_requested_at: REQUESTED_AT }] })
+    expect((await resume(controlRequest(), context())).status).toBe(200)
+    expect(h.invoke).toHaveBeenCalledExactlyOnceWith(RUN, { forceExecute: true })
+  })
   it('delegates the legacy-state read after an empty atomic claim and refuses dispatch', async () => {
     const read = vi.spyOn(controls, 'readBuildRunResumeState')
     h.query.mockResolvedValueOnce({ rows: [{ role: 'super_admin' }] }).mockResolvedValueOnce({ rows: [] }).mockResolvedValueOnce({ rows: [{ state: 'paused', has_manifest: false }] })
@@ -135,7 +149,7 @@ describe('actual run control delegates', () => {
     const response = await resume(controlRequest(), context())
     expect(response.status).toBe(503)
     expect((await response.json()).code).toBe('JOB_DISPATCH_FAILED')
-    expect(restore).toHaveBeenCalledExactlyOnceWith('fixture dispatch failure', RUN)
+    expect(restore).toHaveBeenCalledExactlyOnceWith('fixture dispatch failure', RUN, REQUESTED_AT)
     expect(h.query).toHaveBeenCalledTimes(3)
   })
   it.each([pause, stop, resume])('requires the same super-admin gate before control writes', async handler => {
@@ -155,22 +169,24 @@ describe('control statement boundaries', () => {
     await controls.requestBuildRunStop(RUN)
     await controls.claimPausedBuildRun(RUN)
     await controls.readBuildRunResumeState(RUN)
-    await controls.restorePausedBuildRunAfterDispatchFailure('fixture detail', RUN)
+    await controls.restorePausedBuildRunAfterDispatchFailure('fixture detail', RUN, REQUESTED_AT)
     expect(h.query).toHaveBeenCalledTimes(5)
-    expect(h.query.mock.calls.map(([, args]) => args)).toEqual([[RUN], [RUN], [RUN], [RUN], ['fixture detail', RUN]])
+    expect(h.query.mock.calls.map(([, args]) => args)).toEqual([[RUN], [RUN], [RUN], [RUN], ['fixture detail', RUN, REQUESTED_AT]])
     expect(h.query.mock.calls[0][0]).toContain("WHERE id=$1 AND state = 'running'")
-    expect(h.query.mock.calls[1][0]).toContain("state = CASE WHEN state = 'planned' THEN 'stopped' ELSE state END")
+    expect(h.query.mock.calls[1][0]).toContain("state = CASE WHEN state IN ('planned','paused') THEN 'stopped' ELSE state END")
+    expect(h.query.mock.calls[1][0]).toContain("r.state = 'stopped' AND b.state = 'queued'")
     expect(h.query.mock.calls[2][0]).toContain("WHERE id=$1 AND state = 'paused'")
     expect(h.query.mock.calls[2][0]).toContain('plan_manifest IS NOT NULL AND plan_manifest_digest IS NOT NULL')
     expect(h.query.mock.calls[3][0]).toContain('AS has_manifest')
     expect(h.query.mock.calls[4][0]).toContain("WHERE id=$2 AND state = 'planned'")
+    expect(h.query.mock.calls[4][0]).toContain('resume_requested_at = $3::timestamptz')
     expect(h.getPool).not.toHaveBeenCalled()
     expect(h.invoke).not.toHaveBeenCalled()
   })
   it.each([
     () => controls.requestBuildRunPause(RUN), () => controls.requestBuildRunStop(RUN),
     () => controls.claimPausedBuildRun(RUN), () => controls.readBuildRunResumeState(RUN),
-    () => controls.restorePausedBuildRunAfterDispatchFailure('fixture detail', RUN),
+    () => controls.restorePausedBuildRunAfterDispatchFailure('fixture detail', RUN, REQUESTED_AT),
   ])('passes each original statement failure through without another query or dispatch', async operation => {
     const error = new Error('fixture SQL failure'); h.query.mockRejectedValue(error)
     await expect(operation()).rejects.toBe(error)
@@ -184,7 +200,7 @@ const contracts = [
   { relative: '../../../app/api/cockpit/runs/active/route.ts', handler: 'GET', module: '@/lib/build/activeRunData', calls: { readActiveBuildRun: ['chart_id'] }, roleQueries: 0 },
   { relative: '../../../app/api/cockpit/runs/[id]/pause/route.ts', handler: 'POST', module: '@/lib/build/runControlData', calls: { requestBuildRunPause: ['id'] }, roleQueries: 1 },
   { relative: '../../../app/api/cockpit/runs/[id]/stop/route.ts', handler: 'POST', module: '@/lib/build/runControlData', calls: { requestBuildRunStop: ['id'] }, roleQueries: 1 },
-  { relative: '../../../app/api/cockpit/runs/[id]/resume/route.ts', handler: 'POST', module: '@/lib/build/runControlData', calls: { claimPausedBuildRun: ['id'], readBuildRunResumeState: ['id'], restorePausedBuildRunAfterDispatchFailure: ['detail', 'id'] }, roleQueries: 1 },
+  { relative: '../../../app/api/cockpit/runs/[id]/resume/route.ts', handler: 'POST', module: '@/lib/build/runControlData', calls: { claimPausedBuildRun: ['id'], readBuildRunResumeState: ['id'], restorePausedBuildRunAfterDispatchFailure: ['detail', 'id', 'requestedAt'] }, roleQueries: 1 },
 ] as const
 type Contract = typeof contracts[number]
 /** Checks only the exact existing handler/owner/Identity seam, not arbitrary data flow. */

@@ -64,7 +64,7 @@ export function useActiveRun(
       })
       if (!r.ok || signal?.aborted) return
       const body = await r.json()
-      if (signal?.aborted) return
+      if (signal?.aborted || body._error) return
       const newRun: ActiveRun | null = body.data?.run ?? null
       // Belt-and-suspenders: when an active run transitions to null (terminal),
       // trigger an immediate stats refetch so counts update within the 5s poll

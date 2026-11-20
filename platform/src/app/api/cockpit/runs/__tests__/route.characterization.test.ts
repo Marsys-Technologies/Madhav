@@ -188,6 +188,25 @@ describe('cockpit runs characterization — persistence and clearing', () => {
     expect(mockInvokeRunJob).toHaveBeenCalledWith('run-1')
   })
 
+  it('forces unfinished preparation work even if a previous build left it lit', async () => {
+    setup({ registry: [
+      { ...REGISTRY[0], asset_id: 'ga_positions', layer: 'ganita' },
+      { ...REGISTRY[1], asset_id: 'ga_strength', layer: 'ganita' },
+    ], throughput: [
+      { asset_id: 'ga_positions', state: 'lit' },
+      { asset_id: 'ga_strength', state: 'lit' },
+    ], freshness: [
+      { asset_id: 'ga_positions', state: 'stale', reasons: ['interrupted_preparation'] },
+      { asset_id: 'ga_strength', state: 'fresh', reasons: [] },
+    ] })
+    const res = await POST(req({ ...LAYER_BUILD, scope: 'asset_set', scope_target: ' ga_positions, ga_strength  ' }))
+    expect(res.status).toBe(201)
+    expect(await res.json()).toMatchObject({ data: { plan: ['ga_positions'] } })
+    expect(clientCalls.find(call => /INSERT INTO build_runs/.test(call.sql))?.params)
+      .toContain('ga_positions,ga_strength')
+    expect(mockInvokeRunJob).toHaveBeenCalledWith('run-1', { forceExecute: true })
+  })
+
   it('rolls back and never dispatches when the run-assets insert fails', async () => {
     setup({ failClientSql: /INSERT INTO build_run_assets/ })
     await expect(POST(req(LAYER_BUILD))).rejects.toThrow(/boom/)

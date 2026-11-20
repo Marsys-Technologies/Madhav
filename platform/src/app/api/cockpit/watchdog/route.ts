@@ -70,6 +70,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { verifyOidcToken } from '@/lib/auth/oidc'
 import { query } from '@/lib/db/client'
+import { preparationRunScopeSql } from '@/lib/build/preparationRunScope'
 import { classifyStuckCandidate } from './classifyStuckCandidate'
 import {
   INTERRUPTED_PREPARATION_MESSAGE,
@@ -150,8 +151,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // platform/python-sidecar/pipeline/orchestrator/runner.py:325-337), extended to
   // two target states since this reaper can find a run in either shape.
   const [thresholdOverrideIds, thresholdOverrideSecs] = stuckThresholdOverrideParams()
-  const preparationScope = `scope = 'asset_set'
-    AND scope_target ~ '(^|,)ga_positions(,|$)' AND scope_target ~ '(^|,)bo_laksana(,|$)'`
+  const preparationScope = preparationRunScopeSql('build_runs')
   const orphanRuns = await query<{ id: string; chart_id: string }>(
     `WITH failed_run AS (
        UPDATE build_runs
@@ -275,9 +275,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
          SELECT 1 FROM build_runs r
          JOIN build_run_assets b ON b.run_id = r.id
          WHERE r.chart_id = at.chart_id AND r.state = 'running'
-           AND r.scope = 'asset_set'
-           AND r.scope_target ~ '(^|,)ga_positions(,|$)'
-           AND r.scope_target ~ '(^|,)bo_laksana(,|$)'
+           AND ${preparationRunScopeSql('r')}
            AND b.asset_id = at.asset_id AND b.state = 'building'
        )
        -- HYG-REAPER-LONG-SUBSTEP: stale beyond the asset's own threshold too (an override
@@ -492,8 +490,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
        UPDATE build_runs
        SET state = 'failed', ended_at = NOW(), last_error = $1
        WHERE state = 'planned'
-         AND started_at IS NULL
-         AND created_at < NOW() - INTERVAL '10 minutes'
+         AND ((started_at IS NULL AND resume_requested_at IS NULL AND created_at < NOW() - INTERVAL '10 minutes')
+           OR resume_requested_at < NOW() - INTERVAL '10 minutes')
        RETURNING id, chart_id
      ),
      aborted_queued AS (
