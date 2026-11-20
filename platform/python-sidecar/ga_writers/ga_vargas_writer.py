@@ -72,6 +72,7 @@ from brahmagyan.verification_vocab import (
     assert_legal,
 )
 from pyjhora_adapter.compute import compute_chart
+from pyjhora_adapter.vargas import parashari_d10
 from pyjhora_adapter.version import ENGINE_VERSION
 from pyjhora_adapter._names import SIGN_NAMES, SIGN_LORDS
 from ga_writers._idempotency import replace_prior_chart_divisionals
@@ -903,16 +904,18 @@ def _compute_varga_positions(jd_ut: float, ayanamsha_id: str,
         varga_data = {}
         for body, d1_long in d1_longitudes.items():
             try:
+                deg_in_sign = d1_long % 30.0
                 if varga_n == 2:
                     sign_idx = _compute_d2_hora(d1_long)
                 elif varga_n == 3:
                     sign_idx = _compute_d3_drekkana(d1_long)
-                elif varga_n in (1,):
+                elif varga_n == 10:
+                    sign_idx, deg_in_sign = parashari_d10(int(d1_long // 30.0), deg_in_sign)
+                elif varga_n == 1:
                     sign_idx = int(d1_long / 30.0) % 12
                 else:
                     sign_idx = _compute_general_varga(d1_long, varga_n)
 
-                deg_in_sign = d1_long % 30.0
                 varga_data[body] = {
                     "sign_idx": sign_idx,
                     "sign": SIGN_NAMES[sign_idx],

@@ -4,6 +4,7 @@ vargas.py — divisional (varga) charts D1..D60.
 Computes the standard Shodasavarga set (the 16 classical divisional charts).
 Uses drik.dhasavarga(..., set_rahu_ketu_as_true_nodes=False) directly (mean
 nodes) for the 9 grahas, plus the Lagna's varga via drik.dasavarga_from_long.
+D10 uses the Parāśari odd/even sign rule from D1 positions.
 Each varga is a list of {name, sign, sign_id, degree_in_sign} rows (Lagna first).
 """
 from __future__ import annotations
@@ -19,6 +20,14 @@ from ._jhora import drik
 # Standard Shodasavarga factors (classical 16-fold).
 VARGA_FACTORS = [1, 2, 3, 4, 7, 9, 10, 12, 16, 20, 24, 27, 30, 40, 45, 60]
 _USE_TRUE_NODES = False
+
+
+def parashari_d10(natal_sign: int, natal_degree: float) -> tuple[int, float]:
+    """Return the zero-based D10 sign and its degree from a D1 position."""
+    subdivision, offset = divmod(natal_degree, 3.0)
+    # Zero-based odd indices represent the even signs in the classical count.
+    first_sign = natal_sign + (8 if natal_sign % 2 else 0)
+    return (first_sign + int(subdivision)) % 12, offset * 10.0
 
 
 def _place(lat: float, lon: float, tz: float):
@@ -55,6 +64,23 @@ def compute_vargas(
     out: dict[str, Any] = {}
     for f in VARGA_FACTORS:
         try:
+            if f == 10:
+                d1 = out["D1"]
+                if not isinstance(d1, list):
+                    out["D10"] = {"error": "D10 requires D1 positions"}
+                    continue
+                d10_positions = []
+                for row in d1:
+                    sign, degree = parashari_d10(row["sign_id"] - 1, row["degree_in_sign"])
+                    d10_positions.append({
+                        "name": row["name"],
+                        "sign": _names.sign_name(sign),
+                        "sign_id": sign + 1,
+                        "degree_in_sign": degree,
+                    })
+                out["D10"] = d10_positions
+                continue
+
             rows: list[dict[str, Any]] = []
             # Lagna varga
             l_sign, l_deg = drik.dasavarga_from_long(asc_full_long, f)

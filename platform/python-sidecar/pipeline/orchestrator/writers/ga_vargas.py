@@ -18,7 +18,10 @@ from . import register, WriterBase, ContextSpec, WriterResult, SubStep
 class GaVargasWriter(WriterBase):
     asset_id = 'ga_vargas'
     has_substeps = True
-    source_paths = ['platform/python-sidecar/ga_writers/ga_vargas_writer.py']
+    source_paths = [
+        'platform/python-sidecar/ga_writers/ga_vargas_writer.py',
+        'platform/python-sidecar/pyjhora_adapter/vargas.py',
+    ]
 
     def plan_substeps(self, ctx: ContextSpec) -> list[SubStep]:
         from ga_writers.ga_vargas_writer import CANONICAL_AYANAMSHAS
