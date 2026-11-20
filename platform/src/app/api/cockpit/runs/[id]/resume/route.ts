@@ -40,17 +40,17 @@ export async function POST(
       return NextResponse.json({ error: 'Run not found or not in paused state' }, { status: 404 })
     }
 
+    const requestedAt = result.rows[0].resume_requested_at
     try {
-      // FIX2 (a): a resumed Rebuild keeps its force. The portal's Rebuild clears first, so a
-      // resumed run that delta-skips its remaining assets would leave them lit but empty.
-      if (result.rows[0]?.action === 'rebuild') await invokeRunJob(id, { forceExecute: true })
-      else await invokeRunJob(id)
+      // A paused writer can have matching input receipts from before it wrote.
+      // This also covers a one-asset repair of a larger interrupted preparation.
+      await invokeRunJob(id, { forceExecute: true })
     } catch (err) {
       const detail = (err as Error).message
       // Do not strand a paused run as planned when the dispatch did not happen.
       // The state predicate prevents an unusually fast runner from being moved
       // backwards after it has already claimed the work.
-      await restorePausedBuildRunAfterDispatchFailure(detail, id)
+      await restorePausedBuildRunAfterDispatchFailure(detail, id, requestedAt)
       console.error('[cockpit/runs/resume] job dispatch failed:', detail)
       return NextResponse.json(
         { error: 'Failed to dispatch resumed build job', detail, run_id: id, code: 'JOB_DISPATCH_FAILED' },

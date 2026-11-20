@@ -25,8 +25,9 @@ export function preparationLayerState(assets: AssetRow[], stats: Map<string, Ass
   }) ? 'Prepared' : 'Preparation incomplete'
 }
 
-export function PreparationReadiness({ assets, stats, unavailable, chartId, activeRun }: {
+export function PreparationReadiness({ assets, stats, unavailable, chartId, activeRun, preparationIncomplete = false }: {
   assets: AssetRow[]; stats: Map<string, AssetStats>; unavailable: boolean; chartId: string; activeRun: ActiveRun | null
+  preparationIncomplete?: boolean
 }) {
   const preparing = new Set(activeRun?.plan ?? [])
   if (activeRun && !preparing.size) {
@@ -45,7 +46,9 @@ export function PreparationReadiness({ assets, stats, unavailable, chartId, acti
       ['phala', 'Synthesised indications', 'Phala'],
       ['mimamsa', 'Falsifiers and prediction review', 'Mīmāṃsā'],
     ].map(([layer, label, name]) => <li key={layer}>
-      {label}<small>{name} · {unavailable ? 'Status unavailable' : preparationLayerState(assets, stats, layer, preparing)}</small>
+      {label}<small>{name} · {unavailable ? 'Status unavailable'
+        : preparationIncomplete && !activeRun ? 'Preparation needs a retry'
+        : preparationLayerState(assets, stats, layer, preparing)}</small>
     </li>)}</ul>
     <p className="j1-note" style={{ margin: '16px 0' }}>These are layer preparation checks. Consultation checks the specific evidence each question needs.</p>
     <Link href={`/clients/${chartId}/pariprashna`} className="j1-btn">Open Consultation</Link>

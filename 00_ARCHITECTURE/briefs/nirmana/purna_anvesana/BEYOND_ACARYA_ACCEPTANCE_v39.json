@@ -1,0 +1,100 @@
+{
+  "schema_version": "madhav-purna-anvesana/beyond-acarya-acceptance/v39",
+  "campaign_id": "madhav-purna-anvesana",
+  "packet_id": "NIRMANA-PREPARATION-CATALOG-SOURCE-IDENTITY",
+  "predecessor": {
+    "artifact": "BEYOND_ACARYA_ACCEPTANCE_v38.json",
+    "artifact_hash": "sha256:dba58c8a5ad7830c684d2f7bec7ae8dcd09e6a12684afbb427032760410eb5aa",
+    "acceptance_version": "beyond-acarya-source-acceptance-v2",
+    "capability_content_hash": "sha256:7caca304fe661de2d7a9e056618dc89cadf0842f1f8aa908d525bad9120d16c3",
+    "report_hash": "sha256:1122ff6a9acaa7e284fac13219b4f2a275b9cbcfe8f36dc88c0d6c1734f403e6"
+  },
+  "preserves_historical_predecessor": true,
+  "acceptance_version": "beyond-acarya-source-acceptance-v2",
+  "corpus_version": "beyond-acarya-inquiry-corpus-v1",
+  "temporal_anchor_date": "2026-09-15",
+  "evaluated_source_revision": "4c3b9b66321716094c09cc9e346e772da99b004d",
+  "generated_snapshot": {
+    "path": "platform/src/generated/capability_knowledge.snapshot.json",
+    "generated_at": "2026-10-02T02:18:40.000Z",
+    "snapshot_file_sha256": "sha256:c998d0e44b6c28640a17c70ff5f5f804677f8d37047b3462a28a77b8ead68042",
+    "capability_content_hash": "sha256:184795847f096484d5990a09d7f064a3892a6325b15a03e0374f4e59908b371c",
+    "source_catalog_fingerprint": "sha256:dbeae7be1001127b446ceb6ee75c112701980ca6da6400a11f64776df7e18664",
+    "semantic_review_fingerprint": "sha256:cf4c38ac57736bafd0987f605759f2b554d824bdd885da9fcb636ac217f19114",
+    "producer_contract_fingerprint": "sha256:02ad39aea0c40b14036f91724f8592fc881ab03fe582ce83b343f8efb62f9225"
+  },
+  "capability_content_hash": "sha256:184795847f096484d5990a09d7f064a3892a6325b15a03e0374f4e59908b371c",
+  "report_hash": "sha256:580ebd9e4510a60b2e21739aeca3910facbc9bec08ce083098057f3866616eff",
+  "evidence_kind": "synthetic_source_local",
+  "source_status": "SOURCE_ONLY_NOT_LIVE",
+  "verdict": "PROSPECTIVE_SOURCE_IDENTITY_SUCCESSOR",
+  "metrics": {
+    "novel_combination_suite": {
+      "passed": true,
+      "cases": 5,
+      "expected_novel_capabilities": 13,
+      "missing_novel_capabilities": 0
+    },
+    "omission_rate": {
+      "passed": true,
+      "omitted": 0,
+      "expected": 25,
+      "rate": 0
+    },
+    "route_coverage": {
+      "passed": true,
+      "covered": 34,
+      "expected": 34,
+      "rate": 1
+    },
+    "semantic_edge_coverage": {
+      "passed": true,
+      "covered": 9,
+      "expected": 9,
+      "rate": 1
+    },
+    "long_inquiry_closure": {
+      "passed": true,
+      "completed_cases": 1,
+      "total_cases": 1,
+      "blocked_case_ids": [],
+      "minimum_iterations_observed": 10,
+      "pagination_continuations": 1,
+      "retained_earlier_evidence": true
+    },
+    "abstention_quality": {
+      "passed": true,
+      "passed_cases": 3,
+      "total_cases": 3,
+      "cases": {
+        "missing_required_floor_rejected": true,
+        "capped_material_frontier_blocked": true,
+        "unavailable_channel_abstained": true
+      }
+    }
+  },
+  "claim_ceiling": "SOURCE_SCOPE_COMPLETE_WITH_AUTHORITY_BOUND_REMAINDER",
+  "expert_domain_review": "REQUIRED_BEFORE_EMPIRICAL_ACCEPTANCE",
+  "empirical_answer_quality": "NOT_RUN",
+  "production_validation": "NOT_RUN",
+  "deployed_route_validation": "NOT_RUN",
+  "candidate_validation": "NOT_RUN",
+  "provenance_note": "The Nirmāṇa calculation corrections update two Gaṇita tool descriptions. The executable corpus, evaluation metrics, semantic review and producer-contract fingerprints match v38. This source evidence records the catalog transition and retains v38 as historical evidence.",
+  "source_identity_transition": {
+    "sources": [
+      {
+        "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_ashtakavarga.ts",
+        "field": "getAshtakavargaCapability.description",
+        "change": "Explains that anubindu reports final śodhana residuals by whole-sign house."
+      },
+      {
+        "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts",
+        "field": "getStrengthCapability.description",
+        "change": "Distinguishes classical angle-and-trine lordship from the narrow A8 ninth-and-tenth key."
+      }
+    ],
+    "semantic_review_fingerprint_unchanged": true,
+    "producer_contract_fingerprint_unchanged": true,
+    "metrics_corpus_and_denominators_unchanged": true
+  }
+}

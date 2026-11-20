@@ -56,7 +56,8 @@ export function CockpitShell({ chartId, initialChartMeta, variant = 'cockpit' }:
 
   // Single useActiveRun instance — lifted from CockpitHeader and DataAssetsView.
   // Previously both components had their own 5s polling loop to the same endpoint.
-  const { run: activeRun, refresh: refreshRun } = useActiveRun(chartId)
+  const { run: activeRun, assets: activeRunAssets = [], preparationIncomplete, refresh: refreshRun } =
+    useActiveRun(chartId, { preparation })
   const isBuilding = activeRun !== null
 
   // Global clear modal state — clearModalOpen lets us show the modal immediately
@@ -162,16 +163,30 @@ export function CockpitShell({ chartId, initialChartMeta, variant = 'cockpit' }:
 
   // The chart identity + telemetry + actions, compact — rides at the top of the
   // scrolling ledger column (no full-width header card; graph gets the height).
+  const preparationAssets = assetStates.filter(asset =>
+    asset.scope === 'per_chart' && asset.has_writer &&
+    (asset.layer === 'ganita' || asset.layer === 'bodha'),
+  )
+  const resumePreparation = preparationIncomplete ||
+    (preparationAssets.some(asset => asset.state !== 'dormant') &&
+      preparationAssets.some(asset => asset.state !== 'lit'))
+  const preparationProgress = activeRun
+    ? activeRun.state === 'paused' ? 'Paused' : activeRun.state === 'planned' ? 'Starting worker'
+      : `${activeRunAssets.filter(asset => asset.state === 'complete').length} of ${activeRun.plan.length} assets complete`
+    : preparationIncomplete ? 'Preparation needs a retry' : null
   const headerEl = preparation ? (
     <div className="preparation-toolbar">
-      <div><strong>{chartName ?? 'Chart'}</strong><p className="j1-note">Live chart preparation</p></div>
+      <div>
+        <strong>{chartName ?? 'Chart'}</strong>
+        <p className="j1-note" role="status">{preparationProgress ?? 'Live chart preparation'}</p>
+      </div>
       <div className="preparation-actions">
-        {(activeRun || assetStates.length > 0) && <BuildActionButton
-          chartId={chartId} scope="global"
-          stats={{ total: assetStates.length, dormant: assetStates.filter(a => a.state === 'dormant').length,
-            stale: assetStates.filter(a => a.state === 'stale').length, active_run_id: activeRun?.id ?? null,
+        {(activeRun || preparationAssets.length > 0) && <BuildActionButton
+          chartId={chartId} scope="asset_set" scopeTarget={preparationAssets.map(a => a.asset_id).join(',')}
+          stats={{ total: preparationAssets.length, dormant: preparationAssets.filter(a => a.state === 'dormant').length,
+            stale: preparationAssets.filter(a => a.state === 'stale').length, active_run_id: activeRun?.id ?? null,
             is_paused: activeRun?.state === 'paused' }}
-          assets={assetStates} preparation labelSuffix=" all" onRebuildOverride={handleGlobalRebuild}
+          assets={assetStates} preparation labelSuffix=" through Bodha" resumeMissing={resumePreparation}
           onRunStarted={() => { refreshRun(); handleRefreshed() }} onRunStateChange={refreshRun}
         />}
         <RefreshIconButton chartId={chartId} scope="global" size={32} onRefreshed={handleRefreshed} textLabel />
@@ -241,6 +256,7 @@ export function CockpitShell({ chartId, initialChartMeta, variant = 'cockpit' }:
             refreshKey={refreshKey}
             clearKey={clearKey}
             activeRun={activeRun}
+            preparationIncomplete={preparationIncomplete}
             refreshRun={refreshRun}
             variant={variant}
           />

@@ -54,11 +54,16 @@ def test_ga_dashas_anchors_only_vimshottari_has_the_in_build_independent_verifie
     rel = "platform/python-sidecar/ga_writers/ga_dashas_writer.py"
     src = (ROOT / rel).read_text(encoding="utf-8")
     lines = src.splitlines()
-    assert lines[3380].strip() == "_apply_vimshottari_independent_verification(rows, moon_sid, birth_jd)" and DECLS["ga_dashas"]["carriage"]["evidence"].endswith(":3381")
     tree = ast.parse(src)
     calls = [n for n in ast.walk(tree) if isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id == "_apply_vimshottari_independent_verification"]
-    assert len(calls) == 1                                                                                  # one call site: the vimshottari branch
-    assert 'if system_id == "vimshottari"' in "\n".join(lines[3340:3381]) or "system_id == \"vimshottari\"" in "\n".join(lines[3300:3381])
+    call, = calls
+    assert lines[call.lineno - 1].strip() == "_apply_vimshottari_independent_verification(rows, moon_sid, birth_jd)"
+    assert DECLS["ga_dashas"]["carriage"]["evidence"] == f"{rel}:{call.lineno}"
+    branches = [
+        n for n in ast.walk(tree)
+        if isinstance(n, ast.If) and ast.unparse(n.test) == "system_id == 'vimshottari'"
+    ]
+    assert any(call in ast.walk(stmt) for branch in branches for stmt in branch.body)
     assert "_vimshottari_independent_verifier" in src and "_yogini_independent" not in src and "_ashtottari_independent" not in src
 
 

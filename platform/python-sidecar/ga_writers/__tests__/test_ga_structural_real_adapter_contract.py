@@ -9,6 +9,9 @@ here runs the real adapter on a SYNTHETIC chart (not any real native).
 """
 from __future__ import annotations
 
+import json
+from unittest.mock import MagicMock
+
 import pytest
 
 from ga_writers.ga_structural_writer import (
@@ -18,6 +21,8 @@ from ga_writers.ga_structural_writer import (
     _extract_chart_state,
     _validate_chart_output_complete,
 )
+from ga_writers.ga_positions_writer import _build_chalit_rows
+from pipeline.orchestrator.writers.bo_laksana import _build_signal_row
 from pyjhora_adapter.compute import compute_chart
 
 # Synthetic birth parameters (deliberately NOT the native): Cancer lagna, so a
@@ -38,11 +43,15 @@ def real_chart(request):
     return canonical_id, compute_chart(inputs=SYNTHETIC_BP, ayanamsha_id=adapter_id)
 
 
-class _NoDbConn:
-    """The bhava-chalit builder's constituent-fact prefetch is best-effort."""
-
-    def cursor(self, *args, **kwargs):
-        raise RuntimeError("no db in this unit test")
+def _house_fact_conn(rows):
+    conn = MagicMock()
+    conn.cursor.return_value.__enter__.return_value.fetchall.return_value = [
+        (r["fact_subject"], r["fact_key"], r["fact_value_num"], r["fact_id"])
+        for r in rows
+        if r["fact_category"] == "house_chalit"
+        and r["fact_key"] in ("whole_sign_house", "chalit_house_sripati", "dist_to_nearest_boundary_deg")
+    ]
+    return conn
 
 
 def test_real_adapter_ascendant_carries_longitude_deg_only(real_chart):
@@ -94,23 +103,40 @@ def test_chart_state_lagna_uses_the_real_ascendant_longitude(real_chart):
     assert lagna["degree"] == pytest.approx(asc_long % 30.0)
 
 
-def test_bhava_chalit_cusps_anchor_on_the_real_ascendant(real_chart):
-    """Before the fix the family read ascendant.get('longitude', 0.0): cusps anchored at 0 degrees
-    Aries, so EVERY graha of a non-Aries-lagna chart was reported as 'diverging from rasi'."""
+def test_bhava_chalit_uses_sripati_boundaries(real_chart):
     canonical_id, chart = real_chart
     asc_long = chart["ascendant"]["longitude_deg"]
-    expected = {
-        g["name"]
-        for g in chart["grahas"]
-        if int(((g["longitude"] - asc_long) % 360.0) // 30.0) + 1 != int(g["house"])
-    }
-    assert len(expected) < len(chart["grahas"])  # the synthetic chart must discriminate
-    rows = _build_bhava_chalit_divergence_rows(
-        _NoDbConn(), chart, "chart", "build", canonical_id, "2026-01-01T00:00:00+00:00", "test",
-    )
-    assert len(rows) == len(expected)
-    for row in rows:
-        assert row["fact_value_jsonb"]["asc_longitude"] == pytest.approx(round(asc_long, 4))
+    cusps = chart["bhava_chalit"]["sripati"]["cusps"]
+    expected = []
+    for graha in chart["grahas"]:
+        longitude = graha["longitude"]
+        chalit = next(cusp["house"] for cusp in cusps
+                      if (longitude - cusp["start"]) % 360 < (cusp["end"] - cusp["start"]) % 360)
+        if chalit != graha["house"]:
+            expected.append((round(longitude, 4), graha["house"], chalit))
+    equal_house_count = sum(int(((g["longitude"] - asc_long) % 360.0) // 30.0) + 1 != g["house"]
+                            for g in chart["grahas"])
+    assert len(expected) != equal_house_count
+    args = (chart, "chart", "build", canonical_id, "2026-01-01T00:00:00+00:00")
+    source_rows = _build_chalit_rows(*args)
+    rows = _build_bhava_chalit_divergence_rows(_house_fact_conn(source_rows), *args, "test")
+    values = [row["fact_value_jsonb"] for row in rows]
+    assert [(v["graha_longitude"], v["rasi_house"], v["chalit_house"]) for v in values] == expected
+    assert all(v["chalit_method"] == "sripati" for v in values)
+    assert all(len(v["constituent_fact_ids"]) == 3 for v in values)
+    assert all(row["verification_pass_status"] == "single" for row in rows)
+    for fact in rows:
+        ids = fact["fact_value_jsonb"]["constituent_fact_ids"]
+        signal = _build_signal_row(fact, "chart", "build", {}, {}, {}, args[-1],
+                                   valid_fact_ids={fact["fact_id"], *ids})
+        configuration = json.loads(signal["configuration_jsonb"])
+        assert configuration["chalit_method"] == "sripati"
+        assert configuration["chalit_house"] == fact["fact_value_jsonb"]["chalit_house"]
+        assert signal["constituent_facts_array"] == [fact["fact_id"], *ids]
+        assert signal["verification_pass_status"] == "single"
+
+    with pytest.raises(RuntimeError, match="source facts missing or stale"):
+        _build_bhava_chalit_divergence_rows(_house_fact_conn([]), *args, "test")
 
 
 def test_ascendant_longitude_prefers_l25_key_accepts_alias_and_never_defaults():

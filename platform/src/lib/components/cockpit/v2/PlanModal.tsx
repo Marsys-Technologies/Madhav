@@ -16,6 +16,9 @@ interface PlanData {
   blockers: (BlockerEntry | string)[]
   includes_upstream_count: number
   estimated_seconds: number | null
+  downstream_may_become_stale?: string[]
+  protected_assets?: { asset_id: string; message: string }[]
+  duration_history?: { sample_count: number; lower_seconds: number | null; upper_seconds: number | null }
 }
 
 interface AssetNode {
@@ -45,6 +48,8 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
   // When the server returns requires_double_confirm for L0 brahmagyan clear, show inline panel
   const [l0ConfirmPending, setL0ConfirmPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const clearBefore = !preparation && action === 'rebuild' && !(scope === 'layer' && scopeTarget === 'brahmagyan')
+  const throughBodha = preparation && scope === 'asset_set'
   // Portal mount guard (SSR-safe): mounting to <body> lifts the modal out of the
   // cockpit's nested stacking contexts so the constellation SVG can't overpaint it.
   const mounted = useMounted()
@@ -76,7 +81,10 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
           credentials: 'include',
           signal: controller.signal,
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ chart_id: chartId, scope, scope_target: scopeTarget, action }),
+          body: JSON.stringify({
+            chart_id: chartId, scope, scope_target: scopeTarget, action,
+            ...(throughBodha ? { preparation: true } : {}),
+          }),
         })
         const body = await r.json()
         if (!r.ok) throw new Error(body.error ?? 'Failed to resolve plan')
@@ -102,16 +110,14 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
       }
     })()
     return () => controller.abort()
-  }, [chartId, scope, scopeTarget, action])
+  }, [chartId, scope, scopeTarget, action, throughBodha])
 
   const runPlan = async (opts: { forceL0?: boolean } = {}) => {
     if (!planData) return
     setLoading('run')
     setError(null)
     setL0ConfirmPending(false)
-    // FIX2: the L0 layer is made only of global tables shared by every chart; a Rebuild of it
-    // re-runs the writers in place (the server forces execution) and never clears.
-    const clearBefore = action === 'rebuild' && !(scope === 'layer' && scopeTarget === 'brahmagyan')
+    // Preparation replaces data in each writer's own transaction. Shared Brahmagyan is never pre-cleared.
     if (clearBefore) setIsClearing(true)
     try {
       const r = await fetch('/api/cockpit/runs', {
@@ -124,6 +130,10 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
           scope_target: scopeTarget,
           action,
           clear_before: clearBefore,
+          ...(throughBodha ? {
+            expected_plan: planData.plan,
+            expected_downstream: planData.downstream_may_become_stale ?? [],
+          } : {}),
           ...(opts.forceL0 ? { force_l0: true } : {}),
         }),
       })
@@ -136,6 +146,9 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
         return
       }
       if (!r.ok) {
+        if (body?.code === 'PRECONDITION_FAILED' && Array.isArray(body.missing)) {
+          throw new Error(body.missing.join('\n'))
+        }
         if (body?.code === 'UPSTREAM_BLOCKED' && Array.isArray(body?.blockers)) {
           const lines = (body.blockers as { dep_asset_id: string }[])
             .map(b => `• ${b.dep_asset_id}`)
@@ -159,9 +172,13 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
     : planData.estimated_seconds < 60
       ? `~${planData.estimated_seconds}s`
       : `~${Math.ceil(planData.estimated_seconds / 60)}m`
+  const history = planData?.duration_history
+  const duration = history && history.sample_count >= 3 &&
+    history.lower_seconds != null && history.upper_seconds != null
+    ? `${Math.ceil(history.lower_seconds / 60)}–${Math.ceil(history.upper_seconds / 60)} min for the middle half of ${history.sample_count} comparable runs`
+    : 'More completed runs are needed for a duration range'
 
-  // Button label: "Clear & Rebuild" for rebuild, "Run plan" for build/cascade/update
-  const confirmLabel = action === 'rebuild' ? 'Clear & Rebuild' : 'Run plan'
+  const confirmLabel = clearBefore ? 'Clear & Rebuild' : action === 'rebuild' ? 'Rebuild' : 'Run plan'
   const loadingLabel = isClearing ? 'Clearing…' : 'Starting…'
 
   if (!mounted) return null
@@ -227,14 +244,21 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
         {planData && (
           <>
             <div style={{ fontSize: '12px', color: 'var(--on-dark-faint)', fontFamily: 'var(--ui-stack)' }}>
-              {planData.plan.length} asset{planData.plan.length !== 1 ? 's' : ''} · estimated {estimateLabel}
-              {action === 'rebuild' && (
+              {planData.plan.length} asset{planData.plan.length !== 1 ? 's' : ''} · {throughBodha ? duration : `estimated ${estimateLabel}`}
+              {clearBefore && (
                 <span style={{ marginLeft: '8px', color: 'rgba(181,71,76,0.9)', fontSize: '11px' }}>
                   · existing data will be cleared first
                 </span>
               )}
             </div>
             <div style={{ overflowY: 'auto', flex: 1 }}>
+              {!!planData.protected_assets?.length && <p>
+                Protected assets: {planData.protected_assets.map(a => a.asset_id).join(', ')}
+              </p>}
+              {!!planData.downstream_may_become_stale?.length && <p>
+                Results that may need a later refresh: {planData.downstream_may_become_stale
+                  .map(id => assets?.find(asset => asset.asset_id === id)?.english_name ?? id).join(', ')}
+              </p>}
               {planData.plan.map((assetId, i) => {
                 const assetMeta = assets?.find(a => a.asset_id === assetId)
                 const isDraft = assetMeta?.catalog_status === 'DRAFT'
@@ -266,7 +290,7 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
               })}
 
               {/* MiniDAG — inside scroll area so tall DAGs don't push buttons off-screen */}
-              {planData.plan.length > 1 && action !== 'build' && scopeTarget && assets && assets.length > 0 && (
+              {planData.plan.length > 1 && !throughBodha && action !== 'build' && scopeTarget && assets && assets.length > 0 && (
                 <div style={{ marginTop: '12px' }}>
                   <div style={{
                     fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em',
@@ -318,7 +342,7 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
                 <button
                   className="marsys-btn-danger"
                   onClick={() => runPlan({ forceL0: true })}
-                  disabled={loading === 'run'}
+                  disabled={loading === 'run' || planData.plan.length === 0}
                   style={{ opacity: loading === 'run' ? 0.7 : 1 }}
                 >
                   {loading === 'run' ? loadingLabel : 'Confirm — clear L0 & rebuild'}
@@ -327,7 +351,7 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
                 <button
                   className="marsys-btn-primary"
                   onClick={() => runPlan()}
-                  disabled={loading === 'run'}
+                  disabled={loading === 'run' || planData.plan.length === 0}
                   style={{ opacity: loading === 'run' ? 0.7 : 1 }}
                 >
                   {loading === 'run' ? loadingLabel : confirmLabel}

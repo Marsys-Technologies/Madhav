@@ -7504,7 +7504,7 @@
       "render_template": "{graha} vargottama amplification factor: {amplification_factor:.2f} ({ayanamsha})."
     },
     "graha_yoga_karaka_flag": {
-      "ayanamsha_dependent": false,
+      "ayanamsha_dependent": true,
       "target_table": "chart_facts",
       "applies_to_subjects": [
         "SUN",
@@ -7523,6 +7523,11 @@
             "false"
           ],
           "verification_min": "two_pass_verified"
+        },
+        "has_kendra_trikona_lordship": {
+          "value_type": "text_enum",
+          "enum": ["true", "false"],
+          "verification_min": "single"
         }
       },
       "since_engine_version": "pyjhora/1.0.0",
@@ -7530,7 +7535,7 @@
       "retrieval_hints": {
         "mv_preferred": "mv_chart_t1_composite_strengths"
       },
-      "render_template": "{graha} is yoga karaka: {is_yoga_karaka} ({lagna} lagna, {ayanamsha})."
+      "render_template": "{graha} owns both the ninth and tenth houses: {is_yoga_karaka} ({lagna} lagna, {ayanamsha})."
     },
     "house_strength_classification_rollup": {
       "ayanamsha_dependent": true,

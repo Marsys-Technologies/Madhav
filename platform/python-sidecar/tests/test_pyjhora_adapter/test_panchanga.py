@@ -7,7 +7,9 @@ These tests guard the same FORENSIC invariant: native birth angas must match exa
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime, timedelta
+
+import pytest
 
 _ANGAS = ["tithi", "vara", "nakshatra", "yoga", "karana"]
 
@@ -43,3 +45,18 @@ def test_native_panchanga_values():
     assert result.nakshatra.name == "Purva Bhadrapada", f"nakshatra: {result.nakshatra.name!r}"
     assert result.yoga.name == "Shiva",             f"yoga: {result.yoga.name!r}"
     assert result.karana.name == "Garaja",          f"karana: {result.karana.name!r}"
+
+
+@pytest.mark.parametrize(("lat", "lon", "tz_offset"), [(20.3, 85.8, 330), (37.8, -122.4, -480)])
+def test_natal_vara_changes_at_local_sunrise(lat, lon, tz_offset):
+    from panchang_engine import panchanga_instant
+    from panchang_engine.timings import compute_sunrise_sunset
+
+    sunday = date(2000, 1, 2)
+    sunrise, _ = compute_sunrise_sunset(sunday, lat, lon, tz_offset)
+    tomorrow, _ = compute_sunrise_sunset(sunday + timedelta(days=1), lat, lon, tz_offset)
+    local_sunrise = (sunrise + timedelta(minutes=tz_offset)).replace(tzinfo=None)
+    before = panchanga_instant(local_sunrise - timedelta(seconds=1), lat, lon, tz_offset)
+    at = panchanga_instant(local_sunrise, lat, lon, tz_offset)
+    assert (before.vara.id, before.vara.end_utc) == (7, sunrise)
+    assert (at.vara.id, at.vara.end_utc) == (1, tomorrow)

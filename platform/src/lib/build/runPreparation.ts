@@ -1,7 +1,9 @@
 import 'server-only'
+import { preparationRunScopeSql } from './preparationRunScope'
 import { createHash } from 'crypto'
 import type { QueryResult, QueryResultRow } from 'pg'
 import {
+  computeDownstreamClosure,
   resolveBuildPlan,
   type BuildAction,
   type BuildPlan,
@@ -171,6 +173,8 @@ export async function findActiveRun(db: Queryable, chartId: string): Promise<str
   return rows[0]?.id ?? null
 }
 
+export const INTERRUPTED_PREPARATION_REASON = 'interrupted_preparation'
+
 export async function loadPlanningInputs(db: Queryable, chartId: string): Promise<PlanningInputs> {
   const [registryResult, throughputResult, protectedResult, freshnessResult] = await Promise.all([
     db.query<RegistryEntryWithScope>(
@@ -197,11 +201,29 @@ export async function loadPlanningInputs(db: Queryable, chartId: string): Promis
     // THIS chart_id (build_protected_assets, migration 540).
     db.query<{ asset_id: string }>('SELECT asset_id FROM build_protected_assets WHERE chart_id=$1', [chartId]),
     db.query<FreshnessRow>(
-      `SELECT DISTINCT ON (asset_id)
-              af.asset_id, af.freshness_state AS state, af.reasons
-         FROM asset_freshness af
-        WHERE af.chart_id=$1 OR af.chart_id IS NULL
-        ORDER BY af.asset_id, (af.chart_id = $1) DESC NULLS LAST, af.observed_at DESC`,
+      `SELECT DISTINCT ON (asset_id) asset_id, state, reasons
+         FROM (
+           SELECT af.asset_id, af.freshness_state::text AS state, af.reasons,
+                  af.chart_id, af.observed_at, false AS interrupted
+             FROM asset_freshness af
+            WHERE af.chart_id=$1 OR af.chart_id IS NULL
+           UNION ALL
+           SELECT planned.asset_id, 'stale', '["${INTERRUPTED_PREPARATION_REASON}"]'::jsonb,
+                  r.chart_id, r.created_at, true
+             FROM build_runs r
+             JOIN build_run_assets planned ON planned.run_id = r.id
+            WHERE r.chart_id=$1 AND ${preparationRunScopeSql('r')}
+              AND r.state IN ('failed', 'stopped') AND r.started_at IS NOT NULL
+              AND planned.state <> 'complete'
+              AND NOT EXISTS (
+                SELECT 1 FROM build_runs recovered
+                JOIN build_run_assets receipt ON receipt.run_id = recovered.id
+                WHERE recovered.chart_id = r.chart_id AND recovered.created_at > r.created_at
+                  AND recovered.state IN ('completed', 'failed', 'stopped') AND receipt.state = 'complete'
+                  AND receipt.asset_id = planned.asset_id
+              )
+         ) freshness
+        ORDER BY asset_id, (chart_id = $1) DESC NULLS LAST, interrupted DESC, observed_at DESC`,
       [chartId],
     ),
   ])
@@ -238,6 +260,33 @@ export function computeNonCandidateAssetIds(
       )
       .map((row) => row.asset_id),
   )
+}
+
+export function previewDownstreamStaleness(inputs: PlanningInputs, plan: string[]): string[] {
+  const downstream = computeDownstreamClosure(plan, inputs.registry)
+  return inputs.registry
+    .filter(asset => asset.scope === 'per_chart' && downstream.has(asset.asset_id)
+      && ['lit', 'service_ok'].includes(inputs.throughput.get(asset.asset_id)?.state ?? ''))
+    .map(asset => asset.asset_id)
+    .sort()
+}
+
+export function bodhaBuildBlockers(plan: string[], ready: {
+  positions: boolean
+  structure: boolean
+  remedyCorpus: boolean
+}): string[] {
+  const blockers = []
+  if (!ready.positions && !plan.includes('ga_positions')) {
+    blockers.push('chart_facts is empty — build Gaṇita first')
+  }
+  if (!ready.structure && !plan.includes('ga_structural')) {
+    blockers.push('ga_structural is not lit — build Gaṇita first')
+  }
+  if (!ready.remedyCorpus) {
+    blockers.push('brahma_remedy_corpus is empty — build the shared Brahmagyan reference first')
+  }
+  return blockers
 }
 
 /**

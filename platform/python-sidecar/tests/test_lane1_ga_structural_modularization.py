@@ -154,12 +154,15 @@ def _current_family_calls():
         "aspects": lambda: sut._build_aspect_rows(MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER),
         "shadbala_extension": lambda: sut._build_shadbala_extension_rows(MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER),
         "bhava_bala_extended": lambda: sut._build_bhava_bala_extended_rows(MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER),
-        "anubindu": lambda: sut._build_anubindu_rows(MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER),
+        "anubindu": lambda: sut._build_anubindu_rows(EMPTY_CONN, MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER),
         "yoga": lambda: sut._build_yoga_rows(NULL_CONN, MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER),
         "dosha": lambda: sut._build_dosha_rows(NULL_CONN, MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER),
         "avastha": lambda: sut._build_avastha_rows(MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER),
         "composite_strength": lambda: sut._build_composite_strength_rows(STRENGTH_FAKE_CONN, MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER),
-        "functional_class": lambda: sut._build_functional_class_rows(MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER),
+        "functional_class": lambda: [
+            row for row in sut._build_functional_class_rows(MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER)
+            if row["fact_key"] != "has_kendra_trikona_lordship"
+        ],
         "karakatva": lambda: sut._build_karakatva_rows(MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER),
         "structural_relationship": lambda: sut._build_structural_relationship_rows(MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER),
         "special_state": lambda: [
@@ -186,6 +189,55 @@ class TestRowParity:
         assert digest == expected["digest"], (
             f"{family_key}: (fact_category, fact_subject, fact_key) multiset changed vs pre-refactor"
         )
+
+
+@pytest.mark.parametrize(("sign_id", "expected"), [
+    (1, set()),
+    (2, {"SAT"}),
+    (3, set()),
+    (4, {"MAR"}),
+    (5, {"MAR"}),
+    (6, set()),
+    (7, {"SAT"}),
+    (8, set()),
+    (9, set()),
+    (10, {"VEN"}),
+    (11, {"VEN"}),
+    (12, set()),
+])
+def test_yoga_karaka_dual_lordship(sign_id, expected):
+    chart_output = {"ascendant": {"sign_id": sign_id, "sign": sut.SIGN_NAMES[sign_id - 1]}}
+    rows = sut._build_functional_class_rows(chart_output, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER)
+    flags = [r for r in rows if r["fact_key"] == "has_kendra_trikona_lordship"]
+    assert len(flags) == 7
+    assert {r["fact_subject"] for r in flags if r["fact_value_text"] == "true"} == expected
+    narrow = [r for r in rows if r["fact_key"] == "is_yoga_karaka" and r["fact_value_text"] == "true"]
+    assert {r["fact_subject"] for r in narrow} == ({"SAT"} if sign_id == 2 else set())
+
+
+def test_cancer_moon_has_distinct_bphs_and_raman_classes():
+    chart = {"ascendant": {"sign_id": 4, "sign": "Cancer"}}
+    rows = sut._build_functional_class_rows(chart, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER)
+    classes = {(r["fact_subject"], r["fact_key"]): r["fact_value_text"] for r in rows}
+    assert classes[("MOON", "bphs_canonical")] == "functional_benefic"
+    assert classes[("MOON", "raman_variant")] == "neutral"
+    assert classes[("MAR", "bphs_canonical")] == "yogakaraka"
+    assert classes[("MAR", "raman_variant")] == "yogakaraka"
+
+
+def test_anubindu_rotates_source_signs_into_whole_sign_houses():
+    from unittest.mock import MagicMock
+
+    conn = MagicMock()
+    cursor = conn.cursor.return_value.__enter__.return_value
+    cursor.fetchall.return_value = [("MAR-SIGN_4", 0, "cancer_fact"), ("MAR-SIGN_3", 2, "gemini_fact")]
+    chart = {"ascendant": {"sign_id": 4}}
+    rows = sut._build_anubindu_rows(conn, chart, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER)
+    assert [(r["fact_subject"], r["fact_value_num"], r["fact_value_jsonb"]["constituent_fact_ids"]) for r in rows] == [
+        ("MAR-HOUSE_1", 0.0, ["cancer_fact"]),
+        ("MAR-HOUSE_12", 2.0, ["gemini_fact"]),
+    ]
+    assert cursor.execute.call_args.args[1] == (CHART_ID, AY_ID)
 
     def test_all_top_level_offline_families_covered(self):
         # Guard against silently narrowing fixture coverage over time.

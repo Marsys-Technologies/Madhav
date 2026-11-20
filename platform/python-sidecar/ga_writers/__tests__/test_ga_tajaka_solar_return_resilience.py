@@ -61,6 +61,20 @@ def test_solar_return_converges_normally_when_engine_is_healthy():
     assert abs((instant - anniversary).total_seconds()) < 120  # within ~2 minutes
 
 
+def test_leap_day_birth_finds_solar_return_in_a_common_year():
+    birth = {**_BP, "datetime_iso": "1996-02-29T04:45:00"}
+    return_instant = datetime(1997, 3, 1, 1)
+
+    def fake_sun_longitude(dt, aya_adapter, birth_params=None):
+        return (291.0 + (dt - return_instant).total_seconds() / 86400.0) % 360.0
+
+    with patch.object(sut, "_sun_longitude", side_effect=fake_sun_longitude):
+        instant, audit = sut._solar_return(2, 291.0, "lahiri", birth_params=birth)
+
+    assert audit["converged"] is True
+    assert abs((instant - return_instant).total_seconds()) < 60
+
+
 def test_solar_return_survives_engine_failure_only_at_midpoint():
     """The engine fails only on instants strictly inside the bracket (not at
     lo/hi) — bisection must stop gracefully at that midpoint (still bracketed,

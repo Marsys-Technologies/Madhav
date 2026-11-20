@@ -35,6 +35,8 @@ interface Props {
   assets?: AssetNode[]
   labelSuffix?: string
   preparation?: boolean
+  /** Resume depends on the current build receipts instead of forcing completed work. */
+  resumeMissing?: boolean
 }
 
 function deriveAction(stats: ScopeStats): { label: string; action: BuildAction } {
@@ -54,6 +56,7 @@ export function BuildActionButton({
   assets,
   labelSuffix = '',
   preparation = false,
+  resumeMissing = false,
 }: Props) {
   const [showModal, setShowModal] = useState(false)
 
@@ -68,7 +71,9 @@ export function BuildActionButton({
     )
   }
 
-  const { label, action } = deriveAction(stats)
+  const { label, action } = resumeMissing
+    ? { label: 'Resume', action: 'build' as const }
+    : deriveAction(stats)
 
   const btnStyle: React.CSSProperties =
     size === 'sm'

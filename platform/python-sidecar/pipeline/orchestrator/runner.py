@@ -471,16 +471,6 @@ def check_signals(cur, run_id: str) -> Optional[str]:
     return None
 
 
-def is_asset_complete(cur, chart_id, asset_id: str) -> bool:
-    cur.execute(
-        """SELECT state FROM asset_throughput
-           WHERE chart_id IS NOT DISTINCT FROM %s AND asset_id = %s""",
-        (chart_id, asset_id),
-    )
-    row = cur.fetchone()
-    return row is not None and row["state"] == "lit"
-
-
 # ── Main entry ────────────────────────────────────────────────────────────────
 
 def _mark_asset_error_terminal(
@@ -805,7 +795,6 @@ def _schedule_parallel(
     run_id: str,
     chart_id,
     plan: list[str],
-    action: str,
     asset_scopes: dict[str, str],
     asset_deps: dict[str, list[str]],
     asset_partitions: dict[str, str | None],
@@ -847,7 +836,6 @@ def _schedule_parallel(
         return None if asset_scopes.get(a) == "global" else chart_id
 
     completed: set[str] = set()
-    pending: list[str] = list(plan)
 
     # Seed `completed` with out-of-plan dependencies already satisfied in the DB
     # (e.g. an earlier build already produced them). This makes ready(a) a single
@@ -862,15 +850,6 @@ def _schedule_parallel(
         if cur.fetchone():
             completed.add(d)
     conn.commit()  # release the read snapshot so later check_signals sees fresh data
-
-    # Skip-if-complete (non-rebuild): plan assets already lit need no work.
-    if action != "rebuild":
-        for a in list(pending):
-            if is_asset_complete(cur, eff(a), a):
-                completed.add(a)
-                pending.remove(a)
-                logger.info("[orchestrator] skip %s (already lit)", a)
-        conn.commit()
 
     # Preload full active registry for downstream staleness propagation.
     # asset_deps only covers plan assets; propagation needs all assets.
@@ -1017,8 +996,10 @@ def _schedule_parallel(
                 except Exception:
                     pass
 
+    # A planned asset must earn a current run receipt. A prior lit state alone
+    # does not verify unchanged inputs. The writer can skip with a matching receipt.
     return execute_dag(
-        plan=pending,
+        plan=plan,
         deps_of=deps_of,
         run_fn=worker,
         worker_limit=_WORKER_LIMIT,
@@ -1036,8 +1017,7 @@ def _throughput_states(cur, chart_id, plan: list[str]) -> dict[str, str]:
     """{asset_id: asset_throughput.state} for the plan, chart-scoped rows preferred.
 
     Global assets carry a `chart_id IS NULL` row; per-chart assets carry one keyed to
-    the run's chart. Both are admitted and the chart-scoped row wins where both exist
-    (the same convention `is_asset_complete` uses).
+    the run's chart. Both are admitted and the chart-scoped row wins where both exist.
     """
     if not plan:
         return {}
@@ -1192,7 +1172,6 @@ def execute_run(run_id: str) -> None:
         sys.exit(2)
 
     chart_id: str = run["chart_id"]
-    action: str = run["action"]
     snapshot_known = "_preflight_manifest_text" in run
     observed_manifest_text = run.pop("_preflight_manifest_text", None)
     observed_manifest_digest = run.get("plan_manifest_digest")
@@ -1455,7 +1434,7 @@ def execute_run(run_id: str) -> None:
         # failed/blocked dep blocks it transitively), but runs independent DAG branches
         # concurrently (width = ORCHESTRATOR_WORKER_LIMIT, default 4; 1 = serial).
         failed_assets, terminal = _schedule_parallel(
-            conn, cur, run_id, chart_id, plan, action, _asset_scopes, _asset_deps,
+            conn, cur, run_id, chart_id, plan, _asset_scopes, _asset_deps,
             frozen.asset_partitions, frozen.asset_has_cowriters, force=force,
             seed_failed=set(diverged) if diverged else None,
         )

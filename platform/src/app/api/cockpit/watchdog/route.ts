@@ -70,8 +70,14 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { verifyOidcToken } from '@/lib/auth/oidc'
 import { query } from '@/lib/db/client'
+import { preparationRunScopeSql } from '@/lib/build/preparationRunScope'
 import { classifyStuckCandidate } from './classifyStuckCandidate'
-import { ORPHAN_RUN_MESSAGE, STUCK_ASSET_MESSAGE, UNDISPATCHED_RUN_MESSAGE } from './watchdogMessages'
+import {
+  INTERRUPTED_PREPARATION_MESSAGE,
+  ORPHAN_RUN_MESSAGE,
+  STUCK_ASSET_MESSAGE,
+  UNDISPATCHED_RUN_MESSAGE,
+} from './watchdogMessages'
 import {
   aliveWithinOverrideSql,
   staleBeyondOverrideSql,
@@ -145,44 +151,58 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // platform/python-sidecar/pipeline/orchestrator/runner.py:325-337), extended to
   // two target states since this reaper can find a run in either shape.
   const [thresholdOverrideIds, thresholdOverrideSecs] = stuckThresholdOverrideParams()
+  const preparationScope = preparationRunScopeSql('build_runs')
   const orphanRuns = await query<{ id: string; chart_id: string }>(
     `WITH failed_run AS (
        UPDATE build_runs
-       SET state = 'failed', ended_at = NOW(), last_error = $1
+       SET state = 'failed', ended_at = NOW(),
+           last_error = CASE WHEN ${preparationScope} THEN $4 ELSE $1 END
        WHERE state = 'running'
-         AND started_at < NOW() - INTERVAL '30 minutes'
-         AND NOT EXISTS (
-           SELECT 1 FROM asset_throughput
-           WHERE chart_id = build_runs.chart_id
-             AND last_built_at > NOW() - INTERVAL '15 minutes'
-         )
-         AND NOT EXISTS (
-           SELECT 1 FROM build_substep_progress
-           WHERE chart_id = build_runs.chart_id
-             AND completed_at > NOW() - INTERVAL '15 minutes'
-         )
-         -- HYG-REAPER-LONG-SUBSTEP: a third, additive evidence of life — an in-flight
-         -- asset whose per-asset threshold (stuckAssetThresholds.ts) still covers its
-         -- last heartbeat. Only assets with an override can match.
-         AND NOT ${aliveWithinOverrideSql('build_runs.chart_id', '$2', '$3')}
-       RETURNING id, chart_id
+         AND CASE
+           -- The worker takes this session lock before claiming the run and
+           -- holds it through publishing the terminal state. Connection loss
+           -- releases it even after SIGKILL. The xact lock fences reconciliation.
+           WHEN ${preparationScope} THEN pg_try_advisory_xact_lock(hashtext(chart_id::text))
+           ELSE started_at < NOW() - INTERVAL '30 minutes'
+             AND NOT EXISTS (
+               SELECT 1 FROM asset_throughput
+               WHERE chart_id = build_runs.chart_id
+                 AND last_built_at > NOW() - INTERVAL '15 minutes'
+             )
+             AND NOT EXISTS (
+               SELECT 1 FROM build_substep_progress
+               WHERE chart_id = build_runs.chart_id
+                 AND completed_at > NOW() - INTERVAL '15 minutes'
+             )
+             AND NOT ${aliveWithinOverrideSql('build_runs.chart_id', '$2', '$3')}
+         END
+       RETURNING id, chart_id, last_error, ${preparationScope} AS preparation
      ),
      aborted_queued AS (
-       UPDATE build_run_assets
-       SET state = 'aborted', ended_at = NOW(), error = $1
-       WHERE run_id IN (SELECT id FROM failed_run)
-         AND state = 'queued'
+       UPDATE build_run_assets b
+       SET state = 'aborted', ended_at = NOW(), error = f.last_error
+       FROM failed_run f
+       WHERE b.run_id = f.id AND b.state = 'queued'
        RETURNING 1
      ),
      errored_building AS (
-       UPDATE build_run_assets
-       SET state = 'error', ended_at = NOW(), error = $1
-       WHERE run_id IN (SELECT id FROM failed_run)
-         AND state = 'building'
+       UPDATE build_run_assets b
+       SET state = 'error', ended_at = NOW(), error = f.last_error
+       FROM failed_run f
+       WHERE b.run_id = f.id AND b.state = 'building'
+       RETURNING b.run_id, b.asset_id
+     ),
+     interrupted_preparation AS (
+       UPDATE asset_throughput at
+       SET state = 'error', last_error = f.last_error
+       FROM failed_run f
+       JOIN errored_building b ON b.run_id = f.id
+       WHERE f.preparation AND at.chart_id = f.chart_id
+         AND at.asset_id = b.asset_id AND at.state = 'building'
        RETURNING 1
      )
      SELECT id, chart_id FROM failed_run`,
-    [ORPHAN_RUN_MESSAGE, thresholdOverrideIds, thresholdOverrideSecs]
+    [ORPHAN_RUN_MESSAGE, thresholdOverrideIds, thresholdOverrideSecs, INTERRUPTED_PREPARATION_MESSAGE]
   )
 
   // 2. asset_throughput stuck building > 15 min (default; per-asset override via
@@ -249,6 +269,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
      JOIN asset_registry ar ON ar.asset_id = at.asset_id
      WHERE at.state = 'building'
        AND at.last_built_at < NOW() - INTERVAL '15 minutes'
+       -- A preparation still holding the chart lock is supervised by the
+       -- worker's own writer timeouts. Old chart rows cannot rescue its run.
+       AND NOT EXISTS (
+         SELECT 1 FROM build_runs r
+         JOIN build_run_assets b ON b.run_id = r.id
+         WHERE r.chart_id = at.chart_id AND r.state = 'running'
+           AND ${preparationRunScopeSql('r')}
+           AND b.asset_id = at.asset_id AND b.state = 'building'
+       )
        -- HYG-REAPER-LONG-SUBSTEP: stale beyond the asset's own threshold too (an override
        -- only lengthens; no override => this predicate is TRUE and the 15 min above decides).
        AND ${staleBeyondOverrideSql('at.asset_id', 'at.last_built_at', '$1', '$2')}`,
@@ -461,8 +490,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
        UPDATE build_runs
        SET state = 'failed', ended_at = NOW(), last_error = $1
        WHERE state = 'planned'
-         AND started_at IS NULL
-         AND created_at < NOW() - INTERVAL '10 minutes'
+         AND ((started_at IS NULL AND resume_requested_at IS NULL AND created_at < NOW() - INTERVAL '10 minutes')
+           OR resume_requested_at < NOW() - INTERVAL '10 minutes')
        RETURNING id, chart_id
      ),
      aborted_queued AS (

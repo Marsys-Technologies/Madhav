@@ -71,9 +71,8 @@ note below for what the code actually enforces as of the M-22 overnight fix):
   on ARGALA_COUNT_WRONG / VIRODHA_COUNT_WRONG (144-row count assertions),
   UPSTREAM_ABSENT, and TWO_PASS_STRUCTURAL (duplicate fact_id / GA3-overlap /
   citation-completeness / no-narration-linter checks — none inspect
-  verification_pass_status). `bhava_chalit_rasi_divergence` legitimately emits
-  divergent_flagged by design (genuine rasi-vs-chalit house disagreement) and does
-  NOT halt the build. Most categories in this file are honestly single-pass;
+  verification_pass_status). The whole-sign versus Śrīpati comparison records
+  the frame difference in its value. Most categories in this file are single-pass;
   verification_pass_status reflects that per brahmagyan/verification_vocab.py
   (UNVERIFIED_DEFAULT for "no detector ran", two_pass_verified reserved for the
   rare case with a real independent second derivation).
@@ -106,7 +105,7 @@ from brahmagyan.verification_tiers import (
     FLOORED,
     emit_tier,
 )
-from brahmagyan.verification_vocab import DIVERGENT_FLAGGED, UNVERIFIED_DEFAULT, assert_legal
+from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT, assert_legal
 from brahmagyan.dignity_oracle import classify_dignity
 from brahmagyan.natural_malefics import NATURAL_MALEFIC_PLANET_IDS, NODE_PLANET_IDS
 from brahmagyan.aspects import get_graha_aspects
@@ -490,26 +489,42 @@ LAJJITADI_STATES = ["lajjita", "garvita", "kshudhita", "trushita", "mudita", "ks
 SAYANADI_STATES = ["sayana", "upavishta", "netrapani", "prakashana", "gamana", "agamana",
                     "sabhaa", "aagama", "bhojana", "nritya_lipsya"]
 
-# Functional benefic/malefic per Lagna = Aries (BPHS canonical table, two-pass verified)
+# Existing Aries class table, with lagneśa Mars aligned to the DR-9 ruling.
 FUNCTIONAL_CLASS_BPHS: dict[str, str] = {
     "Sun": "temporal_malefic",      # Lord of 5H Leo — trik lord (8H shares Mercury? no — Sun=5th)
     "Moon": "functional_benefic",   # Lord of 4H Cancer — kendra lord
-    "Mars": "yogakaraka",           # Lord of 1H + 8H (lagna lord = benefic; 8H = mixed)
+    "Mars": "functional_benefic",   # Lord of 1H and 8H, classified as lagneśa under DR-9.
     "Mercury": "temporal_malefic",  # Lord of 3H + 6H — dusthana lords
     "Jupiter": "temporal_benefic",  # Lord of 9H + 12H — konas (9H good), 12H mixed
     "Venus": "temporal_benefic",    # Lord of 2H + 7H — maraka but also 2H wealth
     "Saturn": "temporal_malefic",   # Lord of 10H + 11H — 10H good, 11H upachaya
 }
 
-# Functional class per Raman variant (Aries Lagna identical to BPHS for Aries)
-FUNCTIONAL_CLASS_RAMAN: dict[str, str] = {
-    "Sun": "temporal_malefic",
-    "Moon": "functional_benefic",
-    "Mars": "yogakaraka",
-    "Mercury": "temporal_malefic",
-    "Jupiter": "temporal_benefic",
-    "Venus": "temporal_benefic",
-    "Saturn": "temporal_malefic",
+# Lagna-lord classifications under the ascendant-specific BPHS ch. 34 passages.
+# Gemini Mercury is an approximation: the passage omits an explicit classification.
+_BPHS_LAGNA_LORD_CLASS = {
+    "Aries": "functional_benefic", "Taurus": "temporal_malefic", "Gemini": "neutral",
+    "Cancer": "functional_benefic", "Leo": "functional_benefic", "Virgo": "functional_benefic",
+    "Libra": "neutral", "Scorpio": "neutral", "Sagittarius": "neutral", "Capricorn": "neutral",
+    "Aquarius": "functional_benefic", "Pisces": "functional_benefic",
+}
+
+# B. V. Raman, How to Judge a Horoscope, vol. I, pp. 7–10.
+# Each pair lists the chapter's favorable and adverse grahas. Taurus Venus uses
+# Raman's stated neutral option. Unclassified grahas use the qualified neutral default.
+_RAMAN_FUNCTIONAL_CLASSES = {
+    "Aries": (("Jupiter", "Sun", "Mars"), ("Saturn", "Mercury", "Venus")),
+    "Taurus": (("Saturn", "Mercury", "Mars", "Sun"), ("Jupiter", "Moon")),
+    "Gemini": (("Venus",), ("Mars", "Jupiter", "Sun")),
+    "Cancer": (("Jupiter", "Mars"), ("Venus", "Mercury")),
+    "Leo": (("Mars", "Sun"), ("Mercury", "Venus")),
+    "Virgo": (("Venus",), ("Moon", "Mars", "Jupiter")),
+    "Libra": (("Saturn", "Mercury", "Venus", "Mars"), ("Sun", "Jupiter", "Moon")),
+    "Scorpio": (("Moon", "Jupiter", "Sun"), ("Mercury", "Venus")),
+    "Sagittarius": (("Mars", "Sun"), ("Venus", "Saturn", "Mercury")),
+    "Capricorn": (("Venus", "Mercury", "Saturn"), ("Mars", "Jupiter", "Moon")),
+    "Aquarius": (("Venus", "Sun", "Mars"), ("Jupiter", "Moon")),
+    "Pisces": (("Moon", "Mars"), ("Saturn", "Sun", "Venus", "Mercury")),
 }
 
 # Sign-lord lookup (index = sign_id - 1): used by dynamic functional class calculator
@@ -522,15 +537,15 @@ _SIGN_LORDS_ORDERED = [
 def _get_functional_class_dynamic(planet: str, lagna_sign: str) -> str:
     """
     Compute BPHS functional class for planet given the chart's Lagna sign.
-    For Aries: uses pre-computed canonical table (two-pass verified).
-    For other Lagnas: derives from house-lordship via kendra/trikona/dusthana rules.
-    Simplified — school-specific exceptions (e.g. Moon's kendradhipatya immunity)
-    are not enumerated; use the Aries table where exact exceptions are required.
+    Use the ascendant-specific class for the lagna lord and the existing
+    house-lordship approximation for other grahas outside Aries.
     """
     if lagna_sign == "Aries":
         return FUNCTIONAL_CLASS_BPHS.get(planet, "neutral")
 
-    lagna_idx = SIGN_NAMES.index(lagna_sign) if lagna_sign in SIGN_NAMES else 0
+    lagna_idx = SIGN_NAMES.index(lagna_sign)
+    if planet == _SIGN_LORDS_ORDERED[lagna_idx]:
+        return _BPHS_LAGNA_LORD_CLASS[lagna_sign]
 
     planet_houses: list[int] = []
     for h in range(1, 13):
@@ -1798,75 +1813,50 @@ def _build_bhava_bala_extended_rows(
 # ── Group D: Ashtakavarga anubindu ────────────────────────────────────────────
 
 def _build_anubindu_rows(
-    chart_output: dict[str, Any],
+    conn: Any, chart_output: dict[str, Any],
     chart_id: str, build_id: str, ayanamsha_id: str,
     computed_at: str, eng_ver: str,
 ) -> list[dict[str, Any]]:
-    """Anubindu = residual after both trikona + ekadhipathya shodhana steps."""
+    """Project the Gaṇita ekādhipatya residuals from absolute signs to houses."""
+    with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
+        cur.execute("""
+            SELECT fact_subject, fact_value_num, fact_id
+            FROM chart_facts
+            WHERE chart_id = %s AND ayanamsha_id = %s
+              AND fact_category = 'ashtakavarga_ekadhipathya_shodhana'
+              AND fact_key = 'reduced_bindus'
+            ORDER BY fact_subject, fact_id
+        """, (chart_id, ayanamsha_id))
+        raw = cur.fetchall()
+
+    residuals = {subject: (value, fact_id) for subject, value, fact_id in raw}
+    lagna = int(chart_output["ascendant"]["sign_id"])
+    house_signs = [(lagna + house - 2) % 12 + 1 for house in range(1, 13)]
     rows: list[dict[str, Any]] = []
-
-    # Compute base ashtakavarga inline (same algorithm as GA3 for reference)
-    # GA8 only adds the anubindu category (residual after both shodhana steps)
-    from ga_writers.ga_strength_writer import _derive_ashtakavarga
-    try:
-        bav = _derive_ashtakavarga(chart_output)
-    except Exception as exc:
-        logger.warning("[ga_structural] _derive_ashtakavarga failed: %s", exc)
-        return rows
-
-    # Values sourced from the graha SSoT (brahmagyan/graha_vocabulary) rather
-    # than hardcoded literals — ADHIṢṬHĀNA Lane A2 (found via the full-tree
-    # census; not one of the originally-enumerated retirement targets).
-    planet_subjects = {
-        name: norm_graha(name)
-        for name in ("Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn")
-    }
-
-    for planet_name, subject in planet_subjects.items():
-        bindus_list = bav.get(planet_name, [0]*12)
-        # Trikona shodhana: subtract minimum of {h, h+4, h+8} triads from each
-        # Ekadhipathya shodhana: for signs owned by same planet, subtract min
-        # Anubindu = residual after BOTH shodhana passes
-
-        # Trikona reduction
-        trikona_reduced = list(bindus_list)
-        for t_start in range(4):  # 4 triads: {1,5,9}, {2,6,10}, {3,7,11}, {4,8,12}
-            triad_indices = [t_start, t_start + 4, t_start + 8]
-            triad_min = min(trikona_reduced[i] for i in triad_indices)
-            for i in triad_indices:
-                trikona_reduced[i] = max(0, trikona_reduced[i] - triad_min)
-
-        # Ekadhipathya shodhana: Mercury owns Gemini(3)+Virgo(6); Venus owns Taurus(2)+Libra(7); etc.
-        same_sign_owners = {
-            "Mercury": [2, 5],   # 0-based: Gemini=2, Virgo=5
-            "Venus": [1, 6],     # Taurus=1, Libra=6
-            "Mars": [0, 7],      # Aries=0, Scorpio=7
-            "Jupiter": [8, 11],  # Sagittarius=8, Pisces=11
-            "Saturn": [9, 10],   # Capricorn=9, Aquarius=10
-        }
-        ekad_reduced = list(trikona_reduced)
-        for owner, sign_indices in same_sign_owners.items():
-            pair_min = min(ekad_reduced[i] for i in sign_indices)
-            for i in sign_indices:
-                ekad_reduced[i] = max(0, ekad_reduced[i] - pair_min)
-
-        # Anubindu = ekad_reduced (the residual after BOTH)
-        for h_idx, anubindu_val in enumerate(ekad_reduced):
-            house_num = h_idx + 1
-            compound_subject = f"{subject}-HOUSE_{house_num}"
+    for planet_name in CLASSICAL_GRAHAS:
+        graha = norm_graha(planet_name)
+        for house, sign in enumerate(house_signs, start=1):
+            source_subject = f"{graha}-SIGN_{sign}"
+            value, fact_id = residuals.get(source_subject, (None, None))
+            if value is None:
+                continue
             rows.append(_base_row(
-                "ashtakavarga_anubindu", compound_subject, "anubindu_bindus",
+                "ashtakavarga_anubindu", f"{graha}-HOUSE_{house}", "anubindu_bindus",
                 chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
-                value_num=float(anubindu_val),
+                value_num=float(value),
+                value_jsonb={"constituent_fact_ids": [str(fact_id)]},
                 unit="bindu",
-                verif=UNVERIFIED_DEFAULT,
-                source=f"pyjhora_adapter.anubindu/{eng_ver}",
+                source=f"ga_strength.ekadhipathya_shodhana_house_projection/{eng_ver}",
                 citation_human=(
-                    f"{planet_name} anubindu house {house_num}: {anubindu_val} bindu "
-                    f"(post-trikona + ekadhipathya shodhana) ({ayanamsha_id})."
+                    f"{planet_name} anubindu in house {house} (sign {sign}): {value} bindus "
+                    f"after trikoṇa and ekādhipatya śodhana ({ayanamsha_id})."
                 ),
             ))
-
+    if len(rows) != len(CLASSICAL_GRAHAS) * 12:
+        logger.warning(
+            "[ga_structural] ashtakavarga_anubindu: only %s of 84 source residuals available for %s",
+            len(rows), ayanamsha_id,
+        )
     return rows
 
 
@@ -4165,35 +4155,36 @@ def _build_functional_class_rows(
     computed_at: str, eng_ver: str,
 ) -> list[dict[str, Any]]:
     """
-    Two formula_id rows per graha: bphs_canonical + raman_variant.
-    Lagna=Aries: Mars is lagna lord (yogakaraka as lord of 1H + 8H).
+    Emit functional class variants and the independent dual-lordship flag.
     """
     rows: list[dict[str, Any]] = []
     lagna_sign = _get_lagna_sign(chart_output)
+    kendra_lords = {_get_house_lord(chart_output, house) for house in (4, 7, 10)}
+    trikona_lords = {_get_house_lord(chart_output, house) for house in (5, 9)}
+    yoga_karakas = kendra_lords & trikona_lords
+    lord_9 = _get_house_lord(chart_output, 9)
+    lord_10 = _get_house_lord(chart_output, 10)
+    raman_benefics, raman_malefics = _RAMAN_FUNCTIONAL_CLASSES[lagna_sign]
 
     for g_name in CLASSICAL_GRAHAS:
         subject = PLANET_TO_SUBJECT.get(g_name, g_name.upper())
 
-        # Derived dynamically from actual Lagna (Aries uses verified table; others use rule-based)
         bphs_class = _get_functional_class_dynamic(g_name, lagna_sign)
-        raman_class = _get_functional_class_dynamic(g_name, lagna_sign)
-        # STAGE-2 HONEST-TIERS CORRECTION (M-22 overnight, Opus Gate Reviewer
-        # ruling): the Aries branch previously asserted two_pass_verified, but
-        # bphs_class and raman_class above are computed by the SAME call
-        # (`_get_functional_class_dynamic(g_name, lagna_sign)`) with the SAME
-        # arguments twice — not two independently-implemented derivations that
-        # could have disagreed, so it earns nothing under the earnedness test
-        # (CLAUDE.md §N.8). Only the Aries branch changes; the non-Aries
-        # documented_approximation branch is a real, already-correctly-tiered
-        # methodological approximation and is untouched.
-        fc_verif = UNVERIFIED_DEFAULT if lagna_sign == "Aries" else DOCUMENTED_APPROXIMATION
+        if g_name in yoga_karakas:
+            raman_class = "yogakaraka"
+        elif g_name in raman_benefics:
+            raman_class = "functional_benefic"
+        elif g_name in raman_malefics:
+            raman_class = "temporal_malefic"
+        else:
+            raman_class = "neutral"
 
         rows.append(_base_row(
             "graha_functional_class_per_ascendant", subject, "bphs_canonical",
             chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
             value_text=bphs_class,
-            verif=fc_verif,
-            source=f"pyjhora_adapter.functional_class_bphs/{eng_ver}",
+            verif=UNVERIFIED_DEFAULT if lagna_sign == "Aries" else DOCUMENTED_APPROXIMATION,
+            source=f"ga_structural.bphs_functional_class_v2/{eng_ver}",
             citation_human=(
                 f"{g_name} functional class for {lagna_sign} lagna (BPHS): {bphs_class} ({ayanamsha_id})."
             ),
@@ -4202,27 +4193,35 @@ def _build_functional_class_rows(
             "graha_functional_class_per_ascendant", subject, "raman_variant",
             chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
             value_text=raman_class,
-            verif=fc_verif,
-            source=f"pyjhora_adapter.functional_class_raman/{eng_ver}",
+            verif=DOCUMENTED_APPROXIMATION,
+            source=f"ga_structural.raman_functional_class_v2/{eng_ver}",
             citation_human=(
-                f"{g_name} functional class for {lagna_sign} lagna (Raman): {raman_class} ({ayanamsha_id})."
+                f"{g_name} functional class for {lagna_sign} lagna (Raman, vol. I, pp. 7–10): "
+                f"{raman_class} ({ayanamsha_id})."
             ),
         ))
 
-        # Yoga karaka flag (R): lord of 9th AND 10th simultaneously
-        # For Aries lagna: 9H = Sagittarius (Jupiter), 10H = Capricorn (Saturn)
-        lord_9 = _get_house_lord(chart_output, 9)
-        lord_10 = _get_house_lord(chart_output, 10)
-        is_yoga_karaka = (g_name == lord_9 == lord_10)  # must be lord of BOTH
+        owns_ninth_and_tenth = g_name == lord_9 == lord_10
+        owns_angle_and_trine = g_name in yoga_karakas
         rows.append(_base_row(
             "graha_yoga_karaka_flag", subject, "is_yoga_karaka",
             chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
-            value_text="true" if is_yoga_karaka else "false",
+            value_text="true" if owns_ninth_and_tenth else "false",
             verif=UNVERIFIED_DEFAULT,
             source=f"pyjhora_adapter.yoga_karaka/{eng_ver}",
             citation_human=(
-                f"{g_name} yoga karaka flag (lord of 9H+10H simultaneously): "
-                f"{'true' if is_yoga_karaka else 'false'} ({lagna_sign} lagna, {ayanamsha_id})."
+                f"{g_name} owns both the ninth and tenth houses (A8 Addition R): "
+                f"{'true' if owns_ninth_and_tenth else 'false'} ({lagna_sign} lagna, {ayanamsha_id})."
+            ),
+        ))
+        rows.append(_base_row(
+            "graha_yoga_karaka_flag", subject, "has_kendra_trikona_lordship",
+            chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
+            value_text="true" if owns_angle_and_trine else "false",
+            source=f"ga_structural.kendra_trikona_lordship/{eng_ver}",
+            citation_human=(
+                f"{g_name} owns both a kendra (4H, 7H or 10H) and a trikona (5H or 9H): "
+                f"{'true' if owns_angle_and_trine else 'false'} ({lagna_sign} lagna, {ayanamsha_id})."
             ),
         ))
 
@@ -5226,7 +5225,7 @@ _CF_INSERT_SQL = """
 """
 
 
-def _insert_chart_facts_rows(conn: Any, rows: list[dict[str, Any]], *, replace_prior: bool = True) -> int:
+def _insert_chart_facts_rows(conn: Any, rows: list[dict[str, Any]], *, replace_prior: bool = True, replace_empty_families: bool = False) -> int:
     # Q-L1-16(a) choke point: reject a deprecated-alias / out-of-vocabulary tier BEFORE any
     # delete or insert, however the string was built (literal, concatenation, constant).
     for _r in rows:
@@ -5237,7 +5236,22 @@ def _insert_chart_facts_rows(conn: Any, rows: list[dict[str, Any]], *, replace_p
     # dosha_label category and deletes exactly that subject itself; the category-wide delete here would
     # wipe the rest of ga_structural's dosha_label rows.
     if replace_prior:
-        replace_prior_chart_facts(conn, rows)
+        scope = rows
+        if rows and replace_empty_families:
+            # These owned families can legitimately return zero rows. Their older findings
+            # still need to be retired on this chart and frame when the new result is empty.
+            scope = rows + [
+                {
+                    "chart_id": rows[0]["chart_id"],
+                    "ayanamsha_id": rows[0]["ayanamsha_id"],
+                    "fact_category": category,
+                }
+                for category in (
+                    "graha_yuddha", "graha_yuddha_per_varga", "ashtakavarga_anubindu",
+                    "bhava_chalit_rasi_divergence",
+                )
+            ]
+        replace_prior_chart_facts(conn, scope)
 
     # Serialize JSONB values and build positional tuples once upfront.
     tuples = []
@@ -7192,7 +7206,10 @@ def build_ga_structural(
             all_rows.extend(_build_aspect_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
             all_rows.extend(_build_shadbala_extension_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver, conn=ay_conn))
             all_rows.extend(_build_bhava_bala_extended_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
-            all_rows.extend(_build_anubindu_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
+            all_rows.extend(_build_anubindu_rows(ay_conn, chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
+            all_rows.extend(_build_bhava_chalit_divergence_rows(
+                ay_conn, chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver,
+            ))
             all_rows.extend(_build_vimsopaka_ext_rows(ay_conn, chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
             all_rows.extend(_build_yoga_rows(ay_conn, chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver, yoga_catalog if yoga_catalog else None))
             all_rows.extend(_build_dosha_rows(ay_conn, chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver, dosha_catalog if dosha_catalog else None))
@@ -7253,7 +7270,7 @@ def build_ga_structural(
             summary["varga_rows_count"] = varga_rows
 
             # Insert
-            cf_count = _insert_chart_facts_rows(ay_conn, all_rows)
+            cf_count = _insert_chart_facts_rows(ay_conn, all_rows, replace_empty_families=True)
             summary["ayanamshas"][canonical_id] = {
                 "chart_facts_rows": cf_count,
                 "argala_rows": argala_count,
@@ -8093,104 +8110,64 @@ def _build_bhava_chalit_divergence_rows(
     conn: Any, chart_output: dict, chart_id: str, build_id: str,
     ayanamsha_id: str, computed_at: str, eng_ver: str,
 ) -> list[dict]:
-    """Flag when equal-bhava (Sripati chalit) house differs from rasi (whole-sign) house.
+    """Compare whole-sign houses and Śrīpati assignments in the same frame."""
+    assignments = (chart_output.get("bhava_chalit") or {}).get("graha_chalit") or {}
+    if not assignments:
+        raise RuntimeError(f"Śrīpati house assignments unavailable in {ayanamsha_id}")
 
-    Root-cause fix: no GA writer writes a 'bhava_chalit_house' category to chart_facts,
-    so the original DB query always returned 0 rows. Bhava chalit positions are computed
-    inline here from chart_output — 12 equal bhavas of 30° each starting at the
-    ascendant longitude. A graha that falls in a different equal-bhava house than its
-    rasi (whole-sign) house is flagged as diverging.
-    Constituent refs live in fact_value_jsonb['constituent_fact_ids'].
-    """
+    with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
+        cur.execute("""
+            SELECT fact_subject, fact_key, fact_value_num, fact_id
+            FROM chart_facts
+            WHERE chart_id = %s AND ayanamsha_id = %s
+              AND fact_category = 'house_chalit'
+              AND fact_key IN ('whole_sign_house', 'chalit_house_sripati', 'dist_to_nearest_boundary_deg')
+            ORDER BY fact_subject, fact_key, fact_id
+        """, (chart_id, ayanamsha_id))
+        source_rows = cur.fetchall()
+    houses = {(subject, key): (value, str(fact_id)) for subject, key, value, fact_id in source_rows}
+    if len(houses) != len(source_rows):
+        raise RuntimeError(f"Śrīpati source facts are ambiguous in {ayanamsha_id}; rebuild Gaṇita positions")
+
     rows = []
-
-    asc = chart_output.get("ascendant", {})
-    asc_long = _ascendant_longitude(asc)
-
-    # 12 equal-bhava cusps: cusp k = (asc_long + (k-1)*30) % 360
-    cusp_starts = [(asc_long + i * 30.0) % 360.0 for i in range(12)]
-
-    def _chalit_house_for(g_long: float) -> int:
-        g = g_long % 360.0
-        for h in range(12):
-            start = cusp_starts[h]
-            end = cusp_starts[(h + 1) % 12]
-            if start < end:
-                if start <= g < end:
-                    return h + 1
-            else:  # arc wraps 360 → 0
-                if g >= start or g < end:
-                    return h + 1
-        return 1
-
-    # Pre-load graha_position fact_ids for constituent refs (one query, not N queries)
-    graha_pos_fids: dict[str, str] = {}
-    try:
-        with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
-            cur.execute("""
-                SELECT fact_subject, fact_id FROM chart_facts
-                WHERE chart_id = %s AND ayanamsha_id = %s
-                  AND fact_category = 'graha_position'
-                  AND fact_key = 'sign'
-            """, (chart_id, ayanamsha_id))
-            for subj, fid in cur.fetchall():
-                graha_pos_fids[subj] = str(fid)
-    except Exception as exc:
-        logger.warning("[ga_structural] bhava_chalit graha_pos prefetch failed: %s", exc)
-
-    divergence_count = 0
-    for g in chart_output.get("grahas", []):
-        g_name = g.get("name", "")
-        g_subj = PLANET_TO_SUBJECT.get(g_name, g_name.upper())
-        rasi_h = int(g.get("house", 1))
-        g_long = float(g.get("longitude", 0.0))
-        chalit_h = _chalit_house_for(g_long)
-
-        if chalit_h != rasi_h:
-            divergence_count += 1
-            fid = graha_pos_fids.get(g_subj, "")
-            # STAGE-2 HONEST-TIERS: this row is emitted ONLY when the rasi
-            # (whole-sign) house pass and the chalit (equal-bhava) house pass
-            # genuinely disagree (the `if chalit_h != rasi_h` guard above) — the
-            # textbook two-pass-with-real-disagreement case verification_vocab.py's
-            # DIVERGENT_FLAGGED entry describes: two passes ran and DISAGREED.
-            # Confirmed safe against this file's build-halt logic (Gate Reviewer
-            # mandated safety check, Stage 2): grepping every `_write_halt_log(`
-            # call site in this module shows halts fire only on ARGALA/VIRODHA row
-            # count mismatch, UPSTREAM_ABSENT, and TWO_PASS_STRUCTURAL (which is
-            # `_verify_no_duplicate_fact_ids` + `_verify_no_ga3_overlap` +
-            # `_verify_citation_completeness` + `_linter_check_rows` — none of
-            # which inspect `verification_pass_status`/DIVERGENT_FLAGGED at all;
-            # `_linter_check_rows` only scans `fact_value_text` for narration
-            # phrases). `assert_legal()` also does not reject DIVERGENT_FLAGGED —
-            # it is a legal, non-prohibited vocabulary member. The module
-            # docstring's old claim ("divergent_flagged -> halt build") does not
-            # match any code path in this file and has been corrected below.
-            rows.append(_base_row(
-                "bhava_chalit_rasi_divergence", g_subj, "diverges_from_rasi",
-                chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
-                value_text="true",
-                value_jsonb={
-                    "rasi_house": rasi_h,
-                    "chalit_house": chalit_h,
-                    "diverges": True,
-                    "asc_longitude": round(asc_long, 4),
-                    "graha_longitude": round(g_long, 4),
-                    "constituent_fact_ids": [fid] if fid else [],
-                },
-                verif=DIVERGENT_FLAGGED,
-                source=f"ga_structural.bhava_chalit_divergence/{eng_ver}",
-                citation_human=(
-                    f"{g_subj} bhava-chalit diverges: rasi H{rasi_h} vs chalit H{chalit_h} "
-                    f"(asc={asc_long:.2f}°, graha={g_long:.2f}°) ({ayanamsha_id})."
-                ),
-            ))
-
-    logger.info(
-        "[ga_structural] bhava_chalit_divergence: %d/%d grahas shift house in equal-bhava "
-        "(asc_long=%.2f°, %s)",
-        divergence_count, len(chart_output.get("grahas", [])), asc_long, ayanamsha_id,
-    )
+    asc_long = _ascendant_longitude(chart_output["ascendant"])
+    for graha in chart_output["grahas"]:
+        name = graha["name"]
+        assignment = assignments[name]
+        subject = norm_graha(name)
+        keys = ("whole_sign_house", "chalit_house_sripati", "dist_to_nearest_boundary_deg")
+        expected = (graha["house"], assignment["chalit_house"], assignment["dist_to_nearest_boundary_deg"])
+        source = [houses.get((subject, key)) for key in keys]
+        if any(
+            fact is None or fact[0] is None
+            or not math.isclose(float(fact[0]), expected_value, rel_tol=0, abs_tol=1e-6)
+            for fact, expected_value in zip(source, expected)
+        ):
+            raise RuntimeError(f"Śrīpati source facts missing or stale for {subject} in {ayanamsha_id}; rebuild Gaṇita positions")
+        (whole_sign, whole_sign_id), (chalit, chalit_id), (distance, distance_id) = source
+        rasi_house, chalit_house = int(whole_sign), int(chalit)
+        if rasi_house == chalit_house:
+            continue
+        rows.append(_base_row(
+            "bhava_chalit_rasi_divergence", subject, "diverges_from_rasi",
+            chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
+            value_text="true",
+            value_jsonb={
+                "rasi_house": rasi_house,
+                "chalit_house": chalit_house,
+                "chalit_method": "sripati",
+                "dist_to_nearest_boundary_deg": float(distance),
+                "diverges": True,
+                "asc_longitude": round(asc_long, 4),
+                "graha_longitude": round(float(graha["longitude"]), 4),
+                "constituent_fact_ids": [whole_sign_id, chalit_id, distance_id],
+            },
+            source=f"pyjhora_adapter.houses.compute_bhava_chalit/sripati/{eng_ver}",
+            citation_human=(
+                f"{subject}: whole-sign house {rasi_house} and Śrīpati house {chalit_house} "
+                f"under {ayanamsha_id}."
+            ),
+        ))
     return rows
 
 
@@ -8453,7 +8430,7 @@ def build_ga_structural_substep(
         "aspects": lambda: _build_aspect_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver),
         "shadbala_extension": lambda: _build_shadbala_extension_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver, conn=conn),
         "bhava_bala_extended": lambda: _build_bhava_bala_extended_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver),
-        "anubindu": lambda: _build_anubindu_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver),
+        "anubindu": lambda: _build_anubindu_rows(conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver),
         "vimsopaka_ext": lambda: _build_vimsopaka_ext_rows(conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver),
         "yoga": lambda: _build_yoga_rows(conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver, yoga_catalog if yoga_catalog else None),
         "dosha": lambda: _build_dosha_rows(conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver, dosha_catalog if dosha_catalog else None),
@@ -8525,7 +8502,7 @@ def build_ga_structural_substep(
         _write_halt_log("TWO_PASS_STRUCTURAL", msg)
         raise RuntimeError(msg) from exc
 
-    count = _insert_chart_facts_rows(conn, all_rows)
+    count = _insert_chart_facts_rows(conn, all_rows, replace_empty_families=True)
 
     label_count = sum(1 for r in all_rows if r["fact_category"] == "yoga_label")
     dosha_label_count = sum(1 for r in all_rows if r["fact_category"] == "dosha_label")

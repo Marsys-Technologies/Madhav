@@ -25,6 +25,7 @@ export interface AssetRow {
   depends_on: string[]
   scope: string
   is_active: boolean
+  has_writer?: boolean
   estimated_seconds: number | null
   created_at: string
   // Migration 202+ service-support fields
@@ -64,7 +65,7 @@ export async function GET() {
         english_description, storage_type, target_table, count_sql,
         size_sql, target_floor, expected_volume_formula,
         expected_volume_inputs, volume_explanation, depends_on,
-        scope, is_active, estimated_seconds, created_at,
+        scope, is_active, has_writer, estimated_seconds, created_at,
         asset_type, layer_name, layer_index, provides_apis, health_probe, catalog_status,
         asset_kind, service_health, last_invoked_at, last_selftest_at, selftest_detail
       FROM asset_registry

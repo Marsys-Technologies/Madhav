@@ -182,7 +182,6 @@ def _install(monkeypatch, state, registry_live, fail_assets=frozenset(), writer_
     monkeypatch.setattr(runner, "release_global_assets_lock", lambda *a, **k: None)
     monkeypatch.setattr(runner, "acquire_global_assets_lock", lambda *a, **k: True)
     monkeypatch.setattr(runner, "check_signals", lambda *a, **k: None)
-    monkeypatch.setattr(runner, "is_asset_complete", lambda *a, **k: False)
     monkeypatch.setattr(runner, "claim_runnable_run", lambda *a, **k: True)
 
     mark_calls: list[tuple] = []

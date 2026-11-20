@@ -480,6 +480,22 @@ def test_ids_are_stable_across_builds_and_rebuild_replaces_per_chart_and_categor
     assert all(t[-1] and "bphs_pg0311_c01" in t[-1] for t in tuples)
 
 
+def test_full_structural_replacement_retires_empty_owned_families_in_the_same_frame():
+    rows = sut._build_argala_graha_rows(
+        _state(BPHS_EXAMPLE), "D1", CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+    )
+    conn = _RecordingConn()
+    assert sut._insert_chart_facts_rows(conn, rows, replace_empty_families=True) == len(rows)
+
+    (sql, params), = [(s, p) for s, p in conn.executed if s.startswith("DELETE FROM chart_facts")]
+    assert "chart_id = %s" in sql and "fact_category = ANY(%s)" in sql and "ayanamsha_id = ANY(%s)" in sql
+    assert params[0] == CHART_ID and params[2] == [AY_ID]
+    assert set(params[1]) == {
+        "argala_graha_natal", "ashtakavarga_anubindu", "bhava_chalit_rasi_divergence",
+        "graha_yuddha", "graha_yuddha_per_varga",
+    }
+
+
 # ── D1 only (AR-6) ──────────────────────────────────────────────────────────────────────────────
 
 def test_d1_only_a_divisional_chart_is_refused_not_silently_emitted():

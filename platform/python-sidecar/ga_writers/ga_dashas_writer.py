@@ -39,7 +39,7 @@ from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any, Generator
 
-from panchang_engine.swiss_state import serialized_swiss_state, swiss_state_scope
+from panchang_engine.swiss_state import serialized_swiss_state
 
 from brahmagyan.graha_vocabulary import to_title
 from brahmagyan.verification_vocab import (
@@ -341,32 +341,14 @@ def _get_moon_position(ayanamsha_id: str, birth: dict) -> tuple[float, float]:
     Returns (moon_sidereal_lon, birth_jd_utc).
     Requires a non-None birth_params dict sourced from public.charts —
     B1 elimination: no BIRTH_* fallback for native or any other chart.
-    Uses pyjhora_adapter engine.
+    Uses the pinned sidereal ephemeris at the UTC birth instant.
     """
-    from pyjhora_adapter.compute import compute_chart
-    from pyjhora_adapter._ayanamsha import resolve_mode
     from pyjhora_adapter._jhora import drik
-
-    if not birth:
-        raise ValueError("[_get_moon_position] birth_params is falsy; every chart must supply DB-sourced birth params")
-    lat = float(birth["latitude_deg"])
-    lon = float(birth["longitude_deg"])
-    tz = float(birth.get("tz_offset_hours", BIRTH_TZ_OFFSET))
+    from pyjhora_adapter._swiss_thread_scope import with_sidereal_mode
 
     jd = _birth_jd_utc(birth)
-    mode, _ = resolve_mode(ayanamsha_id)
-    drik.set_ayanamsa_mode(mode)
-    place = drik.Place("native", lat, lon, tz)
-
-    # Use pyjhora_adapter.compute for Moon sidereal longitude
-    chart = compute_chart(jd, lat, lon, tz, ayanamsha_id)
-    for body in chart.get("bodies", []):
-        if body.get("name") == "Moon":
-            return body.get("sidereal_longitude", 0.0), jd
-    # Fallback: direct calculation
-    from pyjhora_adapter._jhora import drik as _drik
-    moon_lon = _drik.sidereal_longitude(jd, 1)  # 1 = Moon in swisseph
-    return float(moon_lon), jd
+    with with_sidereal_mode(ayanamsha_id, jd, via_jhora=True):
+        return float(drik.sidereal_longitude(jd, 1)), jd
 
 
 def _get_moon_nakshatra_lord(moon_sid_lon: float) -> tuple[int, str, str]:
@@ -2804,9 +2786,15 @@ def compute_mudda_system(
         # positional contract without fabricating coordinates (B.10).
         place = jh_drik.Place("unset", 0.0, 0.0, 0.0)
 
+    # PyJHora's annual routines convert a local Julian day to UTC for the natal
+    # Moon. Their returned calendar dates are local too. The solar-return search
+    # and persisted timestamps both use UTC.
+    offset_days = place.timezone / 24.0
+    local_birth_jd = birth_jd + offset_days
+
     def _t2jd(t: tuple) -> float:
         y, m, d, fh = t
-        return jh_utils.julian_day_number(jh_drik.Date(int(y), int(m), int(d)), (fh, 0, 0))
+        return jh_utils.julian_day_number(jh_drik.Date(int(y), int(m), int(d)), (fh, 0, 0)) - offset_days
 
     rows: list[dict] = []
     varsha_num = 0
@@ -2816,11 +2804,11 @@ def compute_mudda_system(
         years_param = varsha_num - 1  # PyJHora convention: 0 = birth year
 
         start_lord_idx, _arith_start_jd = jh_mudda.varsha_vimsottari_dasha_start_date(
-            birth_jd, place, years_param
+            local_birth_jd, place, years_param
         )
         varsha_lord = _MUDDA_IDX_TO_LORD[int(start_lord_idx)]
 
-        l2_raw = jh_mudda.mudda_dhasa_bhukthi(birth_jd, place, years_param, dhasa_level_index=1)
+        l2_raw = jh_mudda.mudda_dhasa_bhukthi(local_birth_jd, place, years_param, dhasa_level_index=1)
         if not l2_raw:
             break
 
@@ -3335,19 +3323,7 @@ def build_system(
         system_id, ayanamsha_id, chart_id,
     )
 
-    # Get Moon position (needed for most systems)
-    try:
-        moon_sid, birth_jd = _get_moon_position(ayanamsha_id, birth_params)
-    except Exception as exc:
-        # Fallback: direct swisseph
-        import swisseph as swe
-        from pyjhora_adapter._ayanamsha import resolve_mode
-        from pyjhora_adapter._jhora import drik
-        birth_jd = _birth_jd_utc(birth_params)
-        mode, _ = resolve_mode(ayanamsha_id)
-        with swiss_state_scope():
-            drik.set_ayanamsa_mode(mode)
-            moon_sid = float(drik.sidereal_longitude(birth_jd, 1))  # 1 = Moon
+    moon_sid, birth_jd = _get_moon_position(ayanamsha_id, birth_params)
 
     nak_idx_1, moon_nak_name, moon_nak_lord = _get_moon_nakshatra_lord(moon_sid)
 

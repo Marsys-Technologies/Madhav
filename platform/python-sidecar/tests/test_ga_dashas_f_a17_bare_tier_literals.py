@@ -41,7 +41,7 @@ _WRITER_PATH = (
 # the shared L0 module. Line numbers are 1-indexed and pinned so a genuine new code-path
 # regression elsewhere in the file cannot hide behind this allowlist growing silently --
 # adding a line here requires deliberately widening it.
-_ALLOWED_PROSE_LINES = frozenset({1143, 1144, 1148})
+_ALLOWED_PROSE_LINES = frozenset({1125, 1126, 1130})
 _ALLOWED_LOOKUP_LINES = frozenset({71})
 
 _BARE_LITERAL_RE = re.compile(

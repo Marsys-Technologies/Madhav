@@ -27,6 +27,8 @@ export interface ChartReadiness {
    * classified as leaving the served dataset valid (see servingImpact.ts).
    */
   activeRunBlocksReadings?: boolean
+  /** Gaṇita or Bodha may contain different build generations during preparation or recovery. */
+  preparationDataUnavailable?: boolean
   latestRunId: string | null
   latestError: string | null
   /**
@@ -40,6 +42,7 @@ export interface UnresolvedFailure {
   assets: number
   /** True when any unresolved failed run never started (JOB_DISPATCH_FAILED). */
   dispatchFailed: boolean
+  unsafePreparation?: boolean
 }
 
 export type ReadinessThroughputRow = {

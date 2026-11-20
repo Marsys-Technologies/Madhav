@@ -185,8 +185,8 @@ class TestForensicAnchors:
         lagna_lord = sut.SIGN_LORDS[lagna_sign]
         assert lagna_lord == "Mars"
 
-    def test_functional_class_mars_yogakaraka_aries_lagna(self):
-        assert sut.FUNCTIONAL_CLASS_BPHS["Mars"] == "yogakaraka"
+    def test_functional_class_mars_is_functional_benefic_for_aries_lagna(self):
+        assert sut.FUNCTIONAL_CLASS_BPHS["Mars"] == "functional_benefic"
 
 
 # ── §3: Group A — Aspects ─────────────────────────────────────────────────────
@@ -648,7 +648,7 @@ class TestFunctionalClass:
         # 7 classical grahas × 2 formula_id rows = 14
         assert len(func_rows) == 14, f"Expected 14 functional class rows, got {len(func_rows)}"
 
-    def test_mars_is_yogakaraka_aries_lagna(self):
+    def test_mars_is_functional_benefic_aries_lagna(self):
         rows = sut._build_functional_class_rows(
             MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
         )
@@ -660,8 +660,7 @@ class TestFunctionalClass:
             None,
         )
         assert mars_bphs is not None
-        assert mars_bphs["fact_value_text"] == "yogakaraka", \
-            f"Mars should be yogakaraka for Aries lagna; got: {mars_bphs['fact_value_text']}"
+        assert mars_bphs["fact_value_text"] == "functional_benefic"
 
     def test_mercury_is_temporal_malefic_aries_lagna(self):
         rows = sut._build_functional_class_rows(

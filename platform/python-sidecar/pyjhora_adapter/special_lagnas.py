@@ -75,12 +75,10 @@ def _special_ascendant(
 
     Upstream reads the Sun at ``sunrise(jd, place)[2] + place.timezone / 24``. ``sunrise()[2]`` is
     already a LOCAL julian day and ``charts.divisional_chart`` subtracts the timezone itself, so
-    the Sun was evaluated ``tz`` hours AFTER sunrise (about +0.23 deg for IST). Everything else is
-    byte-for-byte upstream; only the sunrise JD handed to ``divisional_chart`` differs.
+    the Sun was evaluated ``tz`` hours after sunrise (about +0.23 deg for IST).
 
-    Inherited from upstream and NOT changed here: sunrise is taken on the birth's own civil date, so
-    a birth BEFORE that day's sunrise gets a negative elapsed time rather than the previous day's
-    sunrise. Indu / Sree / Varnada (sign-level rules) and Pranapada / Bhrigu Bindhu / Kunda are not
+    Before the civil date's sunrise, elapsed time is measured from the preceding local sunrise.
+    Indu / Sree / Varnada (sign-level rules) and Pranapada / Bhrigu Bindhu / Kunda are not
     audited against the corpus in this lane (Indu's kalas 30,16,6,8,10,12,1 match Uttara Kalamrita).
 
     ``ayanamsha_id`` (``None`` = lahiri, the pipeline default) selects the sidereal mode and pins the
@@ -94,6 +92,9 @@ def _special_ascendant(
     with with_sidereal_mode(ayanamsha_id, jd, via_jhora=True):
         _, _, _, time_of_birth_in_hours = drik.jd_to_gregorian(jd)
         srise = drik.sunrise(jd, place)
+        if time_of_birth_in_hours < srise[0]:
+            srise = drik.sunrise(jd - 1, place)
+            time_of_birth_in_hours += 24
         time_diff_mins = (time_of_birth_in_hours - srise[0]) * 60
         pp = charts.divisional_chart(
             srise[2], place,  # local sunrise JD as returned: divisional_chart removes the tz itself

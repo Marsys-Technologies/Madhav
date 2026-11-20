@@ -55,6 +55,10 @@ export function deriveChartReadiness(input: {
 
   const runActive = latestRun !== null && ACTIVE_RUN_STATES.has(latestRun.state)
   const activeRunBlocks = runActive && runBlocksReadings(latestRun!)
+  const preparingChartData = runActive && (
+    latestRun!.planned_assets?.some(id => id.startsWith('ga_') || id.startsWith('bo_')) ||
+    (!latestRun!.planned_assets?.length && latestRun!.scope === 'global')
+  )
   // Assets a non-blocking active run is rebuilding keep serving their previous data.
   const nonBlockingAssets = new Set(runActive && !activeRunBlocks ? (latestRun!.planned_assets ?? []) : [])
 
@@ -127,6 +131,9 @@ export function deriveChartReadiness(input: {
     lastActivity,
     activeRunId: runActive ? latestRun!.id : null,
     activeRunBlocksReadings: activeRunBlocks || anyBuilding,
+    ...(preparingChartData || unresolvedFailure?.unsafePreparation
+      ? { preparationDataUnavailable: true }
+      : {}),
     latestRunId: latestRun?.id ?? null,
     latestError: latestRun?.last_error ?? null,
     refreshWarning,

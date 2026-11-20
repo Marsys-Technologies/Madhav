@@ -8,6 +8,8 @@ import { isCockpitDispatchableServiceProbe } from '@/lib/cockpit/serviceProbeCon
 import { requireChartPermission } from '@/lib/auth/requireChartPermission'
 import {
   BuildPreparationError,
+  INTERRUPTED_PREPARATION_REASON,
+  bodhaBuildBlockers,
   computeNonCandidateAssetIds,
   findActiveRun,
   freezeRunManifest,
@@ -15,6 +17,7 @@ import {
   loadPlanningInputs,
   persistPreparedRun,
   planRun,
+  previewDownstreamStaleness,
   type RegistryEntryWithScope,
 } from '@/lib/build/runPreparation'
 import { invalidateAssets, InvalidationError } from '@/lib/build/assetInvalidation'
@@ -48,15 +51,19 @@ export async function POST(req: NextRequest) {
   const {
     chart_id,
     scope,
-    scope_target = null,
+    scope_target: requestedScopeTarget = null,
     action,
     clear_before = false,
+    expected_plan,
+    expected_downstream,
   } = body as {
     chart_id: string
     scope: BuildScope
     scope_target?: string | null
     action: BuildAction
     clear_before?: boolean
+    expected_plan?: string[]
+    expected_downstream?: string[]
     force_l0?: boolean
   }
 
@@ -79,8 +86,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `Invalid scope: ${scope}`, code: 'INVALID_SCOPE' }, { status: 400 })
   }
   const requestedAssetSet = scope === 'asset_set'
-    ? (scope_target ?? '').split(',').map(s => s.trim()).filter(Boolean)
+    ? (typeof requestedScopeTarget === 'string' ? requestedScopeTarget : '').split(',').map(s => s.trim()).filter(Boolean)
     : []
+  const scope_target = scope === 'asset_set' ? requestedAssetSet.join(',') : requestedScopeTarget
   if (scope === 'asset_set') {
     if (requestedAssetSet.length === 0) {
       return NextResponse.json(
@@ -239,6 +247,16 @@ export async function POST(req: NextRequest) {
   let frozen: ReturnType<typeof freezeRunManifest>
   try {
     ;({ buildPlan, plan } = planRun({ inputs, scope, scopeTarget: scope_target, action, nonCandidateAssetIds }))
+    const matchesPreview = (expected: string[] | undefined, actual: string[]) =>
+      expected === undefined || (Array.isArray(expected) && expected.length === actual.length
+        && actual.every((asset, i) => asset === expected[i]))
+    if (!matchesPreview(expected_plan, plan) ||
+        (expected_downstream !== undefined && !matchesPreview(expected_downstream, previewDownstreamStaleness(inputs, plan)))) {
+      return NextResponse.json(
+        { error: 'The preparation plan changed. Close this preview and open it again.', code: 'PLAN_CHANGED' },
+        { status: 409 },
+      )
+    }
     // Freeze exactly what this dispatch accepted. `asset_registry` remains mutable
     // operational metadata, so the runner must never re-plan a queued run from it.
     frozen = freezeRunManifest({
@@ -286,22 +304,13 @@ export async function POST(req: NextRequest) {
   // Gate 3: L1/L0 precondition gate — must run against current DB state BEFORE any clear.
   // If plan includes bo_* assets, verify upstream (L1 Gaṇita + L0 remedy corpus) is ready.
   if (plan.some((id: string) => id.startsWith('bo_'))) {
-    const planBuildsL1 = plan.includes('ga_positions') && plan.includes('ga_structural')
-
     const [chartFactsRes, gaStructuralRes, remedyCorpusRes] = await readBodhaRunPreconditions(chart_id)
 
-    const missingPreconditions: string[] = []
-    if (!planBuildsL1) {
-      if (parseInt(chartFactsRes.rows[0]?.count ?? '0', 10) === 0) {
-        missingPreconditions.push('chart_facts is empty — build L1 (Gaṇita) layer first')
-      }
-      if (gaStructuralRes.rows[0]?.state !== 'lit') {
-        missingPreconditions.push('ga_structural is not lit — build L1 (Gaṇita) layer first')
-      }
-    }
-    if (parseInt(remedyCorpusRes.rows[0]?.count ?? '0', 10) === 0) {
-      missingPreconditions.push('brahma_remedy_corpus is empty — build L0 (Brahmagyan) layer first')
-    }
+    const missingPreconditions = bodhaBuildBlockers(plan, {
+      positions: Number(chartFactsRes.rows[0]?.count ?? 0) > 0,
+      structure: gaStructuralRes.rows[0]?.state === 'lit',
+      remedyCorpus: Number(remedyCorpusRes.rows[0]?.count ?? 0) > 0,
+    })
 
     if (missingPreconditions.length > 0) {
       return NextResponse.json({
@@ -331,13 +340,16 @@ export async function POST(req: NextRequest) {
     const pool = await getPool()
     const client = await pool.connect()
     let runId: string
-    let invalidation: Awaited<ReturnType<typeof invalidateAssets>>
+    let invalidation: Awaited<ReturnType<typeof invalidateAssets>> | undefined
     try {
       await client.query('BEGIN')
 
-      // Delete data — reverse order for FK safety (downstream first), each asset in
-      // its own savepoint: the operator clear stays best effort.
+      // The helper isolates failures per asset so we can report the failed scope.
+      // This endpoint still commits the clear and run as one unit.
       invalidation = await invalidateAssets({ db: client, chartId: chart_id, assets: clearAssets, policy: 'operator-best-effort' })
+      if (invalidation.failedAssetIds.length > 0) {
+        throw new Error('The requested clear was incomplete')
+      }
       const { clearedAssetIds } = invalidation
 
       // A rolled-back or preserved clear cannot reset the selected asset.
@@ -360,6 +372,13 @@ export async function POST(req: NextRequest) {
       await client.query('COMMIT')
     } catch (outerErr) {
       await client.query('ROLLBACK').catch(() => null)
+      if (invalidation?.failedAssetIds.length) {
+        return NextResponse.json({
+          error: 'Could not clear every requested asset. The clear was rolled back.',
+          code: 'CLEAR_FAILED',
+          failed_clear_asset_ids: invalidation.failedAssetIds,
+        }, { status: 500 })
+      }
       if (outerErr instanceof InvalidationError && outerErr.code === 'INVALID_TABLE') {
         return NextResponse.json({ error: outerErr.message, code: 'INVALID_TABLE' }, { status: 500 })
       }
@@ -396,7 +415,6 @@ export async function POST(req: NextRequest) {
             ? 'Data cleared but build job failed to start'
             : 'Build job failed to start',
           detail: dispatch.message, run_id: runId, code: 'JOB_DISPATCH_FAILED',
-          ...(invalidation.failedAssetIds.length > 0 ? { failed_clear_asset_ids: invalidation.failedAssetIds } : {}),
         },
         { status: 503 }
       )
@@ -405,7 +423,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       data: {
         run_id: runId, plan, asset_count: plan.length, job_image_tag: jobImageTag, cleared_asset_count: invalidation.clearedAssetIds.length,
-        ...(invalidation.failedAssetIds.length > 0 ? { failed_clear_asset_ids: invalidation.failedAssetIds } : {}),
         ...(buildPlan.protected_assets.length > 0 || clearProtectedAssets.length > 0
           ? { protected_assets: buildPlan.protected_assets }
           : {}),
@@ -446,11 +463,13 @@ export async function POST(req: NextRequest) {
   // Invoke the job — failure is fatal: the run is marked failed so it doesn't orphan as 'planned'.
   // M-1: no pre-mark as 'running'; the watchdog's undispatched-run reaper covers a run the
   // orchestrator never starts.
-  // FIX2 (a): the portal's Rebuild is a two-step flow (clear, then this run without clear_before),
-  // and after any clear the receipts still match the inputs. A Rebuild therefore always forces
-  // execution (NIRMANA_FORCE_EXECUTE on this job execution only); a plain Build keeps delta-skip.
+  // An interrupted writer may have replaced parts of its output while an older
+  // input receipt still matches. Recompute the selected recovery work to repair it.
   // A service health probe is an invocation, not a row build, and is never forced.
-  let forceExecute = action === 'rebuild' && requestedServiceProbes.length === 0
+  let forceExecute = requestedServiceProbes.length === 0 && (
+    action === 'rebuild' ||
+    plan.some(id => inputs.freshness.get(id)?.reasons.includes(INTERRUPTED_PREPARATION_REASON))
+  )
   // A per-chart Clear (cockpit Clear button) resets asset_throughput to state='dormant',
   // last_built_at=NULL but leaves the receipts, so a plain Build of that asset would match the
   // receipt, delta-skip, and return it to lit with EMPTY rows. That pair is the clear marker

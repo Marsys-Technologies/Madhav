@@ -61,9 +61,13 @@ interface Props {
   /** Task 1: refresh callback for the active run — passed from CockpitShell */
   refreshRun: () => void
   variant?: 'cockpit' | 'preparation'
+  preparationIncomplete?: boolean
 }
 
-export function DataAssetsView({ chartId, onAssetsReady, header, refreshKey, clearKey, activeRun, refreshRun, variant = 'cockpit' }: Props) {
+export function DataAssetsView({
+  chartId, onAssetsReady, header, refreshKey, clearKey, activeRun, refreshRun,
+  variant = 'cockpit', preparationIncomplete = false,
+}: Props) {
   const preparation = variant === 'preparation'
   const { assets, isLoading, error, refetch: refetchRegistry } = useAssetRegistry()
   // Task 1: useActiveRun removed — activeRun + refreshRun received as props from CockpitShell.
@@ -283,7 +287,8 @@ export function DataAssetsView({ chartId, onAssetsReady, header, refreshKey, cle
   function isLayerExpanded(layer: string): boolean {
     if (!activeRun) return false
     if (activeRun.scope === 'layer' && activeRun.scope_target === layer) return true
-    if (activeRun.scope === 'global' && (byLayer.get(layer) ?? []).some(a => activeRunPlan.includes(a.asset_id))) return true
+    if ((activeRun.scope === 'global' || activeRun.scope === 'asset_set') &&
+        (byLayer.get(layer) ?? []).some(a => activeRunPlan.includes(a.asset_id))) return true
     if (activeRun.scope === 'asset' && (byLayer.get(layer) ?? []).some(a => a.asset_id === activeRun.scope_target)) return true
     return false
   }
@@ -334,7 +339,8 @@ export function DataAssetsView({ chartId, onAssetsReady, header, refreshKey, cle
               onRunStarted={() => { refreshRun(); refetchLive() }} />
           </fieldset>
         ))}</div>
-        <PreparationReadiness assets={uniqueAssets} stats={stats} unavailable={!!statsError || !lastFetched} chartId={chartId} activeRun={activeRun} />
+        <PreparationReadiness assets={uniqueAssets} stats={stats} unavailable={!!statsError || !lastFetched}
+          chartId={chartId} activeRun={activeRun} preparationIncomplete={preparationIncomplete} />
       </div>
       <p className="j1-note" style={{ marginTop: 16 }}>
         {lastFetched ? `Status checked ${lastFetched.toLocaleTimeString()}. ` : 'Checking live status. '}

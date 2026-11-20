@@ -12,6 +12,7 @@ vi.mock('server-only', () => ({}))
 
 import {
   BuildPreparationError,
+  bodhaBuildBlockers,
   canonicalManifestJson,
   manifestDigest,
   persistPreparedRun,
@@ -22,6 +23,14 @@ import {
 
 const CHART = '11111111-2222-4333-8444-555555555555'
 const DIGESTS = writerDigestInventory.writers as Record<string, string>
+
+it('resumes the missing chart structure and Bodha using existing chart positions', () => {
+  const ready = { positions: true, structure: false, remedyCorpus: true }
+  expect(bodhaBuildBlockers(['ga_structural', 'bo_laksana'], ready)).toEqual([])
+  expect(bodhaBuildBlockers(['bo_laksana'], ready)).toEqual([
+    expect.stringContaining('ga_structural is not lit'),
+  ])
+})
 
 function reg(asset_id: string, extra: Record<string, unknown> = {}) {
   const layer =

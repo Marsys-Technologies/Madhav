@@ -131,7 +131,9 @@ vi.mock('@/lib/db/client', async importOriginal => ({
 const { mockInsertConversationWithId, mockGetConversation, mockReadinessState } = vi.hoisted(() => ({
   mockInsertConversationWithId: vi.fn(),
   mockGetConversation: vi.fn(),
-  mockReadinessState: { value: 'ready' as string },
+  mockReadinessState: {
+    value: 'ready' as string, preparationUnavailable: false, latestRunId: null as string | null,
+  },
 }))
 vi.mock('@/lib/conversations', () => ({
   getConversation: mockGetConversation,
@@ -142,7 +144,11 @@ vi.mock('@/lib/conversations', () => ({
 // against a Ready chart unless a test says otherwise. ──────────────────────────
 vi.mock('@/lib/charts/readiness', () => ({
   getChartReadinessMap: vi.fn(async (ids: string[]) =>
-    new Map(ids.map((id) => [id, { state: mockReadinessState.value }])),
+    new Map(ids.map((id) => [id, {
+      state: mockReadinessState.value,
+      preparationDataUnavailable: mockReadinessState.preparationUnavailable,
+      latestRunId: mockReadinessState.latestRunId,
+    }])),
   ),
   isDerivedChartReady: (r: { state: string }) => r.state === 'ready',
 }))
@@ -370,6 +376,8 @@ beforeEach(() => {
   mockInsertConversationWithId.mockReset().mockResolvedValue(undefined)
   mockGetConversation.mockReset().mockResolvedValue(null)
   mockReadinessState.value = 'ready'
+  mockReadinessState.preparationUnavailable = false
+  mockReadinessState.latestRunId = null
 })
 
 afterEach(() => {
@@ -903,6 +911,22 @@ describe('Jātaka chart workspace — Paripraśna write gates', () => {
       expect(mockInsertConversationWithId).toHaveBeenCalledTimes(1)
     },
   )
+
+  it('holds a chart reading while a preparation generation is incomplete', async () => {
+    mockReadinessState.preparationUnavailable = true
+    const { events } = await runRoute('What does my chart say about work?')
+    expect(events.some(e => e.code === 'CHART_PREPARATION_INCOMPLETE')).toBe(true)
+    expect(mockCallPipelinePlanner).not.toHaveBeenCalled()
+  })
+
+  it('drops assembled evidence if chart preparation ran during the turn', async () => {
+    mockCallPipelinePlanner.mockImplementation(async () => {
+      mockReadinessState.latestRunId = 'new-preparation-run'
+      return planOutcome(['chart_facts_query'])
+    })
+    const { events } = await runRoute('What does my chart say about work?')
+    expect(events.some(e => e.code === 'CHART_PREPARATION_INCOMPLETE')).toBe(true)
+  })
 
   it('a correction-archived conversation refuses a new turn with CONVERSATION_ARCHIVED_READ_ONLY', async () => {
     mockGetConversation.mockResolvedValue({

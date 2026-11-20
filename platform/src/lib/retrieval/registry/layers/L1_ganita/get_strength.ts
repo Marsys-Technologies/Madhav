@@ -51,7 +51,8 @@ export const getStrengthCapability: CapabilityDescriptor = {
     'Retrieve all graha strength metrics for a chart: Shadbala (6 components + total), ' +
     'Vimsopaka Bala (4 varga groupings), Saptavargaja Bala, Ishta/Kashta Phala, Pranic strength, ' +
     'composite in-house strength, composite state classification, special state rollup (exalted/debilitated/combust etc.), ' +
-    'yoga-karaka flag, and Tri-deva role strength. ' +
+    'yoga-karaka lordship (has_kendra_trikona_lordship for an angle and trine, is_yoga_karaka ' +
+    'for simultaneous ninth- and tenth-house ownership under A8), and Tri-deva role strength. ' +
     'Every row carries fact_id for Bodha salience computation via salience_formula_v1. ' +
     'Covers 21 strength-related fact_categories.',
   input_schema: {

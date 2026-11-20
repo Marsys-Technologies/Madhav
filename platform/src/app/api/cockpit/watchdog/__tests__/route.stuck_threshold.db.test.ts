@@ -31,7 +31,8 @@ const DB_NAME = `wd_thresh_${process.pid}_${Date.now()}`
 const SCHEMA = `
   CREATE TABLE asset_registry (asset_id text PRIMARY KEY, count_sql text, target_floor int, has_substeps boolean);
   CREATE TABLE build_runs (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), chart_id uuid, state text,
-    started_at timestamptz, ended_at timestamptz, last_error text, created_at timestamptz DEFAULT NOW());
+    scope text, scope_target text, started_at timestamptz, ended_at timestamptz, resume_requested_at timestamptz,
+    last_error text, created_at timestamptz DEFAULT NOW());
   CREATE TABLE build_run_assets (run_id uuid, asset_id text, state text, ended_at timestamptz, error text);
   CREATE TABLE asset_throughput (chart_id uuid, asset_id text, state text, last_built_at timestamptz,
     last_error text, rows_written int);
@@ -143,6 +144,44 @@ run('watchdog per-asset stuck threshold (real SQL)', () => {
     expect((await (await POST(makeReq())).json()).stuck_assets_rescued).toBe(1)
   })
 
+  it('preserves a locked preparation and reconciles the same run once the worker connection dies', async () => {
+    const runId = await seedBuilding('governed_light_asset', 20, { dataRows: true, hasSubsteps: false })
+    await pool!.query(
+      `UPDATE build_runs SET scope = 'asset_set', scope_target = E' ga_positions  ,\tbo_laksana ' WHERE id = $1`,
+      [runId],
+    )
+    await pool!.query(
+      `INSERT INTO build_run_assets (run_id, asset_id, state)
+       VALUES ($1, 'ga_positions', 'complete'), ($1, 'bo_laksana', 'queued')`,
+      [runId],
+    )
+    const { POST } = await import('../route')
+    const worker = await pool!.connect()
+    try {
+      await worker.query(`SELECT pg_advisory_lock(hashtext($1))`, [CHART])
+      expect((await (await POST(makeReq())).json()).orphan_runs_failed).toBe(0)
+      expect(await states('governed_light_asset', runId))
+        .toEqual({ throughput: 'building', runAsset: 'building', run: 'running' })
+    } finally {
+      // Close the session with its lock still held, as happens after SIGKILL.
+      worker.release(true)
+    }
+    // Recent work and rows left by a previous generation cannot rescue the dead run.
+    await pool!.query(`UPDATE asset_throughput SET last_built_at = NOW()`)
+    expect((await (await POST(makeReq())).json()).orphan_runs_failed).toBe(1)
+    expect(await states('governed_light_asset', runId))
+      .toEqual({ throughput: 'error', runAsset: 'error', run: 'failed' })
+    const assets = await pool!.query(
+      `SELECT asset_id, state FROM build_run_assets WHERE run_id = $1 ORDER BY asset_id`,
+      [runId],
+    )
+    expect(assets.rows).toEqual([
+      { asset_id: 'bo_laksana', state: 'aborted' },
+      { asset_id: 'ga_positions', state: 'complete' },
+      { asset_id: 'governed_light_asset', state: 'error' },
+    ])
+  })
+
   it('DOES reap a default asset 20 min stale (15-min default unchanged)', async () => {
     const runId = await seedBuilding('ga_some_default_asset', 20)
     const { POST } = await import('../route')
@@ -150,6 +189,26 @@ run('watchdog per-asset stuck threshold (real SQL)', () => {
     expect(body.stuck_assets_failed).toBe(1)
     expect(body.orphan_runs_failed).toBe(1) // clause 1: 40-min run, nothing alive inside 15 min
     expect(await states('ga_some_default_asset', runId)).toEqual({ throughput: 'error', runAsset: 'error', run: 'failed' })
+  })
+
+  it('times a lost resume from its latest request and preserves prior worker start', async () => {
+    const result = await pool!.query<{ id: string }>(
+      `INSERT INTO build_runs (chart_id, state, started_at, created_at, resume_requested_at)
+       VALUES ($1, 'planned', NOW() - INTERVAL '50 minutes', NOW() - INTERVAL '1 hour', NOW())
+       RETURNING id`, [CHART],
+    )
+    const id = result.rows[0].id
+    await pool!.query(
+      `INSERT INTO build_run_assets (run_id, asset_id, state) VALUES ($1, 'ga_positions', 'queued')`, [id],
+    )
+    const { POST } = await import('../route')
+    expect((await (await POST(makeReq())).json()).undispatched_runs_failed).toBe(0)
+    await pool!.query(`UPDATE build_runs SET resume_requested_at = NOW() - INTERVAL '11 minutes' WHERE id = $1`, [id])
+    expect((await (await POST(makeReq())).json()).undispatched_runs_failed).toBe(1)
+    const run = await pool!.query(`SELECT state, started_at IS NOT NULL AS previously_started FROM build_runs WHERE id = $1`, [id])
+    const asset = await pool!.query(`SELECT state FROM build_run_assets WHERE run_id = $1`, [id])
+    expect(run.rows[0]).toEqual({ state: 'failed', previously_started: true })
+    expect(asset.rows[0]).toEqual({ state: 'aborted' })
   })
 
   it('DOES reap ka_gochara_v5 once stale beyond its own threshold (a dead writer is not exempt)', async () => {

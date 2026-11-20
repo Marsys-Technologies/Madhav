@@ -11,6 +11,7 @@ import * as legacy from '@/lib/charts/readiness'
 import * as legacyImpact from '@/lib/charts/servingImpact'
 import * as model from '../model'
 import { getChartReadinessMap } from '../repository'
+import { preparationRunScopeSql } from '../../preparationRunScope'
 import * as impact from '../servingImpact'
 
 const CHART_A = 'c0000000-0000-4000-8000-000000000001'
@@ -32,7 +33,8 @@ const EXPECTED_SQL = [
          ) l`,
   `SELECT r.chart_id,
               COUNT(DISTINCT bra.asset_id)::int AS assets,
-              COALESCE(bool_or(r.last_error LIKE 'JOB_DISPATCH_FAILED%'), false) AS dispatch_failed
+              COALESCE(bool_or(r.last_error LIKE 'JOB_DISPATCH_FAILED%'), false) AS dispatch_failed,
+              bool_or(r.started_at IS NOT NULL AND ar.layer IN ('ganita', 'bodha')) AS unsafe_preparation
          FROM build_runs r
          JOIN build_run_assets bra ON bra.run_id = r.id
          JOIN asset_registry ar ON ar.asset_id = bra.asset_id AND ar.is_active = true AND ar.scope = 'per_chart'
@@ -41,7 +43,21 @@ const EXPECTED_SQL = [
           AND r.state IN ('failed', 'stopped')
           AND NOT COALESCE(
                 at.state = 'lit'
-                AND (NOT (r.scope = 'global' AND r.action = 'rebuild') OR at.last_built_at >= r.created_at),
+                AND (NOT (r.scope = 'global' AND r.action = 'rebuild') OR at.last_built_at >= r.created_at)
+                AND (
+                  NOT (
+                    ${preparationRunScopeSql('r')} AND r.started_at IS NOT NULL
+                  )
+                  OR bra.state = 'complete'
+                  OR EXISTS (
+                    SELECT 1
+                      FROM build_runs recovered
+                      JOIN build_run_assets receipt ON receipt.run_id = recovered.id
+                     WHERE recovered.chart_id = r.chart_id AND recovered.created_at > r.created_at
+                       AND recovered.state IN ('completed', 'failed', 'stopped') AND receipt.state = 'complete'
+                       AND receipt.asset_id = bra.asset_id
+                  )
+                ),
                 false)
         GROUP BY r.chart_id`,
 ]

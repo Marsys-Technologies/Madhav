@@ -193,6 +193,11 @@ def _birth_instant(birth_params: dict[str, Any]) -> tuple[float, float, float]:
 def _bhavas(plac: list[float]) -> tuple[list[float], list[float]]:
     """(sripati madhyas[12], sripati sandhis[12]) from the Placidus cusps (computed by `_derive`, which owns the Swiss state): Sripati madhyas by
     trisecting each quadrant arc between the angles; sandhi h = midpoint of madhya h and h + 1 (house h spans sandhi h - 1 to sandhi h)."""
+    if len(plac) != 12 or any(not math.isfinite(cusp) for cusp in plac):
+        raise ValueError("incomplete Placidus cusp ring")
+    arcs = [_fwd(a, b) for a, b in zip(plac, plac[1:] + plac[:1])]
+    if min(arcs) <= 0 or not math.isclose(math.fsum(arcs), 360.0, abs_tol=1e-8):
+        raise ValueError("unordered Placidus cusp ring")
     mad = list(plac)
     for a, b in ((0, 3), (3, 6), (6, 9), (9, 0)):
         step = _fwd(plac[a], plac[b]) / 3.0
@@ -277,7 +282,11 @@ def _derive(birth_params: dict[str, Any], canonical_ayanamsha_id: str) -> dict[t
             cols.update(nakshatra_num=nak + 1, nakshatra_lord=_NAK_LORD_CYCLE[nak % 9],
                         retrograde_flag="retrograde" if speed < 0 else "direct",
                         combustion_state="combust" if subj in _COMBUST_ORB and _sep(lon_sid, sun_lon) <= _COMBUST_ORB[subj] else "none")
-            h = next((i for i in range(12) if _fwd(sand[(i - 1) % 12], lon_sid) < _fwd(sand[(i - 1) % 12], sand[i])), 0)
+            matches = [i for i in range(12)
+                       if _fwd(sand[(i - 1) % 12], lon_sid) < _fwd(sand[(i - 1) % 12], sand[i])]
+            if len(matches) != 1:
+                raise ValueError("independent Śrīpati longitude does not match exactly one house")
+            h = matches[0]
             ds, de = _sep(lon_sid, sand[(h - 1) % 12]), _sep(lon_sid, sand[h])
             near, dist = ("start", ds) if ds <= de else ("end", de)
             reasons = (["within_boundary_orb"] if dist <= _SANDHI_ORB else []) + (["wholesign_chalit_divergence"] if cols["house_d1"] != h + 1 else [])

@@ -4,6 +4,8 @@ import { query } from '@/lib/db/client'
 import { resolveBuildPlan, type RegistryEntry, type ThroughputEntry, type BuildAction, type BuildScope } from '@/lib/build/plan'
 import { COCKPIT_DISPATCHABLE_SERVICE_PROBE_IDS } from '@/lib/cockpit/serviceProbeContract'
 import { requireChartPermission } from '@/lib/auth/requireChartPermission'
+import { bodhaBuildBlockers, computeNonCandidateAssetIds, loadPlanningInputs, previewDownstreamStaleness } from '@/lib/build/runPreparation'
+import { readBodhaRunPreconditions } from '@/lib/build/runRequestData'
 
 export async function POST(req: NextRequest) {
   // Plan preview is a read-only operation — any authenticated user may call it.
@@ -44,79 +46,73 @@ export async function POST(req: NextRequest) {
   if (denied) return denied
 
   try {
-    const [registryResult, throughputResult, protectedResult] = await Promise.all([
-      query<RegistryEntry>(
-        `SELECT asset_id, layer, COALESCE(depends_on, '{}') AS depends_on, estimated_seconds
-         FROM asset_registry
-         WHERE (has_writer = true AND is_active = true)
-            OR (
-              asset_id = ANY($1::text[])
-              AND scope = 'global'
-              AND asset_kind = 'service'
-              AND asset_type = 'service'
-              AND health_probe IS NOT NULL
-            )
-         ORDER BY layer, sort_order`,
-        [COCKPIT_DISPATCHABLE_SERVICE_PROBE_IDS]
-      ),
-      query<ThroughputEntry>(
-        // Include BOTH the chart-scoped rows AND the global (chart_id IS NULL) rows so that
-        // global assets (L0 bg_*, global services) report their real built state. Without the
-        // global rows the resolver treats every built L0 asset as "not built" and wrongly
-        // BLOCKS its downstream ("run the Brahmagyan layer first") for any layer/asset-scoped
-        // build. DISTINCT ON prefers the chart-scoped row when both exist.
-        `SELECT DISTINCT ON (asset_id) asset_id, state
-           FROM asset_throughput
-          WHERE chart_id=$1 OR chart_id IS NULL
-          ORDER BY asset_id, (chart_id = $1) DESC NULLS LAST`,
-        [chart_id]
-      ),
-      // SHAD-DARSHANA sweep-protection Phase 1a, Layer 1/2 — the planner guard.
-      // asset_ids protected for THIS chart_id (build_protected_assets, migration 540).
-      // resolveBuildPlan withholds any of these from plan_waves and surfaces them via
-      // BuildPlan.protected_assets instead of silently including them in a build/rebuild/
-      // update/cascade plan.
-      query<{ asset_id: string }>(
-        'SELECT asset_id FROM build_protected_assets WHERE chart_id=$1',
-        [chart_id]
-      ),
-    ])
+    const isPreparation = scope === 'asset_set' && body.preparation === true
+    const preparationInputs = isPreparation ? await loadPlanningInputs({ query }, chart_id) : null
+    let buildPlan
+    let downstream: string[] = []
+    if (preparationInputs) {
+      const { registry, throughput, protectedAssetIds, freshness } = preparationInputs
+      buildPlan = resolveBuildPlan({
+        scope, scope_target, action, registry, throughput, protectedAssetIds, freshness,
+        nonCandidateAssetIds: computeNonCandidateAssetIds(registry, { scope, allowedScopes: ['per_chart'] }),
+      })
+      downstream = previewDownstreamStaleness(preparationInputs, buildPlan.plan_waves.flat())
+    } else {
+      const [registryResult, throughputResult, protectedResult] = await Promise.all([
+        query<RegistryEntry>(
+          `SELECT asset_id, layer, COALESCE(depends_on, '{}') AS depends_on, estimated_seconds
+           FROM asset_registry
+           WHERE (has_writer = true AND is_active = true)
+              OR (
+                asset_id = ANY($1::text[])
+                AND scope = 'global'
+                AND asset_kind = 'service'
+                AND asset_type = 'service'
+                AND health_probe IS NOT NULL
+              )
+           ORDER BY layer, sort_order`,
+          [COCKPIT_DISPATCHABLE_SERVICE_PROBE_IDS]
+        ),
+        query<ThroughputEntry>(
+          // Include BOTH the chart-scoped rows AND the global (chart_id IS NULL) rows so that
+          // global assets (L0 bg_*, global services) report their real built state. Without the
+          // global rows the resolver treats every built L0 asset as "not built" and wrongly
+          // BLOCKS its downstream ("run the Brahmagyan layer first") for any layer/asset-scoped
+          // build. DISTINCT ON prefers the chart-scoped row when both exist.
+          `SELECT DISTINCT ON (asset_id) asset_id, state
+             FROM asset_throughput
+            WHERE chart_id=$1 OR chart_id IS NULL
+            ORDER BY asset_id, (chart_id = $1) DESC NULLS LAST`,
+          [chart_id]
+        ),
+        // SHAD-DARSHANA sweep-protection Phase 1a, Layer 1/2 — the planner guard.
+        // asset_ids protected for THIS chart_id (build_protected_assets, migration 540).
+        // resolveBuildPlan withholds any of these from plan_waves and surfaces them via
+        // BuildPlan.protected_assets instead of silently including them in a build/rebuild/
+        // update/cascade plan.
+        query<{ asset_id: string }>(
+          'SELECT asset_id FROM build_protected_assets WHERE chart_id=$1',
+          [chart_id]
+        ),
+      ])
 
-    const throughput = new Map(throughputResult.rows.map(r => [r.asset_id, r]))
-    const protectedAssetIds = new Set(protectedResult.rows.map(r => r.asset_id))
-    const buildPlan = resolveBuildPlan({ scope, scope_target, action, registry: registryResult.rows, throughput, protectedAssetIds })
+      const throughput = new Map(throughputResult.rows.map(r => [r.asset_id, r]))
+      const protectedAssetIds = new Set(protectedResult.rows.map(r => r.asset_id))
+      buildPlan = resolveBuildPlan({ scope, scope_target, action, registry: registryResult.rows, throughput, protectedAssetIds })
+    }
     const flatPlan = buildPlan.plan_waves.flat()
 
     // L-12: Run the same bo_* precondition checks that runs/route.ts performs, so the plan preview
     // shows accurate `blocked`/`blockers` state rather than an optimistic plan that would fail at
     // dispatch time.  Only run when the plan would include Bodha (bo_*) assets.
-    const preconditionBlockers: string[] = []
+    let preconditionBlockers: string[] = []
     if (flatPlan.some((id: string) => id.startsWith('bo_'))) {
-      const planBuildsL1 = flatPlan.includes('ga_positions') && flatPlan.includes('ga_structural')
-      const [chartFactsRes, gaStructuralRes, remedyCorpusRes] = await Promise.all([
-        query<{ count: string }>(
-          'SELECT count(*)::text AS count FROM chart_facts WHERE chart_id=$1',
-          [chart_id]
-        ),
-        query<{ state: string }>(
-          `SELECT state FROM asset_throughput WHERE chart_id=$1 AND asset_id='ga_structural'`,
-          [chart_id]
-        ),
-        query<{ count: string }>(
-          'SELECT count(*)::text AS count FROM brahma_remedy_corpus'
-        ),
-      ])
-      if (!planBuildsL1) {
-        if (parseInt(chartFactsRes.rows[0]?.count ?? '0', 10) === 0) {
-          preconditionBlockers.push('chart_facts is empty — build L1 (Gaṇita) layer first')
-        }
-        if (gaStructuralRes.rows[0]?.state !== 'lit') {
-          preconditionBlockers.push('ga_structural is not lit — build L1 (Gaṇita) layer first')
-        }
-      }
-      if (parseInt(remedyCorpusRes.rows[0]?.count ?? '0', 10) === 0) {
-        preconditionBlockers.push('brahma_remedy_corpus is empty — build L0 (Brahmagyan) layer first')
-      }
+      const [chartFactsRes, gaStructuralRes, remedyCorpusRes] = await readBodhaRunPreconditions(chart_id)
+      preconditionBlockers = bodhaBuildBlockers(flatPlan, {
+        positions: Number(chartFactsRes.rows[0]?.count ?? 0) > 0,
+        structure: gaStructuralRes.rows[0]?.state === 'lit',
+        remedyCorpus: Number(remedyCorpusRes.rows[0]?.count ?? 0) > 0,
+      })
     }
 
     // Query historical median duration per asset in the resolved plan
@@ -141,6 +137,23 @@ export async function POST(req: NextRequest) {
       if (perAsset === null) { estimated_seconds = null; break }
       estimated_seconds = (estimated_seconds ?? 0) + perAsset
     }
+    const comparableRuns = isPreparation && flatPlan.length > 0 ? await query<{
+      sample_count: number
+      lower_seconds: number | null
+      upper_seconds: number | null
+    }>(
+      `SELECT count(*)::int AS sample_count,
+              PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY elapsed) AS lower_seconds,
+              PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY elapsed) AS upper_seconds
+         FROM (
+           SELECT EXTRACT(EPOCH FROM (ended_at - created_at))::float8 AS elapsed
+           FROM build_runs
+           WHERE chart_id = $1 AND state = 'completed' AND action = $2
+             AND scope = 'asset_set' AND plan = $3::jsonb AND ended_at > created_at
+           ORDER BY ended_at DESC LIMIT 20
+         ) recent`,
+      [chart_id, action, JSON.stringify(flatPlan)],
+    ) : null
 
     // Include precondition blockers in the response alongside the plan data.
     // `blocked` merges plan-level blocking (upstream stale/error) with precondition blocking.
@@ -154,6 +167,8 @@ export async function POST(req: NextRequest) {
       data: {
         ...buildPlan,
         estimated_seconds,
+        ...(comparableRuns ? { duration_history: comparableRuns.rows[0] } : {}),
+        ...(isPreparation ? { downstream_may_become_stale: downstream } : {}),
         ...(isBlocked ? { blocked: true, blockers: allBlockers } : {}),
       },
     })

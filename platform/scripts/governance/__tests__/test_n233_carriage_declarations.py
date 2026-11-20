@@ -165,7 +165,8 @@ def test_ga_sensitive_two_pass_exists_only_in_the_solar_upagraha_branch_and_ever
     src = _src(rel)
     calls = [n for n in ast.walk(ast.parse(src)) if isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id == "two_pass_verdict"]
     assert len(calls) == 1 and "upagraha_agree" in src                                                   # ONE call site: the upagraha branch
-    assert _line(rel, 3202).strip().startswith("single = [r for r in rows if r.get(\"verification_pass_status\") == UNVERIFIED_DEFAULT]")
+    single_filter = 'single = [r for r in rows if r.get("verification_pass_status") == UNVERIFIED_DEFAULT]'
+    assert sum(line.strip() == single_filter for line in src.splitlines()) == 1
     assert "`single` is a permitted tier for" in src or "permitted tier" in src
     c = DECLS["ga_sensitive"]["carriage"]
     assert "EXCEPT the five solar upagraha" in c["why"] and "ARE independently re-derived" in c["why"] and "NOT claimed" in c["why"] and "does not measure" in c["why"]      # the exception is stated first, and single-derivation is disclaimed for those rows

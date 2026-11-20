@@ -113,4 +113,26 @@ describe('PlanModal read-only blocked preview', () => {
     expect(mockFetch).toHaveBeenCalledTimes(1)
     expect(onRunStarted).not.toHaveBeenCalled()
   })
+
+  it('confirms the same through-Bodha assets without pre-clearing the chart', async () => {
+    const ids = ['ga_positions', 'bo_laksana']
+    const body = { chart_id: CHART_ID, scope: 'asset_set', scope_target: ids.join(','), action: 'rebuild' }
+    mockFetch.mockResolvedValueOnce(new Response(JSON.stringify({ data: {
+      status: 'ok', blockers: [], plan_waves: ids.map(id => [id]), estimated_seconds: 1,
+      downstream_may_become_stale: ['ka_kshetra'],
+    } }), { status: 200 }))
+    mockFetch.mockResolvedValueOnce(new Response(JSON.stringify({ data: { run_id: 'preparation-run' } })))
+    const onRunStarted = vi.fn()
+    render(<PlanModal chartId={CHART_ID} scope="asset_set" scopeTarget={ids.join(',')}
+      action="rebuild" label="Rebuild through Bodha" preparation onClose={vi.fn()} onRunStarted={onRunStarted} />)
+    expect(await screen.findByText(/may need a later refresh: ka_kshetra/)).toBeVisible()
+    expect(mockFetch.mock.calls[0][0]).toBe('/api/cockpit/plan')
+    expect(JSON.parse(mockFetch.mock.calls[0][1].body)).toEqual({ ...body, preparation: true })
+    fireEvent.click(screen.getByRole('button', { name: /^Rebuild$/ }))
+    await waitFor(() => expect(onRunStarted).toHaveBeenCalledWith('preparation-run'))
+    expect(mockFetch.mock.calls[1][0]).toBe('/api/cockpit/runs')
+    expect(JSON.parse(mockFetch.mock.calls[1][1].body)).toEqual({
+      ...body, clear_before: false, expected_plan: ids, expected_downstream: ['ka_kshetra'],
+    })
+  })
 })

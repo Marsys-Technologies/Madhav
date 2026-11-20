@@ -15,9 +15,7 @@
  * (`ashtakavarga_bindu_per_varga`, `ashtakavarga_pinda_sarva_per_varga`) are NOT added to the
  * unconditional default (they would dominate/paginate out the smaller default categories —
  * §N.6 density discipline) and are reachable via an explicit `categories` request instead.
- * `ashtakavarga_anubindu` is kept in the default list for back-compat but is a legacy category
- * name the writer never actually emits (zero live rows across every chart, not just this one) —
- * requesting it honestly returns zero rows, never fabricated data (B.10).
+ * `ashtakavarga_anubindu` exposes the final śodhana residuals by whole-sign house.
  */
 import { queryFactCollection } from './fact_collection'
 import type { CapabilityDescriptor } from '../../types'
@@ -53,9 +51,8 @@ export const getAshtakavargaCapability: CapabilityDescriptor = {
     'Covers (default page): ashtakavarga_bindu, ashtakavarga_bindu_sign, ' +
     'ashtakavarga_pinda_bhinna, ashtakavarga_pinda_sarva, ashtakavarga_pinda_sodhita, ' +
     'ashtakavarga_pinda_raasi, ashtakavarga_trikona_shodhana, ' +
-    'ashtakavarga_ekadhipathya_shodhana, ashtakavarga_kakshya_boundary ' +
-    '(ashtakavarga_anubindu is also on the default list for back-compat but the writer never ' +
-    'emits it — always returns zero rows). Two further real, computed, per-varga categories ' +
+    'ashtakavarga_ekadhipathya_shodhana, ashtakavarga_kakshya_boundary and ' +
+    'ashtakavarga_anubindu (final residuals by whole-sign house). Two per-varga categories ' +
     'are available on request (not on the default page — large row sets): ' +
     '`ashtakavarga_bindu_per_varga` (bindu recomputed per divisional chart) and ' +
     '`ashtakavarga_pinda_sarva_per_varga` — pass categories:["ashtakavarga_bindu_per_varga"] ' +

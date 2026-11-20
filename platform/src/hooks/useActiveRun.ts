@@ -35,32 +35,36 @@ export interface ActiveRun {
 interface UseActiveRunResult {
   run: ActiveRun | null
   assets: ActiveRunAsset[]
+  preparationIncomplete: boolean
   refresh: () => void
 }
 
 export function useActiveRun(
   chartId: string,
-  options?: { onCompleted?: () => void }
+  options?: { onCompleted?: () => void; preparation?: boolean }
 ): UseActiveRunResult {
   const [run, setRun] = useState<ActiveRun | null>(null)
   const [assets, setAssets] = useState<ActiveRunAsset[]>([])
+  const [preparationIncomplete, setPreparationIncomplete] = useState(false)
+  const includePreparation = options?.preparation ?? false
   const prevRunRef = useRef<ActiveRun | null>(null)
   const onCompletedRef = useRef(options?.onCompleted)
 
+  const isRunning = run !== null
   useEffect(() => {
     onCompletedRef.current = options?.onCompleted
   }, [options?.onCompleted])
 
   const fetch_ = useCallback(async (signal?: AbortSignal) => {
     try {
-      const r = await fetch(`/api/cockpit/runs/active?chart_id=${chartId}`, {
+      const r = await fetch(`/api/cockpit/runs/active?chart_id=${chartId}${includePreparation ? '&preparation=true' : ''}`, {
         credentials: 'include',
         cache: 'no-store',
         signal,
       })
       if (!r.ok || signal?.aborted) return
       const body = await r.json()
-      if (signal?.aborted) return
+      if (signal?.aborted || body._error) return
       const newRun: ActiveRun | null = body.data?.run ?? null
       // Belt-and-suspenders: when an active run transitions to null (terminal),
       // trigger an immediate stats refetch so counts update within the 5s poll
@@ -71,24 +75,26 @@ export function useActiveRun(
       prevRunRef.current = newRun
       setRun(newRun)
       setAssets(body.data?.assets ?? [])
+      if (includePreparation && typeof body.preparation_incomplete === 'boolean') {
+        setPreparationIncomplete(body.preparation_incomplete)
+      }
     } catch (e) {
       if ((e as Error)?.name === 'AbortError') return
       // network error — keep last known state
     }
-  }, [chartId])
+  }, [chartId, includePreparation])
 
   useEffect(() => {
     const controller = new AbortController()
     const initialFetch = setTimeout(() => void fetch_(controller.signal), 0)
     // Poll at 5s during active run, 15s during idle — reduces 24 req/min to 8 req/min at idle
-    const isRunning = prevRunRef.current !== null
     const t = setInterval(() => fetch_(controller.signal), isRunning ? 5_000 : 15_000)
     return () => {
       controller.abort()
       clearTimeout(initialFetch)
       clearInterval(t)
     }
-  }, [fetch_])
+  }, [fetch_, isRunning])
 
-  return { run, assets, refresh: () => fetch_() }
+  return { run, assets, preparationIncomplete, refresh: () => fetch_() }
 }
