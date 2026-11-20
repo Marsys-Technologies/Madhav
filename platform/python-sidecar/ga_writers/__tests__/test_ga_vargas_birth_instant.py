@@ -156,3 +156,45 @@ def test_writer_passes_the_utc_julian_day_to_sidereal_longitude() -> None:
     # The Lagna call is correct as-is and must NOT be 'fixed' to jd_utc:
     # drik.ascendant applies the timezone itself from `place`.
     assert "drik.ascendant(jd_ut, place)" in text
+
+
+def test_parashari_d10_covers_all_signs_and_subdivision_boundaries() -> None:
+    from math import nextafter
+
+    from pyjhora_adapter.vargas import parashari_d10
+
+    # First D10 sign in Aries–Pisces order, using zero-based sign indices.
+    opening_signs = (0, 9, 2, 11, 4, 1, 6, 3, 8, 5, 10, 7)
+    for natal_sign, first_sign in enumerate(opening_signs):
+        for division in range(10):
+            boundary = 3.0 * division
+            expected = (first_sign + division) % 12
+            assert parashari_d10(natal_sign, boundary) == (expected, 0.0)
+            assert parashari_d10(natal_sign, boundary + 1.5) == (expected, 15.0)
+            if division:
+                prior_sign, prior_degree = parashari_d10(natal_sign, nextafter(boundary, 0.0))
+                assert prior_sign == (expected - 1) % 12
+                assert 29.99 < prior_degree < 30.0
+
+
+def test_d10_writer_and_chart_adapter_use_the_parashari_positions() -> None:
+    from ga_writers.ga_vargas_writer import _compute_varga_positions
+    from pyjhora_adapter.vargas import compute_vargas
+
+    jd_local, _ = _birth_jds()
+    ayanamsha = "lahiri_chitrapaksha"
+    vargas, _ = _compute_varga_positions(
+        jd_local, ayanamsha, BIRTH_LAT, BIRTH_LON, BIRTH_TZ,
+    )
+    adapter = compute_vargas(
+        jd_local, ayanamsha, lat=BIRTH_LAT, lon=BIRTH_LON, tz=BIRTH_TZ,
+    )
+    # The natal Sun is in Capricorn (even); its eighth division lands in
+    # Aries. The natal Moon is in Aquarius (odd); its tenth lands in Scorpio.
+    assert vargas["D10"]["Sun"]["sign"] == "Aries"
+    assert vargas["D10"]["Moon"]["sign"] == "Scorpio"
+    for row in adapter["D10"]:
+        if row["name"] in vargas["D10"]:
+            writer_row = vargas["D10"][row["name"]]
+            assert row["sign_id"] == writer_row["sign_id"]
+            assert row["degree_in_sign"] == pytest.approx(writer_row["degree_in_sign"])

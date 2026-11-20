@@ -7693,7 +7693,7 @@ def _build_graha_yuddha_per_varga_rows(
     # MODELING ASSUMPTION: graha-yuddha is a physical-sky phenomenon; divisional degrees
     # are a mathematical mapping. Applied here per GA_STRUCTURAL_REBUILD_LOGIC_v1_0.md §0.2.
     rows: list[dict[str, Any]] = []
-    grahas = [g for g in ALL_GRAHAS if g in varga_state and g not in ("Rahu", "Ketu", "Sun")]
+    grahas = [g for g in ALL_GRAHAS if g in varga_state and g in ("Mars", "Mercury", "Jupiter", "Venus", "Saturn")]
     for i, n1 in enumerate(grahas):
         for n2 in grahas[i+1:]:
             d1 = varga_state[n1]

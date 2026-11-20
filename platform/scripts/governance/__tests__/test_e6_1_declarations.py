@@ -2229,12 +2229,12 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/ga_writers/ga_vargas_writer.py",
-    1220,
+    1223,
     "\"citation_human\": f\"{body} v"
    ],
    [
     "platform/python-sidecar/ga_writers/ga_vargas_writer.py",
-    1669,
+    1672,
     "\"citation_human\": (f\"{body} "
    ]
   ],

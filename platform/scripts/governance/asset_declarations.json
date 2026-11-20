@@ -17115,7 +17115,7 @@
     "applies": "D3",
     "nature": "single_derivation",
     "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
-    "evidence": "platform/python-sidecar/ga_writers/ga_vargas_writer.py:2643",
+    "evidence": "platform/python-sidecar/ga_writers/ga_vargas_writer.py:2646",
     "per_witness_values": false
    },
    "prose_fields": [
@@ -17129,7 +17129,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_divisionals; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_divisionals.ts:98 reads `chart_divisionals` (`let sql = `SELECT * FROM chart_divisionals WHERE chart_id = $1``). Dens.served=PASS.",
-    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state varga signs, dignities, house placements, contributions and scores (also helper _citation_human). Composed at platform/python-sidecar/ga_writers/ga_vargas_writer.py:1220, platform/python-sidecar/ga_writers/ga_vargas_writer.py:1669. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_vargas_writer.py): 27 composed, 0 constant, 0 forwarded, 0 other. Column bound at platform/python-sidecar/ga_writers/ga_vargas_writer.py:2643 (INSERT INTO chart_divisionals); platform/python-sidecar/ga_writers/ga_vargas_writer.py:2671 (INSERT INTO chart_divisionals); emitted by the writer INSERT (no served read of this table's citation_human confirmed)."
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state varga signs, dignities, house placements, contributions and scores (also helper _citation_human). Composed at platform/python-sidecar/ga_writers/ga_vargas_writer.py:1223, platform/python-sidecar/ga_writers/ga_vargas_writer.py:1672. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_vargas_writer.py): 27 composed, 0 constant, 0 forwarded, 0 other. Column bound at platform/python-sidecar/ga_writers/ga_vargas_writer.py:2646 (INSERT INTO chart_divisionals); platform/python-sidecar/ga_writers/ga_vargas_writer.py:2674 (INSERT INTO chart_divisionals); emitted by the writer INSERT (no served read of this table's citation_human confirmed)."
    },
    "evidence_kind": "writer",
    "fidelity_tests": [
@@ -17155,7 +17155,7 @@
      "source_file": "platform/python-sidecar/ga_writers/ga_vargas_writer.py",
      "source_name": "_FLOORED_BODY_TO_SUBJECT",
      "why": "MC is Medium Coeli, the Midheaven: a standard chart-point code beside Lagna. The ga_vargas writer itself assigns it as the fact_subject of its floored MC rows (it keeps its own identity mapping, outside the graha vocabulary's scope); the value detector only sees two letters that collide with a graha abbreviation",
-     "evidence": "platform/python-sidecar/ga_writers/ga_vargas_writer.py:123"
+     "evidence": "platform/python-sidecar/ga_writers/ga_vargas_writer.py:124"
     }
    ]
   },
