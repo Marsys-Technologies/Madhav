@@ -45,6 +45,7 @@ def test_writer_checks_projection_and_source_link_counts(monkeypatch) -> None:
         def __enter__(self): return self
         def __exit__(self, *_exc): return False
         def execute(self, sql, params=None): self.owner.sql.append(" ".join(sql.split()))
+        def fetchall(self): return []   # attribution_state capture (SS N-111): no row carries a state in this fake
         def fetchone(self):
             return {"catalog_count": expected, "ontology_count": expected,
                     "reference_count": expected, "source_link_count": 0}
