@@ -354,6 +354,7 @@ def test_varga_graha_to_graha_significator_path():
     "MANDI", "MRITYU_SPHUTA", "BRAHMA_POINT", "SARVA", "CHART",
     "DHWAJA", "BHAVA_LAGNA", "GHATI_LAGNA", "UPAPADA_LAGNA",
     "AGASTYA_SPHUTA", "RP_ASC_LORD", "PANCHAKA_AGNI",
+    "TRISPHUTA", "CHATUSHPHUTA", "PANCHASPHUTA",
 ])
 def test_known_special_points_are_identity_free_not_unparsed(subject):
     assert parse_fact_identity(subject, "some_key", "some_category") is None

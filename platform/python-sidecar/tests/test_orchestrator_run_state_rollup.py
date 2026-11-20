@@ -40,7 +40,6 @@ def _install(monkeypatch, state, fail_assets, mark_calls):
     monkeypatch.setattr(runner, "acquire_chart_lock", lambda *a, **k: True)
     monkeypatch.setattr(runner, "release_chart_lock", lambda *a, **k: None)
     monkeypatch.setattr(runner, "check_signals", lambda *a, **k: None)
-    monkeypatch.setattr(runner, "is_asset_complete", lambda *a, **k: False)
     monkeypatch.setattr(runner, "claim_runnable_run", lambda *a, **k: True)
 
     def fake_mark_run_state(conn, cur, run_id, new_state, **kwargs):
@@ -306,12 +305,48 @@ class _RaceFakeConn(FakeConn):
         return _RaceFakeCursor(self._state, self._db_truth, self._throughput)
 
 
+def test_prepared_build_checks_selected_assets_even_if_previously_lit(monkeypatch):
+    from tests.test_orchestrator_gate import _frozen_run_fields
+
+    state = dict.fromkeys(PLAN, "queued")
+    throughput = dict.fromkeys(PLAN, "lit")
+    mark_calls = []
+
+    def fake_run_asset(conn, cur, run_id, chart_id, asset_id, position, **kwargs):
+        state[asset_id] = "complete"
+
+    class RetryCursor(_RaceFakeCursor):
+        def execute(self, sql, params=None):
+            if "FROM build_runs WHERE id" in sql:
+                super().execute(sql, params)
+                row = self._result[0]
+                manifest = _frozen_run_fields()["plan_manifest"]
+                manifest["action"] = "build"
+                row.update(action="build", plan_manifest=manifest,
+                           plan_manifest_digest=runner._canonical_manifest_digest(manifest))
+            elif "SELECT state FROM asset_throughput" in sql:
+                self._result = [{"state": "lit"}]
+            else:
+                super().execute(sql, params)
+
+    class RetryConn(_RaceFakeConn):
+        def cursor(self):
+            return RetryCursor(self._state, self._db_truth, self._throughput)
+
+    _install_race(monkeypatch, state, state, mark_calls, fake_run_asset, throughput)
+    monkeypatch.setattr(runner, "connect", lambda: RetryConn(state, state, throughput))
+
+    runner.execute_run("run-1")
+
+    assert state == dict.fromkeys(PLAN, "complete")
+    assert mark_calls[-1] == "completed"
+
+
 def _install_race(monkeypatch, state, db_truth, mark_calls, run_asset_fn, throughput=None):
     monkeypatch.setattr(runner, "connect", lambda: _RaceFakeConn(state, db_truth, throughput))
     monkeypatch.setattr(runner, "acquire_chart_lock", lambda *a, **k: True)
     monkeypatch.setattr(runner, "release_chart_lock", lambda *a, **k: None)
     monkeypatch.setattr(runner, "check_signals", lambda *a, **k: None)
-    monkeypatch.setattr(runner, "is_asset_complete", lambda *a, **k: False)
     monkeypatch.setattr(runner, "claim_runnable_run", lambda *a, **k: True)
 
     def fake_mark_run_state(conn, cur, run_id, new_state, **kwargs):

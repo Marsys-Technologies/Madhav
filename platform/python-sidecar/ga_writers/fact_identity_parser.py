@@ -214,6 +214,7 @@ KNOWN_SPECIAL_POINTS = frozenset({
     # named points, no embedded digit.
     "BHAVA_ARUDHA_UPA", "BHRIGU_BINDU", "PRANAPADA_SPHUTA", "BEEJA_SPHUTA",
     "KSHETRA_SPHUTA", "TRIKONA_DASHA_SPHUTA",
+    "TRISPHUTA", "CHATUSHPHUTA", "PANCHASPHUTA",
     "SRI_YANTRA_LAGNA", "SRI_YANTRA_MOON", "SRI_YANTRA_SUN",
     # Saptarishi/Maharsi sphuta points (maharsi_specific_point) — 7 fixed
     # sage-attributed points.
