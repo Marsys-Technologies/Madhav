@@ -1,0 +1,395 @@
+{
+  "lane": "s_l2_cgm_graph",
+  "ruling": "S-L2 Bodha graph: bo_bimba, bo_karanajala, bo_cgm_paths, bo_cgm_motifs, bo_yantra_mechanism",
+  "pr": "suvarna/land/TI-s-l2-prep-001",
+  "description": "The graph is a deterministic function of the MSR yoga/dosha classes and a few static structural facts. Node, edge, path and motif identities are derived from semantic keys (node type + subject, edge type + endpoints), never from signal or fact ids, so they are stable; what moves is the CITED ids stored in arrays (fact ids, signal ids, chart_vichara ids), which enter the snapshot as digests. Sets whose members are physically fixed (9 grahas, 12 bhavas, 13 domains per ayanamsha) carry an explicit zero claim for appeared/disappeared; sets that depend on the MSR yoga/dosha membership are zero because no declared S-L1 change creates or removes a yoga/dosha signal on the canonical chart.",
+  "may_change": [
+    {
+      "table": "bodha_cgm_nodes",
+      "categories": [
+        "arudha",
+        "bhava",
+        "domain",
+        "dosha",
+        "graha",
+        "special_lagna",
+        "yoga"
+      ],
+      "change_types": [
+        "appeared",
+        "disappeared"
+      ],
+      "expected_count": {
+        "exact": 0
+      },
+      "note": "Node set = 9 grahas + 12 bhavas + 13 domains per ayanamsha (fixed) + yoga/dosha nodes from the MSR yoga (74) and dosha (26) classes, which S-L1 cannot change (R3) + arudha/special_lagna nodes (write-once, ON CONFLICT DO NOTHING, never deleted). Source: section 3.4 (R8)."
+    },
+    {
+      "table": "bodha_cgm_nodes",
+      "categories": [
+        "arudha",
+        "bhava",
+        "domain",
+        "dosha",
+        "graha",
+        "special_lagna",
+        "yoga"
+      ],
+      "change_types": [
+        "value"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 385
+      },
+      "note": "node text = id, dignity, domain, hub, MSR signal id digest, position digest, constituents digest, degrees; a moved MSR id or an ephemeris-shifted position changes it; at most every node (385). Source: section 3.4 (R8)."
+    },
+    {
+      "table": "bodha_cgm_nodes",
+      "categories": [
+        "arudha",
+        "bhava",
+        "domain",
+        "dosha",
+        "graha",
+        "special_lagna",
+        "yoga"
+      ],
+      "change_types": [
+        "tier"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 385
+      },
+      "note": "verification_pass_status; at most one change per node (385). Source: section 3.4 (R5)."
+    },
+    {
+      "table": "bodha_cgm_edges",
+      "categories": [
+        "arudha_house",
+        "aspect",
+        "bhava_aspect",
+        "dispositor",
+        "lordship",
+        "occupancy",
+        "special_lagna_house"
+      ],
+      "change_types": [
+        "appeared",
+        "disappeared"
+      ],
+      "expected_count": {
+        "exact": 0
+      },
+      "note": "Edge types other than argala come from static structure (sign lordship, occupancy, aspects, bhava aspects, arudha/special-lagna houses) and the fixed node set; the ephemeris move has no class flip on the canonical chart, so no edge appears or disappears. Source: section 3.4 (R8)."
+    },
+    {
+      "table": "bodha_cgm_edges",
+      "categories": [
+        "argala"
+      ],
+      "change_types": [
+        "appeared"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 120
+      },
+      "note": "bo_karanajala caps argala edges at 24 per ayanamsha: 24 x 5 = 120; the declared argala changes (argala_graha_natal +156, argala_natal_matrix value churn) can move the argala set within that cap. Source: section 3.4 (R8)."
+    },
+    {
+      "table": "bodha_cgm_edges",
+      "categories": [
+        "argala"
+      ],
+      "change_types": [
+        "disappeared"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 119
+      },
+      "note": "At most the 119 argala edges that exist. Source: section 3.4 (R8)."
+    },
+    {
+      "table": "bodha_cgm_edges",
+      "categories": [
+        "argala",
+        "arudha_house",
+        "aspect",
+        "bhava_aspect",
+        "dispositor",
+        "lordship",
+        "occupancy",
+        "special_lagna_house"
+      ],
+      "change_types": [
+        "value"
+      ],
+      "expected_count": {
+        "min": 635,
+        "max": 849
+      },
+      "note": "The 754 edges that cite chart_vichara ids all change (every post-S-L1 vichara row has a new id, S-L1 hooks section 8), less the argala edges that may disappear (119): min 635; the 330 edges that cite chart_facts ids also change; max = every edge (849). Source: section 3.4 (R9)."
+    },
+    {
+      "table": "bodha_cgm_edges",
+      "categories": [
+        "argala",
+        "arudha_house",
+        "aspect",
+        "bhava_aspect",
+        "dispositor",
+        "lordship",
+        "occupancy",
+        "special_lagna_house"
+      ],
+      "change_types": [
+        "tier"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 969
+      },
+      "note": "verification_pass_status; at most one change per edge (849 + up to 120 argala). Source: section 3.4 (R5)."
+    },
+    {
+      "table": "bodha_cgm_paths",
+      "categories": [
+        "dispositor_chain"
+      ],
+      "change_types": [
+        "appeared",
+        "disappeared",
+        "value"
+      ],
+      "expected_count": {
+        "exact": 0
+      },
+      "note": "One dispositor chain per graha node per ayanamsha (9 x 5 = 45). Path identity and the node/edge chains are digests of stable deterministic ids; chain length, final-dispositor flag and convergence count come from static sign lordship. Strength is a continuous score, not a class. Source: section 3.4 (R8)."
+    },
+    {
+      "table": "bodha_cgm_paths",
+      "categories": [
+        "dispositor_chain"
+      ],
+      "change_types": [
+        "tier"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 45
+      },
+      "note": "verification_pass_status; at most one change per path. Source: section 3.4 (R5)."
+    },
+    {
+      "table": "bodha_cgm_motifs",
+      "categories": [
+        "mutual_aspect",
+        "mutual_aspect_triangle"
+      ],
+      "change_types": [
+        "appeared",
+        "disappeared",
+        "value"
+      ],
+      "expected_count": {
+        "exact": 0
+      },
+      "note": "Motifs are structural detectors over the (stable) edge set: mutual_aspect pairs and triangles. Identity = fingerprint hash of stable node ids; involved node/edge digests are stable. Source: section 3.4 (R8)."
+    },
+    {
+      "table": "bodha_cgm_motifs",
+      "categories": [
+        "mutual_aspect",
+        "mutual_aspect_triangle"
+      ],
+      "change_types": [
+        "tier"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 600
+      },
+      "note": "verification_pass_status; at most one change per motif. Source: section 3.4 (R5)."
+    },
+    {
+      "table": "bodha_cgm_sub_graphs",
+      "categories": [
+        "connected_component"
+      ],
+      "change_types": [
+        "value"
+      ],
+      "expected_count": {
+        "exact": 0
+      },
+      "note": "Node/edge id digests of the connected component and its centroid are stable. Source: section 3.4 (R8)."
+    },
+    {
+      "table": "bodha_cgm_sub_graphs",
+      "categories": [
+        "connected_component"
+      ],
+      "change_types": [
+        "appeared",
+        "disappeared"
+      ],
+      "expected_count": {
+        "min": 0
+      },
+      "optional": true,
+      "note": "The number of connected components is a graph property no rule bounds; attribution only. Source: section 3.4."
+    },
+    {
+      "table": "bodha_cgm_sub_graphs",
+      "categories": [
+        "connected_component"
+      ],
+      "change_types": [
+        "tier"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 5
+      },
+      "note": "verification_pass_status; at most one per sub-graph. Source: section 3.4 (R5)."
+    },
+    {
+      "table": "bodha_cgm_chart_topology_summary",
+      "categories": [
+        "topology"
+      ],
+      "change_types": [
+        "appeared",
+        "disappeared"
+      ],
+      "expected_count": {
+        "exact": 0
+      },
+      "note": "One topology summary per ayanamsha (5). Source: section 3.4 (R8)."
+    },
+    {
+      "table": "bodha_cgm_chart_topology_summary",
+      "categories": [
+        "topology"
+      ],
+      "change_types": [
+        "value"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 5
+      },
+      "note": "The hub jsonb carries centrality scores, so its digest can move with the strengths; at most one per ayanamsha. Source: section 3.4 (R8)."
+    },
+    {
+      "table": "bodha_cgm_chart_topology_summary",
+      "categories": [
+        "topology"
+      ],
+      "change_types": [
+        "tier"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 5
+      },
+      "note": "verification_pass_status. Source: section 3.4 (R5)."
+    },
+    {
+      "table": "bodha_mechanisms",
+      "categories": [
+        "convergent_dispositor_chain",
+        "graha_bhava_affliction",
+        "mutual_aspect",
+        "mutual_aspect_triangle"
+      ],
+      "change_types": [
+        "appeared",
+        "disappeared"
+      ],
+      "expected_count": {
+        "exact": 0
+      },
+      "note": "Mechanisms promote the (stable) motifs (420 + 180), plus 10 graha_bhava_affliction and 5 convergent_dispositor_chain: stable keys and stable member ids. Source: section 3.4 (R8)."
+    },
+    {
+      "table": "bodha_mechanisms",
+      "categories": [
+        "convergent_dispositor_chain",
+        "graha_bhava_affliction",
+        "mutual_aspect",
+        "mutual_aspect_triangle"
+      ],
+      "change_types": [
+        "value"
+      ],
+      "expected_count": {
+        "min": 605,
+        "max": 615
+      },
+      "note": "605 of 615 mechanisms cite chart_vichara ids, which all change: min 605, max every mechanism. Source: section 3.4 (R9)."
+    },
+    {
+      "table": "bodha_mechanisms",
+      "categories": [
+        "convergent_dispositor_chain",
+        "graha_bhava_affliction",
+        "mutual_aspect",
+        "mutual_aspect_triangle"
+      ],
+      "change_types": [
+        "tier"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 615
+      },
+      "note": "verification_pass_status. Source: section 3.4 (R5)."
+    },
+    {
+      "table": "bodha_contradictions",
+      "categories": [
+        "domain_promise_vs_denial"
+      ],
+      "change_types": [
+        "appeared",
+        "disappeared"
+      ],
+      "expected_count": {
+        "exact": 0
+      },
+      "note": "Contradictions are yoga-vs-dosha pairs sharing a domain and graha (3 per ayanamsha); the yoga/dosha signal sets cannot change (R3), and the key is the two signal TYPE ids. Source: section 3.4 (R8)."
+    },
+    {
+      "table": "bodha_contradictions",
+      "categories": [
+        "domain_promise_vs_denial"
+      ],
+      "change_types": [
+        "value"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 15
+      },
+      "note": "contradiction_id and the a/b columns are signal ids; they move when either signal's id moves; at most every pair. Source: section 3.4 (R6)."
+    },
+    {
+      "table": "bodha_contradictions",
+      "categories": [
+        "domain_promise_vs_denial"
+      ],
+      "change_types": [
+        "tier"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 15
+      },
+      "note": "verification_pass_status. Source: section 3.4 (R5)."
+    }
+  ]
+}

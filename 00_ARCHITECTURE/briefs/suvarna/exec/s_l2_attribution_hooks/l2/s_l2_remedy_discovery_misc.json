@@ -1,0 +1,438 @@
+{
+  "lane": "s_l2_remedy_discovery_misc",
+  "ruling": "S-L2 Bodha remedies, pratijna, discoveries, anomalies, scorecard: bo_upaya, bo_pratijna, bo_anveshana, bo_pramana_mapa",
+  "pr": "suvarna/land/TI-s-l2-prep-001",
+  "description": "Remedy tables are keyed by graha / remedy catalogue / dosha class (finite, static for the chart); pratijna is keyed by event class x ayanamsha (27 x 5); discoveries and anomalies are data-dependent lists with no natural key, re-keyed one hundred percent because their ids embed signal ids. bo_upaya deletes the legacy dasha-windowed table and never writes it again, so its five rows disappear exactly.",
+  "may_change": [
+    {
+      "table": "bodha_rm_resonances",
+      "categories": [
+        "static_natal"
+      ],
+      "change_types": [
+        "appeared",
+        "disappeared"
+      ],
+      "expected_count": {
+        "exact": 0
+      },
+      "note": "9 grahas x 5 ayanamshas = 45, a fixed set. Source: section 3.6 (R8)."
+    },
+    {
+      "table": "bodha_rm_resonances",
+      "categories": [
+        "static_natal"
+      ],
+      "change_types": [
+        "value"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 45
+      },
+      "note": "Scores are continuous (not a class); the class flags, rank and the digests of doshas/motifs/cells move with the strengths and the cited ids; at most every row. Source: section 3.6 (R6)."
+    },
+    {
+      "table": "bodha_rm_resonances",
+      "categories": [
+        "static_natal"
+      ],
+      "change_types": [
+        "tier"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 45
+      },
+      "note": "verification_pass_status. Source: section 3.6 (R5)."
+    },
+    {
+      "table": "bodha_rm_remedy_prescriptions",
+      "categories": [
+        "charity",
+        "japa",
+        "mantra",
+        "puja"
+      ],
+      "change_types": [
+        "appeared",
+        "disappeared"
+      ],
+      "expected_count": {
+        "min": 0
+      },
+      "optional": true,
+      "note": "The prescription set depends on the resonance match scores (thresholds); no rule bounds it; attribution only. Source: section 3.6."
+    },
+    {
+      "table": "bodha_rm_remedy_prescriptions",
+      "categories": [
+        "charity",
+        "japa",
+        "mantra",
+        "puja"
+      ],
+      "change_types": [
+        "value"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 270
+      },
+      "optional": true,
+      "note": "A prescription changes if its resonance, strength or detail digest does; it can also be re-created (paired); bounded by twice the rows. Source: section 3.6."
+    },
+    {
+      "table": "bodha_rm_remedy_prescriptions",
+      "categories": [
+        "charity",
+        "japa",
+        "mantra",
+        "puja"
+      ],
+      "change_types": [
+        "tier"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 270
+      },
+      "optional": true,
+      "note": "verification_pass_status. Source: section 3.6 (R5)."
+    },
+    {
+      "table": "bodha_rm_chart_summary",
+      "categories": [
+        "summary"
+      ],
+      "change_types": [
+        "appeared",
+        "disappeared"
+      ],
+      "expected_count": {
+        "exact": 0
+      },
+      "note": "One summary per ayanamsha. Source: section 3.6 (R8)."
+    },
+    {
+      "table": "bodha_rm_chart_summary",
+      "categories": [
+        "summary"
+      ],
+      "change_types": [
+        "value"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 5
+      },
+      "note": "Top-resonance and top-prescription digests; at most one per ayanamsha. Source: section 3.6 (R6)."
+    },
+    {
+      "table": "bodha_rm_chart_summary",
+      "categories": [
+        "summary"
+      ],
+      "change_types": [
+        "tier"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 5
+      },
+      "note": "verification_pass_status. Source: section 3.6 (R5)."
+    },
+    {
+      "table": "bodha_rm_dosha_remedy_bundles",
+      "categories": [
+        "bundle"
+      ],
+      "change_types": [
+        "appeared",
+        "disappeared"
+      ],
+      "expected_count": {
+        "min": 0
+      },
+      "optional": true,
+      "note": "One bundle per active dosha class; the active set is static (R3) but not rule-bounded here; attribution only. Source: section 3.6."
+    },
+    {
+      "table": "bodha_rm_dosha_remedy_bundles",
+      "categories": [
+        "bundle"
+      ],
+      "change_types": [
+        "value"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 5
+      },
+      "note": "Prescription-id digests. Source: section 3.6 (R6)."
+    },
+    {
+      "table": "bodha_rm_dosha_remedy_bundles",
+      "categories": [
+        "bundle"
+      ],
+      "change_types": [
+        "tier"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 5
+      },
+      "note": "verification_pass_status. Source: section 3.6 (R5)."
+    },
+    {
+      "table": "bodha_rm_pattern_remedies",
+      "categories": [
+        "resonance"
+      ],
+      "change_types": [
+        "appeared",
+        "disappeared"
+      ],
+      "expected_count": {
+        "min": 0
+      },
+      "optional": true,
+      "note": "Pattern remedies follow resonances/motifs/cells; attribution only. Source: section 3.6."
+    },
+    {
+      "table": "bodha_rm_pattern_remedies",
+      "categories": [
+        "resonance"
+      ],
+      "change_types": [
+        "value"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 45
+      },
+      "note": "Prescription-id digest. Source: section 3.6 (R6)."
+    },
+    {
+      "table": "bodha_rm_pattern_remedies",
+      "categories": [
+        "resonance"
+      ],
+      "change_types": [
+        "tier"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 45
+      },
+      "note": "verification_pass_status. Source: section 3.6 (R5)."
+    },
+    {
+      "table": "bodha_rm_dasha_windowed_prescriptions",
+      "categories": [
+        "vimshottari"
+      ],
+      "change_types": [
+        "disappeared"
+      ],
+      "expected_count": {
+        "exact": 5
+      },
+      "note": "bo_upaya deletes this table (replace_prior_rm_dasha_windowed) and the producer is a tombstone: the 5 legacy rows disappear exactly. Source: section 3.6 (R11)."
+    },
+    {
+      "table": "bodha_rm_dasha_windowed_prescriptions",
+      "categories": [
+        "vimshottari"
+      ],
+      "change_types": [
+        "appeared",
+        "value"
+      ],
+      "expected_count": {
+        "exact": 0
+      },
+      "note": "Nothing writes this table. Source: section 3.6 (R11)."
+    },
+    {
+      "table": "bodha_pratijna",
+      "categories": [
+        "pratijna"
+      ],
+      "change_types": [
+        "value"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 135
+      },
+      "note": "The derivation digest holds chart_divisionals ids (all 135 rows carry one; the F-A2 rebuild regenerates every id) and chart_facts ids; a row whose status also flips reads as disappeared + appeared instead. Source: section 3.6 (R12)."
+    },
+    {
+      "table": "bodha_pratijna",
+      "categories": [
+        "pratijna"
+      ],
+      "change_types": [
+        "appeared"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 135
+      },
+      "note": "The status is part of the key (a status flip is one disappeared + one appeared); 27 event classes x 5 ayanamshas = 135 rows always exist, so at most 135 appear and the same number disappear. Source: section 3.6 (R12)."
+    },
+    {
+      "table": "bodha_pratijna",
+      "categories": [
+        "pratijna"
+      ],
+      "change_types": [
+        "disappeared"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 135
+      },
+      "note": "As above: equal in number to the rows that appeared (the row set is fixed). Source: section 3.6 (R12)."
+    },
+    {
+      "table": "bodha_pratijna",
+      "categories": [
+        "pratijna"
+      ],
+      "change_types": [
+        "tier",
+        "occurrence_count"
+      ],
+      "expected_count": {
+        "exact": 0
+      },
+      "note": "The pratijna registry entry carries no tier, and (ayanamsha, event class) is unique. Source: section 3.6."
+    },
+    {
+      "table": "bodha_discoveries",
+      "categories": [
+        "distributional_anomaly",
+        "embedding_outlier"
+      ],
+      "change_types": [
+        "appeared",
+        "disappeared"
+      ],
+      "expected_count": {
+        "min": 0
+      },
+      "optional": true,
+      "note": "Discoveries are data-dependent anomalies/outliers over the MSR set with no natural key; attribution only. Source: section 3.6 (R13)."
+    },
+    {
+      "table": "bodha_discoveries",
+      "categories": [
+        "distributional_anomaly",
+        "embedding_outlier"
+      ],
+      "change_types": [
+        "value"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 1161
+      },
+      "note": "discovery_id embeds the cited signal ids; at most every row. Source: section 3.6 (R13)."
+    },
+    {
+      "table": "bodha_discoveries",
+      "categories": [
+        "distributional_anomaly",
+        "embedding_outlier"
+      ],
+      "change_types": [
+        "occurrence_count"
+      ],
+      "expected_count": {
+        "min": 0
+      },
+      "optional": true,
+      "note": "Many rows share a semantic key; attribution only. Source: section 3.6 (R13)."
+    },
+    {
+      "table": "bodha_anomalies",
+      "categories": [
+        "distributional_anomaly",
+        "embedding_outlier",
+        "low_salience_high_consequence"
+      ],
+      "change_types": [
+        "appeared",
+        "disappeared"
+      ],
+      "expected_count": {
+        "min": 0
+      },
+      "optional": true,
+      "note": "Anomalies are data-dependent with no natural key; attribution only. Source: section 3.6 (R13)."
+    },
+    {
+      "table": "bodha_anomalies",
+      "categories": [
+        "distributional_anomaly",
+        "embedding_outlier",
+        "low_salience_high_consequence"
+      ],
+      "change_types": [
+        "value"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 3276
+      },
+      "note": "anomaly_id embeds the subject reference (a signal id); at most every row. Source: section 3.6 (R13)."
+    },
+    {
+      "table": "bodha_anomalies",
+      "categories": [
+        "distributional_anomaly",
+        "embedding_outlier",
+        "low_salience_high_consequence"
+      ],
+      "change_types": [
+        "occurrence_count"
+      ],
+      "expected_count": {
+        "min": 0
+      },
+      "optional": true,
+      "note": "Many rows share a semantic key; attribution only. Source: section 3.6 (R13)."
+    },
+    {
+      "table": "synthesis_quality_scorecard",
+      "categories": [
+        "scorecard"
+      ],
+      "change_types": [
+        "appeared",
+        "disappeared"
+      ],
+      "expected_count": {
+        "exact": 0
+      },
+      "note": "One scorecard row per chart (bo_pramana_mapa deletes and re-inserts it). Source: section 3.6 (R8)."
+    },
+    {
+      "table": "synthesis_quality_scorecard",
+      "categories": [
+        "scorecard"
+      ],
+      "change_types": [
+        "value"
+      ],
+      "expected_count": {
+        "min": 0,
+        "max": 1
+      },
+      "note": "Counts, flags and gate results can change (counts of signals, embeddings, cells, orphan references); the percentages are continuous scores. Source: section 3.6."
+    }
+  ]
+}
