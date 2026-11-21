@@ -178,6 +178,45 @@ def persist_event(cur, event: dict) -> bool:
 
 # ── Emission ──────────────────────────────────────────────────────────────────
 
+def build_phase_event(
+    *,
+    chart_id: str | None,
+    asset_id: str,
+    run_id: str,
+    phase: str,
+    substep_index: int | None = None,
+    substep_total: int | None = None,
+    substep_label: str | None = None,
+    compute_ms: int | None = None,
+    write_ms: int | None = None,
+    verify_ms: int | None = None,
+    publish_ms: int | None = None,
+) -> dict:
+    """Build a backward-compatible ``asset.phase`` SSE event payload."""
+    event: dict = {
+        "type": "asset.phase",
+        "chart_id": chart_id,
+        "asset_id": asset_id,
+        "run_id": run_id,
+        "phase": phase,
+    }
+    if substep_index is not None:
+        event["substep_index"] = substep_index
+    if substep_total is not None:
+        event["substep_total"] = substep_total
+    if substep_label is not None:
+        event["substep_label"] = substep_label
+    if compute_ms is not None:
+        event["compute_ms"] = compute_ms
+    if write_ms is not None:
+        event["write_ms"] = write_ms
+    if verify_ms is not None:
+        event["verify_ms"] = verify_ms
+    if publish_ms is not None:
+        event["publish_ms"] = publish_ms
+    return event
+
+
 def emit_event(event: dict, cur=None) -> None:
     """Emit an orchestrator event.
 

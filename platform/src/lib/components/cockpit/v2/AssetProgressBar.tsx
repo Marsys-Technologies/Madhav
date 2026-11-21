@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import type { BuildStage, SubstepInfo } from './buildStage'
 import { stageFill } from './buildStage'
 import type { AssetState } from '@/app/api/cockpit/stats/deriveState'
+import type { BuildPhase } from '@/hooks/useActiveRun'
 
 interface AssetProgressBarProps {
   state: string
@@ -11,6 +12,7 @@ interface AssetProgressBarProps {
   actualRows?: number | null
   targetVolume?: number | null   // retained for API compat; fill is stage-based per N.4
   stage?: BuildStage
+  phase?: BuildPhase | null
   substep?: SubstepInfo
   isQueued?: boolean
   preparation?: boolean
@@ -217,7 +219,7 @@ export const SEG = {
 const _exhaustive: Record<AssetState, SegmentColors> = SEG
 
 export function AssetProgressBar({
-  state, sseState, actualRows, stage, substep, isQueued = false, preparation = false,
+  state, sseState, actualRows, stage, phase, substep, isQueued = false, preparation = false,
 }: AssetProgressBarProps) {
   const prefersReducedMotion = typeof window !== 'undefined'
     && typeof window.matchMedia === 'function'
@@ -252,9 +254,10 @@ export function AssetProgressBar({
   const c = (SEG as Record<string, SegmentColors>)[effectiveState] ?? SEG.dormant
 
   // Substep-segmented vs. continuous fill
-  const hasSubsteps    = isBuilding && !isQueuedState && substep != null && substep.total > 1
-  const useContinuous  = isActiveBuild && !hasSubsteps
   const resolvedStage  = stage ?? (isQueuedState ? 'queued' : isBuilding ? 'running' : isLit ? 'lit' : 'idle')
+  const isPostWritePhase = resolvedStage === 'verifying' || resolvedStage === 'publishing' || resolvedStage === 'committing'
+  const hasSubsteps    = isBuilding && !isQueuedState && !isPostWritePhase && substep != null && substep.total > 1
+  const useContinuous  = isActiveBuild && !hasSubsteps
 
   // Segment data
   const segCount = hasSubsteps ? substep!.total : MILESTONE_COUNT
@@ -277,16 +280,35 @@ export function AssetProgressBar({
   if (isActiveBuild) {
     if (isQueuedState) {
       leftLabel = 'Queued'
+    } else if (resolvedStage === 'computing') {
+      leftLabel = 'Computing'
+    } else if (resolvedStage === 'verifying') {
+      leftLabel = 'Verifying'
+      if (actualRows != null && actualRows > 0) rightLabel = `${actualRows.toLocaleString()} rows`
+    } else if (resolvedStage === 'publishing') {
+      leftLabel = 'Publishing'
+      if (actualRows != null && actualRows > 0) rightLabel = `${actualRows.toLocaleString()} rows`
     } else if (preparation && resolvedStage === 'committing') {
       leftLabel = 'Verifying and saving'
     } else if (hasSubsteps) {
-      // Row count on left while building (updates in real time)
-      if (actualRows != null && actualRows > 0) leftLabel = actualRows.toLocaleString()
+      // Row count (and durable/live Writing phase when known) on left while building
+      if (phase === 'writing' || resolvedStage === 'writing') {
+        leftLabel = actualRows != null && actualRows > 0
+          ? `Writing · ${actualRows.toLocaleString()}`
+          : 'Writing'
+      } else if (actualRows != null && actualRows > 0) {
+        leftLabel = actualRows.toLocaleString()
+      }
       rightLabel = `${substep!.index} / ${substep!.total}`
+    } else if (resolvedStage === 'writing') {
+      leftLabel = 'Writing'
+      if (actualRows != null && actualRows > 0) {
+        rightLabel = `${actualRows.toLocaleString()} rows`
+      }
     } else if (resolvedStage === 'committing') {
       leftLabel = 'Committing'
     } else {
-      // Active writer with no substep detail (light writer or missing/pre-first substep SSE)
+      // Active writer with no substep/phase detail (pre-1420 fallback)
       leftLabel = 'Building'
       if (actualRows != null && actualRows > 0) {
         rightLabel = `${actualRows.toLocaleString()} rows`

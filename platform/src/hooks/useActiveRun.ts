@@ -2,6 +2,17 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 
+export type BuildPhase =
+  | 'queued'
+  | 'computing'
+  | 'writing'
+  | 'verifying'
+  | 'publishing'
+  | 'complete'
+  | 'skipped'
+  | 'error'
+  | 'aborted'
+
 export interface ActiveRunAsset {
   asset_id: string
   position: number
@@ -16,6 +27,16 @@ export interface ActiveRunAsset {
   // and null in any environment where that column hasn't applied yet.
   disposition: string | null
   blocked_by_asset_id: string | null
+  // NIR-03 (migration 1420): durable phase/substep/per-phase-duration telemetry
+  // Optional so pre-1420 callers and existing fixtures stay backward-compatible.
+  phase?: BuildPhase | null
+  substep_index?: number | null
+  substep_total?: number | null
+  substep_label?: string | null
+  compute_ms?: number | null
+  write_ms?: number | null
+  verify_ms?: number | null
+  publish_ms?: number | null
 }
 
 export interface ActiveRun {

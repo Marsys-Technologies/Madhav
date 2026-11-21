@@ -18,6 +18,7 @@ const EMPTY_STRINGS: string[] = []
 import type { AssetWithState } from './LiveDependencyGraph'
 import { BuildActionButton } from './BuildActionButton'
 import { RefreshIconButton } from './RefreshIconButton'
+import { phaseDisplayLabel } from './buildStage'
 
 type Tab = 'data' | 'workflow' | 'agents'
 
@@ -189,7 +190,16 @@ export function CockpitShell({ chartId, initialChartMeta, variant = 'cockpit' }:
       ? [activeRun.current_asset_id]
       : []
   const activeAssetNames = effectiveBuildingIds
-    .map(id => assetStates.find(asset => asset.asset_id === id)?.english_name)
+    .map(id => {
+      const englishName = assetStates.find(asset => asset.asset_id === id)?.english_name
+      if (!englishName) return null
+      const ra = activeRunAssets.find(asset => asset.asset_id === id)
+      if (ra?.phase === 'writing' && ra.substep_index != null && ra.substep_total != null && ra.substep_total > 1) {
+        return `${englishName} (Writing ${ra.substep_index}/${ra.substep_total})`
+      }
+      const phaseLabel = ra?.phase && ra.phase !== 'queued' ? phaseDisplayLabel(ra.phase) : null
+      return phaseLabel ? `${englishName} (${phaseLabel})` : englishName
+    })
     .filter((name): name is string => Boolean(name))
   const completedAssets = activeRunAssets.filter(asset => asset.state === 'complete').length
   const preparationProgress = activeRun

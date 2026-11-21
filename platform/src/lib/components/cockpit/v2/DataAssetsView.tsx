@@ -4,19 +4,24 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAssetRegistry } from '@/hooks/useAssetRegistry'
 import { useAssetStats } from '@/hooks/useAssetStats'
 import { useCockpitSSE } from '@/hooks/useCockpitSSE'
-import type { CockpitEvent } from '@/hooks/useCockpitSSE'
+import type { CockpitEvent, CockpitPhase } from '@/hooks/useCockpitSSE'
 import type { ActiveRun, ActiveRunAsset } from '@/hooks/useActiveRun'
 import dynamic from 'next/dynamic'
 import { LayerPanel } from './LayerPanel'
 import type { AssetWithState } from './LiveDependencyGraph'
 import { PreparationReadiness } from './PreparationReadiness'
 
-// SSE-live substep overlay — fields that come from asset.substep events only
+// SSE-live substep & phase overlay — fields from asset.substep / asset.phase events
 export interface SubstepOverlay {
   actual_rows: number
   substep_index: number
   substep_total: number
   substep_label: string
+  phase?: CockpitPhase
+  compute_ms?: number | null
+  write_ms?: number | null
+  verify_ms?: number | null
+  publish_ms?: number | null
 }
 
 // Instrument pane: the armillary graph (replaces the orbital LiveDependencyGraph).
@@ -175,7 +180,10 @@ export function DataAssetsView({
     } else if (e.type === 'asset.substep') {
       setSubstepOverlay(prev => {
         const next = new Map(prev)
+        const existing = prev.get(e.asset_id)
         next.set(e.asset_id, {
+          ...existing,
+          phase: 'writing',
           actual_rows: e.rows_written,
           substep_index: e.index,
           substep_total: e.total,
@@ -183,6 +191,44 @@ export function DataAssetsView({
         })
         return next
       })
+    } else if (e.type === 'asset.phase') {
+      const TERMINAL_PHASE =
+        e.phase === 'complete' ||
+        e.phase === 'skipped' ||
+        e.phase === 'error' ||
+        e.phase === 'aborted'
+      if (TERMINAL_PHASE) {
+        setSubstepOverlay(prev => {
+          if (!prev.has(e.asset_id)) return prev
+          const next = new Map(prev)
+          next.delete(e.asset_id)
+          return next
+        })
+      } else {
+        setSubstepOverlay(prev => {
+          const next = new Map(prev)
+          const existing = prev.get(e.asset_id)
+          next.set(e.asset_id, {
+            actual_rows: existing?.actual_rows ?? 0,
+            substep_index: e.substep_index ?? existing?.substep_index ?? 0,
+            substep_total: e.substep_total ?? existing?.substep_total ?? 0,
+            substep_label: e.substep_label ?? existing?.substep_label ?? '',
+            phase: e.phase,
+            compute_ms: e.compute_ms ?? existing?.compute_ms ?? null,
+            write_ms: e.write_ms ?? existing?.write_ms ?? null,
+            verify_ms: e.verify_ms ?? existing?.verify_ms ?? null,
+            publish_ms: e.publish_ms ?? existing?.publish_ms ?? null,
+          })
+          return next
+        })
+        if (e.phase !== 'queued') {
+          setSseOverlay(prev => {
+            const next = new Map(prev)
+            next.set(e.asset_id, { ...prev.get(e.asset_id), state: 'building' })
+            return next
+          })
+        }
+      }
     } else if (e.type === 'run.state_change') {
       refreshRun()
       // On run end, clear all overlays so polled stats become the single source of truth,

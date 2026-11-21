@@ -7,6 +7,7 @@ import type { BlockerEntry, BuildAction, BuildScope } from '@/lib/build/plan'
 import { MiniDAG } from './MiniDAG'
 import { DUR, EASE } from './motion'
 import { useMounted } from '@/hooks/useMounted'
+import { formatPhaseBreakdown } from './buildStage'
 import type { PreparationDurationHistory } from '@/lib/build/preparationDuration'
 
 interface PlanData {
@@ -250,6 +251,23 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
                   · existing data will be cleared first
                 </span>
               )}
+              {planData.plan.length > 0 && planData.duration_history?.phase_breakdown && (() => {
+                const breakdown = formatPhaseBreakdown(planData.duration_history.phase_breakdown)
+                if (!breakdown) return null
+                return (
+                  <div
+                    data-testid="plan-phase-breakdown"
+                    style={{
+                      marginTop: '4px',
+                      fontSize: '11px',
+                      fontFamily: 'var(--mono-stack)',
+                      color: 'var(--on-dark-mut)',
+                    }}
+                  >
+                    Phase breakdown ({planData.duration_history.phase_breakdown.sample_runs} run{planData.duration_history.phase_breakdown.sample_runs === 1 ? '' : 's'}): {breakdown}
+                  </div>
+                )
+              })()}
             </div>
             <div style={{ overflowY: 'auto', flex: 1 }}>
               {throughBodha && planData.plan.length === 0 && !planData.protected_assets?.length && <p>
