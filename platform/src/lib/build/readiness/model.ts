@@ -132,7 +132,11 @@ export function deriveChartReadiness(input: {
     activeRunId: runActive ? latestRun!.id : null,
     activeRunBlocksReadings: activeRunBlocks || anyBuilding,
     ...(preparingChartData || unresolvedFailure?.unsafePreparation
+      || layerData.get('ganita')?.isStale || layerData.get('bodha')?.isStale
       ? { preparationDataUnavailable: true }
+      : {}),
+    ...(unresolvedFailure?.preparationRetryAssets?.length
+      ? { preparationRetryAssets: unresolvedFailure.preparationRetryAssets }
       : {}),
     latestRunId: latestRun?.id ?? null,
     latestError: latestRun?.last_error ?? null,

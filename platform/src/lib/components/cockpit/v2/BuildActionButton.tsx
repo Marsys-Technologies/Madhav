@@ -37,6 +37,7 @@ interface Props {
   preparation?: boolean
   /** Resume depends on the current build receipts instead of forcing completed work. */
   resumeMissing?: boolean
+  allowFullRebuild?: boolean
 }
 
 function deriveAction(stats: ScopeStats): { label: string; action: BuildAction } {
@@ -57,8 +58,9 @@ export function BuildActionButton({
   labelSuffix = '',
   preparation = false,
   resumeMissing = false,
+  allowFullRebuild = false,
 }: Props) {
-  const [showModal, setShowModal] = useState(false)
+  const [modal, setModal] = useState<{ label: string; action: BuildAction } | null>(null)
 
   if (stats.active_run_id) {
     return (
@@ -98,7 +100,7 @@ export function BuildActionButton({
     if (action === 'rebuild' && onRebuildOverride) {
       onRebuildOverride()
     } else {
-      setShowModal(true)
+      setModal({ label, action })
     }
   }
 
@@ -112,18 +114,24 @@ export function BuildActionButton({
         {label}{labelSuffix}
       </button>
 
-      {showModal && (
+      {allowFullRebuild && resumeMissing && (
+        <button className="j1-btn" onClick={() => setModal({ label: 'Rebuild', action: 'rebuild' })}>
+          Rebuild{labelSuffix}
+        </button>
+      )}
+
+      {modal && (
         <PlanModal
-          key={JSON.stringify([chartId, scope, scopeTarget, action])}
+          key={JSON.stringify([chartId, scope, scopeTarget, modal.action])}
           chartId={chartId}
           scope={scope}
           scopeTarget={scopeTarget}
-          action={action}
-          label={preparation ? `${label}${labelSuffix}` : label}
+          action={modal.action}
+          label={preparation ? `${modal.label}${labelSuffix}` : modal.label}
           preparation={preparation}
-          onClose={() => setShowModal(false)}
+          onClose={() => setModal(null)}
           onRunStarted={(runId) => {
-            setShowModal(false)
+            setModal(null)
             onRunStarted?.(runId)
           }}
           assets={assets}

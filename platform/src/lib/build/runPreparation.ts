@@ -1,5 +1,5 @@
 import 'server-only'
-import { preparationRunScopeSql } from './preparationRunScope'
+import { isPreparationRunScope, preparationRunScopeSql } from './preparationRunScope'
 import { createHash } from 'crypto'
 import type { QueryResult, QueryResultRow } from 'pg'
 import {
@@ -175,8 +175,8 @@ export async function findActiveRun(db: Queryable, chartId: string): Promise<str
 
 export const INTERRUPTED_PREPARATION_REASON = 'interrupted_preparation'
 
-export async function loadPlanningInputs(db: Queryable, chartId: string): Promise<PlanningInputs> {
-  const [registryResult, throughputResult, protectedResult, freshnessResult] = await Promise.all([
+export async function loadPlanningInputs(db: Queryable, chartId: string, checkPreparationWriters = false): Promise<PlanningInputs> {
+  const [registryResult, throughputResult, protectedResult, freshnessResult, writerResult] = await Promise.all([
     db.query<RegistryEntryWithScope>(
       // domain (migration 590): O-wave WP-3's layer-sweep domain exclusion
       // (NIRMANA_UNIFIED_ELEVATION_PLAN_v2_0.md §3.3) reads this directly.
@@ -226,18 +226,35 @@ export async function loadPlanningInputs(db: Queryable, chartId: string): Promis
         ORDER BY asset_id, (chart_id = $1) DESC NULLS LAST, interrupted DESC, observed_at DESC`,
       [chartId],
     ),
+    checkPreparationWriters ? db.query<{ asset_id: string; code_digest: string }>(
+      `SELECT receipt.asset_id, receipt.code_digest
+         FROM asset_provenance_receipts receipt
+         JOIN asset_registry ar ON ar.asset_id = receipt.asset_id
+        WHERE receipt.chart_id = $1 AND receipt.code_digest IS NOT NULL
+          AND ar.is_active AND ar.has_writer AND ar.scope = 'per_chart'
+          AND ar.layer IN ('ganita', 'bodha')
+          AND receipt.partition_key = COALESCE(NULLIF(ar.natural_key_partition, ''), '__whole_asset__')`,
+      [chartId],
+    ) : null,
   ])
 
-  // O-wave WP-1 ("one authority"): trust the sidecar's own receipt classification
-  // (af.freshness_state) directly. A missing freshness row reads as "needs build"
-  // inside resolveBuildPlan.
+  const freshness: PlanningInputs['freshness'] = new Map(
+    freshnessResult.rows.map(r => [r.asset_id, { state: r.state, reasons: Array.isArray(r.reasons) ? r.reasons : [] }]),
+  )
+  // The stored projection describes the last evaluation. A released writer can
+  // change before the sidecar reevaluates that asset's receipt.
+  for (const receipt of writerResult?.rows ?? []) {
+    const expected = EXPECTED_WRITER_DIGESTS[receipt.asset_id]
+    if (expected && receipt.code_digest !== expected) {
+      const reasons = freshness.get(receipt.asset_id)?.reasons ?? []
+      freshness.set(receipt.asset_id, { state: 'stale', reasons: [...reasons, 'writer_code_changed'] })
+    }
+  }
   return {
     registry: registryResult.rows,
     throughput: new Map(throughputResult.rows.map((r) => [r.asset_id, r])),
     protectedAssetIds: new Set(protectedResult.rows.map((r) => r.asset_id)),
-    freshness: new Map(
-      freshnessResult.rows.map((r) => [r.asset_id, { state: r.state, reasons: Array.isArray(r.reasons) ? r.reasons : [] }]),
-    ),
+    freshness,
   }
 }
 
@@ -310,6 +327,7 @@ export function planRun(args: {
     freshness: args.inputs.freshness,
     protectedAssetIds: args.inputs.protectedAssetIds,
     nonCandidateAssetIds: args.nonCandidateAssetIds,
+    recoverPreparation: isPreparationRunScope(args.scope, args.scopeTarget),
   })
   if (buildPlan.status === 'blocked') {
     throw new BuildPreparationError('UPSTREAM_BLOCKED', 'Build blocked: upstream assets must be rebuilt first', {

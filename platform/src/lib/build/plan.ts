@@ -123,6 +123,8 @@ export interface ResolveBuildPlanArgs {
   throughput: Map<AssetId, ThroughputEntry>
   /** Sidecar-produced receipt classification; supplying it enables strict freshness checks. */
   freshness?: ReadonlyMap<AssetId, { state: 'fresh' | 'stale' | 'unknown'; reasons: string[] }>
+  /** Chart preparation recovery also repairs stale throughput and its selected consumers. */
+  recoverPreparation?: boolean
   // asset_ids protected (via build_protected_assets) for the chart_id this plan is being
   // resolved for. Pre-filtered by the CALLER (a `WHERE chart_id = $1` query) — plan.ts
   // itself never sees a chart_id or talks to the DB, staying a pure function. Defaults to
@@ -518,6 +520,7 @@ export function resolveBuildPlan({
   registry,
   throughput,
   freshness,
+  recoverPreparation = false,
   protectedAssetIds,
   nonCandidateAssetIds,
 }: ResolveBuildPlanArgs): BuildPlan {
@@ -620,7 +623,12 @@ export function resolveBuildPlan({
       // TypeScript side; also repairs the same latent strand for the Python
       // path's 'incomplete' (asset_runner.py:677), which predates this change.
       return receiptNeedsBuild || !t || t.state === 'dormant' || t.state === 'error' || t.state === 'incomplete'
+        || (recoverPreparation && t.state === 'stale')
     })
+    if (recoverPreparation) {
+      const consumers = computeDownstreamClosure(rawCandidates, registry)
+      rawCandidates.push(...scopeAssets.filter(id => consumers.has(id)))
+    }
   } else {
     // rebuild: all assets in scope (no transitive downstream expansion)
     rawCandidates = [...scopeAssets]

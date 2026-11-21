@@ -401,6 +401,7 @@ export function AssetRow({ asset, stat, chartId, activeRunId, isActiveAsset, hig
               stage={buildStage}
               substep={substepData}
               isQueued={isQueued}
+              preparation={preparation}
             />
             {/* build-state stale badge: data present but throughput record is stale/absent */}
             {stat?.build_state_stale && (

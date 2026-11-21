@@ -21,6 +21,8 @@ vi.mock('@/lib/build/jobInvoker', () => ({ invokeRunJob: mockInvokeRunJob }))
 vi.mock('@/lib/cloud_run/jobs', () => ({ getJobImageTag: mockGetJobImageTag }))
 
 import { POST } from '../route'
+import { POST as preview } from '../../plan/route'
+import writerDigestInventory from '@/generated/nirmana-writer-digests.json'
 
 const VICTIM_CHART = '482012f1-710e-4a25-994a-93821f5871aa'
 const OWNER_UID = 'victim-uid'
@@ -130,6 +132,41 @@ beforeEach(() => {
 })
 
 describe('FIX2 (a): a clear forces execution', () => {
+  it('previews and forces the same dependency-ordered Resume without clearing', async () => {
+    setupMocks({ uid: OWNER_UID, ownerId: OWNER_UID })
+    const ids = ['ga_positions', 'ga_vargas', 'bo_laksana']
+    const registry = ids.map((asset_id, i) => ({
+      ...REGISTRY[0],
+      asset_id,
+      layer: i === 2 ? 'bodha' : 'ganita',
+      depends_on: i > 0 ? [ids[i - 1]] : [],
+    }))
+    const current = writerDigestInventory.writers as Record<string, string>
+    const base = mockQuery.getMockImplementation()!
+    mockQuery.mockImplementation((sql: string, params?: unknown[]) => {
+      if (/FROM asset_provenance_receipts/.test(sql)) return { rows: ids.map(asset_id => ({
+        asset_id, code_digest: asset_id === 'ga_vargas' ? 'prior-release' : current[asset_id],
+      })) }
+      if (/FROM asset_registry/.test(sql)) return { rows: registry }
+      if (/FROM asset_throughput/.test(sql)) return { rows: ids.map(asset_id => ({
+        asset_id, state: asset_id === 'ga_positions' && /DISTINCT ON/.test(sql) ? 'stale' : 'lit',
+      })) }
+      if (/FROM asset_freshness/.test(sql)) return { rows: ids.map(asset_id => ({ asset_id, state: 'fresh', reasons: [] })) }
+      if (/FROM chart_facts|FROM brahma_remedy_corpus/.test(sql)) return { rows: [{ count: 1 }] }
+      return base(sql, params)
+    })
+    const body = { chart_id: VICTIM_CHART, scope: 'asset_set', scope_target: ids.join(','), action: 'build' }
+    const previewResponse = await preview(makeReq({ ...body, preparation: true }))
+    expect(previewResponse.status).toBe(200)
+    const { data } = await previewResponse.json()
+    expect(data.plan_waves).toEqual(ids.map(id => [id]))
+    expect(data.blocked).toBeUndefined()
+    const response = await POST(makeReq({ ...body, expected_plan: ids, expected_downstream: data.downstream_may_become_stale }))
+    expect(response.status).toBe(201)
+    expect(deletesIssued()).toHaveLength(0)
+    expect(mockInvokeRunJob).toHaveBeenCalledExactlyOnceWith('run-1', { forceExecute: true })
+  })
+
   it('clear_before on a per-chart asset dispatches with forceExecute and issues the DELETE', async () => {
     setupMocks({ uid: OWNER_UID, ownerId: OWNER_UID })
     const res = await POST(makeReq({

@@ -7,6 +7,7 @@ import type { BlockerEntry, BuildAction, BuildScope } from '@/lib/build/plan'
 import { MiniDAG } from './MiniDAG'
 import { DUR, EASE } from './motion'
 import { useMounted } from '@/hooks/useMounted'
+import type { PreparationDurationHistory } from '@/lib/build/preparationDuration'
 
 interface PlanData {
   plan: string[]
@@ -18,7 +19,7 @@ interface PlanData {
   estimated_seconds: number | null
   downstream_may_become_stale?: string[]
   protected_assets?: { asset_id: string; message: string }[]
-  duration_history?: { sample_count: number; lower_seconds: number | null; upper_seconds: number | null }
+  duration_history?: PreparationDurationHistory
 }
 
 interface AssetNode {
@@ -50,6 +51,8 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
   const [error, setError] = useState<string | null>(null)
   const clearBefore = !preparation && action === 'rebuild' && !(scope === 'layer' && scopeTarget === 'brahmagyan')
   const throughBodha = preparation && scope === 'asset_set'
+  const usesElapsedHistory = throughBodha || (preparation && scope === 'layer'
+    && (scopeTarget === 'ganita' || scopeTarget === 'bodha'))
   // Portal mount guard (SSR-safe): mounting to <body> lifts the modal out of the
   // cockpit's nested stacking contexts so the constellation SVG can't overpaint it.
   const mounted = useMounted()
@@ -83,7 +86,7 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             chart_id: chartId, scope, scope_target: scopeTarget, action,
-            ...(throughBodha ? { preparation: true } : {}),
+            ...(usesElapsedHistory ? { preparation: true } : {}),
           }),
         })
         const body = await r.json()
@@ -110,7 +113,7 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
       }
     })()
     return () => controller.abort()
-  }, [chartId, scope, scopeTarget, action, throughBodha])
+  }, [chartId, scope, scopeTarget, action, usesElapsedHistory])
 
   const runPlan = async (opts: { forceL0?: boolean } = {}) => {
     if (!planData) return
@@ -172,12 +175,6 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
     : planData.estimated_seconds < 60
       ? `~${planData.estimated_seconds}s`
       : `~${Math.ceil(planData.estimated_seconds / 60)}m`
-  const history = planData?.duration_history
-  const duration = history && history.sample_count >= 3 &&
-    history.lower_seconds != null && history.upper_seconds != null
-    ? `${Math.ceil(history.lower_seconds / 60)}–${Math.ceil(history.upper_seconds / 60)} min for the middle half of ${history.sample_count} comparable runs`
-    : 'More completed runs are needed for a duration range'
-
   const confirmLabel = clearBefore ? 'Clear & Rebuild' : action === 'rebuild' ? 'Rebuild' : 'Run plan'
   const loadingLabel = isClearing ? 'Clearing…' : 'Starting…'
 
@@ -244,7 +241,10 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
         {planData && (
           <>
             <div style={{ fontSize: '12px', color: 'var(--on-dark-faint)', fontFamily: 'var(--ui-stack)' }}>
-              {planData.plan.length} asset{planData.plan.length !== 1 ? 's' : ''} · {throughBodha ? duration : `estimated ${estimateLabel}`}
+              {planData.plan.length} asset{planData.plan.length !== 1 ? 's' : ''}
+              {planData.plan.length > 0 && <> · {usesElapsedHistory
+                ? preparationDurationLabel(planData.duration_history)
+                : `estimated ${estimateLabel}`}</>}
               {clearBefore && (
                 <span style={{ marginLeft: '8px', color: 'rgba(181,71,76,0.9)', fontSize: '11px' }}>
                   · existing data will be cleared first
@@ -252,6 +252,9 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
               )}
             </div>
             <div style={{ overflowY: 'auto', flex: 1 }}>
+              {throughBodha && planData.plan.length === 0 && !planData.protected_assets?.length && <p>
+                Everything in this preparation scope is current.
+              </p>}
               {!!planData.protected_assets?.length && <p>
                 Protected assets: {planData.protected_assets.map(a => a.asset_id).join(', ')}
               </p>}
@@ -364,4 +367,28 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
     </motion.div>,
     document.body,
   )
+}
+
+function formatDuration(seconds: number): string {
+  const minutes = Math.max(1, Math.round(seconds / 60))
+  const hours = Math.floor(minutes / 60)
+  const remaining = minutes % 60
+  return hours ? [`${hours}h`, remaining ? `${remaining}m` : null].filter(Boolean).join(' ') : `${minutes}m`
+}
+
+function preparationDurationLabel(history?: PreparationDurationHistory): string {
+  if (history && history.sample_count >= 3 && history.lower_seconds != null && history.upper_seconds != null) {
+    return `${formatDuration(history.lower_seconds)}–${formatDuration(history.upper_seconds)} for the middle half of ${history.sample_count} comparable runs`
+  }
+  if (history?.last_seconds != null) {
+    return `Last comparable run took ${formatDuration(history.last_seconds)} through verification`
+  }
+  const previousLayers = history?.separate_layers
+  const observed = [
+    previousLayers?.ganita != null ? `Gaṇita ${formatDuration(previousLayers.ganita)}` : null,
+    previousLayers?.bodha != null ? `Bodha ${formatDuration(previousLayers.bodha)}` : null,
+  ].filter(Boolean)
+  return observed.length
+    ? `Previous separate rebuilds through verification (${observed.join(', ')})`
+    : 'No comparable completed run yet'
 }

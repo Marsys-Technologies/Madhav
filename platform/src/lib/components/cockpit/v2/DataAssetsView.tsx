@@ -61,12 +61,12 @@ interface Props {
   /** Task 1: refresh callback for the active run — passed from CockpitShell */
   refreshRun: () => void
   variant?: 'cockpit' | 'preparation'
-  preparationIncomplete?: boolean
+  preparationRetryAssets?: string[]
 }
 
 export function DataAssetsView({
   chartId, onAssetsReady, header, refreshKey, clearKey, activeRun, refreshRun,
-  variant = 'cockpit', preparationIncomplete = false,
+  variant = 'cockpit', preparationRetryAssets,
 }: Props) {
   const preparation = variant === 'preparation'
   const { assets, isLoading, error, refetch: refetchRegistry } = useAssetRegistry()
@@ -340,7 +340,7 @@ export function DataAssetsView({
           </fieldset>
         ))}</div>
         <PreparationReadiness assets={uniqueAssets} stats={stats} unavailable={!!statsError || !lastFetched}
-          chartId={chartId} activeRun={activeRun} preparationIncomplete={preparationIncomplete} />
+          chartId={chartId} activeRun={activeRun} preparationRetryAssets={preparationRetryAssets} />
       </div>
       <p className="j1-note" style={{ marginTop: 16 }}>
         {lastFetched ? `Status checked ${lastFetched.toLocaleTimeString()}. ` : 'Checking live status. '}

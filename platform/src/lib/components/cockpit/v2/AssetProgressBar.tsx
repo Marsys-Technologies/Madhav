@@ -13,6 +13,7 @@ interface AssetProgressBarProps {
   stage?: BuildStage
   substep?: SubstepInfo
   isQueued?: boolean
+  preparation?: boolean
 }
 
 // Four milestone segments when no substep detail is available.
@@ -206,7 +207,7 @@ export const SEG = {
 const _exhaustive: Record<AssetState, SegmentColors> = SEG
 
 export function AssetProgressBar({
-  state, sseState, actualRows, stage, substep,
+  state, sseState, actualRows, stage, substep, preparation = false,
 }: AssetProgressBarProps) {
   const prefersReducedMotion = typeof window !== 'undefined'
     && typeof window.matchMedia === 'function'
@@ -261,7 +262,9 @@ export function AssetProgressBar({
   let rightLabel = ''
 
   if (isBuilding) {
-    if (hasSubsteps) {
+    if (preparation && stage === 'committing') {
+      leftLabel = 'Verifying and saving'
+    } else if (hasSubsteps) {
       // Row count on left while building (updates in real time)
       if (actualRows != null && actualRows > 0) leftLabel = actualRows.toLocaleString()
       rightLabel = `${substep!.index} / ${substep!.total}`

@@ -66,4 +66,22 @@ describe('resolveBuildPlan — sidecar freshness projection', () => {
     expect(result.status).toBe('ok')
     expect(result.plan_waves).toEqual([['bg_input']])
   })
+
+  it('resumes stale throughput and its selected consumers despite fresh receipts', () => {
+    const graph = [
+      ...registry,
+      { asset_id: 'bo_output', layer: 'bodha', depends_on: ['ga_output'], estimated_seconds: null },
+      { asset_id: 'ka_timing', layer: 'kala', depends_on: ['bo_output'], estimated_seconds: null },
+      { asset_id: 'ga_unrelated', layer: 'ganita', depends_on: [], estimated_seconds: null },
+    ]
+    const args = {
+      scope: 'asset_set' as const, scope_target: 'ga_output,bo_output,ga_unrelated', action: 'build' as const, registry: graph,
+      throughput: throughput(graph.map(({ asset_id }) => ({ asset_id, state: asset_id === 'ga_output' ? 'stale' : 'lit' }))),
+      freshness: new Map(graph.map(({ asset_id }) => [asset_id, { state: 'fresh' as const, reasons: [] }])),
+    }
+    expect(resolveBuildPlan(args).plan_waves).toEqual([])
+    expect(resolveBuildPlan({ ...args, recoverPreparation: true }).plan_waves).toEqual([['ga_output'], ['bo_output']])
+    const blocked = resolveBuildPlan({ ...args, recoverPreparation: true, protectedAssetIds: new Set(['ga_output']) })
+    expect(blocked.blockers).toEqual([expect.objectContaining({ dep_asset_id: 'ga_output', dep_state: 'stale' })])
+  })
 })

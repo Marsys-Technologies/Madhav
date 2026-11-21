@@ -120,12 +120,17 @@ describe('PlanModal read-only blocked preview', () => {
     mockFetch.mockResolvedValueOnce(new Response(JSON.stringify({ data: {
       status: 'ok', blockers: [], plan_waves: ids.map(id => [id]), estimated_seconds: 1,
       downstream_may_become_stale: ['ka_kshetra'],
+      duration_history: {
+        sample_count: 0, last_seconds: null, lower_seconds: null, upper_seconds: null,
+        separate_layers: { ganita: 1619, bodha: 6123 },
+      },
     } }), { status: 200 }))
     mockFetch.mockResolvedValueOnce(new Response(JSON.stringify({ data: { run_id: 'preparation-run' } })))
     const onRunStarted = vi.fn()
     render(<PlanModal chartId={CHART_ID} scope="asset_set" scopeTarget={ids.join(',')}
       action="rebuild" label="Rebuild through Bodha" preparation onClose={vi.fn()} onRunStarted={onRunStarted} />)
     expect(await screen.findByText(/may need a later refresh: ka_kshetra/)).toBeVisible()
+    expect(screen.getByText(/Previous separate rebuilds through verification \(Gaṇita 27m, Bodha 1h 42m\)/)).toBeVisible()
     expect(mockFetch.mock.calls[0][0]).toBe('/api/cockpit/plan')
     expect(JSON.parse(mockFetch.mock.calls[0][1].body)).toEqual({ ...body, preparation: true })
     fireEvent.click(screen.getByRole('button', { name: /^Rebuild$/ }))
@@ -134,5 +139,16 @@ describe('PlanModal read-only blocked preview', () => {
     expect(JSON.parse(mockFetch.mock.calls[1][1].body)).toEqual({
       ...body, clear_before: false, expected_plan: ids, expected_downstream: ['ka_kshetra'],
     })
+  })
+
+  it('shows the actual comparable duration on the whole-layer preview', async () => {
+    mockFetch.mockResolvedValue(new Response(JSON.stringify({ data: {
+      status: 'ok', blockers: [], plan_waves: [['bo_laksana']], estimated_seconds: null,
+      duration_history: { sample_count: 1, last_seconds: 6123, lower_seconds: 6123, upper_seconds: 6123 },
+    } })))
+    render(<PlanModal chartId={CHART_ID} scope="layer" scopeTarget="bodha"
+      action="rebuild" label="Rebuild Bodha" preparation onClose={vi.fn()} onRunStarted={vi.fn()} />)
+    await waitFor(() => expect(screen.getByText(/Last comparable run took 1h 42m through verification/)).toBeVisible())
+    expect(JSON.parse(mockFetch.mock.calls[0][1].body)).toMatchObject({ scope: 'layer', scope_target: 'bodha', preparation: true })
   })
 })

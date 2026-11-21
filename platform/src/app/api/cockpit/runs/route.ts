@@ -22,6 +22,7 @@ import {
 } from '@/lib/build/runPreparation'
 import { invalidateAssets, InvalidationError } from '@/lib/build/assetInvalidation'
 import { dispatchPreparedRun } from '@/lib/build/runDispatch'
+import { isPreparationRunScope } from '@/lib/build/preparationRunScope'
 import { readBuildRunHistory } from '@/lib/build/runHistory'
 import { readRequestedAssetScope, readBodhaRunPreconditions, resetClearedRunAssetState, markClearedRunDownstreamStale, readClearedRunAssetMarker } from '@/lib/build/runRequestData'
 
@@ -189,7 +190,8 @@ export async function POST(req: NextRequest) {
   // Resolve the plan — the registry is filtered by allowedScopes so non-super-admin
   // plans silently exclude all L0/global assets (mirrors clear's filterScopeAssets logic).
   // Shared with the chart-correction transaction (lib/build/runPreparation).
-  const inputs = await loadPlanningInputs(pooled, chart_id)
+  const recoverPreparation = action === 'build' && isPreparationRunScope(scope, scope_target)
+  const inputs = await loadPlanningInputs(pooled, chart_id, recoverPreparation)
   const registryRows = inputs.registry
   const protectedAssetIds = inputs.protectedAssetIds
 
@@ -237,7 +239,7 @@ export async function POST(req: NextRequest) {
   }
 
   const nonCandidateAssetIds = computeNonCandidateAssetIds(registryRows, {
-    allowedScopes,
+    allowedScopes: isPreparationRunScope(scope, scope_target) ? ['per_chart'] : allowedScopes,
     scope,
     serviceProbeIds: new Set(requestedServiceProbes.map(row => row.asset_id)),
   })
@@ -467,7 +469,7 @@ export async function POST(req: NextRequest) {
   // input receipt still matches. Recompute the selected recovery work to repair it.
   // A service health probe is an invocation, not a row build, and is never forced.
   let forceExecute = requestedServiceProbes.length === 0 && (
-    action === 'rebuild' ||
+    action === 'rebuild' || recoverPreparation ||
     plan.some(id => inputs.freshness.get(id)?.reasons.includes(INTERRUPTED_PREPARATION_REASON))
   )
   // A per-chart Clear (cockpit Clear button) resets asset_throughput to state='dormant',
