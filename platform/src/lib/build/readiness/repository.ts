@@ -45,17 +45,29 @@ export async function getChartReadinessMap(chartIds: string[]): Promise<Map<stri
     // Failed/stopped runs of any age that still own broken active per-chart
     // assets. A full rebuild or a started preparation through both Gaṇita and
     // Bodha can leave mixed generations. An old lit marker cannot clear that failure.
-    query<{ chart_id: string; assets: number; dispatch_failed: boolean; unsafe_preparation: boolean }>(
+    query<{ chart_id: string; assets: number; dispatch_failed: boolean; unsafe_preparation: boolean; preparation_retry_assets: string[] | null }>(
       `SELECT r.chart_id,
               COUNT(DISTINCT bra.asset_id)::int AS assets,
               COALESCE(bool_or(r.last_error LIKE 'JOB_DISPATCH_FAILED%'), false) AS dispatch_failed,
-              bool_or(r.started_at IS NOT NULL AND ar.layer IN ('ganita', 'bodha')) AS unsafe_preparation
+              bool_or(r.started_at IS NOT NULL AND ar.layer IN ('ganita', 'bodha')) AS unsafe_preparation,
+              array_agg(DISTINCT bra.asset_id ORDER BY bra.asset_id)
+                FILTER (WHERE ar.layer IN ('ganita', 'bodha') AND bra.state <> 'complete') AS preparation_retry_assets
          FROM build_runs r
          JOIN build_run_assets bra ON bra.run_id = r.id
          JOIN asset_registry ar ON ar.asset_id = bra.asset_id AND ar.is_active = true AND ar.scope = 'per_chart'
          LEFT JOIN asset_throughput at ON at.chart_id = r.chart_id AND at.asset_id = bra.asset_id
         WHERE r.chart_id = ANY($1::uuid[])
           AND r.state IN ('failed', 'stopped')
+          AND NOT (
+            ar.layer IN ('ganita', 'bodha') AND EXISTS (
+              SELECT 1
+                FROM build_runs recovered
+                JOIN build_run_assets receipt ON receipt.run_id = recovered.id
+               WHERE recovered.chart_id = r.chart_id AND recovered.created_at > r.created_at
+                 AND recovered.state IN ('completed', 'failed', 'stopped') AND receipt.state = 'complete'
+                 AND receipt.asset_id = bra.asset_id
+            )
+          )
           AND NOT COALESCE(
                 at.state = 'lit'
                 AND (NOT (r.scope = 'global' AND r.action = 'rebuild') OR at.last_built_at >= r.created_at)
@@ -91,6 +103,7 @@ export async function getChartReadinessMap(chartIds: string[]): Promise<Map<stri
                 assets: Number(failure.assets),
                 dispatchFailed: Boolean(failure.dispatch_failed),
                 unsafePreparation: Boolean(failure.unsafe_preparation),
+                preparationRetryAssets: failure.preparation_retry_assets ?? [],
               }
             : { assets: 0, dispatchFailed: false },
         }),

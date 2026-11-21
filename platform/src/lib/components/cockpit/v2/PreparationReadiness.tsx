@@ -7,7 +7,11 @@ import type { ActiveRun } from '@/hooks/useActiveRun'
 
 // Conservative layer availability from server states. This is preparation evidence,
 // not a promise that an arbitrary question or an empirical prediction is qualified.
-export function preparationLayerState(assets: AssetRow[], stats: Map<string, AssetStats>, layer: string, preparingAssets: ReadonlySet<string> = new Set()) {
+export function preparationLayerState(
+  assets: AssetRow[], stats: Map<string, AssetStats>, layer: string,
+  preparingAssets: ReadonlySet<string> = new Set(),
+  retryAssets: ReadonlySet<string> = new Set(),
+) {
   const active = assets.filter(a => a.layer.toLowerCase() === layer && a.is_active)
   const registry = new Map(assets.map(a => [a.asset_id, a]))
   const required = new Set<string>()
@@ -19,17 +23,19 @@ export function preparationLayerState(assets: AssetRow[], stats: Map<string, Ass
   active.forEach(a => collect(a.asset_id))
   if (!active.length || [...required].some(id => !registry.get(id)?.is_active || !stats.has(id))) return 'Status unavailable'
   if ([...required].some(id => preparingAssets.has(id))) return 'Preparation in progress'
-  return [...required].every(id => {
-    const s = stats.get(id)!
-    return !s.error && !s.build_state_stale && (s.state === 'lit' || s.state === 'service_ok')
-  }) ? 'Prepared' : 'Preparation incomplete'
+  if ([...required].some(id => retryAssets.has(id) || stats.get(id)?.state === 'error')) return 'Preparation needs a retry'
+  const evidence = [...required].map(id => stats.get(id)!)
+  if (evidence.some(stat => stat.state === 'stale' || stat.build_state_stale)) return 'Needs refresh'
+  return evidence.every(s => !s.error && (s.state === 'lit' || s.state === 'service_ok'))
+    ? 'Prepared' : 'Preparation incomplete'
 }
 
-export function PreparationReadiness({ assets, stats, unavailable, chartId, activeRun, preparationIncomplete = false }: {
+export function PreparationReadiness({ assets, stats, unavailable, chartId, activeRun, preparationRetryAssets = [] }: {
   assets: AssetRow[]; stats: Map<string, AssetStats>; unavailable: boolean; chartId: string; activeRun: ActiveRun | null
-  preparationIncomplete?: boolean
+  preparationRetryAssets?: string[]
 }) {
   const preparing = new Set(activeRun?.plan ?? [])
+  const retry = new Set(preparationRetryAssets)
   if (activeRun && !preparing.size) {
     for (const asset of assets) {
       if (activeRun.scope === 'global' || (activeRun.scope === 'layer' && activeRun.scope_target === asset.layer)
@@ -47,8 +53,7 @@ export function PreparationReadiness({ assets, stats, unavailable, chartId, acti
       ['mimamsa', 'Falsifiers and prediction review', 'Mīmāṃsā'],
     ].map(([layer, label, name]) => <li key={layer}>
       {label}<small>{name} · {unavailable ? 'Status unavailable'
-        : preparationIncomplete && !activeRun ? 'Preparation needs a retry'
-        : preparationLayerState(assets, stats, layer, preparing)}</small>
+        : preparationLayerState(assets, stats, layer, preparing, retry)}</small>
     </li>)}</ul>
     <p className="j1-note" style={{ margin: '16px 0' }}>These are layer preparation checks. Consultation checks the specific evidence each question needs.</p>
     <Link href={`/clients/${chartId}/pariprashna`} className="j1-btn">Open Consultation</Link>

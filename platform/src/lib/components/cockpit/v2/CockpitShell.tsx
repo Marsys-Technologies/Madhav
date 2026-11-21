@@ -56,7 +56,7 @@ export function CockpitShell({ chartId, initialChartMeta, variant = 'cockpit' }:
 
   // Single useActiveRun instance — lifted from CockpitHeader and DataAssetsView.
   // Previously both components had their own 5s polling loop to the same endpoint.
-  const { run: activeRun, assets: activeRunAssets = [], preparationIncomplete, refresh: refreshRun } =
+  const { run: activeRun, assets: activeRunAssets = [], preparationIncomplete, preparationRetryAssets = [], refresh: refreshRun } =
     useActiveRun(chartId, { preparation })
   const isBuilding = activeRun !== null
 
@@ -167,13 +167,24 @@ export function CockpitShell({ chartId, initialChartMeta, variant = 'cockpit' }:
     asset.scope === 'per_chart' && asset.has_writer &&
     (asset.layer === 'ganita' || asset.layer === 'bodha'),
   )
-  const resumePreparation = preparationIncomplete ||
+  const stalePreparation = preparationAssets.filter(asset => asset.state === 'stale' || asset.build_state_stale)
+  const needsRetry = preparationRetryAssets.length > 0 || preparationAssets.some(asset => asset.state === 'error')
+  const resumePreparation = preparationIncomplete || needsRetry || stalePreparation.length > 0 ||
     (preparationAssets.some(asset => asset.state !== 'dormant') &&
       preparationAssets.some(asset => asset.state !== 'lit'))
+  const activeAssetId = activeRunAssets.find(asset => asset.state === 'building')?.asset_id
+  const activeAssetName = assetStates.find(asset => asset.asset_id === activeAssetId)?.english_name
+  const completedAssets = activeRunAssets.filter(asset => asset.state === 'complete').length
   const preparationProgress = activeRun
     ? activeRun.state === 'paused' ? 'Paused' : activeRun.state === 'planned' ? 'Starting worker'
-      : `${activeRunAssets.filter(asset => asset.state === 'complete').length} of ${activeRun.plan.length} assets complete`
-    : preparationIncomplete ? 'Preparation needs a retry' : null
+      : [
+          `${completedAssets} of ${activeRun.plan.length} assets complete`,
+          activeAssetName,
+        ].filter(Boolean).join(' · ')
+    : needsRetry ? 'Preparation needs a retry'
+      : stalePreparation.some(asset => asset.layer === 'ganita') ? 'Gaṇita needs a refresh'
+      : stalePreparation.length > 0 ? 'Bodha needs a refresh'
+      : preparationIncomplete ? 'Preparation needs a refresh' : null
   const headerEl = preparation ? (
     <div className="preparation-toolbar">
       <div>
@@ -186,7 +197,7 @@ export function CockpitShell({ chartId, initialChartMeta, variant = 'cockpit' }:
           stats={{ total: preparationAssets.length, dormant: preparationAssets.filter(a => a.state === 'dormant').length,
             stale: preparationAssets.filter(a => a.state === 'stale').length, active_run_id: activeRun?.id ?? null,
             is_paused: activeRun?.state === 'paused' }}
-          assets={assetStates} preparation labelSuffix=" through Bodha" resumeMissing={resumePreparation}
+          assets={assetStates} preparation labelSuffix=" through Bodha" resumeMissing={resumePreparation} allowFullRebuild
           onRunStarted={() => { refreshRun(); handleRefreshed() }} onRunStateChange={refreshRun}
         />}
         <RefreshIconButton chartId={chartId} scope="global" size={32} onRefreshed={handleRefreshed} textLabel />
@@ -256,7 +267,7 @@ export function CockpitShell({ chartId, initialChartMeta, variant = 'cockpit' }:
             refreshKey={refreshKey}
             clearKey={clearKey}
             activeRun={activeRun}
-            preparationIncomplete={preparationIncomplete}
+            preparationRetryAssets={preparationRetryAssets}
             refreshRun={refreshRun}
             variant={variant}
           />

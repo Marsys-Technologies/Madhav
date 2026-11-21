@@ -18,12 +18,19 @@ beforeEach(() => vi.clearAllMocks())
 afterEach(() => vi.unstubAllGlobals())
 
 describe('Journey 3 truthful preparation', () => {
-  it.each(['dormant', 'incomplete', 'blocked', 'stale', 'error', 'service_down'] as const)('does not qualify %s upstream evidence', state => {
+  it.each([
+    ['dormant', 'Preparation incomplete'],
+    ['incomplete', 'Preparation incomplete'],
+    ['blocked', 'Preparation incomplete'],
+    ['stale', 'Needs refresh'],
+    ['error', 'Preparation needs a retry'],
+    ['service_down', 'Preparation incomplete'],
+  ] as const)('does not qualify %s upstream evidence', (state, label) => {
     const stats = new Map([
       [DATA_ASSET.asset_id, statOf({ state })],
       [downstream.asset_id, statOf({ state: 'lit' })],
     ])
-    expect(preparationLayerState([DATA_ASSET, downstream], stats, 'bodha')).toBe('Preparation incomplete')
+    expect(preparationLayerState([DATA_ASSET, downstream], stats, 'bodha')).toBe(label)
   })
   it('requires every upstream status and ignores inactive candidates in the layer total', () => {
     const stats = new Map([[downstream.asset_id, statOf({ state: 'lit' })]])
@@ -34,7 +41,7 @@ describe('Journey 3 truthful preparation', () => {
     expect(preparationLayerState(assets, stats, 'bodha', new Set([DATA_ASSET.asset_id]))).toBe('Preparation in progress')
     expect(preparationLayerState(assets, stats, 'bodha', new Set(['unrelated_asset']))).toBe('Prepared')
     stats.set(DATA_ASSET.asset_id, statOf({ state: 'lit', build_state_stale: true }))
-    expect(preparationLayerState(assets, stats, 'bodha')).toBe('Preparation incomplete')
+    expect(preparationLayerState(assets, stats, 'bodha')).toBe('Needs refresh')
   })
   it('never labels missing status as unbuilt or exposes preparation actions', () => {
     render(<AssetRow {...rowProps} asset={DATA_ASSET} stat={null} />)

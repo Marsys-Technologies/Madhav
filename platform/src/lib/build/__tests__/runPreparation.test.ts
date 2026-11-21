@@ -14,6 +14,7 @@ import {
   BuildPreparationError,
   bodhaBuildBlockers,
   canonicalManifestJson,
+  loadPlanningInputs,
   manifestDigest,
   persistPreparedRun,
   resolveRunPreparation,
@@ -70,6 +71,7 @@ function fakeDb(opts: {
   protectedIds?: string[]
   throughput?: Array<{ asset_id: string; state: string }>
   freshness?: Array<{ asset_id: string; state: string; reasons: string[] }>
+  writerReceipts?: Array<{ asset_id: string; code_digest: string }>
 } = {}): Fake {
   const sql: string[] = []
   const db: Queryable = {
@@ -84,6 +86,7 @@ function fakeDb(opts: {
       if (/FROM asset_freshness/.test(text)) {
         return { rows: opts.freshness ?? [{ asset_id: 'bg_ephemeris', state: 'fresh', reasons: [] }] }
       }
+      if (/FROM asset_provenance_receipts/.test(text)) return { rows: opts.writerReceipts ?? [] }
       if (/INSERT INTO build_runs/.test(text)) return { rows: [{ id: 'run-new' }] }
       return { rows: [] }
     }) as unknown as Queryable['query'],
@@ -103,6 +106,23 @@ const CORRECTION: RunPreparationRequest = {
 }
 
 beforeEach(() => vi.clearAllMocks())
+
+it('checks the current partition writer for recovery even when the evaluated receipt is fresh', async () => {
+  const { db } = fakeDb({
+    freshness: [
+      { asset_id: 'ga_positions', state: 'fresh', reasons: [] },
+      { asset_id: 'ga_vargas', state: 'fresh', reasons: [] },
+    ],
+    writerReceipts: [
+      { asset_id: 'ga_positions', code_digest: DIGESTS.ga_positions },
+      { asset_id: 'ga_vargas', code_digest: 'previous-code-digest' },
+    ],
+  })
+  expect((await loadPlanningInputs(db, CHART)).freshness.get('ga_vargas')?.state).toBe('fresh')
+  const { freshness } = await loadPlanningInputs(db, CHART, true)
+  expect(freshness.get('ga_positions')?.state).toBe('fresh')
+  expect(freshness.get('ga_vargas')).toEqual({ state: 'stale', reasons: ['writer_code_changed'] })
+})
 
 describe('resolveRunPreparation — chart correction', () => {
   it('fixture sanity: the writers carry real sidecar digests', () => {

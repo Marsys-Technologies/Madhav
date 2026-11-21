@@ -30,9 +30,13 @@ export async function GET(req: NextRequest) {
       readActiveBuildRun(chart_id),
       wantsPreparationStatus ? getChartReadinessMap([chart_id]) : null,
     ])
+    const preparation = readiness?.get(chart_id)
     return NextResponse.json({
       data,
-      ...(readiness ? { preparation_incomplete: readiness.get(chart_id)?.preparationDataUnavailable === true } : {}),
+      ...(readiness ? {
+        preparation_incomplete: preparation?.preparationDataUnavailable === true,
+        preparation_retry_assets: preparation?.preparationRetryAssets ?? [],
+      } : {}),
     })
   } catch (err) {
     console.error('[cockpit/runs/active]', err)

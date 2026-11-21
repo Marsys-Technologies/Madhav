@@ -29,6 +29,8 @@ export interface ChartReadiness {
   activeRunBlocksReadings?: boolean
   /** Gaṇita or Bodha may contain different build generations during preparation or recovery. */
   preparationDataUnavailable?: boolean
+  /** Failed preparation assets without a later successful build receipt. */
+  preparationRetryAssets?: string[]
   latestRunId: string | null
   latestError: string | null
   /**
@@ -43,6 +45,7 @@ export interface UnresolvedFailure {
   /** True when any unresolved failed run never started (JOB_DISPATCH_FAILED). */
   dispatchFailed: boolean
   unsafePreparation?: boolean
+  preparationRetryAssets?: string[]
 }
 
 export type ReadinessThroughputRow = {

@@ -6,6 +6,8 @@ import { COCKPIT_DISPATCHABLE_SERVICE_PROBE_IDS } from '@/lib/cockpit/servicePro
 import { requireChartPermission } from '@/lib/auth/requireChartPermission'
 import { bodhaBuildBlockers, computeNonCandidateAssetIds, loadPlanningInputs, previewDownstreamStaleness } from '@/lib/build/runPreparation'
 import { readBodhaRunPreconditions } from '@/lib/build/runRequestData'
+import { isPreparationRunScope } from '@/lib/build/preparationRunScope'
+import { readPreparationDuration } from '@/lib/build/preparationDuration'
 
 export async function POST(req: NextRequest) {
   // Plan preview is a read-only operation — any authenticated user may call it.
@@ -46,14 +48,17 @@ export async function POST(req: NextRequest) {
   if (denied) return denied
 
   try {
-    const isPreparation = scope === 'asset_set' && body.preparation === true
-    const preparationInputs = isPreparation ? await loadPlanningInputs({ query }, chart_id) : null
+    const isPreparation = isPreparationRunScope(scope, scope_target)
+    const preparationTiming = isPreparation || (body.preparation === true && scope === 'layer'
+      && (scope_target === 'ganita' || scope_target === 'bodha'))
+    const recoverPreparation = isPreparation && action === 'build'
+    const preparationInputs = isPreparation ? await loadPlanningInputs({ query }, chart_id, recoverPreparation) : null
     let buildPlan
     let downstream: string[] = []
     if (preparationInputs) {
       const { registry, throughput, protectedAssetIds, freshness } = preparationInputs
       buildPlan = resolveBuildPlan({
-        scope, scope_target, action, registry, throughput, protectedAssetIds, freshness,
+        scope, scope_target, action, registry, throughput, protectedAssetIds, freshness, recoverPreparation,
         nonCandidateAssetIds: computeNonCandidateAssetIds(registry, { scope, allowedScopes: ['per_chart'] }),
       })
       downstream = previewDownstreamStaleness(preparationInputs, buildPlan.plan_waves.flat())
@@ -116,7 +121,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Query historical median duration per asset in the resolved plan
-    const medianResult = await query<{ asset_id: string; median_seconds: number }>(
+    const medianResult = !preparationTiming && flatPlan.length ? await query<{ asset_id: string; median_seconds: number }>(
       `SELECT asset_id,
               PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY
                 EXTRACT(EPOCH FROM (ended_at - started_at))
@@ -128,36 +133,17 @@ export async function POST(req: NextRequest) {
          AND state = 'complete'
        GROUP BY asset_id`,
       [flatPlan]
-    )
-    const medianByAsset = new Map(medianResult.rows.map(r => [r.asset_id, Number(r.median_seconds)]))
-
-    let estimated_seconds: number | null = flatPlan.length === 0 ? null : 0
-    for (const assetId of flatPlan) {
-      const perAsset = medianByAsset.get(assetId) ?? null
-      if (perAsset === null) { estimated_seconds = null; break }
-      estimated_seconds = (estimated_seconds ?? 0) + perAsset
-    }
-    const comparableRuns = isPreparation && flatPlan.length > 0 ? await query<{
-      sample_count: number
-      lower_seconds: number | null
-      upper_seconds: number | null
-    }>(
-      `SELECT count(*)::int AS sample_count,
-              PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY elapsed) AS lower_seconds,
-              PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY elapsed) AS upper_seconds
-         FROM (
-           SELECT EXTRACT(EPOCH FROM (ended_at - created_at))::float8 AS elapsed
-           FROM build_runs
-           WHERE chart_id = $1 AND state = 'completed' AND action = $2
-             AND scope = 'asset_set' AND plan = $3::jsonb AND ended_at > created_at
-           ORDER BY ended_at DESC LIMIT 20
-         ) recent`,
-      [chart_id, action, JSON.stringify(flatPlan)],
     ) : null
+    const estimated_seconds = medianResult?.rows.length === flatPlan.length
+      ? medianResult.rows.reduce((sum, row) => sum + Number(row.median_seconds), 0) : null
 
     // Include precondition blockers in the response alongside the plan data.
     // `blocked` merges plan-level blocking (upstream stale/error) with precondition blocking.
     const isBlocked = buildPlan.status === 'blocked' || preconditionBlockers.length > 0
+    const durationHistory = preparationTiming && !isBlocked && flatPlan.length
+      ? await readPreparationDuration({ chartId: chart_id, action, scope, target: scope_target, assets: flatPlan,
+          registry: preparationInputs?.registry ?? [] })
+      : null
     const allBlockers = [
       ...(buildPlan.blockers ?? []),
       ...preconditionBlockers,
@@ -167,7 +153,7 @@ export async function POST(req: NextRequest) {
       data: {
         ...buildPlan,
         estimated_seconds,
-        ...(comparableRuns ? { duration_history: comparableRuns.rows[0] } : {}),
+        ...(durationHistory ? { duration_history: durationHistory } : {}),
         ...(isPreparation ? { downstream_may_become_stale: downstream } : {}),
         ...(isBlocked ? { blocked: true, blockers: allBlockers } : {}),
       },

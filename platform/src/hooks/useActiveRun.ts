@@ -36,6 +36,7 @@ interface UseActiveRunResult {
   run: ActiveRun | null
   assets: ActiveRunAsset[]
   preparationIncomplete: boolean
+  preparationRetryAssets: string[]
   refresh: () => void
 }
 
@@ -46,6 +47,7 @@ export function useActiveRun(
   const [run, setRun] = useState<ActiveRun | null>(null)
   const [assets, setAssets] = useState<ActiveRunAsset[]>([])
   const [preparationIncomplete, setPreparationIncomplete] = useState(false)
+  const [preparationRetryAssets, setPreparationRetryAssets] = useState<string[]>([])
   const includePreparation = options?.preparation ?? false
   const prevRunRef = useRef<ActiveRun | null>(null)
   const onCompletedRef = useRef(options?.onCompleted)
@@ -77,6 +79,7 @@ export function useActiveRun(
       setAssets(body.data?.assets ?? [])
       if (includePreparation && typeof body.preparation_incomplete === 'boolean') {
         setPreparationIncomplete(body.preparation_incomplete)
+        setPreparationRetryAssets(body.preparation_retry_assets ?? [])
       }
     } catch (e) {
       if ((e as Error)?.name === 'AbortError') return
@@ -96,5 +99,5 @@ export function useActiveRun(
     }
   }, [fetch_, isRunning])
 
-  return { run, assets, preparationIncomplete, refresh: () => fetch_() }
+  return { run, assets, preparationIncomplete, preparationRetryAssets, refresh: () => fetch_() }
 }
