@@ -7314,9 +7314,9 @@ def _build_graha_yuddha_rows(
     chart_id: str, build_id: str, ayanamsha_id: str,
     computed_at: str, eng_ver: str,
 ) -> list[dict[str, Any]]:
-    """Detect graha yuddha (planetary war): two classical grahas within 1° in the same sign.
+    """Detect graha yuddha (planetary war): two tārā-grahas within 1° in the same sign.
 
-    Classical rule: only CLASSICAL_GRAHAS (no nodes) can be in yuddha.
+    Classical rule: only the 5 tārā-grahas (Mars, Mercury, Jupiter, Venus, Saturn) can be in yuddha.
     Emits 3 rows per pair: fact_key='winner', 'loser', 'orb_deg'.
 
     WINNER RULE FLOORED (JL-027 native ruling, JL_027_GRAHA_YUDDHA_WINNER_RULE_OPTIONS_v1_0.md):
@@ -7328,11 +7328,11 @@ def _build_graha_yuddha_rows(
     """
     rows: list[dict[str, Any]] = []
 
-    # Build longitude + sign table for classical grahas only
+    # Build longitude + sign table for eligible tārā-grahas only
     graha_data: list[tuple[str, float, str]] = []  # (name, longitude, sign)
     for g in chart_output.get("grahas", []):
         name = g.get("name", "")
-        if name not in CLASSICAL_GRAHAS:
+        if name not in ("Mars", "Mercury", "Jupiter", "Venus", "Saturn"):
             continue
         lon = float(g.get("longitude", 0.0))
         sign = str(g.get("sign", ""))
