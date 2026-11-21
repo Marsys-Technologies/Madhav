@@ -1871,11 +1871,11 @@ class TestKarakaWeb:
 
 class TestGrahaYuddha:
     def _make_yuddha_chart(self):
-        """Sun=295°, Mercury moved to 295.6° — same sign (Capricorn), orb=0.6° < 1°."""
+        """Mercury=300°, Mars moved to 300.6° — same sign (Capricorn), orb=0.6° < 1°."""
         modified_grahas = []
         for g in MOCK_CHART_OUTPUT["grahas"]:
-            if g["name"] == "Mercury":
-                modified_grahas.append({**g, "longitude": 295.6, "sign": "Capricorn"})
+            if g["name"] == "Mars":
+                modified_grahas.append({**g, "longitude": 300.6, "sign": "Capricorn"})
             else:
                 modified_grahas.append(g)
         return {**MOCK_CHART_OUTPUT, "grahas": modified_grahas}
@@ -1885,7 +1885,29 @@ class TestGrahaYuddha:
             self._make_yuddha_chart(), CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
         )
         yuddha_rows = [r for r in rows if r["fact_category"] == "graha_yuddha"]
-        assert len(yuddha_rows) >= 1
+        assert len(yuddha_rows) == 3
+        assert {r["fact_subject"] for r in yuddha_rows} == {"MER_v_MAR"}
+
+    def test_luminaries_and_nodes_excluded_from_yuddha(self):
+        """Sun, Moon, Rahu, Ketu within 1° never enter graha yuddha."""
+        chart = {
+            **MOCK_CHART_OUTPUT,
+            "grahas": [
+                {"name": "Sun",     "sign": "Capricorn", "longitude": 295.0},
+                {"name": "Moon",    "sign": "Capricorn", "longitude": 295.2},
+                {"name": "Rahu",    "sign": "Capricorn", "longitude": 295.4},
+                {"name": "Ketu",    "sign": "Capricorn", "longitude": 295.5},
+                {"name": "Mars",    "sign": "Capricorn", "longitude": 295.7},
+                {"name": "Mercury", "sign": "Aquarius",  "longitude": 310.0},
+                {"name": "Jupiter", "sign": "Pisces",    "longitude": 340.0},
+                {"name": "Venus",   "sign": "Aries",     "longitude": 10.0},
+                {"name": "Saturn",  "sign": "Taurus",    "longitude": 40.0},
+            ],
+        }
+        rows = sut._build_graha_yuddha_rows(
+            chart, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        assert [r for r in rows if r["fact_category"] == "graha_yuddha"] == []
 
     def test_no_yuddha_in_unmodified_mock(self):
         # Sun=295°, Mercury=300° → diff=5° > 1° → no yuddha
