@@ -18,10 +18,19 @@ const CHART_A = 'c0000000-0000-4000-8000-000000000001'
 const CHART_B = 'c0000000-0000-4000-8000-000000000002'
 
 const EXPECTED_SQL = [
-  `SELECT at.chart_id, at.asset_id, at.state, at.rows_written, at.last_built_at
-         FROM asset_throughput at
-         JOIN asset_registry ar ON ar.asset_id = at.asset_id AND ar.is_active = true
-        WHERE at.chart_id = ANY($1::uuid[])`,
+  `SELECT c.chart_id,
+              ar.asset_id,
+              COALESCE(at.state, 'dormant') AS state,
+              at.rows_written,
+              at.last_built_at
+         FROM (SELECT DISTINCT id AS chart_id FROM UNNEST($1::uuid[]) AS id) c
+         CROSS JOIN asset_registry ar
+         LEFT JOIN asset_throughput at
+           ON at.chart_id = c.chart_id
+          AND at.asset_id = ar.asset_id
+        WHERE ar.is_active = true
+          AND ar.scope = 'per_chart'
+          AND ar.has_writer = true`,
   `SELECT l.*,
               ARRAY(SELECT bra.asset_id FROM build_run_assets bra WHERE bra.run_id = l.id ORDER BY bra.position) AS planned_assets
          FROM (

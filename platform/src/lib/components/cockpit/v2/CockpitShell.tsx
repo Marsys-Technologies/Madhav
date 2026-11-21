@@ -11,7 +11,10 @@ import { WorkflowView } from './WorkflowView'
 import { AgentsView } from './AgentsView'
 import { ClearConfirmModal } from './ClearConfirmModal'
 import { useChartContext } from '@/hooks/useChartContext'
-import { useActiveRun } from '@/hooks/useActiveRun'
+import { useActiveRun, type ActiveRunAsset } from '@/hooks/useActiveRun'
+
+const EMPTY_ACTIVE_RUN_ASSETS: ActiveRunAsset[] = []
+const EMPTY_STRINGS: string[] = []
 import type { AssetWithState } from './LiveDependencyGraph'
 import { BuildActionButton } from './BuildActionButton'
 import { RefreshIconButton } from './RefreshIconButton'
@@ -56,8 +59,13 @@ export function CockpitShell({ chartId, initialChartMeta, variant = 'cockpit' }:
 
   // Single useActiveRun instance — lifted from CockpitHeader and DataAssetsView.
   // Previously both components had their own 5s polling loop to the same endpoint.
-  const { run: activeRun, assets: activeRunAssets = [], preparationIncomplete, preparationRetryAssets = [], refresh: refreshRun } =
-    useActiveRun(chartId, { preparation })
+  const {
+    run: activeRun,
+    assets: activeRunAssets = EMPTY_ACTIVE_RUN_ASSETS,
+    preparationIncomplete,
+    preparationRetryAssets = EMPTY_STRINGS,
+    refresh: refreshRun,
+  } = useActiveRun(chartId, { preparation })
   const isBuilding = activeRun !== null
 
   // Global clear modal state — clearModalOpen lets us show the modal immediately
@@ -172,14 +180,23 @@ export function CockpitShell({ chartId, initialChartMeta, variant = 'cockpit' }:
   const resumePreparation = preparationIncomplete || needsRetry || stalePreparation.length > 0 ||
     (preparationAssets.some(asset => asset.state !== 'dormant') &&
       preparationAssets.some(asset => asset.state !== 'lit'))
-  const activeAssetId = activeRunAssets.find(asset => asset.state === 'building')?.asset_id
-  const activeAssetName = assetStates.find(asset => asset.asset_id === activeAssetId)?.english_name
+  const buildingAssetIds = activeRunAssets
+    .filter(asset => asset.state === 'building')
+    .map(asset => asset.asset_id)
+  const effectiveBuildingIds = buildingAssetIds.length > 0
+    ? buildingAssetIds
+    : activeRun?.current_asset_id && !activeRunAssets.some(a => a.asset_id === activeRun.current_asset_id)
+      ? [activeRun.current_asset_id]
+      : []
+  const activeAssetNames = effectiveBuildingIds
+    .map(id => assetStates.find(asset => asset.asset_id === id)?.english_name)
+    .filter((name): name is string => Boolean(name))
   const completedAssets = activeRunAssets.filter(asset => asset.state === 'complete').length
   const preparationProgress = activeRun
     ? activeRun.state === 'paused' ? 'Paused' : activeRun.state === 'planned' ? 'Starting worker'
       : [
           `${completedAssets} of ${activeRun.plan.length} assets complete`,
-          activeAssetName,
+          activeAssetNames.length > 0 ? activeAssetNames.join(', ') : null,
         ].filter(Boolean).join(' · ')
     : needsRetry ? 'Preparation needs a retry'
       : stalePreparation.some(asset => asset.layer === 'ganita') ? 'Gaṇita needs a refresh'
@@ -267,6 +284,7 @@ export function CockpitShell({ chartId, initialChartMeta, variant = 'cockpit' }:
             refreshKey={refreshKey}
             clearKey={clearKey}
             activeRun={activeRun}
+            activeRunAssets={activeRunAssets}
             preparationRetryAssets={preparationRetryAssets}
             refreshRun={refreshRun}
             variant={variant}

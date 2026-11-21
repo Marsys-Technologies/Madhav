@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import type { AssetRow } from '@/app/api/cockpit/registry/route'
 import type { AssetStats } from '@/app/api/cockpit/stats/route'
-import type { ActiveRun } from '@/hooks/useActiveRun'
+import type { ActiveRun, ActiveRunAsset } from '@/hooks/useActiveRun'
 
 // Conservative layer availability from server states. This is preparation evidence,
 // not a promise that an arbitrary question or an empirical prediction is qualified.
@@ -30,17 +30,56 @@ export function preparationLayerState(
     ? 'Prepared' : 'Preparation incomplete'
 }
 
-export function PreparationReadiness({ assets, stats, unavailable, chartId, activeRun, preparationRetryAssets = [] }: {
+const EMPTY_ACTIVE_RUN_ASSETS: ActiveRunAsset[] = []
+
+export function PreparationReadiness({ assets, stats, unavailable, chartId, activeRun, activeRunAssets = EMPTY_ACTIVE_RUN_ASSETS, preparationRetryAssets = [] }: {
   assets: AssetRow[]; stats: Map<string, AssetStats>; unavailable: boolean; chartId: string; activeRun: ActiveRun | null
+  activeRunAssets?: ActiveRunAsset[]
   preparationRetryAssets?: string[]
 }) {
-  const preparing = new Set(activeRun?.plan ?? [])
+  const terminalInRun = new Set(
+    activeRunAssets
+      .filter(a => a.state === 'complete' || a.state === 'skipped' || a.state === 'error' || a.state === 'aborted')
+      .map(a => a.asset_id),
+  )
+  const preparing = new Set(
+    (activeRun?.plan?.length
+      ? activeRun.plan
+      : activeRunAssets.map(a => a.asset_id)
+    ).filter(id => !terminalInRun.has(id)),
+  )
   const retry = new Set(preparationRetryAssets)
-  if (activeRun && !preparing.size) {
+  if (activeRun && !activeRun.plan.length && !activeRunAssets.length) {
     for (const asset of assets) {
       if (activeRun.scope === 'global' || (activeRun.scope === 'layer' && activeRun.scope_target === asset.layer)
         || (activeRun.scope === 'asset' && activeRun.scope_target === asset.asset_id)
-        || (activeRun.scope === 'asset_set' && activeRun.scope_target?.split(',').map(id => id.trim()).includes(asset.asset_id))) preparing.add(asset.asset_id)
+        || (activeRun.scope === 'asset_set' && activeRun.scope_target?.split(',').map(id => id.trim()).includes(asset.asset_id))) {
+        preparing.add(asset.asset_id)
+      }
+    }
+  }
+  const effectiveStats = new Map(stats)
+  if (activeRunAssets.length > 0) {
+    const registryById = new Map(assets.map(a => [a.asset_id, a]))
+    for (const ra of activeRunAssets) {
+      const existing = effectiveStats.get(ra.asset_id)
+      if (!existing) continue
+      if (ra.state === 'complete' && existing.state !== 'incomplete' && existing.state !== 'partial') {
+        const reg = registryById.get(ra.asset_id)
+        const isService = reg?.asset_type === 'service' || reg?.asset_kind === 'service'
+        effectiveStats.set(ra.asset_id, {
+          ...existing,
+          state: isService ? 'service_ok' : 'lit',
+          error: null,
+          build_state_stale: false,
+        })
+      } else if (ra.state === 'error' && ra.disposition !== 'blocked_dependency' && existing.state !== 'incomplete' && existing.state !== 'partial') {
+        effectiveStats.set(ra.asset_id, {
+          ...existing,
+          state: 'error',
+          error: existing.error ?? ra.error,
+        })
+      }
     }
   }
   return <aside className="preparation-readiness" aria-label="What you can ask now">
@@ -53,7 +92,7 @@ export function PreparationReadiness({ assets, stats, unavailable, chartId, acti
       ['mimamsa', 'Falsifiers and prediction review', 'Mīmāṃsā'],
     ].map(([layer, label, name]) => <li key={layer}>
       {label}<small>{name} · {unavailable ? 'Status unavailable'
-        : preparationLayerState(assets, stats, layer, preparing, retry)}</small>
+        : preparationLayerState(assets, effectiveStats, layer, preparing, retry)}</small>
     </li>)}</ul>
     <p className="j1-note" style={{ margin: '16px 0' }}>These are layer preparation checks. Consultation checks the specific evidence each question needs.</p>
     <Link href={`/clients/${chartId}/pariprashna`} className="j1-btn">Open Consultation</Link>

@@ -33,11 +33,11 @@ export function deriveBuildStage(params: {
   const { polledState, sseState, substepIndex, substepTotal, isQueued } = params
   const effectiveState = sseState ?? polledState
 
-  if (effectiveState === 'lit') return 'lit'
+  if (isQueued) return 'queued'
+  if (effectiveState === 'lit' || effectiveState === 'service_ok') return 'lit'
   if (effectiveState !== 'building') return 'idle'
 
   // building state
-  if (isQueued) return 'queued'
   if (substepIndex !== undefined && substepTotal !== undefined && substepTotal > 0) {
     if (substepIndex >= substepTotal) return 'committing'
     return 'substeps'

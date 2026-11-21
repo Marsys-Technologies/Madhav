@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { AssetRow } from '@/app/api/cockpit/registry/route'
 import type { AssetStats } from '@/app/api/cockpit/stats/route'
-import type { ActiveRun } from '@/hooks/useActiveRun'
+import type { ActiveRun, ActiveRunAsset } from '@/hooks/useActiveRun'
 import type { SubstepOverlay } from './DataAssetsView'
 import { AssetRow as AssetRowComponent } from './AssetRow'
 import { BuildActionButton } from './BuildActionButton'
@@ -71,7 +71,13 @@ function assetSetIncludes(scopeTarget: string | null, assetId: string): boolean 
   return scopeTarget?.split(',').some(target => target.trim() === assetId) ?? false
 }
 
-function activeRunTargetsAsset(activeRun: ActiveRun, layer: string, assetId: string): boolean {
+function activeRunTargetsAsset(
+  activeRun: ActiveRun,
+  layer: string,
+  assetId: string,
+  planSet: ReadonlySet<string>,
+): boolean {
+  if (planSet.size > 0) return planSet.has(assetId)
   return activeRun.scope === 'global'
     || (activeRun.scope === 'layer' && activeRun.scope_target === layer)
     || (activeRun.scope === 'asset' && activeRun.scope_target === assetId)
@@ -90,10 +96,13 @@ interface Props {
   onHover?: (assetId: string | null) => void
   chartId: string
   activeRun: ActiveRun | null
+  activeRunAssets?: ActiveRunAsset[]
   substepOverlay?: Map<string, SubstepOverlay>
   onRunStarted: () => void
   preparation?: boolean
 }
+
+const EMPTY_ACTIVE_RUN_ASSETS: ActiveRunAsset[] = []
 
 export function LayerPanel({
   layer,
@@ -107,6 +116,7 @@ export function LayerPanel({
   onHover,
   chartId,
   activeRun,
+  activeRunAssets = EMPTY_ACTIVE_RUN_ASSETS,
   substepOverlay,
   onRunStarted,
   preparation = false,
@@ -139,22 +149,41 @@ export function LayerPanel({
     return state === 'error' || state === 'service_down'
   }).length
 
-  // A singleton asset_set belongs only to the layer containing its selected asset.
-  // Treat it as active here so the UI cannot invite a second dispatch while the
-  // protected dispatcher is already running the probe.
+  const planSet = useMemo(() => new Set(activeRun?.plan ?? []), [activeRun?.plan])
+  const activeRunAssetById = useMemo(
+    () => new Map(activeRunAssets.map(a => [a.asset_id, a])),
+    [activeRunAssets],
+  )
+
+  // When activeRun.plan is non-empty, use activeRun.plan (even for asset_set scopes,
+  // because Resume dispatches scope_target with all 43 prep assets while plan only
+  // schedules the subset needing work). Fall back to scope_target when plan is empty.
   const layerRunActive = activeRun != null && (
-    activeRun.scope === 'global' ||
-    (activeRun.scope === 'layer' && activeRun.scope_target === layer) ||
-    (activeRun.scope === 'asset_set' && activeAssets.some(asset => assetSetIncludes(activeRun.scope_target, asset.asset_id)))
+    planSet.size > 0
+      ? activeAssets.some(asset => planSet.has(asset.asset_id))
+      : (
+        activeRun.scope === 'global' ||
+        (activeRun.scope === 'layer' && activeRun.scope_target === layer) ||
+        (activeRun.scope === 'asset' && activeAssets.some(asset => asset.asset_id === activeRun.scope_target)) ||
+        (activeRun.scope === 'asset_set' && activeAssets.some(asset => assetSetIncludes(activeRun.scope_target, asset.asset_id)))
+      )
   )
   const layerRunId = layerRunActive ? activeRun!.id : null
-  // Only the layer that owns the currently-building asset surfaces a Stop control. Without this
-  // a global run lights up Stop on every (idle) layer, which is misleading — every Stop just
-  // halts the whole run. The build advances one asset at a time, so scope to current_asset_id.
-  const buildingAssetId = activeRun?.current_asset_id ?? null
-  const layerOwnsBuildingAsset = buildingAssetId != null && activeAssets.some(a => a.asset_id === buildingAssetId)
+  // Surface Stop on any layer that owns at least one actively-building asset in
+  // the run (supports wave-parallel runs where multiple assets build concurrently).
+  const isAssetActivelyBuilding = (assetId: string): boolean => {
+    if (activeRun == null || !activeRunTargetsAsset(activeRun, layer, assetId, planSet)) return false
+    const ra = activeRunAssetById.get(assetId)
+    if (ra) return ra.state === 'building'
+    return activeRun.current_asset_id === assetId || stats.get(assetId)?.state === 'building'
+  }
+  const layerOwnsBuildingAsset = activeRun != null && activeAssets.some(a => isAssetActivelyBuilding(a.asset_id))
   const litCount = activeAssets.filter(a => {
     const s = stats.get(a.asset_id)
+    const targeted = activeRun != null && activeRunTargetsAsset(activeRun, layer, a.asset_id, planSet)
+    const ra = targeted ? activeRunAssetById.get(a.asset_id) : undefined
+    if (ra?.state === 'building') return false
+    if (ra?.state === 'complete' && s?.state !== 'incomplete' && s?.state !== 'partial') return true
     return s?.state === 'lit' || s?.state === 'service_ok'
   }).length
   const layerIsBuilding = activeRun != null && layerOwnsBuildingAsset
@@ -383,7 +412,23 @@ export function LayerPanel({
               const bSvc = (b.asset_type === 'service' || b.asset_kind === 'service') ? 0 : 1
               return aSvc - bSvc
             }).map((asset, i) => {
-              const assetRunActive = activeRun != null && activeRunTargetsAsset(activeRun, layer, asset.asset_id)
+              const assetRunActive = activeRun != null && activeRunTargetsAsset(activeRun, layer, asset.asset_id, planSet)
+              const runAsset = assetRunActive ? (activeRunAssetById.get(asset.asset_id) ?? null) : null
+              const assetActivelyBuilding = assetRunActive && (
+                runAsset
+                  ? runAsset.state === 'building'
+                  : (activeRun?.current_asset_id === asset.asset_id || stats.get(asset.asset_id)?.state === 'building')
+              )
+              const fallbackQueued = (() => {
+                if (!assetRunActive || runAsset != null || assetActivelyBuilding || !activeRun) return false
+                if (activeRun.state === 'planned') return true
+                if (activeRun.plan.length > 0 && activeRun.current_asset_id) {
+                  const curIdx = activeRun.plan.indexOf(activeRun.current_asset_id)
+                  const assetIdx = activeRun.plan.indexOf(asset.asset_id)
+                  if (curIdx >= 0 && assetIdx > curIdx) return true
+                }
+                return false
+              })()
               return (
                 <motion.div
                   key={asset.asset_id}
@@ -399,10 +444,9 @@ export function LayerPanel({
                     chartId={chartId}
                     activeRunId={assetRunActive ? activeRun!.id : null}
                     activeRunPaused={assetRunActive && activeRun!.state === 'paused'}
-                    isActiveAsset={assetRunActive && (
-                      activeRun?.current_asset_id === asset.asset_id ||
-                      stats.get(asset.asset_id)?.state === 'building'
-                    )}
+                    activeRunAsset={runAsset}
+                    isActiveAsset={assetActivelyBuilding}
+                    isQueued={fallbackQueued}
                     highlighted={focusedAssetId === asset.asset_id || hoveredAssetId === asset.asset_id}
                     allAssets={allAssets}
                     substep={substepOverlay?.get(asset.asset_id) ?? null}

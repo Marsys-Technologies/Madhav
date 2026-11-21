@@ -48,6 +48,9 @@ export function ChartReadinessBand({
   canBuild?: boolean
 }) {
   const needsAttention = readiness.state === 'needs-rebuild' || readiness.state === 'failed'
+  const attentionLayers = readiness.layerPips
+    .filter((pip) => pip.state === 'amber')
+    .map((pip) => BRAHMA_LEXICON[pip.layer].sanskrit)
   return (
     <section aria-labelledby="jw-readiness-heading" className="jw-panel px-5 py-4" data-testid="chart-readiness-band">
       <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
@@ -90,6 +93,11 @@ export function ChartReadinessBand({
             <li key={pip.layer} aria-label={`${name}: ${PIP_TEXT[pip.state]}`} className="flex items-center gap-2">
               <span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full border ${PIP_CLASS[pip.state]}`} />
               <span aria-hidden="true" className="text-xs text-[var(--jw-ink-dim)]">{name}</span>
+              {(pip.state === 'amber' || pip.state === 'building') && (
+                <span aria-hidden="true" className="text-[11px] text-[var(--jw-ink-dim)]">
+                  ({PIP_TEXT[pip.state]})
+                </span>
+              )}
             </li>
           )
         })}
@@ -112,6 +120,31 @@ export function ChartReadinessBand({
           </>
         )}
         {readiness.state === 'failed' && <span>The latest build failed. Open Nirmāṇa for details.</span>}
+        {!readiness.activeRunId && readiness.state !== 'needs-rebuild' && (readiness.preparationRetryAssets?.length ?? 0) > 0 && (
+          <>
+            <span>
+              Preparation needs a retry{attentionLayers.length > 0 ? ` (${attentionLayers.join(', ')})` : ''}.
+            </span>
+            <RetryCopy chartId={chartId} canBuild={canBuild} />
+          </>
+        )}
+        {!readiness.activeRunId &&
+          readiness.state !== 'needs-rebuild' &&
+          !(readiness.preparationRetryAssets?.length ?? 0) &&
+          readiness.preparationDataUnavailable && (
+            <span>
+              {attentionLayers.length > 0
+                ? `${attentionLayers.join(', ')} needs refresh — open Nirmāṇa to update before starting readings.`
+                : 'Chart preparation needs refresh — open Nirmāṇa to update before starting readings.'}
+            </span>
+        )}
+        {!readiness.activeRunId &&
+          readiness.state !== 'needs-rebuild' &&
+          !(readiness.preparationRetryAssets?.length ?? 0) &&
+          !readiness.preparationDataUnavailable &&
+          attentionLayers.length > 0 && (
+            <span>Needs attention: {attentionLayers.join(', ')}.</span>
+        )}
         {readiness.refreshWarning && (
           <span role="status" className="text-amber-200/80">
             {readiness.refreshWarning}
