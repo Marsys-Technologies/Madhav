@@ -273,3 +273,8 @@ introduced by it.
 3. `events.py`: added `build_phase_event()` emitting backward-compatible `asset.phase` SSE payloads (transport-only, not added to `DEFAULT_DURABLE_EVENT_TYPES` / `orchestrator_event_register`).
 
 **Regression proof:** `tests/test_nirmana_phase_telemetry_clock.py` and existing orchestrator suites (`test_orchestrator_gate.py`, `test_orchestrator_substeps.py`, `test_asset_runner_zero_rows.py`, `test_d16_state_write_defect.py`, `test_watchdog_heartbeat_fix.py`).
+
+### 7.5 — NIR-04 dead-connection crash cleanup fallback in `runner.py` (2026-11-21)
+
+**Authorization & Change:** `NIR-04` resilience fix in `platform/python-sidecar/pipeline/orchestrator/runner.py` (`_terminalize_crashed_run` and `finally:` `conn.close()` guard): when `execute_run` catches an exception and the main `conn` is dead/closed (e.g. Cloud SQL Auth Proxy TCP reset), it opens a fresh short-lived `connect()` fallback connection to mark `build_runs.state = 'failed'` and abort remaining `'queued'` `build_run_assets` instead of leaving the run stranded `'running'`.
+**Contract impact & Proof:** None to `WriterBase`, `ctx`, `WriterResult`, or `asset_runner.py`. Verified by `platform/python-sidecar/tests/test_nirmana_runner_dead_conn_cleanup.py` (4/4 passing) and `test_orchestrator_gate.py` (15/15 passing).
