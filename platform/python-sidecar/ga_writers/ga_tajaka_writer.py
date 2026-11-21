@@ -783,15 +783,22 @@ def build_ga_tajaka(chart_id: str,
     if build_id is None:
         build_id = str(uuid.uuid4())
     owns_conn = conn is None
-    effective_reference_year = _effective_reference_year(reference_year)
     # Every chart (native included) must have real birth_params from public.charts.
     # resolve_birth_params raises for any chart with falsy params.
     bp = resolve_birth_params(chart_id, birth_params)
     birth_year = int(str(bp["datetime_iso"])[:4])
-    current_varsha = effective_reference_year - birth_year + 1
-    if max_varsha is None:
-        max_varsha = current_varsha + 5
-    aya_ids = ayanamshas or list(CANONICAL_AYANAMSHAS.keys())
+    window_spec = compute_expected_tajaka_window(
+        birth_year,
+        reference_year=reference_year,
+        min_varsha=min_varsha,
+        max_varsha=max_varsha,
+        ayanamshas=ayanamshas,
+    )
+    effective_reference_year = window_spec["reference_year"]
+    min_varsha = window_spec["min_varsha"]
+    max_varsha = window_spec["max_varsha"]
+    aya_ids = window_spec["ayanamshas"]
+    expected_target_floor = window_spec["expected_target_floor"]
 
     logger.info("[ga_tajaka_writer] build chart=%s window=varsha[%d..%d] ayanamshas=%d",
                 chart_id, min_varsha, max_varsha, len(aya_ids))
@@ -844,6 +851,8 @@ def build_ga_tajaka(chart_id: str,
                 f"TWO-PASS HALT: {len(divergent)} divergent_flagged varsha rows "
                 f"(first: {divergent[0]}). Build halted before insert.")
 
+        _validate_tajaka_window_completeness(all_rows, aya_ids, min_varsha, max_varsha)
+
         # Strip internal keys before persistence.
         for r in all_rows:
             for k in ("_muntha_sign", "_muntha_house_from_natal", "_muntha_lord"):
@@ -874,6 +883,8 @@ def build_ga_tajaka(chart_id: str,
                    "calendar_span": [birth_year + min_varsha - 1,
                                      birth_year + max_varsha - 1]},
         "ayanamshas": list(aya_ids),
+        "years_per_frame": window_spec["years_per_frame"],
+        "expected_target_floor": expected_target_floor,
         "rows_deleted_idempotent": deleted,
         "total_rows_written": inserted,
         "per_ayanamsha_counts": per_aya_counts,
@@ -886,13 +897,119 @@ def build_ga_tajaka(chart_id: str,
         "two_pass_verified": None,
         "divergent_flagged": len(divergent),
         # F-E17 (cycle 106): compute_varsha() exists but has zero callers -- correcting this
-        # claim rather than repeating it. Only the precomputed window (varsha 1..48) is stored;
+        # claim rather than repeating it. Only the precomputed window (varsha min..max) is stored;
         # get_tajik.ts's own empty_reason honestly discloses the rest as genuinely not computed.
-        "storage_strategy": "windowed (varsha 1..48 precomputed; outside the window is not stored, not computed on-demand)",
+        "storage_strategy": (
+            f"windowed (varsha {min_varsha}..{max_varsha} precomputed per frame; "
+            f"outside the window is not stored, not computed on-demand)"
+        ),
     }
     logger.info("[ga_tajaka_writer] PASS rows=%d forensic=%s two_pass=%s (no second derivation; rows are `single`)",
                 inserted, forensic_pass, summary["two_pass_verified"])
     return summary
+
+
+def compute_expected_tajaka_window(
+    birth_year: int,
+    *,
+    reference_year: int | None = None,
+    min_varsha: int = 1,
+    max_varsha: int | None = None,
+    ayanamshas: list[str] | None = None,
+) -> dict[str, Any]:
+    """Resolve the governed annual Tajika window and dynamic expected row floor."""
+    eff_ref_year = _effective_reference_year(reference_year)
+    resolved_min = int(min_varsha)
+    if resolved_min < 1:
+        raise ValueError(
+            f"ga_tajaka invalid window: min_varsha={resolved_min} must be >= 1"
+        )
+    current_varsha = eff_ref_year - int(birth_year) + 1
+    resolved_max = int(max_varsha) if max_varsha is not None else current_varsha + 5
+    if resolved_max < resolved_min:
+        raise ValueError(
+            f"ga_tajaka invalid window: max_varsha={resolved_max} < min_varsha={resolved_min} "
+            f"(birth_year={birth_year}, reference_year={eff_ref_year})"
+        )
+    aya_ids = list(ayanamshas) if ayanamshas is not None else list(CANONICAL_AYANAMSHAS.keys())
+    if not aya_ids:
+        raise ValueError("ga_tajaka invalid frames: expected at least one ayanamsha")
+    if len(set(aya_ids)) != len(aya_ids):
+        raise ValueError(f"ga_tajaka invalid frames: duplicate ayanamsha_ids in {aya_ids!r}")
+    unknown_ayas = [a for a in aya_ids if a not in CANONICAL_AYANAMSHAS]
+    if unknown_ayas:
+        raise ValueError(
+            f"ga_tajaka invalid frames: unknown ayanamsha_ids {unknown_ayas!r}"
+        )
+    years_per_frame = resolved_max - resolved_min + 1
+    return {
+        "reference_year": eff_ref_year,
+        "min_varsha": resolved_min,
+        "max_varsha": resolved_max,
+        "ayanamshas": aya_ids,
+        "years_per_frame": years_per_frame,
+        "expected_target_floor": years_per_frame * len(aya_ids),
+    }
+
+
+def _validate_tajaka_window_completeness(
+    rows: list[dict[str, Any]],
+    expected_ayanamshas: list[str],
+    min_varsha: int,
+    max_varsha: int,
+) -> dict[str, Any]:
+    """Assert every expected frame has a complete, contiguous, duplicate-free varsha sequence."""
+    expected_years = list(range(min_varsha, max_varsha + 1))
+    expected_set = set(expected_years)
+    expected_aya_set = set(expected_ayanamshas)
+    per_frame_counts: dict[str, dict[int, int]] = {a: {} for a in expected_ayanamshas}
+
+    for idx, row in enumerate(rows):
+        aya = row.get("ayanamsha_id")
+        if aya not in expected_aya_set:
+            raise RuntimeError(
+                f"TAJAKA COMPLETENESS HALT: row[{idx}] carries unexpected frame "
+                f"ayanamsha_id={aya!r}; expected one of {expected_ayanamshas!r}."
+            )
+        raw_year = row.get("varsha_year")
+        if raw_year is None or isinstance(raw_year, bool):
+            raise RuntimeError(
+                f"TAJAKA COMPLETENESS HALT: frame={aya} row[{idx}] missing integer varsha_year."
+            )
+        varsha_year = int(raw_year)
+        frame_counts = per_frame_counts[aya]
+        frame_counts[varsha_year] = frame_counts.get(varsha_year, 0) + 1
+
+    for aya in expected_ayanamshas:
+        frame_counts = per_frame_counts[aya]
+        duplicates = sorted(y for y, cnt in frame_counts.items() if cnt > 1)
+        if duplicates:
+            raise RuntimeError(
+                f"TAJAKA COMPLETENESS HALT: frame={aya} has duplicate varsha_year(s) "
+                f"{duplicates} within window [{min_varsha}..{max_varsha}]."
+            )
+        unexpected = sorted(y for y in frame_counts if y not in expected_set)
+        if unexpected:
+            raise RuntimeError(
+                f"TAJAKA COMPLETENESS HALT: frame={aya} has out-of-window varsha_year(s) "
+                f"{unexpected} outside [{min_varsha}..{max_varsha}]."
+            )
+        missing = [y for y in expected_years if y not in frame_counts]
+        if missing:
+            raise RuntimeError(
+                f"TAJAKA COMPLETENESS HALT: frame={aya} incomplete/non-contiguous — "
+                f"missing varsha_year(s) {missing} in expected window "
+                f"[{min_varsha}..{max_varsha}] "
+                f"({len(frame_counts)}/{len(expected_years)} present)."
+            )
+
+    return {
+        "min_varsha": min_varsha,
+        "max_varsha": max_varsha,
+        "expected_years_per_frame": len(expected_years),
+        "expected_total_rows": len(expected_years) * len(expected_ayanamshas),
+        "per_ayanamsha_counts": {a: len(per_frame_counts[a]) for a in expected_ayanamshas},
+    }
 
 
 # ── CLI ───────────────────────────────────────────────────────────────────────

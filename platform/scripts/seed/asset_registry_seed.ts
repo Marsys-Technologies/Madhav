@@ -1403,17 +1403,18 @@ export const ASSETS: AssetDef[] = [
     target_table: 'l1_tajik_varsha_year_lords',
     count_sql: 'SELECT count(*) AS count FROM l1_tajik_varsha_year_lords WHERE chart_id = $1',
     size_sql: null,
-    // Floor = achieved canonical count for chart 482012f1 (migration 222, 2026-06-11):
-    // A7 hybrid window varsha 1..48 (birth 1984 → present+5 ≈ 2031) × 5 ayanamshas.
-    target_floor: 240,
-    expected_volume_formula: null, // non-parametric — target_floor = 240 (A7 hybrid window varsha 1..48 × 5 ayanamshas)
+    // NIR-08: ga_tajaka produces an age- and window-dependent number of annual rows:
+    // (reference_year - birth_year + 6) varshas × 5 canonical ayanamshas
+    // (e.g. 240 for 1984 birth, 305 for 1971 birth, 180 for 1996 birth, 60 for 2020 birth
+    // at reference_year=2026). Static target_floor = 240 caused false low-count warnings on
+    // younger charts; null leaves per-chart window completeness to ga_tajaka_writer.py and
+    // integrity_check_sql (migration 659). Zero rows still fails closed as 'dormant'.
+    target_floor: null,
+    expected_volume_formula: null, // age-dependent per chart: (reference_year - birth_year + 6) × 5 ayanamshas
     expected_volume_inputs: null,
-    // F-E17 (cycle 106): the prior text claimed varshas outside the precomputed window are
-    // "computed on-demand by the retrieval tool via ga_tajaka_writer.compute_varsha()" --
-    // compute_varsha() exists but has zero callers (3 repo hits total: its own def, its own
-    // self-referential comment, this line). get_tajik.ts is a pure SELECT; its own
-    // empty_reason honestly discloses out-of-window varshas as genuinely not computed.
-    volume_explanation: 'target_floor = 240 = achieved canonical count for chart 482012f1 (2026-06-11): A7 hybrid window varsha 1..48 × 5 ayanamshas. Windowed storage — only varshas inside the precomputed window (1..48) are stored; varshas outside that window are NOT computed on-demand (get_tajik.ts honestly reports them via its own empty_reason disclosure).',
+    // F-E17 (cycle 106): compute_varsha() exists but has zero callers; get_tajik.ts is a pure
+    // SELECT whose own empty_reason honestly discloses out-of-window varshas as genuinely not computed.
+    volume_explanation: 'Dynamic per-chart varsha window = 1..(reference_year - birth_year + 6) × 5 canonical ayanamshas (e.g. 240 rows for 1984 birth, 305 for 1971, 180 for 1996, 60 for 2020 in 2026); target_floor is NULL so younger charts do not emit false below-floor warnings while pre-insert completeness checks enforce contiguous gap-free years per frame. Windowed storage — only varshas inside the precomputed window are stored; varshas outside that window are NOT computed on-demand (get_tajik.ts honestly reports them via its own empty_reason disclosure).',
     depends_on: ['ga_positions', 'ga_dashas', 'ga_sensitive'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
