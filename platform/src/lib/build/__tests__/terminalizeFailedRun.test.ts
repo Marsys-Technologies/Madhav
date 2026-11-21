@@ -66,3 +66,14 @@ describe('terminalizeFailedRun', () => {
     expect(sql).toMatch(/NOT IN \('completed', 'failed', 'stopped'\)/)
   })
 })
+
+describe('terminalizeFailedRun — definite unclaimed submission refusal', () => {
+  it('atomically touches only an unclaimed run and assets returned by that update', async () => {
+    await terminalizeFailedRun('synthetic-run', 'definite refusal', { unclaimedOnly: true })
+    expect(mockQuery).toHaveBeenCalledOnce()
+    const [sql, params] = mockQuery.mock.calls[0]!
+    expect(params).toEqual(['definite refusal', 'synthetic-run'])
+    expect(sql).toMatch(/WHERE id = \$2 AND state = 'planned' AND started_at IS NULL/)
+    expect(sql).toMatch(/WHERE run_id IN \(SELECT id FROM failed_run\)\s+AND state = 'queued'/)
+  })
+})

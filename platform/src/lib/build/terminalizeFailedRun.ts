@@ -46,8 +46,31 @@ export const TERMINALIZE_EMPTY_MESSAGE_FALLBACK =
  * 'stopped' without aborting its assets — a stopped/failed run must not keep
  * 'queued' assets forever just because the run row itself was already terminal.
  */
-export async function terminalizeFailedRun(runId: string, message: string): Promise<void> {
+export async function terminalizeFailedRun(
+  runId: string,
+  message: string,
+  options: { unclaimedOnly?: boolean } = {},
+): Promise<void> {
   const errorText = message && message.trim().length > 0 ? message : TERMINALIZE_EMPTY_MESSAGE_FALLBACK
+
+  if (options.unclaimedOnly) {
+    // Only a definite submission refusal can fail an unclaimed run. If the
+    // runner claims it first, neither the run nor its queued assets may change.
+    await query(
+      `WITH failed_run AS (
+         UPDATE build_runs
+         SET state = 'failed', ended_at = NOW(), last_error = $1
+         WHERE id = $2 AND state = 'planned' AND started_at IS NULL
+         RETURNING id
+       )
+       UPDATE build_run_assets
+       SET state = 'aborted', ended_at = NOW(), error = $1
+       WHERE run_id IN (SELECT id FROM failed_run)
+         AND state = 'queued'`,
+      [errorText, runId]
+    )
+    return
+  }
 
   await query(
     `WITH failed_run AS (

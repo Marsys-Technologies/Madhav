@@ -30,7 +30,10 @@ vi.mock('@/lib/auth/authorizeChartAccess', () => ({ authorizeChartAccess: mockAu
 vi.mock('@/lib/mcp/auth', () => ({ resolveMcpPrincipalRole: vi.fn().mockResolvedValue('guest') }))
 vi.mock('@/lib/db/client', () => ({ query: vi.fn() }))
 
-const CHART = '482012f1-710e-4a25-994a-93821f5871aa'
+const mockMatch = vi.fn()
+vi.mock('@/lib/lel/prospective_ledger', () => ({ matchOpenPredictionsForLelEvent: mockMatch }))
+
+const CHART = '11111111-2222-4333-8444-555555555555'
 
 function makeReq(body: object): Request {
   return new Request('http://localhost/api/mcp/writes/lel_event_record', {
@@ -51,14 +54,15 @@ const PARAMS = { params: Promise.resolve({ action: 'lel_event_record' }) }
 const VALID_EVENT = {
   event_class: 'career_entry',
   event_date: '2015-06-01',
-  description: 'Joined first firm',
+  description: 'Fictional first job',
   domain: 'career',
 }
 
 beforeEach(() => {
   vi.clearAllMocks()
   process.env.MCP_INTERNAL_TOKEN = 'test-token'
-  mockRecordLelEvent.mockResolvedValue({ event_id: 'evt-1', recorded_at: '2026-07-08T00:00:00Z', created: true })
+  mockMatch.mockResolvedValue([])
+  mockRecordLelEvent.mockResolvedValue({ id: 'synthetic-row', event_id: 'evt-1', recorded_at: '2026-07-08T00:00:00Z', created: true })
 })
 
 describe('POST /api/mcp/writes/lel_event_record — authz', () => {
@@ -163,6 +167,26 @@ describe('POST /api/mcp/writes/lel_event_record — happy path + debounce', () =
     expect(body.result.event_id).toBe('evt-1')
     expect(body.result.recalibration.enqueued).toBe(false)
     expect(body.result.recalibration.reason).toBe('enqueue_error')
+  })
+
+  it.each([
+    { enqueued: false, reason: 'protected' },
+    { enqueued: false, reason: 'nothing_to_build' },
+    { enqueued: false, reason: 'dispatch_unknown', run_id: 'synthetic-run' },
+  ])('keeps the event and passes through $reason independently of matching', async (recalibration) => {
+    mockAuthorize.mockResolvedValue('all')
+    mockEnqueue.mockResolvedValue(recalibration)
+    mockMatch.mockRejectedValueOnce(new Error('synthetic matching refusal'))
+
+    const { POST } = await import('../[action]/route')
+    const res = await POST(makeReq({ chart_id: CHART, event: VALID_EVENT }), PARAMS)
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.result.event_id).toBe('evt-1')
+    expect(body.result.recalibration).toEqual(recalibration)
+    expect(body.result.prospective_ledger_matches).toEqual({ matched_count: 0, reason: 'match_error' })
+    expect(mockMatch).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ chart_id: CHART, life_event_id: 'synthetic-row' }))
+    expect(mockRecordLelEvent.mock.invocationCallOrder[0]).toBeLessThan(mockEnqueue.mock.invocationCallOrder[0])
   })
 
   it('requires chart_id (400 when absent)', async () => {

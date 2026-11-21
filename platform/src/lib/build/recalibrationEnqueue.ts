@@ -4,9 +4,9 @@
  * When a new life event is saved, the calibration surfaces that depend on the
  * chart's LEL corpus become stale. Rather than a full rebuild, we enqueue a
  * TARGETED `scope='asset_set'` run over just the LEL-dependent assets for THAT
- * chart. This reuses the exact build_runs + build_run_assets INSERT shape and
- * `resolveBuildPlan` used by POST /api/cockpit/runs (no duplicated planning),
- * invoked as an internal server-side function rather than an HTTP round-trip.
+ * chart. Shared Build preparation applies chart-scoped writer, protection and
+ * freshness rules and persists the frozen plan with its queued assets before
+ * dispatch. Recalibration does not clear data before the run.
  *
  * DEBOUNCE (two guards, both coalesce silently — never an error to the caller):
  *
@@ -29,15 +29,17 @@
  */
 
 import 'server-only'
-import { query } from '@/lib/db/client'
-import {
-  resolveBuildPlan,
-  type RegistryEntry,
-  type ThroughputEntry,
-  type AssetId,
-} from './plan'
-import { invokeRunJob } from './jobInvoker'
+import { query, withTransaction } from '@/lib/db/client'
+import type { AssetId, BlockerEntry, ProtectedAssetBlocker } from './plan'
+import { invokeRunJob, RunSubmissionRejected } from './jobInvoker'
 import { terminalizeFailedRun } from './terminalizeFailedRun'
+import {
+  BuildPreparationError,
+  findActiveRun,
+  isActiveRunConflict,
+  persistPreparedRun,
+  resolveRunPreparation,
+} from './runPreparation'
 
 /**
  * The assets that consume a chart's LEL corpus / calibration state. A new life
@@ -70,16 +72,13 @@ export interface EnqueueRecalibrationArgs {
 
 export type EnqueueRecalibrationResult =
   | { enqueued: true; run_id: string; plan: AssetId[] }
+  | { enqueued: false; reason: 'dispatch_unknown'; run_id: string }
   | {
       enqueued: false
-      reason: 'debounced' | 'run_active' | 'nothing_to_build'
+      reason: 'debounced' | 'run_active' | 'nothing_to_build' | 'protected'
       existing_run_id?: string
       debounce_seconds?: number
     }
-
-interface RegistryRow extends RegistryEntry {
-  scope: string
-}
 
 /**
  * Read the recalibration quiet-window seconds from brahma_formula_constants.
@@ -101,8 +100,8 @@ export async function getRecalibrationDebounceSeconds(): Promise<number> {
 /**
  * Enqueue a debounced, targeted LEL recalibration run for one chart.
  *
- * Never throws for a debounce/coalesce condition — those return
- * `{ enqueued: false, reason }`. Only unexpected DB/dispatch failures throw.
+ * Coalesced, blocked and protected runs return `{ enqueued: false, reason }`.
+ * Preparation and dispatch errors propagate to the caller's partial result.
  */
 export async function enqueueLelRecalibration(
   { chartId, triggeredBy = RECAL_TRIGGERED_BY, force = false }: EnqueueRecalibrationArgs
@@ -123,72 +122,72 @@ export async function enqueueLelRecalibration(
     }
   }
 
-  // ── Guard 2: RUN_ACTIVE (mirrors runs-route Gate 0; coalesce, not error) ────
-  const { rows: active } = await query<{ id: string }>(
-    `SELECT id FROM build_runs
-      WHERE chart_id = $1 AND state IN ('planned','running','paused')
-      LIMIT 1`,
-    [chartId]
-  )
-  if (active.length > 0) {
-    return { enqueued: false, reason: 'run_active', existing_run_id: active[0].id }
-  }
-
-  // ── Resolve the plan over the LEL-dependent asset_set ──────────────────────
-  const [registryResult, throughputResult] = await Promise.all([
-    query<RegistryRow>(
-      `SELECT asset_id, layer, COALESCE(depends_on, '{}') AS depends_on, estimated_seconds, scope
-         FROM asset_registry WHERE is_active = true AND has_writer = true ORDER BY layer, sort_order`
-    ),
-    query<ThroughputEntry>(
-      `SELECT DISTINCT ON (asset_id) asset_id, state
-         FROM asset_throughput
-        WHERE chart_id = $1 OR chart_id IS NULL
-        ORDER BY asset_id, (chart_id = $1) DESC NULLS LAST`,
-      [chartId]
-    ),
-  ])
-
-  const throughput = new Map(throughputResult.rows.map(r => [r.asset_id, r]))
-  const buildPlan = resolveBuildPlan({
-    scope: RECAL_SCOPE,
-    scope_target: LEL_RECAL_SCOPE_TARGET,
-    action: RECAL_ACTION,
-    registry: registryResult.rows,
-    throughput,
-  })
-  const plan = buildPlan.plan_waves.flat()
-
-  if (buildPlan.status !== 'ok' || plan.length === 0) {
-    return { enqueued: false, reason: 'nothing_to_build' }
-  }
-
-  // ── INSERT the run (same shape as the runs route standard build path) ──────
-  const runResult = await query<{ id: string }>(
-    `INSERT INTO build_runs (chart_id, scope, scope_target, action, state, plan, triggered_by)
-     VALUES ($1, $2, $3, $4, 'planned', $5, $6)
-     RETURNING id`,
-    [chartId, RECAL_SCOPE, LEL_RECAL_SCOPE_TARGET, RECAL_ACTION, JSON.stringify(plan), triggeredBy]
-  )
-  const runId = runResult.rows[0].id
-
-  const placeholders = plan.map((_, i) => `($1, $${i * 3 + 2}, $${i * 3 + 3}, $${i * 3 + 4})`).join(', ')
-  const flatParams = [runId, ...plan.flatMap((asset_id, i) => [asset_id, i, 'queued'])]
-  await query(
-    `INSERT INTO build_run_assets (run_id, asset_id, position, state) VALUES ${placeholders}
-     ON CONFLICT (run_id, asset_id) DO NOTHING`,
-    flatParams
-  )
-
-  // Dispatch the job — failure marks the run failed so it does not orphan as 'planned'.
+  let queued: { runId: string; plan: AssetId[] }
   try {
-    await invokeRunJob(runId)
-  } catch (err) {
-    const errMsg = (err as Error).message
-    console.error('[recalibrationEnqueue] invokeRunJob failed — marking run failed:', errMsg)
-    await terminalizeFailedRun(runId, errMsg)
-    throw err
+    queued = await withTransaction(async (client) => {
+      const prepared = await resolveRunPreparation(client, {
+        chartId,
+        scope: RECAL_SCOPE,
+        scopeTarget: LEL_RECAL_SCOPE_TARGET,
+        action: RECAL_ACTION,
+        allowedScopes: ['per_chart'],
+        clearPolicy: 'none',
+        triggeredBy,
+      })
+      const runId = await persistPreparedRun(client, prepared, triggeredBy)
+      return { runId, plan: prepared.plan }
+    })
+  } catch (error) {
+    // A competing insert can win after both requests pass the active-run read.
+    // withTransaction has rolled back before we query for the winning run.
+    if (isActiveRunConflict(error)) {
+      const existingRunId = await findActiveRun({ query }, chartId)
+      return existingRunId
+        ? { enqueued: false, reason: 'run_active', existing_run_id: existingRunId }
+        : { enqueued: false, reason: 'run_active' }
+    }
+    if (!(error instanceof BuildPreparationError)) throw error
+
+    if (error.code === 'RUN_ACTIVE') {
+      const existingRunId = error.details.existing_run_id
+      return typeof existingRunId === 'string'
+        ? { enqueued: false, reason: 'run_active', existing_run_id: existingRunId }
+        : { enqueued: false, reason: 'run_active' }
+    }
+    const protectedAssets = error.details.protected_assets
+    const blockers = error.details.blockers
+    const blockedByProtection = error.code === 'UPSTREAM_BLOCKED' &&
+      Array.isArray(protectedAssets) && Array.isArray(blockers) &&
+      blockers.some((blocker: BlockerEntry) =>
+        protectedAssets.some((asset: ProtectedAssetBlocker) => asset.asset_id === blocker.dep_asset_id))
+    if (error.code === 'PROTECTED' || blockedByProtection) {
+      return { enqueued: false, reason: 'protected' }
+    }
+    if (error.code === 'UPSTREAM_BLOCKED' || error.code === 'ALL_LIT') {
+      return { enqueued: false, reason: 'nothing_to_build' }
+    }
+    throw error
   }
 
-  return { enqueued: true, run_id: runId, plan }
+  try {
+    const dispatch = await invokeRunJob(queued.runId, { reportDefiniteRejection: true })
+    if (!dispatch.executionName) {
+      return { enqueued: false, reason: 'dispatch_unknown', run_id: queued.runId }
+    }
+  } catch (error) {
+    if (!(error instanceof RunSubmissionRejected)) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.error('[recalibrationEnqueue] run submission outcome unknown:', queued.runId, message)
+      return { enqueued: false, reason: 'dispatch_unknown', run_id: queued.runId }
+    }
+    try {
+      await terminalizeFailedRun(queued.runId, error.message, { unclaimedOnly: true })
+    } catch (recordError) {
+      const message = recordError instanceof Error ? recordError.message : String(recordError)
+      console.error('[recalibrationEnqueue] could not record submission refusal:', queued.runId, message)
+    }
+    throw error
+  }
+
+  return { enqueued: true, run_id: queued.runId, plan: queued.plan }
 }
