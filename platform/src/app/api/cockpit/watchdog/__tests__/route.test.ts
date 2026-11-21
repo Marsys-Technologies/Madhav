@@ -280,7 +280,7 @@ describe('POST /api/cockpit/watchdog — NIR-04 advisory lock & lock_timeout gua
 
     const calls = mockQuery.mock.calls as [string][]
     const orphanSql = calls[0][0]
-    expect(orphanSql).toContain('WHEN chart_id IS NOT NULL THEN pg_try_advisory_xact_lock(hashtext(chart_id::text))')
+    expect(orphanSql).toContain('WHEN chart_id IS NOT NULL AND scope IS NOT NULL THEN pg_try_advisory_xact_lock(hashtext(chart_id::text))')
     expect(orphanSql).not.toContain('hashtextextended')
     expect(orphanSql).toContain('FOR UPDATE OF build_runs SKIP LOCKED')
   })

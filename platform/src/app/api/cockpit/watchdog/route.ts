@@ -172,7 +172,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
            -- NIR-04: Every per-chart worker (layer, asset, asset_set, global) acquires
            -- the chart session advisory lock before claiming and holds it through
            -- publishing terminal state. Connection loss releases it even after SIGKILL.
-           WHEN chart_id IS NOT NULL THEN pg_try_advisory_xact_lock(hashtext(chart_id::text))
+           -- Unscoped legacy/synthetic rows (scope IS NULL) keep the heartbeat fallback below.
+           WHEN chart_id IS NOT NULL AND scope IS NOT NULL THEN pg_try_advisory_xact_lock(hashtext(chart_id::text))
            ELSE started_at < NOW() - INTERVAL '30 minutes'
              AND NOT EXISTS (
                SELECT 1 FROM asset_throughput
