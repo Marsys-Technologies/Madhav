@@ -308,7 +308,7 @@ export function AssetProgressBar({
     } else if (resolvedStage === 'committing') {
       leftLabel = 'Committing'
     } else {
-      // Active writer with no substep/phase detail (pre-1420 fallback)
+      // Active writer with no substep/phase detail (pre-1421 fallback)
       leftLabel = 'Building'
       if (actualRows != null && actualRows > 0) {
         rightLabel = `${actualRows.toLocaleString()} rows`

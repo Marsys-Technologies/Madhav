@@ -27,8 +27,8 @@ export interface ActiveRunAsset {
   // and null in any environment where that column hasn't applied yet.
   disposition: string | null
   blocked_by_asset_id: string | null
-  // NIR-03 (migration 1420): durable phase/substep/per-phase-duration telemetry
-  // Optional so pre-1420 callers and existing fixtures stay backward-compatible.
+  // NIR-03 (migration 1421): durable phase/substep/per-phase-duration telemetry
+  // Optional so pre-1421 callers and existing fixtures stay backward-compatible.
   phase?: BuildPhase | null
   substep_index?: number | null
   substep_total?: number | null

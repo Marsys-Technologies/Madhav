@@ -19,7 +19,7 @@ import type { RegistryEntry } from '../plan'
 
 const CHART = '00000000-0000-4000-8000-000000000010'
 const RUN = {
-  id: 'run-1420',
+  id: 'run-1421',
   scope: 'layer',
   scope_target: 'ganita',
   action: 'build',
@@ -76,7 +76,7 @@ describe('NIR-03 & NIR-06 activeRunData + preparationDuration phase telemetry', 
     },
   )
 
-  it('readPreparationDuration returns phase_breakdown when migration 1420 telemetry exists', async () => {
+  it('readPreparationDuration returns phase_breakdown when migration 1421 telemetry exists', async () => {
     h.phaseProbe.mockResolvedValue(true)
     h.query
       .mockResolvedValueOnce({
@@ -111,7 +111,7 @@ describe('NIR-03 & NIR-06 activeRunData + preparationDuration phase telemetry', 
     })
   })
 
-  it('readPreparationDuration skips phase_breakdown on pre-1420 schemas and combines separate layers when present', async () => {
+  it('readPreparationDuration skips phase_breakdown on pre-1421 schemas and combines separate layers when present', async () => {
     h.phaseProbe.mockResolvedValue(false)
     h.query.mockResolvedValueOnce({
       rows: [{ sample_count: 2, last_seconds: 90, lower_seconds: 80, upper_seconds: 100 }],

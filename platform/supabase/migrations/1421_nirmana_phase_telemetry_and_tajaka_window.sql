@@ -1,4 +1,4 @@
--- Migration 1420: Durable phase telemetry on build_run_assets and dynamic ga_tajaka window
+-- Migration 1421: Durable phase telemetry on build_run_assets and dynamic ga_tajaka window
 --
 -- Consolidated additive migration (NIR-03 + NIR-08):
 --   Part A (NIR-03): Adds durable phase, substep, and per-phase wall-clock duration

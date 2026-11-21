@@ -119,7 +119,7 @@ export function deriveBuildStage(params: {
   }
   if (phase === 'computing') return 'computing'
 
-  // Legacy pre-1420 building fallback (no durable phase column yet)
+  // Legacy pre-1421 building fallback (no durable phase column yet)
   if (substepIndex !== undefined && substepTotal !== undefined && substepTotal > 0) {
     if (substepIndex >= substepTotal) return 'committing'
     return 'substeps'

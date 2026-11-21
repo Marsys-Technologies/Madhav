@@ -1,4 +1,4 @@
-"""NIR-03 & NIR-08: durable phase telemetry, clock_timestamp(), and migration 1420 tests."""
+"""NIR-03 & NIR-08: durable phase telemetry, clock_timestamp(), and migration 1421 tests."""
 from __future__ import annotations
 
 import pathlib
@@ -16,7 +16,7 @@ from pipeline.orchestrator.writers import ContextSpec, SubStep, WriterBase, Writ
 
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[3]
-MIGRATION_1420 = REPO_ROOT / "platform/supabase/migrations/1420_nirmana_phase_telemetry_and_tajaka_window.sql"
+MIGRATION_1421 = REPO_ROOT / "platform/supabase/migrations/1421_nirmana_phase_telemetry_and_tajaka_window.sql"
 ASSET_SEED = REPO_ROOT / "platform/scripts/seed/asset_registry_seed.ts"
 
 
@@ -102,9 +102,9 @@ def _reset_phase_column_cache(monkeypatch):
     monkeypatch.setattr(wrs, "_DURATION_COLUMNS_PRESENT", None)
 
 
-def test_migration_1420_schema_and_ga_tajaka_seed_parity():
-    sql = MIGRATION_1420.read_text()
-    assert sql.startswith("-- Migration 1420:")
+def test_migration_1421_schema_and_ga_tajaka_seed_parity():
+    sql = MIGRATION_1421.read_text()
+    assert sql.startswith("-- Migration 1421:")
     assert "SET LOCAL lock_timeout = '5s';" in sql
     for col in (
         "phase text",
@@ -148,7 +148,7 @@ def test_asset_runner_uses_clock_timestamp_for_all_sql_timestamps():
     assert "clock_timestamp()" in code_only
 
 
-def test_phase_telemetry_column_presence_probe_handles_pre_1420_and_test_doubles():
+def test_phase_telemetry_column_presence_probe_handles_pre_1421_and_test_doubles():
     class _MinimalCursor:
         def execute(self, sql, params=None):
             pass
@@ -157,15 +157,15 @@ def test_phase_telemetry_column_presence_probe_handles_pre_1420_and_test_doubles
     assert wrs._phase_telemetry_columns_present(_MinimalCursor()) is False
     assert wrs._PHASE_TELEMETRY_COLUMNS_PRESENT is None
 
-    # Pre-1420 DB returns 0 matching columns -> False and cached.
+    # Pre-1421 DB returns 0 matching columns -> False and cached.
     pre_cur = _PhaseCursor(columns_present=False)
     assert wrs._phase_telemetry_columns_present(pre_cur) is False
     assert wrs._PHASE_TELEMETRY_COLUMNS_PRESENT is False
 
-    # Reset and verify 1420 DB returns True and cached.
+    # Reset and verify 1421 DB returns True and cached.
     wrs._PHASE_TELEMETRY_COLUMNS_PRESENT = None
-    cur_1420 = _PhaseCursor(columns_present=True)
-    assert wrs._phase_telemetry_columns_present(cur_1420) is True
+    cur_1421 = _PhaseCursor(columns_present=True)
+    assert wrs._phase_telemetry_columns_present(cur_1421) is True
     assert wrs._PHASE_TELEMETRY_COLUMNS_PRESENT is True
 
 
@@ -269,7 +269,7 @@ def test_defer_writer_commits_uses_out_of_band_telemetry_and_preserves_rollback(
     assert [e["phase"] for e in events if e.get("type") == "asset.phase"] == ["writing", "verifying", "error"]
 
 
-def test_pre_1420_schema_graceful_fallback(monkeypatch):
+def test_pre_1421_schema_graceful_fallback(monkeypatch):
     events: list[dict] = []
     monkeypatch.setattr(ar, "emit_event", lambda e, cur=None: events.append(e))
     monkeypatch.setattr(ar, "discover_all", lambda: None)
@@ -279,7 +279,7 @@ def test_pre_1420_schema_graceful_fallback(monkeypatch):
     monkeypatch.setattr(ar, "get_writer_source_hash", lambda aid: "writer-h")
 
     class _SimpleWriter(WriterBase):
-        asset_id = "_test_pre_1420"
+        asset_id = "_test_pre_1421"
         has_substeps = False
 
         def run(self, ctx: ContextSpec):
@@ -289,7 +289,7 @@ def test_pre_1420_schema_graceful_fallback(monkeypatch):
 
     cur = _PhaseCursor(columns_present=False)
     conn = _PhaseConn(cur)
-    assert ar._run_data_writer(conn, cur, "run-1", "chart-1", "_test_pre_1420") is True
+    assert ar._run_data_writer(conn, cur, "run-1", "chart-1", "_test_pre_1421") is True
 
     for sql, _ in cur.executed:
         if "information_schema.columns" in sql:
@@ -297,7 +297,7 @@ def test_pre_1420_schema_graceful_fallback(monkeypatch):
         assert "compute_ms" not in sql
         assert "phase =" not in sql
 
-    # SSE phase events still emit even on pre-1420 DB schemas.
+    # SSE phase events still emit even on pre-1421 DB schemas.
     assert [e["phase"] for e in events if e.get("type") == "asset.phase"] == [
         "writing", "verifying", "publishing", "complete"
     ]

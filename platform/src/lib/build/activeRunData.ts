@@ -40,7 +40,7 @@ export async function readActiveBuildRun(chart_id: string) {
     // field even available to distinguish a cascade victim from a genuine failure.
     // `disposition` already exists in production (predates blocked_by_asset_id) so
     // it is selected unconditionally; `blocked_by_asset_id` (migration 1201) and
-    // phase-telemetry columns (migration 1420, NIR-03) are gated by the process-
+    // phase-telemetry columns (migration 1421, NIR-03) are gated by the process-
     // cached column probes — never select a column that may not exist yet.
     const hasPhaseProbe = Object.prototype.hasOwnProperty.call(columnPresence, 'phaseTelemetryColumnsPresent')
       && typeof columnPresence.phaseTelemetryColumnsPresent === 'function'

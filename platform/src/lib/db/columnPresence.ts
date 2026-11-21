@@ -65,11 +65,11 @@ const PHASE_TELEMETRY_COLUMNS = [
 ] as const
 
 /**
- * NIR-03: Returns whether all migration-1420 phase/substep/duration columns
+ * NIR-03: Returns whether all migration-1421 phase/substep/duration columns
  * exist on `public.build_run_assets`, probing once per process and caching.
  */
 export async function phaseTelemetryColumnsPresent(): Promise<boolean> {
-  const key = 'build_run_assets.__phase_telemetry_1420'
+  const key = 'build_run_assets.__phase_telemetry_1421'
   const cached = _cache.get(key)
   if (cached !== undefined) return cached
   const { rows } = await query<{ cnt: number }>(
@@ -82,9 +82,9 @@ export async function phaseTelemetryColumnsPresent(): Promise<boolean> {
   _cache.set(key, present)
   if (!present) {
     console.warn(
-      '[columnPresence] build_run_assets phase-telemetry columns (migration 1420) are ABSENT ' +
+      '[columnPresence] build_run_assets phase-telemetry columns (migration 1421) are ABSENT ' +
       'in this environment — active-run and duration queries will degrade gracefully by ' +
-      'omitting them, until this process is restarted after migration 1420 applies.'
+      'omitting them, until this process is restarted after migration 1421 applies.'
     )
   }
   return present

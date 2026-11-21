@@ -261,10 +261,10 @@ _PHASE_TELEMETRY_COLUMNS_PRESENT: bool | None = None
 
 
 def _phase_telemetry_columns_present(cur) -> bool:
-    """Detect once per process whether migration 1420's phase-telemetry columns
+    """Detect once per process whether migration 1421's phase-telemetry columns
     exist on ``public.build_run_assets``.
 
-    Gracefully returns False on pre-1420 schemas and on minimal test-double
+    Gracefully returns False on pre-1421 schemas and on minimal test-double
     cursors that do not implement ``fetchone`` (without poisoning the process
     cache when a non-DB test double is passed).
     """
@@ -294,7 +294,7 @@ def _phase_telemetry_columns_present(cur) -> bool:
         if not _PHASE_TELEMETRY_COLUMNS_PRESENT:
             logger.warning(
                 "[orchestrator] build_run_assets phase-telemetry columns are ABSENT "
-                "in this environment (migration 1420_nirmana_phase_telemetry_and_"
+                "in this environment (migration 1421_nirmana_phase_telemetry_and_"
                 "tajaka_window.sql has not applied here). Durable phase/substep/"
                 "per-phase-duration persistence is skipped for the lifetime of this process."
             )
