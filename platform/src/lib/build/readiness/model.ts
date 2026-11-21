@@ -65,28 +65,27 @@ export function deriveChartReadiness(input: {
   // A layer is 'lit' (built) only when every active per-chart asset in it is
   // lit/service_ok and none are building, stale, failed, incomplete, or dormant.
   // Precedence: building > stale / failed / incomplete / partial-dormant > lit > dim.
-  const layerData = new Map<
-    BrahmaLayerId,
-    {
-      hasLit: boolean
-      hasNonLit: boolean
-      isBuilding: boolean
-      hasNonBlockingBuilding: boolean
-      isStale: boolean
-      hasFailure: boolean
-    }
-  >()
+  type LayerAccumulator = {
+    hasLit: boolean
+    hasNonLit: boolean
+    isBuilding: boolean
+    hasNonBlockingBuilding: boolean
+    hasStale: boolean
+    hasFailure: boolean
+  }
+  const emptyLayerAccumulator = (): LayerAccumulator => ({
+    hasLit: false,
+    hasNonLit: false,
+    isBuilding: false,
+    hasNonBlockingBuilding: false,
+    hasStale: false,
+    hasFailure: false,
+  })
+  const layerData = new Map<BrahmaLayerId, LayerAccumulator>()
   for (const row of throughput) {
     const layer = assetLayer(row.asset_id)
     if (!layer) continue
-    const current = layerData.get(layer) ?? {
-      hasLit: false,
-      hasNonLit: false,
-      isBuilding: false,
-      hasNonBlockingBuilding: false,
-      isStale: false,
-      hasFailure: false,
-    }
+    const current = layerData.get(layer) ?? emptyLayerAccumulator()
     const isNonBlockingBuilding = row.state === 'building' && nonBlockingAssets.has(row.asset_id)
     const rowBuilding = row.state === 'building' && !isNonBlockingBuilding
     const rowStale = row.state === 'stale'
@@ -103,7 +102,7 @@ export function deriveChartReadiness(input: {
       hasNonLit: current.hasNonLit || rowNonLit,
       isBuilding: current.isBuilding || rowBuilding,
       hasNonBlockingBuilding: current.hasNonBlockingBuilding || isNonBlockingBuilding,
-      isStale: current.isStale || rowStale,
+      hasStale: current.hasStale || rowStale,
       hasFailure: current.hasFailure || rowFailure,
     })
   }
@@ -111,14 +110,7 @@ export function deriveChartReadiness(input: {
   for (const retryAssetId of unresolvedFailure?.preparationRetryAssets ?? []) {
     const layer = assetLayer(retryAssetId)
     if (!layer) continue
-    const current = layerData.get(layer) ?? {
-      hasLit: false,
-      hasNonLit: false,
-      isBuilding: false,
-      hasNonBlockingBuilding: false,
-      isStale: false,
-      hasFailure: false,
-    }
+    const current = layerData.get(layer) ?? emptyLayerAccumulator()
     layerData.set(layer, {
       ...current,
       hasNonLit: true,
@@ -132,7 +124,7 @@ export function deriveChartReadiness(input: {
     const entry = layerData.get(layer)
     if (!entry) return { layer, state: 'dim' as const }
     if (entry.isBuilding) return { layer, state: 'building' as const }
-    if (entry.isStale || entry.hasFailure) return { layer, state: 'amber' as const }
+    if (entry.hasStale || entry.hasFailure) return { layer, state: 'amber' as const }
     if (entry.hasLit && entry.hasNonLit) return { layer, state: 'amber' as const }
     if (entry.hasLit) return { layer, state: 'lit' as const }
     if (entry.hasNonBlockingBuilding) return { layer, state: 'building' as const }
@@ -184,7 +176,7 @@ export function deriveChartReadiness(input: {
     activeRunId: runActive ? latestRun!.id : null,
     activeRunBlocksReadings: activeRunBlocks || anyBuilding,
     ...(preparingChartData || unresolvedFailure?.unsafePreparation
-      || layerData.get('ganita')?.isStale || layerData.get('bodha')?.isStale
+      || layerData.get('ganita')?.hasStale || layerData.get('bodha')?.hasStale
       || layerData.get('ganita')?.isBuilding || layerData.get('bodha')?.isBuilding
       || layerData.get('ganita')?.hasFailure || layerData.get('bodha')?.hasFailure
       ? { preparationDataUnavailable: true }
