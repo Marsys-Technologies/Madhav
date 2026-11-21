@@ -42,8 +42,10 @@ def test_structural_composite_state_classification_rows_emit_single():
         "Jupiter": "Sagittarius", "Venus": "Sagittarius", "Saturn": "Libra",
         "Rahu": "Taurus", "Ketu": "Scorpio",
     }
+    dignities = {"Jupiter": "own_sign", "Saturn": "exalted"}
     grahas = [
-        {"name": n, "sign": s, "dignity_status": "neutral", "house": 1} for n, s in signs.items()
+        {"name": n, "sign": s, "dignity_status": dignities.get(n, "neutral"), "house": 1}
+        for n, s in signs.items()
     ]
     rows = _build_structural_relationship_rows(
         {"grahas": grahas}, "test-chart", "test-build", "lahiri_chitrapaksha",

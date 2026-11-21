@@ -97,7 +97,12 @@ def _build(monkeypatch, row_status=T.SINGLE):
     natal = {"grahas": [{"name": "Sun", "longitude": 291.0}]}
 
     def fake_one(*a, **k):
-        return {"verification_pass_status": row_status, "ephemeris_audit_jsonb": {}}
+        return {
+            "ayanamsha_id": a[2],
+            "varsha_year": a[4],
+            "verification_pass_status": row_status,
+            "ephemeris_audit_jsonb": {},
+        }
 
     monkeypatch.setattr(W, "resolve_birth_params", lambda cid, bp: dict(_BP))
     monkeypatch.setattr(W, "compute_chart", lambda *a, **k: natal)

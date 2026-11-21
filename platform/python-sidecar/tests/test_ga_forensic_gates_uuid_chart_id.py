@@ -335,7 +335,8 @@ def r_tajaka(mp, chart_id, good, via):
     mp.setattr(gtw, "_insert_rows", lambda conn, rows: len(rows))
 
     def compute_one(conn, cid, aya, adapter, v, natal, natal_sun, build_id, birth=None):
-        return {"_muntha_sign": gtw.FORENSIC_MUNTHA_SIGN if good else "Cancer",
+        return {"ayanamsha_id": aya, "varsha_year": v,
+                "_muntha_sign": gtw.FORENSIC_MUNTHA_SIGN if good else "Cancer",
                 "_muntha_house_from_natal": gtw.FORENSIC_MUNTHA_HOUSE,
                 "_muntha_lord": gtw.FORENSIC_MUNTHA_LORD,
                 "verification_pass_status": "single", "ephemeris_audit_jsonb": {}}
