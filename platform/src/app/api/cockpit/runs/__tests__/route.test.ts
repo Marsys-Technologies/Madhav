@@ -365,6 +365,7 @@ describe('POST /api/cockpit/runs — client + scope=layer/ganita', () => {
       .mockResolvedValueOnce({ rows: [], rowCount: 0 })
       .mockResolvedValueOnce(NO_PROTECTED_ASSETS)
       .mockResolvedValueOnce(NO_FRESHNESS)
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // asset_provenance_receipts (recoverPreparation=true for layer=ganita)
       .mockRejectedValueOnce(conflict)
 
     const { POST } = await import('../route')
@@ -517,6 +518,7 @@ describe('G4 — Bodha build precondition gate', () => {
       .mockResolvedValueOnce({ rows: [], rowCount: 0 })                                              // asset_throughput (all dormant)
       .mockResolvedValueOnce(NO_PROTECTED_ASSETS)                                                    // build_protected_assets
       .mockResolvedValueOnce(NO_FRESHNESS)                                                            // asset_freshness
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })                                              // asset_provenance_receipts (recoverPreparation=true for global build)
       .mockResolvedValueOnce({ rows: [{ count: '0' }], rowCount: 1 })                                // chart_facts = 0 (empty)
       .mockResolvedValueOnce({ rows: [], rowCount: 0 })                                              // ga_structural not lit
       .mockResolvedValueOnce({ rows: [{ count: '500' }], rowCount: 1 })                              // remedy_corpus present
@@ -541,6 +543,7 @@ describe('G4 — Bodha build precondition gate', () => {
       .mockResolvedValueOnce({ rows: [], rowCount: 0 })                                              // asset_throughput
       .mockResolvedValueOnce(NO_PROTECTED_ASSETS)                                                    // build_protected_assets
       .mockResolvedValueOnce(NO_FRESHNESS)                                                            // asset_freshness
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })                                              // asset_provenance_receipts (recoverPreparation=true for global build)
       .mockResolvedValueOnce({ rows: [{ count: '0' }], rowCount: 1 })                                // chart_facts = 0
       .mockResolvedValueOnce({ rows: [], rowCount: 0 })                                              // ga_structural not lit
       .mockResolvedValueOnce({ rows: [{ count: '0' }], rowCount: 1 })                                // remedy_corpus EMPTY

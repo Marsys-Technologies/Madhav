@@ -13,7 +13,7 @@
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { NextRequest } from 'next/server'
-import { Client, Pool } from 'pg'
+import { Client, Pool, type PoolClient } from 'pg'
 
 const adminDsn = process.env.KALA_ADMIN_DSN
 const required = process.env.KALA_REQUIRE_DB === '1'
@@ -23,6 +23,20 @@ let pool: Pool | null = null
 const mockVerifyOidcToken = vi.fn()
 vi.mock('@/lib/db/client', () => ({
   query: (text: string, params?: unknown[]) => pool!.query(text, params as unknown[]),
+  withTransaction: async <T>(fn: (client: PoolClient) => Promise<T>) => {
+    const client = await pool!.connect()
+    try {
+      await client.query('BEGIN')
+      const res = await fn(client)
+      await client.query('COMMIT')
+      return res
+    } catch (error) {
+      try { await client.query('ROLLBACK') } catch {}
+      throw error
+    } finally {
+      client.release()
+    }
+  },
 }))
 vi.mock('@/lib/auth/oidc', () => ({ verifyOidcToken: mockVerifyOidcToken }))
 

@@ -17,13 +17,26 @@ import { NextRequest } from 'next/server'
 
 const mockQuery = vi.fn()
 const mockVerifyOidcToken = vi.fn()
-vi.mock('@/lib/db/client', () => ({ query: mockQuery }))
+const mockTxSetLocalCalls: string[] = []
+const mockWithTransaction = vi.fn(async (fn: (client: { query: typeof mockQuery }) => Promise<unknown>) =>
+  fn({
+    query: ((sql: string, params?: unknown[]) => {
+      if (sql.trim().startsWith('SET LOCAL ')) {
+        mockTxSetLocalCalls.push(sql.trim())
+        return Promise.resolve({ rows: [], rowCount: 0 })
+      }
+      return mockQuery(sql, params)
+    }) as typeof mockQuery,
+  })
+)
+vi.mock('@/lib/db/client', () => ({ query: mockQuery, withTransaction: mockWithTransaction }))
 vi.mock('@/lib/auth/oidc', () => ({ verifyOidcToken: mockVerifyOidcToken }))
 
 // Disable PubSub in all watchdog tests — publishEvent short-circuits when
 // PUBSUB_DISABLED is set; we assert on query calls, not Pub/Sub messages.
 beforeEach(() => {
   vi.clearAllMocks()
+  mockTxSetLocalCalls.length = 0
   mockVerifyOidcToken.mockResolvedValue({
     email: 'amjis-scheduler@madhav-astrology.iam.gserviceaccount.com',
     sub: 'scheduler-subject',
@@ -256,5 +269,34 @@ describe('POST /api/cockpit/watchdog — clause 1 false-kill fix', () => {
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.orphan_runs_failed).toBe(1)
+  })
+})
+
+describe('POST /api/cockpit/watchdog — NIR-04 advisory lock & lock_timeout guards', () => {
+  it('checks pg_try_advisory_xact_lock(hashtext(chart_id::text)) for ALL per-chart runs (not just preparation)', async () => {
+    noOrphans()
+    const { POST } = await import('../route')
+    await POST(makeReq())
+
+    const calls = mockQuery.mock.calls as [string][]
+    const orphanSql = calls[0][0]
+    expect(orphanSql).toContain('WHEN chart_id IS NOT NULL THEN pg_try_advisory_xact_lock(hashtext(chart_id::text))')
+    expect(orphanSql).not.toContain('hashtextextended')
+    expect(orphanSql).toContain('FOR UPDATE OF build_runs SKIP LOCKED')
+  })
+
+  it('sets SET LOCAL lock_timeout = 3s inside transactions and uses SKIP LOCKED on row-locking writes', async () => {
+    noOrphans()
+    const { POST } = await import('../route')
+    const res = await POST(makeReq())
+    expect(res.status).toBe(200)
+    expect(mockWithTransaction).toHaveBeenCalled()
+    expect(mockTxSetLocalCalls.length).toBeGreaterThanOrEqual(4)
+    expect(mockTxSetLocalCalls.every((s) => s === "SET LOCAL lock_timeout = '3s'")).toBe(true)
+
+    const calls = mockQuery.mock.calls as [string][]
+    expect(calls[2][0]).toContain('FOR UPDATE SKIP LOCKED')
+    expect(calls[3][0]).toContain('FOR UPDATE OF bra SKIP LOCKED')
+    expect(calls[4][0]).toContain('FOR UPDATE SKIP LOCKED')
   })
 })

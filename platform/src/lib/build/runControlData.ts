@@ -17,18 +17,57 @@ export function requestBuildRunPause(id: string) {
 
 export function requestBuildRunStop(id: string) {
   return query<{ id: string }>(
-      `WITH requested AS (
-         UPDATE build_runs
-         SET stop_requested_at = NOW(),
-             ended_at = CASE WHEN state IN ('planned','paused') THEN NOW() ELSE ended_at END,
-             state = CASE WHEN state IN ('planned','paused') THEN 'stopped' ELSE state END
+      `WITH target AS (
+         SELECT id, chart_id, state AS prev_state,
+                CASE
+                  WHEN state = 'running'
+                  THEN pg_try_advisory_xact_lock(hashtext(COALESCE(chart_id::text, 'nirmana-global-assets')))
+                  ELSE false
+                END AS dead_worker_lock
+         FROM build_runs
          WHERE id=$1 AND state IN ('planned','running','paused')
-         RETURNING id, state
-       ), aborted AS (
+         FOR UPDATE
+       ), requested AS (
+         UPDATE build_runs b
+         SET stop_requested_at = NOW(),
+             ended_at = CASE
+               WHEN t.prev_state IN ('planned','paused') OR t.dead_worker_lock THEN NOW()
+               ELSE b.ended_at
+             END,
+             state = CASE
+               WHEN t.prev_state IN ('planned','paused') OR t.dead_worker_lock THEN 'stopped'
+               ELSE b.state
+             END
+         FROM target t
+         WHERE b.id = t.id
+         RETURNING b.id, b.chart_id, b.state, t.prev_state
+       ), aborted_queued AS (
          UPDATE build_run_assets b
-         SET state = 'aborted', ended_at = NOW(), error = 'Stopped before this asset started.'
+         SET state = 'aborted',
+             ended_at = NOW(),
+             error = CASE
+               WHEN r.prev_state = 'running' THEN COALESCE(b.error, 'Stopped after worker exit')
+               ELSE 'Stopped before this asset started.'
+             END
          FROM requested r
          WHERE b.run_id = r.id AND r.state = 'stopped' AND b.state = 'queued'
+         RETURNING 1
+       ), stopped_building AS (
+         UPDATE build_run_assets b
+         SET state = 'aborted',
+             ended_at = NOW(),
+             error = COALESCE(b.error, 'Stopped after worker exit')
+         FROM requested r
+         WHERE b.run_id = r.id AND r.state = 'stopped' AND b.state = 'building'
+         RETURNING b.asset_id, r.chart_id
+       ), cleared_throughput AS (
+         UPDATE asset_throughput at
+         SET state = 'error',
+             last_error = COALESCE(at.last_error, 'Stopped after worker exit')
+         FROM stopped_building sb
+         WHERE (at.chart_id IS NOT DISTINCT FROM sb.chart_id OR at.chart_id IS NULL)
+           AND at.asset_id = sb.asset_id
+           AND at.state = 'building'
          RETURNING 1
        )
        SELECT id FROM requested`,

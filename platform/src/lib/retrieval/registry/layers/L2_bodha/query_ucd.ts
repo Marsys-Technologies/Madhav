@@ -431,9 +431,10 @@ export const queryUcdCapability: CapabilityDescriptor = {
              lel_origin, signature_tier
       FROM bodha_msr_signals
       WHERE chart_id = $1 AND ayanamsha_id = $2
+        AND computed_salience IS NOT NULL
         ${classFilter}
         ${salienceFilter}
-      ORDER BY computed_salience DESC NULLS LAST
+      ORDER BY computed_salience DESC
       LIMIT $3 OFFSET $4
     `
 

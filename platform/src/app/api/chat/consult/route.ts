@@ -1108,6 +1108,20 @@ async function executeMeteredRequest(request: Request) {
     )
   }
 
+  // NIR-05: Post-retrieval readiness re-check (mirrors Paripraśna's post-retrieval
+  // preparation gate) BEFORE starting LLM synthesis/streaming so mid-retrieval
+  // rebuilds abort/hold instead of streaming over torn L1/L2 state.
+  const postRetrievalGate = await checkReadingReadiness(chartId)
+  if (!postRetrievalGate.ok) {
+    byokRuntime?.releaseAdmission()
+    return errorResponse(
+      postRetrievalGate.code,
+      postRetrievalGate.message,
+      409,
+      { retry: postRetrievalGate.retryable },
+    )
+  }
+
   const audienceTier = isSuperAdmin ? 'super_admin' as const : 'client' as const
 
   // No LLM context assembler. plan.synthesis_guidance from the planner
