@@ -73,9 +73,9 @@ class TestNakshatrasEnriched:
 
     def test_gandanta_flags(self):
         gandanta_ids = {r['nakshatra_id'] for r in NAKSHATRAS_ENRICHED if r['is_gandanta']}
-        # Jyeshtha-Moola junction and Revati must be flagged
-        assert 18 in gandanta_ids or 19 in gandanta_ids
-        assert 27 in gandanta_ids
+        # BPHS Ch.92 §3 (bphs_pg1018_c01) & Jataka Parijata VI.59 (jataka_parijata_pg0632_c01):
+        # all 6 water-fire junction nakshatras (Revati|Ashwini, Ashlesha|Magha, Jyeshtha|Mula)
+        assert gandanta_ids == {1, 9, 10, 18, 19, 27}
 
     def test_panchaka_is_last_5(self):
         panchaka_ids = {r['nakshatra_id'] for r in NAKSHATRAS_ENRICHED if r['is_panchaka']}

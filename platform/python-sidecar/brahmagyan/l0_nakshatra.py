@@ -56,7 +56,7 @@ NAKSHATRAS_ENRICHED: list[dict] = [
         paramayus="short",
         naisargika_maturity_age=0,
         deity_domain="healing, medicine, rejuvenation",
-        is_gandanta=False, is_mula_sangya=False, is_panchaka=False, is_abhijit=False,
+        is_gandanta=True, is_mula_sangya=False, is_panchaka=False, is_abhijit=False,
         tradition_scope="classical", classical_source=BPHS_CH92,
     ),
     # ── 2. Bharaṇī ────────────────────────────────────────────────────────────
@@ -135,7 +135,7 @@ NAKSHATRAS_ENRICHED: list[dict] = [
         vimshottari_lord="moon",
         presiding_deity="Brahma", secondary_deities=["Prajapati"],
         ruling_planet="moon",
-        gana="Manushya", nadi="Adi",
+        gana="Manushya", nadi="Antya",
         yoni_en="Serpent", yoni_sa="Sarpa", yoni_sex="M",
         varna="Shudra", tatva="Jala", guna="Rajas",
         pakshi="Owl",
@@ -200,7 +200,7 @@ NAKSHATRAS_ENRICHED: list[dict] = [
         vimshottari_lord="rahu",
         presiding_deity="Rudra", secondary_deities=["Shiva"],
         ruling_planet="rahu",
-        gana="Manushya", nadi="Antya",
+        gana="Manushya", nadi="Adi",
         yoni_en="Dog", yoni_sa="Shvana", yoni_sex="F",
         varna="Butcher", tatva="Vayu", guna="Tamas",
         pakshi="Butcher Bird",
@@ -327,7 +327,7 @@ NAKSHATRAS_ENRICHED: list[dict] = [
         vimshottari_lord="ketu",
         presiding_deity="Pitrs", secondary_deities=["Ancestors"],
         ruling_planet="ketu",
-        gana="Rakshasa", nadi="Adi",
+        gana="Rakshasa", nadi="Antya",
         yoni_en="Rat", yoni_sa="Mushika", yoni_sex="M",
         varna="Shudra", tatva="Agni", guna="Tamas",
         pakshi="Eagle",
@@ -394,7 +394,7 @@ NAKSHATRAS_ENRICHED: list[dict] = [
         vimshottari_lord="sun",
         presiding_deity="Aryaman", secondary_deities=[],
         ruling_planet="sun",
-        gana="Manushya", nadi="Antya",
+        gana="Manushya", nadi="Adi",
         yoni_en="Cow", yoni_sa="Go", yoni_sex="M",
         varna="Kshatriya", tatva="Agni", guna="Rajas",
         pakshi="Bullock",
@@ -524,7 +524,7 @@ NAKSHATRAS_ENRICHED: list[dict] = [
         vimshottari_lord="jupiter",
         presiding_deity="Indra-Agni", secondary_deities=["Radha"],
         ruling_planet="jupiter",
-        gana="Rakshasa", nadi="Adi",
+        gana="Rakshasa", nadi="Antya",
         yoni_en="Tiger", yoni_sa="Vyaghra", yoni_sex="F",
         varna="Mleccha", tatva="Akasha", guna="Rajas",
         pakshi="Sparrow",
@@ -586,7 +586,7 @@ NAKSHATRAS_ENRICHED: list[dict] = [
         vimshottari_lord="mercury",
         presiding_deity="Indra", secondary_deities=["Vishnu"],
         ruling_planet="mercury",
-        gana="Rakshasa", nadi="Antya",
+        gana="Rakshasa", nadi="Adi",
         yoni_en="Hare", yoni_sa="Shasha", yoni_sex="F",
         varna="Farmer", tatva="Prithvi", guna="Sattva",
         pakshi="Vulture",
@@ -715,7 +715,7 @@ NAKSHATRAS_ENRICHED: list[dict] = [
         vimshottari_lord="moon",
         presiding_deity="Vishnu", secondary_deities=["Saraswati"],
         ruling_planet="moon",
-        gana="Deva", nadi="Adi",
+        gana="Deva", nadi="Antya",
         yoni_en="Monkey", yoni_sa="Vanara", yoni_sex="M",
         varna="Mleccha", tatva="Jala", guna="Rajas",
         pakshi="Cock",
@@ -780,7 +780,7 @@ NAKSHATRAS_ENRICHED: list[dict] = [
         vimshottari_lord="rahu",
         presiding_deity="Varuna", secondary_deities=["Indra (as healer)"],
         ruling_planet="rahu",
-        gana="Rakshasa", nadi="Antya",
+        gana="Rakshasa", nadi="Adi",
         yoni_en="Horse", yoni_sa="Ashva", yoni_sex="F",
         varna="Butcher", tatva="Vayu", guna="Tamas",
         pakshi="Raven",
@@ -847,7 +847,7 @@ NAKSHATRAS_ENRICHED: list[dict] = [
         vimshottari_lord="saturn",
         presiding_deity="Ahir Budhnya", secondary_deities=["Serpent of the deep"],
         ruling_planet="saturn",
-        gana="Manushya", nadi="Antya",
+        gana="Manushya", nadi="Madhya",
         yoni_en="Cow", yoni_sa="Go", yoni_sex="F",
         varna="Kshatriya", tatva="Vayu", guna="Tamas",
         pakshi="Crane",
@@ -878,7 +878,7 @@ NAKSHATRAS_ENRICHED: list[dict] = [
         vimshottari_lord="mercury",
         presiding_deity="Pushan", secondary_deities=["Guide of souls"],
         ruling_planet="mercury",
-        gana="Deva", nadi="Madhya",
+        gana="Deva", nadi="Antya",
         yoni_en="Elephant", yoni_sa="Gaja", yoni_sex="F",
         varna="Shudra", tatva="Prithvi", guna="Sattva",
         pakshi="Elephant",
@@ -1514,3 +1514,33 @@ def check_volume(conn) -> dict[str, dict]:
         results[table] = {"actual": actual, "floor": floor, "status": "ok" if actual >= floor else "below_floor"}
     cur.close()
     return results
+
+
+# ── Nāḍī reference (appended at end of module so governance line pointers into
+# the seed above stay valid) ─────────────────────────────────────────────────
+# Nāḍī authority: Muhurta Chintamani Vivāha-prakaraṇa v.34 + ṭīkā
+# (muhurta_chintamani:PG96:C2–PG97:C1). The verse groups the nakshatras
+# Ādya / Madhya / Antya; it is NOT a simple 1-2-3 repeating cycle (the cycle
+# reverses every three stars: Adi, Madhya, Antya, Antya, Madhya, Adi, ...).
+# The same lists are carried by the nadi_dosha rule in
+# brahmagyan/citation_pass2_doshas.py (`nadi_lists_mc_v34`).
+NADI_SOURCE = "muhurta_chintamani:PG97:C1"
+NADI_BY_NAKSHATRA_ID_MC_V34: dict[int, str] = {
+    1: "Adi",     2: "Madhya",  3: "Antya",   # Ashwini, Bharani, Krittika
+    4: "Antya",   5: "Madhya",  6: "Adi",     # Rohini, Mrigashira, Ardra
+    7: "Adi",     8: "Madhya",  9: "Antya",   # Punarvasu, Pushya, Ashlesha
+    10: "Antya", 11: "Madhya", 12: "Adi",     # Magha, P.Phalguni, U.Phalguni
+    13: "Adi",   14: "Madhya", 15: "Antya",   # Hasta, Chitra, Swati
+    16: "Antya", 17: "Madhya", 18: "Adi",     # Vishakha, Anuradha, Jyeshtha
+    19: "Adi",   20: "Madhya", 21: "Antya",   # Mula, P.Ashadha, U.Ashadha
+    22: "Antya", 23: "Madhya", 24: "Adi",     # Shravana, Dhanishta, Shatabhisha
+    25: "Adi",   26: "Madhya", 27: "Antya",   # P.Bhadrapada, U.Bhadrapada, Revati
+}
+
+# Nāḍī check: every one of the 27 must match MC v.34 (see NADI_SOURCE).
+_nadi_mismatch = {
+    r['name_en']: (r['nadi'], NADI_BY_NAKSHATRA_ID_MC_V34[r['nakshatra_id']])
+    for r in NAKSHATRAS_ENRICHED[:27]
+    if r['nadi'] != NADI_BY_NAKSHATRA_ID_MC_V34[r['nakshatra_id']]
+}
+assert not _nadi_mismatch, f"Nadi mismatch vs MC v.34 (have, want): {_nadi_mismatch}"
