@@ -82,7 +82,7 @@ interface Props {
   buildPreparationHref?: string
 }
 
-const bannerClass = 'mb-4 rounded-lg border border-brand-warn/30 bg-brand-warn/10 px-4 py-3 text-sm text-brand-warn'
+const bannerClass = 'mx-auto w-full max-w-4xl rounded-lg border border-brand-warn/30 bg-brand-warn/10 px-3 py-1.5 text-xs text-brand-warn sm:px-4 sm:py-2 sm:text-sm'
 
 export function PartialDataBanner({ chartId, readiness, buildPreparationHref }: Props) {
   if (readiness.status === 'unavailable') {

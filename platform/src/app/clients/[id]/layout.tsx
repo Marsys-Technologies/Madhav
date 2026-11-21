@@ -77,7 +77,12 @@ export default async function ClientLayout({
           { label: chart.name ?? id, href: `/clients/${id}`, current: true },
         ]}
       >
-        <div data-testid="chart-page-frame" data-permission={access.permission} data-chart-id={id}>
+        <div
+          data-testid="chart-page-frame"
+          data-permission={access.permission}
+          data-chart-id={id}
+          className="has-[[data-testid=v2-chat-shell]]:flex has-[[data-testid=v2-chat-shell]]:h-full has-[[data-testid=v2-chat-shell]]:min-h-0 has-[[data-testid=v2-chat-shell]]:flex-1 has-[[data-testid=v2-chat-shell]]:flex-col has-[[data-testid=historical-reading]]:flex has-[[data-testid=historical-reading]]:h-full has-[[data-testid=historical-reading]]:min-h-0 has-[[data-testid=historical-reading]]:flex-1 has-[[data-testid=historical-reading]]:flex-col"
+        >
           <ConditionalChartSwitcherBar
             currentChartId={id}
             charts={switcherCharts}

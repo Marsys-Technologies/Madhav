@@ -145,7 +145,7 @@ export default async function ConsultPage({
     : { state: l1Availability, cockpitHref }
 
   return (
-    <div data-testid="consult-page-root" data-permission={access.permission}>
+    <div data-testid="consult-page-root" data-permission={access.permission} className="flex h-full min-h-0 flex-1 flex-col">
     <ConsumeChat
       chartId={id}
       chartName={chart.name}

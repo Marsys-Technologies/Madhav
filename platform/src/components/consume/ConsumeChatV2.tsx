@@ -954,6 +954,7 @@ function V2Composer({ slashEnabled = false, tokensEnabled = false, attachmentErr
   return (
     <div
       ref={containerRef}
+      className="shrink-0"
       onDrop={event => {
         if (event.dataTransfer.files.length > 0) event.preventDefault()
       }}
@@ -963,7 +964,7 @@ function V2Composer({ slashEnabled = false, tokensEnabled = false, attachmentErr
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
     >
       <ComposerPrimitive.Root
-        className="px-4 pb-3 pt-1"
+        className="px-3 sm:px-4 pb-1.5 sm:pb-3 pt-1"
         data-testid="v2-composer"
       >
         {/* C.4: brand pill wrapper — paperclip + textarea + hints + send inside the pill */}
@@ -977,7 +978,7 @@ function V2Composer({ slashEnabled = false, tokensEnabled = false, attachmentErr
           )}
           <div className="relative flex flex-col rounded-3xl border border-[rgba(var(--brand-gold-rgb),0.35)] bg-background shadow-sm transition-all duration-200">
             <ComposerPrimitive.Input
-              className="w-full resize-none overflow-y-auto rounded-3xl bg-transparent px-5 py-4 text-[15px] leading-[1.55] text-foreground placeholder:text-muted-foreground/60 focus:outline-none"
+              className="w-full max-h-28 resize-none overflow-y-auto rounded-3xl bg-transparent px-4 py-2.5 sm:px-5 sm:py-3.5 text-[15px] leading-[1.55] text-foreground placeholder:text-muted-foreground/60 focus:outline-none"
               placeholder="Ask about the chart…"
               rows={3}
               data-testid="v2-composer-input"
@@ -991,12 +992,12 @@ function V2Composer({ slashEnabled = false, tokensEnabled = false, attachmentErr
             />
 
             {tokensEnabled && (
-              <p className={cn('px-5 pb-0.5 text-[10px] transition-colors', pctUsed === null || pctUsed < 75 ? 'text-zinc-500' : pctUsed < 95 ? 'text-amber-400' : 'text-red-400')}>
+              <p className={cn('px-4 sm:px-5 pb-0.5 text-[10px] transition-colors', pctUsed === null || pctUsed < 75 ? 'text-zinc-500' : pctUsed < 95 ? 'text-amber-400' : 'text-red-400')}>
                 {tokenCount === null ? '— tokens' : `${tokenCount} tokens · ${pctUsed}%`}
               </p>
             )}
             {/* Bottom row inside pill: paperclip + hints | send/stop */}
-            <div className="flex items-center justify-between gap-2 px-3 pb-3 pt-0.5">
+            <div className="flex items-center justify-between gap-2 px-3 pb-2 sm:pb-3 pt-0.5">
               <div className="flex items-center gap-1">
                 <button
                   type="button"
@@ -1031,7 +1032,7 @@ function V2Composer({ slashEnabled = false, tokensEnabled = false, attachmentErr
                   EDIT_WHILE_STREAMING_ENABLED ? (
                     <button
                       type="button"
-                      className="inline-flex items-center gap-1.5 rounded-full bg-zinc-100 px-3 h-9 text-xs font-medium text-zinc-900 transition-all hover:opacity-80"
+                      className="inline-flex items-center gap-1.5 rounded-full bg-zinc-100 px-3 h-11 md:h-9 text-xs font-medium text-zinc-900 transition-all hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-gold)]"
                       title="Stop generation and restore prompt for editing"
                       aria-label="Stop and edit"
                       data-testid="v2-stop-and-edit-btn"
@@ -1044,7 +1045,7 @@ function V2Composer({ slashEnabled = false, tokensEnabled = false, attachmentErr
                     <ComposerPrimitive.Cancel asChild>
                       <button
                         type="button"
-                        className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-zinc-100 text-zinc-900 transition-all hover:opacity-80"
+                        className="inline-flex h-11 w-11 md:h-9 md:w-9 items-center justify-center rounded-full bg-zinc-100 text-zinc-900 transition-all hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-gold)]"
                         title="Stop generation"
                         aria-label="Stop generating response"
                         data-testid="v2-abort-btn"
@@ -1057,7 +1058,7 @@ function V2Composer({ slashEnabled = false, tokensEnabled = false, attachmentErr
                   <ComposerPrimitive.Send asChild>
                     <button
                       type="submit"
-                      className="brand-cta inline-flex h-9 w-9 items-center justify-center rounded-full transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-40 active:scale-95"
+                      className="brand-cta inline-flex h-11 w-11 md:h-9 md:w-9 items-center justify-center rounded-full transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-40 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-gold)]"
                       aria-label="Send message"
                       data-testid="v2-send-btn"
                       onClick={() => { if (composerValue.trim()) saveLastPrompt(composerValue) }}
@@ -1069,7 +1070,7 @@ function V2Composer({ slashEnabled = false, tokensEnabled = false, attachmentErr
               </div>
             </div>
           </div>
-          <p id="consult-attachment-availability" className="px-5 pt-2 text-xs text-muted-foreground">
+          <p id="consult-attachment-availability" className="px-4 sm:px-5 pt-1 text-[10px] sm:pt-1.5 sm:text-xs text-muted-foreground leading-tight sm:leading-snug">
             Attachments are currently unavailable in Consult. You can send text.
           </p>
           {attachmentError && (
@@ -1276,7 +1277,7 @@ function V2BottomBar() {
 
   return (
     <div
-      className="mx-auto max-w-4xl w-full px-4 py-1 flex items-center justify-between border-b border-zinc-800"
+      className="mx-auto max-w-4xl w-full shrink-0 px-3 sm:px-4 py-1 flex flex-wrap items-center justify-between gap-x-1.5 gap-y-0.5 border-b border-zinc-800"
       data-testid="v2-bottom-bar"
     >
       <ModelStylePicker
@@ -1377,12 +1378,12 @@ function V2Thread({ chartId, chartName, buildPreparationHref, slashEnabled = fal
     <TruncatedMsgCtx.Provider value={truncatedMsgId}>
     <SetTruncatedMsgCtx.Provider value={setTruncatedMsgId}>
     <ThreadPrimitive.Root
-      className="flex h-full flex-col flex-1 min-w-0"
+      className="flex h-full min-h-0 flex-col flex-1 min-w-0 overflow-hidden"
       data-testid="v2-thread-root"
     >
       {/* γ8: live region announces new assistant messages to screen readers */}
       <ThreadPrimitive.Viewport
-        className="flex flex-col items-center flex-1 overflow-y-auto scroll-smooth py-4"
+        className="flex flex-col items-center flex-1 min-h-0 w-full overflow-y-auto scroll-smooth py-3 sm:py-4"
         data-testid="v2-thread-viewport"
         // γ8: role=log is the semantic landmark for a chat message log.
         // aria-live=polite ensures new messages are announced without interrupting.
@@ -1392,12 +1393,16 @@ function V2Thread({ chartId, chartName, buildPreparationHref, slashEnabled = fal
         aria-label="Conversation messages"
       >
         <ThreadPrimitive.Empty>
-          <EmptyState
-            chartId={chartId}
-            chartName={chartName}
-            className="max-w-4xl px-4"
-            data-testid="v2-thread-empty"
-          />
+          <div className="my-auto flex w-full max-w-4xl flex-col items-center gap-4 px-4 py-2">
+            <EmptyState
+              chartId={chartId}
+              chartName={chartName}
+              className="h-auto"
+              data-testid="v2-thread-empty"
+            />
+            {/* [PHASE-D-05] Question suggester — shown in empty viewport so saved threads and short screens keep composer visible */}
+            <QuestionSuggester readyAssets={readyAssets} onSelect={handleComposerFill} />
+          </div>
         </ThreadPrimitive.Empty>
 
         <ThreadPrimitive.Messages components={{ Message: V2Message }} />
@@ -1408,7 +1413,7 @@ function V2Thread({ chartId, chartName, buildPreparationHref, slashEnabled = fal
           <ThreadPrimitive.ScrollToBottom asChild>
             <button
               type="button"
-              className="fixed bottom-24 right-6 flex h-8 w-8 items-center justify-center rounded-full bg-zinc-700 text-zinc-300 shadow-lg hover:bg-zinc-600 transition-all opacity-80 hover:opacity-100"
+              className="sticky bottom-2 self-end mr-4 z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-700 text-zinc-300 shadow-lg hover:bg-zinc-600 transition-all opacity-80 hover:opacity-100"
               data-testid="v2-scroll-to-bottom"
               aria-label="Scroll to bottom"
             >
@@ -1421,12 +1426,9 @@ function V2Thread({ chartId, chartName, buildPreparationHref, slashEnabled = fal
       </ThreadPrimitive.Viewport>
 
       {/* [PHASE-D-04] Partial data banner — shown when chart build is incomplete */}
-      <PartialDataBanner chartId={chartId} readiness={readiness} buildPreparationHref={buildPreparationHref} />
+      <div className="shrink-0 w-full px-3 sm:px-4 pt-1 empty:hidden"><PartialDataBanner chartId={chartId} readiness={readiness} buildPreparationHref={buildPreparationHref} /></div>
 
       <V2BottomBar />
-
-      {/* [PHASE-D-05] Question suggester — shown above composer when assets are ready */}
-      <QuestionSuggester readyAssets={readyAssets} onSelect={handleComposerFill} />
 
       <V2Composer slashEnabled={slashEnabled} tokensEnabled={tokensEnabled} attachmentError={attachmentError} />
     </ThreadPrimitive.Root>
@@ -1739,7 +1741,7 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
     return (
       <CostVisibilityCtx.Provider value={costVisibilityEnabled ?? false}>
       <V2PrefsCtx.Provider value={prefsCtxValue}>
-      <div className="relative flex h-dvh text-zinc-100 consume-shell bg-gray-950" data-testid="v2-chat-shell">
+      <div className="relative flex h-full min-h-0 flex-1 w-full text-zinc-100 consume-shell bg-gray-950" data-testid="v2-chat-shell">
         <NoBuildGate cockpitHref={capabilityGateState.cockpitHref} />
       </div>
       </V2PrefsCtx.Provider>
@@ -1752,7 +1754,7 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
     <V2PrefsCtx.Provider value={prefsCtxValue}>
     <div
       className={cn(
-        'relative flex h-dvh text-zinc-100 consume-shell',
+        'relative flex h-full min-h-0 flex-1 w-full text-zinc-100 consume-shell',
         r11bActive && 'r11b-active',
       )}
       data-testid="v2-chat-shell"
@@ -1836,11 +1838,11 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
       <div
         data-testid="v2-chat-column"
         className={cn(
-          "flex flex-col flex-1 overflow-hidden min-w-0"
+          "flex flex-col flex-1 min-h-0 overflow-hidden min-w-0"
         )}
       >
         <header
-          className="flex items-center gap-3 px-4 md:px-6 py-3 shrink-0"
+          className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 md:px-6 py-2 md:py-3 shrink-0"
           data-testid="v2-header"
         >
           {/* Back to dashboard */}
@@ -1961,7 +1963,7 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
           </div>
         )}
 
-        <main className="flex-1 overflow-hidden">
+        <main className="flex flex-1 min-h-0 flex-col overflow-hidden">
           <V2ChatRuntime
             key={restoredKey}
             chartId={chartId}
@@ -2082,7 +2084,7 @@ function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, bu
           <V2TitleTracker />
           {/* C.2 + W5: unified runtime tracker — emits query_id, conversation_id */}
           <V2RuntimeTracker />
-          <div className="flex h-full overflow-hidden">
+          <div className="flex flex-1 min-h-0 h-full overflow-hidden">
             {/* B-S7: side panel retired — citations are inline-only via NumberedCitation */}
             <V2Thread
               chartId={chartId}

@@ -12,7 +12,7 @@ export function QuestionSuggester({ readyAssets, onSelect }: Props) {
   if (!suggestions.length) return null
 
   return (
-    <div className="mb-4">
+    <div className="w-full">
       <p className="mb-2 text-xs text-brand-text-3 uppercase tracking-wider">Suggested questions</p>
       <div className="flex flex-wrap gap-2">
         {suggestions.map((q, i) => (
