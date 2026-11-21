@@ -318,3 +318,65 @@ def test_orchestrator_still_marks_zero_rows_dormant_when_floor_is_null(monkeypat
     )
     assert ok is True
     assert tp_updates and tp_updates[-1][0] == "dormant"
+
+
+def test_exact_zero_solar_return_diff_passes_cross_check(monkeypatch):
+    """Exact diff_deg == 0.0 must not be coerced to 99.0 by Python falsy `or`."""
+    from datetime import datetime
+
+    monkeypatch.setattr(
+        sut,
+        "_solar_return",
+        lambda *a, **k: (
+            datetime(2022, 2, 28, 12, 0, 0),
+            {"converged": True, "diff_deg": 0.0, "bracket_days": 2, "iterations": 13},
+        ),
+    )
+    monkeypatch.setattr(
+        sut,
+        "compute_chart",
+        lambda *a, **k: {
+            "ascendant": {"sign_id": 4, "longitude_deg": 95.0},
+            "grahas": [
+                {"name": g, "longitude": 10.0 * (i + 1), "house": 10 if g == "Sun" else 1}
+                for i, g in enumerate(["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu"])
+            ],
+        },
+    )
+    monkeypatch.setattr(sut, "_read_trirashipathi", lambda *a, **k: "Sun")
+    row = sut._compute_one(
+        conn=None,
+        chart_id="11111111-1111-4111-8111-202002290001",
+        canonical_aya="lahiri_chitrapaksha",
+        aya_adapter="lahiri",
+        varsha_year=2,
+        natal_chart={"ascendant": {"sign_id": 1, "degree_in_sign": 5.0}},
+        natal_sun_long=315.931905,
+        build_id="build-zero-diff",
+        birth={"birth_date": "2020-02-29", "birth_time": "10:15:00", "lat": 28.6139, "lon": 77.2090, "tz": 5.5},
+    )
+    assert row["ephemeris_audit_jsonb"]["solar_return_cross_check_pass"] is True
+    assert row["verification_pass_status"] != "divergent_flagged"
+
+    # Control: missing diff_deg=None still fails closed.
+    monkeypatch.setattr(
+        sut,
+        "_solar_return",
+        lambda *a, **k: (
+            datetime(2022, 2, 28, 12, 0, 0),
+            {"converged": True, "diff_deg": None, "bracket_days": 2, "iterations": 13},
+        ),
+    )
+    row_none = sut._compute_one(
+        conn=None,
+        chart_id="11111111-1111-4111-8111-202002290001",
+        canonical_aya="lahiri_chitrapaksha",
+        aya_adapter="lahiri",
+        varsha_year=2,
+        natal_chart={"ascendant": {"sign_id": 1, "degree_in_sign": 5.0}},
+        natal_sun_long=315.931905,
+        build_id="build-none-diff",
+        birth={"birth_date": "2020-02-29", "birth_time": "10:15:00", "lat": 28.6139, "lon": 77.2090, "tz": 5.5},
+    )
+    assert row_none["ephemeris_audit_jsonb"]["solar_return_cross_check_pass"] is False
+    assert row_none["verification_pass_status"] == "divergent_flagged"

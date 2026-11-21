@@ -558,7 +558,8 @@ def _compute_one(conn: Any, chart_id: str, canonical_aya: str, aya_adapter: str,
     # coalesces None the same way the prior missing-key default did, since
     # `.get(key, default)` only applies the default when the key is ABSENT,
     # not when it's present with value None.
-    sr_diff = abs(sr_audit.get("diff_deg") or 99.0)
+    sr_raw_diff = sr_audit.get("diff_deg")
+    sr_diff = 99.0 if sr_raw_diff is None else abs(sr_raw_diff)
     sr_ok = sr_audit.get("converged", False) and sr_diff <= SOLAR_RETURN_TOL_DEG
 
     # ── Vārṣeśa candidate office-bearers ─────────────────────────────────────

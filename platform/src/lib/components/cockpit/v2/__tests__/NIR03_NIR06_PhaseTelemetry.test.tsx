@@ -5,7 +5,6 @@ import type { AssetStats } from '@/app/api/cockpit/stats/route'
 import type { ActiveRun, ActiveRunAsset } from '@/hooks/useActiveRun'
 import { AssetRow } from '../AssetRow'
 import { CockpitShell } from '../CockpitShell'
-import { DataAssetsView } from '../DataAssetsView'
 import { PlanModal } from '../PlanModal'
 import { deriveBuildStage, formatPhaseBreakdown, formatPhaseMs, stageFill } from '../buildStage'
 
