@@ -152,23 +152,24 @@ export async function fetchL1Context(
 
   try {
     const dashaResult = await query(
-      `SELECT level, dasha_lord
+      `SELECT level_n, lord_graha
        FROM chart_dashas
        WHERE chart_id = $1
          AND ayanamsha_id = $2
-         AND level IN (1, 2)
+         AND system_id = 'vimshottari'
+         AND level_n IN (1, 2)
          AND start_date <= $3::date
          AND end_date > $3::date
          ${buildIds ? 'AND build_id = ANY($4::uuid[])' : ''}
-       ORDER BY level ASC
+       ORDER BY level_n ASC
        LIMIT 2`,
       buildIds
         ? [chart_id, ayanamsha_id, as_of_date, buildIds]
         : [chart_id, ayanamsha_id, as_of_date]
     )
     for (const row of dashaResult.rows) {
-      const lvl = Number(row['level'])
-      const lord = String(row['dasha_lord'] ?? '').toUpperCase()
+      const lvl = Number(row['level_n'])
+      const lord = String(row['lord_graha'] ?? '').toUpperCase()
       if (lvl === 1) current_md_lord = L1_GRAHA_TO_CODE[lord] ?? lord
       if (lvl === 2) current_ad_lord = L1_GRAHA_TO_CODE[lord] ?? lord
     }

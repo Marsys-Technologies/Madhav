@@ -173,8 +173,16 @@ describe('control statement boundaries', () => {
     expect(h.query).toHaveBeenCalledTimes(5)
     expect(h.query.mock.calls.map(([, args]) => args)).toEqual([[RUN], [RUN], [RUN], [RUN], ['fixture detail', RUN, REQUESTED_AT]])
     expect(h.query.mock.calls[0][0]).toContain("WHERE id=$1 AND state = 'running'")
-    expect(h.query.mock.calls[1][0]).toContain("state = CASE WHEN state IN ('planned','paused') THEN 'stopped' ELSE state END")
-    expect(h.query.mock.calls[1][0]).toContain("r.state = 'stopped' AND b.state = 'queued'")
+    const stopSql = String(h.query.mock.calls[1][0])
+    expect(stopSql).toContain("pg_try_advisory_xact_lock(hashtext(COALESCE(chart_id::text, 'nirmana-global-assets')))")
+    expect(stopSql).not.toContain('hashtextextended')
+    expect(stopSql).not.toMatch(/pg_try_advisory_lock\s*\(/)
+    expect(stopSql).toContain("WHEN t.prev_state IN ('planned','paused') OR t.dead_worker_lock THEN 'stopped'")
+    expect(stopSql).toContain("r.state = 'stopped' AND b.state = 'queued'")
+    expect(stopSql).toContain("r.state = 'stopped' AND b.state = 'building'")
+    expect(stopSql).toContain("COALESCE(b.error, 'Stopped after worker exit')")
+    expect(stopSql).toContain('UPDATE asset_throughput at')
+    expect(stopSql).toContain("AND at.state = 'building'")
     expect(h.query.mock.calls[2][0]).toContain("WHERE id=$1 AND state = 'paused'")
     expect(h.query.mock.calls[2][0]).toContain('plan_manifest IS NOT NULL AND plan_manifest_digest IS NOT NULL')
     expect(h.query.mock.calls[3][0]).toContain('AS has_manifest')
@@ -263,5 +271,119 @@ describe('four exact source seams', () => {
   it('accepts comments, formatting and an unrelated local presentation scope', () => {
     const c = contracts[3], text = readFileSync(fileURLToPath(new URL(c.relative, import.meta.url)), 'utf8')
     expect(inspect(text + '\n// query("not executable")\nfunction presentation(rows: string[]) { const claimPausedBuildRun = rows.find(x => x); return claimPausedBuildRun }\n', c)).toEqual([])
+  })
+})
+
+describe('NIR-04 requestBuildRunStop live vs dead vs global reconciliation', () => {
+  interface SimState {
+    run: { id: string; chart_id: string | null; state: string; stop_requested_at: string | null; ended_at: string | null }
+    assets: Array<{ run_id: string; asset_id: string; state: string; ended_at: string | null; error: string | null }>
+    throughput: Array<{ chart_id: string | null; asset_id: string; state: string; last_error: string | null }>
+    heldLocks: Set<string>
+  }
+
+  function installStopHarness(sim: SimState) {
+    h.query.mockImplementation((sql: string, params?: unknown[]) => {
+      if (sql.includes('FROM profiles')) return Promise.resolve({ rows: [{ role: 'super_admin' }] })
+      const runId = params?.[0]
+      if (runId !== sim.run.id || !['planned', 'running', 'paused'].includes(sim.run.state)) {
+        return Promise.resolve({ rows: [] })
+      }
+      expect(sql).toContain("pg_try_advisory_xact_lock(hashtext(COALESCE(chart_id::text, 'nirmana-global-assets')))")
+      const lockKey = sim.run.chart_id ?? 'nirmana-global-assets'
+      const prevState = sim.run.state
+      const deadWorkerLock = prevState === 'running' ? !sim.heldLocks.has(lockKey) : false
+      const now = '2026-11-21T18:40:00Z'
+      sim.run.stop_requested_at = now
+      if (prevState === 'planned' || prevState === 'paused' || deadWorkerLock) {
+        sim.run.state = 'stopped'
+        sim.run.ended_at = now
+        for (const b of sim.assets) {
+          if (b.run_id !== sim.run.id) continue
+          if (b.state === 'queued') {
+            b.state = 'aborted'
+            b.ended_at = now
+            b.error = prevState === 'running' ? (b.error ?? 'Stopped after worker exit') : 'Stopped before this asset started.'
+          } else if (b.state === 'building') {
+            b.state = 'aborted'
+            b.ended_at = now
+            b.error = b.error ?? 'Stopped after worker exit'
+            for (const at of sim.throughput) {
+              if ((at.chart_id === sim.run.chart_id || at.chart_id === null) && at.asset_id === b.asset_id && at.state === 'building') {
+                at.state = 'error'
+                at.last_error = at.last_error ?? 'Stopped after worker exit'
+              }
+            }
+          }
+        }
+      }
+      return Promise.resolve({ rows: [{ id: sim.run.id }] })
+    })
+  }
+
+  it('preserves running state for cooperative stop when a live worker holds the chart advisory lock', async () => {
+    const sim: SimState = {
+      run: { id: RUN, chart_id: CHART, state: 'running', stop_requested_at: null, ended_at: null },
+      assets: [
+        { run_id: RUN, asset_id: 'ga_structural', state: 'building', ended_at: null, error: null },
+        { run_id: RUN, asset_id: 'ga_yoga', state: 'queued', ended_at: null, error: null },
+      ],
+      throughput: [{ chart_id: CHART, asset_id: 'ga_structural', state: 'building', last_error: null }],
+      heldLocks: new Set([CHART]),
+    }
+    installStopHarness(sim)
+    const response = await stop(controlRequest(), context())
+    expect(response.status).toBe(200)
+    expect(sim.run.state).toBe('running')
+    expect(sim.run.stop_requested_at).not.toBeNull()
+    expect(sim.run.ended_at).toBeNull()
+    expect(sim.assets.map(a => a.state)).toEqual(['building', 'queued'])
+    expect(sim.throughput[0].state).toBe('building')
+  })
+
+  it('immediately reconciles running -> stopped when worker advisory lock is unheld (dead worker)', async () => {
+    const sim: SimState = {
+      run: { id: RUN, chart_id: CHART, state: 'running', stop_requested_at: null, ended_at: null },
+      assets: [
+        { run_id: RUN, asset_id: 'ga_positions', state: 'complete', ended_at: '2026-11-21T18:00:00Z', error: null },
+        { run_id: RUN, asset_id: 'ga_structural', state: 'building', ended_at: null, error: null },
+        { run_id: RUN, asset_id: 'ga_yoga', state: 'queued', ended_at: null, error: null },
+      ],
+      throughput: [{ chart_id: CHART, asset_id: 'ga_structural', state: 'building', last_error: null }],
+      heldLocks: new Set(),
+    }
+    installStopHarness(sim)
+    const response = await stop(controlRequest(), context())
+    expect(response.status).toBe(200)
+    expect(sim.run.state).toBe('stopped')
+    expect(sim.run.ended_at).not.toBeNull()
+    expect(sim.run.stop_requested_at).not.toBeNull()
+    expect(sim.assets).toEqual([
+      { run_id: RUN, asset_id: 'ga_positions', state: 'complete', ended_at: '2026-11-21T18:00:00Z', error: null },
+      { run_id: RUN, asset_id: 'ga_structural', state: 'aborted', ended_at: '2026-11-21T18:40:00Z', error: 'Stopped after worker exit' },
+      { run_id: RUN, asset_id: 'ga_yoga', state: 'aborted', ended_at: '2026-11-21T18:40:00Z', error: 'Stopped after worker exit' },
+    ])
+    expect(sim.throughput[0]).toEqual({
+      chart_id: CHART, asset_id: 'ga_structural', state: 'error', last_error: 'Stopped after worker exit',
+    })
+  })
+
+  it('uses the nirmana-global-assets lock key for global runs (chart_id IS NULL) on both live and dead paths', async () => {
+    const liveGlobal: SimState = {
+      run: { id: RUN, chart_id: null, state: 'running', stop_requested_at: null, ended_at: null },
+      assets: [{ run_id: RUN, asset_id: 'bg_ephemeris', state: 'building', ended_at: null, error: null }],
+      throughput: [{ chart_id: null, asset_id: 'bg_ephemeris', state: 'building', last_error: null }],
+      heldLocks: new Set(['nirmana-global-assets']),
+    }
+    installStopHarness(liveGlobal)
+    expect((await stop(controlRequest(), context())).status).toBe(200)
+    expect(liveGlobal.run.state).toBe('running')
+    expect(liveGlobal.throughput[0].state).toBe('building')
+
+    liveGlobal.heldLocks.clear()
+    expect((await stop(controlRequest(), context())).status).toBe(200)
+    expect(liveGlobal.run.state).toBe('stopped')
+    expect(liveGlobal.assets[0].state).toBe('aborted')
+    expect(liveGlobal.throughput[0].state).toBe('error')
   })
 })

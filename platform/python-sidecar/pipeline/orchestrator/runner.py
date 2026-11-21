@@ -1471,11 +1471,7 @@ def execute_run(run_id: str) -> None:
 
     except Exception as exc:
         logger.error("[orchestrator] unexpected error: %s", exc, exc_info=True)
-        try:
-            mark_run_state(conn, cur, run_id, "failed", ended_at=True)
-            emit_event({"type": "run.state_change", "run_id": run_id, "chart_id": chart_id, "state": "failed"})
-        except Exception:
-            pass
+        _terminalize_crashed_run(conn, cur, run_id, chart_id, exc)
         raise
 
     finally:
@@ -1494,4 +1490,75 @@ def execute_run(run_id: str) -> None:
             conn.commit()
         except Exception:
             pass
-        conn.close()
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+
+def _terminalize_crashed_run(conn, cur, run_id: str, chart_id: str, exc: Exception) -> None:
+    """Mark a crashed run 'failed' and abort remaining 'queued' build_run_assets.
+
+    Falls back to a fresh short-lived connection via connect() when the main
+    connection is closed or fails (e.g. Cloud SQL Auth Proxy TCP reset).
+    """
+    crash_msg = f"orchestrator_crash: {type(exc).__name__}: {exc}"[:2000]
+
+    def _write_terminal(c, cr) -> None:
+        cr.execute(
+            """UPDATE build_runs
+                  SET state = 'failed',
+                      ended_at = NOW(),
+                      last_error = COALESCE(last_error, %s)
+                WHERE id = %s
+                  AND state NOT IN ('completed', 'failed', 'stopped')""",
+            (crash_msg, run_id),
+        )
+        cr.execute(
+            """UPDATE build_run_assets
+                  SET state = 'aborted',
+                      ended_at = NOW(),
+                      error = COALESCE(error, %s)
+                WHERE run_id = %s
+                  AND state = 'queued'""",
+            (crash_msg, run_id),
+        )
+        c.commit()
+
+    wrote = False
+    if not getattr(conn, "closed", False):
+        try:
+            conn.rollback()
+            _write_terminal(conn, cur)
+            wrote = True
+        except Exception as main_err:
+            logger.warning(
+                "[orchestrator] crash cleanup on main connection failed for run %s (%s); opening fallback connection",
+                run_id, main_err,
+            )
+
+    if not wrote:
+        fallback_conn = None
+        try:
+            fallback_conn = connect()
+            fallback_conn.autocommit = False
+            fallback_cur = fallback_conn.cursor()
+            _write_terminal(fallback_conn, fallback_cur)
+            wrote = True
+        except Exception as fb_err:
+            logger.error(
+                "[orchestrator] fallback crash cleanup also failed for run %s: %s",
+                run_id, fb_err, exc_info=True,
+            )
+        finally:
+            if fallback_conn is not None:
+                try:
+                    fallback_conn.close()
+                except Exception:
+                    pass
+
+    if wrote:
+        try:
+            emit_event({"type": "run.state_change", "run_id": run_id, "chart_id": chart_id, "state": "failed"})
+        except Exception:
+            pass

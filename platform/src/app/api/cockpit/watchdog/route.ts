@@ -68,8 +68,9 @@
  * deleted here.
  */
 import { type NextRequest, NextResponse } from 'next/server'
+import type { QueryResult, QueryResultRow } from 'pg'
 import { verifyOidcToken } from '@/lib/auth/oidc'
-import { query } from '@/lib/db/client'
+import { query, withTransaction } from '@/lib/db/client'
 import { preparationRunScopeSql } from '@/lib/build/preparationRunScope'
 import { classifyStuckCandidate } from './classifyStuckCandidate'
 import {
@@ -108,6 +109,16 @@ async function publishEvent(event: Record<string, unknown>): Promise<void> {
 }
 
 export const maxDuration = 10
+
+async function queryWithLockTimeout<T extends QueryResultRow = QueryResultRow>(
+  sql: string,
+  params?: unknown[]
+): Promise<QueryResult<T>> {
+  return withTransaction(async (client) => {
+    await client.query("SET LOCAL lock_timeout = '3s'")
+    return client.query<T>(sql, params)
+  })
+}
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const authorization = req.headers.get('authorization')
@@ -152,17 +163,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // two target states since this reaper can find a run in either shape.
   const [thresholdOverrideIds, thresholdOverrideSecs] = stuckThresholdOverrideParams()
   const preparationScope = preparationRunScopeSql('build_runs')
-  const orphanRuns = await query<{ id: string; chart_id: string }>(
-    `WITH failed_run AS (
-       UPDATE build_runs
-       SET state = 'failed', ended_at = NOW(),
-           last_error = CASE WHEN ${preparationScope} THEN $4 ELSE $1 END
+  const orphanRuns = await queryWithLockTimeout<{ id: string; chart_id: string }>(
+    `WITH locked_runs AS (
+       SELECT id
+       FROM build_runs
        WHERE state = 'running'
          AND CASE
-           -- The worker takes this session lock before claiming the run and
-           -- holds it through publishing the terminal state. Connection loss
-           -- releases it even after SIGKILL. The xact lock fences reconciliation.
-           WHEN ${preparationScope} THEN pg_try_advisory_xact_lock(hashtext(chart_id::text))
+           -- NIR-04: Every per-chart worker (layer, asset, asset_set, global) acquires
+           -- the chart session advisory lock before claiming and holds it through
+           -- publishing terminal state. Connection loss releases it even after SIGKILL.
+           WHEN chart_id IS NOT NULL THEN pg_try_advisory_xact_lock(hashtext(chart_id::text))
            ELSE started_at < NOW() - INTERVAL '30 minutes'
              AND NOT EXISTS (
                SELECT 1 FROM asset_throughput
@@ -176,21 +186,52 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
              )
              AND NOT ${aliveWithinOverrideSql('build_runs.chart_id', '$2', '$3')}
          END
+       FOR UPDATE OF build_runs SKIP LOCKED
+     ),
+     failed_run AS (
+       UPDATE build_runs
+       SET state = 'failed', ended_at = NOW(),
+           last_error = CASE WHEN ${preparationScope} THEN $4 ELSE $1 END
+       WHERE id IN (SELECT id FROM locked_runs)
        RETURNING id, chart_id, last_error, ${preparationScope} AS preparation
+     ),
+     locked_queued AS (
+       SELECT b.ctid
+       FROM build_run_assets b
+       JOIN failed_run f ON b.run_id = f.id
+       WHERE b.state = 'queued'
+       FOR UPDATE OF b SKIP LOCKED
      ),
      aborted_queued AS (
        UPDATE build_run_assets b
        SET state = 'aborted', ended_at = NOW(), error = f.last_error
        FROM failed_run f
        WHERE b.run_id = f.id AND b.state = 'queued'
+         AND b.ctid IN (SELECT ctid FROM locked_queued)
        RETURNING 1
+     ),
+     locked_building AS (
+       SELECT b.ctid
+       FROM build_run_assets b
+       JOIN failed_run f ON b.run_id = f.id
+       WHERE b.state = 'building'
+       FOR UPDATE OF b SKIP LOCKED
      ),
      errored_building AS (
        UPDATE build_run_assets b
        SET state = 'error', ended_at = NOW(), error = f.last_error
        FROM failed_run f
        WHERE b.run_id = f.id AND b.state = 'building'
+         AND b.ctid IN (SELECT ctid FROM locked_building)
        RETURNING b.run_id, b.asset_id
+     ),
+     locked_throughput AS (
+       SELECT at.ctid
+       FROM asset_throughput at
+       JOIN failed_run f ON f.preparation AND at.chart_id = f.chart_id
+       JOIN errored_building b ON b.run_id = f.id AND at.asset_id = b.asset_id
+       WHERE at.state = 'building'
+       FOR UPDATE OF at SKIP LOCKED
      ),
      interrupted_preparation AS (
        UPDATE asset_throughput at
@@ -199,6 +240,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
        JOIN errored_building b ON b.run_id = f.id
        WHERE f.preparation AND at.chart_id = f.chart_id
          AND at.asset_id = b.asset_id AND at.state = 'building'
+         AND at.ctid IN (SELECT ctid FROM locked_throughput)
        RETURNING 1
      )
      SELECT id, chart_id FROM failed_run`,
@@ -327,21 +369,36 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
   }
 
+  const rescuedApplied: typeof rescued = []
   for (const r of rescued) {
-    await query(
-      `UPDATE asset_throughput
+    const throughputRes = await queryWithLockTimeout(
+      `WITH locked AS (
+         SELECT ctid
+         FROM asset_throughput
+         WHERE chart_id IS NOT DISTINCT FROM $1 AND asset_id = $2 AND state = 'building'
+         FOR UPDATE SKIP LOCKED
+       )
+       UPDATE asset_throughput
        SET state = 'lit', rows_written = $3, last_error = NULL, last_built_at = NOW()
-       WHERE chart_id IS NOT DISTINCT FROM $1 AND asset_id = $2 AND state = 'building'`,
+       WHERE ctid IN (SELECT ctid FROM locked)
+       RETURNING 1`,
       [r.chart_id, r.asset_id, r.rows]
     )
-    await query(
-      `UPDATE build_run_assets bra
+    if ((throughputRes.rowCount ?? 0) === 0) continue
+    rescuedApplied.push(r)
+    await queryWithLockTimeout(
+      `WITH locked AS (
+         SELECT bra.ctid
+         FROM build_run_assets bra
+         JOIN build_runs br ON bra.run_id = br.id
+         WHERE br.chart_id IS NOT DISTINCT FROM $1
+           AND bra.asset_id = $2
+           AND bra.state = 'building'
+         FOR UPDATE OF bra SKIP LOCKED
+       )
+       UPDATE build_run_assets bra
        SET state = 'complete', ended_at = NOW()
-       FROM build_runs br
-       WHERE bra.run_id = br.id
-         AND br.chart_id IS NOT DISTINCT FROM $1
-         AND bra.asset_id = $2
-         AND bra.state = 'building'`,
+       WHERE bra.ctid IN (SELECT ctid FROM locked)`,
       [r.chart_id, r.asset_id]
     )
     console.warn(
@@ -372,12 +429,20 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // error string is present, whereas a NULL error with rows present would render
   // a 'lit' badge from count_sql — re-introducing the falsely-lit report at the
   // UI layer even though the stored state is honest.
+  const withheldApplied: typeof withheld = []
   for (const w of withheld) {
-    await query(
-      `UPDATE asset_throughput
+    const throughputRes = await queryWithLockTimeout(
+      `WITH locked AS (
+         SELECT ctid
+         FROM asset_throughput
+         WHERE chart_id IS NOT DISTINCT FROM $1 AND asset_id = $2 AND state = 'building'
+         FOR UPDATE SKIP LOCKED
+       )
+       UPDATE asset_throughput
        SET state = 'incomplete', rows_written = $3, last_built_at = NOW(),
            last_error = $4
-       WHERE chart_id IS NOT DISTINCT FROM $1 AND asset_id = $2 AND state = 'building'`,
+       WHERE ctid IN (SELECT ctid FROM locked)
+       RETURNING 1`,
       [
         w.chart_id,
         w.asset_id,
@@ -388,6 +453,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           "'lit'. Re-run the build to complete the plan (substep progress is resumable).",
       ]
     )
+    if ((throughputRes.rowCount ?? 0) === 0) continue
+    withheldApplied.push(w)
     console.warn(
       `[watchdog] WITHHELD promotion for ${w.asset_id} (chart ${w.chart_id ?? 'NULL'}): ` +
       `${w.rows} row(s) present and ${w.substepsCommitted} substep(s) committed, but ` +
@@ -417,29 +484,36 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // matching build_run_assets row from 'building' to 'error' with the same text.
   const stuckAssets =
     trulyStuck.length > 0
-      ? await query<{ chart_id: string; asset_id: string }>(
-          `WITH stuck AS (
-             UPDATE asset_throughput
-             SET state = 'error',
-                 last_error = $1
+      ? await queryWithLockTimeout<{ chart_id: string; asset_id: string }>(
+          `WITH locked_throughput AS (
+             SELECT ctid
+             FROM asset_throughput
              WHERE state = 'building'
                AND last_built_at < NOW() - INTERVAL '15 minutes'
                AND ${staleBeyondOverrideSql('asset_throughput.asset_id', 'asset_throughput.last_built_at', `$${trulyStuck.length * 2 + 2}`, `$${trulyStuck.length * 2 + 3}`)}
                AND (${trulyStuck.map((_, i) => `(chart_id IS NOT DISTINCT FROM $${i * 2 + 2} AND asset_id = $${i * 2 + 3})`).join(' OR ')})
+             FOR UPDATE SKIP LOCKED
+           ),
+           stuck AS (
+             UPDATE asset_throughput
+             SET state = 'error',
+                 last_error = $1
+             WHERE ctid IN (SELECT ctid FROM locked_throughput)
              RETURNING chart_id, asset_id
+           ),
+           locked_bra AS (
+             SELECT bra.ctid
+             FROM build_run_assets bra
+             JOIN build_runs br ON br.id = bra.run_id
+             JOIN stuck s ON br.chart_id IS NOT DISTINCT FROM s.chart_id AND bra.asset_id = s.asset_id
+             WHERE br.state = 'running'
+               AND bra.state = 'building'
+             FOR UPDATE OF bra SKIP LOCKED
            ),
            bra_terminalized AS (
              UPDATE build_run_assets bra
              SET state = 'error', ended_at = NOW(), error = $1
-             FROM build_runs br
-             WHERE bra.run_id = br.id
-               AND br.state = 'running'
-               AND bra.state = 'building'
-               AND EXISTS (
-                 SELECT 1 FROM stuck s
-                 WHERE br.chart_id IS NOT DISTINCT FROM s.chart_id
-                   AND bra.asset_id = s.asset_id
-               )
+             WHERE bra.ctid IN (SELECT ctid FROM locked_bra)
              RETURNING 1
            )
            SELECT chart_id, asset_id FROM stuck`,
@@ -485,20 +559,32 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // platform/python-sidecar/pipeline/orchestrator/runner.py:325-337) so the same
   // parameter reaches both tables atomically and the old two-statement,
   // conditional-on-rows.length dance is no longer needed.
-  const undispatchedRuns = await query<{ id: string; chart_id: string }>(
-    `WITH failed_run AS (
-       UPDATE build_runs
-       SET state = 'failed', ended_at = NOW(), last_error = $1
+  const undispatchedRuns = await queryWithLockTimeout<{ id: string; chart_id: string }>(
+    `WITH locked_runs AS (
+       SELECT id
+       FROM build_runs
        WHERE state = 'planned'
          AND ((started_at IS NULL AND resume_requested_at IS NULL AND created_at < NOW() - INTERVAL '10 minutes')
            OR resume_requested_at < NOW() - INTERVAL '10 minutes')
+       FOR UPDATE SKIP LOCKED
+     ),
+     failed_run AS (
+       UPDATE build_runs
+       SET state = 'failed', ended_at = NOW(), last_error = $1
+       WHERE id IN (SELECT id FROM locked_runs)
        RETURNING id, chart_id
+     ),
+     locked_bra AS (
+       SELECT bra.ctid
+       FROM build_run_assets bra
+       JOIN failed_run f ON bra.run_id = f.id
+       WHERE bra.state = 'queued'
+       FOR UPDATE OF bra SKIP LOCKED
      ),
      aborted_queued AS (
        UPDATE build_run_assets
        SET state = 'aborted', ended_at = NOW(), error = $1
-       WHERE run_id IN (SELECT id FROM failed_run)
-         AND state = 'queued'
+       WHERE ctid IN (SELECT ctid FROM locked_bra)
        RETURNING 1
      )
      SELECT id, chart_id FROM failed_run`,
@@ -520,27 +606,35 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   // M-4: Prune old completed/failed/stopped build runs and their child assets (retention: 90 days)
   // Delete build_run_assets first in case there is no CASCADE FK.
-  await query(
+  await queryWithLockTimeout(
     `DELETE FROM build_run_assets
-     WHERE run_id IN (
-       SELECT id FROM build_runs
-       WHERE state IN ('completed', 'failed', 'stopped')
-         AND created_at < NOW() - INTERVAL '90 days'
+     WHERE ctid IN (
+       SELECT bra.ctid
+       FROM build_run_assets bra
+       JOIN build_runs br ON br.id = bra.run_id
+       WHERE br.state IN ('completed', 'failed', 'stopped')
+         AND br.created_at < NOW() - INTERVAL '90 days'
+       FOR UPDATE OF bra SKIP LOCKED
      )`
   )
-  const pruned = await query(
+  const pruned = await queryWithLockTimeout(
     `DELETE FROM build_runs
-     WHERE state IN ('completed', 'failed', 'stopped')
-       AND created_at < NOW() - INTERVAL '90 days'
+     WHERE id IN (
+       SELECT id
+       FROM build_runs
+       WHERE state IN ('completed', 'failed', 'stopped')
+         AND created_at < NOW() - INTERVAL '90 days'
+       FOR UPDATE SKIP LOCKED
+     )
      RETURNING id`
   )
 
   return NextResponse.json({
     orphan_runs_failed: orphanRuns.rowCount ?? 0,
-    stuck_assets_rescued: rescued.length,
+    stuck_assets_rescued: rescuedApplied.length,
     // SAMĀPTI B-WATCHDOG-LIT: has_substeps assets with data present whose plan
     // completeness could not be proven — marked 'incomplete' instead of 'lit'.
-    stuck_assets_withheld_incomplete: withheld.length,
+    stuck_assets_withheld_incomplete: withheldApplied.length,
     stuck_assets_failed: stuckAssets.rowCount ?? 0,
     undispatched_runs_failed: undispatchedRuns.rowCount ?? 0,
     pruned_runs: pruned.rowCount ?? 0,
