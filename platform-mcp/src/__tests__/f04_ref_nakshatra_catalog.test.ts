@@ -41,7 +41,7 @@ describe('F04 ref_nakshatra_get — canonical structured catalog', () => {
         vimshottari_lord: 'Jupiter',
         presiding_deity: 'Aja Ekapada',
         gana: 'Manushya',
-        nadi: 'Madhya',
+        nadi: 'Adi',
         varna: 'Brahmin',
         nakshatra_gender: 'Male',
         symbol: 'Front legs of a funeral cot',
