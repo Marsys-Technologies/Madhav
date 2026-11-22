@@ -15,11 +15,35 @@ import { useEffect, useRef } from 'react'
 // NOT-done: the asset's dispatch has ended, and it is not lit.
 type AssetState = 'dormant' | 'building' | 'lit' | 'stale' | 'error' | 'incomplete' | 'service_down'
 type RunState   = 'planned' | 'running' | 'paused' | 'completed' | 'stopped' | 'failed'
+export type CockpitPhase =
+  | 'queued'
+  | 'computing'
+  | 'writing'
+  | 'verifying'
+  | 'publishing'
+  | 'complete'
+  | 'skipped'
+  | 'error'
+  | 'aborted'
 
 export type CockpitEvent =
   | { type: 'asset.state_change'; asset_id: string; from_state: AssetState; to_state: AssetState }
   | { type: 'asset.progress';     asset_id: string; rows_written: number; expected_rows: number | null }
   | { type: 'asset.substep';      asset_id: string; chart_id: string; substep_key: string; substep_label: string; index: number; total: number; rows_written: number }
+  | {
+      type: 'asset.phase'
+      asset_id: string
+      chart_id?: string | null
+      run_id?: string
+      phase: CockpitPhase
+      substep_index?: number | null
+      substep_total?: number | null
+      substep_label?: string | null
+      compute_ms?: number | null
+      write_ms?: number | null
+      verify_ms?: number | null
+      publish_ms?: number | null
+    }
   | { type: 'edge.first_signal';  from_asset_id: string; to_asset_id: string }
   | { type: 'run.state_change';   run_id: string; state: RunState }
 
@@ -126,7 +150,7 @@ export function useCockpitSSE(
 
       source.addEventListener('hello', () => handleEvent('hello', null))
       source.addEventListener('heartbeat', () => handleEvent('heartbeat', null))
-      for (const type of ['asset.state_change', 'asset.progress', 'edge.first_signal', 'asset.substep', 'run.state_change']) {
+      for (const type of ['asset.state_change', 'asset.progress', 'edge.first_signal', 'asset.substep', 'asset.phase', 'run.state_change']) {
         source.addEventListener(type, (e) => {
           try { handleEvent(type, JSON.parse((e as MessageEvent).data)) } catch { /* malformed frame */ }
         })

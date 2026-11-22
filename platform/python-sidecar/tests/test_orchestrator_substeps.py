@@ -160,7 +160,7 @@ def test_driver_runs_each_substep_with_heartbeat(monkeypatch):
     assert sqls.count('SAVEPOINT writer_exec') == 3
     assert sqls.count('RELEASE SAVEPOINT writer_exec') == 3
     # one heartbeat UPDATE per sub-step, and one commit per sub-step
-    assert sum('UPDATE asset_throughput' in s and 'last_built_at = NOW()' in s for s in sqls) == 3
+    assert sum('UPDATE asset_throughput' in s and 'last_built_at = clock_timestamp()' in s for s in sqls) == 3
     assert conn.commits == 3
     # granular SSE: 3 asset.substep events, indices 1..3, cumulative rows advancing
     subs = [e for e in events if e['type'] == 'asset.substep']

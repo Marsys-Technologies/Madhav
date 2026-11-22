@@ -245,3 +245,57 @@ def _duration_columns_present(cur) -> bool:
                 ),
             })
     return _DURATION_COLUMNS_PRESENT
+
+
+_PHASE_TELEMETRY_COLUMNS = (
+    "phase",
+    "substep_index",
+    "substep_total",
+    "substep_label",
+    "compute_ms",
+    "write_ms",
+    "verify_ms",
+    "publish_ms",
+)
+_PHASE_TELEMETRY_COLUMNS_PRESENT: bool | None = None
+
+
+def _phase_telemetry_columns_present(cur) -> bool:
+    """Detect once per process whether migration 1421's phase-telemetry columns
+    exist on ``public.build_run_assets``.
+
+    Gracefully returns False on pre-1421 schemas and on minimal test-double
+    cursors that do not implement ``fetchone`` (without poisoning the process
+    cache when a non-DB test double is passed).
+    """
+    global _PHASE_TELEMETRY_COLUMNS_PRESENT
+    if _PHASE_TELEMETRY_COLUMNS_PRESENT is None:
+        if not hasattr(cur, "fetchone"):
+            return False
+        try:
+            cur.execute(
+                """SELECT COUNT(DISTINCT column_name) AS cnt
+                     FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = 'build_run_assets'
+                      AND column_name = ANY(%s)""",
+                (list(_PHASE_TELEMETRY_COLUMNS),),
+            )
+            row = cur.fetchone()
+            if isinstance(row, dict):
+                cnt = row.get("cnt")
+            elif isinstance(row, (tuple, list)) and row:
+                cnt = row[0]
+            else:
+                cnt = 0
+            _PHASE_TELEMETRY_COLUMNS_PRESENT = int(cnt or 0) == len(_PHASE_TELEMETRY_COLUMNS)
+        except Exception:
+            _PHASE_TELEMETRY_COLUMNS_PRESENT = False
+        if not _PHASE_TELEMETRY_COLUMNS_PRESENT:
+            logger.warning(
+                "[orchestrator] build_run_assets phase-telemetry columns are ABSENT "
+                "in this environment (migration 1421_nirmana_phase_telemetry_and_"
+                "tajaka_window.sql has not applied here). Durable phase/substep/"
+                "per-phase-duration persistence is skipped for the lifetime of this process."
+            )
+    return _PHASE_TELEMETRY_COLUMNS_PRESENT

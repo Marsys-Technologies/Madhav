@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import type { AssetRow as AssetRowType } from '@/app/api/cockpit/registry/route'
 import type { AssetStats } from '@/app/api/cockpit/stats/route'
+import type { ActiveRunAsset, BuildPhase } from '@/hooks/useActiveRun'
 import type { SubstepOverlay } from './DataAssetsView'
 import { ClearIconButton } from './ClearIconButton'
 import { RefreshIconButton } from './RefreshIconButton'
@@ -11,7 +12,7 @@ import { StopIconButton } from './StopIconButton'
 import { formatDateTime, formatRelative } from '@/lib/utils/date'
 import { Zap, Database, Cpu, Link2 } from 'lucide-react'
 import { AssetProgressBar } from './AssetProgressBar'
-import { deriveBuildStage } from './buildStage'
+import { deriveBuildStage, formatPhaseBreakdown } from './buildStage'
 import type { SubstepInfo } from './buildStage'
 import { useUserRole } from '@/hooks/useUserRole'
 import { BuildBlockedModal } from '@/components/cockpit/BuildBlockedModal'
@@ -25,9 +26,13 @@ interface Props {
   chartId: string
   activeRunId: string | null
   activeRunPaused: boolean
-  /** True only for the single asset the run is currently building — gates the Stop control
+  /** Persisted build_run_assets record for this asset in the active run, if targeted. */
+  activeRunAsset?: ActiveRunAsset | null
+  /** True when the asset is actively executing in the current run — gates the Stop control
    *  so idle/queued/completed assets don't each show a (whole-run) Stop during a build. */
   isActiveAsset?: boolean
+  /** Fallback queue signal when activeRunAssets has not populated yet. */
+  isQueued?: boolean
   highlighted?: boolean
   allAssets?: AssetRowType[]
   substep?: SubstepOverlay | null
@@ -84,14 +89,38 @@ function DownstreamImpactNote({ count }: { count?: number | null }) {
 // Service-health pill — replaces progress bar for asset_type='service' rows.
 // state='lit' ⟹ GREEN probe passed; 'error'/'service_down' ⟹ probe failed;
 // 'building' ⟹ probe running.
+const PHASE_RANK: Record<BuildPhase, number> = {
+  queued: 0,
+  computing: 1,
+  writing: 2,
+  verifying: 3,
+  publishing: 4,
+  complete: 5,
+  skipped: 5,
+  error: 5,
+  aborted: 5,
+}
+
+function mergeBuildPhase(
+  ssePhase: BuildPhase | null | undefined,
+  durablePhase: BuildPhase | null | undefined,
+): BuildPhase | null {
+  if (ssePhase && durablePhase) {
+    return PHASE_RANK[durablePhase] > PHASE_RANK[ssePhase] ? durablePhase : ssePhase
+  }
+  return ssePhase ?? durablePhase ?? null
+}
+
 function ServiceHealthPill({
   state,
   hasError,
   errorMsg,
+  phase,
 }: {
   state: string
   hasError: boolean
   errorMsg?: string | null
+  phase?: BuildPhase | null
 }) {
   const prefersReducedMotion = typeof window !== 'undefined'
     && typeof window.matchMedia === 'function'
@@ -99,23 +128,31 @@ function ServiceHealthPill({
 
   const isGreen = state === 'lit' || state === 'service_ok'
   const isRunning = state === 'building'
+  const isQueued = state === 'queued'
   const isError = hasError || state === 'error' || state === 'service_down'
 
   // Same block geometry as AssetProgressBar (full-width 28px track + right-edge
   // state pill), so a service row reads consistently with the data rows.
   // Gold brand palette for lit/service_ok (F2: revert green→gold, native ruling 2026-06-26)
-  const stroke = isGreen ? 'rgba(212,166,72,0.9)' : isRunning ? 'rgba(200,154,70,0.75)' : isError ? 'rgba(232,108,108,0.85)' : 'rgba(122,86,24,0.4)'
-  const pillColor = isGreen ? 'rgba(236,197,106,0.95)' : isRunning ? 'rgba(236,197,106,0.95)' : isError ? 'rgba(232,108,108,1)' : 'rgba(155,131,80,0.8)'
-  const pill = isGreen ? 'LIVE' : isRunning ? 'PROBING' : isError ? 'FAILED' : 'DORMANT'
+  const stroke = isGreen ? 'rgba(212,166,72,0.9)' : isRunning ? 'rgba(200,154,70,0.75)' : isQueued ? 'rgba(200,154,70,0.6)' : isError ? 'rgba(232,108,108,0.85)' : 'rgba(122,86,24,0.4)'
+  const pillColor = isGreen ? 'rgba(236,197,106,0.95)' : (isRunning || isQueued) ? 'rgba(236,197,106,0.95)' : isError ? 'rgba(232,108,108,1)' : 'rgba(155,131,80,0.8)'
+  const pill = isGreen ? 'LIVE' : isRunning ? 'PROBING' : isQueued ? 'QUEUED' : isError ? 'FAILED' : 'DORMANT'
 
-  const dotColor = isGreen ? '#4CAF50' : isRunning ? '#ECC56A' : isError ? '#B5474C' : 'rgba(255,255,255,0.2)'
+  const dotColor = isGreen ? '#4CAF50' : (isRunning || isQueued) ? '#ECC56A' : isError ? '#B5474C' : 'rgba(255,255,255,0.2)'
   const dotShadow = isGreen ? '0 0 6px rgba(76,175,80,0.6)' : isRunning ? '0 0 6px rgba(236,197,106,0.6)' : 'none'
   const dotAnimation = (isGreen || isRunning) && !prefersReducedMotion ? 'obs-live-pulse 1.8s ease-in-out infinite' : 'none'
-  const labelColor = isGreen ? 'rgba(255,255,255,0.7)' : isRunning ? 'var(--gold-high)' : isError ? 'rgba(232,108,108,0.8)' : 'var(--on-dark-faint)'
-  const labelText = isGreen ? 'Service responding' : isRunning ? 'Probing…' : isError ? 'Service failed' : 'Dormant'
+  const labelColor = isGreen ? 'rgba(255,255,255,0.7)' : (isRunning || isQueued) ? 'var(--gold-high)' : isError ? 'rgba(232,108,108,0.8)' : 'var(--on-dark-faint)'
+  const runningLabel = phase === 'computing'
+    ? 'Preparing…'
+    : phase === 'publishing'
+      ? 'Publishing…'
+      : phase === 'verifying'
+        ? 'Verifying…'
+        : 'Probing…'
+  const labelText = isGreen ? 'Service responding' : isRunning ? runningLabel : isQueued ? 'Queued' : isError ? 'Service failed' : 'Dormant'
 
   // Fill tint color at reduced opacity for heartbeat background
-  const fillTint = isGreen ? 'rgba(176,137,58,0.3)' : isRunning ? 'rgba(168,124,48,0.3)' : isError ? 'rgba(232,108,108,0.3)' : 'rgba(122,86,24,0.0)'
+  const fillTint = isGreen ? 'rgba(176,137,58,0.3)' : isRunning ? 'rgba(168,124,48,0.3)' : isQueued ? 'rgba(168,124,48,0.14)' : isError ? 'rgba(232,108,108,0.3)' : 'rgba(122,86,24,0.0)'
 
   return (
     <div>
@@ -183,7 +220,7 @@ function StatusDot({
   // blocked this run (disposition='blocked_dependency') is a cascade CONSEQUENCE,
   // not this asset's own defect — grouped with the amber "not this asset's fault"
   // states, never with the red 'error' state that would misreport it as one.
-  const isAmber = state === 'building' || state === 'stale' || state === 'dormant' || state === 'reconnecting' || state === 'blocked'
+  const isAmber = state === 'building' || state === 'queued' || state === 'stale' || state === 'dormant' || state === 'reconnecting' || state === 'blocked'
   // DRAFT only forces red when the asset is NOT healthy — a running DRAFT asset is green.
   const isRed = state === 'error' || state === 'service_down' || state === 'not_migrated' || (isDraft && !isHealthy)
 
@@ -240,7 +277,7 @@ function rebuildActionForAsset(asset: AssetRowType, state: string): 'build' | 'r
     : state === 'dormant' ? 'build' : 'rebuild'
 }
 
-export function AssetRow({ asset, stat, chartId, activeRunId, isActiveAsset, highlighted, allAssets, substep, onRunStarted, preparation = false }: Props) {
+export function AssetRow({ asset, stat, chartId, activeRunId, activeRunAsset = null, isActiveAsset, isQueued: isQueuedProp = false, highlighted, allAssets, substep, onRunStarted, preparation = false }: Props) {
   const [pendingCascade, setPendingCascade] = useState<ConfirmPending | null>(null)
   const [pendingBlock, setPendingBlock] = useState<BlockerEntry[] | null>(null)
   const { isSuperAdmin } = useUserRole()
@@ -312,32 +349,97 @@ export function AssetRow({ asset, stat, chartId, activeRunId, isActiveAsset, hig
     }
   }
   const isActive = asset.is_active
+  const isService = asset.asset_type === 'service' || asset.asset_kind === 'service'
   const isDataPlaneDown = stat?.error_class === 'dataplane'
-  // Suppress red-error display when the failure is a transient data-plane blip
-  const hasError = stat?.error != null && stat.error !== 'missing_table' && !isDataPlaneDown
 
-  // Derive state: prefer throughput state, fallback to row-count heuristic.
-  // Data-plane errors show as 'reconnecting' (amber) rather than 'error' (red)
-  // so a transient proxy restart doesn't falsely mark healthy assets as FAILED.
+  // Derive build stage from SSE + durable activeRunAsset telemetry + polled state.
+  // Missing substep events mean the exact phase is unavailable — they NEVER turn
+  // an active writer into a queued asset.
   const throughputState = stat?.state
-  const derivedState: string = !isActive
-    ? (asset.catalog_status === 'RETIRED' ? 'retired' : 'not_migrated')
-    : isDataPlaneDown
-      ? 'reconnecting'
-      : throughputState ?? (stat?.actual_rows ? 'lit' : 'dormant')
-
-  // Derive build stage from substep + state data.
-  // isQueued: asset appears as building in polled stats but no SSE state event has
-  // arrived yet (substep overlay is absent) — treat as queued in the run plan.
-  const substepData: SubstepInfo | undefined = (substep && substep.substep_total > 0)
+  const effectivePhase = mergeBuildPhase(substep?.phase ?? null, activeRunAsset?.phase ?? null)
+  const sseSubstep: SubstepInfo | undefined = (substep && substep.substep_total > 0)
     ? { index: substep.substep_index, total: substep.substep_total, label: substep.substep_label }
     : undefined
-  const isQueued = derivedState === 'building' && substep == null
+  const durableSubstep: SubstepInfo | undefined = (
+    activeRunAsset?.substep_index != null &&
+    activeRunAsset?.substep_total != null &&
+    activeRunAsset.substep_total > 0
+  )
+    ? {
+        index: activeRunAsset.substep_index,
+        total: activeRunAsset.substep_total,
+        label: activeRunAsset.substep_label ?? undefined,
+      }
+    : undefined
+  const substepData: SubstepInfo | undefined = (sseSubstep && durableSubstep)
+    ? (durableSubstep.index > sseSubstep.index ? durableSubstep : sseSubstep)
+    : (sseSubstep ?? durableSubstep)
+  const runAssetState = activeRunId ? (activeRunAsset?.state ?? null) : null
+  const hasLivePhase = effectivePhase != null && effectivePhase !== 'queued'
+  const hasLiveSubstep = substepData != null || substep != null || hasLivePhase
+
+  const isQueued = Boolean(
+    isActive &&
+    !isDataPlaneDown &&
+    activeRunId != null &&
+    !hasLiveSubstep &&
+    !isActiveAsset &&
+    (runAssetState === 'queued' || (runAssetState == null && isQueuedProp))
+  )
+
+  let derivedState: string
+  if (!isActive) {
+    derivedState = asset.catalog_status === 'RETIRED' ? 'retired' : 'not_migrated'
+  } else if (isDataPlaneDown) {
+    derivedState = 'reconnecting'
+  } else if (isQueued) {
+    derivedState = 'queued'
+  } else if (runAssetState === 'building' || (runAssetState === 'queued' && hasLiveSubstep)) {
+    derivedState = 'building'
+  } else if (runAssetState === 'complete') {
+    // Preserve F-01 incomplete/partial truth if throughput recorded substep work remaining.
+    if (throughputState === 'incomplete' || throughputState === 'partial') {
+      derivedState = throughputState
+    } else {
+      derivedState = isService ? 'service_ok' : 'lit'
+    }
+  } else if (runAssetState === 'error') {
+    if (activeRunAsset?.disposition === 'blocked_dependency') {
+      derivedState = 'blocked'
+    } else if (throughputState === 'incomplete' || throughputState === 'partial') {
+      derivedState = throughputState
+    } else {
+      derivedState = 'error'
+    }
+  } else if (runAssetState === 'skipped' || runAssetState === 'aborted') {
+    if (throughputState && throughputState !== 'building') {
+      derivedState = throughputState
+    } else {
+      derivedState = stat?.actual_rows ? (isService ? 'service_ok' : 'lit') : 'dormant'
+    }
+  } else {
+    derivedState = throughputState ?? (stat?.actual_rows ? 'lit' : 'dormant')
+  }
+
+  const effectiveError = stat?.error ?? (runAssetState === 'error' ? activeRunAsset?.error ?? null : null)
+  const effectiveBlockedBy = stat?.blocked_by_asset_id ?? (runAssetState === 'error' ? activeRunAsset?.blocked_by_asset_id ?? null : null)
+  // Suppress red-error display when the failure is a transient data-plane blip or when the
+  // asset is currently building, queued, or already healthy in the current run.
+  const hasError = effectiveError != null && effectiveError !== 'missing_table' && !isDataPlaneDown
+    && derivedState !== 'building' && derivedState !== 'queued' && derivedState !== 'lit' && derivedState !== 'service_ok'
+
   const buildStage = deriveBuildStage({
     polledState: derivedState,
+    phase: effectivePhase,
     substepIndex: substepData?.index,
     substepTotal: substepData?.total,
     isQueued,
+  })
+  const phaseBreakdownText = formatPhaseBreakdown({
+    compute_ms: substep?.compute_ms ?? activeRunAsset?.compute_ms,
+    write_ms: substep?.write_ms ?? activeRunAsset?.write_ms,
+    verify_ms: substep?.verify_ms ?? activeRunAsset?.verify_ms,
+    publish_ms: substep?.publish_ms ?? activeRunAsset?.publish_ms,
   })
 
   return (
@@ -362,9 +464,9 @@ export function AssetRow({ asset, stat, chartId, activeRunId, isActiveAsset, hig
       <div style={{ minWidth: 0 }} title={asset.asset_id}>
         <div className="flex flex-col">
           <div className="flex items-center gap-1.5">
-            {(!preparation || stat || !isActive) && <StatusDot catalogStatus={asset.catalog_status} state={derivedState} />}
+            {(!preparation || stat || activeRunAsset || !isActive) && <StatusDot catalogStatus={asset.catalog_status} state={derivedState} />}
             {/* F1: service vs data glyph — keyed off asset_type / asset_kind */}
-            {(asset.asset_type === 'service' || asset.asset_kind === 'service')
+            {isService
               ? <Cpu size={10} style={{ color: 'rgba(212,166,72,0.55)', flexShrink: 0 }} aria-label="service" />
               : <Database size={10} style={{ color: 'rgba(212,166,72,0.35)', flexShrink: 0 }} aria-label="data" />
             }
@@ -390,21 +492,34 @@ export function AssetRow({ asset, stat, chartId, activeRunId, isActiveAsset, hig
 
       {/* Progress bar or service-health pill */}
       <div>
-        {preparation && !isActive ? <p className="j1-note">Not runnable</p> : preparation && !stat ? <p className="j1-note">Status unavailable</p> : (asset.asset_type === 'service' || asset.asset_kind === 'service') ? (
-          <ServiceHealthPill state={derivedState} hasError={hasError} errorMsg={stat?.error} />
+        {preparation && !isActive ? <p className="j1-note">Not runnable</p> : preparation && !stat && !activeRunAsset ? <p className="j1-note">Status unavailable</p> : isService ? (
+          <>
+            <ServiceHealthPill state={derivedState} hasError={hasError} errorMsg={effectiveError} phase={effectivePhase} />
+            {phaseBreakdownText && (
+              <div style={{ fontSize: '9px', color: 'var(--on-dark-faint)', marginTop: '2px', fontFamily: 'var(--mono-stack)' }}>
+                {phaseBreakdownText}
+              </div>
+            )}
+          </>
         ) : (
           <>
             <AssetProgressBar
               state={derivedState}
-              actualRows={stat?.actual_rows ?? null}
+              actualRows={substep?.actual_rows ?? stat?.actual_rows ?? null}
               targetVolume={asset.target_floor ?? null}
               stage={buildStage}
+              phase={effectivePhase}
               substep={substepData}
               isQueued={isQueued}
               preparation={preparation}
             />
+            {phaseBreakdownText && (
+              <div style={{ fontSize: '9px', color: 'var(--on-dark-faint)', marginTop: '2px', fontFamily: 'var(--mono-stack)' }}>
+                {phaseBreakdownText}
+              </div>
+            )}
             {/* build-state stale badge: data present but throughput record is stale/absent */}
-            {stat?.build_state_stale && (
+            {stat?.build_state_stale && derivedState !== 'building' && derivedState !== 'queued' && (
               <div style={{ fontSize: '9px', color: 'rgba(236,197,106,0.65)', marginTop: '2px', fontFamily: 'var(--mono-stack)' }}>
                 build-state stale
               </div>
@@ -415,7 +530,7 @@ export function AssetRow({ asset, stat, chartId, activeRunId, isActiveAsset, hig
                 data plane reconnecting…
               </div>
             )}
-            {hasError && stat?.error && (
+            {hasError && effectiveError && (
               // Packet B1: was a text-sniff (`stat.error.startsWith('BLOCKED:')`,
               // O1) — replaced with the structural signal. `derivedState === 'blocked'`
               // traces to build_run_assets.disposition='blocked_dependency'
@@ -431,25 +546,35 @@ export function AssetRow({ asset, stat, chartId, activeRunId, isActiveAsset, hig
                 // blocked cascade — amber/orange, chain icon, distinct tooltip
                 <div
                   style={{ fontSize: '9px', color: 'rgba(236,147,50,0.9)', marginTop: '2px', fontFamily: 'var(--mono-stack)', maxWidth: '52ch', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '4px' }}
-                  title={stat.blocked_by_asset_id
-                    ? `Blocked by upstream failure — ${stat.blocked_by_asset_id}`
-                    : `Blocked by upstream failure — ${stat.error}`}
+                  title={effectiveBlockedBy
+                    ? `Blocked by upstream failure — ${effectiveBlockedBy}`
+                    : `Blocked by upstream failure — ${effectiveError}`}
                 >
                   <Link2 size={9} style={{ flexShrink: 0, color: 'rgba(236,147,50,0.8)' }} />
-                  <span>blocked by upstream failure{stat.blocked_by_asset_id ? `: ${stat.blocked_by_asset_id}` : ''}</span>
+                  <span>blocked by upstream failure{effectiveBlockedBy ? `: ${effectiveBlockedBy}` : ''}</span>
                 </div>
               ) : (
                 // genuine root failure — keep existing red styling
                 <>
                   <div
                     style={{ fontSize: '9px', color: 'var(--marsys-error)', marginTop: '2px', fontFamily: 'var(--mono-stack)', maxWidth: '52ch', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                    title={stat.error}
+                    title={effectiveError}
                   >
-                    {stat.error.slice(0, 64)}
+                    {effectiveError.slice(0, 64)}
                   </div>
-                  <DownstreamImpactNote count={stat.downstream_dependent_count} />
+                  <DownstreamImpactNote count={stat?.downstream_dependent_count} />
                 </>
               )
+            )}
+            {runAssetState === 'complete' && activeRunAsset?.disposition === 'skip_no_delta' && derivedState === 'lit' && (
+              <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.45)', marginTop: '2px', fontFamily: 'var(--mono-stack)' }}>
+                unchanged · skipped
+              </div>
+            )}
+            {runAssetState === 'skipped' && (
+              <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.45)', marginTop: '2px', fontFamily: 'var(--mono-stack)' }}>
+                skipped this run
+              </div>
             )}
             {/* O2: lit asset with 0 rows — subtle note, not alarming */}
             {derivedState === 'lit' && stat?.rows_written === 0 && (
@@ -474,7 +599,7 @@ export function AssetRow({ asset, stat, chartId, activeRunId, isActiveAsset, hig
 
       {/* Actions cell — centered column: [Build/Rebuild] [Refresh] [Stop | Delete] */}
       <div className={`flex items-center justify-center gap-1.5${preparation ? ' preparation-row-actions' : ''}`}>
-        {isActive && (!preparation || !!stat) && (
+        {isActive && (!preparation || !!stat || !!activeRunAsset) && (
           <>
             {/* Build/Rebuild — hidden when run active; role-gated for brahmagyan */}
             {!activeRunId && (isSuperAdmin || asset.layer !== 'brahmagyan') && (

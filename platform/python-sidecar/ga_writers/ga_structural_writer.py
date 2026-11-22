@@ -4566,21 +4566,21 @@ def _build_structural_relationship_rows(
             ),
         ))
 
-    # D-3 distribution check (non-degenerate): a single classification value
-    # covering the large majority of grahas is the exact failure signature
-    # this register row diagnosed (8/9 "neutral" pre-fix). Not a hard halt —
-    # some charts legitimately cluster — but loud enough that a regression
-    # of the same class is never silently reintroduced.
-    n_grahas = len(grahas_data)
-    if n_grahas > 0:
-        max_class, max_count = max(classification_counts.items(), key=lambda kv: kv[1])
-        if max_count / n_grahas >= 0.75:
-            logger.warning(
-                "[ga_structural] chart_id=%s ayanamsha=%s: graha_composite_state_classification "
-                "distribution is near-degenerate — %d/%d grahas classified '%s' "
-                "(D-3 regression signature). counts=%s",
-                chart_id, ayanamsha_id, max_count, n_grahas, max_class, classification_counts,
-            )
+    # NIR-09 (replaces blind >=0.75 D-3 concentration warning): verify each
+    # graha's D1 sign/dignity/classification against brahmagyan.dignity_oracle
+    # and governed node rules, and log the verified observed distribution.
+    _verify_composite_dignity_integrity(
+        grahas_data=grahas_data,
+        classification_rows=[
+            r for r in rows
+            if r["fact_category"] == "graha_composite_state_classification"
+        ],
+        classification_counts=classification_counts,
+        nbry_d1_bhanga_planets=nbry_d1_bhanga_planets,
+        chart_id=chart_id,
+        ayanamsha_id=ayanamsha_id,
+    )
+    # Exact 16-line slot preserved so downstream governance pins remain intact.
 
     return rows
 
@@ -7314,9 +7314,9 @@ def _build_graha_yuddha_rows(
     chart_id: str, build_id: str, ayanamsha_id: str,
     computed_at: str, eng_ver: str,
 ) -> list[dict[str, Any]]:
-    """Detect graha yuddha (planetary war): two classical grahas within 1° in the same sign.
+    """Detect graha yuddha (planetary war): two tārā-grahas within 1° in the same sign.
 
-    Classical rule: only CLASSICAL_GRAHAS (no nodes) can be in yuddha.
+    Classical rule: only the 5 tārā-grahas (Mars, Mercury, Jupiter, Venus, Saturn) can be in yuddha.
     Emits 3 rows per pair: fact_key='winner', 'loser', 'orb_deg'.
 
     WINNER RULE FLOORED (JL-027 native ruling, JL_027_GRAHA_YUDDHA_WINNER_RULE_OPTIONS_v1_0.md):
@@ -7328,11 +7328,11 @@ def _build_graha_yuddha_rows(
     """
     rows: list[dict[str, Any]] = []
 
-    # Build longitude + sign table for classical grahas only
+    # Build longitude + sign table for eligible tārā-grahas only
     graha_data: list[tuple[str, float, str]] = []  # (name, longitude, sign)
     for g in chart_output.get("grahas", []):
         name = g.get("name", "")
-        if name not in CLASSICAL_GRAHAS:
+        if name not in ("Mars", "Mercury", "Jupiter", "Venus", "Saturn"):
             continue
         lon = float(g.get("longitude", 0.0))
         sign = str(g.get("sign", ""))
@@ -8540,3 +8540,164 @@ def _update_asset_throughput_structural(chart_id: str, build_id: str, row_count:
 # rows in retrograde_aspect_modification, node deepta/classification values unchanged; ONLY is_retrograde flips.
 from ga_writers.ga_positions_writer import MEAN_NODE_GRAHA_NAMES as _MEAN_NODE_GRAHA_NAMES  # noqa: E402
 from brahmagyan.ordinal_text import ordinal as _ordinal  # noqa: E402  (late import, as above: keeps the pinned evidence line numbers of this file stable)
+
+
+# ── NIR-09: D1 sign/dignity & composite classification integrity verifier ──────────────────────────────────
+_VALID_COMPOSITE_STATES: frozenset[str] = frozenset({
+    "severely_afflicted",
+    "debilitation_cancelled",
+    "debilitated",
+    "afflicted",
+    "well_placed",
+    "weak",
+    "neutral",
+})
+
+
+def _expected_d1_composite_dignity(g_name: str, sign_name: str, deg_in_sign: float) -> str:
+    """Resolve the governed D1 dignity vocabulary used by composite state classification."""
+    if g_name in _MEAN_NODE_GRAHA_NAMES:
+        # Governed node rule (pyjhora_adapter/dignities.py & migration 1326):
+        # Rahu/Ketu remain 'neutral' for composite state classification.
+        return "neutral"
+    oracle_state = classify_dignity(g_name, sign_name, deg_in_sign)
+    return "own_sign" if oracle_state in ("moolatrikona", "own") else oracle_state
+
+
+def _verify_composite_dignity_integrity(
+    *,
+    grahas_data: list[dict[str, Any]],
+    classification_rows: list[dict[str, Any]],
+    classification_counts: dict[str, int],
+    nbry_d1_bhanga_planets: set[str],
+    chart_id: str,
+    ayanamsha_id: str,
+) -> dict[str, Any]:
+    """Verify D1 sign/dignity & composite state classifications deterministically (NIR-09).
+
+    Replaces the legacy 0.75 concentration heuristic so genuinely clustered charts
+    (e.g. 7/9 neutral + Jupiter/Saturn well_placed) pass cleanly with distribution
+    logged at INFO, while real sign/dignity regressions or invalid classifications
+    fail loudly with an explicit RuntimeError.
+    """
+    n_grahas = len(grahas_data)
+    if n_grahas == 0:
+        return {"verified_grahas": 0, "counts": dict(classification_counts), "concentrated": False}
+
+    if len(classification_rows) != n_grahas:
+        raise RuntimeError(
+            f"D-3 INTEGRITY HALT: chart_id={chart_id} ayanamsha={ayanamsha_id} "
+            f"emitted {len(classification_rows)} classification rows for {n_grahas} grahas"
+        )
+
+    sun_g = next((g2 for g2 in grahas_data if g2.get("name") == "Sun"), None)
+    sun_long = float(sun_g.get("longitude", 0.0)) if sun_g else 0.0
+
+    for g, row in zip(grahas_data, classification_rows):
+        g_name = g.get("name", "")
+        sign_name = g.get("sign")
+        if sign_name not in SIGN_NAMES:
+            raise RuntimeError(
+                f"D-3 INTEGRITY HALT: chart_id={chart_id} ayanamsha={ayanamsha_id} "
+                f"graha={g_name!r} has invalid/missing D1 sign={sign_name!r}"
+            )
+
+        expected_sign_id = SIGN_NAMES.index(sign_name) + 1
+        raw_sign_id = g.get("sign_id")
+        if raw_sign_id is not None and int(raw_sign_id) != expected_sign_id:
+            logger.error(
+                "[ga_structural] D-3 INTEGRITY HALT: chart_id=%s ayanamsha=%s "
+                "graha=%s sign/sign_id mismatch (sign=%s -> expected sign_id=%d, got sign_id=%r)",
+                chart_id, ayanamsha_id, g_name, sign_name, expected_sign_id, raw_sign_id,
+            )
+            raise RuntimeError(
+                f"D-3 INTEGRITY HALT: chart_id={chart_id} ayanamsha={ayanamsha_id} "
+                f"graha={g_name} sign/sign_id mismatch (sign={sign_name}, "
+                f"sign_id={raw_sign_id!r}, expected={expected_sign_id})"
+            )
+
+        actual_classification = row.get("fact_value_text")
+        if actual_classification not in _VALID_COMPOSITE_STATES:
+            raise RuntimeError(
+                f"D-3 INTEGRITY HALT: chart_id={chart_id} ayanamsha={ayanamsha_id} "
+                f"graha={g_name} invalid classification={actual_classification!r}"
+            )
+
+        is_node = g_name in _MEAN_NODE_GRAHA_NAMES
+        if g_name in CLASSICAL_GRAHAS or is_node:
+            raw_lon = g.get("longitude", g.get("longitude_deg"))
+            if g.get("degree_in_sign") is not None:
+                deg_in_sign = float(g["degree_in_sign"]) % 30.0
+            elif raw_lon is not None:
+                deg_in_sign = float(raw_lon) % 30.0
+            else:
+                deg_in_sign = 0.0
+
+            expected_dignity = _expected_d1_composite_dignity(g_name, sign_name, deg_in_sign)
+            actual_dignity = g.get("dignity_status", "neutral")
+            if actual_dignity != expected_dignity:
+                logger.error(
+                    "[ga_structural] D-3 INTEGRITY HALT: chart_id=%s ayanamsha=%s "
+                    "graha=%s sign=%s deg=%.2f dignity mismatch (got=%s, expected=%s)",
+                    chart_id, ayanamsha_id, g_name, sign_name, deg_in_sign,
+                    actual_dignity, expected_dignity,
+                )
+                raise RuntimeError(
+                    f"D-3 INTEGRITY HALT: chart_id={chart_id} ayanamsha={ayanamsha_id} "
+                    f"graha={g_name} in {sign_name} has dignity_status={actual_dignity!r}, "
+                    f"expected={expected_dignity!r}"
+                )
+
+            long_deg = float(g.get("longitude", 0.0))
+            sun_dist = abs(long_deg - sun_long)
+            if sun_dist > 180.0:
+                sun_dist = 360.0 - sun_dist
+            orb_limit = COMBUSTION_ORBS.get(g_name, 0.0)
+            is_combust = (orb_limit > 0.0 and sun_dist <= orb_limit and g_name not in {"Sun", "Moon"})
+            retro = bool(g.get("retrograde", False))
+
+            if expected_dignity == "debilitated" and is_combust:
+                expected_class = "severely_afflicted"
+            elif expected_dignity == "debilitated":
+                expected_class = (
+                    "debilitation_cancelled"
+                    if g_name.lower() in nbry_d1_bhanga_planets
+                    else "debilitated"
+                )
+            elif is_combust:
+                expected_class = "afflicted"
+            elif expected_dignity in ("exalted", "own_sign"):
+                expected_class = "well_placed"
+            elif retro and not is_node:
+                expected_class = "weak"
+            else:
+                expected_class = "neutral"
+
+            if actual_classification != expected_class:
+                logger.error(
+                    "[ga_structural] D-3 INTEGRITY HALT: chart_id=%s ayanamsha=%s "
+                    "graha=%s classification mismatch (got=%s, expected=%s, dignity=%s)",
+                    chart_id, ayanamsha_id, g_name, actual_classification,
+                    expected_class, expected_dignity,
+                )
+                raise RuntimeError(
+                    f"D-3 INTEGRITY HALT: chart_id={chart_id} ayanamsha={ayanamsha_id} "
+                    f"graha={g_name} classification={actual_classification!r}, "
+                    f"expected={expected_class!r}"
+                )
+
+    max_class, max_count = max(classification_counts.items(), key=lambda kv: kv[1])
+    concentrated = (max_count / n_grahas) >= 0.75
+    logger.info(
+        "[ga_structural] chart_id=%s ayanamsha=%s: graha_composite_state_classification "
+        "verified against D1 sign/dignity (%d grahas; dominant='%s' %d/%d, concentrated=%s). counts=%s",
+        chart_id, ayanamsha_id, n_grahas, max_class, max_count, n_grahas,
+        concentrated, classification_counts,
+    )
+    return {
+        "verified_grahas": n_grahas,
+        "dominant": max_class,
+        "dominant_count": max_count,
+        "concentrated": concentrated,
+        "counts": dict(classification_counts),
+    }

@@ -4,19 +4,24 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAssetRegistry } from '@/hooks/useAssetRegistry'
 import { useAssetStats } from '@/hooks/useAssetStats'
 import { useCockpitSSE } from '@/hooks/useCockpitSSE'
-import type { CockpitEvent } from '@/hooks/useCockpitSSE'
-import type { ActiveRun } from '@/hooks/useActiveRun'
+import type { CockpitEvent, CockpitPhase } from '@/hooks/useCockpitSSE'
+import type { ActiveRun, ActiveRunAsset } from '@/hooks/useActiveRun'
 import dynamic from 'next/dynamic'
 import { LayerPanel } from './LayerPanel'
 import type { AssetWithState } from './LiveDependencyGraph'
 import { PreparationReadiness } from './PreparationReadiness'
 
-// SSE-live substep overlay — fields that come from asset.substep events only
+// SSE-live substep & phase overlay — fields from asset.substep / asset.phase events
 export interface SubstepOverlay {
   actual_rows: number
   substep_index: number
   substep_total: number
   substep_label: string
+  phase?: CockpitPhase
+  compute_ms?: number | null
+  write_ms?: number | null
+  verify_ms?: number | null
+  publish_ms?: number | null
 }
 
 // Instrument pane: the armillary graph (replaces the orbital LiveDependencyGraph).
@@ -58,14 +63,18 @@ interface Props {
   clearKey?: number
   /** Task 1: active run lifted to CockpitShell — passed down as a prop */
   activeRun: ActiveRun | null
+  /** Persisted per-asset run records from useActiveRun, keyed per asset in activeRun */
+  activeRunAssets?: ActiveRunAsset[]
   /** Task 1: refresh callback for the active run — passed from CockpitShell */
   refreshRun: () => void
   variant?: 'cockpit' | 'preparation'
   preparationRetryAssets?: string[]
 }
 
+const EMPTY_ACTIVE_RUN_ASSETS: ActiveRunAsset[] = []
+
 export function DataAssetsView({
-  chartId, onAssetsReady, header, refreshKey, clearKey, activeRun, refreshRun,
+  chartId, onAssetsReady, header, refreshKey, clearKey, activeRun, activeRunAssets = EMPTY_ACTIVE_RUN_ASSETS, refreshRun,
   variant = 'cockpit', preparationRetryAssets,
 }: Props) {
   const preparation = variant === 'preparation'
@@ -126,17 +135,42 @@ export function DataAssetsView({
   // Live substep overlay — separate from sseOverlay so it doesn't pollute AssetWithState
   const [substepOverlay, setSubstepOverlay] = useState<Map<string, SubstepOverlay>>(new Map())
 
+  // Reset live SSE overlays whenever activeRun?.id changes so stale progress from
+  // a previous run never bleeds into a new or resumed run.
+  const activeRunId = activeRun?.id ?? null
+  const prevActiveRunIdRef = useRef<string | null>(activeRunId)
+  useEffect(() => {
+    if (prevActiveRunIdRef.current !== activeRunId) {
+      prevActiveRunIdRef.current = activeRunId
+      setSseOverlay(new Map())
+      setSubstepOverlay(new Map())
+    }
+  }, [activeRunId])
+
   const handleSSEEvent = useCallback((e: CockpitEvent) => {
     if (e.type === 'asset.state_change') {
+      const TERMINAL =
+        e.to_state === 'lit' ||
+        e.to_state === 'error' ||
+        e.to_state === 'incomplete' ||
+        e.to_state === 'service_down' ||
+        e.to_state === 'dormant'
       setSseOverlay(prev => {
         const next = new Map(prev)
         // Terminal states: yield immediately to polled stats (count_sql truth).
         // Non-terminal: write the overlay so the bar shows live in-flight state.
-        const TERMINAL = e.to_state === 'lit' || e.to_state === 'error' || e.to_state === 'service_down' || e.to_state === 'dormant'
         if (TERMINAL) next.delete(e.asset_id)
         else next.set(e.asset_id, { ...prev.get(e.asset_id), state: e.to_state })
         return next
       })
+      if (TERMINAL) {
+        setSubstepOverlay(prev => {
+          if (!prev.has(e.asset_id)) return prev
+          const next = new Map(prev)
+          next.delete(e.asset_id)
+          return next
+        })
+      }
     } else if (e.type === 'asset.progress') {
       setSseOverlay(prev => {
         const next = new Map(prev)
@@ -146,7 +180,10 @@ export function DataAssetsView({
     } else if (e.type === 'asset.substep') {
       setSubstepOverlay(prev => {
         const next = new Map(prev)
+        const existing = prev.get(e.asset_id)
         next.set(e.asset_id, {
+          ...existing,
+          phase: 'writing',
           actual_rows: e.rows_written,
           substep_index: e.index,
           substep_total: e.total,
@@ -154,6 +191,44 @@ export function DataAssetsView({
         })
         return next
       })
+    } else if (e.type === 'asset.phase') {
+      const TERMINAL_PHASE =
+        e.phase === 'complete' ||
+        e.phase === 'skipped' ||
+        e.phase === 'error' ||
+        e.phase === 'aborted'
+      if (TERMINAL_PHASE) {
+        setSubstepOverlay(prev => {
+          if (!prev.has(e.asset_id)) return prev
+          const next = new Map(prev)
+          next.delete(e.asset_id)
+          return next
+        })
+      } else {
+        setSubstepOverlay(prev => {
+          const next = new Map(prev)
+          const existing = prev.get(e.asset_id)
+          next.set(e.asset_id, {
+            actual_rows: existing?.actual_rows ?? 0,
+            substep_index: e.substep_index ?? existing?.substep_index ?? 0,
+            substep_total: e.substep_total ?? existing?.substep_total ?? 0,
+            substep_label: e.substep_label ?? existing?.substep_label ?? '',
+            phase: e.phase,
+            compute_ms: e.compute_ms ?? existing?.compute_ms ?? null,
+            write_ms: e.write_ms ?? existing?.write_ms ?? null,
+            verify_ms: e.verify_ms ?? existing?.verify_ms ?? null,
+            publish_ms: e.publish_ms ?? existing?.publish_ms ?? null,
+          })
+          return next
+        })
+        if (e.phase !== 'queued') {
+          setSseOverlay(prev => {
+            const next = new Map(prev)
+            next.set(e.asset_id, { ...prev.get(e.asset_id), state: 'building' })
+            return next
+          })
+        }
+      }
     } else if (e.type === 'run.state_change') {
       refreshRun()
       // On run end, clear all overlays so polled stats become the single source of truth,
@@ -195,20 +270,44 @@ export function DataAssetsView({
   }, [assets])
 
   // Task 2: memoize assetsWithState — was recomputed on every render.
-  // Merge assets + stats + SSE overlay — computed before early returns so the
-  // useEffect below can be called unconditionally (Rules of Hooks).
+  // Merge assets + stats + activeRunAssets + SSE overlay — computed before early returns
+  // so the useEffect below can be called unconditionally (Rules of Hooks).
+  const hasActiveRun = activeRun != null
+  const activeRunAssetsKey = activeRunAssets.map(a => `${a.asset_id}:${a.state}`).join('\0')
+  const activeRunAssetStateById = useMemo(
+    () => new Map(activeRunAssets.map(a => [a.asset_id, a.state])),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed by value signature so fresh mock/poll array identities do not loop onAssetsReady
+    [activeRunAssetsKey],
+  )
+  const activeRunPlanKey = (activeRun?.plan ?? []).join('\0')
+  const activeRunPlanSet = useMemo(
+    () => new Set(activeRun?.plan ?? []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed by value signature so fresh plan array identities do not loop onAssetsReady
+    [activeRunPlanKey],
+  )
   const assetsWithState: AssetWithState[] = useMemo(() => assets.filter((a, i, arr) => arr.findIndex(b => b.asset_id === a.asset_id) === i).map(a => {
     const s = stats.get(a.asset_id)
     const overlay = sseOverlay.get(a.asset_id)
+    const raState = hasActiveRun && (activeRunPlanSet.size === 0 || activeRunPlanSet.has(a.asset_id))
+      ? activeRunAssetStateById.get(a.asset_id)
+      : undefined
+    const isService = a.asset_type === 'service' || a.asset_kind === 'service'
+    const runStateFallback = s?.error_class === 'dataplane'
+      ? undefined
+      : raState === 'building'
+        ? 'building'
+        : raState === 'complete' && s?.state !== 'incomplete' && s?.state !== 'partial'
+          ? (isService ? 'service_ok' : 'lit')
+          : undefined
     return {
       ...a,
-      state: overlay?.state ?? s?.state ?? 'dormant',
+      state: overlay?.state ?? runStateFallback ?? s?.state ?? 'dormant',
       last_built_at: s?.last_built_at ?? null,
       actual_rows: overlay?.actual_rows ?? s?.actual_rows ?? null,
       build_state_stale: s?.build_state_stale ?? false,
       substep_progress: s?.substep_progress,
     }
-  }), [assets, stats, sseOverlay])
+  }), [assets, stats, sseOverlay, hasActiveRun, activeRunPlanSet, activeRunAssetStateById])
 
   // Notify parent (CockpitShell) whenever the merged state list changes.
   // Must be above early returns — hooks must be called unconditionally.
@@ -286,9 +385,15 @@ export function DataAssetsView({
   const activeRunPlan: string[] = activeRun?.plan ?? []
   function isLayerExpanded(layer: string): boolean {
     if (!activeRun) return false
+    if (activeRunPlan.length > 0) {
+      return (byLayer.get(layer) ?? []).some(a => activeRunPlan.includes(a.asset_id))
+    }
     if (activeRun.scope === 'layer' && activeRun.scope_target === layer) return true
-    if ((activeRun.scope === 'global' || activeRun.scope === 'asset_set') &&
-        (byLayer.get(layer) ?? []).some(a => activeRunPlan.includes(a.asset_id))) return true
+    if (activeRun.scope === 'global') return (byLayer.get(layer) ?? []).length > 0
+    if (activeRun.scope === 'asset_set') {
+      const targets = new Set(activeRun.scope_target?.split(',').map(s => s.trim()).filter(Boolean) ?? [])
+      return (byLayer.get(layer) ?? []).some(a => targets.has(a.asset_id))
+    }
     if (activeRun.scope === 'asset' && (byLayer.get(layer) ?? []).some(a => a.asset_id === activeRun.scope_target)) return true
     return false
   }
@@ -334,13 +439,13 @@ export function DataAssetsView({
         <div>{orderedLayers.map(layer => (
           <fieldset className="preparation-layer" key={layer} disabled={!!statsError || !lastFetched}>
             <LayerPanel layer={layer} assets={byLayer.get(layer) ?? []} allAssets={uniqueAssets}
-              stats={stats} chartId={chartId} activeRun={activeRun} substepOverlay={substepOverlay}
+              stats={stats} chartId={chartId} activeRun={activeRun} activeRunAssets={activeRunAssets} substepOverlay={substepOverlay}
               defaultExpanded={isLayerExpanded(layer)} preparation
               onRunStarted={() => { refreshRun(); refetchLive() }} />
           </fieldset>
         ))}</div>
         <PreparationReadiness assets={uniqueAssets} stats={stats} unavailable={!!statsError || !lastFetched}
-          chartId={chartId} activeRun={activeRun} preparationRetryAssets={preparationRetryAssets} />
+          chartId={chartId} activeRun={activeRun} activeRunAssets={activeRunAssets} preparationRetryAssets={preparationRetryAssets} />
       </div>
       <p className="j1-note" style={{ marginTop: 16 }}>
         {lastFetched ? `Status checked ${lastFetched.toLocaleTimeString()}. ` : 'Checking live status. '}
@@ -386,6 +491,7 @@ export function DataAssetsView({
                 onHover={setHoveredAssetId}
                 chartId={chartId}
                 activeRun={activeRun}
+                activeRunAssets={activeRunAssets}
                 substepOverlay={substepOverlay}
                 onRunStarted={() => { refreshRun(); refetchLive() }}
               />

@@ -2,11 +2,22 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
 
-const { mockQuery, mockVerifyOidcToken } = vi.hoisted(() => ({
-  mockQuery: vi.fn(),
-  mockVerifyOidcToken: vi.fn(),
-}))
-vi.mock('@/lib/db/client', () => ({ query: mockQuery }))
+const { mockQuery, mockVerifyOidcToken, mockWithTransaction } = vi.hoisted(() => {
+  const mockQuery = vi.fn()
+  return {
+    mockQuery,
+    mockVerifyOidcToken: vi.fn(),
+    mockWithTransaction: vi.fn(async (fn: (client: { query: typeof mockQuery }) => Promise<unknown>) =>
+      fn({
+        query: ((sql: string, params?: unknown[]) => {
+          if (sql.trim().startsWith('SET LOCAL ')) return Promise.resolve({ rows: [], rowCount: 0 })
+          return mockQuery(sql, params)
+        }) as typeof mockQuery,
+      })
+    ),
+  }
+})
+vi.mock('@/lib/db/client', () => ({ query: mockQuery, withTransaction: mockWithTransaction }))
 vi.mock('@/lib/auth/oidc', () => ({ verifyOidcToken: mockVerifyOidcToken }))
 
 import { POST } from '../route'

@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import type { BuildStage, SubstepInfo } from './buildStage'
 import { stageFill } from './buildStage'
 import type { AssetState } from '@/app/api/cockpit/stats/deriveState'
+import type { BuildPhase } from '@/hooks/useActiveRun'
 
 interface AssetProgressBarProps {
   state: string
@@ -11,6 +12,7 @@ interface AssetProgressBarProps {
   actualRows?: number | null
   targetVolume?: number | null   // retained for API compat; fill is stage-based per N.4
   stage?: BuildStage
+  phase?: BuildPhase | null
   substep?: SubstepInfo
   isQueued?: boolean
   preparation?: boolean
@@ -182,6 +184,16 @@ export const SEG = {
     continuousFill: 'rgba(236,197,106,0.25)',
     trackBorder:  'rgba(236,197,106,0.22)',
   },
+  queued: {
+    filledBg:     'rgba(168,124,42,0.40)',
+    filledBorder: 'rgba(212,166,72,0.45)',
+    activeBg:     'rgba(210,162,60,0.28)',
+    activeBorder: 'rgba(236,197,106,0.38)',
+    emptyBg:      'rgba(122,86,24,0.08)',
+    emptyBorder:  'rgba(122,86,24,0.16)',
+    continuousFill: 'rgba(210,162,60,0.45)',
+    trackBorder:  'rgba(122,86,24,0.25)',
+  },
   retired: {
     filledBg:     'rgba(80,80,80,0.08)',
     filledBorder: 'rgba(110,110,110,0.16)',
@@ -207,17 +219,19 @@ export const SEG = {
 const _exhaustive: Record<AssetState, SegmentColors> = SEG
 
 export function AssetProgressBar({
-  state, sseState, actualRows, stage, substep, preparation = false,
+  state, sseState, actualRows, stage, phase, substep, isQueued = false, preparation = false,
 }: AssetProgressBarProps) {
   const prefersReducedMotion = typeof window !== 'undefined'
     && typeof window.matchMedia === 'function'
     && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
   const effectiveState = sseState ?? state
+  const isQueuedState = Boolean(isQueued) || effectiveState === 'queued' || stage === 'queued'
   const isBuilding    = effectiveState === 'building'
-  const isLit         = effectiveState === 'lit' || effectiveState === 'service_ok' || stage === 'lit'
-  const isError       = effectiveState === 'error'
-  const isStale       = effectiveState === 'stale'
+  const isActiveBuild = isBuilding || isQueuedState
+  const isLit         = !isActiveBuild && (effectiveState === 'lit' || effectiveState === 'service_ok' || stage === 'lit')
+  const isError       = !isActiveBuild && effectiveState === 'error'
+  const isStale       = !isActiveBuild && effectiveState === 'stale'
   // Packet B1 — R-6 (review B1_rereview_20260926T190244Z.md): assessed for a
   // compile-time exhaustive Record (as AtlasView.tsx's switches got below), and
   // deliberately NOT converted. `effectiveState` is `sseState ?? state`, and
@@ -240,8 +254,10 @@ export function AssetProgressBar({
   const c = (SEG as Record<string, SegmentColors>)[effectiveState] ?? SEG.dormant
 
   // Substep-segmented vs. continuous fill
-  const hasSubsteps    = isBuilding && substep != null && substep.total > 1
-  const useContinuous  = isBuilding && !hasSubsteps
+  const resolvedStage  = stage ?? (isQueuedState ? 'queued' : isBuilding ? 'running' : isLit ? 'lit' : 'idle')
+  const isPostWritePhase = resolvedStage === 'verifying' || resolvedStage === 'publishing' || resolvedStage === 'committing'
+  const hasSubsteps    = isBuilding && !isQueuedState && !isPostWritePhase && substep != null && substep.total > 1
+  const useContinuous  = isActiveBuild && !hasSubsteps
 
   // Segment data
   const segCount = hasSubsteps ? substep!.total : MILESTONE_COUNT
@@ -261,19 +277,42 @@ export function AssetProgressBar({
   let leftLabel  = ''
   let rightLabel = ''
 
-  if (isBuilding) {
-    if (preparation && stage === 'committing') {
+  if (isActiveBuild) {
+    if (isQueuedState) {
+      leftLabel = 'Queued'
+    } else if (resolvedStage === 'computing') {
+      leftLabel = 'Computing'
+    } else if (resolvedStage === 'verifying') {
+      leftLabel = 'Verifying'
+      if (actualRows != null && actualRows > 0) rightLabel = `${actualRows.toLocaleString()} rows`
+    } else if (resolvedStage === 'publishing') {
+      leftLabel = 'Publishing'
+      if (actualRows != null && actualRows > 0) rightLabel = `${actualRows.toLocaleString()} rows`
+    } else if (preparation && resolvedStage === 'committing') {
       leftLabel = 'Verifying and saving'
     } else if (hasSubsteps) {
-      // Row count on left while building (updates in real time)
-      if (actualRows != null && actualRows > 0) leftLabel = actualRows.toLocaleString()
+      // Row count (and durable/live Writing phase when known) on left while building
+      if (phase === 'writing' || resolvedStage === 'writing') {
+        leftLabel = actualRows != null && actualRows > 0
+          ? `Writing · ${actualRows.toLocaleString()}`
+          : 'Writing'
+      } else if (actualRows != null && actualRows > 0) {
+        leftLabel = actualRows.toLocaleString()
+      }
       rightLabel = `${substep!.index} / ${substep!.total}`
+    } else if (resolvedStage === 'writing') {
+      leftLabel = 'Writing'
+      if (actualRows != null && actualRows > 0) {
+        rightLabel = `${actualRows.toLocaleString()} rows`
+      }
+    } else if (resolvedStage === 'committing') {
+      leftLabel = 'Committing'
     } else {
-      // Stage label for builds with no substep detail yet
-      leftLabel =
-        stage === 'queued'     ? 'Queued'      :
-        stage === 'committing' ? 'Committing'  :
-        'Starting'
+      // Active writer with no substep/phase detail (pre-1421 fallback)
+      leftLabel = 'Building'
+      if (actualRows != null && actualRows > 0) {
+        rightLabel = `${actualRows.toLocaleString()} rows`
+      }
     }
   } else if ((isLit || isStale) && actualRows != null && actualRows > 0) {
     leftLabel = actualRows.toLocaleString()
@@ -281,8 +320,8 @@ export function AssetProgressBar({
 
   const showLabels = leftLabel !== '' || rightLabel !== ''
 
-  // Continuous fill % (building, no substeps)
-  const contFillPct = useContinuous && stage ? stageFill(stage, substep) : 0
+  // Continuous fill % (building or queued, no substeps)
+  const contFillPct = useContinuous ? stageFill(resolvedStage, substep) : 0
 
   return (
     <div style={{ width: '100%' }}>
@@ -299,7 +338,7 @@ export function AssetProgressBar({
             fontFamily: 'var(--mono-stack)',
             fontSize: '9px',
             fontVariantNumeric: 'tabular-nums',
-            color: isBuilding ? 'var(--on-dark-mut)' : 'var(--on-dark-faint)',
+            color: isActiveBuild ? 'var(--on-dark-mut)' : 'var(--on-dark-faint)',
             letterSpacing: '0.02em',
             lineHeight: 1,
           }}>

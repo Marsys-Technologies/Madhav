@@ -79,9 +79,13 @@ def _run_building_transition_only(chart_id: str | None) -> _RecordingCursor:
     """
     cur = _RecordingCursor()
     conn = _NoCommitConn()
+    prev_mode = ar._DEP_ASSERT_MODE
     ar._DEP_ASSERT_MODE = "off"  # bypass unrelated dep-assertion path for this trace
-    ar.run_asset(conn, cur, run_id="run-1", chart_id=chart_id,
-                 asset_id="_test_watchdog_asset", position=0)
+    try:
+        ar.run_asset(conn, cur, run_id="run-1", chart_id=chart_id,
+                     asset_id="_test_watchdog_asset", position=0)
+    finally:
+        ar._DEP_ASSERT_MODE = prev_mode
     return cur
 
 
@@ -95,7 +99,7 @@ def test_chart_scoped_building_transition_stamps_last_built_at():
             "the initial 'building' transition must stamp last_built_at — "
             "this is the exact watchdog-staleness bug being fixed"
         )
-        assert "NOW()" in sql
+        assert "clock_timestamp()" in sql
 
 
 def test_global_scope_building_transition_stamps_last_built_at():
@@ -105,7 +109,7 @@ def test_global_scope_building_transition_stamps_last_built_at():
     assert stmts, "expected an asset_throughput 'building' transition statement"
     for sql in stmts:
         assert "last_built_at" in sql
-        assert "NOW()" in sql
+        assert "clock_timestamp()" in sql
 
 
 # ── Part 2: synthetic watchdog-clause-2 timeline simulation ───────────────────

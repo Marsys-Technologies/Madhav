@@ -260,3 +260,21 @@ introduced by it.
 **Contract impact:** none. The writer runs on `ctx.db_conn`, never commits or closes it, writes no `asset_throughput`. A failed or refused evidence write RAISES inside the writer (the substep fails and its rows roll back); `persist_event` itself stays never-raising. The register row's payload is the whole event dict (a superset of the frozen `post_pass_evidence/1` keys). Tests: `tests/test_ga_daridra_postpass_evidence.py`.
 
 **Window effect:** `events.py` is in the writer closure of 38 assets, so this line reopens all 38 build windows; the final rebuild forces them (Exec's 41-asset plan, `ka_vighnakara` is Kāla's).
+
+### 7.4 — Durable phase telemetry and `clock_timestamp()` wall-clock timing (2026-11-21)
+
+**Authorization:** `NIR-03` (Nirmāṇa closure Lane 2A), narrow freeze exception covering `pipeline/orchestrator/asset_runner.py`, `pipeline/orchestrator/writer_runtime_support.py`, and `pipeline/orchestrator/events.py` only (`runner.py`, `WriterBase`, `ContextSpec`, `WriterResult`, `SubStep`, and writer `run`/`plan_substeps`/`run_substep` signatures untouched).
+
+**Defect:** (1) `asset_runner.py` stamped `build_run_assets.started_at`, `build_run_assets.ended_at`, and `asset_throughput.last_built_at` with transaction-start `NOW()`, collapsing per-asset/per-phase wall-clock timestamps inside open transactions and skewing duration history; (2) live execution phase (`computing`, `writing`, `verifying`, `publishing`) and substep progress lived only in ephemeral Pub/Sub SSE memory, disappearing on reload or SSE fallback.
+
+**Fix:**
+1. `asset_runner.py`: replaced SQL `NOW()` on `build_run_assets`, `asset_throughput`, and `asset_registry` timestamps with `clock_timestamp()`, recorded monotonic per-phase wall-clock durations (`compute_ms`, `write_ms`, `verify_ms`, `publish_ms`) and live `phase` / `substep_index` / `substep_total` / `substep_label` on `build_run_assets` (via migration 1421 columns when present, degrading gracefully on pre-1421 schemas via `_phase_telemetry_columns_present` in `writer_runtime_support.py`), and preserved `mark_asset_error`'s exact 6-arg signature via `_record_asset_error`.
+2. Atomic rollback preservation: `defer_writer_commits = has_integrity_check and not writer.has_substeps` (`asset_runner.py`) is strictly preserved. During deferred-commit runs, live phase transitions write on an out-of-band autocommit connection (`_open_telemetry_conn`) and close before final commit/rollback so light-writer output still rolls back atomically on post-write integrity failure.
+3. `events.py`: added `build_phase_event()` emitting backward-compatible `asset.phase` SSE payloads (transport-only, not added to `DEFAULT_DURABLE_EVENT_TYPES` / `orchestrator_event_register`).
+
+**Regression proof:** `tests/test_nirmana_phase_telemetry_clock.py` and existing orchestrator suites (`test_orchestrator_gate.py`, `test_orchestrator_substeps.py`, `test_asset_runner_zero_rows.py`, `test_d16_state_write_defect.py`, `test_watchdog_heartbeat_fix.py`).
+
+### 7.5 — NIR-04 dead-connection crash cleanup fallback in `runner.py` (2026-11-21)
+
+**Authorization & Change:** `NIR-04` resilience fix in `platform/python-sidecar/pipeline/orchestrator/runner.py` (`_terminalize_crashed_run` and `finally:` `conn.close()` guard): when `execute_run` catches an exception and the main `conn` is dead/closed (e.g. Cloud SQL Auth Proxy TCP reset), it opens a fresh short-lived `connect()` fallback connection to mark `build_runs.state = 'failed'` and abort remaining `'queued'` `build_run_assets` instead of leaving the run stranded `'running'`.
+**Contract impact & Proof:** None to `WriterBase`, `ctx`, `WriterResult`, or `asset_runner.py`. Verified by `platform/python-sidecar/tests/test_nirmana_runner_dead_conn_cleanup.py` (4/4 passing) and `test_orchestrator_gate.py` (15/15 passing).

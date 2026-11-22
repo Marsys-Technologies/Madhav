@@ -234,6 +234,7 @@ export async function POST(req: NextRequest) {
       // Fallback to target_table for assets without count_sql
       if (!ops && asset.target_table) {
         if (!TABLE_NAME_RE.test(asset.target_table)) {
+          await client.query('ROLLBACK').catch(() => null)
           return NextResponse.json({ error: `Invalid target_table: ${asset.target_table}`, code: 'INVALID_TABLE' }, { status: 500 })
         }
         const sql = asset.scope === 'global'

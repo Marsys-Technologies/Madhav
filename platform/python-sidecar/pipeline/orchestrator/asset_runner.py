@@ -21,7 +21,7 @@ from pathlib import Path
 import psycopg
 
 from .birth_params import fetch_birth_params
-from .events import emit_event
+from .events import build_phase_event, emit_event
 from .writers import discover_all, get_writer, ContextSpec, WriterBase
 # Freeze exception 1/2 (N-266): writer-digest + duration-probe helpers live in a
 # service-free module so ga_*/bo_* digest closures do not reach service_probes.
@@ -34,12 +34,140 @@ from .writer_runtime_support import (  # noqa: F401
     _local_import_files,
     _local_module_path,
     _module_name_for_path,
+    _phase_telemetry_columns_present,
     _writer_source_files,
     _writer_source_paths,
     get_writer_source_hash,
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _elapsed_ms(started_monotonic: float) -> int:
+    """Non-negative integer wall-clock milliseconds since ``started_monotonic``."""
+    return max(0, int(round((time.monotonic() - started_monotonic) * 1000)))
+
+
+def _open_telemetry_conn(main_conn) -> psycopg.Connection | None:
+    """Open an out-of-band autocommit connection for live phase persistence.
+
+    When ``defer_writer_commits`` keeps the writer transaction open until
+    post-write integrity verification passes, updating ``build_run_assets`` on
+    ``main_conn`` would either remain invisible across reloads or force an
+    unsafe mid-flight commit. A separate autocommit connection records live
+    ``computing`` / ``writing`` / ``verifying`` / ``publishing`` transitions
+    without altering ``main_conn``'s atomic commit/rollback boundary.
+
+    Returns ``None`` for non-psycopg test doubles or when the DB is unavailable
+    (fail-open: telemetry must never break a build).
+    """
+    if not isinstance(main_conn, psycopg.Connection):
+        return None
+    try:
+        from .db import db_url
+        tconn = psycopg.connect(
+            db_url(),
+            autocommit=True,
+            row_factory=psycopg.rows.dict_row,
+            connect_timeout=5,
+        )
+        with tconn.cursor() as tcur:
+            tcur.execute("SET lock_timeout = '2s'")
+            tcur.execute("SET statement_timeout = '5s'")
+        return tconn
+    except Exception as exc:
+        logger.warning("[orchestrator] out-of-band telemetry connection unavailable: %s", exc)
+        return None
+
+
+def _close_telemetry_conn(telemetry_conn) -> None:
+    if telemetry_conn is None:
+        return
+    try:
+        telemetry_conn.close()
+    except Exception:
+        pass
+
+
+_LIVE_PHASE_UPDATE_SQL = """UPDATE build_run_assets
+   SET phase = %s,
+       substep_index = COALESCE(%s, substep_index),
+       substep_total = COALESCE(%s, substep_total),
+       substep_label = COALESCE(%s, substep_label),
+       compute_ms = COALESCE(%s, compute_ms),
+       write_ms = COALESCE(%s, write_ms),
+       verify_ms = COALESCE(%s, verify_ms),
+       publish_ms = COALESCE(%s, publish_ms)
+ WHERE run_id = %s AND asset_id = %s"""
+
+
+def _persist_live_phase(
+    conn,
+    cur,
+    telemetry_conn,
+    run_id: str,
+    chart_id: str | None,
+    asset_id: str,
+    *,
+    phase: str,
+    substep_index: int | None = None,
+    substep_total: int | None = None,
+    substep_label: str | None = None,
+    compute_ms: int | None = None,
+    write_ms: int | None = None,
+    verify_ms: int | None = None,
+    publish_ms: int | None = None,
+    defer_commits: bool = False,
+    emit: bool = True,
+) -> None:
+    """Persist live phase telemetry safely and emit a matching ``asset.phase`` event."""
+    if emit:
+        emit_event(build_phase_event(
+            chart_id=chart_id,
+            asset_id=asset_id,
+            run_id=run_id,
+            phase=phase,
+            substep_index=substep_index,
+            substep_total=substep_total,
+            substep_label=substep_label,
+            compute_ms=compute_ms,
+            write_ms=write_ms,
+            verify_ms=verify_ms,
+            publish_ms=publish_ms,
+        ))
+    if not _phase_telemetry_columns_present(cur):
+        return
+    params = (
+        phase,
+        substep_index,
+        substep_total,
+        substep_label,
+        compute_ms,
+        write_ms,
+        verify_ms,
+        publish_ms,
+        run_id,
+        asset_id,
+    )
+    if telemetry_conn is not None:
+        try:
+            with telemetry_conn.cursor() as tcur:
+                tcur.execute(_LIVE_PHASE_UPDATE_SQL, params)
+        except Exception as exc:
+            logger.warning(
+                "[orchestrator] out-of-band phase telemetry update failed for %s (%s): %s",
+                asset_id, phase, exc,
+            )
+    elif not defer_commits:
+        try:
+            cur.execute(_LIVE_PHASE_UPDATE_SQL, params)
+            if isinstance(conn, psycopg.Connection):
+                conn.commit()
+        except Exception as exc:
+            logger.warning(
+                "[orchestrator] phase telemetry update failed for %s (%s): %s",
+                asset_id, phase, exc,
+            )
 
 # Serializes compute_downstream_closure + stale-mark UPDATE across worker threads.
 # Under wave-parallel execution each worker owns a separate DB connection; without
@@ -430,17 +558,17 @@ def _upsert_throughput_state(cur, chart_id, asset_id: str, state: str, error: st
     if chart_id is not None:
         cur.execute(
             """INSERT INTO asset_throughput (asset_id, chart_id, state, last_error, last_built_at)
-               VALUES (%s, %s, %s, %s, NOW())
+               VALUES (%s, %s, %s, %s, clock_timestamp())
                ON CONFLICT (chart_id, asset_id) WHERE chart_id IS NOT NULL
-               DO UPDATE SET state=EXCLUDED.state, last_error=EXCLUDED.last_error, last_built_at=NOW()""",
+               DO UPDATE SET state=EXCLUDED.state, last_error=EXCLUDED.last_error, last_built_at=clock_timestamp()""",
             (asset_id, chart_id, state, error),
         )
     else:
         cur.execute(
             """INSERT INTO asset_throughput (asset_id, chart_id, state, last_error, last_built_at)
-               VALUES (%s, NULL, %s, %s, NOW())
+               VALUES (%s, NULL, %s, %s, clock_timestamp())
                ON CONFLICT (asset_id) WHERE chart_id IS NULL
-               DO UPDATE SET state=EXCLUDED.state, last_error=EXCLUDED.last_error, last_built_at=NOW()""",
+               DO UPDATE SET state=EXCLUDED.state, last_error=EXCLUDED.last_error, last_built_at=clock_timestamp()""",
             (asset_id, state, error),
         )
 
@@ -480,27 +608,61 @@ def _guard_state_write(cur, run_id: str, chart_id, asset_id: str, intended_state
 
 # ── Error helper ──────────────────────────────────────────────────────────────
 
-def mark_asset_error(
+def _mark_asset_error_impl(
     conn: psycopg.Connection,
     cur,
     run_id: str,
     chart_id: str,
     asset_id: str,
     error: str,
+    *,
+    phase_durations: dict[str, int | None] | None = None,
 ) -> None:
     cur.execute(
         """UPDATE asset_throughput
-           SET state = 'error', last_error = %s, last_built_at = NOW()
+           SET state = 'error', last_error = %s, last_built_at = clock_timestamp()
            WHERE chart_id IS NOT DISTINCT FROM %s AND asset_id = %s""",
         (error, chart_id, asset_id),
     )
     _guard_state_write(cur, run_id, chart_id, asset_id, "error", error)
-    cur.execute(
-        """UPDATE build_run_assets SET state = 'error', ended_at = NOW(), error = %s
-           WHERE run_id = %s AND asset_id = %s""",
-        (error[:2000], run_id, asset_id),
-    )
+    durations = phase_durations or {}
+    if _phase_telemetry_columns_present(cur):
+        cur.execute(
+            """UPDATE build_run_assets
+               SET state = 'error', ended_at = clock_timestamp(), error = %s,
+                   phase = 'error',
+                   compute_ms = COALESCE(%s, compute_ms),
+                   write_ms = COALESCE(%s, write_ms),
+                   verify_ms = COALESCE(%s, verify_ms),
+                   publish_ms = COALESCE(%s, publish_ms)
+               WHERE run_id = %s AND asset_id = %s""",
+            (
+                error[:2000],
+                durations.get("compute_ms"),
+                durations.get("write_ms"),
+                durations.get("verify_ms"),
+                durations.get("publish_ms"),
+                run_id,
+                asset_id,
+            ),
+        )
+    else:
+        cur.execute(
+            """UPDATE build_run_assets SET state = 'error', ended_at = clock_timestamp(), error = %s
+               WHERE run_id = %s AND asset_id = %s""",
+            (error[:2000], run_id, asset_id),
+        )
     conn.commit()
+    emit_event(build_phase_event(
+        chart_id=chart_id,
+        asset_id=asset_id,
+        run_id=run_id,
+        phase="error",
+        compute_ms=durations.get("compute_ms"),
+        write_ms=durations.get("write_ms"),
+        verify_ms=durations.get("verify_ms"),
+        publish_ms=durations.get("publish_ms"),
+    ))
     emit_event({
         "type": "asset.state_change",
         "chart_id": chart_id,
@@ -509,6 +671,40 @@ def mark_asset_error(
         "to_state": "error",
         "error": error[:500],
     })
+
+
+def mark_asset_error(
+    conn: psycopg.Connection,
+    cur,
+    run_id: str,
+    chart_id: str,
+    asset_id: str,
+    error: str,
+) -> None:
+    _mark_asset_error_impl(conn, cur, run_id, chart_id, asset_id, error)
+
+
+_DEFAULT_MARK_ASSET_ERROR = mark_asset_error
+
+
+def _record_asset_error(
+    conn: psycopg.Connection,
+    cur,
+    run_id: str,
+    chart_id: str,
+    asset_id: str,
+    error: str,
+    *,
+    phase_durations: dict[str, int | None] | None = None,
+) -> None:
+    """Call ``mark_asset_error`` cleanly while preserving 6-arg monkeypatch compat."""
+    if mark_asset_error is not _DEFAULT_MARK_ASSET_ERROR:
+        mark_asset_error(conn, cur, run_id, chart_id, asset_id, error)
+        return
+    _mark_asset_error_impl(
+        conn, cur, run_id, chart_id, asset_id, error,
+        phase_durations=phase_durations,
+    )
 
 
 # ── Service asset health-probe runner ─────────────────────────────────────────
@@ -531,6 +727,11 @@ def _run_service_health_probe(
     """
     from pipeline.orchestrator.service_probes import probe_output_fingerprint, run_health_probe
 
+    _persist_live_phase(
+        conn, cur, None, run_id, chart_id, asset_id,
+        phase="verifying", defer_commits=False,
+    )
+    verify_started = time.monotonic()
     result: dict = {}
     try:
         result = run_health_probe(asset_id, health_probe)
@@ -539,26 +740,27 @@ def _run_service_health_probe(
     except Exception as exc:
         status = "down"
         message = f"{type(exc).__name__}: {exc}"
+    verify_ms = _elapsed_ms(verify_started)
 
     if status == "GREEN":
+        _persist_live_phase(
+            conn, cur, None, run_id, chart_id, asset_id,
+            phase="publishing", verify_ms=verify_ms, defer_commits=False,
+        )
+        publish_started = time.monotonic()
         cur.execute(
             """UPDATE asset_throughput
-               SET state = 'lit', last_built_at = NOW(), rows_written = 0, last_error = NULL
+               SET state = 'lit', last_built_at = clock_timestamp(), rows_written = 0, last_error = NULL
                WHERE chart_id IS NOT DISTINCT FROM %s AND asset_id = %s""",
             (chart_id, asset_id),
         )
-        cur.execute(
-            """UPDATE build_run_assets SET state = 'complete', ended_at = NOW()
-               WHERE run_id = %s AND asset_id = %s""",
-            (run_id, asset_id),
-        )
         # Write service health telemetry to asset_registry (mig 242 columns).
-        # health_probe result → 'healthy'; last_invoked_at = NOW().
+        # health_probe result → 'healthy'; last_invoked_at = clock_timestamp().
         cur.execute(
             """UPDATE asset_registry
                SET service_health = 'healthy',
-                   last_invoked_at = NOW(),
-                   last_selftest_at = NOW()
+                   last_invoked_at = clock_timestamp(),
+                   last_selftest_at = clock_timestamp()
                WHERE asset_id = %s""",
             (asset_id,),
         )
@@ -589,9 +791,35 @@ def _run_service_health_probe(
                 )
         except Exception as exc:
             conn.rollback()
-            mark_asset_error(conn, cur, run_id, chart_id, asset_id, f"provenance receipt: {exc}")
+            _record_asset_error(
+                conn, cur, run_id, chart_id, asset_id, f"provenance receipt: {exc}",
+                phase_durations={"verify_ms": verify_ms},
+            )
             return
+        publish_ms = _elapsed_ms(publish_started)
+        if _phase_telemetry_columns_present(cur):
+            cur.execute(
+                """UPDATE build_run_assets
+                   SET state = 'complete', ended_at = clock_timestamp(),
+                       phase = 'complete', verify_ms = %s, publish_ms = %s
+                   WHERE run_id = %s AND asset_id = %s""",
+                (verify_ms, publish_ms, run_id, asset_id),
+            )
+        else:
+            cur.execute(
+                """UPDATE build_run_assets SET state = 'complete', ended_at = clock_timestamp()
+                   WHERE run_id = %s AND asset_id = %s""",
+                (run_id, asset_id),
+            )
         conn.commit()
+        emit_event(build_phase_event(
+            chart_id=chart_id,
+            asset_id=asset_id,
+            run_id=run_id,
+            phase="complete",
+            verify_ms=verify_ms,
+            publish_ms=publish_ms,
+        ))
         emit_event({
             "type": "asset.state_change",
             "chart_id": chart_id,
@@ -625,14 +853,17 @@ def _run_service_health_probe(
                 conn.rollback()
             except Exception:
                 pass
-        mark_asset_error(conn, cur, run_id, chart_id, asset_id, error_msg)
+        _record_asset_error(
+            conn, cur, run_id, chart_id, asset_id, error_msg,
+            phase_durations={"verify_ms": verify_ms},
+        )
         # Write degraded/unhealthy to asset_registry (mig 242 columns).
         health_col_value = "degraded" if status == "degraded" else "unhealthy"
         try:
             cur.execute(
                 """UPDATE asset_registry
                    SET service_health = %s,
-                       last_invoked_at = NOW()
+                       last_invoked_at = clock_timestamp()
                    WHERE asset_id = %s""",
                 (health_col_value, asset_id),
             )
@@ -692,6 +923,8 @@ def _drive_substeps(
     ctx: ContextSpec,
     completed_keys: set[str] | None = None,
     defer_commits: bool = False,
+    telemetry_conn=None,
+    compute_ms: int | None = None,
 ) -> tuple[int, int, float]:
     """
     Drive a writer's sub-steps, each as its own SAVEPOINT + heartbeat + commit.
@@ -737,6 +970,7 @@ def _drive_substeps(
     rows_inserted = 0
     duration_seconds = 0.0
     rows_updated = 0
+    emitted_writing_phase = False
 
     for idx, step in enumerate(substeps):
         if step.key in completed_keys:
@@ -751,6 +985,18 @@ def _drive_substeps(
                 "skipped": True,
             })
             continue
+
+        _persist_live_phase(
+            conn, cur, telemetry_conn, run_id, chart_id, asset_id,
+            phase="writing",
+            substep_index=idx + 1,
+            substep_total=total,
+            substep_label=step.label,
+            compute_ms=compute_ms if not emitted_writing_phase else None,
+            defer_commits=defer_commits,
+            emit=not emitted_writing_phase,
+        )
+        emitted_writing_phase = True
 
         cur.execute("SAVEPOINT writer_exec")
         # C1: time the engine's own call into the writer, not the writer's self-
@@ -774,7 +1020,7 @@ def _drive_substeps(
         # cockpit progress. Cumulative rows_written is finalized below in run_asset.
         cur.execute(
             """UPDATE asset_throughput
-               SET last_built_at = NOW(), rows_written = %s
+               SET last_built_at = clock_timestamp(), rows_written = %s
                WHERE chart_id IS NOT DISTINCT FROM %s AND asset_id = %s""",
             (rows_inserted + rows_updated, chart_id, asset_id),
         )
@@ -846,19 +1092,17 @@ def _mark_probe_green(
     declared_deps: list[str] | None = None,
     natural_key_partition: str | None = None,
     has_cowriters: bool | None = None,
+    *,
+    verify_ms: int | None = None,
 ) -> None:
     """Skip-if-green: mark the asset lit WITHOUT running its writer (no rows)."""
+    publish_started = time.monotonic()
     cur.execute(
         """UPDATE asset_throughput
-           SET state = 'lit', last_built_at = NOW(),
+           SET state = 'lit', last_built_at = clock_timestamp(),
                rows_written = COALESCE(rows_written, 0), last_error = NULL
            WHERE chart_id IS NOT DISTINCT FROM %s AND asset_id = %s""",
         (chart_id, asset_id),
-    )
-    cur.execute(
-        """UPDATE build_run_assets SET state = 'complete', ended_at = NOW()
-           WHERE run_id = %s AND asset_id = %s""",
-        (run_id, asset_id),
     )
     try:
         _persist_probe_receipt(
@@ -878,9 +1122,35 @@ def _mark_probe_green(
         )
     except Exception as exc:
         conn.rollback()
-        mark_asset_error(conn, cur, run_id, chart_id, asset_id, f"provenance receipt: {exc}")
+        _record_asset_error(
+            conn, cur, run_id, chart_id, asset_id, f"provenance receipt: {exc}",
+            phase_durations={"verify_ms": verify_ms},
+        )
         return
+    publish_ms = _elapsed_ms(publish_started)
+    if _phase_telemetry_columns_present(cur):
+        cur.execute(
+            """UPDATE build_run_assets
+               SET state = 'complete', ended_at = clock_timestamp(),
+                   phase = 'skipped', verify_ms = COALESCE(%s, verify_ms), publish_ms = %s
+               WHERE run_id = %s AND asset_id = %s""",
+            (verify_ms, publish_ms, run_id, asset_id),
+        )
+    else:
+        cur.execute(
+            """UPDATE build_run_assets SET state = 'complete', ended_at = clock_timestamp()
+               WHERE run_id = %s AND asset_id = %s""",
+            (run_id, asset_id),
+        )
     conn.commit()
+    emit_event(build_phase_event(
+        chart_id=chart_id,
+        asset_id=asset_id,
+        run_id=run_id,
+        phase="skipped",
+        verify_ms=verify_ms,
+        publish_ms=publish_ms,
+    ))
     emit_event({"type": "asset.probe", "chart_id": chart_id, "asset_id": asset_id,
                 "status": "green", "action": "skipped", "message": message[:500]})
     emit_event({"type": "asset.state_change", "chart_id": chart_id, "asset_id": asset_id,
@@ -890,6 +1160,8 @@ def _mark_probe_green(
 def _skip_no_delta(
     conn, cur, run_id: str, chart_id: str | None, asset_id: str,
     natural_key_partition: str | None = None,
+    *,
+    compute_ms: int | None = None,
 ) -> bool:
     """O-wave WP-2 (NIRMANA_UNIFIED_ELEVATION_PLAN_v2_0.md §3.2, "delta-skip"):
     the pre-execution gate found every input digest unchanged since the last
@@ -917,7 +1189,7 @@ def _skip_no_delta(
     """
     cur.execute(
         """UPDATE asset_throughput
-           SET state = 'lit', last_built_at = NOW(), last_error = NULL
+           SET state = 'lit', last_built_at = clock_timestamp(), last_error = NULL
            WHERE chart_id IS NOT DISTINCT FROM %s AND asset_id = %s""",
         (chart_id, asset_id),
     )
@@ -927,14 +1199,31 @@ def _skip_no_delta(
         cur, asset_id=asset_id, chart_id=chart_id,
         partition_declaration=natural_key_partition, build_id=run_id,
     )
-    cur.execute(
-        """UPDATE build_run_assets
-           SET state = 'complete', disposition = 'skip_no_delta',
-               output_changed = FALSE, ended_at = NOW()
-           WHERE run_id = %s AND asset_id = %s""",
-        (run_id, asset_id),
-    )
+    if _phase_telemetry_columns_present(cur):
+        cur.execute(
+            """UPDATE build_run_assets
+               SET state = 'complete', disposition = 'skip_no_delta',
+                   output_changed = FALSE, ended_at = clock_timestamp(),
+                   phase = 'skipped', compute_ms = COALESCE(%s, compute_ms)
+               WHERE run_id = %s AND asset_id = %s""",
+            (compute_ms, run_id, asset_id),
+        )
+    else:
+        cur.execute(
+            """UPDATE build_run_assets
+               SET state = 'complete', disposition = 'skip_no_delta',
+                   output_changed = FALSE, ended_at = clock_timestamp()
+               WHERE run_id = %s AND asset_id = %s""",
+            (run_id, asset_id),
+        )
     conn.commit()
+    emit_event(build_phase_event(
+        chart_id=chart_id,
+        asset_id=asset_id,
+        run_id=run_id,
+        phase="skipped",
+        compute_ms=compute_ms,
+    ))
     emit_event({
         "type": "asset.skip_no_delta", "chart_id": chart_id, "asset_id": asset_id, "run_id": run_id,
     }, cur=cur)
@@ -966,10 +1255,14 @@ def _run_data_writer(
     accepted execution regardless of whether inputs already match the last
     complete receipt.
     """
+    compute_started = time.monotonic()
     discover_all()
     writer_cls = get_writer(asset_id)
     if writer_cls is None:
-        mark_asset_error(conn, cur, run_id, chart_id, asset_id, f"no writer registered for {asset_id}")
+        _record_asset_error(
+            conn, cur, run_id, chart_id, asset_id, f"no writer registered for {asset_id}",
+            phase_durations={"compute_ms": _elapsed_ms(compute_started)},
+        )
         return False
 
     writer = writer_cls()
@@ -980,7 +1273,10 @@ def _run_data_writer(
         try:
             birth_params = fetch_birth_params(conn, chart_id)
         except Exception as exc:
-            mark_asset_error(conn, cur, run_id, chart_id, asset_id, f"birth_params: {exc}")
+            _record_asset_error(
+                conn, cur, run_id, chart_id, asset_id, f"birth_params: {exc}",
+                phase_durations={"compute_ms": _elapsed_ms(compute_started)},
+            )
             return False
 
     ctx = ContextSpec(
@@ -999,7 +1295,10 @@ def _run_data_writer(
         )
         writer_hash = get_writer_source_hash(asset_id)
     except Exception as exc:
-        mark_asset_error(conn, cur, run_id, chart_id, asset_id, f"provenance: {exc}")
+        _record_asset_error(
+            conn, cur, run_id, chart_id, asset_id, f"provenance: {exc}",
+            phase_durations={"compute_ms": _elapsed_ms(compute_started)},
+        )
         return False
 
     # O-wave WP-2 (plan §3.2, "delta-skip"): pre-execution gate. Only for the
@@ -1019,6 +1318,7 @@ def _run_data_writer(
                 return _skip_no_delta(
                     conn, cur, run_id, chart_id, asset_id,
                     natural_key_partition=natural_key_partition,
+                    compute_ms=_elapsed_ms(compute_started),
                 )
         except Exception as exc:
             # A failed delta-skip DECISION must never become a failed BUILD.
@@ -1042,252 +1342,333 @@ def _run_data_writer(
     # and preserve resumable work. Their detector still gates final success and
     # provenance, while an error state prevents partial output being accepted.
     defer_writer_commits = has_integrity_check and not writer.has_substeps
+    compute_ms = _elapsed_ms(compute_started)
+
+    telemetry_conn = _open_telemetry_conn(conn)
     try:
-        rows_inserted, rows_updated, writer_duration_seconds = _drive_substeps(
-            conn, cur, run_id, chart_id, asset_id, writer, ctx,
-            defer_commits=defer_writer_commits,
-        )
-    except Exception as exc:
-        err = f"{type(exc).__name__}: {exc}\n{traceback.format_exc()[:2000]}"
-        logger.warning("[orchestrator] writer %s failed: %s", asset_id, err[:200])
-        # Never let mark_asset_error's own commit capture an open writer
-        # transaction. For heavy writers, earlier substep commits remain the
-        # documented resumable output; only the failing substep is rolled back.
-        conn.rollback()
-        mark_asset_error(conn, cur, run_id, chart_id, asset_id, err)
-        return False
-
-    # A writer completing is not proof that its output is correct. When the
-    # registry declares integrity SQL, run it before final success/provenance.
-    # Light-writer output remains in this transaction and rolls back atomically;
-    # heavy-writer substeps remain durable/resumable but cannot be accepted while
-    # the detector is red. This applies even when rebuild_on_probe_fail=false:
-    # that flag controls the preflight skip/regenerate policy, not whether a
-    # freshly written result must satisfy its detector.
-    if has_integrity_check:
-        ok, message = _probe_asset(conn, cur, asset_id, integrity_row, False)
-        if not ok:
-            conn.rollback()
-            mark_asset_error(
-                conn, cur, run_id, chart_id, asset_id,
-                f"post-write integrity check failed: {message}",
-            )
-            return False
-
-    rows_written = int((rows_inserted + rows_updated) or 0)
-
-    # A1/C1: pin duration/rate to what THIS run's writer actually did (rows_written
-    # + writer_duration_seconds — the latter now the ENGINE's own time.monotonic()
-    # measurement around each run_substep call, summed by _drive_substeps above,
-    # not the writer's self-report) BEFORE any of the no-op-completion
-    # reclassification below can overwrite rows_written with a presence-probe
-    # count that reflects prior runs' work, not this run's measured time — using
-    # the promoted count against this run's near-zero duration would fabricate
-    # an inflated rate. NULL on any non-positive/non-finite duration
-    # (_compute_duration_and_rate), never 0, never a ZeroDivisionError.
-    write_duration_seconds, write_rows_per_second = _compute_duration_and_rate(
-        rows_written, writer_duration_seconds,
-    )
-
-    # When a chart-scoped data writer produces 0 rows, record 'dormant' rather than
-    # 'lit'. 'lit' would cause the plan resolver's action='build' filter to exclude
-    # the asset (filter picks only dormant/error/missing), leaving the Build button
-    # stuck with an empty plan. 'dormant' correctly signals "ran but produced nothing
-    # — safe to retry". Global assets (chart_id is None) are service singletons and
-    # always get 'lit' regardless of rows_written.
-    # Determine whether 0 rows is correct completion for this asset.
-    # target_floor=0 in asset_registry is the explicit declaration that a writer
-    # may correctly produce 0 rows (e.g. ga_prashna on natal charts — the writer
-    # ran, evaluated, found no prashna question, and returned nothing by design).
-    # Such assets must be 'lit' so the plan resolver stops re-queuing them.
-    # For assets with target_floor > 0, 0 rows means a silent failure → 'dormant'
-    # keeps them in the plan so the next build retries them.
-    # Global assets (chart_id IS NULL) are service singletons — always 'lit'.
-    cur.execute(
-        "SELECT target_floor FROM asset_registry WHERE asset_id = %s",
-        (asset_id,),
-    )
-    reg_row = cur.fetchone()
-    target_floor = reg_row["target_floor"] if reg_row else None
-
-    zero_rows_is_complete = (chart_id is None) or (target_floor == 0)
-    final_state = 'lit' if (rows_written > 0 or zero_rows_is_complete) else 'dormant'
-
-    # ── No-op-completion reclassification (D-1.6 root-cause fix) ──────────────
-    # 'dormant' means "ran and produced nothing → data absent → retry next build".
-    # But a writer with cross-attempt substep resumption (ka_sangam, migration 436)
-    # can legitimately report 0 rows THIS RUN because every substep was already
-    # committed by a prior same-fingerprint build — its data is fully present and
-    # correct. Marking that 'dormant' poisons every downstream DEP-ASSERT (the
-    # D-1.6 incident: run 71b260c7, ka_sangam(dormant) → 24 BLOCKED). Before
-    # accepting 'dormant', probe the asset's actual data via its chart-scoped
-    # count_sql: if rows exist, this was a no-op completion → 'lit', loudly.
-    if final_state == 'dormant':
-        present = _data_rows_present(conn, cur, asset_id, chart_id)
-        if present is not None and present > 0:
-            # SATYA-DIPA (asset_runner.py:596-630, authorized freeze exception —
-            # see ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md): rows being present is
-            # necessary but not sufficient. A genuinely partial substep plan can
-            # also leave rows present (from whatever substeps DID commit) while
-            # substeps remain — the same "unearned lit" shape as D-1.6 itself.
-            # For writers with a real substep plan (has_substeps=true), require
-            # the writer's OWN plan_substeps(ctx) to confirm nothing remains
-            # before promoting. has_substeps=false/NULL (light writers, no real
-            # plan) skip this check entirely — behaves exactly as before.
-            cur.execute(
-                "SELECT has_substeps FROM asset_registry WHERE asset_id = %s",
-                (asset_id,),
-            )
-            hs_row = cur.fetchone()
-            has_substeps = bool((hs_row or {}).get("has_substeps")) if isinstance(hs_row, dict) else False
-
-            plan_complete = True
-            remaining_count = 0
-            if has_substeps:
-                cur.execute("SAVEPOINT noop_completeness_probe")
-                try:
-                    remaining = writer.plan_substeps(ctx)
-                    remaining_count = len(remaining)
-                    plan_complete = remaining_count == 0
-                    cur.execute("RELEASE SAVEPOINT noop_completeness_probe")
-                except Exception as exc:
-                    cur.execute("ROLLBACK TO SAVEPOINT noop_completeness_probe")
-                    logger.warning(
-                        "[orchestrator] substep-completeness re-probe failed for %s "
-                        "(chart %s): %s — conservatively treating plan as incomplete",
-                        asset_id, chart_id, exc,
-                    )
-                    plan_complete = False
-
-            if plan_complete:
-                logger.warning(
-                    "[orchestrator] NO-OP COMPLETION: asset %s (chart %s, run %s) reported "
-                    "0 rows this run but %d data rows are present (resumable-writer skip or "
-                    "equivalent), and its substep plan confirms nothing remains. Marking "
-                    "'lit', not 'dormant' — downstream deps stay unblocked.",
-                    asset_id, chart_id, run_id, present,
-                )
-                # cur= persists this to orchestrator_event_register, in THIS
-                # transaction — so the register row commits iff the 'lit' promotion
-                # below commits (SAMĀPTI §9.6 / SD-EVENTREG-1; see events.py).
-                emit_event({
-                    "type": "asset.noop_completion",
-                    "chart_id": chart_id,
-                    "asset_id": asset_id,
-                    "run_id": run_id,
-                    "rows_present": present,
-                }, cur=cur)
-                final_state = 'lit'
-                rows_written = present
-            else:
-                logger.warning(
-                    "[orchestrator] NO-OP COMPLETION REJECTED: asset %s (chart %s, run %s) "
-                    "reported 0 rows this run; %d data rows are present but the writer's own "
-                    "substep plan reports %d substep(s) still remaining. Marking 'incomplete', "
-                    "NOT 'lit' — downstream deps stay blocked until the plan actually finishes.",
-                    asset_id, chart_id, run_id, present, remaining_count,
-                )
-                # cur= persists this to orchestrator_event_register, in THIS
-                # transaction — so the register row commits iff the 'incomplete' hold
-                # below commits (SAMĀPTI §9.6 / SD-EVENTREG-1; see events.py).
-                emit_event({
-                    "type": "asset.noop_completion_rejected",
-                    "chart_id": chart_id,
-                    "asset_id": asset_id,
-                    "run_id": run_id,
-                    "rows_present": present,
-                    "substeps_remaining": remaining_count,
-                }, cur=cur)
-                final_state = 'incomplete'
-                rows_written = present
-
-    if target_floor and rows_written < target_floor:
-        logger.warning(
-            "asset %s: rows_written=%d below target_floor=%d; marking %s",
-            asset_id, rows_written, target_floor, final_state
-        )
-
-    # C2 (gate review F-2): degrade gracefully when migration 1200 has not yet
-    # applied in this environment. Never name duration_seconds/rows_per_second
-    # in the UPDATE unless the column is actually present — an out-of-order or
-    # silently-no-op'd deploy must never turn "a column reads NULL" into
-    # "no asset can complete a build" (CLAUDE.md §N.4).
-    if _duration_columns_present(cur):
-        cur.execute(
-            """UPDATE asset_throughput
-               SET state = %s, last_built_at = NOW(), rows_written = %s,
-                   built_against_upstream_hash = %s, built_against_writer_hash = %s,
-                   last_error = NULL, duration_seconds = %s, rows_per_second = %s
-               WHERE chart_id IS NOT DISTINCT FROM %s AND asset_id = %s""",
-            (final_state, rows_written, upstream_hash, writer_hash,
-             write_duration_seconds, write_rows_per_second, chart_id, asset_id),
-        )
-    else:
-        cur.execute(
-            """UPDATE asset_throughput
-               SET state = %s, last_built_at = NOW(), rows_written = %s,
-                   built_against_upstream_hash = %s, built_against_writer_hash = %s,
-                   last_error = NULL
-               WHERE chart_id IS NOT DISTINCT FROM %s AND asset_id = %s""",
-            (final_state, rows_written, upstream_hash, writer_hash, chart_id, asset_id),
-        )
-    _guard_state_write(cur, run_id, chart_id, asset_id, final_state)
-    cur.execute(
-        """UPDATE build_run_assets
-           SET state = 'complete', disposition = 'build', ended_at = NOW()
-           WHERE run_id = %s AND asset_id = %s""",
-        (run_id, asset_id),
-    )
-    # declared_deps is supplied by the orchestrator's sole production caller
-    # (_schedule_parallel, via run_asset) for every asset in every real run;
-    # None only occurs from direct helper calls in legacy unit fixtures.
-    if declared_deps is not None:
+        write_started = time.monotonic()
         try:
-            from .output_digest import compute_output_digest
-            from .provenance import (
-                WHOLE_ASSET_PARTITION,
-                capture_and_persist_receipt,
-                previous_output_digest,
-            )
-            output_digest, output_digest_spec_sha256 = compute_output_digest(cur, asset_id=asset_id)
-            # O-wave WP-1 (NIRMANA_UNIFIED_ELEVATION_PLAN_v2_0.md §3.1): read the
-            # prior receipt's output_digest BEFORE capture_and_persist_receipt
-            # overwrites it below -- this is the only point where "did this
-            # write's output actually change" can still be answered.
-            partition_key = natural_key_partition or WHOLE_ASSET_PARTITION
-            prior_output_digest = previous_output_digest(
-                cur, asset_id=asset_id, chart_id=chart_id, partition_key=partition_key,
-            )
-            capture_and_persist_receipt(
-                cur,
-                asset_id=asset_id,
-                chart_id=chart_id,
-                build_id=run_id,
-                code_digest=writer_hash,
-                config=ctx.config,
-                upstream_digest=upstream_hash,
-                upstream_receipts=upstream_receipts,
-                output_digest=output_digest,
-                output_digest_spec_sha256=output_digest_spec_sha256,
-                partition_declaration=natural_key_partition,
-                has_cowriters=has_cowriters,
-            )
-            # Record the delta decision durably so staleness.py's propagation
-            # (a fresh connection in the orchestrator's on_complete callback,
-            # with no access to this transaction's local state) can read it
-            # back. No prior receipt at all counts as changed -- fail-open,
-            # never fake-fresh (plan §3.1 point 4 / CLAUDE.md §N.8).
-            output_changed = prior_output_digest is None or prior_output_digest != output_digest
-            cur.execute(
-                "UPDATE build_run_assets SET output_changed = %s WHERE run_id = %s AND asset_id = %s",
-                (output_changed, run_id, asset_id),
+            rows_inserted, rows_updated, writer_duration_seconds = _drive_substeps(
+                conn, cur, run_id, chart_id, asset_id, writer, ctx,
+                defer_commits=defer_writer_commits,
+                telemetry_conn=telemetry_conn,
+                compute_ms=compute_ms,
             )
         except Exception as exc:
+            write_ms = _elapsed_ms(write_started)
+            err = f"{type(exc).__name__}: {exc}\n{traceback.format_exc()[:2000]}"
+            logger.warning("[orchestrator] writer %s failed: %s", asset_id, err[:200])
+            # Never let mark_asset_error's own commit capture an open writer
+            # transaction. For heavy writers, earlier substep commits remain the
+            # documented resumable output; only the failing substep is rolled back.
+            _close_telemetry_conn(telemetry_conn)
+            telemetry_conn = None
             conn.rollback()
-            mark_asset_error(conn, cur, run_id, chart_id, asset_id, f"provenance receipt: {exc}")
+            _record_asset_error(
+                conn, cur, run_id, chart_id, asset_id, err,
+                phase_durations={"compute_ms": compute_ms, "write_ms": write_ms},
+            )
             return False
-    conn.commit()
 
+        write_ms = max(0, int(round((writer_duration_seconds or 0.0) * 1000)))
+        if write_ms == 0 and (rows_inserted or rows_updated):
+            write_ms = _elapsed_ms(write_started)
+
+        _persist_live_phase(
+            conn, cur, telemetry_conn, run_id, chart_id, asset_id,
+            phase="verifying",
+            compute_ms=compute_ms,
+            write_ms=write_ms,
+            defer_commits=defer_writer_commits,
+        )
+        verify_started = time.monotonic()
+
+        # A writer completing is not proof that its output is correct. When the
+        # registry declares integrity SQL, run it before final success/provenance.
+        # Light-writer output remains in this transaction and rolls back atomically;
+        # heavy-writer substeps remain durable/resumable but cannot be accepted while
+        # the detector is red. This applies even when rebuild_on_probe_fail=false:
+        # that flag controls the preflight skip/regenerate policy, not whether a
+        # freshly written result must satisfy its detector.
+        if has_integrity_check:
+            ok, message = _probe_asset(conn, cur, asset_id, integrity_row, False)
+            if not ok:
+                verify_ms = _elapsed_ms(verify_started)
+                _close_telemetry_conn(telemetry_conn)
+                telemetry_conn = None
+                conn.rollback()
+                _record_asset_error(
+                    conn, cur, run_id, chart_id, asset_id,
+                    f"post-write integrity check failed: {message}",
+                    phase_durations={
+                        "compute_ms": compute_ms,
+                        "write_ms": write_ms,
+                        "verify_ms": verify_ms,
+                    },
+                )
+                return False
+
+        rows_written = int((rows_inserted + rows_updated) or 0)
+
+        # A1/C1: pin duration/rate to what THIS run's writer actually did (rows_written
+        # + writer_duration_seconds — the latter now the ENGINE's own time.monotonic()
+        # measurement around each run_substep call, summed by _drive_substeps above,
+        # not the writer's self-report) BEFORE any of the no-op-completion
+        # reclassification below can overwrite rows_written with a presence-probe
+        # count that reflects prior runs' work, not this run's measured time — using
+        # the promoted count against this run's near-zero duration would fabricate
+        # an inflated rate. NULL on any non-positive/non-finite duration
+        # (_compute_duration_and_rate), never 0, never a ZeroDivisionError.
+        write_duration_seconds, write_rows_per_second = _compute_duration_and_rate(
+            rows_written, writer_duration_seconds,
+        )
+
+        # When a chart-scoped data writer produces 0 rows, record 'dormant' rather than
+        # 'lit'. 'lit' would cause the plan resolver's action='build' filter to exclude
+        # the asset (filter picks only dormant/error/missing), leaving the Build button
+        # stuck with an empty plan. 'dormant' correctly signals "ran but produced nothing
+        # — safe to retry". Global assets (chart_id is None) are service singletons and
+        # always get 'lit' regardless of rows_written.
+        # Determine whether 0 rows is correct completion for this asset.
+        # target_floor=0 in asset_registry is the explicit declaration that a writer
+        # may correctly produce 0 rows (e.g. ga_prashna on natal charts — the writer
+        # ran, evaluated, found no prashna question, and returned nothing by design).
+        # Such assets must be 'lit' so the plan resolver stops re-queuing them.
+        # For assets with target_floor > 0, 0 rows means a silent failure → 'dormant'
+        # keeps them in the plan so the next build retries them.
+        # Global assets (chart_id IS NULL) are service singletons — always 'lit'.
+        cur.execute(
+            "SELECT target_floor FROM asset_registry WHERE asset_id = %s",
+            (asset_id,),
+        )
+        reg_row = cur.fetchone()
+        target_floor = reg_row["target_floor"] if reg_row else None
+
+        zero_rows_is_complete = (chart_id is None) or (target_floor == 0)
+        final_state = 'lit' if (rows_written > 0 or zero_rows_is_complete) else 'dormant'
+
+        # ── No-op-completion reclassification (D-1.6 root-cause fix) ──────────────
+        # 'dormant' means "ran and produced nothing → data absent → retry next build".
+        # But a writer with cross-attempt substep resumption (ka_sangam, migration 436)
+        # can legitimately report 0 rows THIS RUN because every substep was already
+        # committed by a prior same-fingerprint build — its data is fully present and
+        # correct. Marking that 'dormant' poisons every downstream DEP-ASSERT (the
+        # D-1.6 incident: run 71b260c7, ka_sangam(dormant) → 24 BLOCKED). Before
+        # accepting 'dormant', probe the asset's actual data via its chart-scoped
+        # count_sql: if rows exist, this was a no-op completion → 'lit', loudly.
+        if final_state == 'dormant':
+            present = _data_rows_present(conn, cur, asset_id, chart_id)
+            if present is not None and present > 0:
+                # SATYA-DIPA (asset_runner.py:596-630, authorized freeze exception —
+                # see ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md): rows being present is
+                # necessary but not sufficient. A genuinely partial substep plan can
+                # also leave rows present (from whatever substeps DID commit) while
+                # substeps remain — the same "unearned lit" shape as D-1.6 itself.
+                # For writers with a real substep plan (has_substeps=true), require
+                # the writer's OWN plan_substeps(ctx) to confirm nothing remains
+                # before promoting. has_substeps=false/NULL (light writers, no real
+                # plan) skip this check entirely — behaves exactly as before.
+                cur.execute(
+                    "SELECT has_substeps FROM asset_registry WHERE asset_id = %s",
+                    (asset_id,),
+                )
+                hs_row = cur.fetchone()
+                has_substeps = bool((hs_row or {}).get("has_substeps")) if isinstance(hs_row, dict) else False
+
+                plan_complete = True
+                remaining_count = 0
+                if has_substeps:
+                    cur.execute("SAVEPOINT noop_completeness_probe")
+                    try:
+                        remaining = writer.plan_substeps(ctx)
+                        remaining_count = len(remaining)
+                        plan_complete = remaining_count == 0
+                        cur.execute("RELEASE SAVEPOINT noop_completeness_probe")
+                    except Exception as exc:
+                        cur.execute("ROLLBACK TO SAVEPOINT noop_completeness_probe")
+                        logger.warning(
+                            "[orchestrator] substep-completeness re-probe failed for %s "
+                            "(chart %s): %s — conservatively treating plan as incomplete",
+                            asset_id, chart_id, exc,
+                        )
+                        plan_complete = False
+
+                if plan_complete:
+                    logger.warning(
+                        "[orchestrator] NO-OP COMPLETION: asset %s (chart %s, run %s) reported "
+                        "0 rows this run but %d data rows are present (resumable-writer skip or "
+                        "equivalent), and its substep plan confirms nothing remains. Marking "
+                        "'lit', not 'dormant' — downstream deps stay unblocked.",
+                        asset_id, chart_id, run_id, present,
+                    )
+                    # cur= persists this to orchestrator_event_register, in THIS
+                    # transaction — so the register row commits iff the 'lit' promotion
+                    # below commits (SAMĀPTI §9.6 / SD-EVENTREG-1; see events.py).
+                    emit_event({
+                        "type": "asset.noop_completion",
+                        "chart_id": chart_id,
+                        "asset_id": asset_id,
+                        "run_id": run_id,
+                        "rows_present": present,
+                    }, cur=cur)
+                    final_state = 'lit'
+                    rows_written = present
+                else:
+                    logger.warning(
+                        "[orchestrator] NO-OP COMPLETION REJECTED: asset %s (chart %s, run %s) "
+                        "reported 0 rows this run; %d data rows are present but the writer's own "
+                        "substep plan reports %d substep(s) still remaining. Marking 'incomplete', "
+                        "NOT 'lit' — downstream deps stay blocked until the plan actually finishes.",
+                        asset_id, chart_id, run_id, present, remaining_count,
+                    )
+                    # cur= persists this to orchestrator_event_register, in THIS
+                    # transaction — so the register row commits iff the 'incomplete' hold
+                    # below commits (SAMĀPTI §9.6 / SD-EVENTREG-1; see events.py).
+                    emit_event({
+                        "type": "asset.noop_completion_rejected",
+                        "chart_id": chart_id,
+                        "asset_id": asset_id,
+                        "run_id": run_id,
+                        "rows_present": present,
+                        "substeps_remaining": remaining_count,
+                    }, cur=cur)
+                    final_state = 'incomplete'
+                    rows_written = present
+
+        if target_floor and rows_written < target_floor:
+            logger.warning(
+                "asset %s: rows_written=%d below target_floor=%d; marking %s",
+                asset_id, rows_written, target_floor, final_state
+            )
+
+        verify_ms = _elapsed_ms(verify_started)
+
+        _persist_live_phase(
+            conn, cur, telemetry_conn, run_id, chart_id, asset_id,
+            phase="publishing",
+            compute_ms=compute_ms,
+            write_ms=write_ms,
+            verify_ms=verify_ms,
+            defer_commits=defer_writer_commits,
+        )
+        _close_telemetry_conn(telemetry_conn)
+        telemetry_conn = None
+        publish_started = time.monotonic()
+
+        # C2 (gate review F-2): degrade gracefully when migration 1200 has not yet
+        # applied in this environment. Never name duration_seconds/rows_per_second
+        # in the UPDATE unless the column is actually present — an out-of-order or
+        # silently-no-op'd deploy must never turn "a column reads NULL" into
+        # "no asset can complete a build" (CLAUDE.md §N.4).
+        if _duration_columns_present(cur):
+            cur.execute(
+                """UPDATE asset_throughput
+                   SET state = %s, last_built_at = clock_timestamp(), rows_written = %s,
+                       built_against_upstream_hash = %s, built_against_writer_hash = %s,
+                       last_error = NULL, duration_seconds = %s, rows_per_second = %s
+                   WHERE chart_id IS NOT DISTINCT FROM %s AND asset_id = %s""",
+                (final_state, rows_written, upstream_hash, writer_hash,
+                 write_duration_seconds, write_rows_per_second, chart_id, asset_id),
+            )
+        else:
+            cur.execute(
+                """UPDATE asset_throughput
+                   SET state = %s, last_built_at = clock_timestamp(), rows_written = %s,
+                       built_against_upstream_hash = %s, built_against_writer_hash = %s,
+                       last_error = NULL
+                   WHERE chart_id IS NOT DISTINCT FROM %s AND asset_id = %s""",
+                (final_state, rows_written, upstream_hash, writer_hash, chart_id, asset_id),
+            )
+        _guard_state_write(cur, run_id, chart_id, asset_id, final_state)
+        # declared_deps is supplied by the orchestrator's sole production caller
+        # (_schedule_parallel, via run_asset) for every asset in every real run;
+        # None only occurs from direct helper calls in legacy unit fixtures.
+        if declared_deps is not None:
+            try:
+                from .output_digest import compute_output_digest
+                from .provenance import (
+                    WHOLE_ASSET_PARTITION,
+                    capture_and_persist_receipt,
+                    previous_output_digest,
+                )
+                output_digest, output_digest_spec_sha256 = compute_output_digest(cur, asset_id=asset_id)
+                # O-wave WP-1 (NIRMANA_UNIFIED_ELEVATION_PLAN_v2_0.md §3.1): read the
+                # prior receipt's output_digest BEFORE capture_and_persist_receipt
+                # overwrites it below -- this is the only point where "did this
+                # write's output actually change" can still be answered.
+                partition_key = natural_key_partition or WHOLE_ASSET_PARTITION
+                prior_output_digest = previous_output_digest(
+                    cur, asset_id=asset_id, chart_id=chart_id, partition_key=partition_key,
+                )
+                capture_and_persist_receipt(
+                    cur,
+                    asset_id=asset_id,
+                    chart_id=chart_id,
+                    build_id=run_id,
+                    code_digest=writer_hash,
+                    config=ctx.config,
+                    upstream_digest=upstream_hash,
+                    upstream_receipts=upstream_receipts,
+                    output_digest=output_digest,
+                    output_digest_spec_sha256=output_digest_spec_sha256,
+                    partition_declaration=natural_key_partition,
+                    has_cowriters=has_cowriters,
+                )
+                # Record the delta decision durably so staleness.py's propagation
+                # (a fresh connection in the orchestrator's on_complete callback,
+                # with no access to this transaction's local state) can read it
+                # back. No prior receipt at all counts as changed -- fail-open,
+                # never fake-fresh (plan §3.1 point 4 / CLAUDE.md §N.8).
+                output_changed = prior_output_digest is None or prior_output_digest != output_digest
+                cur.execute(
+                    "UPDATE build_run_assets SET output_changed = %s WHERE run_id = %s AND asset_id = %s",
+                    (output_changed, run_id, asset_id),
+                )
+            except Exception as exc:
+                publish_ms = _elapsed_ms(publish_started)
+                conn.rollback()
+                _record_asset_error(
+                    conn, cur, run_id, chart_id, asset_id, f"provenance receipt: {exc}",
+                    phase_durations={
+                        "compute_ms": compute_ms,
+                        "write_ms": write_ms,
+                        "verify_ms": verify_ms,
+                        "publish_ms": publish_ms,
+                    },
+                )
+                return False
+
+        publish_ms = _elapsed_ms(publish_started)
+        if _phase_telemetry_columns_present(cur):
+            cur.execute(
+                """UPDATE build_run_assets
+                   SET state = 'complete', disposition = 'build', ended_at = clock_timestamp(),
+                       phase = 'complete',
+                       compute_ms = %s, write_ms = %s, verify_ms = %s, publish_ms = %s
+                   WHERE run_id = %s AND asset_id = %s""",
+                (compute_ms, write_ms, verify_ms, publish_ms, run_id, asset_id),
+            )
+        else:
+            cur.execute(
+                """UPDATE build_run_assets
+                   SET state = 'complete', disposition = 'build', ended_at = clock_timestamp()
+                   WHERE run_id = %s AND asset_id = %s""",
+                (run_id, asset_id),
+            )
+        conn.commit()
+    finally:
+        _close_telemetry_conn(telemetry_conn)
+
+    emit_event(build_phase_event(
+        chart_id=chart_id,
+        asset_id=asset_id,
+        run_id=run_id,
+        phase="complete",
+        compute_ms=compute_ms,
+        write_ms=write_ms,
+        verify_ms=verify_ms,
+        publish_ms=publish_ms,
+    ))
     emit_event({"type": "asset.state_change", "chart_id": chart_id, "asset_id": asset_id,
                 "from_state": "building", "to_state": final_state})
     emit_event({"type": "asset.progress", "chart_id": chart_id, "asset_id": asset_id,
@@ -1417,27 +1798,43 @@ def run_asset(
     if chart_id is not None:
         cur.execute(
             """INSERT INTO asset_throughput (asset_id, chart_id, state, last_built_at)
-               VALUES (%s, %s, 'building', NOW())
+               VALUES (%s, %s, 'building', clock_timestamp())
                ON CONFLICT (chart_id, asset_id) WHERE chart_id IS NOT NULL
-               DO UPDATE SET state = 'building', last_error = NULL, last_built_at = NOW()""",
+               DO UPDATE SET state = 'building', last_error = NULL, last_built_at = clock_timestamp()""",
             (asset_id, chart_id),
         )
     else:
         cur.execute(
             """INSERT INTO asset_throughput (asset_id, chart_id, state, last_built_at)
-               VALUES (%s, NULL, 'building', NOW())
+               VALUES (%s, NULL, 'building', clock_timestamp())
                ON CONFLICT (asset_id) WHERE chart_id IS NULL
-               DO UPDATE SET state = 'building', last_error = NULL, last_built_at = NOW()""",
+               DO UPDATE SET state = 'building', last_error = NULL, last_built_at = clock_timestamp()""",
             (asset_id,),
         )
 
-    cur.execute(
-        """INSERT INTO build_run_assets (run_id, asset_id, position, state, started_at)
-           VALUES (%s, %s, %s, 'building', NOW())
-           ON CONFLICT (run_id, asset_id)
-           DO UPDATE SET state = 'building', started_at = NOW()""",
-        (run_id, asset_id, position),
-    )
+    if _phase_telemetry_columns_present(cur):
+        cur.execute(
+            """INSERT INTO build_run_assets (
+                   run_id, asset_id, position, state, started_at,
+                   phase, substep_index, substep_total, substep_label,
+                   compute_ms, write_ms, verify_ms, publish_ms
+               )
+               VALUES (%s, %s, %s, 'building', clock_timestamp(), 'computing', NULL, NULL, NULL, NULL, NULL, NULL, NULL)
+               ON CONFLICT (run_id, asset_id)
+               DO UPDATE SET state = 'building', started_at = clock_timestamp(),
+                             phase = 'computing',
+                             substep_index = NULL, substep_total = NULL, substep_label = NULL,
+                             compute_ms = NULL, write_ms = NULL, verify_ms = NULL, publish_ms = NULL""",
+            (run_id, asset_id, position),
+        )
+    else:
+        cur.execute(
+            """INSERT INTO build_run_assets (run_id, asset_id, position, state, started_at)
+               VALUES (%s, %s, %s, 'building', clock_timestamp())
+               ON CONFLICT (run_id, asset_id)
+               DO UPDATE SET state = 'building', started_at = clock_timestamp()""",
+            (run_id, asset_id, position),
+        )
 
     cur.execute(
         "UPDATE build_runs SET current_asset_id = %s WHERE id = %s",
@@ -1445,6 +1842,12 @@ def run_asset(
     )
     conn.commit()
 
+    emit_event(build_phase_event(
+        chart_id=chart_id,
+        asset_id=asset_id,
+        run_id=run_id,
+        phase="computing",
+    ))
     emit_event({
         "type": "asset.state_change",
         "chart_id": chart_id,
@@ -1473,11 +1876,14 @@ def run_asset(
     # writer → re-probe → lit / error. Works for L0 service probes AND L0 data
     # integrity checks alike (investigation §2.C).
     if has_check and rebuild_policy:
+        verify_started = time.monotonic()
         ok, msg = _probe_asset(conn, cur, asset_id, registry_row, is_service)
+        verify_ms = _elapsed_ms(verify_started)
         if ok:
             _mark_probe_green(
                 conn, cur, run_id, chart_id, asset_id, msg, registry_row, declared_deps,
                 natural_key_partition, has_cowriters,
+                verify_ms=verify_ms,
             )
             return
         emit_event({"type": "asset.probe", "chart_id": chart_id, "asset_id": asset_id,

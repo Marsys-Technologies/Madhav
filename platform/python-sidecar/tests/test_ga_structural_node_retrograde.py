@@ -32,7 +32,7 @@ AY = "lahiri_chitrapaksha"
 _BASE_ROWS = [
     ("Sun", "Capricorn", 10, 9, 291.0, False, "neutral"),
     ("Moon", "Aquarius", 11, 10, 324.0, False, "neutral"),
-    ("Mars", "Scorpio", 8, 7, 220.0, False, "neutral"),
+    ("Mars", "Scorpio", 8, 7, 220.0, False, "own_sign"),
     ("Mercury", "Sagittarius", 9, 8, 255.0, False, "neutral"),
     ("Jupiter", "Libra", 7, 6, 190.0, False, "neutral"),
     ("Venus", "Sagittarius", 9, 8, 262.0, False, "neutral"),

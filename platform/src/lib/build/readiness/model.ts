@@ -62,19 +62,59 @@ export function deriveChartReadiness(input: {
   // Assets a non-blocking active run is rebuilding keep serving their previous data.
   const nonBlockingAssets = new Set(runActive && !activeRunBlocks ? (latestRun!.planned_assets ?? []) : [])
 
-  // A layer holds data when any of its active assets is lit (zero-row-by-design
-  // assets count) or has written rows. A stale asset is not valid current data:
-  // its layer needs attention and the chart is not Ready until it is rebuilt.
-  const layerData = new Map<BrahmaLayerId, { hasData: boolean; isBuilding: boolean; isStale: boolean }>()
+  // A layer is 'lit' (built) only when every active per-chart asset in it is
+  // lit/service_ok and none are building, stale, failed, incomplete, or dormant.
+  // Precedence: building > stale / failed / incomplete / partial-dormant > lit > dim.
+  type LayerAccumulator = {
+    hasLit: boolean
+    hasNonLit: boolean
+    isBuilding: boolean
+    hasNonBlockingBuilding: boolean
+    hasStale: boolean
+    hasFailure: boolean
+  }
+  const emptyLayerAccumulator = (): LayerAccumulator => ({
+    hasLit: false,
+    hasNonLit: false,
+    isBuilding: false,
+    hasNonBlockingBuilding: false,
+    hasStale: false,
+    hasFailure: false,
+  })
+  const layerData = new Map<BrahmaLayerId, LayerAccumulator>()
   for (const row of throughput) {
     const layer = assetLayer(row.asset_id)
     if (!layer) continue
-    const current = layerData.get(layer) ?? { hasData: false, isBuilding: false, isStale: false }
-    const stale = row.state === 'stale'
+    const current = layerData.get(layer) ?? emptyLayerAccumulator()
+    const isNonBlockingBuilding = row.state === 'building' && nonBlockingAssets.has(row.asset_id)
+    const rowBuilding = row.state === 'building' && !isNonBlockingBuilding
+    const rowStale = row.state === 'stale'
+    const rowLit = row.state === 'lit' || row.state === 'service_ok'
+    const rowFailure =
+      row.state === 'error' ||
+      row.state === 'incomplete' ||
+      row.state === 'partial' ||
+      row.state === 'blocked' ||
+      row.state === 'service_down'
+    const rowNonLit = !rowLit && !isNonBlockingBuilding
     layerData.set(layer, {
-      hasData: current.hasData || (!stale && (row.state === 'lit' || (row.rows_written != null && row.rows_written > 0))),
-      isBuilding: current.isBuilding || row.state === 'building',
-      isStale: current.isStale || stale,
+      hasLit: current.hasLit || rowLit,
+      hasNonLit: current.hasNonLit || rowNonLit,
+      isBuilding: current.isBuilding || rowBuilding,
+      hasNonBlockingBuilding: current.hasNonBlockingBuilding || isNonBlockingBuilding,
+      hasStale: current.hasStale || rowStale,
+      hasFailure: current.hasFailure || rowFailure,
+    })
+  }
+
+  for (const retryAssetId of unresolvedFailure?.preparationRetryAssets ?? []) {
+    const layer = assetLayer(retryAssetId)
+    if (!layer) continue
+    const current = layerData.get(layer) ?? emptyLayerAccumulator()
+    layerData.set(layer, {
+      ...current,
+      hasNonLit: true,
+      hasFailure: true,
     })
   }
 
@@ -82,14 +122,18 @@ export function deriveChartReadiness(input: {
   const layerPips: LayerPip[] = BRAHMA_LAYER_ORDER.map((layer) => {
     if (layer === 'brahmagyan') return { layer, state: 'lit' as const }
     const entry = layerData.get(layer)
-    if (entry?.isStale) return { layer, state: 'amber' as const }
-    if (entry?.hasData) return { layer, state: 'lit' as const }
-    if (entry?.isBuilding) return { layer, state: 'building' as const }
+    if (!entry) return { layer, state: 'dim' as const }
+    if (entry.isBuilding) return { layer, state: 'building' as const }
+    if (entry.hasStale || entry.hasFailure) return { layer, state: 'amber' as const }
+    if (entry.hasLit && entry.hasNonLit) return { layer, state: 'amber' as const }
+    if (entry.hasLit) return { layer, state: 'lit' as const }
+    if (entry.hasNonBlockingBuilding) return { layer, state: 'building' as const }
     return { layer, state: 'dim' as const }
   })
 
   const perChartLit = layerPips.filter((p) => p.layer !== 'brahmagyan' && p.state === 'lit').length
   const allLit = layerPips.every((p) => p.state === 'lit')
+  const anyLit = BRAHMA_LAYER_ORDER.some((layer) => layer !== 'brahmagyan' && layerData.get(layer)?.hasLit)
   const anyBuilding = throughput.some((row) => row.state === 'building' && !nonBlockingAssets.has(row.asset_id))
   const endedIncomplete = (run: ReadinessRunRow | null) => run?.state === 'failed' || run?.state === 'stopped'
   const latestDispatchFailed =
@@ -107,7 +151,7 @@ export function deriveChartReadiness(input: {
   else if (latestDispatchFailed) state = 'needs-rebuild'
   else if (allLit) state = 'ready'
   else if (latestRun?.state === 'failed') state = 'failed'
-  else if (perChartLit > 0) state = 'partially-built'
+  else if (perChartLit > 0 || anyLit) state = 'partially-built'
   else state = 'not-built'
 
   const refreshWarning =
@@ -117,7 +161,7 @@ export function deriveChartReadiness(input: {
 
   // Brahmagyan counts toward the percentage only once the chart has computed data,
   // so a chart with nothing computed (or cleared for rebuild) reads 0%, not 17%.
-  const litCount = perChartLit > 0 ? perChartLit + 1 : 0
+  const litCount = perChartLit > 0 ? perChartLit + 1 : anyLit ? 1 : 0
   const percent = Math.round((litCount / BRAHMA_LAYER_ORDER.length) * 100)
 
   const timestamps = throughput.map((row) => row.last_built_at).filter((t): t is string => Boolean(t))
@@ -132,7 +176,9 @@ export function deriveChartReadiness(input: {
     activeRunId: runActive ? latestRun!.id : null,
     activeRunBlocksReadings: activeRunBlocks || anyBuilding,
     ...(preparingChartData || unresolvedFailure?.unsafePreparation
-      || layerData.get('ganita')?.isStale || layerData.get('bodha')?.isStale
+      || layerData.get('ganita')?.hasStale || layerData.get('bodha')?.hasStale
+      || layerData.get('ganita')?.isBuilding || layerData.get('bodha')?.isBuilding
+      || layerData.get('ganita')?.hasFailure || layerData.get('bodha')?.hasFailure
       ? { preparationDataUnavailable: true }
       : {}),
     ...(unresolvedFailure?.preparationRetryAssets?.length

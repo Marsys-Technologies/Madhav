@@ -52,3 +52,40 @@ export async function columnPresent(table: string, column: string): Promise<bool
 export function blockedByAssetIdColumnPresent(): Promise<boolean> {
   return columnPresent('build_run_assets', 'blocked_by_asset_id')
 }
+
+const PHASE_TELEMETRY_COLUMNS = [
+  'phase',
+  'substep_index',
+  'substep_total',
+  'substep_label',
+  'compute_ms',
+  'write_ms',
+  'verify_ms',
+  'publish_ms',
+] as const
+
+/**
+ * NIR-03: Returns whether all migration-1421 phase/substep/duration columns
+ * exist on `public.build_run_assets`, probing once per process and caching.
+ */
+export async function phaseTelemetryColumnsPresent(): Promise<boolean> {
+  const key = 'build_run_assets.__phase_telemetry_1421'
+  const cached = _cache.get(key)
+  if (cached !== undefined) return cached
+  const { rows } = await query<{ cnt: number }>(
+    `SELECT COUNT(DISTINCT column_name)::int AS cnt
+       FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = $1 AND column_name = ANY($2::text[])`,
+    ['build_run_assets', [...PHASE_TELEMETRY_COLUMNS]]
+  )
+  const present = Number(rows[0]?.cnt ?? 0) === PHASE_TELEMETRY_COLUMNS.length
+  _cache.set(key, present)
+  if (!present) {
+    console.warn(
+      '[columnPresence] build_run_assets phase-telemetry columns (migration 1421) are ABSENT ' +
+      'in this environment — active-run and duration queries will degrade gracefully by ' +
+      'omitting them, until this process is restarted after migration 1421 applies.'
+    )
+  }
+  return present
+}

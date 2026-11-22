@@ -25,12 +25,16 @@ export function AppShell({ children, user, profile, breadcrumb = [] }: AppShellP
       <div className="relative hidden w-14 shrink-0 md:block">
         <AppShellRail user={user} profile={profile} />
       </div>
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <AppShellBreadcrumb
           segments={breadcrumb}
           mobileNav={<MobileNavSheet user={user} profile={profile} />}
         />
-        <main id="main-content" tabIndex={-1} className="folio-page-surface page-ascend min-w-0 flex-1 overflow-auto motion-reduce:animate-none">{children}</main>
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="folio-page-surface page-ascend min-h-0 min-w-0 flex-1 overflow-auto has-[[data-testid=v2-chat-shell]]:flex has-[[data-testid=v2-chat-shell]]:flex-col has-[[data-testid=v2-chat-shell]]:overflow-hidden has-[[data-testid=historical-reading]]:flex has-[[data-testid=historical-reading]]:flex-col has-[[data-testid=historical-reading]]:overflow-hidden motion-reduce:animate-none"
+        >{children}</main>
       </div>
     </div>
   )

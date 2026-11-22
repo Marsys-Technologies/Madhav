@@ -69,8 +69,8 @@ def test_data_writer_already_terminalizes_the_durable_asset_row() -> None:
     asset_runner = SCRIPT.parent / "pipeline/orchestrator/asset_runner.py"
     source = " ".join(asset_runner.read_text().split())
 
-    assert "UPDATE build_run_assets SET state = 'complete', disposition = 'build', ended_at = NOW()" in source
-    assert "UPDATE build_run_assets SET state = 'error', ended_at = NOW(), error = %s" in source
+    assert "UPDATE build_run_assets SET state = 'complete', disposition = 'build', ended_at = clock_timestamp()" in source
+    assert "UPDATE build_run_assets SET state = 'error', ended_at = clock_timestamp(), error = %s" in source
 
 
 class MainCursor(Cursor):
